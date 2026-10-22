@@ -2,14 +2,14 @@
 
 **Status:** `PROPOSED_NOT_APPROVED`
 
-**Review base:** `origin/main` `5cb2d07f91fd5da7fd486c317760be199cf03336`
+**Review base:** current continuation base `origin/main` `a3d615c11b814db8d2d2529211a3b560e54d01a2`; prior G1 evidence at `5cb2d07f91fd5da7fd486c317760be199cf03336` is historical.
 **Purpose:** give existing producer owners a small, reviewable contract proposal. This document does not create an endpoint, permission, runtime API, durable store, or authority grant.
 
 ## Contract boundary
 
 The producer/consumer transport and public names remain undecided until the owners approve them. The `v1` labels below identify proposal compatibility shapes only; they are not stable integration commitments. References are opaque IDs resolved by their existing owner. No credential, bearer token, secret, or copied authority is transported in a Chat message or persisted as a SPEC-310 record.
 
-Native Harness is a subordinate runtime capability. Python OpenAI Agents API remains the repository's agent runtime authority. A privately managed Pi runtime may execute inside the Native Harness; it does not become a planner, scheduler, job store, approval authority, or team runtime. Native model calls use SmartAIHub Gateway only. Orca is not required.
+Native Harness is a subordinate runtime capability. Python OpenAI Agents API owns canonical orchestration, policy, task lifecycle and authority decisions under repository policy. A privately managed Pi runtime may host a subordinate Native model/tool loop inside the Harness; it does not replace canonical orchestration or become a planner, scheduler, job store, approval authority, or team runtime. Pi-specific types stay behind the Harness adapter. Native model calls use SmartAIHub Gateway only. Orca is not required. This wording resolves the known layering ambiguity at proposal level; the original R1.0 excerpt is still needed to determine whether its exact Native Harness semantics require a separate owner decision.
 
 Git, GitHub, repository, branch and worktree references are optional. A Chat-first general-work request may omit `workspaceRef` and produce an artifact through existing Work Context, canonical `worker_jobs` plus outbox, executor, Gateway/economic and Library/artifact authorities.
 
@@ -101,6 +101,11 @@ type NativeAttemptResultV1Proposal = {
 
 These fixtures define review expectations only. They are not runtime test receipts or acceptance evidence.
 
+The runnable offline fake and version-neutral port sketches are in
+`contracts/native-harness-ports.proposal.md` and
+`contracts/offline_contract_fake.py`. They do not admit a job, start a child
+process, invoke a model, or grant execution.
+
 ## Owner review and compatibility
 
 | Contract surface | Existing owner boundary | Review status at base SHA |
@@ -113,4 +118,4 @@ These fixtures define review expectations only. They are not runtime test receip
 | Gateway use, credits and settlement | SPEC-207 and SPEC-280 | `PROPOSED_NOT_APPROVED`; no real Native receipt |
 | Development and independent acceptance | SPEC-224 and SPEC-271 | `PROPOSED_NOT_APPROVED`; SPEC-224 E2E retains priority |
 
-Owner acceptance must name the exact contract revision and compatible producer/consumer SHA. Any semantic change to another SPEC goes through a focused `CROSS_SPEC_CHANGE_REQUEST`; do not edit another owner's branch. Until the Chat/Runner ingress contract is merged and acknowledged, section 05 remains `WAITING_STABLE_APPROVED_RUNNER_CHAT_CONTRACT`. Production Native execution remains disabled until real Gateway, settled-credit, execution-authority and independent acceptance proofs exist.
+Owner acceptance must name the exact contract revision and compatible producer/consumer SHA. The decision packet in `owner-review-packet-g1.md` separates seven owner decisions and records exact observed producer/base SHAs. These are proposals, not acknowledgements. Any semantic change to another SPEC goes through a focused `CROSS_SPEC_CHANGE_REQUEST`; do not edit another owner's branch. Until the Chat/Runner ingress contract is merged and acknowledged, section 05 remains `WAITING_STABLE_APPROVED_RUNNER_CHAT_CONTRACT`. Contract approval does not grant live execution or production use. Production Native execution remains disabled until real Gateway, settled-credit, execution-authority and independent acceptance proofs exist.

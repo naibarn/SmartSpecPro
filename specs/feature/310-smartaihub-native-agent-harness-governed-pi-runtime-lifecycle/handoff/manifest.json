@@ -95,11 +95,11 @@
     "expected_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243"
   },
   "continuation": {
-    "next_action": "Obtain owner review/acknowledgement for the G1 proposal and reconcile the original R1.0 A01-A20 source. Keep sections 03-06 behind their recorded owner, environment and live-evidence prerequisites.",
-    "next_ready_workunit": "section-02-g1-contracts",
-    "reactivation_predicate": "Record exact owner ACKs for the reviewed G1 rows and locate/reconcile canonical R1.0 A01-A20; before section 05, also verify the stable approved Runner/Chat producer merge SHA and contract version.",
-    "resume_point": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/g1-contract-proposal.md",
-    "waiting_predicate": "Do not implement section-05 until a stable, owner-approved Runner/Chat ingress contract is merged, exact SHA/version are recorded, and canonical per-attempt execution/capability/Gateway grants are available."
+    "next_action": "Obtain the original R1.0 A01-A20 excerpt and separate owner decisions against owner-review-packet-g1.md. Keep continuing only offline/read-only work. Section 03 remains live-gated on certified Pi provenance/SBOM/ABI, authorized isolated Gateway credentials and real usage/settlement; section 05 remains blocked on a stable approved merged Runner/Chat contract and per-attempt grants; sections 04/06 live acceptance remains blocked on real executor, ACL, credit and independent SPEC-224/271 evidence.",
+    "next_ready_workunit": "section-03-managed-pi-isolated-spike",
+    "reactivation_predicate": "For each live section, record the exact owner ACK/version/producer SHA/consumer SHA and verified authority/evidence named in that section. Locate and reconcile the actual R1.0 A01-A20 text before freezing acceptance mapping. Offline fakes and documentation remain usable without those live grants.",
+    "resume_point": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/pi-trust-compatibility-research.md",
+    "waiting_predicate": "Do not dispatch Chat-to-Native until an owner-approved, stable Runner/Chat producer contract is merged at an exact SHA/version and canonical per-attempt execution/capability/Gateway grants exist. Do not execute Pi runtime until release provenance, SBOM/license review, certified ABI and isolated non-production Gateway authority are verified."
   },
   "continuation_assessment": {
     "confidence": "MEDIUM",
@@ -107,16 +107,21 @@
     "evidence": [
       "G0 refresh and G1 proposal in specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/",
       "10 scoped evidence-backed G0/G1 gap-review passes in implementation-gap-review.md",
-      "implementation checkpoint 91161ab7510104b7537a9b6cc90b362b95ffb92a"
+      "implementation checkpoint 91161ab7510104b7537a9b6cc90b362b95ffb92a",
+      "acceptance-crosswalk.json and acceptance-crosswalk.md (68 criterion slots; 101 exact canonical ledger rows)",
+      "owner-review-packet-g1.md (seven separate proposed decisions; no owner ACK asserted)",
+      "pi-trust-compatibility-research.md (static upstream release/provenance/ABI/adapter research)",
+      "contracts/native-harness-ports.proposal.md and offline contract fake unit tests (offline only; no dispatch)"
     ],
-    "next_action": "Submit the scoped G0/G1 documentation checkpoint; obtain owner review and reconcile R1.0 source before resuming runtime-dependent sections.",
-    "rationale": "G0 and a reviewable G1 proposal are checkpointed. The proposal is not an approved producer contract; runtime, live Gateway/credit and acceptance work remains gated by exact external owner and environment evidence.",
+    "next_action": "Recover the original R1.0 source; route each of the seven G1 decisions to its owner; continue only independent offline contract work while live gates stay closed.",
+    "rationale": "G0/G1 evidence from PRs #1170/#1171 is preserved and refreshed at current main. The new source crosswalk maps all 68 acceptance slots and all 101 canonical ledger entries without reconstructing missing A01-A20 or marking acceptance passed. Pi npm provenance is verified, but standalone binary provenance/signature, SBOM, live Gateway/credit/execution and independent acceptance remain unproven.",
     "residual_requirements": [
-      "Reconcile original R1.0 A01-A20 source before freezing acceptance coverage",
-      "Obtain owner acknowledgement for G1 producer contracts",
-      "Verify managed Pi package provenance/ABI and isolated non-production Gateway authority",
-      "Wait for stable approved Runner/Chat contract before dispatch bridge",
-      "Obtain real execution, settled-credit and independent acceptance receipts; production stays disabled"
+      "Obtain the actual R1.0 A01-A20 source excerpt; do not infer its text.",
+      "Obtain separate owner acknowledgement for all seven G1 contract domains.",
+      "Require binary provenance/signature and generate/approve a full dependency SBOM before managed Pi certification.",
+      "Verify isolated non-production Gateway authorization, usage and settled-credit receipts with real credentials.",
+      "Wait for stable approved Runner/Chat producer merge SHA/version and distinct per-attempt grants before any dispatch bridge.",
+      "Obtain real Workspace ACL, artifact provenance, bounded parent/child and independent SPEC-224/271 evidence; production remains disabled."
     ]
   },
   "dependencies": {
@@ -190,7 +195,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
     "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
@@ -212,13 +217,22 @@
     ],
     "mapping": [],
     "source_paths": [
-      "claude-spec.md",
-      "claude-plan.md",
+      "acceptance-crosswalk.json",
+      "acceptance-crosswalk.md",
       "claude-plan-tdd.md",
+      "claude-plan.md",
+      "claude-spec.md",
+      "contracts/build_acceptance_crosswalk.py",
+      "contracts/g1-negative-fixtures.proposal.json",
+      "contracts/native-harness-ports.proposal.md",
+      "contracts/offline_contract_fake.py",
+      "contracts/test_acceptance_crosswalk.py",
+      "contracts/test_offline_contract_fake.py",
       "g0-discovery.md",
       "g1-contract-proposal.md",
       "implementation-gap-review.md",
-      "contracts/g1-negative-fixtures.proposal.json",
+      "owner-review-packet-g1.md",
+      "pi-trust-compatibility-research.md",
       "sections/index.md",
       "sections/section-01-g0-owner-audit.md",
       "sections/section-02-g1-contracts.md",
@@ -334,16 +348,21 @@
       "evidence": [
         "G0 refresh and G1 proposal in specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/",
         "10 scoped evidence-backed G0/G1 gap-review passes in implementation-gap-review.md",
-        "implementation checkpoint 91161ab7510104b7537a9b6cc90b362b95ffb92a"
+        "implementation checkpoint 91161ab7510104b7537a9b6cc90b362b95ffb92a",
+        "acceptance-crosswalk.json and acceptance-crosswalk.md (68 criterion slots; 101 exact canonical ledger rows)",
+        "owner-review-packet-g1.md (seven separate proposed decisions; no owner ACK asserted)",
+        "pi-trust-compatibility-research.md (static upstream release/provenance/ABI/adapter research)",
+        "contracts/native-harness-ports.proposal.md and offline contract fake unit tests (offline only; no dispatch)"
       ],
-      "next_action": "Submit the scoped G0/G1 documentation checkpoint; obtain owner review and reconcile R1.0 source before resuming runtime-dependent sections.",
-      "rationale": "G0 and a reviewable G1 proposal are checkpointed. The proposal is not an approved producer contract; runtime, live Gateway/credit and acceptance work remains gated by exact external owner and environment evidence.",
+      "next_action": "Recover the original R1.0 source; route each of the seven G1 decisions to its owner; continue only independent offline contract work while live gates stay closed.",
+      "rationale": "G0/G1 evidence from PRs #1170/#1171 is preserved and refreshed at current main. The new source crosswalk maps all 68 acceptance slots and all 101 canonical ledger entries without reconstructing missing A01-A20 or marking acceptance passed. Pi npm provenance is verified, but standalone binary provenance/signature, SBOM, live Gateway/credit/execution and independent acceptance remain unproven.",
       "residual_requirements": [
-        "Reconcile original R1.0 A01-A20 source before freezing acceptance coverage",
-        "Obtain owner acknowledgement for G1 producer contracts",
-        "Verify managed Pi package provenance/ABI and isolated non-production Gateway authority",
-        "Wait for stable approved Runner/Chat contract before dispatch bridge",
-        "Obtain real execution, settled-credit and independent acceptance receipts; production stays disabled"
+        "Obtain the actual R1.0 A01-A20 source excerpt; do not infer its text.",
+        "Obtain separate owner acknowledgement for all seven G1 contract domains.",
+        "Require binary provenance/signature and generate/approve a full dependency SBOM before managed Pi certification.",
+        "Verify isolated non-production Gateway authorization, usage and settled-credit receipts with real credentials.",
+        "Wait for stable approved Runner/Chat producer merge SHA/version and distinct per-attempt grants before any dispatch bridge.",
+        "Obtain real Workspace ACL, artifact provenance, bounded parent/child and independent SPEC-224/271 evidence; production remains disabled."
       ]
     }
   },
@@ -513,7 +532,7 @@
     "unresolved": 101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T11:08:33.355208Z",
+  "updated_at": "2026-10-22T12:38:48.388135Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

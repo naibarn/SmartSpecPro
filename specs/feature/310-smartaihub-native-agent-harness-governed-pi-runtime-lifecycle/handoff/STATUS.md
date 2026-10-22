@@ -5,8 +5,8 @@
 - Lifecycle: `DISCOVERING`
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 101 unresolved of 101
-- Next action: Submit the scoped G0/G1 documentation checkpoint; obtain owner review and reconcile R1.0 source before resuming runtime-dependent sections.
-- Manifest generation: 4
+- Next action: Recover the original R1.0 source; route each of the seven G1 decisions to its owner; continue only independent offline contract work while live gates stay closed.
+- Manifest generation: 5
 
 ## Source-declared status and relationship claims
 

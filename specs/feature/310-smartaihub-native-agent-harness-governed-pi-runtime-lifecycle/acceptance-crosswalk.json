@@ -1,0 +1,2084 @@
+{
+  "schema": "spec310-acceptance-crosswalk.v1",
+  "canonical_source_sha": "a3d615c11b814db8d2d2529211a3b560e54d01a2",
+  "source_excerpt": {
+    "name": "SPEC-310 R1.0 A01-A20",
+    "status": "NOT_FOUND_IN_SCANNED_CANONICAL_OR_LOCAL_SOURCES",
+    "text": null,
+    "rule": "Do not reconstruct or infer missing source text."
+  },
+  "criteria": [
+    {
+      "acceptance_id": "A01",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A02",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A03",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A04",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A05",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A06",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A07",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A08",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A09",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A10",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A11",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A12",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A13",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A14",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A15",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A16",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A17",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A18",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A19",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A20",
+      "source_status": "SOURCE_TEXT_UNAVAILABLE",
+      "source_ref": null,
+      "exact_source_text": null,
+      "canonical_ledger_requirement_ids": [],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A21",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L511",
+      "exact_source_text": "| A21 | Native harness works without Orca/Codex/Claude installed | isolated Windows process inventory + actual Gateway/model/tool receipt |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-8729FC770E9B"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A22",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L512",
+      "exact_source_text": "| A22 | Same parent can dispatch two genuinely separate child agents without second job authority | canonical parent/child job, attempt, lease/fence trace |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-9F8E6934BFEF"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A23",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L513",
+      "exact_source_text": "| A23 | Bounded delegation, depth, fanout and quota reject unsafe recursion | limit/race negative tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-4E5F0EDEE1D2"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A24",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L514",
+      "exact_source_text": "| A24 | Child receives only subset of effective parent capability | denial/prompt-injection/tenant isolation tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-C2FDD4225CF7"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A25",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L515",
+      "exact_source_text": "| A25 | Per-agent reserve/charge/reconcile/refund never double-settles | Gateway attempt IDs and ledger replay/cancel tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-5BB5B7B6803A"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A26",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L516",
+      "exact_source_text": "| A26 | Parallel same-task comparison uses separate governed worktrees and distinct diffs | actual filesystem/Git + branch ownership proof |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-BBD68E68AAA1"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A27",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L517",
+      "exact_source_text": "| A27 | Same-worktree concurrent writer is denied or serialized under authority | conflict/race and lock tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-017E2DA90EC2"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A28",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L518",
+      "exact_source_text": "| A28 | Agent-to-agent forged approval/receipt/prompt injection cannot gain authority | malicious handoff suite |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-47E30BDFE9F7"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A29",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L519",
+      "exact_source_text": "| A29 | Mixed Native/external team correctly labels BYO subscription vs Gateway billed costs | transport credential audit + UI contract |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-37DCE372892F"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A30",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L520",
+      "exact_source_text": "| A30 | Upstream Pi version pins remain immutable per active child throughout update/rollback | active run + side-by-side upgrade fault test |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-382449FF94FB"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A31",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L521",
+      "exact_source_text": "| A31 | Parent cannot report complete because children returned idle/agent_settled | terminal status precedence + Final Verify fixtures |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-EE09D99B1FA5"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A32",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L522",
+      "exact_source_text": "| A32 | Parent/child cancel and restart require lease/fence and side-effect reconciliation | process restart/unknown outcome/duplicate prevention suite |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-21DD2B8AE61A"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A33",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L523",
+      "exact_source_text": "| A33 | Review role has independent evidence path; findings link to source/test | reviewer isolation + acceptance receipts |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-8C7568208652"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A34",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L524",
+      "exact_source_text": "| A34 | Non-coding team completes without Git, repo or shell privilege | scoped document/research fixture |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-36F3A9774E76"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A35",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L525",
+      "exact_source_text": "| A35 | Companion, Chat, Mission Control show real per-agent status and source-labeled spend | authenticated Windows/browser/mobile test screenshots |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-0E9132F21B7D"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A36",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L526",
+      "exact_source_text": "| A36 | Mobile-only user launches work on approved cloud executor without PC | real cloud target + evidence UAT |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-735F4E2011AC"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A37",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L527",
+      "exact_source_text": "| A37 | No Orca, no external CLI, or no native feature flag leaves other routes intact | regression/fail-closed routing tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-486C2BF86094"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A38",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L528",
+      "exact_source_text": "| A38 | Complete correlation chain intent -> canonical parent/child -> model/tool attempt -> evidence -> settle -> Final Verify | sanitized cross-system trace |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-7336540ABD8C"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A39",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L817",
+      "exact_source_text": "| A39 | A normal Chat message starts a canonical Native general-work task **without Git/CLI/Orca** | Actual Chat ingress, task/admission + Gateway receipt, no .git/git executable dependency |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-4FB582AAD847"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A40",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L818",
+      "exact_source_text": "| A40 | Existing accessible Work Context/Workspace selection is explicit and authorization-scoped | Same-user selection and cross-tenant/foreign workspace negative tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-AC81112F539A"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A41",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L819",
+      "exact_source_text": "| A41 | New non-Git personal or managed workspace is created through existing authority without repository initialization | Real backend/Library/Work Context evidence + filesystem/source inspection |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-540B3238B313"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A42",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L820",
+      "exact_source_text": "| A42 | A Chat answer-only or retrieval-only request succeeds with `workspace=none` where supported | No OS workspace allocation fixture + correctly scoped result |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-069D706829F5"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A43",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L821",
+      "exact_source_text": "| A43 | A local Windows folder without `.git` can be safely read using opaque workspace ID and per-root grant | Windows real-device file fixtures; outside-root/symlink denial receipts |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-DC80CF200666"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A44",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L822",
+      "exact_source_text": "| A44 | Mutating existing local files requires distinct write authority, correct target and approved preview/rollback behavior | Before/after hashes, denied write test, mutation receipt |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-33330D50CF81"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A45",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L823",
+      "exact_source_text": "| A45 | Cloud workspace persists a real report/document artifact with digest, ACL, source refs and valid download | Browser/mobile auth UAT, immutable artifact/version and restore proof |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-EBABA077B441"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A46",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L824",
+      "exact_source_text": "| A46 | Connected source read access does not imply write/send/delete privileges | Gmail/Drive/MCP provider-scope negative tests and server denial evidence |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-5F72DE25B043"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A47",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L825",
+      "exact_source_text": "| A47 | Non-Git multi-agent research/writer/review produces a real versioned final deliverable | Canonical parent-child jobs, isolated candidates and independent check |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-73741982C713"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A48",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L826",
+      "exact_source_text": "| A48 | Concurrent non-Git same-document writers cannot silently overwrite one another | CAS/writer generation conflict tests + safe retry/merge evidence |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-62761BAD3860"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A49",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L827",
+      "exact_source_text": "| A49 | Switching source, tenant, device, workspace or output destination revalidates admission/grants | Explicit reauthorization and stale context negative tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-8B51ACE83C94"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A50",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L828",
+      "exact_source_text": "| A50 | One Chat conversation can own multiple tasks without status, artifacts or cost leaking across task IDs | Canonical task association and Chat/Workspace parity tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-9D78A0A703C5"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A51",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L829",
+      "exact_source_text": "| A51 | Native general-work budget includes Gateway attempts, chargeable Skills/MCP and canceled/partial outputs | Reservation, usage reconciliation and single-settlement ledger assertions |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-D0FF9CB82198"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A52",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L830",
+      "exact_source_text": "| A52 | Prompt injection inside documents or outputs cannot expand tool permissions or exfiltrate other sources | Malicious document, hostile handoff and direct-provider denial suite |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-97B190269D8C"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A53",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L831",
+      "exact_source_text": "| A53 | Native UI shows Files/Sources/Artifacts instead of fake Git controls when workspace has no repository | Actual authenticated UI UAT + screenshots |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-5763F7DF4E4A"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A54",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L832",
+      "exact_source_text": "| A54 | Chat/Companion/Full Workspace share one authoritative task status and deliverable refs through reconnect | Reconnection, stale-state, restart and read projection tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-D6B3D8994932"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A55",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L833",
+      "exact_source_text": "| A55 | Mobile-only user completes cloud general-work task without their own machine online | Real approved cloud placement and signed artifact receipt |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-AB083D777DC5"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A56",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L834",
+      "exact_source_text": "| A56 | No mandatory Orca, Codex, Claude or repository installation in Native Work mode; external modes remain optional and unaffected | Isolated process/tool inventory and off-by-default regression suite |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-7CA4788FC31C"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A57",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L171",
+      "exact_source_text": "| A57 | Canonical new-feature number is 310, without modifying the separate occupant of 309 | Registry, main, PR, reservation and local-worktree collision report at exact SHA |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-143F62366DA3"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A58",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L172",
+      "exact_source_text": "| A58 | Running Track C does not require or include installing/enabling SPEC-310 | Runner Companion regression suite with SPEC-310 flag off |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-2A04343FEBE0"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A59",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L173",
+      "exact_source_text": "| A59 | SPEC-310 docs and isolated spikes do not mutate Track C owned files or their open PR branches | Scoped diff and branch/worktree ownership report |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-2EEDB481B6AD"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A60",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L174",
+      "exact_source_text": "| A60 | Desktop `llm:chat` cannot admit filesystem, process, tool, deployment or Native Team authority | Negative token/scopes/permissions integration tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-F56301FB947B"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A61",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L175",
+      "exact_source_text": "| A61 | Runner device identity cannot impersonate interactive actor or mint Native execution grant | Device/user/run identity-matrix tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-C0106F80CD28"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A62",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L176",
+      "exact_source_text": "| A62 | WP1 `chat.runOnRunner` continues to force `observe` plus `action=none` until separately governed SPEC-279 action admission exists | Regression asserting read-only semantics and no silently broadened permission |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-51186E4B4843"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A63",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L177",
+      "exact_source_text": "| A63 | Native↔Companion code integration uses a stable owner-acknowledged merged contract, or remains feature-flagged/unintegrated | Producer/consumer handoff with contract version, merge SHA and approval receipt |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-4DA53BCC8F15"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A64",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L178",
+      "exact_source_text": "| A64 | General-work Non-Git Workspace completes a real scoped task with actual artifact and no GitHub requirement | Authenticated live job, artifact digest/provenance and real Runner/Gateway receipts |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-9D55D1917833"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A65",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L179",
+      "exact_source_text": "| A65 | Two Native agents can share one managed Pi installation while preserving independent grants, attempts and credit accounting | Real parent/child receipts, model invocation IDs and ledger reconciliation |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-7EA16DCF2618"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A66",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L180",
+      "exact_source_text": "| A66 | C0/C1/C2 protected checks and Windows native acceptance are not marked passed by SPEC-310 mocks/tests | Separated acceptance ledgers, required-gate evidence and native screenshots only if real |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-1CCA7EDE32FF"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A67",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L181",
+      "exact_source_text": "| A67 | No new task/approval/Workspace/credit system or auth scheme was introduced in either track | Source diff, canonical owner matrix, 10-pass review evidence |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-378412DE0C87"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    },
+    {
+      "acceptance_id": "A68",
+      "source_status": "TEXT_PRESENT_IN_CUMULATIVE_SPEC; VERIFY_AGAINST_ORIGINAL_R1.0_WHERE_APPLICABLE",
+      "source_ref": "spec.md#L182",
+      "exact_source_text": "| A68 | Orca is not installed or required in default Native path; optional external route never owns team orchestration | Clean-environment process/package inventory and run-mode contract tests |",
+      "canonical_ledger_requirement_ids": [
+        "REQ-7167468EE29D"
+      ],
+      "acceptance_state": "NOT_ASSESSED",
+      "note": "No acceptance result is inferred from this crosswalk."
+    }
+  ],
+  "canonical_requirement_ledger": {
+    "entry_count": 101,
+    "entries": [
+      {
+        "requirement_id": "R1.3",
+        "requirement_digest": "f0f85c79650e6a75ff23326a81c4373533e92c9010b3b00561264c765144cdee",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L32",
+        "exact_source_line": "> This is a **single cumulative handoff**: R1.3 coordination rules take precedence over the preserved R1.2 design below. The original R1.0 proposal was supplied in the planning conversation, not proven to be committed in the repository; its A01–A20 and Runtime/Gateway/Installer invariants remain required and must be reconciled from the actual provided R1.0 before implementation. Do not misrepresent this addendum as an exact verbatim replacement of R1.0.",
+        "exact_requirement_text": "> This is a **single cumulative handoff**: R1.3 coordination rules take precedence over the preserved R1.2 design below. The original R1.0 proposal was supplied in the planning conversation, not proven to be committed in the repository; its A01–A20 and Runtime/Gateway/Installer invariants remain required and must be reconciled from the actual provided R1.0 before implementation. Do not misrepresent this addendum as an exact verbatim replacement of R1.0.",
+        "acceptance_references_found_in_exact_text": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10",
+          "A11",
+          "A12",
+          "A13",
+          "A14",
+          "A15",
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-A3E3E45BAB22",
+        "requirement_digest": "8a355d7b108bc06d7df17761a911b3adbee3edf4e71be10d337d6f58543e4bb1",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L36",
+        "exact_source_line": "1. **SmartAIHub alone is the product and UX.** The user commands work from existing Chat in Web/Tauri/Mobile. `Orca` is a research/UX reference, not an automatic installation, task coordinator, or required runtime. SPEC-210's legacy “SHALL integrate Orca” requirement is an explicit cross-SPEC conflict to resolve via a *small explicit amendment*, never by silently ignoring it or installing Orca anyway.",
+        "exact_requirement_text": "1. **SmartAIHub alone is the product and UX.** The user commands work from existing Chat in Web/Tauri/Mobile. `Orca` is a research/UX reference, not an automatic installation, task coordinator, or required runtime. SPEC-210's legacy “SHALL integrate Orca” requirement is an explicit cross-SPEC conflict to resolve via a *small explicit amendment*, never by silently ignoring it or installing Orca anyway.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-E7FA3D2A3472",
+        "requirement_digest": "e95bf3e62dbe3a35257ae53c187e470e4bc199100a6961d7bcfd43f35bc12d50",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L40",
+        "exact_source_line": "5. **SPEC-224 protected E2E remains top priority.** SPEC-310 G0 discovery, documentation, G1 bounded contracts and isolated spikes may proceed concurrently; there shall be no production enablement, protected-gate relaxation, or false UAT completion. A separate actual Gateway/Billing/Windows/independent verification gate is required to call SPEC-310 usable.",
+        "exact_requirement_text": "5. **SPEC-224 protected E2E remains top priority.** SPEC-310 G0 discovery, documentation, G1 bounded contracts and isolated spikes may proceed concurrently; there shall be no production enablement, protected-gate relaxation, or false UAT completion. A separate actual Gateway/Billing/Windows/independent verification gate is required to call SPEC-310 usable.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-BB67B0E06234",
+        "requirement_digest": "37b98cf7de4e669454a79257ec89b2bbb4ac4deeca493f5b748513618e5e506b",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L55",
+        "exact_source_line": "`main` observed at G0 on 2026-10-22: `0ebbd075ca4f71af1ffb8ce4f1e38bc3ba6013cf`. PRs #1161, #1162, #1163, #1164, #1166 and #1167 remain open; current heads are recorded in `g0-discovery.md`. The branch-head descriptions and local source must be refreshed before any consumer implementation. Do not treat earlier CI snapshots embedded in this draft as current check evidence. Record missing real Windows native acceptance, actual Chat→Runner E2E and MCP live-contract credentials as external constraints, not fake PASS. Never merge through a failing required protected check.",
+        "exact_requirement_text": "`main` observed at G0 on 2026-10-22: `0ebbd075ca4f71af1ffb8ce4f1e38bc3ba6013cf`. PRs #1161, #1162, #1163, #1164, #1166 and #1167 remain open; current heads are recorded in `g0-discovery.md`. The branch-head descriptions and local source must be refreshed before any consumer implementation. Do not treat earlier CI snapshots embedded in this draft as current check evidence. Record missing real Windows native acceptance, actual Chat→Runner E2E and MCP live-contract credentials as external constraints, not fake PASS. Never merge through a failing required protected check.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-61946FB09EB0",
+        "requirement_digest": "a5ffbf29d0dcf870b139ca2fd89eb73944b04d006f892ff104aa3899f48a4a97",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L57",
+        "exact_source_line": "**Important semantic split:** `chat.runOnRunner` in WP1 is strictly read-only browser observation and is not a generic command bridge. C1 desktop Chat uses the authenticated conversation/LLM flow; it does not establish a dispatch-to-Runner grant. A future Native work command must enter the existing SPEC-279/195/205 admission boundary with its own scope, tenancy, execution and payment controls. **`llm:chat` must not imply `tool:exec`, filesystem write, shell, app control or native-team delegation.**",
+        "exact_requirement_text": "**Important semantic split:** `chat.runOnRunner` in WP1 is strictly read-only browser observation and is not a generic command bridge. C1 desktop Chat uses the authenticated conversation/LLM flow; it does not establish a dispatch-to-Runner grant. A future Native work command must enter the existing SPEC-279/195/205 admission boundary with its own scope, tenancy, execution and payment controls. **`llm:chat` must not imply `tool:exec`, filesystem write, shell, app control or native-team delegation.**",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-2F90FDD246AC",
+        "requirement_digest": "7dd7bd4e19a64d259d4c7efcf4fda52d22664bdf2dcc0e1706b0a962891bd0f2",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L71",
+        "exact_source_line": "3. A code PR for Native→Chat integration **must wait for a stable merged/integration-approved ingress contract**. If C0/C1/C2 is still open, author only an interface proposal/consumer contract against exact expected head SHA; when the owner merges, reconcile against merged SHA and rerun integration. Prefer small independent interface slices; never cherry-pick entire Companion branches into Native worktree.",
+        "exact_requirement_text": "3. A code PR for Native→Chat integration **must wait for a stable merged/integration-approved ingress contract**. If C0/C1/C2 is still open, author only an interface proposal/consumer contract against exact expected head SHA; when the owner merges, reconcile against merged SHA and rerun integration. Prefer small independent interface slices; never cherry-pick entire Companion branches into Native worktree.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-DE788565E6B0",
+        "requirement_digest": "aea536f0a850d7bc4ec07f01e6059a855e42844f1319a75e8951c5f5a4085b24",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L74",
+        "exact_source_line": "6. Shared touchpoints must remain **interfaces, not competing stores**. No `native_agent_jobs`, new status enum, independent team scheduler, approval table, credit ledger, workspace SoT or alternate desktop bearer auth. Existing event/outbox/fence and settled-charge IDs are canonical.",
+        "exact_requirement_text": "6. Shared touchpoints must remain **interfaces, not competing stores**. No `native_agent_jobs`, new status enum, independent team scheduler, approval table, credit ledger, workspace SoT or alternate desktop bearer auth. Existing event/outbox/fence and settled-charge IDs are canonical.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-FC43A8CC1673",
+        "requirement_digest": "858ada28d9d6a059dbbe60aa3c13b5ba10732b4c43beeffb7833fb196e160aaf",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L126",
+        "exact_source_line": "**Required causal flow:**",
+        "exact_requirement_text": "**Required causal flow:**",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-D53B68ED6F0F",
+        "requirement_digest": "b2ca753dc854142f51265871a98813ec0e3fabadf5fa1f6a57a615f1500a01bf",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L128",
+        "exact_source_line": "1. User in Web/Tauri/Mobile Chat selects or creates a Work Context and optional Workspace. A Workspace may be virtual/none, local folder, cloud, connected source, temporary or approved Git worktree; no GitHub login is required for ordinary work. The existing owner performs scoped resolution and source ACL checks.",
+        "exact_requirement_text": "1. User in Web/Tauri/Mobile Chat selects or creates a Work Context and optional Workspace. A Workspace may be virtual/none, local folder, cloud, connected source, temporary or approved Git worktree; no GitHub login is required for ordinary work. The existing owner performs scoped resolution and source ACL checks.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-B4EADBF2B078",
+        "requirement_digest": "f9ab62cbd224ce55a7ef6ddf2e1680a8acb8b739ea79fecabb963bd932fe1cf7",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L136",
+        "exact_source_line": "**Three security identities must remain distinct:** (a) interactive desktop user session (`runner:companion:read`, optionally `llm:chat`), (b) registered Runner device/control-plane execution identity, and (c) scoped *per-attempt* tool and Gateway invocation grants. Neither (a) nor (b) automatically implies (c). Remote/mobile command paths require the same server-side actor and capability authorization.",
+        "exact_requirement_text": "**Three security identities must remain distinct:** (a) interactive desktop user session (`runner:companion:read`, optionally `llm:chat`), (b) registered Runner device/control-plane execution identity, and (c) scoped *per-attempt* tool and Gateway invocation grants. Neither (a) nor (b) automatically implies (c). Remote/mobile command paths require the same server-side actor and capability authorization.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-6A0CEC7DE1C6",
+        "requirement_digest": "26e3182f221aa87433e230d46e10a079b02a895eaacf38adc17a7bad6bd41528",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L147",
+        "exact_source_line": "| N4 — Native general-work end-to-end | First non-Git read-only request and real artifact via Gateway and canonically accounted job | Real Gateway auth, billing/ledger, Runner grant, evidence owner | Live receipt required |",
+        "exact_requirement_text": "| N4 — Native general-work end-to-end | First non-Git read-only request and real artifact via Gateway and canonically accounted job | Real Gateway auth, billing/ledger, Runner grant, evidence owner | Live receipt required |",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-887B70F47088",
+        "requirement_digest": "44dd4ff46c5aa1377e3deda450deecc4afb007061ce3bd38b689a9aa6be4ca6c",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L169",
+        "exact_source_line": "| ID | Requirement | Required evidence |",
+        "exact_requirement_text": "| ID | Requirement | Required evidence |",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-143F62366DA3",
+        "requirement_digest": "48e1dcccd04cabea8a0cb49bf5d1fc59ca9d13399ee796af79f84d601426f93b",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L171",
+        "exact_source_line": "| A57 | Canonical new-feature number is 310, without modifying the separate occupant of 309 | Registry, main, PR, reservation and local-worktree collision report at exact SHA |",
+        "exact_requirement_text": "| A57 | Canonical new-feature number is 310, without modifying the separate occupant of 309 | Registry, main, PR, reservation and local-worktree collision report at exact SHA |",
+        "acceptance_references_found_in_exact_text": [
+          "A57"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-2A04343FEBE0",
+        "requirement_digest": "e43b6dacbcec05abee7f99309b37504405c7ebeec17a751b17be19760ec765f2",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L172",
+        "exact_source_line": "| A58 | Running Track C does not require or include installing/enabling SPEC-310 | Runner Companion regression suite with SPEC-310 flag off |",
+        "exact_requirement_text": "| A58 | Running Track C does not require or include installing/enabling SPEC-310 | Runner Companion regression suite with SPEC-310 flag off |",
+        "acceptance_references_found_in_exact_text": [
+          "A58"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-2EEDB481B6AD",
+        "requirement_digest": "2ca55829c0b26175cf43d59745f174ca9c732439df7df5205e97fc08f451a571",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L173",
+        "exact_source_line": "| A59 | SPEC-310 docs and isolated spikes do not mutate Track C owned files or their open PR branches | Scoped diff and branch/worktree ownership report |",
+        "exact_requirement_text": "| A59 | SPEC-310 docs and isolated spikes do not mutate Track C owned files or their open PR branches | Scoped diff and branch/worktree ownership report |",
+        "acceptance_references_found_in_exact_text": [
+          "A59"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-F56301FB947B",
+        "requirement_digest": "8b1736c7a8d754f65d3151e725a4be55e931bcee1277ad9fd7ee34ea254229b6",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L174",
+        "exact_source_line": "| A60 | Desktop `llm:chat` cannot admit filesystem, process, tool, deployment or Native Team authority | Negative token/scopes/permissions integration tests |",
+        "exact_requirement_text": "| A60 | Desktop `llm:chat` cannot admit filesystem, process, tool, deployment or Native Team authority | Negative token/scopes/permissions integration tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A60"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-C0106F80CD28",
+        "requirement_digest": "81446055a88ee235a412a4cb600ad878df4902481e881053f4b37f2e7e1c6506",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L175",
+        "exact_source_line": "| A61 | Runner device identity cannot impersonate interactive actor or mint Native execution grant | Device/user/run identity-matrix tests |",
+        "exact_requirement_text": "| A61 | Runner device identity cannot impersonate interactive actor or mint Native execution grant | Device/user/run identity-matrix tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A61"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-51186E4B4843",
+        "requirement_digest": "d3ef935e2d52c582ba5847efacca3d11128af72d0833a0eeef05312b4f58c6e1",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L176",
+        "exact_source_line": "| A62 | WP1 `chat.runOnRunner` continues to force `observe` plus `action=none` until separately governed SPEC-279 action admission exists | Regression asserting read-only semantics and no silently broadened permission |",
+        "exact_requirement_text": "| A62 | WP1 `chat.runOnRunner` continues to force `observe` plus `action=none` until separately governed SPEC-279 action admission exists | Regression asserting read-only semantics and no silently broadened permission |",
+        "acceptance_references_found_in_exact_text": [
+          "A62"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-4DA53BCC8F15",
+        "requirement_digest": "52eddd8db0a7d72096c3258cdae29d8ab53c5e395af030be26eda441789c44a4",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L177",
+        "exact_source_line": "| A63 | Native↔Companion code integration uses a stable owner-acknowledged merged contract, or remains feature-flagged/unintegrated | Producer/consumer handoff with contract version, merge SHA and approval receipt |",
+        "exact_requirement_text": "| A63 | Native↔Companion code integration uses a stable owner-acknowledged merged contract, or remains feature-flagged/unintegrated | Producer/consumer handoff with contract version, merge SHA and approval receipt |",
+        "acceptance_references_found_in_exact_text": [
+          "A63"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-9D55D1917833",
+        "requirement_digest": "9ff6c56240df36372b84acf7b0f87faa39a1557cc9749d099f0ff5078974ea2b",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L178",
+        "exact_source_line": "| A64 | General-work Non-Git Workspace completes a real scoped task with actual artifact and no GitHub requirement | Authenticated live job, artifact digest/provenance and real Runner/Gateway receipts |",
+        "exact_requirement_text": "| A64 | General-work Non-Git Workspace completes a real scoped task with actual artifact and no GitHub requirement | Authenticated live job, artifact digest/provenance and real Runner/Gateway receipts |",
+        "acceptance_references_found_in_exact_text": [
+          "A64"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-7EA16DCF2618",
+        "requirement_digest": "c9b070625cfa103f651ff488db718343aa83ed55367b84136825f98e5de1406e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L179",
+        "exact_source_line": "| A65 | Two Native agents can share one managed Pi installation while preserving independent grants, attempts and credit accounting | Real parent/child receipts, model invocation IDs and ledger reconciliation |",
+        "exact_requirement_text": "| A65 | Two Native agents can share one managed Pi installation while preserving independent grants, attempts and credit accounting | Real parent/child receipts, model invocation IDs and ledger reconciliation |",
+        "acceptance_references_found_in_exact_text": [
+          "A65"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-1CCA7EDE32FF",
+        "requirement_digest": "a51e48ccd230b8fe70b901399ac1d98fdcaebde07275b96cc0ce915e7fd47964",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L180",
+        "exact_source_line": "| A66 | C0/C1/C2 protected checks and Windows native acceptance are not marked passed by SPEC-310 mocks/tests | Separated acceptance ledgers, required-gate evidence and native screenshots only if real |",
+        "exact_requirement_text": "| A66 | C0/C1/C2 protected checks and Windows native acceptance are not marked passed by SPEC-310 mocks/tests | Separated acceptance ledgers, required-gate evidence and native screenshots only if real |",
+        "acceptance_references_found_in_exact_text": [
+          "A66"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-378412DE0C87",
+        "requirement_digest": "d8f65958b995951a32ffc7e12b0c1dd77991295cbd48ac029e9fefdab1be4670",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L181",
+        "exact_source_line": "| A67 | No new task/approval/Workspace/credit system or auth scheme was introduced in either track | Source diff, canonical owner matrix, 10-pass review evidence |",
+        "exact_requirement_text": "| A67 | No new task/approval/Workspace/credit system or auth scheme was introduced in either track | Source diff, canonical owner matrix, 10-pass review evidence |",
+        "acceptance_references_found_in_exact_text": [
+          "A67"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-7167468EE29D",
+        "requirement_digest": "614473596e87961fc96578d1c9e40272b7bb39488213ef9f8ee551645025a364",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L182",
+        "exact_source_line": "| A68 | Orca is not installed or required in default Native path; optional external route never owns team orchestration | Clean-environment process/package inventory and run-mode contract tests |",
+        "exact_requirement_text": "| A68 | Orca is not installed or required in default Native path; optional external route never owns team orchestration | Clean-environment process/package inventory and run-mode contract tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A68"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-2179E4FF046C",
+        "requirement_digest": "46d38e84239866752b103764e2ed7cb8b34302bf15ef3978e8c2e68721f8162c",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L184",
+        "exact_source_line": "A57–A68 augment A01–A56 and are *proposed acceptance criteria, not passed results*. A57 is a pre-commit gate. A58/A59/A60/A62 are prerequisites for parallel implementation; A64/A65 require live evidence; A66 must hold at all times.",
+        "exact_requirement_text": "A57–A68 augment A01–A56 and are *proposed acceptance criteria, not passed results*. A57 is a pre-commit gate. A58/A59/A60/A62 are prerequisites for parallel implementation; A64/A65 require live evidence; A66 must hold at all times.",
+        "acceptance_references_found_in_exact_text": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10",
+          "A11",
+          "A12",
+          "A13",
+          "A14",
+          "A15",
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22",
+          "A23",
+          "A24",
+          "A25",
+          "A26",
+          "A27",
+          "A28",
+          "A29",
+          "A30",
+          "A31",
+          "A32",
+          "A33",
+          "A34",
+          "A35",
+          "A36",
+          "A37",
+          "A38",
+          "A39",
+          "A40",
+          "A41",
+          "A42",
+          "A43",
+          "A44",
+          "A45",
+          "A46",
+          "A47",
+          "A48",
+          "A49",
+          "A50",
+          "A51",
+          "A52",
+          "A53",
+          "A54",
+          "A55",
+          "A56",
+          "A57",
+          "A58",
+          "A59",
+          "A60",
+          "A61",
+          "A62",
+          "A63",
+          "A64",
+          "A65",
+          "A66",
+          "A67",
+          "A68"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-0D9320B0DA87",
+        "requirement_digest": "b0ff0ae35158f27dc3087eacd2448be00b5d5a18176b902a68f24d064b56a8af",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L306",
+        "exact_source_line": "**Primary customer journey: SmartAIHub Chat → authorize/select Work Context and Workspace → plan/admit canonical task → select Native Single/Team/eligible External harness → Runner or approved cloud executor → verified output artifacts and Task Control.** Coding/Git are optional capability families, not prerequisites. The same Native Pi-backed harness shall handle document analysis, research, reporting, spreadsheet work, media preparation, file organization, browser-based research and other policy-authorized general work. External Orca installation/use is neither required nor default; Orca is a UX/research reference only unless a separately authorized SPEC-210 external adapter is deliberately enabled. The Runner is the local agent/process supervisor; SPEC-269 (general work) and SPEC-224 (software development) retain orchestration responsibility and canonical job control remains authoritative.",
+        "exact_requirement_text": "**Primary customer journey: SmartAIHub Chat → authorize/select Work Context and Workspace → plan/admit canonical task → select Native Single/Team/eligible External harness → Runner or approved cloud executor → verified output artifacts and Task Control.** Coding/Git are optional capability families, not prerequisites. The same Native Pi-backed harness shall handle document analysis, research, reporting, spreadsheet work, media preparation, file organization, browser-based research and other policy-authorized general work. External Orca installation/use is neither required nor default; Orca is a UX/research reference only unless a separately authorized SPEC-210 external adapter is deliberately enabled. The Runner is the local agent/process supervisor; SPEC-269 (general work) and SPEC-224 (software development) retain orchestration responsibility and canonical job control remains authoritative.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-05D94531F340",
+        "requirement_digest": "4a70e4ecd445bc7472360e7da5e24394eb4f333d985545f7c7b03bf87d20f101",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L310",
+        "exact_source_line": "SmartAIHub SHALL deliver (1) a **first-party native harness** able to run a model/tool loop via the SmartAIHub Gateway without Codex/Claude/Orca CLI, and (2) **multi-agent execution** in which one canonical SmartAIHub task may delegate bounded child-agent work across Native, certified external CLI harnesses, A2A peers or approved cloud executors (Orca only when separately opted into as an external adapter). The resulting UX MAY resemble Orca's parallel worktrees, agent boards, terminal/diff/browser panes and mobile monitoring, but Orca itself SHALL remain optional.",
+        "exact_requirement_text": "SmartAIHub SHALL deliver (1) a **first-party native harness** able to run a model/tool loop via the SmartAIHub Gateway without Codex/Claude/Orca CLI, and (2) **multi-agent execution** in which one canonical SmartAIHub task may delegate bounded child-agent work across Native, certified external CLI harnesses, A2A peers or approved cloud executors (Orca only when separately opted into as an external adapter). The resulting UX MAY resemble Orca's parallel worktrees, agent boards, terminal/diff/browser panes and mobile monitoring, but Orca itself SHALL remain optional.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-207C1A4D7A2B",
+        "requirement_digest": "257c5c02c567740ec399644af619b7006a0ef3ae2fbcb138f1dbcef24ef87870",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L314",
+        "exact_source_line": "**No duplication:** SPEC-269 owns primary/specialist assistant-team planning for general work; SPEC-224 owns durable coding lifecycle, phases and Final Verify handoff; canonical job/control/approval/ledger components own dispatch, replay, grant and settlement. SPEC-310 SHALL implement only subordinate native agent sessions, governed delegation adapters, multi-harness compatibility and read projections where ownership requires. SPEC-210 has a historically proposed Orca external CLI runtime adapter; any mandatory Orca integration clause requires a separate explicit SPEC-210 amendment. No Orca runtime is required for SPEC-310. SPEC-293 owns branch/worktree federation.",
+        "exact_requirement_text": "**No duplication:** SPEC-269 owns primary/specialist assistant-team planning for general work; SPEC-224 owns durable coding lifecycle, phases and Final Verify handoff; canonical job/control/approval/ledger components own dispatch, replay, grant and settlement. SPEC-310 SHALL implement only subordinate native agent sessions, governed delegation adapters, multi-harness compatibility and read projections where ownership requires. SPEC-210 has a historically proposed Orca external CLI runtime adapter; any mandatory Orca integration clause requires a separate explicit SPEC-210 amendment. No Orca runtime is required for SPEC-310. SPEC-293 owns branch/worktree federation.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-075F41480EA5",
+        "requirement_digest": "4a466e39045b19cd00f21cf2574099c12a6e126abbf3c0d073b51170c93b370c",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L369",
+        "exact_source_line": "Orca or another external runtime MUST NOT be silently installed or become a dependency for Native execution. A native child can run in the same team as Orca/direct CLI children only when their separate cost/auth/permissions and acceptance profiles are visibly and explicitly satisfied.",
+        "exact_requirement_text": "Orca or another external runtime MUST NOT be silently installed or become a dependency for Native execution. A native child can run in the same team as Orca/direct CLI children only when their separate cost/auth/permissions and acceptance profiles are visibly and explicitly satisfied.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-0A8B210EE00B",
+        "requirement_digest": "e2569a86eceb75b15ee5370803c402713e3316f8c9a36a125f6f6909035f2a9e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L377",
+        "exact_source_line": "5. **REVIEW_DEBATE:** independent critic, security review or model comparison, with evidence and contradiction reporting; reviewer must not be the sole verifier of their own unreviewed mutation.",
+        "exact_requirement_text": "5. **REVIEW_DEBATE:** independent critic, security review or model comparison, with evidence and contradiction reporting; reviewer must not be the sole verifier of their own unreviewed mutation.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-AA2D326EAFB4",
+        "requirement_digest": "c5dbb114438d6427fd0af24b448d9b08cf1e3f84231f1e0fc4869168d51eb9d6",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L381",
+        "exact_source_line": "Automatic strategy selection SHALL be policy- and task-driven and explain its estimated additional cost and expected parallelism. The user MAY explicitly select a team strategy without gaining additional capabilities. A profile using multi-agent mode is an *execution strategy*, not a second canonical orchestrator.",
+        "exact_requirement_text": "Automatic strategy selection SHALL be policy- and task-driven and explain its estimated additional cost and expected parallelism. The user MAY explicitly select a team strategy without gaining additional capabilities. A profile using multi-agent mode is an *execution strategy*, not a second canonical orchestrator.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-C748320075E6",
+        "requirement_digest": "0ab008178ecf823d83a2375c83a7b5c470449bdf143c37b40c813c464114beb4",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L426",
+        "exact_source_line": "These are **sketches**, not permission to add physical database tables/routes. G0 MUST map their fields to existing canonical task, job, run, attempt, handoff and receipt schemas. Parent progress is computed from actual child states/dependencies; no invented percentages. Child-level `agent_settled`, TUI idle and natural-language 'done' MUST NOT mark the parent successful.",
+        "exact_requirement_text": "These are **sketches**, not permission to add physical database tables/routes. G0 MUST map their fields to existing canonical task, job, run, attempt, handoff and receipt schemas. Parent progress is computed from actual child states/dependencies; no invented percentages. Child-level `agent_settled`, TUI idle and natural-language 'done' MUST NOT mark the parent successful.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-950967A71C62",
+        "requirement_digest": "c4dedb445a14f997e0bc339ddb6211547d9f7d302228b3a425a1b53324bd1416",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L430",
+        "exact_source_line": "- Parent execution grant must explicitly allow delegation, strategy, eligible harnesses/models, placement, child tools and output destination.",
+        "exact_requirement_text": "- Parent execution grant must explicitly allow delegation, strategy, eligible harnesses/models, placement, child tools and output destination.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-0BF0D38457CE",
+        "requirement_digest": "aa36fa0b588987db90ff5e04d25574ff4e7e332282d1586c6790abeefb175164",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L433",
+        "exact_source_line": "- Concurrency, depth, total agent count, total turns, model tokens, wall-clock, tool time, nested tool calls and total credits must be bounded per run and tenant. The policy shall supply values; initial pilot SHOULD use small explicit limits and reject attempts to exceed them.",
+        "exact_requirement_text": "- Concurrency, depth, total agent count, total turns, model tokens, wall-clock, tool time, nested tool calls and total credits must be bounded per run and tenant. The policy shall supply values; initial pilot SHOULD use small explicit limits and reject attempts to exceed them.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-CB7CD1C47C72",
+        "requirement_digest": "cad7063263d50a1cb2daae9fea30fac0d757ef23271f4df46a98f81a1d877d3b",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L485",
+        "exact_source_line": "The UI must show real states. The sample text does not assert an actual task is running.",
+        "exact_requirement_text": "The UI must show real states. The sample text does not assert an actual task is running.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "R1.0",
+        "requirement_digest": "49e578089a4b92ef1d19f1bea9afd3abe1e442bfc376551f066564b0d215faf0",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L503",
+        "exact_source_line": "**M7 — Linux/headless and approved cloud:** real target admission, durable remote run and mobile-only start; isolated cloud execution, tenant quotas, placement cost; GA only after required SPEC-224/271 acceptance and R1.0 A01–A20 applicable acceptance gates.",
+        "exact_requirement_text": "**M7 — Linux/headless and approved cloud:** real target admission, durable remote run and mobile-only start; isolated cloud execution, tenant quotas, placement cost; GA only after required SPEC-224/271 acceptance and R1.0 A01–A20 applicable acceptance gates.",
+        "acceptance_references_found_in_exact_text": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10",
+          "A11",
+          "A12",
+          "A13",
+          "A14",
+          "A15",
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-20AB81F3F50E",
+        "requirement_digest": "78d0886e109c917d58cd91ca1fd14b215aaea732b026f29a9c9d97469672a7ae",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L505",
+        "exact_source_line": "**Merge ordering:** keep G0/G1 and isolated G2 spikes reviewable while SPEC-224 E2E is unresolved; do not divert protected authority work or represent SPEC-310 as GA. Break slices into focused PRs and merge allowed gates frequently; never disable required protection for convenience.",
+        "exact_requirement_text": "**Merge ordering:** keep G0/G1 and isolated G2 spikes reviewable while SPEC-224 E2E is unresolved; do not divert protected authority work or represent SPEC-310 as GA. Break slices into focused PRs and merge allowed gates frequently; never disable required protection for convenience.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-1E3B72DD6333",
+        "requirement_digest": "db2c2f705a774e7117c3fef15dac912e5dc157b19db76927b8d315c28c1e6ee2",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L509",
+        "exact_source_line": "| ID | Required proof | Minimum evidence |",
+        "exact_requirement_text": "| ID | Required proof | Minimum evidence |",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-8729FC770E9B",
+        "requirement_digest": "732d811d838e76248cd9ed0c81728db6feec45b4397a1556cb396ce87899280e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L511",
+        "exact_source_line": "| A21 | Native harness works without Orca/Codex/Claude installed | isolated Windows process inventory + actual Gateway/model/tool receipt |",
+        "exact_requirement_text": "| A21 | Native harness works without Orca/Codex/Claude installed | isolated Windows process inventory + actual Gateway/model/tool receipt |",
+        "acceptance_references_found_in_exact_text": [
+          "A21"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-9F8E6934BFEF",
+        "requirement_digest": "b098244f90035a1cfb3dadef28ce4f2d665a1a5620d1d21bbf658f8526a8232e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L512",
+        "exact_source_line": "| A22 | Same parent can dispatch two genuinely separate child agents without second job authority | canonical parent/child job, attempt, lease/fence trace |",
+        "exact_requirement_text": "| A22 | Same parent can dispatch two genuinely separate child agents without second job authority | canonical parent/child job, attempt, lease/fence trace |",
+        "acceptance_references_found_in_exact_text": [
+          "A22"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-4E5F0EDEE1D2",
+        "requirement_digest": "4ba7b285376b0e6fbdcb3bd50df46db865cc2aedce1e8f29aa96d3474e392f51",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L513",
+        "exact_source_line": "| A23 | Bounded delegation, depth, fanout and quota reject unsafe recursion | limit/race negative tests |",
+        "exact_requirement_text": "| A23 | Bounded delegation, depth, fanout and quota reject unsafe recursion | limit/race negative tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A23"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-C2FDD4225CF7",
+        "requirement_digest": "e5a5848701ddf1996d446d52920d059549a7a4444639df716d068418795b1ebe",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L514",
+        "exact_source_line": "| A24 | Child receives only subset of effective parent capability | denial/prompt-injection/tenant isolation tests |",
+        "exact_requirement_text": "| A24 | Child receives only subset of effective parent capability | denial/prompt-injection/tenant isolation tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A24"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-5BB5B7B6803A",
+        "requirement_digest": "3b6872eabf616ab0ef50a79e41adb6c62095583d060aec0ff4569cd4b3b76a2e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L515",
+        "exact_source_line": "| A25 | Per-agent reserve/charge/reconcile/refund never double-settles | Gateway attempt IDs and ledger replay/cancel tests |",
+        "exact_requirement_text": "| A25 | Per-agent reserve/charge/reconcile/refund never double-settles | Gateway attempt IDs and ledger replay/cancel tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A25"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-BBD68E68AAA1",
+        "requirement_digest": "2c0dbc2e69b7545077b21bd5a19786656f17d352801f111e5e814ad3b1498c9c",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L516",
+        "exact_source_line": "| A26 | Parallel same-task comparison uses separate governed worktrees and distinct diffs | actual filesystem/Git + branch ownership proof |",
+        "exact_requirement_text": "| A26 | Parallel same-task comparison uses separate governed worktrees and distinct diffs | actual filesystem/Git + branch ownership proof |",
+        "acceptance_references_found_in_exact_text": [
+          "A26"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-017E2DA90EC2",
+        "requirement_digest": "b18dc1a6bd2f0228ddeee0d0c3a981467c032d19f0619c2513f721c8a7ccc497",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L517",
+        "exact_source_line": "| A27 | Same-worktree concurrent writer is denied or serialized under authority | conflict/race and lock tests |",
+        "exact_requirement_text": "| A27 | Same-worktree concurrent writer is denied or serialized under authority | conflict/race and lock tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A27"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-47E30BDFE9F7",
+        "requirement_digest": "c00758feb3ae833d2f167c474dcfa4dbbb75b1879c2c568fe23d4969dab98cac",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L518",
+        "exact_source_line": "| A28 | Agent-to-agent forged approval/receipt/prompt injection cannot gain authority | malicious handoff suite |",
+        "exact_requirement_text": "| A28 | Agent-to-agent forged approval/receipt/prompt injection cannot gain authority | malicious handoff suite |",
+        "acceptance_references_found_in_exact_text": [
+          "A28"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-37DCE372892F",
+        "requirement_digest": "13577ed3be1f58ca1872f8410621aaed125bb9dfba1fdf549da1247a4ea01d1c",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L519",
+        "exact_source_line": "| A29 | Mixed Native/external team correctly labels BYO subscription vs Gateway billed costs | transport credential audit + UI contract |",
+        "exact_requirement_text": "| A29 | Mixed Native/external team correctly labels BYO subscription vs Gateway billed costs | transport credential audit + UI contract |",
+        "acceptance_references_found_in_exact_text": [
+          "A29"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-382449FF94FB",
+        "requirement_digest": "4a16745ff9e793498388e782f92dbabf6b0b8ce34708ebfa038daf90aca52c17",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L520",
+        "exact_source_line": "| A30 | Upstream Pi version pins remain immutable per active child throughout update/rollback | active run + side-by-side upgrade fault test |",
+        "exact_requirement_text": "| A30 | Upstream Pi version pins remain immutable per active child throughout update/rollback | active run + side-by-side upgrade fault test |",
+        "acceptance_references_found_in_exact_text": [
+          "A30"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-EE09D99B1FA5",
+        "requirement_digest": "fd8604d3a9dab22bd1817cf9b9e58f27bfdf55109635b4a2e690b99e41c4d1eb",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L521",
+        "exact_source_line": "| A31 | Parent cannot report complete because children returned idle/agent_settled | terminal status precedence + Final Verify fixtures |",
+        "exact_requirement_text": "| A31 | Parent cannot report complete because children returned idle/agent_settled | terminal status precedence + Final Verify fixtures |",
+        "acceptance_references_found_in_exact_text": [
+          "A31"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-21DD2B8AE61A",
+        "requirement_digest": "d5939ad2a9fce3ec26ce6fabbe495a2e12b256e502cd390d41aa78a0755c4fd4",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L522",
+        "exact_source_line": "| A32 | Parent/child cancel and restart require lease/fence and side-effect reconciliation | process restart/unknown outcome/duplicate prevention suite |",
+        "exact_requirement_text": "| A32 | Parent/child cancel and restart require lease/fence and side-effect reconciliation | process restart/unknown outcome/duplicate prevention suite |",
+        "acceptance_references_found_in_exact_text": [
+          "A32"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-8C7568208652",
+        "requirement_digest": "b9d28e0c20a4480797e8eea5384950b03533ac49b61d025a5712e79ca3961cf8",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L523",
+        "exact_source_line": "| A33 | Review role has independent evidence path; findings link to source/test | reviewer isolation + acceptance receipts |",
+        "exact_requirement_text": "| A33 | Review role has independent evidence path; findings link to source/test | reviewer isolation + acceptance receipts |",
+        "acceptance_references_found_in_exact_text": [
+          "A33"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-36F3A9774E76",
+        "requirement_digest": "54ad75080ded45b159d7acac79ebd68586a84ae4d5576e36707c7c37e1265fc7",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L524",
+        "exact_source_line": "| A34 | Non-coding team completes without Git, repo or shell privilege | scoped document/research fixture |",
+        "exact_requirement_text": "| A34 | Non-coding team completes without Git, repo or shell privilege | scoped document/research fixture |",
+        "acceptance_references_found_in_exact_text": [
+          "A34"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-0E9132F21B7D",
+        "requirement_digest": "874660b1512ccf2bd770305e721c717d791a5f5640ebe93764eed77c923c845d",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L525",
+        "exact_source_line": "| A35 | Companion, Chat, Mission Control show real per-agent status and source-labeled spend | authenticated Windows/browser/mobile test screenshots |",
+        "exact_requirement_text": "| A35 | Companion, Chat, Mission Control show real per-agent status and source-labeled spend | authenticated Windows/browser/mobile test screenshots |",
+        "acceptance_references_found_in_exact_text": [
+          "A35"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-735F4E2011AC",
+        "requirement_digest": "9c505fd1119eba806f6af34a574e7933d89a4d99882be5de180893457e38a31c",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L526",
+        "exact_source_line": "| A36 | Mobile-only user launches work on approved cloud executor without PC | real cloud target + evidence UAT |",
+        "exact_requirement_text": "| A36 | Mobile-only user launches work on approved cloud executor without PC | real cloud target + evidence UAT |",
+        "acceptance_references_found_in_exact_text": [
+          "A36"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-486C2BF86094",
+        "requirement_digest": "fc18ac54abb86d70a794b06385b21051eaac68ad4e255f31cd9060bd079faf9a",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L527",
+        "exact_source_line": "| A37 | No Orca, no external CLI, or no native feature flag leaves other routes intact | regression/fail-closed routing tests |",
+        "exact_requirement_text": "| A37 | No Orca, no external CLI, or no native feature flag leaves other routes intact | regression/fail-closed routing tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A37"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-7336540ABD8C",
+        "requirement_digest": "37be6431a869f5d4ab43f8be9799f83a4a6f4eab748cbd96d044ac337c85d71b",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L528",
+        "exact_source_line": "| A38 | Complete correlation chain intent -> canonical parent/child -> model/tool attempt -> evidence -> settle -> Final Verify | sanitized cross-system trace |",
+        "exact_requirement_text": "| A38 | Complete correlation chain intent -> canonical parent/child -> model/tool attempt -> evidence -> settle -> Final Verify | sanitized cross-system trace |",
+        "acceptance_references_found_in_exact_text": [
+          "A38"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "R1.0-530",
+        "requirement_digest": "258948afbbb2cd82a907ec2d188cea0148d523ebb33061343fa2ee3bab9d6030",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L530",
+        "exact_source_line": "**No all-green shortcuts:** R1.0 A01–A20 plus A21–A38 relevant to an enabled strategy remain authoritative. Unit tests, TUI idle detection and agent output cannot substitute for real Windows/cloud receipts and independent acceptance. Implemented state must be reported as PASS/PARTIAL/BLOCKED/UNVERIFIED per platform and strategy.",
+        "exact_requirement_text": "**No all-green shortcuts:** R1.0 A01–A20 plus A21–A38 relevant to an enabled strategy remain authoritative. Unit tests, TUI idle detection and agent output cannot substitute for real Windows/cloud receipts and independent acceptance. Implemented state must be reported as PASS/PARTIAL/BLOCKED/UNVERIFIED per platform and strategy.",
+        "acceptance_references_found_in_exact_text": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10",
+          "A11",
+          "A12",
+          "A13",
+          "A14",
+          "A15",
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20",
+          "A21",
+          "A22",
+          "A23",
+          "A24",
+          "A25",
+          "A26",
+          "A27",
+          "A28",
+          "A29",
+          "A30",
+          "A31",
+          "A32",
+          "A33",
+          "A34",
+          "A35",
+          "A36",
+          "A37",
+          "A38"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-0D9B4F0E0A28",
+        "requirement_digest": "3db9268dc3bbda41a577027c739833ec7fca29501219af221c31fdb86905a5ba",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L545",
+        "exact_source_line": "Each future review run MUST record exact implementation SHA, date, reviewer/test, finding, risk, fix/evidence and retest. This document makes no claim that reviews have been executed.",
+        "exact_requirement_text": "Each future review run MUST record exact implementation SHA, date, reviewer/test, finding, risk, fix/evidence and retest. This document makes no claim that reviews have been executed.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-94E3DA4A4442",
+        "requirement_digest": "0bf74c214bb067f741a27c66dda8dd807713dbfb4f0b5533cd4e3476beb68c7c",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L553",
+        "exact_source_line": "- Do not automatically enable dangerous CLI flags or assume isolated Git worktrees constitute an OS sandbox. Even if Orca uses agent autonomy flags by default, SmartAIHub MUST enforce its own host/executor grants and sandbox.",
+        "exact_requirement_text": "- Do not automatically enable dangerous CLI flags or assume isolated Git worktrees constitute an OS sandbox. Even if Orca uses agent autonomy flags by default, SmartAIHub MUST enforce its own host/executor grants and sandbox.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "R1.1",
+        "requirement_digest": "6c8d60d33ea0f474a1be74f229003e5ffe339756df54b8fae9de36ce3f8d7c07",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L574",
+        "exact_source_line": "The following clauses **override conflicting R1.1 descriptions**; keep the retained multi-agent and runtime lifecycle contracts in sections A–K. The revision does NOT claim that the UI, API, persistence or tests are already implemented. Proposed interface names below must be reconciled to code before use.",
+        "exact_requirement_text": "The following clauses **override conflicting R1.1 descriptions**; keep the retained multi-agent and runtime lifecycle contracts in sections A–K. The revision does NOT claim that the UI, API, persistence or tests are already implemented. Proposed interface names below must be reconciled to code before use.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-17EB0605402A",
+        "requirement_digest": "774269dcb673f94b6c913b8a70b1f50c92bcd9dc9938b9fc716acd46e1dfa5fb",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L578",
+        "exact_source_line": "1. A user SHALL be able to start a general-purpose task from the existing authenticated SmartAIHub Chat / Desktop Chat Panel / Full Workspace / approved Mobile Chat with natural language, choosing an existing accessible Work Context/Workspace or creating an authorized, non-Git workspace. No repository, Git provider connection, `git init`, branch, worktree, compiler, Codex, Claude CLI or Orca installation may be required for an ordinary non-coding task.",
+        "exact_requirement_text": "1. A user SHALL be able to start a general-purpose task from the existing authenticated SmartAIHub Chat / Desktop Chat Panel / Full Workspace / approved Mobile Chat with natural language, choosing an existing accessible Work Context/Workspace or creating an authorized, non-Git workspace. No repository, Git provider connection, `git init`, branch, worktree, compiler, Codex, Claude CLI or Orca installation may be required for an ordinary non-coding task.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-BEA406E16B13",
+        "requirement_digest": "425dd1e654415a1b1461e5585092d62e64b5dfdd7207b07547352533f05b3b68",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L583",
+        "exact_source_line": "6. The system SHALL distinguish **Chat message** (request/communication), **Work Context** (durable collaboration context), **Workspace** (data/materialization and execution scope), **Task/Run** (canonical accountable work) and **Deliverable/Artifact** (verified output). None may be inferred as equivalent solely from a shared name.",
+        "exact_requirement_text": "6. The system SHALL distinguish **Chat message** (request/communication), **Work Context** (durable collaboration context), **Workspace** (data/materialization and execution scope), **Task/Run** (canonical accountable work) and **Deliverable/Artifact** (verified output). None may be inferred as equivalent solely from a shared name.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-5F7B0878E61E",
+        "requirement_digest": "4c8626384d883cfa1dc683a86e6ec2efe1c955a39c6ad4c9233a80d88769db4f",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L584",
+        "exact_source_line": "7. Multi-agent work is an optional execution strategy: Auto SHALL default to Single when it satisfies quality, latency and budget; parallel/team activation must have a justified skill, latency, coverage or independent-review benefit and a bounded cost estimate.",
+        "exact_requirement_text": "7. Multi-agent work is an optional execution strategy: Auto SHALL default to Single when it satisfies quality, latency and budget; parallel/team activation must have a justified skill, latency, coverage or independent-review benefit and a bounded cost estimate.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-A96DCBDEDFB2",
+        "requirement_digest": "6842c1126ed941a3d7a1e3c5dac6ab5422ff2d977a982b113da8c450627fd12b",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L605",
+        "exact_source_line": "**Cross-SPEC change request:** SPEC-210's older directive that Orca SHALL be integrated as a first-class adapter conflicts with the now-decided *no mandatory Orca installation / no Orca-owned coordination* product policy. G0 SHALL propose a narrowly scoped SPEC-210 amendment that reclassifies Orca as `optional_external_adapter` or `reference_only` in product default; do not silently rewrite or bypass SPEC-210 authority. Existing installed Orca adapters, if any, shall not be forcibly removed without separate migration/authorization.",
+        "exact_requirement_text": "**Cross-SPEC change request:** SPEC-210's older directive that Orca SHALL be integrated as a first-class adapter conflicts with the now-decided *no mandatory Orca installation / no Orca-owned coordination* product policy. G0 SHALL propose a narrowly scoped SPEC-210 amendment that reclassifies Orca as `optional_external_adapter` or `reference_only` in product default; do not silently rewrite or bypass SPEC-210 authority. Existing installed Orca adapters, if any, shall not be forcibly removed without separate migration/authorization.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-4C9EEA973A3A",
+        "requirement_digest": "2f65b76b88f3f4b30e7c12d1b555181487f54ed0991c29648d9b3ec4f7c96a1e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L619",
+        "exact_source_line": "| Development Workspace | Source code and versioned build/review | Existing workspace; optionally SPEC-293 Git repository/worktree when required | Conditional |",
+        "exact_requirement_text": "| Development Workspace | Source code and versioned build/review | Existing workspace; optionally SPEC-293 Git repository/worktree when required | Conditional |",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-5F7220996136",
+        "requirement_digest": "c66efcb19e0e1ce3374f766bbf1f96c7ed0ab82f712a05eff287022961442c44",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L629",
+        "exact_source_line": "- `Attach files or sources`: preserve each artifact/source identity and provenance; uploaded binary material and external connectors must be authorized. Attaching a document to Chat does not grant filesystem-wide access or permission to exfiltrate other documents.",
+        "exact_requirement_text": "- `Attach files or sources`: preserve each artifact/source identity and provenance; uploaded binary material and external connectors must be authorized. Attaching a document to Chat does not grant filesystem-wide access or permission to exfiltrate other documents.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-1D9562E42F37",
+        "requirement_digest": "e4db125ea28bddae7276ee70059eaf202797580724938f2caeb4f7845859b825",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L636",
+        "exact_source_line": "- Write actions SHALL be prepare/preview/authorize/commit/verify where risk and source contract require. Preserve prior versions or verifiable before-state snapshots when supported; avoid overwriting originals by default for document/report workflows.",
+        "exact_requirement_text": "- Write actions SHALL be prepare/preview/authorize/commit/verify where risk and source contract require. Preserve prior versions or verifiable before-state snapshots when supported; avoid overwriting originals by default for document/report workflows.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-705B7F5338FA",
+        "requirement_digest": "8e6b81389d43e4a28161c83618f3995ccf4657475b96d0f84ffda04f9d6d67c1",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L637",
+        "exact_source_line": "- Deliverables SHALL be registered with canonical artifact refs, content digest, media type, lineage/source citations, tenant/owner/ACL, version/revision, retention and safe preview/download projection. Never use `done` as proof that a file exists.",
+        "exact_requirement_text": "- Deliverables SHALL be registered with canonical artifact refs, content digest, media type, lineage/source citations, tenant/owner/ACL, version/revision, retention and safe preview/download projection. Never use `done` as proof that a file exists.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-4A6EBB4443FA",
+        "requirement_digest": "22a222b38f61f668522d2911b0e855f14e6f3ec3cc56f2d0a955e99010a9f526",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L662",
+        "exact_source_line": "For read/analysis-only tasks, no OS process or workspace need be allocated if the approved transport supports equivalent safe retrieval/inference. For code work, SPEC-224 can require branch/worktree and independent public UAT where its delivery contract demands it. A general-work PDF report does not inherit a mandatory `https://smartaihub.app` application-preview requirement, although its SmartAIHub control surfaces must still use authorized endpoints.",
+        "exact_requirement_text": "For read/analysis-only tasks, no OS process or workspace need be allocated if the approved transport supports equivalent safe retrieval/inference. For code work, SPEC-224 can require branch/worktree and independent public UAT where its delivery contract demands it. A general-work PDF report does not inherit a mandatory `https://smartaihub.app` application-preview requirement, although its SmartAIHub control surfaces must still use authorized endpoints.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-405A910DFEE5",
+        "requirement_digest": "4144fdb832a56ab0c98f9ab15ac8d08ba7b91cdab8a3977f5ca43321d8fbcc85",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L714",
+        "exact_source_line": "- Repeated requests such as \"continue the spreadsheet from yesterday\" must resolve the latest **authorized artifact version** / explicit task context, not infer it from a stale chat summary or similarity search alone.",
+        "exact_requirement_text": "- Repeated requests such as \"continue the spreadsheet from yesterday\" must resolve the latest **authorized artifact version** / explicit task context, not infer it from a stale chat summary or similarity search alone.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-E229D37D9C1C",
+        "requirement_digest": "27502f3e4acd0e04c17df6bc1d71c821f822f226b1a513ff6b4dadf18c7e5f12",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L715",
+        "exact_source_line": "- Follow-up steers for active runs attach to the correct task/attempt and are subject to freshness/risk/approval gates; a follow-up must not restart an indeterminate side effect or silently authorize a new destination.",
+        "exact_requirement_text": "- Follow-up steers for active runs attach to the correct task/attempt and are subject to freshness/risk/approval gates; a follow-up must not restart an indeterminate side effect or silently authorize a new destination.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-7AFD6C8C0690",
+        "requirement_digest": "76331c9cd2e20dce945919bbdacdef9805aad779dc98a066f8409e703c68253a",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L716",
+        "exact_source_line": "- Chat completion responses must distinguish `ready_for_review`, `awaiting_approval`, `blocked_unavailable_source`, `delivery_committed` and `verified` according to canonical status/accepted vocabulary. Progress percentages may be shown only from grounded, clearly defined measurements.",
+        "exact_requirement_text": "- Chat completion responses must distinguish `ready_for_review`, `awaiting_approval`, `blocked_unavailable_source`, `delivery_committed` and `verified` according to canonical status/accepted vocabulary. Progress percentages may be shown only from grounded, clearly defined measurements.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-C52244D2D6C0",
+        "requirement_digest": "6d64553e1150a502df2f5c6ad16e4ecb11dbff832cd3832b42003bcf86f27af4",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L720",
+        "exact_source_line": "Default `native-work` SHALL NOT inherit `native-code` tools or host root access. Suggested capability groups, all centrally resolved and independently authorized:",
+        "exact_requirement_text": "Default `native-work` SHALL NOT inherit `native-code` tools or host root access. Suggested capability groups, all centrally resolved and independently authorized:",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-1E7A3677040F",
+        "requirement_digest": "45ab31b1e18f047c5964a080845204bce1f6e8cc5f69df73eaeb80419aea7abf",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L733",
+        "exact_source_line": "Workspace root controls, sandbox/process identity and cap grants must be enforced by the actual OS/connector executor; a natural-language instruction \"stay in this folder\" is not a security boundary. The Runtime Manager's private Pi update/install controls remain distinct from file-manipulation permissions granted to an agent.",
+        "exact_requirement_text": "Workspace root controls, sandbox/process identity and cap grants must be enforced by the actual OS/connector executor; a natural-language instruction \"stay in this folder\" is not a security boundary. The Runtime Manager's private Pi update/install controls remain distinct from file-manipulation permissions granted to an agent.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-6E9265788780",
+        "requirement_digest": "9d4d0fd81fe1cbb46d8f6023ee21709801f5c85d2299fc6b47207386c07be997",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L743",
+        "exact_source_line": "7. Mixed-harness general work MAY use an already installed, explicitly authorized External Harness or remote A2A participant, but it is optional and must not require Orca or Git. If provider-native CLI subscriptions are used, show their billing/auth semantics separately; Native uses SmartAIHub Gateway credits.",
+        "exact_requirement_text": "7. Mixed-harness general work MAY use an already installed, explicitly authorized External Harness or remote A2A participant, but it is optional and must not require Orca or Git. If provider-native CLI subscriptions are used, show their billing/auth semantics separately; Native uses SmartAIHub Gateway credits.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-0F4349977B3E",
+        "requirement_digest": "8002e783f09a2f67ebde2375ee08eea13d5838ecd9e060571aff357b157eff37",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L758",
+        "exact_source_line": "- Git/worktree tabs appear only when a real Git-governed workspace is bound; otherwise replace with `Files`, `Sources`, `Artifacts`, `Changes`, `History`, `Team`, `Evidence`. A non-Git workspace MUST NOT show a fake branch/commit SHA.",
+        "exact_requirement_text": "- Git/worktree tabs appear only when a real Git-governed workspace is bound; otherwise replace with `Files`, `Sources`, `Artifacts`, `Changes`, `History`, `Team`, `Evidence`. A non-Git workspace MUST NOT show a fake branch/commit SHA.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-907AAFC68074",
+        "requirement_digest": "505dbc0242934f8d42efb2e7c7deb361a17f07d0b463e75205c47ab6801a36d9",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L773",
+        "exact_source_line": "No Pi or Orca UI session is required. Disconnected local folders show unavailable/stale until an authorized Runner reconnects. Cloud-managed work can continue without a personal PC only when real cloud placement, source materialization and policy grant are present.",
+        "exact_requirement_text": "No Pi or Orca UI session is required. Disconnected local folders show unavailable/stale until an authorized Runner reconnects. Cloud-managed work can continue without a personal PC only when real cloud placement, source materialization and policy grant are present.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-F77C832C07C1",
+        "requirement_digest": "026bbb89a7ce5c76aa9ff5abf80dd4687dd60677b23d4483b3d01bc36cff0566",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L803",
+        "exact_source_line": "- `W1 — Read-only Chat -> Native Work attempt (off by default)`: one authorized prompt with one selected source or ephemeral scratch, Native Gateway turn, actual canonical task/usage event and result reply; no Git/provider CLI/Orca required. Test no workspace case and valid non-Git local/cloud selection.",
+        "exact_requirement_text": "- `W1 — Read-only Chat -> Native Work attempt (off by default)`: one authorized prompt with one selected source or ephemeral scratch, Native Gateway turn, actual canonical task/usage event and result reply; no Git/provider CLI/Orca required. Test no workspace case and valid non-Git local/cloud selection.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-54D5D741005C",
+        "requirement_digest": "aa5df54bbb12f7347bd7ef6d9bca5179a38f14e8e5ffd7498eff91345e58e703",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L805",
+        "exact_source_line": "- `W3 — Local Folder without Git`: on Windows use existing Runner scoped folder selection, root/path policy, read-only inspection then separately gated file mutation; actual receipt and before/after/undo evidence. No implicit full-drive access. Real Windows acceptance required.",
+        "exact_requirement_text": "- `W3 — Local Folder without Git`: on Windows use existing Runner scoped folder selection, root/path policy, read-only inspection then separately gated file mutation; actual receipt and before/after/undo evidence. No implicit full-drive access. Real Windows acceptance required.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-01583C02BB06",
+        "requirement_digest": "b6dec73cc69bba4b2773147d1811b7082fc754bf12cb9c018cd76768329162e6",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L807",
+        "exact_source_line": "- `W5 — Cloud/mobile journey`: a user with only phone/tablet starts a general-work job against approved cloud storage/sources, cloud executor runs it, persistent deliverables accessible from Chat/Task Control; no user's PC required. Cloud placement does not imply secrets/ACL bypass.",
+        "exact_requirement_text": "- `W5 — Cloud/mobile journey`: a user with only phone/tablet starts a general-work job against approved cloud storage/sources, cloud executor runs it, persistent deliverables accessible from Chat/Task Control; no user's PC required. Cloud placement does not imply secrets/ACL bypass.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-69735E13E2B9",
+        "requirement_digest": "8b49334b3f9bb98f7bea73d5ba4db8b3d4e741d8c065d910103a9e2444a42081",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L809",
+        "exact_source_line": "- `W7 — Enhanced Skills/MCP and controlled external side effects`: connected-source write, communication/calendar actions, browser/computer-use, document/media pipelines under distinct capability/approval/receipt contracts; no broad default grants. No external harness required.",
+        "exact_requirement_text": "- `W7 — Enhanced Skills/MCP and controlled external side effects`: connected-source write, communication/calendar actions, browser/computer-use, document/media pipelines under distinct capability/approval/receipt contracts; no broad default grants. No external harness required.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-6E0F5367A67D",
+        "requirement_digest": "e5a52b15a69bad0ec1ab2205daa5a2b7ff39f5ea3b47d769f63918e705657371",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L815",
+        "exact_source_line": "| ID | Required proof | Evidence |",
+        "exact_requirement_text": "| ID | Required proof | Evidence |",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-4FB582AAD847",
+        "requirement_digest": "67308cae0004562c02e99d2bcd9b73a20807ff0c754e774eb98914f63e6124d8",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L817",
+        "exact_source_line": "| A39 | A normal Chat message starts a canonical Native general-work task **without Git/CLI/Orca** | Actual Chat ingress, task/admission + Gateway receipt, no .git/git executable dependency |",
+        "exact_requirement_text": "| A39 | A normal Chat message starts a canonical Native general-work task **without Git/CLI/Orca** | Actual Chat ingress, task/admission + Gateway receipt, no .git/git executable dependency |",
+        "acceptance_references_found_in_exact_text": [
+          "A39"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-AC81112F539A",
+        "requirement_digest": "0848b3b83695c26dff7a3436113ed6369407e0c60eedf1b68d9a1c0b13555c8e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L818",
+        "exact_source_line": "| A40 | Existing accessible Work Context/Workspace selection is explicit and authorization-scoped | Same-user selection and cross-tenant/foreign workspace negative tests |",
+        "exact_requirement_text": "| A40 | Existing accessible Work Context/Workspace selection is explicit and authorization-scoped | Same-user selection and cross-tenant/foreign workspace negative tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A40"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-540B3238B313",
+        "requirement_digest": "1026467b4b75f6852a5253dcebfd4cdb9128ad00d6f9f82642f88334ce41aa83",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L819",
+        "exact_source_line": "| A41 | New non-Git personal or managed workspace is created through existing authority without repository initialization | Real backend/Library/Work Context evidence + filesystem/source inspection |",
+        "exact_requirement_text": "| A41 | New non-Git personal or managed workspace is created through existing authority without repository initialization | Real backend/Library/Work Context evidence + filesystem/source inspection |",
+        "acceptance_references_found_in_exact_text": [
+          "A41"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-069D706829F5",
+        "requirement_digest": "34ed95ead3a5b5be3822c9b234c56ff6ae47c8e552faeef17f35c99e7c91ef1d",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L820",
+        "exact_source_line": "| A42 | A Chat answer-only or retrieval-only request succeeds with `workspace=none` where supported | No OS workspace allocation fixture + correctly scoped result |",
+        "exact_requirement_text": "| A42 | A Chat answer-only or retrieval-only request succeeds with `workspace=none` where supported | No OS workspace allocation fixture + correctly scoped result |",
+        "acceptance_references_found_in_exact_text": [
+          "A42"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-DC80CF200666",
+        "requirement_digest": "a91ecc18627c26a144ff2b4d9bb9d30e35bbd136def9a8402c8fb1fbc88d1bae",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L821",
+        "exact_source_line": "| A43 | A local Windows folder without `.git` can be safely read using opaque workspace ID and per-root grant | Windows real-device file fixtures; outside-root/symlink denial receipts |",
+        "exact_requirement_text": "| A43 | A local Windows folder without `.git` can be safely read using opaque workspace ID and per-root grant | Windows real-device file fixtures; outside-root/symlink denial receipts |",
+        "acceptance_references_found_in_exact_text": [
+          "A43"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-33330D50CF81",
+        "requirement_digest": "0611a9670615c60b9b9aace63fcc267d1283adf929944e2adc5c805f99e9b0dd",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L822",
+        "exact_source_line": "| A44 | Mutating existing local files requires distinct write authority, correct target and approved preview/rollback behavior | Before/after hashes, denied write test, mutation receipt |",
+        "exact_requirement_text": "| A44 | Mutating existing local files requires distinct write authority, correct target and approved preview/rollback behavior | Before/after hashes, denied write test, mutation receipt |",
+        "acceptance_references_found_in_exact_text": [
+          "A44"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-EBABA077B441",
+        "requirement_digest": "a9bba966486b53b0776bbe69bcd16913dcd66f6dbef8b8e6209e3f049561ac71",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L823",
+        "exact_source_line": "| A45 | Cloud workspace persists a real report/document artifact with digest, ACL, source refs and valid download | Browser/mobile auth UAT, immutable artifact/version and restore proof |",
+        "exact_requirement_text": "| A45 | Cloud workspace persists a real report/document artifact with digest, ACL, source refs and valid download | Browser/mobile auth UAT, immutable artifact/version and restore proof |",
+        "acceptance_references_found_in_exact_text": [
+          "A45"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-5F72DE25B043",
+        "requirement_digest": "c9924fae99f480801a3cbf0aebd880f23d3dde889cc87b1a5281505cf016066e",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L824",
+        "exact_source_line": "| A46 | Connected source read access does not imply write/send/delete privileges | Gmail/Drive/MCP provider-scope negative tests and server denial evidence |",
+        "exact_requirement_text": "| A46 | Connected source read access does not imply write/send/delete privileges | Gmail/Drive/MCP provider-scope negative tests and server denial evidence |",
+        "acceptance_references_found_in_exact_text": [
+          "A46"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-73741982C713",
+        "requirement_digest": "b4ea3a26066fb49b6909d946be412d141a8290c6257a57dd757eec50f6da5143",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L825",
+        "exact_source_line": "| A47 | Non-Git multi-agent research/writer/review produces a real versioned final deliverable | Canonical parent-child jobs, isolated candidates and independent check |",
+        "exact_requirement_text": "| A47 | Non-Git multi-agent research/writer/review produces a real versioned final deliverable | Canonical parent-child jobs, isolated candidates and independent check |",
+        "acceptance_references_found_in_exact_text": [
+          "A47"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-62761BAD3860",
+        "requirement_digest": "5aefc8433cdb35e55b047fa5c63aa8113ecfcc18e672872579740ec012838b59",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L826",
+        "exact_source_line": "| A48 | Concurrent non-Git same-document writers cannot silently overwrite one another | CAS/writer generation conflict tests + safe retry/merge evidence |",
+        "exact_requirement_text": "| A48 | Concurrent non-Git same-document writers cannot silently overwrite one another | CAS/writer generation conflict tests + safe retry/merge evidence |",
+        "acceptance_references_found_in_exact_text": [
+          "A48"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-8B51ACE83C94",
+        "requirement_digest": "6a190c1a7dcf72eaf4e918f646b85d2413e491d29e68a458f0766b33daf189dc",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L827",
+        "exact_source_line": "| A49 | Switching source, tenant, device, workspace or output destination revalidates admission/grants | Explicit reauthorization and stale context negative tests |",
+        "exact_requirement_text": "| A49 | Switching source, tenant, device, workspace or output destination revalidates admission/grants | Explicit reauthorization and stale context negative tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A49"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-9D78A0A703C5",
+        "requirement_digest": "9959f928339f071d2d99bda498d59abd7f23ed7d0b0ea6d4f112a8c7e8189104",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L828",
+        "exact_source_line": "| A50 | One Chat conversation can own multiple tasks without status, artifacts or cost leaking across task IDs | Canonical task association and Chat/Workspace parity tests |",
+        "exact_requirement_text": "| A50 | One Chat conversation can own multiple tasks without status, artifacts or cost leaking across task IDs | Canonical task association and Chat/Workspace parity tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A50"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-D0FF9CB82198",
+        "requirement_digest": "0332d71c2d7cb434d0819ebc7c9c0ecbc73b1df2f52a95b4e882000fbbee182f",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L829",
+        "exact_source_line": "| A51 | Native general-work budget includes Gateway attempts, chargeable Skills/MCP and canceled/partial outputs | Reservation, usage reconciliation and single-settlement ledger assertions |",
+        "exact_requirement_text": "| A51 | Native general-work budget includes Gateway attempts, chargeable Skills/MCP and canceled/partial outputs | Reservation, usage reconciliation and single-settlement ledger assertions |",
+        "acceptance_references_found_in_exact_text": [
+          "A51"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-97B190269D8C",
+        "requirement_digest": "d5bed6d563f537a57c188d9110c45c0d7feabef7c16c2fcc6ea388ea2ecf5132",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L830",
+        "exact_source_line": "| A52 | Prompt injection inside documents or outputs cannot expand tool permissions or exfiltrate other sources | Malicious document, hostile handoff and direct-provider denial suite |",
+        "exact_requirement_text": "| A52 | Prompt injection inside documents or outputs cannot expand tool permissions or exfiltrate other sources | Malicious document, hostile handoff and direct-provider denial suite |",
+        "acceptance_references_found_in_exact_text": [
+          "A52"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-5763F7DF4E4A",
+        "requirement_digest": "6a2ac34609d99f399e459c584dfd94c7c7daf098ad981deb1f5b85b1aa2e10d4",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L831",
+        "exact_source_line": "| A53 | Native UI shows Files/Sources/Artifacts instead of fake Git controls when workspace has no repository | Actual authenticated UI UAT + screenshots |",
+        "exact_requirement_text": "| A53 | Native UI shows Files/Sources/Artifacts instead of fake Git controls when workspace has no repository | Actual authenticated UI UAT + screenshots |",
+        "acceptance_references_found_in_exact_text": [
+          "A53"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-D6B3D8994932",
+        "requirement_digest": "90d6c627178d1468baad87d59bc16327598f38c88123db094029636ed8f7d392",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L832",
+        "exact_source_line": "| A54 | Chat/Companion/Full Workspace share one authoritative task status and deliverable refs through reconnect | Reconnection, stale-state, restart and read projection tests |",
+        "exact_requirement_text": "| A54 | Chat/Companion/Full Workspace share one authoritative task status and deliverable refs through reconnect | Reconnection, stale-state, restart and read projection tests |",
+        "acceptance_references_found_in_exact_text": [
+          "A54"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-AB083D777DC5",
+        "requirement_digest": "073afc007101166a01381006fb40269e66398aa608407643c4eb001fc8f812e7",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L833",
+        "exact_source_line": "| A55 | Mobile-only user completes cloud general-work task without their own machine online | Real approved cloud placement and signed artifact receipt |",
+        "exact_requirement_text": "| A55 | Mobile-only user completes cloud general-work task without their own machine online | Real approved cloud placement and signed artifact receipt |",
+        "acceptance_references_found_in_exact_text": [
+          "A55"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-7CA4788FC31C",
+        "requirement_digest": "c500fec8f4daf3a896536667716c327e2132088e3cb4e6a430cd761fdc987f08",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L834",
+        "exact_source_line": "| A56 | No mandatory Orca, Codex, Claude or repository installation in Native Work mode; external modes remain optional and unaffected | Isolated process/tool inventory and off-by-default regression suite |",
+        "exact_requirement_text": "| A56 | No mandatory Orca, Codex, Claude or repository installation in Native Work mode; external modes remain optional and unaffected | Isolated process/tool inventory and off-by-default regression suite |",
+        "acceptance_references_found_in_exact_text": [
+          "A56"
+        ],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      },
+      {
+        "requirement_id": "REQ-76426464E612",
+        "requirement_digest": "6259771852716885820f59aa08298d6c540ce6a0f17b2014e0e3c6b6707bd010",
+        "source_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+        "authority_source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md#L840",
+        "exact_source_line": "Ten **actual** review passes are required on exact source HEAD after implementation: (1) workspace/non-Git startup, (2) Chat/Work Context authorization, (3) scratch-vs-durable artifact custody, (4) source-vs-destination and side-effect consent, (5) tenant/source isolation and prompt injection, (6) non-Git concurrency/cancel/recovery, (7) delegation budget/credit accounting, (8) Windows/remote/cloud placement and portability, (9) Chat/Companion/Mission Control truthfulness, (10) canonical ownership, Orca removal from default and regression of existing harnesses. Record findings/evidence and actually repair actionable gaps. Mentioning ten topics is not ten reviews.",
+        "exact_requirement_text": "Ten **actual** review passes are required on exact source HEAD after implementation: (1) workspace/non-Git startup, (2) Chat/Work Context authorization, (3) scratch-vs-durable artifact custody, (4) source-vs-destination and side-effect consent, (5) tenant/source isolation and prompt injection, (6) non-Git concurrency/cancel/recovery, (7) delegation budget/credit accounting, (8) Windows/remote/cloud placement and portability, (9) Chat/Companion/Mission Control truthfulness, (10) canonical ownership, Orca removal from default and regression of existing harnesses. Record findings/evidence and actually repair actionable gaps. Mentioning ten topics is not ten reviews.",
+        "acceptance_references_found_in_exact_text": [],
+        "final_state": "OPEN",
+        "implementation_status": "UNVERIFIED"
+      }
+    ]
+  },
+  "acceptance_pass_count": 0,
+  "documentation_is_not_acceptance_evidence": true
+}

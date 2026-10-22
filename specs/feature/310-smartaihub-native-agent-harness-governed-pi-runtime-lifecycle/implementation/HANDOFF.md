@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `11`
-- Updated (UTC): `2026-10-22T11:08:26.377481+00:00`
+- State generation: `16`
+- Updated (UTC): `2026-10-22T12:41:50.095509+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022/specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022`
-- Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022`
+- Worktree: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022`
 - Latest recorded merged Main SHA: `a6a57aadb8483ed02c702d1da40569c526cbd6ce`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-02-g1-contracts`
-- Next action: G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06.
+- Active section: `section-04-non-git-general-work`
+- Next action: Continue offline non-Git contract and artifact-ACL fixtures; 18 deterministic proposal fixtures pass. Do not claim a real job/artifact until accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts exist.
 
 ## Sections
 
@@ -19,10 +19,10 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-g0-owner-audit | checkpointed | codex-spec310-handoff-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022 | 91161ab7510104b7537a9b6cc90b362b95ffb92a | a6a57aadb8483ed02c702d1da40569c526cbd6ce | G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06. |
 | section-02-g1-contracts | checkpointed | codex-spec310-handoff-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022 | 91161ab7510104b7537a9b6cc90b362b95ffb92a | a6a57aadb8483ed02c702d1da40569c526cbd6ce | G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06. |
-| section-03-managed-pi-isolated-spike | in_progress | codex-spec310-deep-implement-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022 | — | — | Resume only after runtime/Gateway owner review, verified immutable Pi source and isolated Gateway authority are evidenced; then implement isolated adapter only. |
-| section-04-non-git-general-work | in_progress | codex-spec310-deep-implement-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022 | — | — | Resume after accepted G1 plus existing authorized executor and real correlated job/attempt, Gateway, settled-credit, workspace ACL, and artifact provenance receipts. |
-| section-05-chat-native-bridge-gate | in_progress | codex-spec310-deep-implement-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022 | — | — | Do not implement Chat dispatch until stable approved producer contract is merged and acknowledged with exact SHA/version and canonical execution/capability/Gateway grants. |
-| section-06-team-runtime-acceptance | in_progress | codex-spec310-deep-implement-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022 | — | — | Resume after applicable sections and owners supply bounded parent/child grants, real multi-target update/rollback and usage receipts, and independent SPEC-271 acceptance; preserve SPEC-224 E2E priority. |
+| section-03-managed-pi-isolated-spike | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Offline upstream trust research is recorded. Keep Pi execution gated until owner ACK, independently verified binary provenance/signature, SBOM/license review, certified Node 22.19+/Windows ABI, isolated non-production Gateway credentials and real usage/settlement evidence exist. |
+| section-04-non-git-general-work | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Continue offline non-Git contract and artifact-ACL fixtures; 18 deterministic proposal fixtures pass. Do not claim a real job/artifact until accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts exist. |
+| section-05-chat-native-bridge-gate | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Do not implement dispatch. PR #1161 remains OPEN at 27200602c527335dbd4385af84a01e55c4ffe89b, is observation-only, and local-contract checks fail; wait for stable approved merged ingress and distinct per-attempt grants. |
+| section-06-team-runtime-acceptance | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Crosswalk covers A21-A68 and all 101 ledger entries; original R1.0 A01-A20 text remains missing. Keep live team/runtime acceptance gated on SPEC-269, SPEC-207/280, SPEC-224/271 and real receipts; preserve SPEC-224 E2E priority. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -30,6 +30,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - WAITING_ACCEPTED_G1_AND_LIVE_AUTHORITY; existing executor/Artifact ACL and real non-production Gateway, credit settlement, and execution authority evidence are unavailable
 - WAITING_STABLE_APPROVED_RUNNER_CHAT_CONTRACT; PR #1161 is open/read-only and local-contract currently fails; exact merged SHA/version/owner ACK and canonical per-run grants are absent
 - WAITING_PRIOR_RUNTIME_AND_OWNER_GATES; SPEC-269/207/280/278/224/271 contract/evidence, signed package provenance, authorized target environment, and independent acceptance are not present
+- Original R1.0 A01-A20 source excerpt is unavailable; do not reconstruct.
 
 ## Resume
 

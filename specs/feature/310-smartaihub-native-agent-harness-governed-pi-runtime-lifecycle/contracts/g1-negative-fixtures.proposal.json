@@ -34,6 +34,21 @@
       "expected": { "decision": "DENY", "code": "ATTEMPT_OR_FENCE_MISMATCH", "sideEffects": [] }
     },
     {
+      "id": "lease-fence-mismatch",
+      "intent": { "attemptRef": "ref:attempt-a", "grantAttemptRef": "ref:attempt-a", "leaseFenceRef": "ref:fence-a", "grantFenceRef": "ref:fence-b" },
+      "expected": { "decision": "DENY", "code": "ATTEMPT_OR_FENCE_MISMATCH", "sideEffects": [] }
+    },
+    {
+      "id": "attempt-grant-wrong-device",
+      "intent": { "runnerDeviceRef": "ref:device-a", "grantRunnerDeviceRef": "ref:device-b" },
+      "expected": { "decision": "DENY", "code": "ATTEMPT_OR_FENCE_MISMATCH", "sideEffects": [] }
+    },
+    {
+      "id": "attempt-grant-wrong-workspace",
+      "intent": { "workspaceRef": "ref:workspace-a", "grantWorkspaceRef": "ref:workspace-b" },
+      "expected": { "decision": "DENY", "code": "WORKSPACE_DENIED", "sideEffects": [] }
+    },
+    {
       "id": "same-key-same-request-is-idempotent",
       "intent": { "idempotencyKey": "key-a", "canonicalRequestDigest": "sha256:a", "priorCanonicalRequestDigest": "sha256:a" },
       "expected": { "decision": "REPLAY_EXISTING_ADMISSION", "jobCount": 1 }
