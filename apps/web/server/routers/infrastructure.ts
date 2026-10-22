@@ -608,13 +608,13 @@ export const infrastructureRouter = router({
       const runtime = await getAppRuntimeConfig();
       if (!runtime.pythonBackendUrl) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "APPROVAL_AUTHORITY_UNAVAILABLE" });
       const authHeaders = { Authorization: `Bearer ${ctx.userToken}`, Accept: "application/json", "Content-Type": "application/json" };
-      const postApproval = async (path: string, body: Record<string, unknown>) => {
+      const postApproval = async (path: string, body: Record<string, unknown>, stage: "POLICY_CREATE" | "GRANT_CREATE") => {
         const response = await fetch(`${runtime.pythonBackendUrl}${path}`, {
           method: "POST", headers: authHeaders, body: JSON.stringify(body), signal: AbortSignal.timeout(20_000),
         });
         const value = await response.json().catch(() => ({})) as Record<string, unknown>;
         if (!response.ok) {
-          const detail = cloudflareApprovalFailureCode(value, response.status);
+          const detail = cloudflareApprovalFailureCode(value, response.status, stage);
           throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : response.status === 422 ? "BAD_REQUEST" : "BAD_GATEWAY", message: detail });
         }
         return value;
@@ -635,7 +635,7 @@ export const infrastructureRouter = router({
           projectId: input.projectId,
           definition: { contractVersion: "cloudflare-staging-origin-v2", accountRef: preflight.accountRef, executorId, actorUserId: ctx.user.id,
             targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging", releases, maxOperations: 1, expiresAt: policyExpiresAt },
-        });
+        }, "POLICY_CREATE");
         policyId = typeof policy.policyId === "string" ? policy.policyId : null;
         if (!policyId) throw new Error("STAGING_POLICY_CREATE_FAILED");
         const grant = await postApproval("/api/v1/approvals/cloudflare-staging-grants/policy", {
@@ -647,7 +647,7 @@ export const infrastructureRouter = router({
           rollbackBuildDigest: preflight.baseline.buildDigest, configurationRef: preflight.configurationRef,
           configurationDigest: preflight.configurationDigest, rollbackConfigurationRef: preflight.baseline.configurationRef,
           rollbackConfigurationDigest: preflight.baseline.configurationDigest, expiresAt: grantExpiresAt,
-        });
+        }, "GRANT_CREATE");
         grantRef = typeof grant.id === "string" ? grant.id : null;
         if (!grantRef || grant.status !== "approved") throw new Error("STAGING_GRANT_NOT_APPROVED");
         canonicalJobCreationStarted = true;

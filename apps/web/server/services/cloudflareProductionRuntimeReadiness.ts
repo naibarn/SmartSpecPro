@@ -8,6 +8,7 @@ const REQUIRED_BINDINGS = new Set([
   "MEDIA_BUCKET",
   "VECTOR_INDEX",
 ]);
+const PRODUCTION_QUEUE_BINDINGS = new Set(["HYPERDRIVE", "JOB_QUEUE"]);
 
 export type CloudflareProductionRuntimeReadiness = Readonly<{
   status: "READY" | "NOT_READY" | "UNAVAILABLE";
@@ -54,7 +55,18 @@ export async function probeCloudflareProductionRuntimeReadiness(input: {
       : record;
     const rawUnconfigured = Array.isArray(readiness.missing) ? readiness.missing
       : Array.isArray(readiness.selectedMissing) ? readiness.selectedMissing : null;
-    const rawMissing = Array.isArray(readiness.selectedMissing) ? readiness.selectedMissing : rawUnconfigured;
+    // Older production Worker versions report only the complete binding inventory.
+    // The checked production profile is pinned to Queues in wrangler.production.jsonc,
+    // so infer its blockers from that profile while preserving the full inventory
+    // separately. This avoids treating unused Workflows, Containers, R2, or Vectorize
+    // as blockers for the selected Queue runtime.
+    const transport = typeof readiness.transport === "string" ? readiness.transport : "queues";
+    const requiredForTransport = transport === "queues" ? PRODUCTION_QUEUE_BINDINGS
+      : transport === "workflows" ? new Set(["HYPERDRIVE", "JOB_WORKFLOW"])
+        : transport === "retention" ? new Set<string>() : REQUIRED_BINDINGS;
+    const rawMissing = Array.isArray(readiness.selectedMissing) ? readiness.selectedMissing
+      : rawUnconfigured === null ? null
+        : rawUnconfigured.filter((value): value is string => typeof value === "string" && requiredForTransport.has(value));
     const environment = readiness.environment ?? record.environment;
     if (environment !== "production" || typeof record.ok !== "boolean" || rawMissing === null) {
       return { status: "UNAVAILABLE", checkedAt, environment: "unknown", missing: [], unconfigured: [],
@@ -70,7 +82,7 @@ export async function probeCloudflareProductionRuntimeReadiness(input: {
       checkedAt,
       environment,
       activation: typeof readiness.activation === "string" ? readiness.activation : undefined,
-      transport: typeof readiness.transport === "string" ? readiness.transport : undefined,
+      transport,
       missing,
       unconfigured,
       jobHandlerConfigured: typeof readiness.jobHandlerConfigured === "boolean" ? readiness.jobHandlerConfigured : undefined,
