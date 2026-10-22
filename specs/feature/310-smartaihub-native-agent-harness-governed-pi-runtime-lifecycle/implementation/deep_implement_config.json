@@ -34,18 +34,20 @@
     "section-03-managed-pi-isolated-spike": {
       "status": "checkpointed",
       "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022",
-      "session_id": "codex-spec310-reconcile-current-20261022",
-      "next_action": "Continue only authorized read-only or deterministic work; do not execute Pi. Obtain owner ACK, independently verified Windows binary provenance/signature, SBOM/license review, certified Node 22.19+/ABI and authorized non-production Gateway/credit evidence before isolated runtime spike.",
+      "session_id": "codex-spec310-record-pr1172-merge-20261022",
+      "next_action": "Section 03 offline trust research is integrated via PR #1172 at main 290daf1f4520ab884399dfe4965a10f02ab2b19a. Keep actual Pi execution pending owner ACK, independently verified binary provenance/signature, SBOM/license review, certified Node/ABI, isolated non-production Gateway credentials and real usage/settlement.",
       "checkpoint_sha": "105198604",
-      "review_file": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation-gap-review.md"
+      "review_file": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation-gap-review.md",
+      "merged_main_sha": "290daf1f4520ab884399dfe4965a10f02ab2b19a"
     },
     "section-04-non-git-general-work": {
       "status": "checkpointed",
       "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022",
-      "session_id": "codex-spec310-reconcile-current-20261022",
-      "next_action": "Continue offline non-Git contract and artifact-ACL fixtures; 18 deterministic proposal fixtures pass. Do not claim a real job/artifact until accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts exist.",
+      "session_id": "codex-spec310-record-pr1172-merge-20261022",
+      "next_action": "Section 04 offline non-Git ports and 18 deterministic fixtures are integrated via PR #1172 at main 290daf1f4520ab884399dfe4965a10f02ab2b19a. Keep a real job/artifact pending accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts.",
       "checkpoint_sha": "105198604",
-      "review_file": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation-gap-review.md"
+      "review_file": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation-gap-review.md",
+      "merged_main_sha": "290daf1f4520ab884399dfe4965a10f02ab2b19a"
     },
     "section-05-chat-native-bridge-gate": {
       "status": "in_progress",
@@ -69,11 +71,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-22T10:58:50.953855+00:00",
-  "generation": 20,
-  "updated_at": "2026-10-22T12:42:58.992892+00:00",
+  "generation": 22,
+  "updated_at": "2026-10-22T12:46:46.873591+00:00",
   "progress": {
     "active_section": "section-04-non-git-general-work",
-    "next_action": "Continue offline non-Git contract and artifact-ACL fixtures; 18 deterministic proposal fixtures pass. Do not claim a real job/artifact until accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts exist.",
+    "next_action": "Section 04 offline non-Git ports and 18 deterministic fixtures are integrated via PR #1172 at main 290daf1f4520ab884399dfe4965a10f02ab2b19a. Keep a real job/artifact pending accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts.",
     "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022",
     "gaps": [
       "WAITING_G1_RUNTIME_GATEWAY_OWNER_REVIEW; managed Pi release/digest and ABI provenance; authorized isolated non-production environment; Gateway credentials and receipt bound to non-production attempt",
@@ -83,6 +85,6 @@
       "Original R1.0 A01-A20 source excerpt is unavailable; do not reconstruct.",
       "Standalone Windows binary provenance/signature and full dependency SBOM are not proven."
     ],
-    "merged_main_sha": "a6a57aadb8483ed02c702d1da40569c526cbd6ce"
+    "merged_main_sha": "290daf1f4520ab884399dfe4965a10f02ab2b19a"
   }
 }
