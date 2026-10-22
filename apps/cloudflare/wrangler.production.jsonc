@@ -11,9 +11,6 @@
     "CLOUDFLARE_ENVIRONMENT": "production",
     "CLOUDFLARE_JOB_TRANSPORT": "queues"
   },
-  "triggers": {
-    "crons": ["*/5 * * * *"]
-  },
   "kv_namespaces": [
     {
       "binding": "SEARCH_RESULT_CACHE",
