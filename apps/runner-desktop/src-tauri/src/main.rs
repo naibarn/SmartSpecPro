@@ -4,6 +4,7 @@ mod workspace_view;
 
 use serde::{Deserialize, Serialize};
 use smartaihub_runner::{
+    companion_auth,
     config::RunnerConfig,
     connection::{
         connect_local_runner, load_connection, load_or_refresh, safe_refresh_error_code,
@@ -371,6 +372,54 @@ fn companion_projection_status() -> CompanionProjectionStatus {
         reason_code: "RUNNER_COMPANION_USER_PROJECTION_AUTH_REQUIRED",
         detail: "Task Control projection requires an authenticated user-scoped desktop transport; browser cookies and Runner device credentials are not interchangeable.",
     }
+}
+
+#[tauri::command]
+fn companion_auth_status(
+    state: State<'_, RunnerState>,
+) -> smartaihub_runner::companion_auth::CompanionAuthStatus {
+    companion_auth::status(&state.config.data_root)
+}
+
+#[tauri::command]
+async fn start_companion_auth(
+    state: State<'_, RunnerState>,
+) -> Result<smartaihub_runner::companion_auth::CompanionAuthStart, String> {
+    let control_url = state
+        .config
+        .control_url
+        .clone()
+        .ok_or_else(|| "RUNNER_COMPANION_ENDPOINT_INVALID".to_string())?;
+    let data_root = state.config.data_root.clone();
+    tauri::async_runtime::spawn_blocking(move || companion_auth::begin_auth(&control_url, &data_root))
+        .await
+        .map_err(|_| "RUNNER_COMPANION_AUTH_TASK_FAILED".to_string())?
+}
+
+#[tauri::command]
+async fn poll_companion_auth(
+    state: State<'_, RunnerState>,
+) -> Result<smartaihub_runner::companion_auth::CompanionAuthPoll, String> {
+    let data_root = state.config.data_root.clone();
+    tauri::async_runtime::spawn_blocking(move || companion_auth::poll_auth(&data_root))
+        .await
+        .map_err(|_| "RUNNER_COMPANION_AUTH_TASK_FAILED".to_string())?
+}
+
+#[tauri::command]
+async fn companion_state(state: State<'_, RunnerState>) -> Result<serde_json::Value, String> {
+    let data_root = state.config.data_root.clone();
+    tauri::async_runtime::spawn_blocking(move || companion_auth::fetch_state(&data_root))
+        .await
+        .map_err(|_| "RUNNER_COMPANION_PROJECTION_TASK_FAILED".to_string())?
+}
+
+#[tauri::command]
+async fn logout_companion(state: State<'_, RunnerState>) -> Result<(), String> {
+    let data_root = state.config.data_root.clone();
+    tauri::async_runtime::spawn_blocking(move || companion_auth::logout(&data_root))
+        .await
+        .map_err(|_| "RUNNER_COMPANION_LOGOUT_TASK_FAILED".to_string())?
 }
 
 #[tauri::command]
@@ -1314,6 +1363,11 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             runner_status,
             companion_projection_status,
+            companion_auth_status,
+            start_companion_auth,
+            poll_companion_auth,
+            companion_state,
+            logout_companion,
             companion_preferences,
             set_companion_preferences,
             show_companion,

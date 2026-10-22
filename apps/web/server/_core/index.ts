@@ -95,6 +95,7 @@ import notificationStreamRouter from "../routes/notificationStream";
 import contentComposerStreamRouter from "../routes/contentComposerStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
+import { registerRunnerCompanionRoutes } from "../routes/runnerCompanion";
 import { registerOAuthProxyRoutes } from "./oauthProxy";
 import { createCloudflareOriginMiddleware } from "./cloudflareOriginMiddleware";
 import { authorizeCloudflareOriginUpgrade } from "./cloudflareOriginIngress";
@@ -1995,6 +1996,7 @@ app.post("/api/internal/agency/create", async (req, res) => {
 
 // Device auth routes (for desktop app)
 registerDeviceAuthRoutes(app);
+registerRunnerCompanionRoutes(app);
 
 // Services management routes (admin)
 registerServicesRoutes(app);

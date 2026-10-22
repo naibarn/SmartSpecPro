@@ -7,16 +7,23 @@ export type DeviceAuthorizationStatus = "pending" | "authorized" | "consumed" | 
 
 export type DeviceAuthorizationRecord = {
   status: "pending" | "authorized" | "consumed";
+  clientId: string;
+  deviceIdHash: string | null;
+  sessionId: string | null;
   scopes: string[];
   intervalSeconds: number;
   expiresAt: Date;
   authorizedUserId: number | null;
   authorizedOpenId: string | null;
+  authorizedTenantId: string | null;
 };
 
 export type NewDeviceAuthorization = {
   deviceCode: string;
   userCode: string;
+  clientId?: string;
+  deviceIdHash?: string | null;
+  sessionId?: string | null;
   scopes: string[];
   intervalSeconds: number;
   expiresAt: Date;
@@ -25,11 +32,15 @@ export type NewDeviceAuthorization = {
 function publicRecord(row: typeof oauthDeviceAuthorizations.$inferSelect): DeviceAuthorizationRecord {
   return {
     status: row.status as DeviceAuthorizationRecord["status"],
+    clientId: row.clientId,
+    deviceIdHash: row.deviceIdHash,
+    sessionId: row.sessionId,
     scopes: row.scopesJson,
     intervalSeconds: row.intervalSeconds,
     expiresAt: row.expiresAt,
     authorizedUserId: row.authorizedUserId,
     authorizedOpenId: row.authorizedOpenId,
+    authorizedTenantId: row.authorizedTenantId,
   };
 }
 
@@ -48,6 +59,9 @@ export function createDeviceAuthorizationStore(db: DrizzleDB) {
       await db.insert(oauthDeviceAuthorizations).values({
         deviceCodeHash: hashJti(input.deviceCode),
         userCodeHash: hashJti(input.userCode),
+        clientId: input.clientId ?? "smartaihub-web",
+        deviceIdHash: input.deviceIdHash ?? null,
+        sessionId: input.sessionId ?? null,
         status: "pending",
         scopesJson: input.scopes,
         intervalSeconds: input.intervalSeconds,
@@ -65,12 +79,13 @@ export function createDeviceAuthorizationStore(db: DrizzleDB) {
       return row ? publicRecord(row) : null;
     },
 
-    async authorizeByUserCode(input: { userCode: string; userId: number; openId: string }): Promise<DeviceAuthorizationStatus> {
+    async authorizeByUserCode(input: { userCode: string; userId: number; openId: string; tenantId?: string | null }): Promise<DeviceAuthorizationStatus> {
       const now = new Date();
       const [updated] = await db.update(oauthDeviceAuthorizations).set({
         status: "authorized",
         authorizedUserId: input.userId,
         authorizedOpenId: input.openId,
+        authorizedTenantId: input.tenantId ?? null,
         authorizedAt: now,
       }).where(and(
         eq(oauthDeviceAuthorizations.userCodeHash, hashJti(input.userCode)),

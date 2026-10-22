@@ -28,6 +28,9 @@ export type AuthResult =
       externalReference?: string;
       jti?: string;
       deviceIdHash?: string;
+      sessionId?: string;
+      clientId?: string;
+      audience?: string | string[];
       origin?: string;
     }
   | {
@@ -282,6 +285,15 @@ export async function authorizeRequest(
         const deviceIdHash = typeof (claims as any).deviceIdHash === "string"
           ? (claims as any).deviceIdHash.trim()
           : "";
+        const sessionId = typeof (claims as any).sessionId === "string"
+          ? (claims as any).sessionId.trim()
+          : "";
+        const clientId = typeof (claims as any).clientId === "string"
+          ? (claims as any).clientId.trim()
+          : "";
+        const audience = typeof (claims as any).aud === "string" || Array.isArray((claims as any).aud)
+          ? (claims as any).aud
+          : undefined;
         const origin = typeof (claims as any).origin === "string"
           ? (claims as any).origin.trim()
           : "";
@@ -348,6 +360,9 @@ export async function authorizeRequest(
           ...(externalReference ? { externalReference } : {}),
           ...(jti ? { jti } : {}),
           ...(deviceIdHash ? { deviceIdHash } : {}),
+          ...(sessionId ? { sessionId } : {}),
+          ...(clientId ? { clientId } : {}),
+          ...(audience ? { audience } : {}),
           ...(origin ? { origin } : {}),
         };
       } catch (e: any) {

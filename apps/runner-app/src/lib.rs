@@ -1,6 +1,7 @@
 pub mod adapters;
 pub mod authority_grant;
 pub mod checkpoint_store;
+pub mod companion_auth;
 pub mod config;
 pub mod connection;
 pub mod container;
