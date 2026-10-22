@@ -128,6 +128,11 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
 
     def test_review_requirement_or_head_drift_blocks_merge(self):
         checks = [{"name": "focused-tests", "state": "SUCCESS", "bucket": "pass"}]
+        optional_change_request = PROMOTER.evaluate_pull_request(
+            pull_request(reviewDecision="CHANGES_REQUESTED"),
+            [{"name": "optional-preview", "state": "FAILURE"}], expected_head=None,
+        )
+        self.assertEqual("READY", optional_change_request["status"])
         for pr, expected_head in (
             (pull_request(reviewDecision="REVIEW_REQUIRED"), None),
             (pull_request(), "b" * 40),

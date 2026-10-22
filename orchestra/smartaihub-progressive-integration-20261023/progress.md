@@ -2,8 +2,8 @@
 
 - Canonical source at start: `origin/main` `e3920583f8f52b86b07f284c3338586371e26fd7`.
 - Owned workspace: `/mnt/SmartSpecDev/.cache/codex/task-worktrees/smartaihub-progressive-integration-20261023` (`workspace:53525d1b-72bd-4470-b275-08511b8fd34f`).
-- Current integrated source: `5cae98f486a374d96f413914f41c7b1a8524cbff`.
-- Phase 1: complete. Optional failed, pending, skipped, or absent checks no longer invent blockers; GitHub explicit `BLOCKED` policy state, review decision, exact head, confirmed conflicts and normal merge enforcement remain authoritative. `UNKNOWN`, `BEHIND`, and `UNSTABLE` states do not invent blockers. Exact-head guarded normal merge records GitHub's refusal reason. Focused tests: 36 passed.
+- Current integrated source: `d228a3cd63c2390a705354b30260c31d7aab936f`.
+- Phase 1: complete. Optional failed, pending, skipped, or absent checks no longer invent blockers; only GitHub `BLOCKED` policy state and `REVIEW_REQUIRED` impose those gates. Optional `CHANGES_REQUESTED`, `UNKNOWN`, `BEHIND`, and `UNSTABLE` states do not invent blockers. Exact-head guarded normal merge records GitHub's refusal reason; GitHub-reported conflicts remain blocked. Focused tests: 36 passed.
 - Phase 3: integrated. Development builds now default to one pinned source attempt; a completed build retains its artifact/result digest when main advances. Exact-source runtime evidence can read that stale-main artifact while reporting the newer SHA. Production deploy path still performs latest-source checks and bounded retries.
 - Focused checks passed: `test_canonical_source` + `test_canonical_build_retry` (47 tests); `test_runtime_authority` (42 tests); `test_build_main_deploy_freshness.py` (24 tests); progressive execution/lifecycle tests (16 tests).
 - SPEC 224/293/294/310 contract edits are not yet applied. Registry and Spec handoff currently show unresolved authority/dormant disposition for these records; resolve through the existing Spec authority process before changing normative Specs.

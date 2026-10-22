@@ -241,7 +241,7 @@ def evaluate_pull_request(
         blockers.append("BASE_IS_NOT_CONFIGURED_CANONICAL_REF")
     if pull_request.get("mergeable") == "CONFLICTING" or pull_request.get("mergeStateStatus") == "DIRTY":
         blockers.append("PR_HAS_MERGE_CONFLICTS")
-    if pull_request.get("reviewDecision") in {"REVIEW_REQUIRED", "CHANGES_REQUESTED"}:
+    if pull_request.get("reviewDecision") == "REVIEW_REQUIRED":
         blockers.append("REVIEW_REQUIREMENT_UNSATISFIED")
 
     head_sha = pull_request.get("headRefOid")
