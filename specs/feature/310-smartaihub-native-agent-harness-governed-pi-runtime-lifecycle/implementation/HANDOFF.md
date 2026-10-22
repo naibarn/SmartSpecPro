@@ -3,8 +3,8 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `16`
-- Updated (UTC): `2026-10-22T12:41:50.095509+00:00`
+- State generation: `20`
+- Updated (UTC): `2026-10-22T12:42:58.992892+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022/specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-impl-20261022`
 - Worktree: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022`
@@ -19,8 +19,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-g0-owner-audit | checkpointed | codex-spec310-handoff-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022 | 91161ab7510104b7537a9b6cc90b362b95ffb92a | a6a57aadb8483ed02c702d1da40569c526cbd6ce | G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06. |
 | section-02-g1-contracts | checkpointed | codex-spec310-handoff-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-handoff-20261022 | 91161ab7510104b7537a9b6cc90b362b95ffb92a | a6a57aadb8483ed02c702d1da40569c526cbd6ce | G0/G1 documentation is integrated at a6a57aadb8483ed02c702d1da40569c526cbd6ce; obtain G1 producer owner review and satisfy recorded runtime/environment/live-evidence prerequisites before resuming sections 03-06. |
-| section-03-managed-pi-isolated-spike | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Offline upstream trust research is recorded. Keep Pi execution gated until owner ACK, independently verified binary provenance/signature, SBOM/license review, certified Node 22.19+/Windows ABI, isolated non-production Gateway credentials and real usage/settlement evidence exist. |
-| section-04-non-git-general-work | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Continue offline non-Git contract and artifact-ACL fixtures; 18 deterministic proposal fixtures pass. Do not claim a real job/artifact until accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts exist. |
+| section-03-managed-pi-isolated-spike | checkpointed | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | 105198604 | — | Continue only authorized read-only or deterministic work; do not execute Pi. Obtain owner ACK, independently verified Windows binary provenance/signature, SBOM/license review, certified Node 22.19+/ABI and authorized non-production Gateway/credit evidence before isolated runtime spike. |
+| section-04-non-git-general-work | checkpointed | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | 105198604 | — | Continue offline non-Git contract and artifact-ACL fixtures; 18 deterministic proposal fixtures pass. Do not claim a real job/artifact until accepted G1, existing executor and ACL, real Gateway/credit/execution authority and artifact provenance receipts exist. |
 | section-05-chat-native-bridge-gate | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Do not implement dispatch. PR #1161 remains OPEN at 27200602c527335dbd4385af84a01e55c4ffe89b, is observation-only, and local-contract checks fail; wait for stable approved merged ingress and distinct per-attempt grants. |
 | section-06-team-runtime-acceptance | in_progress | codex-spec310-reconcile-current-20261022 | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec310-reconcile-current-20261022 | — | — | Crosswalk covers A21-A68 and all 101 ledger entries; original R1.0 A01-A20 text remains missing. Keep live team/runtime acceptance gated on SPEC-269, SPEC-207/280, SPEC-224/271 and real receipts; preserve SPEC-224 E2E priority. |
 
@@ -31,6 +31,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - WAITING_STABLE_APPROVED_RUNNER_CHAT_CONTRACT; PR #1161 is open/read-only and local-contract currently fails; exact merged SHA/version/owner ACK and canonical per-run grants are absent
 - WAITING_PRIOR_RUNTIME_AND_OWNER_GATES; SPEC-269/207/280/278/224/271 contract/evidence, signed package provenance, authorized target environment, and independent acceptance are not present
 - Original R1.0 A01-A20 source excerpt is unavailable; do not reconstruct.
+- Standalone Windows binary provenance/signature and full dependency SBOM are not proven.
 
 ## Resume
 
