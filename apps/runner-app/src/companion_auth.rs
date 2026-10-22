@@ -5,10 +5,15 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
+    io::Write,
     path::{Path, PathBuf},
     process::Command,
+    sync::{Mutex, OnceLock},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(unix)]
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
 const CLIENT_ID: &str = "smartaihub-runner-companion";
 const COMPANION_SCOPE: &str = "runner:companion:read";
@@ -28,6 +33,12 @@ struct PendingAuthorization {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+struct PendingRevocation {
+    session: CompanionSession,
+    created_at_ms: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompanionSession {
     pub server_url: String,
     pub tenant_id: String,
@@ -40,6 +51,15 @@ pub struct CompanionSession {
     access_token_expires_at_ms: u64,
     #[serde(default)]
     scopes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanionLogoutResult {
+    pub local_signed_out: bool,
+    pub server_revocation: &'static str,
+    pub pending_revocation: bool,
+    pub reason_code: &'static str,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -120,6 +140,20 @@ fn pending_path(data_root: &str) -> PathBuf {
     Path::new(data_root).join(PENDING_FILE)
 }
 
+fn revocation_path(data_root: &str) -> PathBuf {
+    Path::new(data_root).join("runner-companion-revocation.json")
+}
+
+fn protected_file_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+fn refresh_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
 #[cfg(windows)]
 fn protect(bytes: &[u8]) -> Result<Vec<u8>, String> {
     use std::{ptr, slice};
@@ -190,10 +224,16 @@ fn unprotect(bytes: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 fn write_protected<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
+    let _guard = protected_file_lock()
+        .lock()
+        .map_err(|_| "RUNNER_COMPANION_SESSION_IO_FAILED")?;
     let parent = path
         .parent()
         .ok_or("RUNNER_COMPANION_SESSION_PATH_INVALID")?;
     fs::create_dir_all(parent).map_err(|_| "RUNNER_COMPANION_SESSION_IO_FAILED")?;
+    #[cfg(unix)]
+    fs::set_permissions(parent, fs::Permissions::from_mode(0o700))
+        .map_err(|_| "RUNNER_COMPANION_SESSION_IO_FAILED")?;
     let plain =
         serde_json::to_vec(value).map_err(|_| "RUNNER_COMPANION_SESSION_SERIALIZE_FAILED")?;
     #[cfg(windows)]
@@ -202,15 +242,31 @@ fn write_protected<T: Serialize>(path: &Path, value: &T) -> Result<(), String> {
         .into_bytes();
     #[cfg(not(windows))]
     let bytes = plain;
-    let temp = path.with_extension("tmp");
-    fs::write(&temp, bytes).map_err(|_| "RUNNER_COMPANION_SESSION_IO_FAILED")?;
+    let mut random = [0_u8; 8];
+    fill(&mut random).map_err(|_| "RUNNER_COMPANION_ID_GENERATION_FAILED")?;
+    let temp = path.with_file_name(format!(
+        ".{}.{}.tmp",
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("runner-companion"),
+        hex(&random),
+    ));
+    let mut options = fs::OpenOptions::new();
+    options.write(true).create_new(true);
     #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&temp, fs::Permissions::from_mode(0o600))
-            .map_err(|_| "RUNNER_COMPANION_SESSION_IO_FAILED")?;
+    options.mode(0o600);
+    let mut file = options
+        .open(&temp)
+        .map_err(|_| "RUNNER_COMPANION_SESSION_IO_FAILED")?;
+    let result = file
+        .write_all(&bytes)
+        .and_then(|_| file.sync_all())
+        .and_then(|_| fs::rename(&temp, path));
+    if result.is_err() {
+        let _ = fs::remove_file(&temp);
+        return Err("RUNNER_COMPANION_SESSION_IO_FAILED".into());
     }
-    fs::rename(temp, path).map_err(|_| "RUNNER_COMPANION_SESSION_IO_FAILED".into())
+    Ok(())
 }
 
 fn read_protected<T: for<'de> Deserialize<'de>>(path: &Path) -> Result<Option<T>, String> {
@@ -560,7 +616,9 @@ pub fn poll_auth(data_root: &str) -> Result<CompanionAuthPoll, String> {
                 return Err("RUNNER_COMPANION_TOKEN_DEVICE_MISMATCH".into());
             }
             let device_id_hash = hex(&device_hash);
-            if !token_claims_match_companion(&tokens.access_token, &device_id_hash, None, None) {
+            if token_claim_u64(&tokens.access_token, "userId") != Some(tokens.user.id)
+                || !token_claims_match_companion(&tokens.access_token, &device_id_hash, None, None)
+            {
                 return Err("RUNNER_COMPANION_TOKEN_BINDING_INVALID".into());
             }
             let scopes = token_claim_scopes(&tokens.access_token);
@@ -602,26 +660,21 @@ fn token_tenant_id(token: &str) -> Option<String> {
     token_claim_string(token, "tenantId")
 }
 
-fn token_claims_match_companion(
-    token: &str,
-    expected_device_hash: &str,
-    expected_session_id: Option<&str>,
-    expected_tenant_id: Option<&str>,
-) -> bool {
-    let scopes = token_claim_scopes(token);
-    let valid_scopes = scopes == [COMPANION_SCOPE.to_string()]
-        || scopes == [COMPANION_SCOPE.to_string(), CHAT_SCOPE.to_string()];
-    token_claim_string(token, "clientId").as_deref() == Some(CLIENT_ID)
-        && token_claim_string(token, "aud").as_deref() == Some(CLIENT_ID)
-        && token_claim_string(token, "tokenUse").as_deref() == Some("desktop_session")
-        && token_claim_string(token, "deviceIdHash").as_deref() == Some(expected_device_hash)
-        && expected_session_id
-            .map(|expected| token_claim_string(token, "sessionId").as_deref() == Some(expected))
-            .unwrap_or(true)
-        && expected_tenant_id
-            .map(|expected| token_claim_string(token, "tenantId").as_deref() == Some(expected))
-            .unwrap_or(true)
-        && valid_scopes
+fn token_claim_string(token: &str, claim: &str) -> Option<String> {
+    let payload = token.split('.').nth(1)?;
+    let decoded = URL_SAFE_NO_PAD.decode(payload).ok()?;
+    let claims = serde_json::from_slice::<serde_json::Value>(&decoded).ok()?;
+    claims
+        .get(claim)
+        .and_then(serde_json::Value::as_str)
+        .map(ToString::to_string)
+}
+
+fn token_claim_u64(token: &str, claim: &str) -> Option<u64> {
+    let payload = token.split('.').nth(1)?;
+    let decoded = URL_SAFE_NO_PAD.decode(payload).ok()?;
+    let claims = serde_json::from_slice::<serde_json::Value>(&decoded).ok()?;
+    claims.get(claim).and_then(serde_json::Value::as_u64)
 }
 
 fn token_claim_scopes(token: &str) -> Vec<String> {
@@ -650,14 +703,26 @@ fn token_claim_scopes(token: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn token_claim_string(token: &str, claim: &str) -> Option<String> {
-    let payload = token.split('.').nth(1)?;
-    let decoded = URL_SAFE_NO_PAD.decode(payload).ok()?;
-    let claims = serde_json::from_slice::<serde_json::Value>(&decoded).ok()?;
-    claims
-        .get(claim)
-        .and_then(serde_json::Value::as_str)
-        .map(ToString::to_string)
+fn token_claims_match_companion(
+    token: &str,
+    expected_device_hash: &str,
+    expected_session_id: Option<&str>,
+    expected_tenant_id: Option<&str>,
+) -> bool {
+    let scopes = token_claim_scopes(token);
+    let valid_scopes = scopes == [COMPANION_SCOPE.to_string()]
+        || scopes == [COMPANION_SCOPE.to_string(), CHAT_SCOPE.to_string()];
+    token_claim_string(token, "clientId").as_deref() == Some(CLIENT_ID)
+        && token_claim_string(token, "aud").as_deref() == Some(CLIENT_ID)
+        && token_claim_string(token, "tokenUse").as_deref() == Some("desktop_session")
+        && token_claim_string(token, "deviceIdHash").as_deref() == Some(expected_device_hash)
+        && expected_session_id
+            .map(|expected| token_claim_string(token, "sessionId").as_deref() == Some(expected))
+            .unwrap_or(true)
+        && expected_tenant_id
+            .map(|expected| token_claim_string(token, "tenantId").as_deref() == Some(expected))
+            .unwrap_or(true)
+        && valid_scopes
 }
 
 fn hex(bytes: &[u8]) -> String {
@@ -678,32 +743,41 @@ fn refresh_if_needed(
         None,
         None,
     )?;
+    if response.user.id != session.user_id
+        || token_claim_u64(&response.access_token, "userId") != Some(session.user_id)
+        || token_tenant_id(&response.access_token).as_deref() != Some(&session.tenant_id)
+        || !token_claims_match_companion(
+            &response.access_token,
+            &session.device_id_hash,
+            Some(&session.session_id),
+            Some(&session.tenant_id),
+        )
+    {
+        return Err("RUNNER_COMPANION_TOKEN_BINDING_INVALID".into());
+    }
     session.access_token = response.access_token;
     session.refresh_token = response.refresh_token;
     session.access_token_expires_at_ms =
         now_ms().saturating_add(response.expires_in.saturating_mul(1000));
-    if let Some(tenant_id) = token_tenant_id(&session.access_token) {
-        session.tenant_id = tenant_id;
-    }
-    if !token_claims_match_companion(
-        &session.access_token,
-        &session.device_id_hash,
-        Some(&session.session_id),
-        Some(&session.tenant_id),
-    ) {
-        return Err("RUNNER_COMPANION_TOKEN_BINDING_INVALID".into());
-    }
+    // The original user, tenant, installation and session bindings remain
+    // immutable across rotation; only the token material and expiry change.
     session.scopes = token_claim_scopes(&session.access_token);
     write_protected(&session_path(data_root), &session)?;
     Ok(session)
 }
 
-pub fn fetch_state(data_root: &str) -> Result<serde_json::Value, String> {
-    let path = session_path(data_root);
-    let Some(session) = read_protected::<CompanionSession>(&path)? else {
+fn load_session_for_request(data_root: &str) -> Result<CompanionSession, String> {
+    let _guard = refresh_lock()
+        .lock()
+        .map_err(|_| "RUNNER_COMPANION_REFRESH_SERIALIZATION_FAILED")?;
+    let Some(session) = read_protected::<CompanionSession>(&session_path(data_root))? else {
         return Err("RUNNER_COMPANION_AUTH_REQUIRED".into());
     };
-    let session = refresh_if_needed(data_root, session)?;
+    refresh_if_needed(data_root, session)
+}
+
+pub fn fetch_state(data_root: &str) -> Result<serde_json::Value, String> {
+    let session = load_session_for_request(data_root)?;
     request_json(
         "GET",
         &format!("{}/api/runner-companion/v1/state", session.server_url),
@@ -713,21 +787,96 @@ pub fn fetch_state(data_root: &str) -> Result<serde_json::Value, String> {
     )
 }
 
-pub fn logout(data_root: &str) -> Result<(), String> {
+fn revocation_confirmed(response: &serde_json::Value) -> bool {
+    response.get("success").and_then(serde_json::Value::as_bool) == Some(true)
+        && response
+            .pointer("/revoked/access_token")
+            .and_then(serde_json::Value::as_bool)
+            == Some(true)
+        && response
+            .pointer("/revoked/refresh_token")
+            .and_then(serde_json::Value::as_bool)
+            == Some(true)
+}
+
+fn revocation_reason(error: &str) -> &'static str {
+    match error {
+        "RUNNER_COMPANION_TIMEOUT" => "RUNNER_COMPANION_REVOCATION_TIMEOUT",
+        "RUNNER_COMPANION_DNS_FAILED" | "RUNNER_COMPANION_TRANSPORT_FAILED" => {
+            "RUNNER_COMPANION_REVOCATION_OFFLINE"
+        }
+        "RUNNER_COMPANION_UNAUTHORIZED"
+        | "RUNNER_COMPANION_FORBIDDEN"
+        | "RUNNER_COMPANION_REQUEST_REJECTED" => "RUNNER_COMPANION_REVOCATION_REJECTED",
+        _ => "RUNNER_COMPANION_REVOCATION_UNCONFIRMED",
+    }
+}
+
+fn pending_revocation(data_root: &str, session: &CompanionSession) -> bool {
+    write_protected(
+        &revocation_path(data_root),
+        &PendingRevocation {
+            session: session.clone(),
+            created_at_ms: now_ms(),
+        },
+    )
+    .is_ok()
+}
+
+pub fn logout(data_root: &str) -> Result<CompanionLogoutResult, String> {
     let path = session_path(data_root);
     let pending = pending_path(data_root);
-    if let Some(session) = read_protected::<CompanionSession>(&path)? {
-        let _ = request_json::<serde_json::Value>(
-            "POST",
-            &format!("{}/auth/device/revoke", session.server_url),
-            json!({ "access_token": session.access_token, "refresh_token": session.refresh_token }),
-            None,
-            None,
-        );
-    }
+    let revocation = revocation_path(data_root);
+    // A corrupt or unreadable local record must not prevent local sign-out.
+    // Treat it as unavailable and remove the files below; no server claim is
+    // made because the credentials cannot be recovered safely.
+    let session = read_protected::<CompanionSession>(&path).ok().flatten();
+    let pending_session = read_protected::<PendingRevocation>(&revocation)
+        .ok()
+        .flatten()
+        .map(|item| item.session);
+
+    // Clear active credentials before any network operation. Local sign-out is
+    // therefore fail-closed even when the server is offline or rejects revoke.
     let _ = fs::remove_file(path);
     let _ = fs::remove_file(pending);
-    Ok(())
+
+    let Some(session) = session.or(pending_session) else {
+        return Ok(CompanionLogoutResult {
+            local_signed_out: true,
+            server_revocation: "not_attempted",
+            pending_revocation: false,
+            reason_code: "RUNNER_COMPANION_LOCAL_SIGNOUT_COMPLETE",
+        });
+    };
+
+    let result = request_json::<serde_json::Value>(
+        "POST",
+        &format!("{}/auth/device/revoke", session.server_url),
+        json!({ "access_token": session.access_token, "refresh_token": session.refresh_token }),
+        None,
+        None,
+    );
+    let reason_code = match result {
+        Ok(response) if revocation_confirmed(&response) => {
+            let _ = fs::remove_file(revocation);
+            return Ok(CompanionLogoutResult {
+                local_signed_out: true,
+                server_revocation: "confirmed",
+                pending_revocation: false,
+                reason_code: "RUNNER_COMPANION_SERVER_REVOCATION_CONFIRMED",
+            });
+        }
+        Ok(_) => "RUNNER_COMPANION_REVOCATION_UNCONFIRMED",
+        Err(error) => revocation_reason(&error),
+    };
+    let pending_saved = pending_revocation(data_root, &session);
+    Ok(CompanionLogoutResult {
+        local_signed_out: true,
+        server_revocation: "unconfirmed",
+        pending_revocation: pending_saved,
+        reason_code,
+    })
 }
 
 #[cfg(test)]
@@ -739,6 +888,69 @@ mod tests {
             "e30.{}.sig",
             URL_SAFE_NO_PAD.encode(serde_json::to_vec(&claims).unwrap())
         )
+    }
+
+    #[test]
+    fn revocation_failures_never_report_server_revoked() {
+        assert_eq!(
+            revocation_reason("RUNNER_COMPANION_DNS_FAILED"),
+            "RUNNER_COMPANION_REVOCATION_OFFLINE"
+        );
+        assert_eq!(
+            revocation_reason("RUNNER_COMPANION_TIMEOUT"),
+            "RUNNER_COMPANION_REVOCATION_TIMEOUT"
+        );
+        assert_eq!(
+            revocation_reason("RUNNER_COMPANION_FORBIDDEN"),
+            "RUNNER_COMPANION_REVOCATION_REJECTED"
+        );
+        assert!(!revocation_confirmed(&serde_json::json!({
+            "success": false,
+            "revoked": { "access_token": false, "refresh_token": false }
+        })));
+    }
+
+    #[test]
+    fn revocation_requires_both_server_token_results() {
+        assert!(revocation_confirmed(&serde_json::json!({
+            "success": true,
+            "revoked": { "access_token": true, "refresh_token": true }
+        })));
+        assert!(!revocation_confirmed(&serde_json::json!({
+            "success": true,
+            "revoked": { "access_token": true, "refresh_token": false }
+        })));
+    }
+
+    #[test]
+    fn protected_writes_are_private_and_atomic() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join(SESSION_FILE);
+        write_protected(&path, &serde_json::json!({ "value": "first" })).unwrap();
+        let parsed: serde_json::Value = read_protected(&path).unwrap().unwrap();
+        assert_eq!(parsed["value"], "first");
+        #[cfg(unix)]
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert!(!root.path().join("runner-companion-session.tmp").exists());
+
+        let paths = (0..8).map(|_| path.clone()).collect::<Vec<_>>();
+        let threads = paths
+            .into_iter()
+            .enumerate()
+            .map(|(index, path)| {
+                std::thread::spawn(move || {
+                    write_protected(&path, &serde_json::json!({ "value": index })).unwrap();
+                })
+            })
+            .collect::<Vec<_>>();
+        for thread in threads {
+            thread.join().unwrap();
+        }
+        let parsed: serde_json::Value = read_protected(&path).unwrap().unwrap();
+        assert!(parsed["value"].as_u64().is_some());
     }
 
     #[test]

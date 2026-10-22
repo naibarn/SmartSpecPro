@@ -11,7 +11,7 @@ import { SignJWT, jwtVerify, compactVerify } from "jose";
 import { ENV } from "./env";
 import { authorizeRequest } from "./authz";
 import { rateLimit } from "./limits";
-import { revokeJti } from "./revocation";
+import { claimJti, revokeJti } from "./revocation";
 import {
   authorizeDeviceByUserCode,
   consumeDeviceAuthorization,
@@ -210,6 +210,40 @@ async function revokeDesktopToken(token: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+export function refreshTenantBindingMatches(
+  user: { id: number; currentTenantId?: string | null },
+  tokenData: { userId: number; clientId?: string; tenantId?: string },
+): boolean {
+  if (user.id !== tokenData.userId) return false;
+  if (tokenData.clientId !== RUNNER_COMPANION_CLIENT_ID) return true;
+  return Boolean(tokenData.tenantId && user.currentTenantId === tokenData.tenantId);
+}
+
+const refreshRotationTails = new Map<string, Promise<void>>();
+
+async function verifyAndClaimRefreshToken(token: string): Promise<Awaited<ReturnType<typeof verifyRefreshToken>>> {
+  const key = crypto.createHash("sha256").update(token).digest("hex");
+  const previous = refreshRotationTails.get(key);
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  refreshRotationTails.set(key, current);
+  if (previous) await previous;
+  try {
+    const tokenData = await verifyRefreshToken(token);
+    if (!tokenData) return null;
+    if (tokenData.jti) {
+      const claimed = await claimJti(tokenData.jti, Date.now() + REFRESH_TOKEN_EXPIRY * 1000);
+      if (!claimed) return null;
+    }
+    return tokenData;
+  } finally {
+    release();
+    if (refreshRotationTails.get(key) === current) refreshRotationTails.delete(key);
   }
 }
 
@@ -590,7 +624,7 @@ export function registerDeviceAuthRoutes(app: Express) {
         return;
       }
 
-      const tokenData = await verifyRefreshToken(refreshToken);
+      const tokenData = await verifyAndClaimRefreshToken(refreshToken);
       if (!tokenData) {
         res.status(400).json({
           error: "invalid_grant",
@@ -599,17 +633,20 @@ export function registerDeviceAuthRoutes(app: Express) {
         return;
       }
 
-      // Revoke the old refresh token JTI to prevent reuse
-      if (tokenData.jti) {
-        await revokeJti(tokenData.jti, Date.now() + REFRESH_TOKEN_EXPIRY * 1000);
-      }
-
       // Get user info
       const user = await getUserByOpenId(tokenData.openId);
       if (!user) {
         res.status(400).json({
           error: "invalid_grant",
           error_description: "User not found",
+        });
+        return;
+      }
+
+      if (!refreshTenantBindingMatches(user, tokenData)) {
+        res.status(400).json({
+          error: "invalid_grant",
+          error_description: "Desktop session tenant membership is no longer active",
         });
         return;
       }
