@@ -179,6 +179,7 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
 
 
 MIN_SOURCE_BYTES = 1024 * 1024 * 1024
+MIN_WEB_BUILD_BYTES = 5 * 1024 * 1024 * 1024
 MIN_SOURCE_INODES = 10_000
 
 
@@ -268,7 +269,12 @@ def _workspace_roots(policy: dict[str, Any]) -> list[Path]:
     return [Path(policy["source_root"]), *[Path(item) for item in policy["source_fallback_roots"]]]
 
 
-def _admit_roots(policy: dict[str, Any], repo: Path | None = None) -> tuple[list[tuple[Path, dict[str, Any]]], list[dict[str, Any]]]:
+def _admit_roots(
+    policy: dict[str, Any],
+    repo: Path | None = None,
+    *,
+    minimum_available_bytes: int = MIN_SOURCE_BYTES,
+) -> tuple[list[tuple[Path, dict[str, Any]]], list[dict[str, Any]]]:
     admitted: list[tuple[Path, dict[str, Any]]] = []
     rejected: list[dict[str, Any]] = []
     for root in _workspace_roots(policy):
@@ -277,8 +283,8 @@ def _admit_roots(policy: dict[str, Any], repo: Path | None = None) -> tuple[list
             rejected.append({**evidence, "reason": "FILESYSTEM_UNAVAILABLE"})
         elif not evidence["writable"]:
             rejected.append({**evidence, "reason": "EACCES"})
-        elif evidence["available_bytes"] < MIN_SOURCE_BYTES:
-            rejected.append({**evidence, "reason": "ENOSPC", "required_bytes": MIN_SOURCE_BYTES})
+        elif evidence["available_bytes"] < minimum_available_bytes:
+            rejected.append({**evidence, "reason": "ENOSPC", "required_bytes": minimum_available_bytes})
         elif evidence["available_inodes"] is not None and evidence["available_inodes"] < MIN_SOURCE_INODES:
             rejected.append({**evidence, "reason": "INODE_EXHAUSTION", "required_inodes": MIN_SOURCE_INODES})
         else:
@@ -603,6 +609,7 @@ def prepare_source(
     required_revision: str | None = None,
     policy_path: Path | None = None,
     lease_seconds: int = 900,
+    minimum_available_bytes: int = MIN_SOURCE_BYTES,
 ) -> dict[str, Any]:
     repo = Path(git(repo, "rev-parse", "--show-toplevel")).resolve()
     policy = load_policy(repo, policy_path)
@@ -637,7 +644,9 @@ def prepare_source(
             raise LifecycleError("REQUIRED_REVISION_NOT_INCLUDED")
         required_revision = required
 
-    admitted, rejected = _admit_roots(policy, repo)
+    admitted, rejected = _admit_roots(
+        policy, repo, minimum_available_bytes=minimum_available_bytes
+    )
     if not admitted:
         reason = "RESOURCE_BLOCKED" if rejected and all(item.get("reason") in {"ENOSPC", "INODE_EXHAUSTION", "EACCES", "EROFS", "GIT_METADATA_CAPACITY"} for item in rejected) else "WORKSPACE_ADMISSION_FAILED"
         raise LifecycleError(f"{reason}: no authorized source filesystem passed preflight; evidence={json.dumps(rejected, sort_keys=True)}")
@@ -943,7 +952,12 @@ def build_canonical(
     if not build_target.strip() or len(build_target) > 128:
         raise LifecycleError("BUILD_TARGET_INVALID")
     repository_key = _hash(policy["repository_id"])[:20]
-    admitted_roots, rejected_roots = _admit_roots(policy, repo)
+    minimum_available_bytes = (
+        MIN_WEB_BUILD_BYTES if build_target == "smartspec-web" else MIN_SOURCE_BYTES
+    )
+    admitted_roots, rejected_roots = _admit_roots(
+        policy, repo, minimum_available_bytes=minimum_available_bytes
+    )
     if not admitted_roots:
         reason = "RESOURCE_BLOCKED" if rejected_roots else "WORKSPACE_ADMISSION_FAILED"
         raise LifecycleError(f"{reason}: no authorized source filesystem passed preflight; evidence={json.dumps(rejected_roots, sort_keys=True)}")
@@ -976,6 +990,7 @@ def build_canonical(
             source_revision=canonical_tip,
             policy_path=policy_path,
             lease_seconds=lease_seconds,
+            minimum_available_bytes=minimum_available_bytes,
         )
         if not command:
             command = ["bash", str(Path(str(lease["isolated_workspace"])) / "scripts/development-lifecycle/build_web.sh")]

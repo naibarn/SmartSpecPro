@@ -534,6 +534,30 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(result["status"], "BUILD_PASSED")
         self.assertEqual(result["build_target"], "fixture-policy-target")
 
+    def test_web_build_admission_uses_fallback_with_required_artifact_space(self) -> None:
+        import canonical_source
+
+        self.write_policy("fixture-repository", "origin", "refs/heads/trunk", "smartspec-web")
+        original_evidence = canonical_source._filesystem_evidence
+
+        def evidence(path: Path) -> dict[str, object]:
+            result = original_evidence(path)
+            if path == self.source_root:
+                result["available_bytes"] = 4 * 1024**3
+            elif path == self.fallback_root:
+                result["available_bytes"] = 10 * 1024**3
+            return result
+
+        with mock.patch.object(canonical_source, "_filesystem_evidence", side_effect=evidence):
+            result = canonical_source.build_canonical(
+                self.shared,
+                command=[sys.executable, "-c", "print('build')"],
+                policy_path=self.policy,
+            )
+
+        self.assertEqual(result["status"], "BUILD_PASSED")
+        self.assertTrue(str(result["isolated_workspace"]).startswith(str(self.fallback_root)))
+
     def test_central_build_classifies_sigkill_as_resource_blocked(self) -> None:
         from canonical_source import build_canonical
 
