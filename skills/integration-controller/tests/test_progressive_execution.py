@@ -84,7 +84,9 @@ elif sys.argv[2] == "view":
         print(json.dumps({"state":"OPEN", "isDraft":False,
             "headRefOid":git("rev-parse", "origin/" + branch),
             "baseRefOid":git("rev-parse", "origin/trunk"), "baseRefName":"trunk",
-            "mergeable":"MERGEABLE", "mergeStateStatus":"CLEAN", "reviewDecision":""}))
+            "mergeable":"MERGEABLE",
+            "mergeStateStatus":"BLOCKED" if os.environ.get("PROGRESSIVE_FAIL_GATE") else "CLEAN",
+            "reviewDecision":""}))
 elif sys.argv[2] == "merge":
     head = git("rev-parse", "origin/" + branch)
     assert sys.argv[sys.argv.index("--match-head-commit") + 1] == head
