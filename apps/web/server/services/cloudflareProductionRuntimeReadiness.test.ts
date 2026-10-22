@@ -52,6 +52,18 @@ describe("probeCloudflareProductionRuntimeReadiness", () => {
     })).resolves.toMatchObject({ status: "UNAVAILABLE", reason: "PRODUCTION_READINESS_RESPONSE_INVALID" });
   });
 
+  it("identifies Cloudflare Error 1010 as an edge-blocked probe, not a Worker readiness failure", async () => {
+    await expect(probeCloudflareProductionRuntimeReadiness({
+      fetchImpl: vi.fn(async () => response(403, {
+        type: "about:blank", title: "Error 1010: Access denied", status: 403,
+        error_code: 1010, error_name: "browser_signature_banned", error_category: "access_denied",
+      })) as unknown as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "UNAVAILABLE", environment: "unknown", httpStatus: 403,
+      missing: [], unconfigured: [], reason: "PRODUCTION_READINESS_EDGE_BROWSER_SIGNATURE_BLOCKED",
+    });
+  });
+
   it("fails closed on non-JSON and unreachable probes", async () => {
     await expect(probeCloudflareProductionRuntimeReadiness({
       fetchImpl: vi.fn(async () => response(200, "ready", "text/plain")) as unknown as typeof fetch,

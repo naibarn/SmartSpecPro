@@ -50,6 +50,14 @@ export async function probeCloudflareProductionRuntimeReadiness(input: {
         httpStatus: response.status, reason: "PRODUCTION_READINESS_RESPONSE_INVALID" };
     }
     const record = body as Record<string, unknown>;
+    // Cloudflare's edge can reject this server-side probe before it reaches the
+    // Worker (for example, Error 1010 when Browser Integrity Check classifies
+    // the probe's client signature). Keep that distinct from a Worker binding
+    // failure so operators do not infer runtime readiness from an edge denial.
+    if (response.status === 403 && record.error_code === 1010 && record.error_name === "browser_signature_banned") {
+      return { status: "UNAVAILABLE", checkedAt, environment: "unknown", missing: [], unconfigured: [],
+        httpStatus: response.status, reason: "PRODUCTION_READINESS_EDGE_BROWSER_SIGNATURE_BLOCKED" };
+    }
     const readiness = record.readiness && typeof record.readiness === "object" && !Array.isArray(record.readiness)
       ? record.readiness as Record<string, unknown>
       : record;
