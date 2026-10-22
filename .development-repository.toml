@@ -9,9 +9,10 @@ build_target = "smartspec-web"
 
 [repository.platforms.linux]
 canonical_user_workspace = "/mnt/SmartSpecDev/projects/SmartSpecPro"
+source_root = "/mnt/ExpansionHD/.codex/smartspecpro/canonical-sources"
 # External Linux build volume; NTFS3 reports no POSIX inode counter.
 source_fallback_roots = [
-  "/mnt/ExpansionHD/.codex/smartspecpro/canonical-sources",
+  "/mnt/SmartSpecDev/.cache/codex/canonical-sources",
   "/home/dev/.cache/codex/canonical-sources",
 ]
 
