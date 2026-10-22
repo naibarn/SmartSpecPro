@@ -98,6 +98,22 @@ export async function revokeJti(jti: string, expiresAtMs: number): Promise<void>
   await service.revokeJti(jti, expiresAtMs);
 }
 
+/**
+ * Atomically consumes a one-time token identifier. This is used for refresh
+ * rotation: only the first request can claim a still-unseen JTI, including
+ * when requests race across application instances.
+ */
+export async function claimJti(jti: string, expiresAtMs: number): Promise<boolean> {
+  if (!Number.isFinite(expiresAtMs)) throw new Error("Invalid token expiration");
+  const expiry = new Date(Math.max(Date.now() + 1_000, expiresAtMs));
+  const [claimed] = await getDb()
+    .insert(revokedTokenJtis)
+    .values({ jtiHash: hashJti(jti), expiresAt: expiry })
+    .onConflictDoNothing({ target: revokedTokenJtis.jtiHash })
+    .returning({ jtiHash: revokedTokenJtis.jtiHash });
+  return Boolean(claimed);
+}
+
 export async function isJtiRevoked(jti: string): Promise<boolean> {
   try {
     const service = createJtiRevocationService(createPostgresJtiRevocationStore(getDb()));

@@ -3,13 +3,16 @@ import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignJWT } from "jose";
 
-const TEST_JWT_SIGNING_KEY = "test-jwt-key.local";
+const TEST_JWT_SIGNING_KEY = "test-jwt-secret-32-chars-minimum-1234567890";
+const TEST_JWT_SECRET = TEST_JWT_SIGNING_KEY;
 
 const mocks = vi.hoisted(() => ({
+  claimJti: vi.fn().mockResolvedValue(true),
   revokeJti: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./revocation", () => ({
+  claimJti: mocks.claimJti,
   revokeJti: mocks.revokeJti,
 }));
 
@@ -52,13 +55,14 @@ async function mintSessionLikeToken() {
 
 describe("registerDeviceAuthRoutes /auth/device/revoke", () => {
   let registerDeviceAuthRoutes: typeof import("./deviceAuthRoutes").registerDeviceAuthRoutes;
+  let refreshTenantBindingMatches: typeof import("./deviceAuthRoutes").refreshTenantBindingMatches;
 
   beforeAll(async () => {
     process.env.JWT_SECRET = TEST_JWT_SECRET;
     const setIntervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation((() => 0) as any);
 
     vi.resetModules();
-    ({ registerDeviceAuthRoutes } = await import("./deviceAuthRoutes"));
+    ({ registerDeviceAuthRoutes, refreshTenantBindingMatches } = await import("./deviceAuthRoutes"));
     setIntervalSpy.mockRestore();
   });
 
@@ -110,5 +114,16 @@ describe("registerDeviceAuthRoutes /auth/device/revoke", () => {
       },
     });
     expect(mocks.revokeJti).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the companion tenant membership has been revoked", () => {
+    expect(refreshTenantBindingMatches(
+      { id: 42, currentTenantId: "tenant-current" },
+      { userId: 42, clientId: "smartaihub-runner-companion", tenantId: "tenant-revoked" },
+    )).toBe(false);
+    expect(refreshTenantBindingMatches(
+      { id: 42, currentTenantId: "tenant-current" },
+      { userId: 42, clientId: "smartaihub-runner-companion", tenantId: "tenant-current" },
+    )).toBe(true);
   });
 });
