@@ -72,24 +72,6 @@ describe("Cloudflare local runtime contracts", () => {
     expect(enabled.ready).toBe(true);
   });
 
-  it("accepts the production Queue profile without provisioning unrelated Container bindings", () => {
-    const queueProfile = inspectBindingReadiness({
-      CLOUDFLARE_ACTIVATION: "enabled",
-      CLOUDFLARE_ENVIRONMENT: "production",
-      CLOUDFLARE_JOB_TRANSPORT: "queues",
-      HYPERDRIVE: { connectionString: "postgres://target-placeholder" },
-      JOB_QUEUE: { send: vi.fn() },
-    });
-    expect(queueProfile).toMatchObject({
-      activation: "enabled",
-      transport: "queues",
-      ready: true,
-      selectedMissing: [],
-    });
-    expect(queueProfile.missing).toContain("JOB_CONTAINERS");
-    expect(queueProfile.missing).toContain("JOB_WORKFLOW");
-  });
-
   it("parses only bounded canonical envelopes", () => {
     expect(parseCanonicalEnvelope(envelope)).toEqual(envelope);
     expect(() => parseCanonicalEnvelope({ ...envelope, routing_metadata: { signedUrl: "https://bad.invalid" } })).toThrow("CANONICAL_ENVELOPE_INVALID");

@@ -17,7 +17,8 @@
 
 - The required Cloudflare local-readiness run had all 13 PostgreSQL contract files start in parallel. A disposable cluster in `cloudflareRetentionSchedule.postgres.integration.test.ts` failed at `pg_ctl start`; the job's output did not retain the PostgreSQL server log, so the precise underlying OS failure is unknown. Serializing only this PostgreSQL-heavy Vitest batch (`--maxWorkers=1`) removed the concurrent cluster startup pressure without skipping coverage.
 - Local serialized rerun: 12 of 13 files passed, 139 tests passed and 2 skipped. The one failed case requires spawning `pnpm dlx wrangler`; this local environment has no `pnpm` executable. GitHub Actions installs pnpm, and the previous CI run passed that Worker-entrypoint test. The changed staging executor PostgreSQL cases passed.
-- The concurrency adjustment is the current uncommitted change; checkpoint it and verify the Cloudflare workflow on the integrated revision. This is a CI resource stability change, not a production runtime fix.
+- Integrated the concurrency adjustment in `8b574eb458e1ce8cdfc1c17d0661266b2ccb7bde`. Cloudflare local-readiness workflow `39735290303` passed, including the full 13-file PostgreSQL batch, production transport template guard, and existing runtime checks. This is a CI resource stability change, not a production runtime fix.
+- Isolated the new queue-profile readiness assertion in `apps/cloudflare/src/bindings.test.ts` so it can run without importing the full Worker/Hono graph; that focused test passes locally. The regular Cloudflare CI also runs the full runtime package.
 
 ## Production readiness visibility — 2026-10-22 13:14 Asia/Bangkok
 
