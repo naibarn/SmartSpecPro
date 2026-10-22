@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import Docs from "./Docs";
 import Features from "./Features";
 
 const source = (fileName: string) =>
-  readFileSync(new URL(`./${fileName}`, import.meta.url), "utf8");
+  readFileSync(resolve(import.meta.dirname, fileName), "utf8");
 
 describe("public Features and Docs media governance", () => {
   it("keeps both media-free public pages importable", () => {
