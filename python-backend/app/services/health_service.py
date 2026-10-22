@@ -79,9 +79,24 @@ class HealthService:
 
             response_time = (time.time() - start_time) * 1000
 
-            # Check connection pool status
-            pool_size = self.db.bind.pool.size() if hasattr(self.db.bind, 'pool') else None
-            pool_checked_out = self.db.bind.pool.checked_out_connections() if hasattr(self.db.bind, 'pool') else None
+            # Pool telemetry is optional. SQLAlchemy QueuePool exposes
+            # `checkedout()`, not `checked_out_connections()`; unsupported
+            # pool implementations must not turn a successful SELECT into an
+            # unhealthy database result.
+            pool = getattr(getattr(self.db, "bind", None), "pool", None)
+            pool_size = None
+            pool_checked_out = None
+            if pool is not None:
+                size = getattr(pool, "size", None)
+                checkedout = getattr(pool, "checkedout", None)
+                try:
+                    pool_size = size() if callable(size) else None
+                    pool_checked_out = checkedout() if callable(checkedout) else None
+                except Exception:
+                    # Database connectivity is established by SELECT 1;
+                    # pool statistics are diagnostic only.
+                    pool_size = None
+                    pool_checked_out = None
 
             return {
                 "status": "healthy",

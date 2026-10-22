@@ -4,6 +4,9 @@ Tests health check functionality for various services
 """
 
 
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, Mock
+
 import pytest
 
 from app.services.health_service import HealthService
@@ -54,6 +57,36 @@ class TestHealthServiceOverallHealth:
 
 class TestHealthServiceDatabaseCheck:
     """Test database health check methods"""
+
+    @pytest.mark.asyncio
+    async def test_check_database_uses_sqlalchemy_queue_pool_api(self):
+        """A working SELECT stays healthy with SQLAlchemy's checkedout() API."""
+        pool = SimpleNamespace(size=Mock(return_value=5), checkedout=Mock(return_value=2))
+        db = SimpleNamespace(
+            bind=SimpleNamespace(pool=pool),
+            execute=AsyncMock(return_value=SimpleNamespace(scalar=Mock(return_value=1))),
+        )
+
+        result = await HealthService(db)._check_database()
+
+        assert result["status"] == "healthy"
+        assert result["pool_size"] == 5
+        assert result["connections_in_use"] == 2
+
+    @pytest.mark.asyncio
+    async def test_check_database_does_not_fail_when_pool_stats_are_unavailable(self):
+        """Pool telemetry is optional and cannot override a successful query."""
+        pool = SimpleNamespace(size=Mock(return_value=5))
+        db = SimpleNamespace(
+            bind=SimpleNamespace(pool=pool),
+            execute=AsyncMock(return_value=SimpleNamespace(scalar=Mock(return_value=1))),
+        )
+
+        result = await HealthService(db)._check_database()
+
+        assert result["status"] == "healthy"
+        assert result["pool_size"] == 5
+        assert result["connections_in_use"] is None
 
     @pytest.mark.asyncio
     async def test_check_database_health(self, test_db):
