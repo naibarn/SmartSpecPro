@@ -95,10 +95,10 @@
     "expected_spec_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243"
   },
   "continuation": {
-    "next_action": "Obtain the original R1.0 A01-A20 excerpt and separate owner decisions against owner-review-packet-g1.md. Keep continuing only offline/read-only work. Section 03 remains live-gated on certified Pi provenance/SBOM/ABI, authorized isolated Gateway credentials and real usage/settlement; section 05 remains blocked on a stable approved merged Runner/Chat contract and per-attempt grants; sections 04/06 live acceptance remains blocked on real executor, ACL, credit and independent SPEC-224/271 evidence.",
+    "next_action": "Track PR #1172 at head ac8d65a6759038b4a0628f97beab42fd45b03aa6 through required checks and normal review; obtain the original R1.0 A01-A20 excerpt for exact reconciliation. Continue independent offline work while waiting. Do not merge by bypass or mark acceptance passed.",
     "next_ready_workunit": "section-03-managed-pi-isolated-spike",
     "reactivation_predicate": "For each live section, record the exact owner ACK/version/producer SHA/consumer SHA and verified authority/evidence named in that section. Locate and reconcile the actual R1.0 A01-A20 text before freezing acceptance mapping. Offline fakes and documentation remain usable without those live grants.",
-    "resume_point": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/pi-trust-compatibility-research.md",
+    "resume_point": "PR #1172 and owner-review-packet-g1.md; resume with exact R1.0 A01-A20 source reconciliation when supplied, then continue section 03 only if its independent runtime gates are satisfied.",
     "waiting_predicate": "Do not dispatch Chat-to-Native until an owner-approved, stable Runner/Chat producer contract is merged at an exact SHA/version and canonical per-attempt execution/capability/Gateway grants exist. Do not execute Pi runtime until release provenance, SBOM/license review, certified ABI and isolated non-production Gateway authority are verified."
   },
   "continuation_assessment": {
@@ -195,7 +195,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
     "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
@@ -213,7 +213,9 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "91161ab7510104b7537a9b6cc90b362b95ffb92a"
+      "91161ab7510104b7537a9b6cc90b362b95ffb92a",
+      "1051986042c3fc3aa91da3695c1d635b220f4fd7",
+      "ac8d65a6759038b4a0628f97beab42fd45b03aa6"
     ],
     "mapping": [],
     "source_paths": [
@@ -532,7 +534,7 @@
     "unresolved": 101
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T12:38:48.388135Z",
+  "updated_at": "2026-10-22T12:44:18.062783Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 101 unresolved of 101
 - Next action: Recover the original R1.0 source; route each of the seven G1 decisions to its owner; continue only independent offline contract work while live gates stay closed.
-- Manifest generation: 5
+- Manifest generation: 6
 
 ## Source-declared status and relationship claims
 
