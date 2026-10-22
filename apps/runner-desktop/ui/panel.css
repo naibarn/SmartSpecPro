@@ -58,5 +58,9 @@ textarea { width: 100%; min-height: 78px; resize: vertical; border: 1px solid rg
 .pro-details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
 .detail { border-radius: 11px; padding: 10px; background: rgb(255 255 255 / .06); }
 .detail small { display: block; margin-bottom: 4px; color: #8fa1b7; }
+.auxiliary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.auxiliary-card { min-width: 0; border: 1px solid rgb(255 255 255 / .08); border-radius: 12px; padding: 11px; background: rgb(255 255 255 / .04); }
+.auxiliary-card p { margin-top: 6px; overflow-wrap: anywhere; }
 @media (max-width: 760px) { .main-grid { grid-template-columns: 1fr; } .sidebar { max-height: 260px; } }
+@media (max-width: 900px) { .auxiliary-grid { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }

@@ -1,6 +1,7 @@
 const { companionInvoke, normalizeCompanionState, statusLabel, progressLabel, taskStatusClass, escapeText, taskDetail } = window.SmartAIHubCompanion;
 const surface = document.body.dataset.surface || "workspace";
 const state = { projection: null, auth: null, preferences: null, selectedTaskId: null, conversationId: null, pro: false };
+let refreshSequence = 0;
 
 const el = id => document.getElementById(id);
 const setText = (id, value) => { const node = el(id); if (node) node.textContent = escapeText(value); };
@@ -29,6 +30,31 @@ function renderAuth() {
   setText("auth-detail", auth?.detail || "No authenticated user-scoped transport is available.");
   const refresh = el("refresh-button");
   if (refresh) refresh.disabled = false;
+  const toolbar = document.querySelector(".topbar .toolbar");
+  if (toolbar && !el("logout-button")) {
+    const logout = document.createElement("button");
+    logout.className = "secondary";
+    logout.id = "logout-button";
+    logout.type = "button";
+    logout.textContent = "Sign out";
+    logout.addEventListener("click", async () => {
+      logout.disabled = true;
+      try {
+        await companionInvoke("logout_companion");
+        state.auth = null;
+        state.projection = null;
+        renderProjection();
+        setText("notice", "Desktop session revoked and cleared.");
+      } catch (error) {
+        setText("notice", `Sign out unavailable: ${String(error)}`);
+      } finally {
+        logout.disabled = false;
+      }
+    });
+    toolbar.append(logout);
+  }
+  const logout = el("logout-button");
+  if (logout) logout.hidden = auth?.availability !== "authenticated" && auth?.availability !== "stale";
 }
 
 function renderDevices() {
@@ -65,20 +91,78 @@ function renderTasks() {
   }
 }
 
-function renderProjection() { renderAuth(); renderDevices(); renderTasks(); setText("task-count", `${state.projection?.tasks?.length || 0} tasks`); }
+function renderProjectionDetails() {
+  const taskList = el("task-list");
+  if (!taskList) return;
+  el("projection-details")?.remove();
+  const projection = state.projection;
+  if (!projection) return;
+  const section = document.createElement("section");
+  section.id = "projection-details";
+  section.className = "auxiliary-grid";
+  const reconciliation = document.createElement("article");
+  reconciliation.className = "auxiliary-card";
+  const reconciliationTitle = document.createElement("strong");
+  reconciliationTitle.textContent = "Reconciliation";
+  const reconciliationText = document.createElement("p");
+  reconciliationText.className = "muted";
+  reconciliationText.textContent = `${projection.reconciliation?.consistency || "Canonical projection"} · as of ${projection.reconciliation?.asOf || "unknown"} · refresh by ${projection.reconciliation?.expiresAt || "unknown"}`;
+  reconciliation.append(reconciliationTitle, reconciliationText);
+  section.append(reconciliation);
+
+  const approvals = document.createElement("article");
+  approvals.className = "auxiliary-card";
+  const approvalTitle = document.createElement("strong");
+  approvalTitle.textContent = `Approvals (${projection.approvals?.length || 0})`;
+  approvals.append(approvalTitle);
+  const approvalText = document.createElement("p");
+  approvalText.className = "muted";
+  approvalText.textContent = projection.approvals?.length
+    ? "Approval state is observed from canonical Task Control. Decisions must be completed in the authorized SmartAIHub web/mobile flow."
+    : "No canonical approval records are currently reported.";
+  approvals.append(approvalText);
+  section.append(approvals);
+
+  const evidence = document.createElement("article");
+  evidence.className = "auxiliary-card";
+  const evidenceTitle = document.createElement("strong");
+  evidenceTitle.textContent = `Evidence (${projection.evidence?.length || 0})`;
+  evidence.append(evidenceTitle);
+  const evidenceText = document.createElement("p");
+  evidenceText.className = "muted";
+  evidenceText.textContent = projection.evidence?.length
+    ? projection.evidence.map(item => `${item.kind}: ${item.evidenceId}`).join(" · ")
+    : "No verifiable output references are currently reported.";
+  evidence.append(evidenceText);
+  section.append(evidence);
+  taskList.append(section);
+}
+
+function renderProjection() {
+  renderAuth();
+  renderDevices();
+  renderTasks();
+  renderProjectionDetails();
+  setText("task-count", `${state.projection?.tasks?.length || 0} tasks`);
+}
 
 async function refresh() {
+  const sequence = ++refreshSequence;
   setText("notice", "Refreshing canonical projection…");
   try {
-    state.auth = await companionInvoke("companion_auth_status");
-    if (state.auth.availability === "authenticated" || state.auth.availability === "stale") {
+    const auth = await companionInvoke("companion_auth_status");
+    if (sequence !== refreshSequence) return;
+    state.auth = auth;
+    if (auth.availability === "authenticated" || auth.availability === "stale") {
       state.projection = normalizeCompanionState(await companionInvoke("companion_state"));
     } else {
       state.projection = null;
     }
+    if (sequence !== refreshSequence) return;
     renderProjection();
     setText("notice", state.projection ? "Projection refreshed from Task Control." : "Projection unavailable; no status was inferred.");
   } catch (error) {
+    if (sequence !== refreshSequence) return;
     state.projection = null;
     renderProjection();
     setText("notice", `Unavailable: ${String(error)}`);
@@ -117,4 +201,7 @@ el("open-chat")?.addEventListener("click", () => companionInvoke("open_chat_pane
 el("open-workspace")?.addEventListener("click", () => companionInvoke("open_full_workspace"));
 void loadPreferences();
 void refresh();
+window.addEventListener("online", () => void refresh());
+window.addEventListener("offline", () => setText("notice", "Offline: waiting for the authenticated transport to reconnect."));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) void refresh(); });
 window.setInterval(() => { if (!document.hidden) void refresh(); }, 15000);
