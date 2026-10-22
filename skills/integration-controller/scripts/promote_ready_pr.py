@@ -64,7 +64,8 @@ def classify_failure(evidence: str, *, blockers: list[str] | None = None) -> str
         return "CONFLICT"
     if any(marker in normalized for marker in (
         "permission denied", "resource not accessible", "review_required",
-        "changes_requested", "branch protection", "protected branch", "pr_closed_externally",
+        "changes_requested", "branch protection", "protected branch",
+        "repository policy", "merge state blocked", "pr_closed_externally",
     )):
         return "AUTHORITY"
     if any(marker in normalized for marker in (
@@ -251,24 +252,16 @@ def evaluate_pull_request(
     if expected_base_sha and pull_request.get("baseRefOid") != expected_base_sha and not base_ref_ancestry_verified:
         blockers.append("BASE_REF_STALE")
 
-    if not checks:
-        blockers.append("NO_CI_CHECK_EVIDENCE")
-    elif not any(check.get("state") == "SUCCESS" for check in checks):
-        blockers.append("NO_CI_CHECK_PASSED")
-    for check in checks:
-        state = check.get("state")
-        # Skipped jobs are allowed only as non-applicable workflow steps. GitHub's
-        # own merge operation remains authoritative for configured required checks.
-        if state not in {"SUCCESS", "SKIPPED"}:
-            blockers.append(f"CHECK_NOT_PASSING:{check.get('name', 'unnamed')}")
+    if pull_request.get("mergeStateStatus") == "BLOCKED":
+        blockers.append("GITHUB_REPOSITORY_POLICY_BLOCKED")
 
     failure_class = classify_failure("", blockers=blockers)
     if pull_request.get("state") == "CLOSED":
         failure_class = "AUTHORITY"
     elif expected_head and head_sha != expected_head:
         failure_class = "CONFLICT"
-    elif any(check.get("state") == "FAILURE" for check in checks):
-        failure_class = "APPLICATION"
+    elif pull_request.get("mergeStateStatus") == "BLOCKED":
+        failure_class = "AUTHORITY"
 
     return {
         "status": "READY" if not blockers else "BLOCKED",

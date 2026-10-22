@@ -78,26 +78,31 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
                     PROMOTER.evaluate_pull_request(pr, checks, expected_head=None)["status"],
                 )
 
-    def test_failed_or_missing_checks_block_merge(self):
+    def test_optional_failed_pending_or_missing_checks_do_not_invent_a_gate(self):
         for checks in (
-            [{"name": "focused-tests", "state": "FAILURE", "bucket": "fail"}],
+            [{"name": "optional-preview", "state": "FAILURE", "bucket": "fail"}],
+            [{"name": "optional-preview", "state": "IN_PROGRESS", "bucket": "pending"}],
             [],
-            [{"name": "preview", "state": "SKIPPED", "bucket": "skipping"}],
+            [{"name": "optional-preview", "state": "SKIPPED", "bucket": "skipping"}],
         ):
             with self.subTest(checks=checks):
                 result = PROMOTER.evaluate_pull_request(
                     pull_request(), checks, expected_head=None
                 )
-                self.assertEqual("BLOCKED", result["status"])
+                self.assertEqual("READY", result["status"])
+                self.assertEqual([], result["blockers"])
+                self.assertEqual(checks[0]["name"] if checks else None,
+                                 result["checks"][0]["name"] if result["checks"] else None)
 
-    def test_pending_check_is_not_misclassified_as_application_failure(self):
+    def test_actual_github_required_gate_blocks_and_optional_failure_does_not(self):
         result = PROMOTER.evaluate_pull_request(
-            pull_request(),
-            [{"name": "focused-tests", "state": "IN_PROGRESS", "bucket": "pending"}],
+            pull_request(mergeStateStatus="BLOCKED"),
+            [{"name": "required-security", "state": "FAILURE", "bucket": "fail"}],
             expected_head=None,
         )
         self.assertEqual("BLOCKED", result["status"])
-        self.assertEqual("UNKNOWN", result["failure_class"])
+        self.assertIn("GITHUB_REPOSITORY_POLICY_BLOCKED", result["blockers"])
+        self.assertEqual("AUTHORITY", result["failure_class"])
 
     def test_review_requirement_or_head_drift_blocks_merge(self):
         checks = [{"name": "focused-tests", "state": "SUCCESS", "bucket": "pass"}]
@@ -132,7 +137,8 @@ class PromoteReadyPullRequestTests(unittest.TestCase):
             (pull_request(mergeStateStatus="BEHIND"), "a" * 40, checks),
             (pull_request(reviewDecision="REVIEW_REQUIRED"), "a" * 40, checks),
             (pull_request(), "b" * 40, checks),
-            (pull_request(), "a" * 40, [{"name": "required", "state": "FAILURE"}]),
+            (pull_request(mergeStateStatus="BLOCKED"), "a" * 40,
+             [{"name": "required-security", "state": "FAILURE"}]),
         ):
             with self.subTest(pr=pr, expected_head=expected_head, evidence=evidence):
                 result = PROMOTER.evaluate_pull_request(
