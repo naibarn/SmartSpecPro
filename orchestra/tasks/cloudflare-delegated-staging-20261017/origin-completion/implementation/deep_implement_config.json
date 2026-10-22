@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Create the authenticated owner path for one exact staging deployment grant bound to artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4, verified rollback artifact/config, and trusted executor; then run the canonical job and qualify staging before production planning.",
+      "next_action": "Issue an exact staging grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 after verifying rollback config/artifact, use the authenticated owner operation path, then run and verify the canonical staging deployment job.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
       "checkpoint_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
-      "merged_main_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
+      "merged_main_sha": "4965a998abe3671565db6e77d1ea8f63e703b5a6",
       "session_id": "codex-cloudflare-cutover-20261022"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 146,
-  "updated_at": "2026-10-22T02:11:30.719428+00:00",
+  "generation": 147,
+  "updated_at": "2026-10-22T02:12:21.181336+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Create the authenticated owner path for one exact staging deployment grant bound to artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4, verified rollback artifact/config, and trusted executor; then run the canonical job and qualify staging before production planning.",
-    "merged_main_sha": "0f8925977ba86014413b6dd80322faacf44f4d79",
+    "next_action": "Issue an exact staging grant for artifact sha256:555268d20b8430740420ca49b73a8a445120972f6a8235d9c4b7cdd50a7c5da4 after verifying rollback config/artifact, use the authenticated owner operation path, then run and verify the canonical staging deployment job.",
+    "merged_main_sha": "4965a998abe3671565db6e77d1ea8f63e703b5a6",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
