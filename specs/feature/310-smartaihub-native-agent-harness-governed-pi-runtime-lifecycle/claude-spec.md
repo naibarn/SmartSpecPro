@@ -17,7 +17,7 @@ Plan a first-party Native Harness that internally manages a pinned Pi runtime fo
 
 ## G0 state
 
-See `g0-discovery.md` for registry, PR, branch/worktree, owner and source evidence. The canonical registry currently has no 310 reservation and still lists 309 as the first next-safe ID, while the preserved local checkout contains a distinct unpublished 309 assignment. Canonical assignment is therefore evidenced as absent at this SHA; repeat checks before merge and preserve the 309 owner.
+See `g0-discovery.md` for the refreshed registry, PR, branch/worktree, owner and source evidence. The original R1.3 block below preserves its initial observation; at the refreshed `5cb2d07f91fd5da7fd486c317760be199cf03336` source, SPEC-310 is canonically occupied and 311 is next-safe. The separate local SPEC-309 assignment remains unpublished and unreserved in canonical registry. Preserve it and repeat checks before any identity-changing merge.
 
 ## G1 deliverables
 

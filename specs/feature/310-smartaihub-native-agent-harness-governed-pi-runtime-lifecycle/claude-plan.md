@@ -2,20 +2,20 @@
 
 ## Status and base
 
-Planning branch `codex/spec310-g0-g1-plan-20261022`, based on current `origin/main` SHA `0ebbd075ca4f71af1ffb8ce4f1e38bc3ba6013cf`. G0 evidence is in `g0-discovery.md`. This plan delivers G0/G1 contracts first; it does not authorize production execution or the Chat dispatch bridge.
+Planning resumed and validated complete (6/6 sections) against `origin/main` SHA `5cb2d07f91fd5da7fd486c317760be199cf03336` in branch `codex/spec310-deep-implement-20261022`. G0 has been refreshed in `g0-discovery.md`; G1 proposal is in `g1-contract-proposal.md`. Section 02 remains owner-pending. Sections 03–06 may proceed only when their specific prerequisites are evidenced. No section or this plan authorizes production execution or the Chat dispatch bridge.
 
 ## Requirement ledger
 
 | Requirement | Source | Status | Planned section / proof |
 |---|---|---|---|
-| Unique SPEC number and non-interference | R1.3 A57–A59; user instruction | G0 recorded; recheck before merge | 01; registry/PR/worktree receipt and scoped diff |
-| Existing owner boundaries and no duplicate authorities | R1.3 R1.3.1–3; SPEC-195/205/207/210/224/269/271/278/279/280/292/293 | G0 mapped; producer ACK pending | 01–02; owner matrix and owner-reviewed contract |
-| Native Harness privately manages pinned Pi and uses Gateway only | R1.2 §A/§L/§R; R1.3 R1.3.1/R1.3.4 | G1 proposal | 02–03; manifest schema, transport contract, negative direct-provider checks |
+| Unique SPEC number and non-interference | R1.3 A57–A59; user instruction | SPEC-310 occupied canonically; local SPEC-309 remains untouched and has no canonical reservation | 01; refreshed registry/PR/worktree receipt and scoped diff |
+| Existing owner boundaries and no duplicate authorities | R1.3 R1.3.1–3; SPEC-195/205/207/210/224/269/271/278/279/280/292/293 | G0 mapped; G1 proposal recorded; producer ACK pending | 01–02; owner matrix and owner-reviewed contract |
+| Native Harness privately manages pinned Pi and uses Gateway only | R1.2 §A/§L/§R; R1.3 R1.3.1/R1.3.4 | G1 proposal; owner review and Pi provenance pending | 02–03; manifest contract, transport contract, negative direct-provider checks |
 | Chat-first general work with first-class non-Git Workspaces | R1.2 §L/§M/§N; R1.3 R1.3.4; A64 | Contract proposed; live path unproven | 02/04; no-Git contract fixtures then real artifact receipts |
 | Separate user, Runner and per-attempt credentials; no execution via `llm:chat` | R1.3 R1.3.2/R1.3.4; A60–A62 | G0 source reviewed; negative proof pending | 02–04; identity matrix and denial tests |
 | Wait for stable approved Runner/Chat contract before dispatch bridge | R1.3 R1.3.3/R1.3.5/R1.3.7; A63 | Waiting external producer contract | 05; exact merged SHA, owner ACK, compatibility tests are entry criteria |
 | Native production disabled pending real proofs; preserve SPEC-224 E2E | R1.3.1/R1.3.5/R1.3.6; repo rule | Required invariant | All sections; feature-off tests and separated live acceptance ledger |
-| Ten evidence-backed gap reviews | R1.3.6/A67 | Planning lenses complete; implementation lenses still required | `g0-discovery.md`; repeat against exact implementation HEAD |
+| Ten evidence-backed gap reviews | R1.3.6/A67 | Ten G0 planning lenses are complete; ten scoped G0/G1 implementation-artifact reviews remain to be recorded after the artifact changes | `implementation-gap-review.md`; review exact implementation HEAD and do not represent reviews as runtime acceptance |
 | Original R1.0 A01–A20 reconciliation | Cumulative input caveat | Source missing from repository snapshot | 01; locate canonical source before acceptance coverage is frozen |
 
 ## G1 contract design

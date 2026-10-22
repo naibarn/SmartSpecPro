@@ -27,8 +27,8 @@ END_MANIFEST -->
 
 ## Execution Order
 
-1. section-01-g0-owner-audit (G0; current discovery artifact is recorded but must be refreshed before implementation/merge).
-2. section-02-g1-contracts (G1; contract proposals require producer owner review).
+1. section-01-g0-owner-audit (G0; refreshed at `5cb2d07f91fd5da7fd486c317760be199cf03336`; recheck before registry mutation or identity-changing merge).
+2. section-02-g1-contracts (G1; `g1-contract-proposal.md` and negative fixtures are proposals; owner review remains pending).
 3. section-03-managed-pi-isolated-spike and section-04-non-git-general-work may proceed independently after their respective authority/environment prerequisites.
 4. section-05-chat-native-bridge-gate starts only after a stable owner-approved merged Runner/Chat contract exists.
 5. section-06-team-runtime-acceptance follows applicable prior slices; SPEC-224 E2E keeps priority.
@@ -36,10 +36,10 @@ END_MANIFEST -->
 ## Section Summaries
 
 ### section-01-g0-owner-audit
-`requirement_ids: A57, A59, R1.3.1-R1.3.3, G0`. Record exact number/owner/dependency evidence and reconcile missing R1.0 source. Touched scope: SPEC-310 docs only. Prerequisite: latest `origin/main`. Completion: registry, PRs, branches, reservations and local worktrees are reported at one SHA; 309 remains unchanged. Verify by rerunning targeted source-control queries and checking the scoped diff. Evidence: dated discovery record. If registry and unpublished assignment disagree, keep assignment tentative and route registry resolution to its owner.
+`requirement_ids: A57, A59, R1.3.1-R1.3.3, G0`. Record exact number/owner/dependency evidence and reconcile missing R1.0 source. Touched scope: SPEC-310 docs only. Prerequisite: latest `origin/main`. Completion: registry, PRs, branches, reservations and local worktrees are reported at one SHA; 309 remains unchanged. Verify by rerunning targeted source-control queries and checking the scoped diff. Evidence: refreshed discovery record at `5cb2d07f91fd5da7fd486c317760be199cf03336`. If registry and unpublished 309 assignment disagree, keep registry resolution owner-pending and route it to its owner.
 
 ### section-02-g1-contracts
-`requirement_ids: A60-A63, A67, R1.3.1-R1.3.4`. Define typed intent/grant/runtime/Gateway/workspace references, actor/credential matrix, negative cases and owner review. Touched scope: SPEC-310 docs and isolated fixtures. Prerequisite: section 01. Completion: canonical owner for each contract is named; unsupported assumptions are marked proposed/waiting. Verify schema examples, compatibility matrix and owner acknowledgements. Evidence: versioned contract pack and owner response. If an owner disagrees, open a focused `CROSS_SPEC_CHANGE_REQUEST`; do not edit their source branch.
+`requirement_ids: A60-A63, A67, R1.3.1-R1.3.4`. Define typed intent/grant/runtime/Gateway/workspace references, actor/credential matrix, negative cases and owner review. Touched scope: SPEC-310 docs and isolated fixtures. Prerequisite: section 01. Completion: canonical owner for each contract is named; unsupported assumptions are marked proposed/waiting. Verify schema examples, compatibility matrix and owner acknowledgements. Evidence: `g1-contract-proposal.md` plus machine-readable deny fixtures; producer owner acknowledgements remain pending. If an owner disagrees, open a focused `CROSS_SPEC_CHANGE_REQUEST`; do not edit their source branch.
 
 ### section-03-managed-pi-isolated-spike
 `requirement_ids: A01-A20 (when canonical R1.0 is located), A30, A65, A68`. Load and pin privately managed Pi behind the Native Harness and verify all model transport uses SmartAIHub Gateway. Touched scope: new isolated runtime adapter/package and scoped tests only, after G1. Prerequisite: accepted runtime/Gateway contract and authorized isolated non-production environment. Completion: signed/pinned runtime starts, direct provider traffic is denied, Gateway usage correlates to canonical attempt; flag remains off. Verify focused package/runtime/effect-negative tests. Evidence: digest, test profile and redacted Gateway attempt receipt. If upstream release/ABI/provenance is unverified, use a deterministic fake for contract tests and keep live spike waiting.
