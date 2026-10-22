@@ -211,6 +211,7 @@ describe("Cloudflare staging API transport", () => {
           { name: "ASSETS", type: "assets" },
           { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" },
           { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "staging" },
+          { name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" },
         ]);
         expect(metadata.annotations["workers/message"]).toContain(buildDigest);
         return json({ id: versionId });
@@ -374,8 +375,10 @@ describe("Cloudflare staging API transport", () => {
       if (url.endsWith(`/scripts/${target.workerRef}`) && init.method === "PUT") {
         const metadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
         expect(Object.keys(metadata.annotations).sort()).toEqual(["workers/message", "workers/tag"]);
-        expect(metadata.bindings).toHaveLength(3);
-        expect(JSON.stringify(metadata)).not.toMatch(/hyperdrive|database|route|cron|queue|container/i);
+        expect(metadata.bindings).toHaveLength(4);
+        expect(metadata.bindings).toContainEqual({ name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" });
+        expect(JSON.stringify(metadata)).not.toMatch(/hyperdrive|database|route|cron|container/i);
+        expect(metadata.bindings.filter((binding: { type?: string }) => binding.type === "queue")).toHaveLength(0);
         versionTag = metadata.annotations["workers/tag"]; putCount++; created = true;
         return json({ id: target.workerRef });
       }

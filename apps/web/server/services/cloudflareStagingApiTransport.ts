@@ -310,6 +310,9 @@ export function createCloudflareStagingApiTransport(input: {
         { name: "ASSETS", type: "assets" },
         { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: (origin?.descriptor.workflowExecution || origin?.descriptor.retentionSchedule) ? "enabled" : "disabled" },
         { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: target.environment },
+        ...(!origin?.descriptor.workflowExecution && !origin?.descriptor.retentionSchedule
+          ? [{ name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" }]
+          : []),
         ...(origin?.descriptor.nativeResources ? nativeWorkerBindings(origin.descriptor.nativeResources) : []),
         ...(http && !origin?.descriptor.applicationHttpPhase ? http.bindings : []),
         ...(origin ? cloudflareWorkflowVersionBindings(origin) : []),
