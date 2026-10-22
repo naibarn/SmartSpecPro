@@ -5,10 +5,10 @@ Task Control, approval and SPEC-205 authority boundaries.
 
 ## Source and PR chain
 
-- `origin/main`: `b5703502c592b5a9f6c090f7a12d241f250674ad`
-- WP2C0 / PR #1164: `ac81b4d96098553a7b9e8e49f18080306d3e64f0`
-- WP2C1 / PR #1166: `666cafe4b5129208a60e622b17153c850851e578`
-- WP2C2 / PR #1167: `3166809d0547017620e5f201298f8f9103e4abff`
+- `origin/main` after reconciliation: `7f82d9720ef708fb0f0b0be3d5b8e0724da1a9ba`
+- WP2C0 / PR #1164: `664de1dfd7715de8954730a821d129c5ad9b6c67`
+- WP2C1 / PR #1166: `728c8e84c9a3541a34079a8c41ed902486d49ae9`
+- WP2C2 / PR #1167: `5e798c72cc7a8130e3126e2bd828b430066a454e`
 
 The branches remain stacked and protected main was not modified directly.
 
@@ -40,14 +40,25 @@ Focused validation passed:
 - Web auth/projection/revocation Vitest set — 27 tests passed.
 - Companion, panel and state contract scripts — passed.
 - `git diff --check` — passed.
+- Express route architecture guard against `origin/main` — passed; the guard's
+  missing-file warnings are expected for new Runner routes absent from main.
 
 ## CI and acceptance classification
 
 - The MCP pnpm setup duplication was removed from all workflows with explicit
   `version: 10.4.1`; the repository `packageManager` pin remains authoritative.
+- The MCP focused gate's missing `@smartspec/remotion-render/render-video-schema`
+  import was reproduced and fixed by building that workspace package after the
+  frozen install. The remaining CI failure is a separate mainline baseline:
+  the focused suites require unavailable `DATABASE_URL` test state and three
+  security tests still import the retired, absent `agencyMcpService`. No retired
+  Agency compatibility path, dummy database, or test exclusion was added.
 - MCP live-contract evidence remains blocked when the authorized
   `MCP_SMOKE_URL`/`MCP_SMOKE_TOKEN` secrets are absent. No dummy credential or
   skip was added.
+- Latest CI media-probe runtime completed successfully after the bounded cold
+  start fix; local execution remains tool-environment dependent when `pnpm` is
+  unavailable.
 - The TEST_JWT_SECRET failure was reproduced and corrected by defining the
   test fixture before the dynamic route import; the focused route tests pass.
 - The media-probe failure was traced to cold `pnpm dlx wrangler` workerd startup
