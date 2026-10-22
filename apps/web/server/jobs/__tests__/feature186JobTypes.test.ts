@@ -11,6 +11,17 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
     expect(isPostgresNodeJobType(jobType)).toBe(true);
     expect(defaultJobExecutorRegistry.resolve(jobType, "feature-186-v1")).toBeDefined();
   });
+  it("admits the bounded Cloudflare staging deployment executor", () => {
+    expect(isPostgresNodeJobType("cloudflare.staging.deploy")).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(
+      "cloudflare.staging.deploy",
+      "cloudflare-staging-origin-v2",
+    )).toBeDefined();
+    expect(defaultJobExecutorRegistry.resolve(
+      "cloudflare.staging.deploy",
+      "cloudflare-staging-deploy-v1",
+    )).toBeDefined();
+  });
   it("admits external_agent_task through the canonical worker path", () => {
     expect(POSTGRES_NODE_JOB_TYPES.has("external_agent_task")).toBe(true);
     expect(isPostgresNodeJobType("external_agent_task")).toBe(true);

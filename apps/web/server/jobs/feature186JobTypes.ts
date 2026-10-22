@@ -56,6 +56,9 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "video.composition_scan",
   "content_protection.verify",
   "computer_use.browser",
+  // Staging deployment authority is still enforced by the registered
+  // executor's exact owner grant, target, artifact and rollback checks.
+  "cloudflare.staging.deploy",
   // Feature 195 is the sole durable execution authority for the
   // provider-neutral external-agent handoff. Provider selection remains in
   // the governed job manifest; it must not create a second queue or worker.
