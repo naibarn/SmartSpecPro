@@ -1,5 +1,30 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Staging artifact integration regression — 2026-10-22 13:27 Asia/Bangkok
+
+- Root cause of the CI `CLOUDFLARE_STAGING_ARTIFACT_MISMATCH` in both PostgreSQL staging-executor cases: immutable artifact manifests are stored under an artifact digest **and** source SHA, but the integration-test adapter called `resolveBundle(ref)` without the source SHA. The production adapters already pass the expected SHA. The test now mirrors that contract for both executor metadata resolution and provider bundle upload.
+- Added regression assertions that the published artifact resolves before admission, the canonical job input survives PostgreSQL unchanged, and the runtime metadata resolver returns the exact published artifact. Both artifact-v1 and origin-v2 PostgreSQL integration cases pass locally against a disposable PostgreSQL instance. The Python owner-policy probe branch was not exercised locally because this checkout has no SQLAlchemy installed; CI covers that branch when its dependencies are present.
+- Integrated the fix in `7b9c60ac4437d7adec27bedd8cdabe00d015c2fe`. The rerun confirmed both staging artifact-v1 and origin-v2 PostgreSQL cases pass; the batch later failed only because a separate disposable PostgreSQL cluster could not start under the parallel run.
+
+## Production transport profile correction — 2026-10-22 13:35 Asia/Bangkok
+
+- The production Wrangler profile declares the canonical Queue producer/consumer but had no `CLOUDFLARE_JOB_TRANSPORT`, so runtime readiness defaulted to `all` and treated the unused Workflow and job Container transports as required. Set the immutable production template to `queues` and added checks that activation remains disabled, the producer is bound to the production queue, and no production catch-all route or Container resource is enabled by this profile.
+- Added a readiness regression proving an explicitly selected Queue profile needs only Hyperdrive and Queue for its transport and does not provision unrelated job Containers/Workflows. This profile-level readiness remains separate from full app/Node/Python, retained-database, vector/media, route and cutover acceptance.
+- Config tests pass locally (production and staging, 4/4). The focused runtime readiness test is delegated to CI because this checkout does not have the Cloudflare package's `hono` dependency installed. No activation, provider resource, route, or database changed.
+- Integrated as `b550f32966e1a60efa2bd41c4e8b4bcd01778f45`; verify its Cloudflare CI run. Production still requires exact external bindings/credentials, working private Hyperdrive, app HTTP profile qualification, grant/rollback and browser acceptance before any traffic move.
+
+## Disposable PostgreSQL test resource stability — 2026-10-22 13:38 Asia/Bangkok
+
+- The required Cloudflare local-readiness run had all 13 PostgreSQL contract files start in parallel. A disposable cluster in `cloudflareRetentionSchedule.postgres.integration.test.ts` failed at `pg_ctl start`; the job's output did not retain the PostgreSQL server log, so the precise underlying OS failure is unknown. Serializing only this PostgreSQL-heavy Vitest batch (`--maxWorkers=1`) removed the concurrent cluster startup pressure without skipping coverage.
+- Local serialized rerun: 12 of 13 files passed, 139 tests passed and 2 skipped. The one failed case requires spawning `pnpm dlx wrangler`; this local environment has no `pnpm` executable. GitHub Actions installs pnpm, and the previous CI run passed that Worker-entrypoint test. The changed staging executor PostgreSQL cases passed.
+- Integrated the concurrency adjustment in `8b574eb458e1ce8cdfc1c17d0661266b2ccb7bde`. Cloudflare local-readiness workflow `39735290303` passed, including the full 13-file PostgreSQL batch, production transport template guard, and existing runtime checks. This is a CI resource stability change, not a production runtime fix.
+- Isolated the new queue-profile readiness assertion in `apps/cloudflare/src/bindings.test.ts` so it can run without importing the full Worker/Hono graph; that focused test passes locally. The regular Cloudflare CI also runs the full runtime package.
+
+## Production readiness profile clarity — 2026-10-22 13:49 Asia/Bangkok
+
+- Production `/readyz` distinguishes `selectedMissing` (the active transport's blockers) from `missing` (the full runtime capability inventory). The Admin probe now preserves both fields and labels them separately, so the Queue transport does not tell operators to provision unused job Workflow/Container bindings. For older Worker payloads without `selectedMissing`, it continues to fail closed using the full missing list.
+- Focused production readiness + Admin UI verification: 2 files, 14 tests PASS; `git diff --check` PASS. This only clarifies status and does not provision or mark other app features ready. Live production remains activation-disabled with no bindings; latest broad CI result is still being checked.
+
 ## Production readiness visibility — 2026-10-22 13:14 Asia/Bangkok
 
 - Added a read-only exact production Worker readiness probe at the fixed `https://runtime.smartaihub.app/readyz` endpoint and surfaced its status, activation, missing bindings, and check time in Admin → Deployment targets when `production` is selected. It never creates a grant, provisions a Container, or changes Worker/route/traffic state. The UI explicitly says this is not proof of artifact approval, retained-PostgreSQL reachability, auth acceptance, rollback, or cutover.

@@ -64,7 +64,7 @@ describe("Cloudflare local runtime contracts", () => {
     expect(execute).not.toHaveBeenCalled(); expect(repository.complete).not.toHaveBeenCalled();
     expect(repository.retry).not.toHaveBeenCalled();
   });
-  it("fails closed until all account bindings are injected and activation is enabled", () => {
+  it("fails closed until the selected account bindings are injected and activation is enabled", () => {
     const disabled = inspectBindingReadiness({ CLOUDFLARE_ACTIVATION: "disabled" });
     expect(disabled.ready).toBe(false);
     expect(disabled.missing).toHaveLength(7);
