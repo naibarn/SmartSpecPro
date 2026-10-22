@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 189 unresolved of 189
 - Next action: Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.
-- Manifest generation: 35
+- Manifest generation: 36
 
 ## Source-declared status and relationship claims
 

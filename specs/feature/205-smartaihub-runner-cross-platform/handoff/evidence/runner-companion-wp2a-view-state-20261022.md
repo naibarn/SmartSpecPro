@@ -1,7 +1,7 @@
 # SmartAIHub Runner Companion WP2A — typed view-state projection
 
 Date: 2026-10-22
-Source commit: `96e1ce9f1` (`feat(runner): add companion view-state projection`)
+Source commit: `96e1ce9f190148627bc5c9d84252e19da8323d85` (`feat(runner): add companion view-state projection`)
 Base: `origin/main` at `fd682249fb2c7e05494b013707a0a39a07aedf5d`
 
 ## Ownership and boundary

@@ -380,7 +380,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 35,
+  "generation": 36,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
@@ -400,7 +400,7 @@
     "checkpoint_shas": [
       "f072ec8448884b88970310fab954c97a465fc6b9",
       "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
-      "96e1ce9f1"
+      "96e1ce9f190148627bc5c9d84252e19da8323d85"
     ],
     "mapping": [],
     "source_paths": [
@@ -1601,7 +1601,7 @@
     "unresolved": 189
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T04:22:20.480369Z",
+  "updated_at": "2026-10-22T04:26:55.051734Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1617,7 +1617,7 @@
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "96e1ce9f1",
+    "sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
     "status": "PARTIAL",
     "task_regressions": []
   }
