@@ -91,7 +91,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": null,
+    "expected_canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "expected_spec_digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363"
   },
   "continuation": {
@@ -281,7 +281,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 12,
+  "generation": 13,
   "identity": {
     "canonical_path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
     "digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
@@ -305,10 +305,10 @@
     "status": "UNKNOWN"
   },
   "integration": {
-    "canonical_ref": null,
-    "canonical_sha": null,
-    "integrated": false,
-    "integrated_at": null
+    "canonical_ref": "refs/heads/main",
+    "canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
+    "integrated": true,
+    "integrated_at": "2026-10-22T02:45:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -753,7 +753,7 @@
     "unresolved": 1006
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T02:42:44.225486Z",
+  "updated_at": "2026-10-22T02:45:46.194812Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

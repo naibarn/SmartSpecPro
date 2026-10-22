@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
+    "expected_canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "expected_spec_digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 28,
+  "generation": 29,
   "identity": {
     "canonical_path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
     "digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
@@ -110,9 +110,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
+    "canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "integrated": true,
-    "integrated_at": "2026-10-19T08:16:20Z"
+    "integrated_at": "2026-10-22T02:45:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -201,7 +201,7 @@
     "unresolved": 205
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T02:42:44.347176Z",
+  "updated_at": "2026-10-22T02:45:31.430771Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

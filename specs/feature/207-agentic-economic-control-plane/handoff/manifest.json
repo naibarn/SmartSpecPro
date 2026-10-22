@@ -86,7 +86,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
+    "expected_canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "expected_spec_digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf"
   },
   "continuation": {
@@ -266,7 +266,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 32,
+  "generation": 33,
   "identity": {
     "canonical_path": "specs/feature/207-agentic-economic-control-plane/spec.md",
     "digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
@@ -306,9 +306,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
+    "canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "integrated": true,
-    "integrated_at": "2026-10-19T08:16:20Z"
+    "integrated_at": "2026-10-22T02:45:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -548,7 +548,7 @@
     "unresolved": 569
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T02:42:44.178746Z",
+  "updated_at": "2026-10-22T02:45:31.431523Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

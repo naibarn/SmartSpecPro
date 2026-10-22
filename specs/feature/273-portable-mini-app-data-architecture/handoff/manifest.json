@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "expected_canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "expected_spec_digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 4,
+  "generation": 5,
   "identity": {
     "canonical_path": "specs/feature/273-portable-mini-app-data-architecture/spec.md",
     "digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
@@ -96,9 +96,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "integrated": true,
-    "integrated_at": "2026-10-06T04:36:24Z"
+    "integrated_at": "2026-10-22T02:45:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -187,7 +187,7 @@
     "unresolved": 247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T02:43:35.138951Z",
+  "updated_at": "2026-10-22T02:45:31.456705Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

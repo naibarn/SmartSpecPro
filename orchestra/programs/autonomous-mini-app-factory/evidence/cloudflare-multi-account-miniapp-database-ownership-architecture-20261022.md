@@ -6,6 +6,8 @@
 
 The ten affected existing Spec handoffs were reconciled against their updated normative digests. Newly discovered requirements remain open/unverified; no implementation, verification, deployment or acceptance state was promoted.
 
+**Canonical checkpoint:** additive SPEC amendments integrated at `4dc9fec87562826548da4253dce663759705942f` on `refs/heads/main`; corresponding SPEC integration receipts record that source SHA. Implementation and acceptance work remains open.
+
 ## Executive decision
 
 SmartAIHub Core, the shared Mini App fleet, customer Cloudflare accounts, and each Mini App database are separate placement and ownership decisions. The Core account owns only Core resources. Production shared Mini App compute belongs in a distinct shared Mini App Cloudflare account. A customer BYOC deployment is managed under a scoped grant while the customer retains resource ownership. Database provider, database owner, database payer, compute account, and credit payer are independent attributes.

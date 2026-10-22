@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f706b573873484c90af08e265ac2dfd98d14325a",
+    "expected_canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "expected_spec_digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 20,
+  "generation": 21,
   "identity": {
     "canonical_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
     "digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
@@ -115,9 +115,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f706b573873484c90af08e265ac2dfd98d14325a",
+    "canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "integrated": true,
-    "integrated_at": "2026-10-10T08:56:19Z"
+    "integrated_at": "2026-10-22T02:45:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -316,7 +316,7 @@
     "unresolved": 371
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T02:42:44.218430Z",
+  "updated_at": "2026-10-22T02:45:31.447833Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

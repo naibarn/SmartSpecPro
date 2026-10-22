@@ -21,7 +21,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "expected_canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "expected_spec_digest": "9aab72501a345982771dedbdcff1976e9ff2d3c2476798222a00bcc0260e2c04"
   },
   "continuation": {
@@ -71,7 +71,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 5,
+  "generation": 6,
   "identity": {
     "canonical_path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
     "digest": "9aab72501a345982771dedbdcff1976e9ff2d3c2476798222a00bcc0260e2c04",
@@ -96,9 +96,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
+    "canonical_sha": "4dc9fec87562826548da4253dce663759705942f",
     "integrated": true,
-    "integrated_at": "2026-10-06T04:36:24Z"
+    "integrated_at": "2026-10-22T02:45:12Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -187,7 +187,7 @@
     "unresolved": 253
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T02:42:44.181424Z",
+  "updated_at": "2026-10-22T02:45:31.429733Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
