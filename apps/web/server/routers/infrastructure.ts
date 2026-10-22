@@ -75,6 +75,7 @@ import { resolveCloudflareStagingArtifact, resolveLatestPublishedCloudflareStagi
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
 import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
+import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
@@ -583,6 +584,10 @@ export const infrastructureRouter = router({
         deploymentId: typeof deployment?.deploymentId === "string" ? deployment.deploymentId : undefined,
       });
     }),
+
+  getCloudflareProductionRuntimeReadiness: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("production") }).strict())
+    .query(async () => probeCloudflareProductionRuntimeReadiness()),
 
   queueCloudflareStagingDeploy: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging") }).strict())
