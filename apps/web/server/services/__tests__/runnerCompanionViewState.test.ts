@@ -62,6 +62,52 @@ const runnerRow = {
   },
 };
 
+const baseWorkerJob = {
+  id: "job-1",
+  jobType: "computer_use.browser",
+  status: "waiting_external",
+  statusReason: "waiting_approval",
+  operatorReviewRequired: true,
+  operatorReviewReason: "Approve the bounded browser action",
+  failureReason: null,
+  runtimeType: "node_job_worker",
+  resourceProfile: "quick",
+  workflowRunId: null,
+  createdAt: new Date("2026-10-22T00:00:00.000Z"),
+  startedAt: new Date("2026-10-22T00:00:01.000Z"),
+  finishedAt: null,
+  progressPercent: null,
+  progressPhase: null,
+  orchestration: {
+    planId: null,
+    stepId: null,
+    stepIndex: null,
+    totalSteps: null,
+    dependsOnJobIds: [],
+    metadataState: "none",
+  },
+  latestEvent: null,
+  worker: null,
+  outputRefs: [
+    {
+      artifactId: "artifact-1",
+      artifactType: "browser-screenshot",
+      verificationState: "verified",
+      contentHash: "hash-1",
+      mimeType: "image/png",
+      sizeBytes: 128,
+      storageRef: "private-storage-ref",
+      downloadUrl: "https://private.example/download",
+      sourceUrl: "https://private.example/source",
+    },
+  ],
+  canCancel: true,
+  canRetry: false,
+  retryReason: null,
+  attempt: 1,
+  maxAttempts: 1,
+};
+
 describe("Runner Companion view-state projection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -206,6 +252,83 @@ describe("Runner Companion view-state projection", () => {
       auth: { tenantId: "tenant-a", userId: 7 },
       limit: 50,
     });
+  });
+
+  it.each([
+    ["completed", "completed"],
+    ["failed", "failed"],
+    ["cancelled", "cancelled"],
+  ] as const)(
+    "keeps terminal %s status ahead of stale approval metadata",
+    async (storedStatus, expectedStatus) => {
+      mockListUserWorkerJobs.mockResolvedValue({
+        items: [
+          {
+            ...baseWorkerJob,
+            status: storedStatus,
+            finishedAt: new Date("2026-10-22T00:00:03.000Z"),
+          },
+        ],
+      });
+
+      const state = await getRunnerCompanionState({
+        tenantId: "tenant-a",
+        userId: 7,
+      });
+
+      expect(state.tasks[0]).toMatchObject({
+        status: expectedStatus,
+      });
+      expect(state.tasks[0].nextAction).toBe(
+        storedStatus === "cancelled" ? "none" : "review_result"
+      );
+      expect(state.approvals).toEqual([]);
+    }
+  );
+
+  it("bounds evidence globally and per task without schema overflow", async () => {
+    mockListUserWorkerJobs.mockResolvedValue({
+      items: Array.from({ length: 4 }, (_, jobIndex) => ({
+        ...baseWorkerJob,
+        id: `job-${jobIndex + 1}`,
+        outputRefs: Array.from({ length: 140 }, (_, index) => ({
+          artifactId: `artifact-${jobIndex}-${index}`,
+          artifactType: "browser-screenshot",
+          verificationState: "verified",
+          contentHash: `hash-${jobIndex}-${index}`,
+          mimeType: "image/png",
+          sizeBytes: 128,
+        })),
+      })),
+    });
+
+    const state = await getRunnerCompanionState({
+      tenantId: "tenant-a",
+      userId: 7,
+    });
+
+    expect(state.evidence).toHaveLength(100);
+    expect(state.tasks[0].outputEvidenceIds).toHaveLength(32);
+    expect(state.tasks[0].outputEvidenceIds).toEqual(
+      state.evidence.slice(0, 32).map(item => item.evidenceId)
+    );
+  });
+
+  it("shows tenant-shared Runner visibility without projecting execution authority", async () => {
+    mockGetDb.mockReturnValue(
+      makeDb([[{ ...runnerRow, ownerUserId: null }], []])
+    );
+
+    const state = await getRunnerCompanionState({
+      tenantId: "tenant-a",
+      userId: 7,
+    });
+
+    expect(state.devices).toHaveLength(1);
+    expect(state.devices[0]).toMatchObject({ runnerId: "runner-1" });
+    expect(state.devices[0]).not.toHaveProperty("canExecute");
+    expect(state.devices[0]).not.toHaveProperty("authority");
+    expect(state.devices[0]).not.toHaveProperty("lease");
   });
 
   it("represents input waits from canonical status reason without inventing approval", async () => {

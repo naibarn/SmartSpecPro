@@ -28,6 +28,9 @@ export type RunnerCompanionScope = {
 
 type JsonRecord = Record<string, unknown>;
 
+const MAX_COMPANION_EVIDENCE = 100;
+const MAX_TASK_EVIDENCE_IDS = 32;
+
 function record(value: unknown): JsonRecord {
   return value && typeof value === "object" && !Array.isArray(value)
     ? (value as JsonRecord)
@@ -208,15 +211,22 @@ function taskStatus(input: {
 }): RunnerTaskStatus {
   const reason = input.statusReason?.toLowerCase() ?? "";
   const sessionState = input.runnerSessionState?.toLowerCase() ?? "";
+  const status = input.status.toLowerCase();
+
+  // The durable worker status is authoritative once it is terminal. Progress
+  // metadata can be stale after a reconnect and must not reopen a terminal
+  // task as an approval/input wait in the companion projection.
+  if (status === "cancelled" || status === "canceled") return "cancelled";
+  if (["succeeded", "completed"].includes(status)) return "completed";
+  if (status === "failed") return "failed";
+  if (status === "expired") return "expired";
   if (reason.includes("unknown_outcome") || sessionState === "unknown_outcome")
     return "unknown_outcome";
-  if (input.status === "cancelled" || input.status === "canceled")
-    return "cancelled";
   if (reason.startsWith("cancel_requested")) return "cancel_requested";
   if (input.approvalState === "pending") return "waiting_for_approval";
   if (input.inputRequired) return "waiting_for_input";
-  if (input.status === "waiting_external") return "waiting_external";
-  if (["pending", "queued", "retry_scheduled"].includes(input.status))
+  if (status === "waiting_external") return "waiting_external";
+  if (["pending", "queued", "retry_scheduled"].includes(status))
     return "queued";
   if (
     [
@@ -227,12 +237,9 @@ function taskStatus(input: {
       "uploading",
       "publishing",
       "indexing",
-    ].includes(input.status)
+    ].includes(status)
   )
     return "running";
-  if (["succeeded", "completed"].includes(input.status)) return "completed";
-  if (input.status === "expired") return "expired";
-  if (input.status === "failed") return "failed";
   return "unknown_outcome";
 }
 
@@ -413,22 +420,36 @@ export async function getRunnerCompanionState(
   const evidenceKeys = new Set<string>();
   const approvals: RunnerApprovalView[] = [];
   const tasks = jobProjection.items.map(job => {
-    const jobEvidence = job.outputRefs.flatMap(output => {
+    const jobEvidence: string[] = [];
+    for (const output of job.outputRefs) {
       const view = mapEvidence(job.id, output);
-      if (!view || evidenceKeys.has(view.evidenceId)) return [];
+      if (
+        !view ||
+        evidenceKeys.has(view.evidenceId) ||
+        evidence.length >= MAX_COMPANION_EVIDENCE ||
+        jobEvidence.length >= MAX_TASK_EVIDENCE_IDS
+      )
+        continue;
       evidenceKeys.add(view.evidenceId);
       evidence.push(view);
-      return [view.evidenceId];
-    });
+      jobEvidence.push(view.evidenceId);
+    }
     const approval = approvalByJobId.get(job.id) ?? null;
-    if (approval) approvals.push(approvalView(job.id, approval));
-    return mapTaskView(
+    const task = mapTaskView(
       job,
       observationByJobId.get(job.id),
       approval,
       inputIsRequired(progressByJobId.get(job.id), job.statusReason),
       jobEvidence
     );
+    // Keep resolved approval history, but never expose stale pending approval
+    // metadata as an actionable approval after the task is terminal.
+    if (
+      approval &&
+      (approval.state !== "pending" || task.status === "waiting_for_approval")
+    )
+      approvals.push(approvalView(job.id, approval));
+    return task;
   });
   const devices = runnerRows.map(row => mapRunnerDeviceView(row));
   const now = new Date().toISOString();

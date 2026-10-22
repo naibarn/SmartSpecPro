@@ -465,6 +465,41 @@ describe("RunnerGateway", () => {
     ).rejects.toMatchObject({ code: "RUNNER_PROFILE_MISMATCH" });
   });
 
+  it("does not turn a tenant-shared Runner into a user execution session", async () => {
+    const gateway = new RunnerGateway(new InMemoryRunnerRepository());
+    const auth = await verifyRunnerControlToken(
+      createRunnerControlToken({
+        runnerId: "runner-shared",
+        tenantId: "tenant-a",
+        profile: "local_device",
+        nodeKind: "local_device",
+        deviceBinding: localDeviceBinding,
+      })
+    );
+    await gateway.enroll({
+      auth,
+      deviceId: "device-1",
+      displayName: "Tenant Shared Runner",
+      ownerUserId: null,
+    });
+
+    await expect(
+      gateway.bindSession({
+        runnerId: "runner-shared",
+        tenantId: "tenant-a",
+        ownerUserId: 7,
+        runnerSessionId: "session-user-7",
+      })
+    ).rejects.toMatchObject({ code: "RUNNER_PERMISSION_DENIED" });
+    await expect(
+      gateway.revoke({
+        runnerId: "runner-shared",
+        tenantId: "tenant-a",
+        ownerUserId: 7,
+      })
+    ).rejects.toMatchObject({ code: "RUNNER_PERMISSION_DENIED" });
+  });
+
   it("rejects a capability publication from a reconnected local Runner session", async () => {
     const gateway = new RunnerGateway(new InMemoryRunnerRepository());
     const authOne = await verifyRunnerControlToken(
