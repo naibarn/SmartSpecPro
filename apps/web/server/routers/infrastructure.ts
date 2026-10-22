@@ -75,6 +75,7 @@ import { resolveCloudflareStagingArtifact, resolveLatestPublishedCloudflareStagi
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
 import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
+import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -608,7 +609,7 @@ export const infrastructureRouter = router({
         });
         const value = await response.json().catch(() => ({})) as Record<string, unknown>;
         if (!response.ok) {
-          const detail = typeof value.detail === "string" && /^[A-Z0-9_]+$/.test(value.detail) ? value.detail : "STAGING_APPROVAL_REJECTED";
+          const detail = cloudflareApprovalFailureCode(value, response.status);
           throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : response.status === 422 ? "BAD_REQUEST" : "BAD_GATEWAY", message: detail });
         }
         return value;
