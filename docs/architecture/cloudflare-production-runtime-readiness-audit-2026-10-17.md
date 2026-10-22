@@ -332,6 +332,19 @@ normal release controller with its rollback proof. Until a safe release path
 is established, the UI change is integrated and built but not available on
 production.
 
+The Admin operator subsequently configured the exact staging target and
+credential. A read-only production DB check confirmed the target is enabled,
+its account and Worker references are present, its credential reference is
+scope-bound, and one trusted non-expired staging executor exists. The latest
+published artifact remains source `35d92f1eff37a877ea56babe18fa5d25a021bab7`
+with build digest `aca257b8cca87e2872cd7d19252e7e18473d9e6c476ffe6460a1d364baa29dd7`.
+There is no active staging deployment policy and no grant for that artifact;
+prior grants are expired. A grant can only be issued by the existing
+authenticated tenant-owner policy endpoint. The local browser automation
+provider was unavailable (`orca-ide computer` sidecar exited with code 1), so
+no owner-authenticated operation was performed. Do not replace that path with
+direct DB writes or Wrangler.
+
 ### Required human authorization
 
 No authorization was needed for this read-only repository audit. Future staging work needs a Cloudflare staging account/token with only the required Worker/Assets, Hyperdrive, VPC/Tunnel, KV/R2/Queue permissions, plus a non-production DB/network role. Production pilot/cutover requires explicit platform/SRE and DB owner approval, a scoped audience/traffic decision, approved budget, on-call/rollback owner, and current backup/restore evidence. The 2026-09-29 permission probe was read-only, incomplete, and reported a 403 for Workers for Platforms dispatch namespace access; do not treat it as deployment approval.
