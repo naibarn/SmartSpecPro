@@ -7,7 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
@@ -49,6 +52,73 @@ function useText() {
   const { i18n } = useTranslation();
   const isThai = i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
   return (en: string, th: string) => isThai ? th : en;
+}
+
+type ScopeOption = { value: string; label: string };
+
+function SearchableScopeSelect({
+  label,
+  placeholder,
+  searchPlaceholder,
+  emptyMessage,
+  options,
+  value,
+  disabled = false,
+  onValueChange,
+}: {
+  label: string;
+  placeholder: string;
+  searchPlaceholder: string;
+  emptyMessage: string;
+  options: ScopeOption[];
+  value: string;
+  disabled?: boolean;
+  onValueChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find(option => option.value === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          role="combobox"
+          aria-label={label}
+          aria-expanded={open}
+          disabled={disabled}
+          className="w-full justify-between font-normal"
+        >
+          <span className="truncate">{selected?.label ?? placeholder}</span>
+          <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+        <Command>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandGroup>
+              {options.map(option => (
+                <CommandItem
+                  key={option.value}
+                  value={`${option.label} ${option.value}`}
+                  onSelect={() => {
+                    onValueChange(option.value);
+                    setOpen(false);
+                  }}
+                >
+                  <Check className={`size-4 ${value === option.value ? "opacity-100" : "opacity-0"}`} />
+                  {option.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function CredentialReadiness({ target }: { target: DeploymentTarget }) {
@@ -225,22 +295,29 @@ export default function AdminDeploymentTargets() {
       <HStack gap={3} wrap="wrap">
         <VStack gap={1}>
           <Label htmlFor="deployment-tenant">{text("Authenticated tenant", "Tenant ที่ยืนยันตัวตนแล้ว")}</Label>
-          <Select value={tenantId} onValueChange={value => { setTenantId(value); setProjectId(""); }}>
-            <SelectTrigger id="deployment-tenant"><SelectValue placeholder={text("Select tenant", "เลือก tenant")} /></SelectTrigger>
-            <SelectContent>
-              {(tenantsQuery.data ?? []).map(tenant => <SelectItem key={String(tenant.id)} value={String(tenant.id)}>{tenant.name} · {String(tenant.id)}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableScopeSelect
+            label={text("Authenticated tenant", "Tenant ที่ยืนยันตัวตนแล้ว")}
+            placeholder={text("Select tenant", "เลือก tenant")}
+            searchPlaceholder={text("Search tenant name or ID…", "ค้นหาชื่อหรือ ID ของ tenant…")}
+            emptyMessage={text("No tenant matches this search.", "ไม่พบ tenant ที่ตรงกับคำค้น")}
+            options={(tenantsQuery.data ?? []).map(tenant => ({ value: String(tenant.id), label: `${tenant.name} · ${String(tenant.id)}` }))}
+            value={tenantId}
+            onValueChange={value => { setTenantId(value); setProjectId(""); }}
+          />
           {tenantId && !validTenantId ? <p role="status">{text("Select an existing tenant to configure deployment targets.", "เลือก tenant ที่มีอยู่ในระบบเพื่อตั้งค่า deployment target")}</p> : null}
         </VStack>
         <VStack gap={1}>
           <Label htmlFor="deployment-project">{text("Canonical project", "Canonical project")}</Label>
-          <Select value={projectId} onValueChange={setProjectId} disabled={!validTenantId || projectsQuery.isLoading}>
-            <SelectTrigger id="deployment-project"><SelectValue placeholder={text("Select project", "เลือก project")} /></SelectTrigger>
-            <SelectContent>
-              {(projectsQuery.data ?? []).map(project => <SelectItem key={project.projectId} value={project.projectId}>{project.title} · {project.projectType} · {project.projectId}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SearchableScopeSelect
+            label={text("Canonical project", "Canonical project")}
+            placeholder={text("Select project", "เลือก project")}
+            searchPlaceholder={text("Search project name or ID…", "ค้นหาชื่อหรือ ID ของ project…")}
+            emptyMessage={text("No active project matches this search.", "ไม่พบ project ที่ active และตรงกับคำค้น")}
+            options={(projectsQuery.data ?? []).map(project => ({ value: project.projectId, label: `${project.title} · ${project.projectType} · ${project.projectId}` }))}
+            value={projectId}
+            disabled={!validTenantId || projectsQuery.isLoading}
+            onValueChange={setProjectId}
+          />
           {validTenantId && !projectsQuery.isLoading && projectsQuery.data?.length === 0 ? <p role="status">{text("No active canonical projects were found for this tenant.", "ไม่พบ canonical project ที่ active ใน tenant นี้")}</p> : null}
         </VStack>
         <VStack gap={1}>

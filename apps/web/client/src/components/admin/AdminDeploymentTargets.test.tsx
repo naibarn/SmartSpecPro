@@ -23,7 +23,11 @@ vi.mock("@/lib/trpc", () => ({
       listProviderDeploymentTargets: { invalidate: mocks.invalidate },
       getDeploymentCredentialState: { invalidate: mocks.invalidate },
     } }),
-    systemSettings: { listTenants: { useQuery: () => ({ data: [{ id: "tenant-ZCSKEM9s", name: "Tenant One" }] }) } },
+    systemSettings: { listTenants: { useQuery: () => ({ data: [
+      { id: "tenant-system", name: "System" },
+      { id: "tenant-codex-uat", name: "Codex UAT Isolated Tenant" },
+      { id: "tenant-ZCSKEM9s", name: "Tenant One" },
+    ] }) } },
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
       listProviderDeploymentTargets: { useQuery: () => ({ data: mocks.targets, isLoading: false, isError: mocks.targetsError, isFetching: false }) },
@@ -63,8 +67,10 @@ const existingTarget = {
 
 async function chooseScope(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
+  await user.type(screen.getByPlaceholderText("Search tenant name or ID…"), "Tenant One");
   await user.click(await screen.findByRole("option", { name: /Tenant One/ }));
   await user.click(screen.getByRole("combobox", { name: "Canonical project" }));
+  await user.type(screen.getByPlaceholderText("Search project name or ID…"), "Wiki");
   await user.click(await screen.findByRole("option", { name: /Wiki/ }));
   await user.click(screen.getByRole("combobox", { name: "Environment" }));
   await user.click(await screen.findByRole("option", { name: "staging" }));
@@ -72,8 +78,10 @@ async function chooseScope(user: ReturnType<typeof userEvent.setup>) {
 
 async function chooseProductionScope(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
+  await user.type(screen.getByPlaceholderText("Search tenant name or ID…"), "Tenant One");
   await user.click(await screen.findByRole("option", { name: /Tenant One/ }));
   await user.click(screen.getByRole("combobox", { name: "Canonical project" }));
+  await user.type(screen.getByPlaceholderText("Search project name or ID…"), "Wiki");
   await user.click(await screen.findByRole("option", { name: /Wiki/ }));
   await user.click(screen.getByRole("combobox", { name: "Environment" }));
   await user.click(await screen.findByRole("option", { name: "production" }));
@@ -84,6 +92,20 @@ describe("AdminDeploymentTargets", () => {
     vi.clearAllMocks();
     mocks.targets = [];
     mocks.targetsError = false;
+  });
+
+  it("filters the tenant list by name or ID instead of requiring scrolling", async () => {
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+
+    await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
+    const search = screen.getByPlaceholderText("Search tenant name or ID…");
+    await user.type(search, "tenant-ZCSKEM9s");
+
+    expect(await screen.findByRole("option", { name: /Tenant One/ })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /Codex UAT/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: /Tenant One/ }));
+    expect(screen.getByRole("combobox", { name: "Authenticated tenant" })).toHaveTextContent("Tenant One");
   });
 
   it("requires an explicit selection and displays scoped target and credential readiness", async () => {
