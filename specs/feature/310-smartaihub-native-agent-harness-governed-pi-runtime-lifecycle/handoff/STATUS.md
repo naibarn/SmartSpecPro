@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (MEDIUM)
 - Requirements: 0 pass / 101 unresolved of 101
 - Next action: Submit the scoped G0/G1 documentation checkpoint; obtain owner review and reconcile R1.0 source before resuming runtime-dependent sections.
-- Manifest generation: 3
+- Manifest generation: 4
 
 ## Source-declared status and relationship claims
 
