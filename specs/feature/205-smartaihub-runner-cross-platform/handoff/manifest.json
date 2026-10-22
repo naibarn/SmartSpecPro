@@ -380,7 +380,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 34,
+  "generation": 35,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
@@ -1597,23 +1597,26 @@
     "unresolved": 189
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:39:55.027937Z",
+  "updated_at": "2026-10-22T03:21:14.110692Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-manual-refresh-button-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/chat-runner-wp1-readonly-observation-20261022.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/codex-auth-status-probe-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-manual-refresh-button-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-desktop-review-build-0.2.27-20261009.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http400-route-classification-20261009.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-refresh-http409-reauth-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-token-session-refresh-fix-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-first-runner-routing-20261009.md"
     ],
     "freshness": "FRESH",
-    "required_profiles": [],
-    "sha": "79805356f9252e1ba6858d993dbcc42476788745",
-    "status": "PENDING",
+    "required_profiles": [
+      "quick"
+    ],
+    "sha": "740cb3ea18d1159ceb3bfe8f64d2e3da8c127a2a",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
