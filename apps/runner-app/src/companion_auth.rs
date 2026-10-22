@@ -12,6 +12,7 @@ use std::{
 
 const CLIENT_ID: &str = "smartaihub-runner-companion";
 const COMPANION_SCOPE: &str = "runner:companion:read";
+const CHAT_SCOPE: &str = "llm:chat";
 const SESSION_FILE: &str = "runner-companion-session.json";
 const PENDING_FILE: &str = "runner-companion-device.json";
 const MAX_RESPONSE_BYTES: u64 = 1024 * 1024;
@@ -37,6 +38,8 @@ pub struct CompanionSession {
     access_token: String,
     refresh_token: String,
     access_token_expires_at_ms: u64,
+    #[serde(default)]
+    scopes: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -69,6 +72,14 @@ pub struct CompanionAuthPoll {
     pub expires_at_ms: Option<u64>,
     pub tenant_id: Option<String>,
     pub user_id: Option<u64>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanionChatResult {
+    pub conversation_id: u64,
+    pub content: String,
+    pub assistant_message_id: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -287,6 +298,152 @@ fn request_json<T: for<'de> Deserialize<'de>>(
     serde_json::from_slice(&bytes).map_err(|_| "RUNNER_COMPANION_RESPONSE_INVALID".into())
 }
 
+fn request_sse(
+    endpoint: &str,
+    body: serde_json::Value,
+    access_token: &str,
+    device_id: &str,
+    idempotency_key: &str,
+) -> Result<String, String> {
+    let agent = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(120)))
+        .build()
+        .new_agent();
+    let request = ureq::http::Request::builder()
+        .method("POST")
+        .uri(endpoint)
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {access_token}"))
+        .header("X-Runner-Companion-Device-Id", device_id)
+        .header("Idempotency-Key", idempotency_key)
+        .body(serde_json::to_vec(&body).map_err(|_| "RUNNER_COMPANION_CHAT_REQUEST_INVALID")?)
+        .map_err(|_| "RUNNER_COMPANION_CHAT_REQUEST_INVALID")?;
+    let response = agent.run(request).map_err(|error| match error {
+        ureq::Error::StatusCode(401) => "RUNNER_COMPANION_UNAUTHORIZED",
+        ureq::Error::StatusCode(403) => "RUNNER_COMPANION_FORBIDDEN",
+        ureq::Error::Timeout(_) => "RUNNER_COMPANION_CHAT_TIMEOUT",
+        _ => "RUNNER_COMPANION_CHAT_TRANSPORT_FAILED",
+    })?;
+    let bytes = response
+        .into_body()
+        .with_config()
+        .limit(8 * 1024 * 1024)
+        .read_to_vec()
+        .map_err(|_| "RUNNER_COMPANION_CHAT_RESPONSE_INVALID")?;
+    String::from_utf8(bytes).map_err(|_| "RUNNER_COMPANION_CHAT_RESPONSE_INVALID".into())
+}
+
+fn trpc_data(value: serde_json::Value) -> Result<serde_json::Value, String> {
+    value
+        .get("result")
+        .and_then(|result| result.get("data"))
+        .and_then(|data| data.get("json").or(Some(data)))
+        .cloned()
+        .ok_or_else(|| "RUNNER_COMPANION_CHAT_RESPONSE_INVALID".into())
+}
+
+fn random_idempotency_key() -> Result<String, String> {
+    let mut bytes = [0_u8; 16];
+    fill(&mut bytes).map_err(|_| "RUNNER_COMPANION_ID_GENERATION_FAILED")?;
+    Ok(URL_SAFE_NO_PAD.encode(bytes))
+}
+
+pub fn submit_chat(
+    data_root: &str,
+    content: &str,
+    conversation_id: Option<u64>,
+) -> Result<CompanionChatResult, String> {
+    let path = session_path(data_root);
+    let Some(session) = read_protected::<CompanionSession>(&path)? else {
+        return Err("RUNNER_COMPANION_AUTH_REQUIRED".into());
+    };
+    let session = refresh_if_needed(data_root, session)?;
+    if !session.scopes.iter().any(|scope| scope == CHAT_SCOPE) {
+        return Err("RUNNER_COMPANION_CHAT_SCOPE_REQUIRED".into());
+    }
+    let conversation_id = match conversation_id {
+        Some(id) if id > 0 => id,
+        _ => {
+            let response: serde_json::Value = request_json(
+                "POST",
+                &format!(
+                    "{}/trpc/chat.createPersonalConversation",
+                    session.server_url
+                ),
+                json!({ "json": { "title": "SmartAIHub Companion" } }),
+                Some(&session.access_token),
+                Some(&session.device_id),
+            )?;
+            trpc_data(response)?
+                .get("id")
+                .and_then(serde_json::Value::as_u64)
+                .ok_or("RUNNER_COMPANION_CHAT_CONVERSATION_INVALID")?
+        }
+    };
+    let user_message: serde_json::Value = request_json(
+        "POST",
+        &format!("{}/trpc/chat.sendMessage", session.server_url),
+        json!({ "json": { "conversationId": conversation_id, "content": content } }),
+        Some(&session.access_token),
+        Some(&session.device_id),
+    )?;
+    let user_message = trpc_data(user_message)?;
+    if user_message
+        .get("id")
+        .and_then(serde_json::Value::as_u64)
+        .is_none()
+    {
+        return Err("RUNNER_COMPANION_CHAT_MESSAGE_REJECTED".into());
+    }
+    let idempotency_key = random_idempotency_key()?;
+    let sse = request_sse(
+        &format!("{}/api/llm/stream", session.server_url),
+        json!({
+            "messages": [{ "role": "user", "content": content }],
+            "stream": true,
+            "conversationId": conversation_id,
+        }),
+        &session.access_token,
+        &session.device_id,
+        &idempotency_key,
+    )?;
+    let mut assistant = String::new();
+    let mut assistant_message_id = None;
+    for line in sse.lines() {
+        let Some(data) = line.strip_prefix("data:") else {
+            continue;
+        };
+        let data = data.trim();
+        if data == "[DONE]" || data.is_empty() {
+            continue;
+        }
+        let parsed: serde_json::Value =
+            serde_json::from_str(data).map_err(|_| "RUNNER_COMPANION_CHAT_RESPONSE_INVALID")?;
+        if parsed.get("error").is_some() {
+            return Err("RUNNER_COMPANION_CHAT_FAILED".into());
+        }
+        if let Some(id) = parsed.get("id").and_then(serde_json::Value::as_u64) {
+            assistant_message_id = Some(id);
+        }
+        if let Some(content) = parsed.get("content").and_then(serde_json::Value::as_str) {
+            if assistant.is_empty() {
+                assistant.push_str(content);
+            }
+        }
+        if let Some(content) = parsed
+            .pointer("/choices/0/delta/content")
+            .and_then(serde_json::Value::as_str)
+        {
+            assistant.push_str(content);
+        }
+    }
+    Ok(CompanionChatResult {
+        conversation_id,
+        content: assistant,
+        assistant_message_id,
+    })
+}
+
 pub fn status(data_root: &str) -> CompanionAuthStatus {
     match read_protected::<CompanionSession>(&session_path(data_root)) {
         Ok(Some(session)) => {
@@ -344,7 +501,7 @@ pub fn begin_auth(control_url: &str, data_root: &str) -> Result<CompanionAuthSta
     let response: DeviceCodeResponse = request_json(
         "POST",
         &format!("{server_url}/auth/device/code"),
-        json!({ "client_id": CLIENT_ID, "device_id": device_id, "scopes": [COMPANION_SCOPE] }),
+        json!({ "client_id": CLIENT_ID, "device_id": device_id, "scopes": [COMPANION_SCOPE, CHAT_SCOPE] }),
         None,
         None,
     )?;
@@ -402,6 +559,11 @@ pub fn poll_auth(data_root: &str) -> Result<CompanionAuthPoll, String> {
             {
                 return Err("RUNNER_COMPANION_TOKEN_DEVICE_MISMATCH".into());
             }
+            let device_id_hash = hex(&device_hash);
+            if !token_claims_match_companion(&tokens.access_token, &device_id_hash, None, None) {
+                return Err("RUNNER_COMPANION_TOKEN_BINDING_INVALID".into());
+            }
+            let scopes = token_claim_scopes(&tokens.access_token);
             let session = CompanionSession {
                 server_url: pending.server_url,
                 tenant_id: token_tenant_id(&tokens.access_token)
@@ -409,12 +571,13 @@ pub fn poll_auth(data_root: &str) -> Result<CompanionAuthPoll, String> {
                 user_id: tokens.user.id,
                 session_id: token_claim_string(&tokens.access_token, "sessionId")
                     .ok_or("RUNNER_COMPANION_TOKEN_SESSION_MISSING")?,
-                device_id_hash: hex(&device_hash),
+                device_id_hash,
                 device_id: pending.device_id,
                 access_token: tokens.access_token,
                 refresh_token: tokens.refresh_token,
                 access_token_expires_at_ms: now_ms()
                     .saturating_add(tokens.expires_in.saturating_mul(1000)),
+                scopes,
             };
             write_protected(&session_path(data_root), &session)?;
             let _ = fs::remove_file(path);
@@ -437,6 +600,54 @@ pub fn poll_auth(data_root: &str) -> Result<CompanionAuthPoll, String> {
 
 fn token_tenant_id(token: &str) -> Option<String> {
     token_claim_string(token, "tenantId")
+}
+
+fn token_claims_match_companion(
+    token: &str,
+    expected_device_hash: &str,
+    expected_session_id: Option<&str>,
+    expected_tenant_id: Option<&str>,
+) -> bool {
+    let scopes = token_claim_scopes(token);
+    let valid_scopes = scopes == [COMPANION_SCOPE.to_string()]
+        || scopes == [COMPANION_SCOPE.to_string(), CHAT_SCOPE.to_string()];
+    token_claim_string(token, "clientId").as_deref() == Some(CLIENT_ID)
+        && token_claim_string(token, "aud").as_deref() == Some(CLIENT_ID)
+        && token_claim_string(token, "tokenUse").as_deref() == Some("desktop_session")
+        && token_claim_string(token, "deviceIdHash").as_deref() == Some(expected_device_hash)
+        && expected_session_id
+            .map(|expected| token_claim_string(token, "sessionId").as_deref() == Some(expected))
+            .unwrap_or(true)
+        && expected_tenant_id
+            .map(|expected| token_claim_string(token, "tenantId").as_deref() == Some(expected))
+            .unwrap_or(true)
+        && valid_scopes
+}
+
+fn token_claim_scopes(token: &str) -> Vec<String> {
+    let payload = match token.split('.').nth(1) {
+        Some(value) => value,
+        None => return Vec::new(),
+    };
+    let decoded = match URL_SAFE_NO_PAD.decode(payload) {
+        Ok(value) => value,
+        Err(_) => return Vec::new(),
+    };
+    let claims = match serde_json::from_slice::<serde_json::Value>(&decoded) {
+        Ok(value) => value,
+        Err(_) => return Vec::new(),
+    };
+    claims
+        .get("scopes")
+        .and_then(serde_json::Value::as_array)
+        .map(|scopes| {
+            scopes
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .map(ToString::to_string)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 fn token_claim_string(token: &str, claim: &str) -> Option<String> {
@@ -474,6 +685,15 @@ fn refresh_if_needed(
     if let Some(tenant_id) = token_tenant_id(&session.access_token) {
         session.tenant_id = tenant_id;
     }
+    if !token_claims_match_companion(
+        &session.access_token,
+        &session.device_id_hash,
+        Some(&session.session_id),
+        Some(&session.tenant_id),
+    ) {
+        return Err("RUNNER_COMPANION_TOKEN_BINDING_INVALID".into());
+    }
+    session.scopes = token_claim_scopes(&session.access_token);
     write_protected(&session_path(data_root), &session)?;
     Ok(session)
 }
@@ -513,6 +733,14 @@ pub fn logout(data_root: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn unsigned_token(claims: serde_json::Value) -> String {
+        format!(
+            "e30.{}.sig",
+            URL_SAFE_NO_PAD.encode(serde_json::to_vec(&claims).unwrap())
+        )
+    }
+
     #[test]
     fn status_does_not_expose_tokens() {
         let root = tempfile::tempdir().unwrap();
@@ -521,5 +749,47 @@ mod tests {
         assert!(!encoded.contains("access_token"));
         assert!(!encoded.contains("refresh_token"));
         assert_eq!(result.reason_code, "RUNNER_COMPANION_AUTH_REQUIRED");
+    }
+
+    #[test]
+    fn token_binding_allows_only_projection_and_chat_scopes() {
+        let device_hash = "device-hash";
+        let base = serde_json::json!({
+            "clientId": CLIENT_ID,
+            "aud": CLIENT_ID,
+            "tokenUse": "desktop_session",
+            "deviceIdHash": device_hash,
+            "sessionId": "session-a",
+            "tenantId": "tenant-a",
+        });
+        let mut read_claims = base.clone();
+        read_claims["scopes"] = serde_json::json!([COMPANION_SCOPE]);
+        let read_only = unsigned_token(read_claims);
+        let mut chat_claims = base.clone();
+        chat_claims["scopes"] = serde_json::json!([COMPANION_SCOPE, CHAT_SCOPE]);
+        let read_and_chat = unsigned_token(chat_claims);
+        let mut over_scoped_claims = base;
+        over_scoped_claims["scopes"] =
+            serde_json::json!([COMPANION_SCOPE, CHAT_SCOPE, "mcp:write"]);
+        let over_scoped = unsigned_token(over_scoped_claims);
+
+        assert!(token_claims_match_companion(
+            &read_only,
+            device_hash,
+            Some("session-a"),
+            Some("tenant-a")
+        ));
+        assert!(token_claims_match_companion(
+            &read_and_chat,
+            device_hash,
+            Some("session-a"),
+            Some("tenant-a")
+        ));
+        assert!(!token_claims_match_companion(
+            &over_scoped,
+            device_hash,
+            Some("session-a"),
+            Some("tenant-a")
+        ));
     }
 }

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "runner-chat",
+  "description": "SmartAIHub Chat Panel window permissions",
+  "windows": ["chat"],
+  "permissions": ["core:default"]
+}
