@@ -41,11 +41,42 @@ SYSTEMD_DROPIN = Path("/etc/systemd/system/smartspec-web.service.d/96-canonical-
 NODE_WORKER_SYSTEMD_DROPIN = Path(
     "/etc/systemd/system/smartspec-node-worker.service.d/95-runtime-artifact.conf"
 )
+WEB_NODE_SECURITY_DROPIN = Path(
+    "/etc/systemd/system/smartspec-web.service.d/95-node-runtime-security.conf"
+)
+NODE_WORKER_SECURITY_DROPIN = Path(
+    "/etc/systemd/system/smartspec-node-worker.service.d/94-node-runtime-security.conf"
+)
+NODE_EXECUTABLE = Path("/home/dev/.nvm/versions/node/v22.23.4/bin/node")
 NODE_VERSION_RE = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)$")
 
 
 class ReleaseError(RuntimeError):
     pass
+
+
+def _assert_patched_node_version(version: str, subject: str) -> None:
+    match = NODE_VERSION_RE.fullmatch(version)
+    if not match:
+        raise ReleaseError(f"{subject} did not report a valid Node version: {version}")
+    major, minor, patch = (int(part) for part in match.groups())
+    if major != 22 or (minor, patch) < (23, 4):
+        raise ReleaseError(f"{subject} is using Node {version}; require Node 22.23.4 or newer in Node 22")
+
+
+def node_executable_evidence(executable: Path = NODE_EXECUTABLE) -> dict[str, str]:
+    try:
+        result = subprocess.run(
+            [str(executable), "--version"], capture_output=True, text=True,
+            check=False, timeout=3,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ReleaseError(f"Cannot inspect patched Node executable {executable}: {exc}") from exc
+    version = result.stdout.strip()
+    if result.returncode != 0:
+        raise ReleaseError(f"Patched Node executable failed: {executable}: {result.stderr.strip()}")
+    _assert_patched_node_version(version, str(executable))
+    return {"executable": str(executable.resolve()), "version": version}
 
 
 def node_runtime_evidence(pid: int, proc_root: Path = Path("/proc")) -> dict[str, str]:
@@ -63,12 +94,9 @@ def node_runtime_evidence(pid: int, proc_root: Path = Path("/proc")) -> dict[str
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise ReleaseError(f"Cannot inspect Node executable for PID {pid}: {exc}") from exc
     version = result.stdout.strip()
-    match = NODE_VERSION_RE.fullmatch(version)
-    if result.returncode != 0 or not match:
+    if result.returncode != 0:
         raise ReleaseError(f"PID {pid} did not report a valid Node version: {version or result.stderr.strip()}")
-    major, minor, patch = (int(part) for part in match.groups())
-    if major != 22 or (minor, patch) < (23, 4):
-        raise ReleaseError(f"PID {pid} is using vulnerable Node {version}; require Node 22.23.4 or newer in Node 22")
+    _assert_patched_node_version(version, f"PID {pid}")
     if executable.endswith(" (deleted)"):
         raise ReleaseError(f"PID {pid} is running a deleted Node executable: {executable}")
     return {"executable": executable, "version": version}
@@ -369,7 +397,7 @@ class SystemdRuntime:
             raise ReleaseError("smartspec-web.service must be active before promotion")
         if self._run("show", self.service, "--property=User", "--value") != "dev":
             raise ReleaseError("smartspec-web.service owner differs from the approved Linux runtime")
-        node_runtime_evidence(self._main_pid())
+        node_executable_evidence()
         exec_start = self._run("show", self.service, "--property=ExecStart", "--value")
         if "--import tsx" not in exec_start or "server/_core/index.ts" not in exec_start:
             raise ReleaseError("smartspec-web.service entrypoint differs from the approved Node runtime")
@@ -377,8 +405,6 @@ class SystemdRuntime:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} must be active before promotion")
         if self._run("show", NODE_WORKER_SERVICE, "--property=User", "--value") != "dev":
             raise ReleaseError(f"{NODE_WORKER_SERVICE} owner differs from the approved Linux runtime")
-        worker_pid = int(self._run("show", NODE_WORKER_SERVICE, "--property=MainPID", "--value"))
-        node_runtime_evidence(worker_pid)
         worker_exec = self._run("show", NODE_WORKER_SERVICE, "--property=ExecStart", "--value")
         if "--import tsx" not in worker_exec or "server/jobs/postgresNodeJobWorker.ts" not in worker_exec:
             raise ReleaseError(f"{NODE_WORKER_SERVICE} entrypoint differs from the approved Node runtime")
@@ -786,6 +812,8 @@ def promote_artifact(
     runtime: Runtime,
     current_tip: Callable[[dict[str, Any]], str],
     node_worker_dropin_path: Path = NODE_WORKER_SYSTEMD_DROPIN,
+    node_security_dropin_path: Path = WEB_NODE_SECURITY_DROPIN,
+    node_worker_security_dropin_path: Path = NODE_WORKER_SECURITY_DROPIN,
     require_root: bool = True,
 ) -> dict[str, Any]:
     if require_root and os.geteuid() != 0:
@@ -915,10 +943,33 @@ def promote_artifact(
             f"WorkingDirectory={current_link}\n"
             f"Environment=RELEASE={source_sha}\n"
         )
+        node_executable = str(NODE_EXECUTABLE)
+        web_node_security_dropin = (
+            "[Service]\n"
+            f"Environment=PATH={NODE_EXECUTABLE.parent}:/usr/local/bin:/usr/bin:/bin\n"
+            "ExecStartPre=\n"
+            "ExecStartPre=/bin/bash -lc 'pids=$(ss -H -ltnp \"sport = :3000\" 2>/dev/null | sed -n \"s/.*pid=\\\\([0-9]\\\\+\\\\).*/\\\\1/p\" | sort -u); if [ -n \"$pids\" ]; then echo \"Stopping stale process(es) on port 3000: $pids\"; kill $pids 2>/dev/null || true; sleep 2; for pid in $pids; do kill -0 $pid 2>/dev/null && kill -9 $pid 2>/dev/null || true; done; fi'\n"
+            "ExecStartPre=/bin/bash -lc 'for i in $(seq 1 20); do ss -H -ltn \"sport = :3000\" 2>/dev/null | grep -q . || exit 0; sleep 0.5; done; echo \"FATAL: port 3000 still in use after 10s\"; exit 1'\n"
+            f"ExecStartPre={node_executable} /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs\n"
+            "ExecStart=\n"
+            f"ExecStart={node_executable} --import tsx server/_core/index.ts\n"
+        )
+        node_worker_security_dropin = (
+            "[Service]\n"
+            f"Environment=PATH={NODE_EXECUTABLE.parent}:/usr/local/bin:/usr/bin:/bin\n"
+            "ExecStartPre=\n"
+            f"ExecStartPre={node_executable} /home/dev/projects/SmartSpecPro/scripts/check-node-version.mjs\n"
+            "ExecStart=\n"
+            f"ExecStart={node_executable} --import tsx server/jobs/postgresNodeJobWorker.ts\n"
+        )
         activation_started = False
         try:
             _atomic_write_text(dropin_path, dropin)
             _atomic_write_text(node_worker_dropin_path, node_worker_dropin)
+            # Keep the Node security overrides through application rollback: the
+            # app artifact can roll back while the runtime patch remains active.
+            _atomic_write_text(node_security_dropin_path, web_node_security_dropin)
+            _atomic_write_text(node_worker_security_dropin_path, node_worker_security_dropin)
             runtime.daemon_reload()
             atomic_symlink(target, current_link)
             activation_started = True

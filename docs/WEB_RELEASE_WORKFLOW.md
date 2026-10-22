@@ -43,14 +43,14 @@ Only a verified promotion is reported as successful. A successful build alone
 does not update the website. No database migration or SPEC-224 job is run by
 this workflow.
 
-The promotion gate checks each currently serving process before making changes,
-then reads its executable through `/proc/<pid>/exe`, runs that executable's
-`--version`, and records the executable path and Node.js version for both the
-web service and Node job worker after activation. Node 22 must be at least
-22.23.4 for the 21 October 2026 security release; a lower or unidentifiable
-runtime blocks promotion before restart or fails post-activation verification.
-Cloudflare Workers use Workerd and are verified through their separate
-deployment path.
+The promotion gate verifies the patched Node executable is installed before
+making changes, writes scoped systemd drop-ins for the web service and Node job
+worker, and keeps those runtime overrides even if the application artifact is
+rolled back. After activation it reads each process executable through
+`/proc/<pid>/exe`, runs that executable's `--version`, and records the path and
+version. Node 22 must be at least 22.23.4 for the 21 October 2026 security
+release; a lower or unidentifiable runtime fails verification. Cloudflare
+Workers use Workerd and are verified through their separate deployment path.
 
 ### Scope database readiness to this release
 

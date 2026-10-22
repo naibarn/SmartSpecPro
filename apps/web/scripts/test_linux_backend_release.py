@@ -227,6 +227,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.current_link = self.release_root / "smartspec-web-current"
         self.dropin_path = self.root / "systemd/smartspec-web.service.d/96-canonical-release.conf"
         self.node_worker_dropin_path = self.root / "systemd/smartspec-node-worker.service.d/95-runtime-artifact.conf"
+        self.node_security_dropin_path = self.root / "systemd/smartspec-web.service.d/95-node-runtime-security.conf"
+        self.node_worker_security_dropin_path = self.root / "systemd/smartspec-node-worker.service.d/94-node-runtime-security.conf"
         self.lock_path = self.root / "canonical-leases/fixture/production-release.lock"
         self.receipt_root = self.ledger_root
         self.legacy = self.root / "legacy-runtime"
@@ -257,6 +259,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             runtime=self.runtime,
             current_tip=self.tip,
             node_worker_dropin_path=self.node_worker_dropin_path,
+            node_security_dropin_path=self.node_security_dropin_path,
+            node_worker_security_dropin_path=self.node_worker_security_dropin_path,
             require_root=False,
         )
 
@@ -270,6 +274,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertIn(f"Environment=RELEASE={self.source_sha}", self.dropin_path.read_text())
         self.assertIn("WorkingDirectory=" + str(self.current_link), self.node_worker_dropin_path.read_text())
         self.assertIn(f"Environment=RELEASE={self.source_sha}", self.node_worker_dropin_path.read_text())
+        self.assertIn("v22.23.4/bin/node --import tsx server/_core/index.ts", self.node_security_dropin_path.read_text())
+        self.assertIn("v22.23.4/bin/node --import tsx server/jobs/postgresNodeJobWorker.ts", self.node_worker_security_dropin_path.read_text())
         self.assertEqual(self.runtime.node_worker_active_path.resolve(), self.current_link.resolve())
         self.assertEqual(result["generation"], 1)
         release_path = Path(result["release_path"])
@@ -459,6 +465,8 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertFalse(self.current_link.exists())
         self.assertEqual(self.dropin_path.read_text(), original_dropin)
         self.assertFalse(self.node_worker_dropin_path.exists())
+        self.assertIn("v22.23.4/bin/node", self.node_security_dropin_path.read_text())
+        self.assertIn("v22.23.4/bin/node", self.node_worker_security_dropin_path.read_text())
         receipt = next((self.ledger_root / "production-deployments").glob("*.json"))
         self.assertEqual(json.loads(receipt.read_text())["status"], "ROLLED_BACK")
 
