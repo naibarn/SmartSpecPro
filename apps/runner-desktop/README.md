@@ -34,6 +34,25 @@ grants remain separate requirements for the work that needs them.
 Workspace paths and UI preferences are local. SmartAIHub receives workspace IDs
 and bounded capability status, not local absolute folder paths.
 
+## Floating Companion
+
+The desktop build includes a separate native `companion` window. It can be
+dragged, collapsed, docked to the nearest monitor edge, kept on top, themed for
+light/dark/system, hidden to the tray, and reopened without replacing the full
+Runner settings window. Position and size are stored as bounded physical-pixel
+preferences and are clamped back into the active monitor work area after a
+restart or monitor/DPI change. `Esc` hides the companion; the tray keeps the
+settings window and companion available.
+
+The companion currently shows local Runner connectivity and an explicit
+`runner-companion.v1` projection-unavailable state. The existing Runner access
+token authenticates the device control channel; it is not a browser user
+session and cannot authorize the tenant-scoped Task Control projection. The
+desktop does not reuse browser cookies or infer execution permission from
+device visibility. Task status, progress, approvals, and evidence remain
+hidden until an authenticated user-scoped desktop projection transport is
+implemented server-side.
+
 ## CLI
 
 The standalone CLI remains available on Windows, macOS, and Linux. For example:

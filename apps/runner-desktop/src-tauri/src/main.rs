@@ -29,18 +29,130 @@ use std::{
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, State, WindowEvent,
+    Manager, PhysicalPosition, PhysicalRect, PhysicalSize, State, WebviewWindow, WindowEvent,
 };
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
+use tauri_plugin_notification::NotificationExt;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+const COMPANION_MIN_WIDTH: u32 = 320;
+const COMPANION_MAX_WIDTH: u32 = 560;
+const COMPANION_MIN_HEIGHT: u32 = 150;
+const COMPANION_MAX_HEIGHT: u32 = 420;
+const COMPANION_EDGE_GUTTER: i32 = 12;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CompanionBounds {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+impl Default for CompanionBounds {
+    fn default() -> Self {
+        Self {
+            x: 24,
+            y: 24,
+            width: 380,
+            height: 178,
+        }
+    }
+}
+
+impl CompanionBounds {
+    fn bounded(self) -> Self {
+        Self {
+            x: self.x,
+            y: self.y,
+            width: self.width.clamp(COMPANION_MIN_WIDTH, COMPANION_MAX_WIDTH),
+            height: self
+                .height
+                .clamp(COMPANION_MIN_HEIGHT, COMPANION_MAX_HEIGHT),
+        }
+    }
+
+    fn fit_work_area(self, work_area: &PhysicalRect<i32, u32>) -> Self {
+        let bounds = self.bounded();
+        let width = bounds.width.min(work_area.size.width.saturating_sub(16));
+        let height = bounds.height.min(work_area.size.height.saturating_sub(16));
+        let min_x = i64::from(work_area.position.x) + i64::from(COMPANION_EDGE_GUTTER);
+        let min_y = i64::from(work_area.position.y) + i64::from(COMPANION_EDGE_GUTTER);
+        let max_x = i64::from(work_area.position.x) + i64::from(work_area.size.width)
+            - i64::from(width)
+            - i64::from(COMPANION_EDGE_GUTTER);
+        let max_y = i64::from(work_area.position.y) + i64::from(work_area.size.height)
+            - i64::from(height)
+            - i64::from(COMPANION_EDGE_GUTTER);
+        Self {
+            x: i64::from(bounds.x).clamp(min_x, max_x) as i32,
+            y: i64::from(bounds.y).clamp(min_y, max_y) as i32,
+            width,
+            height,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct CompanionPreferences {
+    #[serde(default)]
+    always_on_top: bool,
+    #[serde(default)]
+    edge_dock: bool,
+    #[serde(default = "default_companion_theme")]
+    theme: String,
+    #[serde(default)]
+    bounds: CompanionBounds,
+}
+
+fn default_companion_theme() -> String {
+    "system".into()
+}
+
+impl Default for CompanionPreferences {
+    fn default() -> Self {
+        Self {
+            always_on_top: false,
+            edge_dock: true,
+            theme: default_companion_theme(),
+            bounds: CompanionBounds::default(),
+        }
+    }
+}
+
+fn valid_companion_theme(theme: &str) -> bool {
+    matches!(theme, "system" | "light" | "dark")
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct DesktopSettings {
     default_workspace_id: Option<String>,
     auto_start_enabled: bool,
     #[serde(default)]
     first_launch_at_ms: Option<u64>,
+    #[serde(default = "default_companion_enabled")]
+    companion_enabled: bool,
+    #[serde(default)]
+    companion: CompanionPreferences,
+}
+
+fn default_companion_enabled() -> bool {
+    true
+}
+
+impl Default for DesktopSettings {
+    fn default() -> Self {
+        Self {
+            default_workspace_id: None,
+            auto_start_enabled: false,
+            first_launch_at_ms: None,
+            companion_enabled: default_companion_enabled(),
+            companion: CompanionPreferences::default(),
+        }
+    }
 }
 
 struct RunnerState {
@@ -120,6 +232,266 @@ fn setting_lock(state: &RunnerState) -> Result<std::sync::MutexGuard<'_, Desktop
         .settings
         .lock()
         .map_err(|_| "RUNNER_LOCAL_SETTINGS_LOCK_FAILED".into())
+}
+
+fn companion_window(app: &tauri::AppHandle) -> Result<WebviewWindow, String> {
+    app.get_webview_window("companion")
+        .ok_or_else(|| "RUNNER_COMPANION_WINDOW_UNAVAILABLE".into())
+}
+
+fn current_work_area(window: &WebviewWindow) -> Result<PhysicalRect<i32, u32>, String> {
+    if let Some(monitor) = window
+        .current_monitor()
+        .map_err(|_| "RUNNER_COMPANION_MONITOR_UNAVAILABLE".to_string())?
+    {
+        return Ok(*monitor.work_area());
+    }
+    window
+        .primary_monitor()
+        .map_err(|_| "RUNNER_COMPANION_MONITOR_UNAVAILABLE".to_string())?
+        .map(|monitor| *monitor.work_area())
+        .ok_or_else(|| "RUNNER_COMPANION_MONITOR_UNAVAILABLE".into())
+}
+
+fn apply_companion_preferences(
+    window: &WebviewWindow,
+    preferences: &CompanionPreferences,
+) -> Result<(), String> {
+    let work_area = current_work_area(window)?;
+    let bounds = preferences.bounds.clone().fit_work_area(&work_area);
+    window
+        .set_position(PhysicalPosition::new(bounds.x, bounds.y))
+        .map_err(|_| "RUNNER_COMPANION_POSITION_FAILED".to_string())?;
+    window
+        .set_size(PhysicalSize::new(bounds.width, bounds.height))
+        .map_err(|_| "RUNNER_COMPANION_SIZE_FAILED".to_string())?;
+    window
+        .set_always_on_top(preferences.always_on_top)
+        .map_err(|_| "RUNNER_COMPANION_TOPMOST_FAILED".to_string())
+}
+
+fn remember_companion_bounds(
+    state: &RunnerState,
+    window: &WebviewWindow,
+) -> Result<CompanionBounds, String> {
+    let position = window
+        .outer_position()
+        .map_err(|_| "RUNNER_COMPANION_POSITION_UNAVAILABLE".to_string())?;
+    let size = window
+        .outer_size()
+        .map_err(|_| "RUNNER_COMPANION_SIZE_UNAVAILABLE".to_string())?;
+    let bounds = CompanionBounds {
+        x: position.x,
+        y: position.y,
+        width: size.width,
+        height: size.height,
+    }
+    .bounded();
+    let work_area = current_work_area(window)?;
+    let bounds = bounds.fit_work_area(&work_area);
+    let mut settings = setting_lock(state)?;
+    settings.companion.bounds = bounds.clone();
+    write_settings(&state.settings_path, &settings)?;
+    Ok(bounds)
+}
+
+fn snap_bounds_to_nearest_edge(
+    current: CompanionBounds,
+    work_area: &PhysicalRect<i32, u32>,
+) -> CompanionBounds {
+    let current = current.fit_work_area(work_area);
+    let center_x = i64::from(current.x) + i64::from(current.width / 2);
+    let center_y = i64::from(current.y) + i64::from(current.height / 2);
+    let work_right = i64::from(work_area.position.x) + i64::from(work_area.size.width);
+    let work_bottom = i64::from(work_area.position.y) + i64::from(work_area.size.height);
+    let distances = [
+        ("left", (center_x - i64::from(work_area.position.x)).abs()),
+        ("right", (work_right - center_x).abs()),
+        ("top", (center_y - i64::from(work_area.position.y)).abs()),
+        ("bottom", (work_bottom - center_y).abs()),
+    ];
+    let edge = distances
+        .into_iter()
+        .min_by_key(|(_, distance)| *distance)
+        .map(|(edge, _)| edge)
+        .unwrap_or("right");
+    let mut snapped = current;
+    match edge {
+        "left" => snapped.x = work_area.position.x + COMPANION_EDGE_GUTTER,
+        "right" => snapped.x = work_right as i32 - snapped.width as i32 - COMPANION_EDGE_GUTTER,
+        "top" => snapped.y = work_area.position.y + COMPANION_EDGE_GUTTER,
+        _ => snapped.y = work_bottom as i32 - snapped.height as i32 - COMPANION_EDGE_GUTTER,
+    }
+    snapped.fit_work_area(work_area)
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CompanionProjectionStatus {
+    schema_version: &'static str,
+    availability: &'static str,
+    authentication: &'static str,
+    transport: &'static str,
+    reason_code: &'static str,
+    detail: &'static str,
+}
+
+/// The Runner access token authenticates the device control channel, not the
+/// browser user's tenant-scoped Task Control projection. Keep this explicit
+/// until an authorized desktop projection transport is added server-side.
+#[tauri::command]
+fn companion_projection_status() -> CompanionProjectionStatus {
+    CompanionProjectionStatus {
+        schema_version: "runner-companion.v1",
+        availability: "unavailable",
+        authentication: "runner_device_only",
+        transport: "not_configured",
+        reason_code: "RUNNER_COMPANION_USER_PROJECTION_AUTH_REQUIRED",
+        detail: "Task Control projection requires an authenticated user-scoped desktop transport; browser cookies and Runner device credentials are not interchangeable.",
+    }
+}
+
+#[tauri::command]
+fn companion_preferences(state: State<'_, RunnerState>) -> Result<CompanionPreferences, String> {
+    Ok(setting_lock(&state)?.companion.clone())
+}
+
+#[tauri::command]
+fn set_companion_preferences(
+    theme: String,
+    always_on_top: bool,
+    edge_dock: bool,
+    app: tauri::AppHandle,
+    state: State<'_, RunnerState>,
+) -> Result<CompanionPreferences, String> {
+    if !valid_companion_theme(&theme) {
+        return Err("RUNNER_COMPANION_THEME_INVALID".into());
+    }
+    let mut settings = setting_lock(&state)?;
+    settings.companion.theme = theme;
+    settings.companion.always_on_top = always_on_top;
+    settings.companion.edge_dock = edge_dock;
+    settings.companion.bounds = settings.companion.bounds.clone().bounded();
+    let next = settings.companion.clone();
+    write_settings(&state.settings_path, &settings)?;
+    drop(settings);
+    if let Some(window) = app.get_webview_window("companion") {
+        window
+            .set_always_on_top(next.always_on_top)
+            .map_err(|_| "RUNNER_COMPANION_TOPMOST_FAILED")?;
+    }
+    Ok(next)
+}
+
+#[tauri::command]
+fn show_companion(app: tauri::AppHandle, state: State<'_, RunnerState>) -> Result<(), String> {
+    let preferences = setting_lock(&state)?.companion.clone();
+    let window = companion_window(&app)?;
+    apply_companion_preferences(&window, &preferences)?;
+    window
+        .show()
+        .map_err(|_| "RUNNER_COMPANION_SHOW_FAILED".to_string())?;
+    window
+        .set_focus()
+        .map_err(|_| "RUNNER_COMPANION_FOCUS_FAILED".to_string())
+}
+
+#[tauri::command]
+fn hide_companion(app: tauri::AppHandle, state: State<'_, RunnerState>) -> Result<(), String> {
+    let window = companion_window(&app)?;
+    let _ = remember_companion_bounds(&state, &window);
+    window
+        .hide()
+        .map_err(|_| "RUNNER_COMPANION_HIDE_FAILED".to_string())
+}
+
+#[tauri::command]
+fn toggle_companion(app: tauri::AppHandle, state: State<'_, RunnerState>) -> Result<bool, String> {
+    let window = companion_window(&app)?;
+    if window
+        .is_visible()
+        .map_err(|_| "RUNNER_COMPANION_VISIBILITY_FAILED".to_string())?
+    {
+        let _ = remember_companion_bounds(&state, &window);
+        window
+            .hide()
+            .map_err(|_| "RUNNER_COMPANION_HIDE_FAILED".to_string())?;
+        Ok(false)
+    } else {
+        show_companion(app, state)?;
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+fn open_runner_settings(app: tauri::AppHandle) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "RUNNER_SETTINGS_WINDOW_UNAVAILABLE".to_string())?;
+    window
+        .show()
+        .map_err(|_| "RUNNER_SETTINGS_SHOW_FAILED".to_string())?;
+    window
+        .set_focus()
+        .map_err(|_| "RUNNER_SETTINGS_FOCUS_FAILED".to_string())
+}
+
+#[tauri::command]
+fn snap_companion_to_edge(
+    app: tauri::AppHandle,
+    state: State<'_, RunnerState>,
+) -> Result<CompanionBounds, String> {
+    let window = companion_window(&app)?;
+    let work_area = current_work_area(&window)?;
+    let current = CompanionBounds {
+        x: window
+            .outer_position()
+            .map_err(|_| "RUNNER_COMPANION_POSITION_UNAVAILABLE".to_string())?
+            .x,
+        y: window
+            .outer_position()
+            .map_err(|_| "RUNNER_COMPANION_POSITION_UNAVAILABLE".to_string())?
+            .y,
+        width: window
+            .outer_size()
+            .map_err(|_| "RUNNER_COMPANION_SIZE_UNAVAILABLE".to_string())?
+            .width,
+        height: window
+            .outer_size()
+            .map_err(|_| "RUNNER_COMPANION_SIZE_UNAVAILABLE".to_string())?
+            .height,
+    };
+    let snapped = snap_bounds_to_nearest_edge(current, &work_area);
+    window
+        .set_position(PhysicalPosition::new(snapped.x, snapped.y))
+        .map_err(|_| "RUNNER_COMPANION_POSITION_FAILED".to_string())?;
+    let mut settings = setting_lock(&state)?;
+    settings.companion.bounds = snapped.clone();
+    settings.companion.edge_dock = true;
+    write_settings(&state.settings_path, &settings)?;
+    Ok(snapped)
+}
+
+#[tauri::command]
+fn notify_companion(kind: String, app: tauri::AppHandle) -> Result<(), String> {
+    let (title, body) = match kind.as_str() {
+        "offline" => (
+            "SmartAIHub Runner",
+            "Runner is offline. Reconnect to refresh the device.",
+        ),
+        "reconnected" => ("SmartAIHub Runner", "Runner is connected again."),
+        "projection_unavailable" => (
+            "SmartAIHub Companion",
+            "Task Control is unavailable until an authenticated desktop projection is connected.",
+        ),
+        _ => return Err("RUNNER_COMPANION_NOTIFICATION_INVALID".into()),
+    };
+    app.notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|_| "RUNNER_COMPANION_NOTIFICATION_FAILED".into())
 }
 
 fn reset_refresh_backoff_for_manual_retry(
@@ -619,7 +991,9 @@ fn stop_runner(state: State<'_, RunnerState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn list_workspaces(state: State<'_, RunnerState>) -> Result<Vec<workspace_view::WorkspaceView>, String> {
+fn list_workspaces(
+    state: State<'_, RunnerState>,
+) -> Result<Vec<workspace_view::WorkspaceView>, String> {
     workspace_view::list(&state.config)
 }
 
@@ -747,6 +1121,7 @@ fn quit_runner(app: tauri::AppHandle, state: State<'_, RunnerState>) -> Result<(
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(
             tauri_plugin_autostart::Builder::new()
                 .args(["--background"])
@@ -784,10 +1159,16 @@ fn main() {
                 last_refresh_error: Mutex::new(None),
             });
 
-            let open =
-                MenuItem::with_id(app, "open", "Open SmartAIHub Runner", true, None::<&str>)?;
+            let open = MenuItem::with_id(app, "open", "Open Runner settings", true, None::<&str>)?;
+            let companion = MenuItem::with_id(
+                app,
+                "companion",
+                "Show Floating Companion",
+                true,
+                None::<&str>,
+            )?;
             let quit = MenuItem::with_id(app, "quit", "Quit Runner", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&open, &quit])?;
+            let menu = Menu::with_items(app, &[&companion, &open, &quit])?;
             let tray_icon = app
                 .default_window_icon()
                 .cloned()
@@ -797,6 +1178,11 @@ fn main() {
                 .tooltip("SmartAIHub Runner")
                 .icon(tray_icon)
                 .on_menu_event(|app, event| match event.id().as_ref() {
+                    "companion" => {
+                        if let Some(state) = app.try_state::<RunnerState>() {
+                            let _ = show_companion(app.clone(), state);
+                        }
+                    }
                     "open" => {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
@@ -838,17 +1224,49 @@ fn main() {
                         }
                     }
                 }
+            } else if settings.companion_enabled {
+                if let Some(window) = app.get_webview_window("companion") {
+                    let preferences = app.try_state::<RunnerState>().and_then(|state| {
+                        state
+                            .settings
+                            .lock()
+                            .ok()
+                            .map(|settings| settings.companion.clone())
+                    });
+                    if let Some(preferences) = preferences {
+                        let _ = apply_companion_preferences(&window, &preferences);
+                    }
+                    let _ = window.show();
+                }
             }
             Ok(())
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
+                if window.label() == "companion" {
+                    let app = window.app_handle();
+                    if let (Some(state), Some(companion)) = (
+                        app.try_state::<RunnerState>(),
+                        app.get_webview_window("companion"),
+                    ) {
+                        let _ = remember_companion_bounds(&state, &companion);
+                    }
+                }
                 let _ = window.hide();
             }
         })
         .invoke_handler(tauri::generate_handler![
             runner_status,
+            companion_projection_status,
+            companion_preferences,
+            set_companion_preferences,
+            show_companion,
+            hide_companion,
+            toggle_companion,
+            open_runner_settings,
+            snap_companion_to_edge,
+            notify_companion,
             retry_runner_credentials,
             connect_runner,
             rescan_runner,
@@ -931,6 +1349,76 @@ mod credential_retry_tests {
         assert_eq!(
             last_attempt.map(|(at, state)| (at, state)),
             Some((attempt, "renewing"))
+        );
+    }
+}
+
+#[cfg(test)]
+mod companion_preference_tests {
+    use super::{
+        default_companion_theme, snap_bounds_to_nearest_edge, valid_companion_theme,
+        CompanionBounds, CompanionPreferences, PhysicalPosition, PhysicalRect, PhysicalSize,
+    };
+
+    #[test]
+    fn bounds_are_bounded_and_fit_the_current_monitor_work_area() {
+        let work_area = PhysicalRect {
+            position: PhysicalPosition::new(-1920, 0),
+            size: PhysicalSize::new(1920, 1080),
+        };
+        let bounds = CompanionBounds {
+            x: 100_000,
+            y: -100_000,
+            width: 10_000,
+            height: 1,
+        }
+        .fit_work_area(&work_area);
+
+        assert_eq!(bounds.width, 560);
+        assert_eq!(bounds.height, 150);
+        assert_eq!(bounds.x, -572);
+        assert_eq!(bounds.y, 12);
+    }
+
+    #[test]
+    fn snapping_uses_physical_monitor_edges_and_supports_negative_coordinates() {
+        let work_area = PhysicalRect {
+            position: PhysicalPosition::new(-1920, 40),
+            size: PhysicalSize::new(1920, 1040),
+        };
+        let snapped = snap_bounds_to_nearest_edge(
+            CompanionBounds {
+                x: -1900,
+                y: 480,
+                width: 380,
+                height: 178,
+            },
+            &work_area,
+        );
+
+        assert_eq!(snapped.x, -1908);
+        assert_eq!(snapped.y, 480);
+        assert_eq!(snapped.width, 380);
+        assert_eq!(snapped.height, 178);
+    }
+
+    #[test]
+    fn preferences_default_to_system_theme_and_reject_unknown_themes() {
+        let preferences = CompanionPreferences::default();
+        assert_eq!(preferences.theme, default_companion_theme());
+        assert!(valid_companion_theme("dark"));
+        assert!(!valid_companion_theme("midnight"));
+    }
+
+    #[test]
+    fn projection_status_is_explicitly_unavailable_without_user_transport() {
+        let status = super::companion_projection_status();
+        assert_eq!(status.schema_version, "runner-companion.v1");
+        assert_eq!(status.availability, "unavailable");
+        assert_eq!(status.authentication, "runner_device_only");
+        assert_eq!(
+            status.reason_code,
+            "RUNNER_COMPANION_USER_PROJECTION_AUTH_REQUIRED"
         );
     }
 }

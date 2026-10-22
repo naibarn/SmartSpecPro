@@ -17,6 +17,20 @@
         "minWidth": 720,
         "minHeight": 600,
         "resizable": true
+      },
+      {
+        "label": "companion",
+        "url": "companion.html",
+        "title": "SmartAIHub Companion",
+        "width": 380,
+        "height": 178,
+        "minWidth": 320,
+        "minHeight": 150,
+        "decorations": false,
+        "transparent": true,
+        "visible": false,
+        "resizable": false,
+        "skipTaskbar": true
       }
     ],
     "security": {
