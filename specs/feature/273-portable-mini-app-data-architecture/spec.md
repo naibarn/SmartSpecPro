@@ -2992,4 +2992,107 @@ These decisions MUST NOT weaken the invariants in this specification.
 
 ---
 
-**End of Spec 273**
+**End of Spec 273 R1.1 baseline**
+
+# Revision R1.2 — Independent Database Ownership and Cloudflare Multi-Account Placement (2026-10-22)
+
+## 64. Database ownership is independent of runtime placement
+
+The Storage Resolver MUST choose runtime placement, database provider,
+database owner, provider bill payer, access strategy and customer-credit payer
+as independent dimensions. A Mini App MUST NOT be forced onto SmartAIHub Core
+PostgreSQL because it is built or hosted by SmartAIHub. Supported choices
+include shared-account D1, customer-account D1, platform-managed Neon or
+PlanetScale, customer-owned Neon or PlanetScale, customer-owned PostgreSQL,
+and shared or dedicated logical/physical database profiles, subject to
+capability and authorization checks.
+
+The manifest and resolved placement MUST bind stable App/release/deployment
+identity, tenant, environment, provider/account reference, resource owner,
+provider bill payer, authority grant, budget/quota policy, access strategy,
+schema version, residency, portability level and lifecycle state. These
+references MUST NOT contain secret values. Owner, payer, service provider and
+operator authority MUST remain distinct.
+
+## 65. Cloudflare D1 account compatibility
+
+Native D1 bindings MAY be selected when the authorized D1 database is
+provisioned in the Worker deployment account. A customer-owned D1 database
+therefore naturally pairs with a Worker deployed into that customer account.
+The platform MUST NOT assume direct binding of a D1 resource across Cloudflare
+accounts. Official documentation reviewed for R1.2 uses account-scoped D1
+resource APIs and account-scoped Workers binding configuration, but does not
+explicitly settle cross-account binding support; direct cross-account use is
+UNKNOWN and fails closed until verified. A separately authorized Gateway or
+service/RPC capability may mediate access without transferring ownership.
+
+D1 is appropriate only while database size, serial per-database query
+execution, per-account storage, query duration and Worker binding limits fit
+the declared workload. At current documented Paid limits a D1 database is
+single-threaded, up to 10 GB, with 50,000 databases and 1 TB aggregate account
+storage as published defaults; these limits and pricing MUST be checked again
+at provisioning. High-concurrency or large workloads MUST be routed to a
+certified pooled PostgreSQL provider or dedicated backend before a hard limit
+is reached, with an authorized migration plan.
+
+## 66. Database access strategy and pool admission
+
+The resolver MUST select among native D1 binding, Hyperdrive, provider-native
+pooling, secure Gateway, or narrow service/RPC capabilities based on owner,
+placement, private-network reachability, transaction/session semantics,
+latency, quota and cost. One Hyperdrive configuration per Mini App MUST NOT
+be the default: current Cloudflare documentation lists a 25 configured
+database per Paid account limit and approximately 100 origin connections per
+configuration. Configurations MAY be shared only when apps use the same
+origin database and security boundary. Dedicated configurations consume an
+explicit account quota reservation and budget.
+
+For Neon, the pooled endpoint and runtime limits MUST be selected and tested
+for the actual driver/ORM and transaction/session behavior. For PlanetScale
+PostgreSQL, provider-native PgBouncer transaction pooling SHOULD be evaluated
+before adding a Hyperdrive layer; Vitess or other engines require a declared
+SQL compatibility profile. Pooling MUST NOT be treated as database capacity
+or as permission to exceed provider connection, CPU, storage or spend limits.
+
+Each adapter MUST declare and pass: tenant isolation, credential scope,
+transaction/isolation semantics, idempotent retry rules, connection saturation
+behavior, provider outage behavior, measured p50/p95 latency budget, usage
+attribution, export/restore behavior, and cost acceptance. Numeric latency and
+data-loss thresholds remain UNKNOWN until captured in a workload-specific
+non-production qualification and approved by the owning authority.
+
+## 67. Independent lifecycle and customer ownership
+
+Provision, configure, deploy, meter, scale, optimize, suspend/restrict,
+resume, migrate, archive and delete transitions MUST each name the resource
+owner, bill payer, authority grant, actor, budget/quota policy, expiry,
+idempotency key, data-consistency condition and audit evidence. Long-running
+transitions use SPEC-224/Feature-195 durable jobs. Auto-scale is allowed only
+within an approved envelope. Cross-provider/account migration requires
+authority on source and destination, backup/export, schema/data validation,
+reconciliation, cutover, rollback and customer-visible consent. It MUST NOT
+run automatically.
+
+Disconnecting BYOD/BYOC revokes SmartAIHub access and preserves customer data
+and provider resources. Customer-owned resource deletion requires its own
+explicit authority. Archive preserves export and restore semantics. Orphan
+discovery is observe-only by default; remedial mutation requires the same
+resource-specific authority and budget as provisioning.
+
+## 68. Provider usage and cost guard
+
+When SmartAIHub is the provider bill payer, SPEC-207 MUST reserve bounded
+exposure before billable use and settle/reconcile from deduplicated provider
+evidence; SPEC-280 owns meter, billability and rate-card facts. Apply per
+account/tenant/App/provider/resource concurrency, quota, budget, forecast,
+margin and abnormal-usage guards. Provider reporting may be delayed or
+corrected: zero-loss metering MUST NOT be guaranteed. Late usage is recorded
+as an adjustment against the original lineage, and uncertain exposure remains
+pending or is restricted within the approved envelope.
+
+When the customer directly pays the provider, provider usage MUST NOT be
+charged again through SmartAIHub credits. Charge only the contracted
+SmartAIHub service/skill/AI/managed-service rate. A customer-owned Worker
+that can reach a platform-paid database MUST use a scoped metering Gateway or
+be denied direct credentials, so it cannot bypass credit admission or usage
+attribution.

@@ -1390,3 +1390,53 @@ Marketplace/tenant-authored vertical packages are privileged application extensi
 SPEC-288 R1.4 is implementation-ready when the platform can preserve not only portable schemas and actions, but also historical meaning, deterministic calculations, scarce-resource correctness, replay-safe integration, governance obligations, portable identity/serialization, ruleset provenance, integrity observability and package least authority across UI, Agent/MCP/WebMCP, workflow, offline and standalone execution paths.
 
 Canonical rule: a portable application contract must preserve meaning across time, retries, concurrency, provider changes, offline partitions, integrations and package upgrades. Reuse mutable master data for current operations, snapshot/version-pin committed facts, revalidate derived views before mutation, bound authority for scarce resources, and require every human/agent/integration path to settle through the same versioned semantic actions and evidence rules.
+
+# R1.5 — Cloud Resource Ownership, Placement and Cost Attribution (2026-10-22)
+
+## 91. Resource owner, payer and operator are separate
+
+Every provisioned or bound application resource MUST represent its owner,
+provider bill payer, SmartAIHub service provider, customer-credit payer, and
+current lifecycle operator separately. A resource record MUST bind tenant,
+App/release/deployment, provider, account/organization, resource ID, owner
+class/reference, payer class/reference, access strategy, credential reference,
+authority grant, budget/quota policy, residency, schema/version, lifecycle
+state, creation/update timestamps and last reconciliation evidence. Secret
+material MUST remain in SPEC-272 authority, never in this model or package.
+
+Cloudflare account, Worker deployment, D1/database, Hyperdrive/pool, R2,
+Queue/Workflow and Gateway resources MUST use stable provider identity and
+account-scoped references. Development may collapse Core/shared accounts
+temporarily, but the logical identities and config boundaries remain distinct.
+
+## 92. Lifecycle action contract
+
+Provider resource transitions are semantic actions and MUST carry an
+idempotency key, actor/principal, current tenant/App scope, source and target
+resource references, expected version, authority grant, budget/quota
+decision, expiry, consistency condition and audit receipt. Long-running work
+uses existing SPEC-224/Feature-195 durable execution. Observe/reconcile is
+read-only by default; automatic remediation, account transfer, migration or
+deletion requires a distinct authorized action.
+
+For customer-owned resources, detach/disconnect means SmartAIHub access is
+revoked while resource ownership and data remain with the customer. The
+resource fabric MUST NOT infer a deletion right from a deploy/manage grant.
+Export, archive, transfer, uninstall and delete remain separate actions.
+
+## 93. Cost evidence and settlement linkage
+
+Provider meter observations MUST reference source event/watermark, provider,
+resource, App, deployment, tenant, quantity/unit, confidence/finality,
+price snapshot and bill-payer reference. SPEC-280 remains the authority for
+usage meaning, billability, pricing and revenue allocation. SPEC-207 remains
+the authority for economic authorization, reservation, ledger and
+settlement. Resource Fabric MUST NOT introduce another meter, wallet, billing
+ledger or provider reconciliation authority.
+
+Provider bill payer MUST be explicit before admission. If the customer pays
+the provider, the same provider usage is not billed again as SmartAIHub
+provider pass-through; contracted SmartAIHub service charges remain separate.
+If SmartAIHub pays, measured usage and reservation/settlement lineage must be
+reconcilable while allowing late provider adjustments. Cost/usage uncertainty
+is surfaced; zero-loss guarantees are prohibited without provider evidence.

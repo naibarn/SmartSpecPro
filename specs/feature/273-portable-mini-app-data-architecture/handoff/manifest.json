@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/273-portable-mini-app-data-architecture/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "6ab8fc6d290a7e42dd7df195aa433f5d092edc74",
-    "expected_spec_digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2"
+    "expected_spec_digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e"
   },
   "continuation": {
     "next_action": null,
@@ -36,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/273-portable-mini-app-data-architecture/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/273-portable-mini-app-data-architecture/spec.md"
       }
@@ -71,16 +71,16 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 2,
+  "generation": 4,
   "identity": {
     "canonical_path": "specs/feature/273-portable-mini-app-data-architecture/spec.md",
-    "digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+    "digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T04:27:57.828034Z",
+      "last_evidence_at": "2026-10-22T02:43:35.138951Z",
       "last_runtime_reference_at": null,
-      "spec_created_at": null,
-      "spec_last_changed_at": null
+      "spec_created_at": "2026-10-06T11:34:46+07:00",
+      "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
     },
     "revision": "1.1",
     "slug": "273-portable-mini-app-data-architecture",
@@ -101,10 +101,10 @@
     "integrated_at": "2026-10-06T04:36:24Z"
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T04:27:57.828034Z"
+    "updated_at": "2026-10-22T02:43:35.138951Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -114,10 +114,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T04:27:57.828034Z",
+    "reconciled_at": "2026-10-22T02:43:35.138951Z",
     "sources": [
       {
-        "digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/273-portable-mini-app-data-architecture/spec.md"
       },
@@ -129,11 +129,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/273-portable-mini-app-data-architecture/spec.md",
-        "source_digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "source_digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
         "value": "Implementation-ready — R1.1 after 12-pass gap review"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -155,14 +160,14 @@
         "excerpt": "**Status:** Implementation-ready — R1.1 after 12-pass gap review",
         "line": 3,
         "source": "specs/feature/273-portable-mini-app-data-architecture/spec.md",
-        "source_digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "source_digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
         "value": "Implementation-ready — R1.1 after 12-pass gap review"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2",
+        "digest": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/273-portable-mini-app-data-architecture/spec.md"
       }
@@ -178,11 +183,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 228,
-    "unresolved": 228
+    "total": 247,
+    "unresolved": 247
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T04:37:58.444295Z",
+  "updated_at": "2026-10-22T02:43:35.138951Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

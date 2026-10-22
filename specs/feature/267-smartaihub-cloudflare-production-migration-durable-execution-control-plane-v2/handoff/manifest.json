@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "f706b573873484c90af08e265ac2dfd98d14325a",
-    "expected_spec_digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3"
+    "expected_spec_digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de"
   },
   "continuation": {
     "next_action": "Continue same SPEC-267 WorkUnit with durable no-compatible-worker/queue-stall reasons, authenticated worker health/resource predicates, stall/loop detection and independent-work selection on the existing worker_jobs/outbox path. Then run process-restart and live worker-loss UAT on isolated current-schema DB, and benchmark the single-machine baseline before any multi-machine default.",
@@ -36,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 19,
+  "generation": 20,
   "identity": {
     "canonical_path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-    "digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+    "digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-11T01:58:45.613180Z",
+      "last_evidence_at": "2026-10-22T02:42:44.218430Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T11:34:46+07:00",
       "spec_last_changed_at": "2026-10-06T11:34:46+07:00"
@@ -123,7 +123,7 @@
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-11T01:58:45.613180Z"
+    "updated_at": "2026-10-22T02:42:44.218430Z"
   },
   "manual_decisions": {
     "requirements": {
@@ -218,10 +218,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-11T01:58:45.613180Z",
+    "reconciled_at": "2026-10-22T02:42:44.218430Z",
     "sources": [
       {
-        "digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       },
@@ -233,7 +233,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 9,
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "source_digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "value": "CANONICAL_IMPLEMENTATION_PLAN"
       },
       {
@@ -245,7 +245,7 @@
         "line": 33,
         "relation": "SUPERSEDES",
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "source_digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "target_spec_ids": [],
         "value": ""
       }
@@ -277,7 +277,7 @@
         "excerpt": "status: CANONICAL_IMPLEMENTATION_PLAN",
         "line": 9,
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "source_digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "value": "CANONICAL_IMPLEMENTATION_PLAN"
       },
       {
@@ -288,7 +288,7 @@
         "line": 33,
         "relation": "SUPERSEDES",
         "source": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-        "source_digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "source_digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "target_spec_ids": [],
         "value": ""
       }
@@ -296,7 +296,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "e7209d2b9fcfd16f9381e430550c45bb4603bf6d59a64fddbffa63b7e49fa8e3",
+        "digest": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md"
       }
@@ -312,11 +312,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 365,
-    "unresolved": 365
+    "total": 371,
+    "unresolved": 371
   },
   "schema_version": 1,
-  "updated_at": "2026-10-11T01:58:45.613180Z",
+  "updated_at": "2026-10-22T02:42:44.218430Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

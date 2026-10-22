@@ -2,11 +2,11 @@
 # 273 — Spec 273 — Portable Mini App Data Architecture, Database Authority, Storage Resolution & Migration Control
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 228 unresolved of 228
+- Requirements: 0 pass / 247 unresolved of 247
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 2
+- Manifest generation: 4
 
 ## Source-declared status and relationship claims
 

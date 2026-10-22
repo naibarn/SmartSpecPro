@@ -2203,3 +2203,30 @@ Verified on 2026-10-02 against Cloudflare documentation:
 Clef calls SHALL use the existing provider credential/binding broker and least-privilege Cloudflare account credentials; never hardcode a token or expose it to tenants, model prompts, logs, or task output. Resolve platform-owned versus tenant-owned Cloudflare accounts using existing tenant configuration and policy. Record the account ownership class and a non-secret credential reference for billing/cost attribution. Do not create a Clef-specific secret store or require an external Jev subscription for normal operation. The tenant may retain BYO providers and may use a tenant-owned Cloudflare account where existing multi-tenant policy permits.
 
 Acceptance: credential resolution is tenant-scoped, revocable, auditable, and uses existing secret ownership; provider failure never triggers a cross-tenant credential fallback; and platform billing, tenant responsibility, and SmartAIHub credit attribution remain distinct.
+
+# Additive amendment — Customer Cloudflare and database-provider credentials (2026-10-22)
+
+Cloudflare account credentials used for Mini App BYOC deployment and Neon,
+PlanetScale or customer PostgreSQL credentials MUST use this SPEC's existing
+credential vault/broker authority. A credential reference MUST be scoped to
+the tenant, provider, account/organization, environment, resource class,
+allowed operations, expiry, credential owner and rotation/revocation epoch.
+The platform MUST validate the connected account identity and required
+permissions with the narrowest supported API token before provision or
+deployment. Global API keys and credentials copied into generated code,
+Worker bindings, prompts, logs or artifacts are prohibited.
+
+Account connection, permission validation, resource access, token rotation,
+revocation and disconnection are separately auditable lifecycle events.
+Revocation MUST fence future operations promptly and invalidate cached
+authority; it MUST NOT delete customer-owned Workers, databases, domains or
+data. Disconnect MUST remove SmartAIHub access while retaining customer
+resource ownership. A provider API lacking a demonstrably least-privilege
+scope remains UNKNOWN and cannot be broadened by silently using an account
+owner/global token.
+
+Acceptance MUST cover wrong-account and insufficient-scope denial, tenant
+credential isolation, rotation, revocation during an in-flight operation,
+redaction, stale credential references, provider outage and customer
+disconnect with resource preservation. This amendment does not assert that a
+complete production BYOC token flow is implemented.

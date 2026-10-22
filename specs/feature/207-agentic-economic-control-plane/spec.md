@@ -7886,3 +7886,45 @@ real-money mode, and records exact source SHA, test profile, evidence and
 ledger-invariant results. Route activation additionally requires security,
 compliance, reconciliation, rollback and operational approval under existing
 authorities. No production charge is authorized by passing these tests.
+
+# 203. Mini App provider-cost authorization and settlement boundary (2026-10-22)
+
+SPEC-207 owns economic admission, budget exposure, reservation, ledger and
+settlement when SmartAIHub pays a provider for Mini App compute or data
+resources. SPEC-280 owns provider-usage meter meaning, billability, price
+snapshot and commercial allocation. SPEC-273 owns Mini App data placement and
+SPEC-219 owns runtime placement. These boundaries MUST NOT create a second
+wallet, provider billing ledger, meter or resource provisioner.
+
+Before any platform-paid provision, deployment, database use or scale action,
+the economic authority MUST reserve a conservative, bounded exposure against
+the server-derived tenant, App, provider account, resource, environment and
+approved budget/quota. The grant MUST include a maximum spend/quantity,
+concurrency cap, expiry, pricing/rate snapshot, idempotency identity and
+policy version. Repeated provision or scale requests with the same intent are
+idempotent; changed scope requires a new admission decision. No auto-scale
+may exceed this approved envelope.
+
+Usage observations and invoices may be delayed, duplicated, corrected or
+incomplete. SmartAIHub MUST NOT promise zero loss or exact final cost before
+provider evidence is final. Track source watermark and confidence, keep
+unsettled exposure bounded, deduplicate identical observations, and post late
+cost as a linked adjustment. An uncertain provider result MUST NOT trigger
+duplicate billable execution or failover until its state is reconciled. If
+estimated exposure exceeds the reservation or margin/quota guard, deny new
+billable work and leave an auditable pending reconciliation state.
+
+When the customer pays Cloudflare, Neon, PlanetScale or another provider
+directly, SPEC-207 MUST NOT reserve/debit customer credits for the same
+provider usage. It MAY authorize separate contracted SmartAIHub service,
+Skill, AI or management charges. Customer-owned compute reaching a
+platform-paid database MUST use the metered scoped Gateway or be denied
+direct credentials, preserving admission and usage evidence.
+
+Acceptance MUST include concurrent credit reservation, budget exhaustion,
+provider API failure/unknown outcome, duplicate usage events, stale provider
+watermark, late invoice adjustment, cost overrun, margin guard, quota
+enforcement, customer-paid no-double-bill, platform-paid final
+reconciliation, and restart recovery. Deterministic provider mocks prove
+control behavior but do not constitute a real provider invoice or zero-loss
+guarantee.

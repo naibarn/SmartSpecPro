@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -87,7 +87,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
-    "expected_spec_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d"
+    "expected_spec_digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf"
   },
   "continuation": {
     "next_action": "SPEC-207 R6 normative contract is documented and reconciled; implement the transactional PostgreSQL payment repository, map production SPEC-280 receipts/allocation snapshots, and prove crash/restart mock E2E plus ledger invariants. Do not enable provider routes or change SPEC-224 acceptance. Evidence: handoff/evidence/commercial-payment-normative-alignment-20261019.md.",
@@ -101,7 +101,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -193,7 +193,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -266,13 +266,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 31,
+  "generation": 32,
   "identity": {
     "canonical_path": "specs/feature/207-agentic-economic-control-plane/spec.md",
-    "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+    "digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-19T08:15:06.293134Z",
+      "last_evidence_at": "2026-10-22T02:42:44.178746Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -314,7 +314,7 @@
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-19T08:15:06.293134Z"
+    "updated_at": "2026-10-22T02:42:44.178746Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -324,10 +324,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-19T08:15:06.293134Z",
+    "reconciled_at": "2026-10-22T02:42:44.178746Z",
     "sources": [
       {
-        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -404,7 +404,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "source_digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "value": "Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19"
       },
       {
@@ -415,7 +415,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 9,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "source_digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "value": "Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger."
       }
     ],
@@ -446,7 +446,7 @@
         "excerpt": "**Status:** Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19",
         "line": 4,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "source_digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "value": "Draft for implementation — Revision R6 provider-neutral commercial payment contract added 2026-10-19; prior 207–210 repository convergence audit completed 2026-09-19"
       },
       {
@@ -456,14 +456,14 @@
         "excerpt": "**Implementation status:** Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger.",
         "line": 9,
         "source": "specs/feature/207-agentic-economic-control-plane/spec.md",
-        "source_digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "source_digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "value": "Target architecture; current repository provides the existing Credits rail and partial control-plane building blocks, not the complete Spec 207 ledger."
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "b6f9c55c7a15bd83ad11dd94c711d447af56e3fac98bf657873eca1f63026c7d",
+        "digest": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/207-agentic-economic-control-plane/spec.md"
       },
@@ -544,11 +544,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 561,
-    "unresolved": 561
+    "total": 569,
+    "unresolved": 569
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T08:16:30.229825Z",
+  "updated_at": "2026-10-22T02:42:44.178746Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -2339,3 +2339,37 @@ Acceptance or schedule change is introduced by this addendum.
 SPEC-303 owns stable Asset identity, ownership and commercial-right bindings, transfer history, and channel distribution context. SPEC-280 remains the capability-usage, pricing, and revenue-attribution policy authority; it MUST consume asset/economic-party bindings rather than create a competing asset registry or settlement ledger. Settlement and wallet execution remain in SPEC-207, charge/debit/refund remains with existing `credit_transactions`/`creditService`, and charged-work lineage remains in SPEC-166.
 
 Revenue policy distinguishes `INFRA_VARIABLE_COST`, `INFRA_FIXED_COST_ALLOCATION`, `INFRA_COST_RECOVERY`, `INFRA_OPERATOR_MARGIN`, `INFRA_SUBSIDY`, and `PLATFORM_REVENUE`. Metered actual CPU/GPU, memory, storage, egress, queues/workflows, database, vector, and provider use is cost evidence; infrastructure cost MUST NOT be represented as a fixed transaction percentage. A planned deficit requires an explicit authorized subsidy source (`PLATFORM_GROWTH`, `TENANT`, `SPONSOR`, or `CAPITAL`) and MUST NOT silently reduce creator/App/Skill allocation. Referral is one-time by default on `FIRST_QUALIFYING_REVENUE_EVENT`; no downstream perpetual/MLM or review/rating reward is allowed. Referral acquisition cost normally uses a Platform/Tenant acquisition budget, not infra recovery. Effective-time policy snapshots and linked reversals preserve allocations after transfer/refund.
+
+# Revision 1.5 — Cloudflare and Database Provider Usage Attribution (2026-10-22)
+
+SPEC-280 owns the semantic definition, billability decision, rate-card
+snapshot, creator/service allocation and usage evidence for Mini App compute
+and database consumption. Provider resource ownership and deployment
+placement remain in SPEC-219/273/288; credit reservation, economic policy,
+ledger and settlement remain in SPEC-207. This amendment MUST NOT introduce a
+second wallet, cost ledger, provisioner or resource owner registry.
+
+Usage sources MAY include Cloudflare WfP request/CPU/script metrics, D1 rows
+read/written and storage, provider database usage/invoice evidence, and
+Queue/Workflow/Container/R2/KV/Vectorize usage where the existing commercial
+contract declares it billable. Every observation MUST carry provider,
+account/resource, App/deployment, tenant, metric/unit, source identity,
+observation time, source watermark, confidence/finality, price snapshot,
+provider bill-payer and customer-credit-payer references. Duplicate
+observations are idempotent by source identity and content digest; corrected
+or late provider reports produce linked adjustment evidence.
+
+When the customer directly pays the provider, provider usage MUST be marked
+non-chargeable as SmartAIHub provider pass-through. The customer may still be
+charged an independently contracted SmartAIHub service, Skill, AI or managed
+service rate. When SmartAIHub pays the provider, usage evidence MUST be
+reconcilable to SPEC-207 reservation and final settlement, but delayed
+provider reporting means SPEC-280 MUST NOT claim guaranteed zero loss or exact
+real-time final cost. A gateway is required when a customer-owned runtime
+could otherwise bypass metering for a platform-paid database.
+
+Acceptance MUST cover both billing owners, no-double-billing, missing/stale
+usage watermarks, duplicate and corrected usage, invoice variance, provider
+API failure, price snapshot changes, tenant isolation and a metering bypass
+attempt. Unavailable provider measurement remains UNKNOWN and blocks any
+claim of exact billability; it does not authorize fabricated usage.

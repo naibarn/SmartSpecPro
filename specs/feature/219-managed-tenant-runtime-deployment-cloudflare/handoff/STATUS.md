@@ -2,11 +2,11 @@
 # 219 — Spec 219 — SmartAIHub Managed Tenant Runtime & Deployment Fabric
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 145 unresolved of 145
+- Requirements: 0 pass / 159 unresolved of 159
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

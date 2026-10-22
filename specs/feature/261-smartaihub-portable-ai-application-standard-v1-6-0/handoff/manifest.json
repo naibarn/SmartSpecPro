@@ -5,61 +5,12 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "224",
-        "referenced_spec_id": "224",
-        "referencing_spec_id": "261",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L143",
-        "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-        "successor_spec_id": "261"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "224",
-        "referenced_spec_id": "224",
-        "referencing_spec_id": "261",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md#L2813",
-        "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
-        "successor_spec_id": "261"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "261",
-        "referenced_spec_id": "261",
-        "referencing_spec_id": "281",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/281-smartaihub-portable-mini-app-knowledge-runtime-wiki-rag-r1-0/spec.md#L1708",
-        "source_digest": "7172b7854722c0da9d449aaa60f1520968c8dbd3501898aac3b49afef5c88a73",
-        "successor_spec_id": "281"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "261",
-        "referenced_spec_id": "261",
-        "referencing_spec_id": "282",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/282-smartaihub-continuous-canonicalization-durable-work-convergence-r1-0/spec.md#L123",
-        "source_digest": "e22d6134574f15afff73b9d8acf958c91bdfe1f09a58fb93fe0baa4f0c45a04e",
-        "successor_spec_id": "282"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md"
       },
@@ -141,7 +92,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5"
+    "expected_spec_digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363"
   },
   "continuation": {
     "next_action": null,
@@ -155,7 +106,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md"
       },
@@ -228,20 +179,6 @@
         "digest": "157610e04556445cdf96e6f8765c9f6f6898035690a0c9a4ee4df34c0986ced9",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
-      },
-      {
-        "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "packages/spaas-standard/tests/manifest-parser.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 261 Phase A validators\",()=>{",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 11,
-        "path": "packages/spaas-standard/tests/phase-a.test.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -266,7 +203,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md"
       },
@@ -344,13 +281,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 11,
+  "generation": 12,
   "identity": {
     "canonical_path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
-    "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+    "digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:18.510047Z",
+      "last_evidence_at": "2026-10-22T02:42:44.225486Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-05T09:51:34+07:00",
       "spec_last_changed_at": "2026-10-05T09:51:34+07:00"
@@ -374,10 +311,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:18.510047Z"
+    "updated_at": "2026-10-22T02:42:44.225486Z"
   },
   "manual_decisions": {
     "requirements": {
@@ -414,10 +351,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:18.510047Z",
+    "reconciled_at": "2026-10-22T02:42:44.225486Z",
     "sources": [
       {
-        "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md"
       },
@@ -490,20 +427,6 @@
         "digest": "157610e04556445cdf96e6f8765c9f6f6898035690a0c9a4ee4df34c0986ced9",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/sections/section-07-validation-pipeline.md"
-      },
-      {
-        "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "packages/spaas-standard/tests/manifest-parser.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 261 Phase A validators\",()=>{",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 11,
-        "path": "packages/spaas-standard/tests/phase-a.test.ts"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -611,11 +534,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
-        "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "source_digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
         "value": "Proposed — Implementation-Ready / Review-Hardened"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -624,23 +552,8 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "it(\"parses the Spec 261 core manifest and generic MCP extension requirements\", async () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "packages/spaas-standard/tests/manifest-parser.test.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 261 Phase A validators\",()=>{",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 11,
-        "path": "packages/spaas-standard/tests/phase-a.test.ts"
-      }
-    ],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
     "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
@@ -743,14 +656,14 @@
         "excerpt": "**Status:** Proposed — Implementation-Ready / Review-Hardened",
         "line": 3,
         "source": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
-        "source_digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "source_digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
         "value": "Proposed — Implementation-Ready / Review-Hardened"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5",
+        "digest": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md"
       },
@@ -828,19 +741,19 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1000,
-    "unresolved": 1000
+    "total": 1006,
+    "unresolved": 1006
   },
   "schema_version": 1,
-  "updated_at": "2026-10-12T01:30:08.219713Z",
+  "updated_at": "2026-10-22T02:42:44.225486Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

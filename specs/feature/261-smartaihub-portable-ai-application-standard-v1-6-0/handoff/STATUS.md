@@ -2,11 +2,11 @@
 # 261 — Spec 261 — SmartAIHub Portable AI Application Standard (SPAAS)
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 1000 unresolved of 1000
+- Requirements: 0 pass / 1006 unresolved of 1006
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 11
+- Manifest generation: 12
 
 ## Source-declared status and relationship claims
 

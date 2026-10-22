@@ -1430,3 +1430,67 @@ Tenant Product runtime code SHALL access SmartAIHub RAG/vector/search only throu
 A deployment may bind a narrow platform service/RPC token for Retrieval Broker access, scoped to tenant/product/environment/purpose. Runtime rollback MUST preserve compatibility with the Retrieval Broker contract version used by the release.
 
 Provider migration inside Spec 229 SHALL NOT require rebuilding Tenant Product source merely to change the underlying search/vector backend.
+
+# Revision 6 — Cloudflare Account Topology and Mini App Fleet Placement (2026-10-22)
+
+## R6.1 Independent Cloudflare account roles
+
+Production deployment configuration SHALL distinguish the SmartAIHub Core
+Cloudflare account, the shared Mini App fleet Cloudflare account, and each
+customer-owned Cloudflare account. Core account identity MUST NOT be inferred
+from a Mini App placement. Production shared-fleet resources SHOULD be placed
+in a dedicated shared Mini App account. Development MAY temporarily reuse one
+account, provided account profiles, environment secrets, resource identifiers,
+and deployment targets remain explicitly separated and the business logic
+does not depend on the shared-account shortcut.
+
+## R6.2 Runtime class selection
+
+The shared fleet SHOULD deploy generated or otherwise untrusted Mini App code
+as Workers for Platforms (WfP) user Workers behind a bounded dispatch Worker.
+The dispatch namespace is a fleet boundary, not a per-customer namespace by
+default. The dispatcher MUST authenticate and resolve stable App/deployment
+identity before dispatch, enforce per-app CPU/subrequest and egress policy,
+sanitize responses as required, and pass only declared scoped capabilities.
+User Workers MUST remain untrusted unless a separately reviewed trust class
+allows otherwise.
+
+Ordinary Workers remain appropriate for the finite trusted Core service set or
+curated Mini Apps whose admitted count and account quotas are bounded. Because
+standard Workers Paid currently documents a 500 Worker per-account limit, a
+standard Worker fleet MUST perform capacity admission before deployment and
+MUST return a typed quota denial instead of silently switching accounts.
+WfP entitlement, account-level quotas, and pricing MUST be revalidated against
+the target account at admission time; documented defaults are not a customer
+quote or authority to incur cost.
+
+## R6.3 Customer BYOC and ownership
+
+A customer account connection grants SmartAIHub only the exact operations in
+the current SPEC-272 grant. The connection MUST bind tenant, Cloudflare
+account, environment, resource classes, operation set, expiry, credential
+reference, and revocation epoch. Deploy, update, monitor, rotate, revoke,
+disconnect and resource deletion are distinct actions. Disconnect MUST stop
+future SmartAIHub management access while preserving customer-owned Workers,
+databases, domains, storage and customer data. Customer resource deletion
+requires separate explicit authority and a data-consistency/export check.
+
+Resource ownership and provider bill payer MUST remain customer-owned in BYOC
+unless a separately recorded commercial agreement says otherwise. Account
+connection alone MUST NOT imply transfer of resource ownership, billing, data,
+or SmartAIHub's right to uninstall or delete.
+
+## R6.4 Deployment execution and acceptance
+
+Long-running provision, deploy, update, rollback, reconcile, suspend and
+cleanup work MUST use the existing SPEC-224 / Feature-195 `worker_jobs` plus
+outbox control plane, with idempotency, lease/fencing, bounded retries and
+read-back of external state. This SPEC does not add another deployment queue
+or lifecycle authority.
+
+Acceptance MUST cover Core/shared-account separation, temporary single-account
+development, WfP and standard-worker capacity admission, customer BYOC
+connect/permission denial/revocation/disconnect, cross-account deployment
+safety, provider API failure, duplicate provision, orphan detection, and
+customer ownership preservation. A missing provider proof remains UNKNOWN;
+no live customer or production resource is created by this specification.

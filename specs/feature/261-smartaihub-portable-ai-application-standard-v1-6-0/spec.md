@@ -5773,3 +5773,30 @@ The end-to-end proof MUST additionally demonstrate:
 - one mixed base-protocol/extension-version incompatibility fixture that fails safely
 
 Passing code-level tests or manifest validation alone is not sufficient.
+
+# Additive placement declaration — Mini App compute and database ownership (2026-10-22)
+
+A portable Mini App manifest that provisions or binds external runtime/data
+resources MUST declare runtime provider and account-owner class, environment,
+deployment class (standard Worker, WfP user Worker, customer BYOC or other
+certified adapter), stable App/release/deployment identity, database provider
+and engine, database owner, provider bill payer, access strategy, logical
+binding, portability level, residency, schema/migration authority, budget and
+quota policy references, and required lifecycle operations. It MUST refer to
+credentials through opaque SPEC-272 references and MUST NOT embed provider
+secrets or infer account ownership from the app author.
+
+Runtime placement and database placement are independent. A Mini App may use
+same-account D1, platform-managed Neon/PlanetScale, customer-owned Neon/
+PlanetScale/PostgreSQL, or a shared/dedicated backend only when the manifest
+and current authority permit the resolved combination. Direct cross-account
+D1 bindings remain UNKNOWN and cannot be a package default. If portability
+requires a provider-specific backend feature, the manifest MUST declare that
+portability constraint rather than silently downgrade it.
+
+Package validation MUST reject missing owner/payer, undeclared cross-account
+resource, overbroad capability, unbounded autoscale, implicit DDL authority,
+unowned secret, and a BYOC disconnect path that deletes customer resources.
+Export/import and retirement MUST preserve provider ownership, data
+portability and resource references without claiming that technical package
+authorship establishes legal ownership.

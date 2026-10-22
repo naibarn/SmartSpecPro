@@ -4059,3 +4059,35 @@ Cloudflare Workers AI is now the preferred inference substrate for the **Decisio
 Attribute Cloudflare platform/Workers AI charges, tenant-owned Cloudflare account charges, tenant billing responsibility, and SmartAIHub customer credit settlement as distinct concepts through existing cost and ledger owners. Preserve tenant BYO-provider options and support tenant-owned Cloudflare accounts where existing policy permits. Credentials remain in Spec 272's existing secret/binding boundary. Existing running jobs and in-flight work retain their provider and policy snapshot; new decisions may adopt the preferred route after rollout evidence.
 
 Acceptance: demonstrate the structured API through the existing inference gateway or a certified native adapter; prove provider failures do not affect durable job state or settlement correctness; account for usage/cost without creating a second ledger; and preserve the control-plane authority exactly. No production deployment or migration is implied.
+
+# Additive amendment — Core workload boundary and Mini App fleet isolation (2026-10-22)
+
+SPEC-267's Cloudflare production account and PostgreSQL control-plane workload
+are the SmartAIHub Core placement. This does not require every Mini App Worker
+or application database to use the Core Cloudflare account or Core PostgreSQL.
+The shared Mini App fleet account and customer BYOC accounts are separate
+runtime targets owned by SPEC-219; Mini App database selection and ownership
+are separate decisions owned by SPEC-273. Account-specific deployment
+credentials remain under SPEC-272, and resource identity/lifecycle under
+SPEC-288/295.
+
+Core persistent business state includes tenant/authorization state, wallet
+and ledger facts, canonical `worker_jobs` and job events, outbox, release and
+deployment references, and required audit/economic records. Queue delivery,
+Workflow progress, active lease heartbeat, Container runtime scratch,
+cache/search/vector projections and log/trace records are transient execution
+or rebuildable state only where their owner contract permits; they MUST NOT
+become a second business-state authority. Queue/Workflow use SHOULD replace
+unnecessary SQL polling and duplicate status writes while preserving the
+authoritative fenced transition and required audit/economic events. Polling or
+heartbeat removal MUST retain lease expiry, recovery and provider callback
+correctness evidence.
+
+Production cost models MUST be split into Core DB/control-plane and Mini App
+fleet scenarios. Existing server SQL/query volume is not a valid direct
+forecast for Cloudflare Workers, Queues, Workflows, Containers, Hyperdrive,
+Durable Objects, KV, R2, Vectorize, WfP or provider database pricing. Cost
+admission MUST use current provider metrics/quotes and distinguish platform
+and customer account billing. This amendment changes no Core database,
+production resource, route or migration and does not claim the proposed
+Cloudflare-native target is deployed.

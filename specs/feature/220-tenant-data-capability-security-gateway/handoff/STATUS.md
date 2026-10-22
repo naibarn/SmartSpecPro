@@ -2,11 +2,11 @@
 # 220 — Spec 220 — SmartAIHub Tenant Data, Capability & Security Gateway
 
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `DISCOVERING`
+- Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 152 unresolved of 152
+- Requirements: 0 pass / 159 unresolved of 159
 - Next action: Review consolidated ambiguity evidence and assess current relevance.
-- Manifest generation: 7
+- Manifest generation: 8
 
 ## Source-declared status and relationship claims
 

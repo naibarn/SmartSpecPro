@@ -5,37 +5,12 @@
     "status": "UNKNOWN"
   },
   "authority": {
-    "claims": [
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "215",
-        "referenced_spec_id": "215",
-        "referencing_spec_id": "219",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L67",
-        "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
-        "successor_spec_id": "219"
-      },
-      {
-        "confidence": "LOW",
-        "direction": "SUCCESSOR_CANDIDATE",
-        "predecessor_spec_id": "220",
-        "referenced_spec_id": "220",
-        "referencing_spec_id": "219",
-        "relation_text": "replace",
-        "requirement_ids": [],
-        "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md#L1373",
-        "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
-        "successor_spec_id": "219"
-      }
-    ],
+    "claims": [],
     "confidence": "UNRESOLVED",
     "conflicts": [],
     "evidence": [
       {
-        "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md"
       }
@@ -47,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941"
+    "expected_spec_digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce"
   },
   "continuation": {
     "next_action": null,
@@ -61,58 +36,9 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 17,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 24,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 36,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "return { contractVersion: \"spec-219-v1\", environment: input.environment, namespaceRef, isolation: \"tenant-product\" };",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 93,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 118,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 141,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 219 managed runtime/deployment contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "apps/web/server/services/__tests__/managedRuntimeDeploymentContracts.test.ts"
       }
     ],
     "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
@@ -137,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md"
       }
@@ -145,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 7,
+  "generation": 8,
   "identity": {
     "canonical_path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
-    "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+    "digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-06T03:28:17.605201Z",
+      "last_evidence_at": "2026-10-22T02:42:44.255649Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-20T12:59:58+07:00",
       "spec_last_changed_at": "2026-09-26T09:26:48+07:00"
@@ -175,10 +101,10 @@
     "integrated_at": null
   },
   "lifecycle": {
-    "current_state": "DISCOVERING",
-    "previous_state": null,
+    "current_state": "VALIDATION_PENDING",
+    "previous_state": "DISCOVERING",
     "state_evidence": [],
-    "updated_at": "2026-10-06T03:28:17.605201Z"
+    "updated_at": "2026-10-22T02:42:44.255649Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -188,61 +114,12 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-06T03:28:17.605201Z",
+    "reconciled_at": "2026-10-22T02:42:44.255649Z",
     "sources": [
       {
-        "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 17,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 24,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 36,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "return { contractVersion: \"spec-219-v1\", environment: input.environment, namespaceRef, isolation: \"tenant-product\" };",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 93,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 118,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 141,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 219 managed runtime/deployment contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "apps/web/server/services/__tests__/managedRuntimeDeploymentContracts.test.ts"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -252,11 +129,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
-        "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "source_digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
         "value": "Proposed / Partial deployment contract slice present; Cloudflare integration pending"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -265,61 +147,11 @@
     ]
   },
   "relevance_assessment": {
-    "active_references": [
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 17,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 24,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\";",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 36,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "return { contractVersion: \"spec-219-v1\", environment: input.environment, namespaceRef, isolation: \"tenant-product\" };",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 93,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 118,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "contractVersion: \"spec-219-v1\",",
-        "identity_ambiguous": false,
-        "kind": "SOURCE",
-        "line": 141,
-        "path": "apps/web/server/services/managedRuntimeDeploymentContracts.ts"
-      },
-      {
-        "excerpt": "describe(\"Spec 219 managed runtime/deployment contracts\", () => {",
-        "identity_ambiguous": false,
-        "kind": "TEST",
-        "line": 24,
-        "path": "apps/web/server/services/__tests__/managedRuntimeDeploymentContracts.test.ts"
-      }
-    ],
-    "conflict_duplication_risk": "REVIEW_REQUIRED",
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
     "current_architecture_fit": "UNASSESSED",
     "current_product_relevance": "UNASSESSED",
-    "current_runtime_dependency": "SOURCE_REFERENCES_FOUND",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
     "declared_claims": [
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -328,14 +160,14 @@
         "excerpt": "**Status:** Proposed / Partial deployment contract slice present; Cloudflare integration pending",
         "line": 4,
         "source": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
-        "source_digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "source_digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
         "value": "Proposed / Partial deployment contract slice present; Cloudflare integration pending"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941",
+        "digest": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md"
       }
@@ -343,7 +175,7 @@
     "implementation_equivalence": "UNASSESSED",
     "residual_requirements": [],
     "security_data_compliance_obligations": "REVIEW_REQUIRED",
-    "successor_or_supersession": "CANDIDATE_RELATIONSHIPS_FOUND"
+    "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
     "applicable": 0,
@@ -351,11 +183,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 145,
-    "unresolved": 145
+    "total": 159,
+    "unresolved": 159
   },
   "schema_version": 1,
-  "updated_at": "2026-10-06T03:28:17.605201Z",
+  "updated_at": "2026-10-22T02:42:44.255649Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

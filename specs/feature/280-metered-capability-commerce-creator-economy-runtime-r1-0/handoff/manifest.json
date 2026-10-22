@@ -10,7 +10,7 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+        "digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -22,7 +22,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": "a06f1fa678f7ce4d238cbd8b03cef64423850d19",
-    "expected_spec_digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21"
+    "expected_spec_digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48"
   },
   "continuation": {
     "next_action": "SPEC-280 revision 1.4 producer conformance is documented; map canonical usage/billability/allocation sources into SPEC-207 contracts, then prove durable PostgreSQL migration/rollback and process-restart mock E2E with ledger invariants. Keep live provider activation disabled and SPEC-224 out of scope. Evidence: ../207-agentic-economic-control-plane/handoff/evidence/commercial-payment-normative-alignment-20261019.md.",
@@ -36,7 +36,7 @@
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+        "digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -63,7 +63,7 @@
     "confidence": "UNRESOLVED",
     "evidence": [
       {
-        "digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+        "digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -71,13 +71,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 27,
+  "generation": 28,
   "identity": {
     "canonical_path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-    "digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+    "digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-19T08:15:06.627601Z",
+      "last_evidence_at": "2026-10-22T02:42:44.347176Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -118,7 +118,7 @@
     "current_state": "VALIDATION_PENDING",
     "previous_state": "VALIDATION_PENDING",
     "state_evidence": [],
-    "updated_at": "2026-10-19T08:15:06.627601Z"
+    "updated_at": "2026-10-22T02:42:44.347176Z"
   },
   "reconciliation": {
     "confidence": "LOW",
@@ -128,10 +128,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-19T08:15:06.627601Z",
+    "reconciled_at": "2026-10-22T02:42:44.347176Z",
     "sources": [
       {
-        "digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+        "digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       },
@@ -143,7 +143,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-        "source_digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+        "source_digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
@@ -174,14 +174,14 @@
         "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
         "line": 4,
         "source": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-        "source_digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+        "source_digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "9ab6530c596bdf364f3a78a8337bf38dd0751b512265b8487ec8bcc2384b8f21",
+        "digest": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md"
       }
@@ -197,11 +197,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 198,
-    "unresolved": 198
+    "total": 205,
+    "unresolved": 205
   },
   "schema_version": 1,
-  "updated_at": "2026-10-19T08:16:30.286010Z",
+  "updated_at": "2026-10-22T02:42:44.347176Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

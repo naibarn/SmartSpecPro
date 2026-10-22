@@ -1530,3 +1530,35 @@ Retrieval results cannot grant capabilities, secrets, Skill execution rights or 
 Provider credentials remain server-side. External harnesses receive only bounded authorized evidence/context or governed MCP/API calls.
 
 Revocation, group removal, tenant transfer, visibility change and deletion MUST invalidate or fence stale searchable projections according to Spec 229's lifecycle contract.
+
+# Revision 6 — Mini App Database Gateway and Cross-Account Capability Boundary (2026-10-22)
+
+Mini App database provider and owner are independent of the Worker account.
+The Gateway MAY expose platform-managed or customer-owned D1, Neon,
+PlanetScale, PostgreSQL or another certified backend only through a
+tenant/app/environment-bound scope envelope and the access authority declared
+by SPEC-273. It MUST NOT accept caller-selected arbitrary DSNs, account IDs,
+database IDs, SQL authority, or credential references as authorization.
+
+Native D1 bindings SHOULD be used only when the D1 resource is explicitly
+provisioned and authorized for the Worker deployment account. Official
+documentation describes D1 account-scoped resources and bindings but does not
+establish direct native cross-account D1 binding. Such use remains UNKNOWN and
+MUST fail closed until the selected provider API and runtime prove it; an
+approved Gateway or same-account deployment is the supported alternative.
+
+If a customer-owned Worker can otherwise reach a platform-managed database
+outside the platform metering path, the Gateway MUST be the sole data access
+path for that resource. Do not distribute database credentials or a
+provider-wide binding to customer code. Every request MUST be authorized
+against current tenant, App, data purpose, operation, resource and budget
+scope; post-retrieval checks are required where provider filters cannot prove
+the full authorization decision. Meter evidence is emitted to SPEC-280 and
+economic authorization/settlement remains with SPEC-207.
+
+Gateway acceptance MUST prove prepared/typed operation constraints, tenant
+isolation, credential redaction, audit lineage, short-lived capability
+revocation, provider failure behavior, duplicate-write idempotency, and a
+measured latency/cost envelope. Transaction guarantees and unsupported
+session features MUST be explicit per adapter; no cross-provider transaction
+is implied.

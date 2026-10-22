@@ -2233,3 +2233,30 @@ This additive amendment assigns Node.js runtime inventory, patch compliance, adv
 Acceptance requires negative gate tests for below-floor and unknown runtimes, release-line-specific CVE applicability, evidence from the actual target process/container, Workerd separation, idempotent Task Control linkage, and distinct engineering/deployment/runtime/production outcomes. Source configuration, CI success and deployment command success alone do not close these requirements.
 
 The 2026-10-22 runtime snapshot and Linux production evidence are recorded in `docs/security/NODE_RUNTIME_SECURITY_INVENTORY_2026-10-22.md`. That snapshot remains PARTIAL: embedded tool runtimes, active user sessions, external hosts and automatic Task Control linkage are still open.
+
+# Additive SPEC-219/273 operations boundary — BYOC and Mini App resource lifecycle (2026-10-22)
+
+SPEC-295 remains the release/deployment/migration/operational execution owner
+for actions that affect a real target. SPEC-219 owns runtime/account placement;
+SPEC-273 owns Mini App database authority and migration intent; SPEC-272 owns
+credentials; SPEC-288 owns resource lifecycle contracts; SPEC-207/280 own
+economic authorization and metering. A deployment or migration plan MUST
+consume these owners' current grants and immutable target/resource references
+and MUST NOT introduce a second provisioner, database migration authority,
+credential store or billing ledger.
+
+Before a target action, preflight MUST bind tenant, App/release/deployment,
+environment, account and database owners, bill payer, operation scope,
+credential/grant expiry, budget/quota, artifact digest, expected schema/data
+version, rollback/restore evidence and provider API capability. A successful
+build or control-plane job is not deployment, migration, serving, acceptance
+or production evidence.
+
+Customer-owned account/database disconnection preserves customer resources
+and data. Migration between accounts/providers requires explicit source and
+destination authority, backup/export, consistency/reconciliation proof,
+cutover/rollback, budget admission and customer-visible consent. Customer
+resource deletion requires its own authority and is never an automatic
+rollback or cleanup side effect. Orphan detection is observe-only until a
+resource-specific mutation grant is present. Provider API failure and unknown
+external result remain recoverable operational states, not presumed success.
