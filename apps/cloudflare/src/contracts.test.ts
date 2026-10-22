@@ -72,6 +72,19 @@ describe("Cloudflare local runtime contracts", () => {
     expect(enabled.ready).toBe(true);
   });
 
+  it("does not select optional workflows, containers, or Worker Apps for disabled queue-only staging", () => {
+    const readiness = inspectBindingReadiness({
+      CLOUDFLARE_ACTIVATION: "disabled",
+      CLOUDFLARE_JOB_TRANSPORT: "queues",
+      HYPERDRIVE: { connectionString: "postgres://target-placeholder" },
+      JOB_QUEUE: { send: vi.fn() },
+    });
+    expect(readiness.transport).toBe("queues");
+    expect(readiness.selectedMissing).toEqual([]);
+    expect(readiness.missing).toEqual(expect.arrayContaining(["JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP"]));
+    expect(readiness.ready).toBe(false);
+  });
+
   it("parses only bounded canonical envelopes", () => {
     expect(parseCanonicalEnvelope(envelope)).toEqual(envelope);
     expect(() => parseCanonicalEnvelope({ ...envelope, routing_metadata: { signedUrl: "https://bad.invalid" } })).toThrow("CANONICAL_ENVELOPE_INVALID");

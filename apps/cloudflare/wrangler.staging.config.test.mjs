@@ -11,6 +11,7 @@ test("staging Worker remains isolated from production routing and background con
   assert.deepEqual(config.vars, {
     CLOUDFLARE_ACTIVATION: "disabled",
     CLOUDFLARE_ENVIRONMENT: "staging",
+    CLOUDFLARE_JOB_TRANSPORT: "queues",
   });
   for (const forbidden of ["routes", "triggers", "queues", "kv_namespaces", "hyperdrive"]) {
     assert.equal(Object.hasOwn(config, forbidden), false, `${forbidden} must be provisioned separately after acceptance`);

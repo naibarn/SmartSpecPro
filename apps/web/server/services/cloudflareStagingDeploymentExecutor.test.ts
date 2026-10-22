@@ -632,10 +632,26 @@ describe("explicit Cloudflare origin v2 executor", () => {
 
   it("runs pre-authorized recovery when origin verification throws after a confirmed deployment", async () => {
     const f = originRuntime();
-    f.cloudflare.verifyRuntime.mockRejectedValueOnce(new Error("PROVIDER_READ_UNAVAILABLE"));
-    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toThrow("RUNTIME_VERIFICATION_FAILED");
+    f.cloudflare.verifyRuntime.mockRejectedValueOnce(Object.assign(new Error("provider response must not leak"), {
+      diagnosticCode: "CLOUDFLARE_STAGING_PROVIDER_READ_UNAVAILABLE",
+      class: "permanent",
+    }));
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toMatchObject({
+      diagnosticCode: "CLOUDFLARE_STAGING_PROVIDER_READ_UNAVAILABLE",
+      class: "permanent",
+    });
     expect(f.cloudflare.rollback).toHaveBeenCalledOnce();
     expect(f.cloudflare.verifyRuntime).toHaveBeenCalledTimes(2);
+  });
+
+  it("classifies untyped verifier transport exceptions safely as retryable after recovery", async () => {
+    const f = originRuntime();
+    f.cloudflare.verifyRuntime.mockRejectedValueOnce(new Error("sensitive provider response"));
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toMatchObject({
+      diagnosticCode: "CLOUDFLARE_STAGING_VERIFICATION_TRANSPORT_FAILED",
+      class: "retryable",
+    });
+    expect(f.cloudflare.rollback).toHaveBeenCalledOnce();
   });
 
   it("automatically restores the explicitly origin-free recovery baseline without claiming origin health", async () => {

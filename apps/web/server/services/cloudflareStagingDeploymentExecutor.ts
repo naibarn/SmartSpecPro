@@ -237,6 +237,8 @@ export type CloudflareStagingApi = Readonly<{
     reachable: boolean;
     verificationFailure?: "health" | "spa" | "origin-auth";
     healthStatus?: number;
+    diagnosticCode?: string;
+    failureClass?: "permanent" | "retryable";
     deploymentId: string;
     sourceSha: string;
     buildDigest: string;
@@ -665,8 +667,18 @@ export function createCloudflareStagingDeploymentExecutor(
               ...(selectedConfigurationDigest ? { configurationDigest: selectedConfigurationDigest } : {}),
             }).catch(error => {
               if (!originGrant || job.action !== "deploy") throw error;
+              const diagnosticCode = error instanceof Error && "diagnosticCode" in error &&
+                typeof error.diagnosticCode === "string" && /^CLOUDFLARE_[A-Z0-9_]+$/.test(error.diagnosticCode)
+                ? error.diagnosticCode
+                : "CLOUDFLARE_STAGING_VERIFICATION_TRANSPORT_FAILED";
+              const failureClass = error instanceof Error && "class" in error && error.class === "retryable"
+                ? "retryable" as const
+                : error instanceof Error && "diagnosticCode" in error
+                  ? "permanent" as const
+                  : "retryable" as const;
               return { reachable: false, deploymentId: request.deploymentId, sourceSha: request.sourceSha,
-                buildDigest: request.buildDigest, ...(selectedConfigurationDigest ? { configurationDigest: selectedConfigurationDigest } : {}) };
+                buildDigest: request.buildDigest, diagnosticCode, failureClass,
+                ...(selectedConfigurationDigest ? { configurationDigest: selectedConfigurationDigest } : {}) };
             });
             if (
               !verification.reachable ||
@@ -740,6 +752,9 @@ export function createCloudflareStagingDeploymentExecutor(
                   "origin-auth": "CLOUDFLARE_STAGING_ORIGIN_AUTH_VERIFICATION_FAILED",
                 } as const;
                 throw new CloudflareStagingDeploymentError(failureCodes[verification.verificationFailure]);
+              }
+              if (job.action === "deploy" && verification.diagnosticCode) {
+                throw new CloudflareStagingDeploymentError(verification.diagnosticCode, verification.failureClass);
               }
               throw new CloudflareStagingDeploymentError(
                 "CLOUDFLARE_STAGING_RUNTIME_VERIFICATION_FAILED"

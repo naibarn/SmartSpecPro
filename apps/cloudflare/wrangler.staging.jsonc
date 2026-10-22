@@ -8,7 +8,8 @@
   "preview_urls": false,
   "vars": {
     "CLOUDFLARE_ACTIVATION": "disabled",
-    "CLOUDFLARE_ENVIRONMENT": "staging"
+    "CLOUDFLARE_ENVIRONMENT": "staging",
+    "CLOUDFLARE_JOB_TRANSPORT": "queues"
   },
   "assets": {
     "directory": "../web/dist/public",
