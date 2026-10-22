@@ -591,7 +591,7 @@ export const infrastructureRouter = router({
           rollbackArtifactRef: preflight.baseline.artifactRef, rollbackSourceSha: preflight.baseline.sourceSha,
           rollbackBuildDigest: preflight.baseline.buildDigest, configurationRef: preflight.configurationRef,
           configurationDigest: preflight.configurationDigest, rollbackConfigurationRef: preflight.baseline.configurationRef,
-          rollbackConfigurationDigest: preflight.baseline.configurationDigest, expiresAt: grantExpiresAt, revokedAt: null,
+          rollbackConfigurationDigest: preflight.baseline.configurationDigest, expiresAt: grantExpiresAt,
         });
         grantRef = typeof grant.id === "string" ? grant.id : null;
         if (!grantRef || grant.status !== "approved") throw new Error("STAGING_GRANT_NOT_APPROVED");

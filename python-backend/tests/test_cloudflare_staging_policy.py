@@ -239,6 +239,9 @@ async def test_api_preserves_explicit_origin_contract_and_pairs():
     parsed = adapter.validate_python(api_fields)
     assert isinstance(parsed, CloudflareStagingOriginPolicyGrantIssue)
     assert parsed.configuration_ref == grant["configurationRef"]
+    # Revocation state is server-owned and must not be sent when issuing a grant.
+    with pytest.raises(ValidationError):
+        adapter.validate_python({**api_fields, "revokedAt": None})
     with pytest.raises(ValidationError):
         adapter.validate_python({**api_fields, "configurationDigest": None})
 
