@@ -3,12 +3,12 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `149`
-- Updated (UTC): `2026-10-22T02:24:52.301118+00:00`
+- State generation: `150`
+- Updated (UTC): `2026-10-22T02:26:11.986699+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022`
-- Latest recorded merged Main SHA: `21c8f057cea54239ee6f8b02bcf270a80d416077`
+- Latest recorded merged Main SHA: `b77d28b351542821d8d2f663884dcca5e5071710`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
 - Next action: Obtain an authenticated tenant-owner session to issue the bounded origin-v2 staging policy/grant for the pinned artifact and verified rollback baseline; then queue and verify the canonical staging deployment job. Add an Admin UI flow for these existing owner endpoints because current Admin UI has no policy/grant/job controls.
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022 | 0f8925977ba86014413b6dd80322faacf44f4d79 | 21c8f057cea54239ee6f8b02bcf270a80d416077 | Obtain an authenticated tenant-owner session to issue the bounded origin-v2 staging policy/grant for the pinned artifact and verified rollback baseline; then queue and verify the canonical staging deployment job. Add an Admin UI flow for these existing owner endpoints because current Admin UI has no policy/grant/job controls. |
+| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-cutover-resume-20261022 | 0f8925977ba86014413b6dd80322faacf44f4d79 | b77d28b351542821d8d2f663884dcca5e5071710 | Obtain an authenticated tenant-owner session to issue the bounded origin-v2 staging policy/grant for the pinned artifact and verified rollback baseline; then queue and verify the canonical staging deployment job. Add an Admin UI flow for these existing owner endpoints because current Admin UI has no policy/grant/job controls. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
