@@ -39,6 +39,15 @@ describe("immutable native binding descriptors", () => {
       { name: "VECTOR_INDEX", type: "vectorize", index_name: names.vector },
     ]);
   });
+  it("allows the approved queue transport without provisioning an unused Workflow binding", () => {
+    const queuePlan = { ...plan };
+    const queueDescriptor = { ...descriptor, plan: queuePlan, planDigest: nativeProvisionPlanDigest(queuePlan) };
+    const bindings = [...nativeWorkerBindings(queueDescriptor), { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "enabled" }];
+
+    expect(bindings.some(binding => binding.name === "JOB_WORKFLOW")).toBe(false);
+    expect(() => assertNativeWorkerBindings(bindings, queueDescriptor, true, "queues")).not.toThrow();
+    expect(() => assertNativeWorkerBindings(bindings, queueDescriptor, true, "workflows")).toThrow("VERSION_BINDINGS_MISMATCH");
+  });
   it.each([{ status: "failed" }, { tenantId: "foreign" }, { requestedByUserId: 2 }, { operatorReviewRequired: true },
     { id: "33333333-3333-4333-8333-333333333333" }, { jobType: "other" }, { outputJson: {} },
     { inputJson: { ...receipt.inputJson, projectId: "foreign" } },

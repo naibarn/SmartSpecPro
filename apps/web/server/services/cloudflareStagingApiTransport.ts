@@ -588,7 +588,8 @@ export function createCloudflareStagingApiTransport(input: {
               priorVersion.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest)) {
             throw new CloudflareStagingTransportError("CLOUDFLARE_IDEMPOTENT_DEPLOYMENT_ARTIFACT_MISMATCH");
           }
-          if (origin?.descriptor.nativeResources) assertNativeWorkerBindings(priorVersion.resources?.bindings, origin.descriptor.nativeResources, Boolean(origin.descriptor.workflowExecution));
+          if (origin?.descriptor.nativeResources) assertNativeWorkerBindings(priorVersion.resources?.bindings, origin.descriptor.nativeResources,
+            Boolean(origin.descriptor.workflowExecution), origin.descriptor.jobTransport ?? "workflows");
           if (origin) assertCloudflareWorkflowVersionBindings(priorVersion.resources?.bindings, origin);
           if (origin?.descriptor.applicationHttpPhase) assertHttpApplicationVersionMetadata(origin.descriptor.applicationHttp!, origin.descriptor, priorVersion, true);
           if (origin?.descriptor.applicationHttp && !origin.descriptor.applicationHttpPhase) await input.ensureHttpApplications!(origin, target, priorVersion, idempotencyKey, assertHttpAuthorized);
@@ -601,7 +602,8 @@ export function createCloudflareStagingApiTransport(input: {
           const uploaded = await readUploadedVersion(token, target, versionId);
           if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest))
             throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
-          if (origin.descriptor.nativeResources) assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources, Boolean(origin.descriptor.workflowExecution));
+          if (origin.descriptor.nativeResources) assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources,
+            Boolean(origin.descriptor.workflowExecution), origin.descriptor.jobTransport ?? "workflows");
           assertCloudflareWorkflowVersionBindings(uploaded.resources?.bindings, origin);
           if (origin.descriptor.applicationHttpPhase) assertHttpApplicationVersionMetadata(origin.descriptor.applicationHttp!, origin.descriptor, uploaded, true);
           await assertMutationAuthorized?.();

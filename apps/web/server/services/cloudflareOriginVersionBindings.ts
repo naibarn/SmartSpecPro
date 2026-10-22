@@ -62,8 +62,9 @@ export type CloudflareOriginVersionBindings = Readonly<{
 
 export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof cloudflareOriginSettingsSchema>, secrets: z.infer<typeof cloudflareOriginSecretsSchema>): void {
   const namespaceOnly = settings.applicationHttpPhase === "namespace-only";
+  const requiresWorkflowBinding = settings.jobTransport !== "queues";
   if (Boolean(settings.workflowExecution) !== Boolean(secrets.workflowRuntimeToken && secrets.controlPlaneToken) ||
-      (settings.workflowExecution && (!settings.nativeResources?.plan.workflow || !settings.nativeResources.privateDatabase)) ||
+      (settings.workflowExecution && ((requiresWorkflowBinding && !settings.nativeResources?.plan.workflow) || !settings.nativeResources.privateDatabase)) ||
       ((settings.workflowDatabase || settings.jobTransport || settings.mediaProbe) && !settings.workflowExecution) ||
       Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken) ||
       (namespaceOnly && !settings.applicationHttp) ||

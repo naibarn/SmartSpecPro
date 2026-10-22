@@ -154,6 +154,28 @@ describe("exact bounded Workflow deployment configuration", () => {
     const bindings=cloudflareWorkflowVersionBindings(validateCloudflareOriginVersionBindings(value,target));
     expect(bindings).toContainEqual({ name:"CLOUDFLARE_JOB_TRANSPORT",type:"plain_text",text:"queues" });
   });
+  it("allows bounded queue execution without an unused Workflow resource", () => {
+    const { value, target } = fixture();
+    const plan = { ...value.descriptor.nativeResources!.plan };
+    delete plan.workflow;
+    delete plan.reuseProvisionJobId;
+    value.descriptor.nativeResources!.plan = plan;
+    value.descriptor.nativeResources!.planDigest = nativeProvisionPlanDigest(plan);
+    delete value.descriptor.nativeResources!.workflowId;
+    value.descriptor.jobTransport = "queues";
+    value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor);
+    value.configurationRef = `cf-origin:${value.configurationDigest}`;
+    target.runtimePolicy = value.configurationRef;
+
+    const validated = validateCloudflareOriginVersionBindings(value, target);
+    const bindings = cloudflareWorkflowVersionBindings(validated);
+
+    expect(bindings).toContainEqual({ name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" });
+    expect(bindings.some(binding => binding.name === "CLOUDFLARE_RUNTIME_TOKEN" && binding.type === "secret_text")).toBe(true);
+    expect(bindings.some(binding => binding.name === "CLOUDFLARE_CONTROL_PLANE_TOKEN" && binding.type === "secret_text")).toBe(true);
+    expect(bindings.some(binding => binding.name === "JOB_WORKFLOW")).toBe(false);
+    expect(() => assertCloudflareWorkflowVersionBindings(bindings, validated)).not.toThrow();
+  });
   it("binds retention independently with a separate secret and rejects unapproved extra schedule activation", () => {
     const { value,target }=fixture();
     const original=cloudflareWorkflowVersionBindings(value);
