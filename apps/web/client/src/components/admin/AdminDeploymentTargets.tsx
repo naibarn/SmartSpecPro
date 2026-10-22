@@ -260,6 +260,10 @@ export default function AdminDeploymentTargets() {
     { tenantId, projectId, environment: "staging" },
     { enabled: validScope && environment === "staging" },
   );
+  const productionRuntimeReadiness = trpc.infrastructure.getCloudflareProductionRuntimeReadiness.useQuery(
+    { tenantId, projectId, environment: "production" },
+    { enabled: validScope && environment === "production" },
+  );
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const enabledCloudflareTargets = cloudflareTargets.filter(target => target.enabled);
@@ -352,6 +356,37 @@ export default function AdminDeploymentTargets() {
         "Production target metadata only records the exact deployment destination. It does not create a deployment grant or enable a Worker, Container, DNS record, route, or production traffic. Those actions remain behind their separate production approval and rollback controls.",
         "metadata ของ production target ใช้บันทึกปลายทาง deployment ที่แน่นอนเท่านั้น ไม่ได้สร้าง deployment grant หรือเปิด Worker, Container, DNS record, route หรือ production traffic การดำเนินการเหล่านั้นยังต้องผ่าน approval และ rollback control ของ production แยกต่างหาก",
       )}</p> : null}
+      {validScope && environment === "production" ? (
+        <VStack as="section" gap={2}>
+          <HStack gap={2} wrap="wrap">
+            <h3>{text("Live Cloudflare production Worker readiness", "ความพร้อมของ Cloudflare production Worker ที่กำลังทำงาน")}</h3>
+            <Button type="button" variant="outline" size="sm" onClick={() => void productionRuntimeReadiness.refetch()} disabled={productionRuntimeReadiness.isFetching}>
+              {text("Check now", "ตรวจสอบตอนนี้")}
+            </Button>
+          </HStack>
+          {productionRuntimeReadiness.isLoading ? <p role="status">{text("Checking runtime.smartaihub.app/readyz…", "กำลังตรวจ runtime.smartaihub.app/readyz…")}</p> : null}
+          {productionRuntimeReadiness.isError ? <p role="alert">{text("Production Worker readiness could not be checked. This probe is read-only and does not verify deployment authority or app traffic cutover.", "ตรวจ readiness ของ production Worker ไม่สำเร็จ การตรวจนี้อ่านข้อมูลอย่างเดียว และไม่ได้ยืนยัน deployment authority หรือการย้าย app traffic")}</p> : null}
+          {productionRuntimeReadiness.data ? (() => {
+            const runtime = productionRuntimeReadiness.data;
+            const ready = runtime.status === "READY";
+            return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare production Worker readiness", "ความพร้อมของ Cloudflare production Worker ที่กำลังทำงาน")}>
+              <HStack gap={2} wrap="wrap">
+                <Badge variant={ready ? "default" : "destructive"}>{runtime.status}</Badge>
+                {runtime.activation ? <Badge variant="outline">activation: {runtime.activation}</Badge> : null}
+                {runtime.transport ? <Badge variant="outline">transport: {runtime.transport}</Badge> : null}
+                {runtime.jobHandlerConfigured !== undefined ? <Badge variant="outline">{text("Job handler", "ตัวจัดการงาน")}: {runtime.jobHandlerConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
+                {runtime.controlPlaneConfigured !== undefined ? <Badge variant="outline">{text("Control plane", "control plane")}: {runtime.controlPlaneConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
+              </HStack>
+              {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
+              {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
+              {runtime.transport === "all" ? <p>{text("No production job transport has been selected. Containers should be provisioned only for workloads that require isolated application execution.", "ยังไม่ได้เลือก job transport สำหรับ production ให้ provision Container เฉพาะ workload ที่ต้องแยก application runtime")}</p> : null}
+              <p>{text("This checks the fixed production Worker endpoint only. A healthy response does not prove the approved artifact, retained-database access, authentication flows, rollback, or production traffic cutover.", "การตรวจนี้ดูเฉพาะ production Worker endpoint ที่กำหนดไว้ ผล healthy ไม่ได้ยืนยัน artifact ที่อนุมัติ การเข้าถึงฐานข้อมูลเดิม ระบบยืนยันตัวตน rollback หรือการย้าย production traffic")}</p>
+              <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(runtime.checkedAt).toLocaleString()}</p>
+            </VStack>;
+          })() : null}
+          <Divider />
+        </VStack>
+      ) : null}
       {!validScope ? <p role="status">{text("Select a tenant, an active canonical project, and preview, staging, or production to inspect target authority.", "เลือก tenant, canonical project ที่ active และ preview, staging หรือ production เพื่อตรวจ target authority")}</p> : null}
       {validScope && targetsQuery.isError ? <p role="alert">{text("Target registry could not be read. The current authority state is unknown; exact-admin access may be required.", "อ่าน target registry ไม่สำเร็จ สถานะ authority ยังไม่ทราบ และอาจต้องใช้ exact-admin")}</p> : null}
       {validScope && targetsQuery.isLoading ? <p role="status">{text("Reading target registry…", "กำลังอ่าน target registry…")}</p> : null}
