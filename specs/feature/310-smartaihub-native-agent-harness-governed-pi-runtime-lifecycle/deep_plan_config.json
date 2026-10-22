@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-g0-g1-20261022/specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
+  "initial_file": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/spec310-g0-g1-20261022/specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
+  "review_mode": "self_review"
+}
