@@ -2231,3 +2231,5 @@ This additive amendment assigns Node.js runtime inventory, patch compliance, adv
 - REQ-295-NODE-03: Deployment verification MUST observe the running process executable/version or container image digest after activation and bind it to environment, service identity, release SHA, timestamp and runtime health. `UNKNOWN` or missing evidence MUST remain unverified and MUST NOT satisfy runtime or production acceptance. Rollback readiness and queue/worker health remain separate evidence.
 
 Acceptance requires negative gate tests for below-floor and unknown runtimes, release-line-specific CVE applicability, evidence from the actual target process/container, Workerd separation, idempotent Task Control linkage, and distinct engineering/deployment/runtime/production outcomes. Source configuration, CI success and deployment command success alone do not close these requirements.
+
+The 2026-10-22 runtime snapshot and Linux production evidence are recorded in `docs/security/NODE_RUNTIME_SECURITY_INVENTORY_2026-10-22.md`. That snapshot remains PARTIAL: embedded tool runtimes, active user sessions, external hosts and automatic Task Control linkage are still open.
