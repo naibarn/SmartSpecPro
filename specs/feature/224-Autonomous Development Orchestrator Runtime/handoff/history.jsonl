@@ -123,3 +123,4 @@
 {"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 127, "observed_at": "2026-10-23T00:48:49.083213Z", "provenance": "OBSERVED"}
 {"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 128, "observed_at": "2026-10-23T00:49:57.523994Z", "provenance": "OBSERVED"}
 {"changes": ["integration.canonical_sha", "integration.integrated_at", "integration.source_sha", "verification.evidence", "verification.freshness", "verification.sha"], "event_type": "CURRENT_TRANSITION", "generation": 129, "observed_at": "2026-10-23T01:10:54.767339Z", "provenance": "OBSERVED"}
+{"changes": ["integration.canonical_sha", "integration.integrated_at", "integration.source_sha", "verification.evidence", "verification.freshness", "verification.sha"], "event_type": "CURRENT_TRANSITION", "generation": 130, "observed_at": "2026-10-23T01:15:50.010781Z", "provenance": "OBSERVED"}

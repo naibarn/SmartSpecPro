@@ -900,7 +900,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
+    "expected_canonical_sha": "d2e54be0c3",
     "expected_spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd"
   },
   "continuation": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 129,
+  "generation": 130,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -1366,11 +1366,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
+    "canonical_sha": "d2e54be0c3",
     "integrated": true,
-    "integrated_at": "2026-10-23T07:50:00+07:00",
+    "integrated_at": "2026-10-23T08:15:16+07:00",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "76420b858a2f793995eec11c3720cf01c7d98bc7"
+    "source_sha": "d2e54be0c3"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T01:10:54.767339Z",
+  "updated_at": "2026-10-23T01:15:50.010781Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3083,13 +3083,20 @@
         "scope": "Canonical web build passed on exact main SHA fb413da88c302b297e324394e22a29be55d4d6d3 after verifying required integrated SPEC-224 revisions. Artifact digest sha256:4ee9f1c8d51b4fb3a1f0dd2949cb36a5ec0422d67b7e509045136dcb62e36e32. Cloudflare staging publication remains pending because publisher unavailable; no deployment or SPEC acceptance claim.",
         "source_sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_PYTHON_CI_FFMPEG_DEPENDENCY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/python-ci-ffmpeg-20261023.md",
+        "scope": "Integrated CI dependency fix at d2e54be0c3 installs ffmpeg for the failing Python media test. Focused test passed 1/1 and workflow YAML parsed; full CI on this revision remains pending.",
+        "source_sha": "d2e54be0c3",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
+    "sha": "d2e54be0c3",
     "status": "PARTIAL",
     "task_regressions": []
   }
