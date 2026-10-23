@@ -77,6 +77,7 @@ import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_J
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
+import { cloudflareStagingActivationBlocker } from "../services/cloudflareStagingActivationReadiness";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -401,6 +402,8 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
   if (!configurationRef || !configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_REQUIRED");
   const originConfiguration = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef }).catch(() => null);
   if (!originConfiguration || originConfiguration.status !== "STORED" || originConfiguration.configurationDigest !== configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE");
+  const activationBlocker = cloudflareStagingActivationBlocker(originConfiguration.descriptor);
+  if (activationBlocker) return unavailable(activationBlocker);
   const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) return unavailable("PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE");
   const jobs = await db.select({ input: workerJobs.inputJson, output: workerJobs.outputJson, createdAt: workerJobs.createdAt })
