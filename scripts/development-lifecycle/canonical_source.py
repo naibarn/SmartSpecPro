@@ -891,7 +891,15 @@ def _cloudflare_artifact_publication_process(
     """
     environment = os.environ.copy()
     environment["SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT"] = str(result_dir.resolve())
-    command = ["pnpm", "--filter", "@smartspec/web", "exec", "tsx"]
+    pnpm = shutil.which("pnpm")
+    corepack = shutil.which("corepack") if not pnpm else None
+    if pnpm:
+        command = [pnpm]
+    elif corepack:
+        command = [corepack, "pnpm"]
+    else:
+        command = ["pnpm"]
+    command.extend(["--filter", "@smartspec/web", "exec", "tsx"])
     configured_path = environment.get("SMARTSPEC_ARTIFACT_ENV_FILE") or environment.get("DOTENV_CONFIG_PATH")
     env_file = Path(configured_path).expanduser() if configured_path else repo / "apps/web/.env"
     if not env_file.is_absolute():

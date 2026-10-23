@@ -8,6 +8,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
+import canonical_source
 from canonical_source import _cloudflare_artifact_publication_process
 
 
@@ -37,6 +38,11 @@ class CloudflareArtifactEnvironmentTests(unittest.TestCase):
         self.assertNotIn("DATABASE_URL", environment)
         self.assertNotIn("LLM_ENCRYPTION_KEY", environment)
         self.assertNotIn("fixture-secret", str(command) + str(environment))
+
+    def test_corepack_runs_the_publisher_when_pnpm_is_not_on_path(self):
+        with patch.object(canonical_source.shutil, "which", side_effect=lambda name: "/opt/corepack" if name == "corepack" else None):
+            command, _ = self.process()
+        self.assertEqual(command[:5], ["/opt/corepack", "pnpm", "--filter", "@smartspec/web", "exec"])
 
     def test_injected_environment_has_priority_over_dotenv(self):
         self.env_file.touch()
