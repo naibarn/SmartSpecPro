@@ -149,6 +149,30 @@ export async function createPrivateMiniAppIdentity(input: {
   return created;
 }
 
+export async function resolveOwnedPrivateMiniAppIdentity(input: {
+  appId: string;
+  tenantId: string;
+  ownerUserId: number;
+}) {
+  const [app] = await getDb().select({
+    appId: appIdentities.appId,
+    publicAppId: appIdentities.publicAppId,
+    tenantId: appIdentities.tenantId,
+    ownerUserId: appIdentities.ownerUserId,
+    visibility: appIdentities.visibility,
+    deploymentVersion: appIdentities.deploymentVersion,
+    lastKnownGoodArtifactRef: appIdentities.lastKnownGoodArtifactRef,
+    lifecycle: appIdentities.lifecycle,
+  }).from(appIdentities).where(and(
+    eq(appIdentities.appId, input.appId),
+    eq(appIdentities.tenantId, input.tenantId),
+    eq(appIdentities.ownerUserId, input.ownerUserId),
+    eq(appIdentities.visibility, "private"),
+    sql`${appIdentities.lifecycle} IN ('draft', 'active')`,
+  )).limit(1);
+  return app ?? null;
+}
+
 /**
  * Private Mini Apps require both the authenticated tenant and owner principal.
  * Public Apps are intentionally readable without a tenant session.

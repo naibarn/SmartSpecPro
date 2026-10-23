@@ -23,12 +23,14 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
       if (state.profile !== "PERSONAL_MINIAPP") throw new Error("FACTORY_HOSTED_PROFILE_FORBIDDEN");
       const baseRef = `miniapp:${state.miniAppId}`;
       if (stageId === "ui_implementation") {
+        const previousSourceRef = context.artifacts.find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
         const artifact = await buildAndStorePersonalMiniApp({
           userId: context.actorId,
           tenantId: context.tenantId,
           appId: state.miniAppId,
           runId: context.runId,
           prompt: run.goal,
+          previousSourceRef,
         });
         return { artifacts: [
           `app-artifact:${artifact.artifactRef}`,

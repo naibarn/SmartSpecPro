@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   runnerInputStaging: { preStageRunnerInput: vi.fn(), bindSourceToWorkerJob: vi.fn() },
   analyzeVisualReferences: vi.fn(),
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
+  resolveOwnedMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.appId, tenantId: input.tenantId, ownerUserId: input.ownerUserId, visibility: "private" })),
+  resolveMiniAppFactoryHome: vi.fn(),
   developmentRunService: { initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })) },
   enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
   VisionUnavailableError: class MiniAppVisionCapabilityUnavailableError extends Error {},
@@ -92,6 +94,11 @@ vi.mock("../../services/miniAppVisualBlueprint", () => ({
 
 vi.mock("../../services/appIdentityRepository", () => ({
   createPrivateMiniAppIdentity: (...args: unknown[]) => mocks.createMiniAppIdentity(...args),
+  resolveOwnedPrivateMiniAppIdentity: (...args: unknown[]) => mocks.resolveOwnedMiniAppIdentity(...args),
+}));
+
+vi.mock("../../services/personalMiniAppPreview", () => ({
+  resolvePersonalMiniAppFactoryHome: (...args: unknown[]) => mocks.resolveMiniAppFactoryHome(...args),
 }));
 
 vi.mock("../../services/workspaceAuthoritySafeActions", () => ({
@@ -247,14 +254,62 @@ describe("spec226DevelopmentControlRouter", () => {
       run: expect.objectContaining({
         goal: "Create a personal expense tracker",
         metadata: expect.objectContaining({ miniAppFactoryProgramState: expect.objectContaining({ profile: "PERSONAL_MINIAPP" }) }),
-        workUnit: expect.objectContaining({ progress: expect.objectContaining({ remainingScope: ["ui_implementation", "package", "deploy", "smoke"] }) }),
+        workUnit: expect.objectContaining({
+          baseRevision: expect.stringMatching(/^source-snapshot:/),
+          progress: expect.objectContaining({ remainingScope: ["ui_implementation", "package", "deploy", "smoke", "source_repository"] }),
+        }),
       }),
+    }));
+    expect(mocks.developmentRunService.initialize).toHaveBeenCalledWith(expect.objectContaining({
+      run: expect.objectContaining({ metadata: expect.objectContaining({ conversationId: 8 }) }),
     }));
     expect(mocks.enqueueMiniAppStage).toHaveBeenCalledWith(expect.objectContaining({
       run: expect.objectContaining({ runId: result.runId, tenantId: "tenant-acme", actorId: 42 }),
     }));
     expect(mocks.workspaceSpecSets.resolveWorkspaceRunInput).not.toHaveBeenCalled();
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+  });
+
+  it("continues a private Mini-App on the same identity, repository and saved source snapshot", async () => {
+    const sourceDigest = "c".repeat(64);
+    const revision = "d".repeat(40);
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({
+      runId: "run-previous-miniapp",
+      conversationId: 8,
+      sourceSnapshotRef: `r2://mini-app-sources/tenant-acme/app_existing/sha256/${sourceDigest}`,
+      appSourceDigest: sourceDigest,
+      artifacts: [
+        `app-source:r2://mini-app-sources/tenant-acme/app_existing/sha256/${sourceDigest}`,
+        `app-source-digest:${sourceDigest}`,
+        `app-repository:managed:smartaihub/smartaihub-app-existing@${revision}`,
+      ],
+      repository: { mode: "SMARTAIHUB_MANAGED", owner: "smartaihub", name: "smartaihub-app-existing", url: "https://github.com/smartaihub/smartaihub-app-existing", revision },
+    });
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8,
+        mode: "prompt",
+        factoryMode: true,
+        appId: "app_existing",
+        prompt: "Add a category filter to the existing expense tracker.",
+        idempotencyKey: "spec224-factory-feedback-key-0001",
+      },
+    });
+    expect(result.miniAppId).toBe("app_existing");
+    expect(mocks.createMiniAppIdentity).not.toHaveBeenCalled();
+    expect(mocks.resolveOwnedMiniAppIdentity).toHaveBeenCalledWith({ appId: "app_existing", tenantId: CTX.tenantId, ownerUserId: 42 });
+    expect(mocks.developmentRunService.initialize).toHaveBeenCalledWith(expect.objectContaining({
+      run: expect.objectContaining({
+        repositoryRef: "repo:smartaihub/smartaihub-app-existing",
+        baseRevision: `git:${revision}`,
+        metadata: expect.objectContaining({ miniAppPreviousRunId: "run-previous-miniapp" }),
+        workUnit: expect.objectContaining({
+          repositoryId: "github-smartaihub-smartaihub-app-existing",
+          artifacts: expect.arrayContaining([`app-source-digest:${sourceDigest}`]),
+        }),
+      }),
+    }));
   });
 
   it("starts a prompt run from server-derived workspace facts and stages bytes before canonical admission", async () => {

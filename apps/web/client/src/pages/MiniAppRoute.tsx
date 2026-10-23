@@ -1,10 +1,51 @@
-import { lazy, useEffect, useRef } from "react";
+import { lazy, useEffect, useRef, useState } from "react";
 import { useRoute } from "wouter";
 import { AppPage } from "@/components/AppPage";
 import { trpc } from "@/lib/trpc";
 
 const ResearchNotesPage = lazy(() => import("@/pages/ResearchNotesPage"));
 const ProjectWikiPagesPage = lazy(() => import("@/pages/ProjectWikiPagesPage"));
+
+function ContinueMiniApp({ input, onStarted }: {
+  input: { appId: string; conversationId: number };
+  onStarted: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const continuation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation({
+    onSuccess: () => {
+      setPrompt("");
+      onStarted();
+    },
+  });
+  return (
+    <form onSubmit={event => {
+      event.preventDefault();
+      const feedback = prompt.trim();
+      if (!feedback || continuation.isPending) return;
+      continuation.mutate({
+        conversationId: input.conversationId,
+        mode: "prompt",
+        factoryMode: true,
+        appId: input.appId,
+        prompt: feedback,
+        idempotencyKey: `miniapp-feedback:${crypto.randomUUID()}`,
+      });
+    }}>
+      <label htmlFor="miniapp-feedback">Continue this Mini App or send feedback</label>
+      <textarea
+        id="miniapp-feedback"
+        value={prompt}
+        maxLength={4_000}
+        rows={4}
+        onChange={event => setPrompt(event.target.value)}
+      />
+      {continuation.error ? <p role="alert">{continuation.error.message}</p> : null}
+      <button type="submit" disabled={!prompt.trim() || continuation.isPending}>
+        {continuation.isPending ? "Starting build…" : "Continue Mini App"}
+      </button>
+    </form>
+  );
+}
 
 export default function MiniAppRoute() {
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -18,7 +59,7 @@ export default function MiniAppRoute() {
     {
       enabled: isMiniAppRoute,
       retry: false,
-      refetchInterval: query => query.state.data?.lastKnownGoodArtifactRef ? false : 2_000,
+      refetchInterval: query => query.state.data?.factory?.milestone === "BUILDING" || !query.state.data?.app?.lastKnownGoodArtifactRef ? 2_000 : false,
     },
   );
   const legacyQuery = trpc.appIdentity.resolvePublicApp.useQuery({ publicAppId }, { enabled: !isMiniAppRoute && Boolean(publicAppId), retry: false });
@@ -83,6 +124,7 @@ export default function MiniAppRoute() {
                 <ol>{factory.completedStages.map((stage: string) => <li key={stage}>{stage}</li>)}</ol>
               </section>
             ) : null}
+            {factory?.conversationId ? <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={() => { void miniAppQuery.refetch(); }} /> : null}
             <iframe
               ref={frameRef}
               title={app?.appId ?? appId}
@@ -107,6 +149,7 @@ export default function MiniAppRoute() {
             <section aria-label="Build history"><h3>Build history</h3><ol>{factory.completedStages.map((stage: string) => <li key={stage}>{stage}</li>)}</ol></section>
           ) : null}
           {factory?.sourceSnapshotRef ? <p>Source snapshot saved.</p> : null}
+          {factory?.conversationId ? <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={() => { void miniAppQuery.refetch(); }} /> : null}
         </section>
       </AppPage>
     );

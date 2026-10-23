@@ -27,16 +27,28 @@ function stageList(value: unknown): value is string[] {
   );
 }
 
+function artifactList(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= 256 && value.every(item =>
+    typeof item === "string" && /^[A-Za-z0-9_./:@#-]{1,1024}$/.test(item)
+  );
+}
+
 export function createMiniAppFactoryDurableState(input: {
   programId: string;
   miniAppId: string;
-  sourceSha: string;
+  sourceSha?: string;
   profile?: MiniAppFactoryDurableState["profile"];
+  initialArtifacts?: string[];
+  repository?: MiniAppFactoryDurableState["repository"];
 }): MiniAppFactoryDurableState {
   if (!/^[A-Za-z0-9_.:-]{1,160}$/.test(input.programId)) throw new Error("FACTORY_PROGRAM_ID_INVALID");
   if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.miniAppId)) throw new Error("FACTORY_MINI_APP_ID_INVALID");
-  if (!/^[a-f0-9]{40}$/i.test(input.sourceSha)) throw new Error("FACTORY_SOURCE_SHA_INVALID");
   const profile = input.profile ?? "PERSONAL_MINIAPP";
+  if (input.sourceSha !== undefined && !/^[a-f0-9]{40}$/i.test(input.sourceSha)) throw new Error("FACTORY_SOURCE_SHA_INVALID");
+  if (profile === "PLATFORM_SELF_DEVELOPMENT" && !input.sourceSha) throw new Error("FACTORY_SOURCE_SHA_REQUIRED");
+  const initialArtifacts = input.initialArtifacts ?? [];
+  if (!artifactList(initialArtifacts)) throw new Error("FACTORY_INITIAL_ARTIFACTS_INVALID");
+  const sourceDigest = initialArtifacts.find(item => item.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
   return {
     schemaVersion: "mini-app-factory-program-state.v1",
     programId: input.programId,
@@ -46,10 +58,10 @@ export function createMiniAppFactoryDurableState(input: {
     currentStage: null,
     completedStages: [],
     waitingStages: [],
-    artifacts: [],
-    appSourceDigest: null,
-    repository: null,
-    sourceSha: profile === "PLATFORM_SELF_DEVELOPMENT" ? input.sourceSha.toLowerCase() : null,
+    artifacts: [...new Set(initialArtifacts)],
+    appSourceDigest: sourceDigest && /^[a-f0-9]{64}$/.test(sourceDigest) ? sourceDigest : null,
+    repository: input.repository ?? null,
+    sourceSha: profile === "PLATFORM_SELF_DEVELOPMENT" ? input.sourceSha!.toLowerCase() : null,
     packageDigest: null,
     migrationState: "NOT_STARTED",
     deploymentState: "NOT_STARTED",
@@ -69,7 +81,7 @@ export function parseMiniAppFactoryDurableState(value: unknown): MiniAppFactoryD
     !(state.profile === undefined || ["PERSONAL_MINIAPP", "PLATFORM_SELF_DEVELOPMENT"].includes(String(state.profile))) ||
     !(state.deliveryMilestone === undefined || ["BUILDING", "PREVIEW_AVAILABLE", "USER_TRIAL_READY", "VERIFICATION_PENDING", "BUILD_FAILED", "USER_FEEDBACK_REQUIRED", "USER_ACCEPTED", "RELEASE_VERIFIED", "PLATFORM_CERTIFIED"].includes(String(state.deliveryMilestone))) ||
     !(state.currentStage === null || (typeof state.currentStage === "string" && /^[A-Za-z0-9_.:-]{1,128}$/.test(state.currentStage))) ||
-    !stageList(state.completedStages) || !stageList(state.waitingStages) || !stageList(state.artifacts) ||
+    !stageList(state.completedStages) || !stageList(state.waitingStages) || !artifactList(state.artifacts) ||
     !(state.appSourceDigest === undefined || state.appSourceDigest === null || (typeof state.appSourceDigest === "string" && /^[a-f0-9]{64}$/.test(state.appSourceDigest))) ||
     !(state.repository === undefined || state.repository === null || (state.repository && typeof state.repository === "object" &&
       ["SMARTAIHUB_MANAGED", "USER_OWNED"].includes(String((state.repository as Record<string, unknown>).mode)) &&
@@ -105,14 +117,16 @@ export function advanceMiniAppFactoryDurableState(
   input: { stageId: string; artifacts: string[]; nextEligibleStages: string[]; deliveryMilestone?: MiniAppFactoryDurableState["deliveryMilestone"] },
 ): MiniAppFactoryDurableState {
   const state = parseMiniAppFactoryDurableState(current);
-  if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(input.stageId) || !stageList(input.artifacts) || !stageList(input.nextEligibleStages)) {
+  if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(input.stageId) || !artifactList(input.artifacts) || !stageList(input.nextEligibleStages)) {
     throw new Error("FACTORY_STAGE_OUTPUT_INVALID");
   }
   const artifacts = [...new Set([...state.artifacts, ...input.artifacts])];
   const packageArtifact = artifacts.find(item => item.startsWith("package-digest:"));
-  const sourceDigestArtifact = artifacts.find(item => item.startsWith("app-source-digest:"));
+  const sourceDigestArtifact = [...input.artifacts].reverse().find(item => item.startsWith("app-source-digest:"))
+    ?? [...artifacts].reverse().find(item => item.startsWith("app-source-digest:"));
   const sourceDigest = sourceDigestArtifact?.slice("app-source-digest:".length) ?? state.appSourceDigest;
-  const repositoryArtifact = artifacts.find(item => item.startsWith("app-repository:managed:"));
+  const repositoryArtifact = [...input.artifacts].reverse().find(item => item.startsWith("app-repository:managed:"))
+    ?? [...artifacts].reverse().find(item => item.startsWith("app-repository:managed:"));
   const repositoryMatch = repositoryArtifact && /^app-repository:managed:([A-Za-z0-9-]{1,39})\/([a-z0-9-]{1,100})@([a-f0-9]{40})$/i.exec(repositoryArtifact);
   const repository = repositoryMatch ? {
     mode: "SMARTAIHUB_MANAGED" as const,

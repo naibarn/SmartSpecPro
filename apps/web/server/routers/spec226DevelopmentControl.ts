@@ -17,7 +17,8 @@ import { createDevelopmentWorkUnit } from "../services/developmentLifecycleContr
 import { loadMiniAppFactoryPipeline, selectReadyMiniAppFactoryStages } from "../services/miniAppFactoryPipeline";
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../services/miniAppFactoryDurableState";
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
-import { createPrivateMiniAppIdentity } from "../services/appIdentityRepository";
+import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
+import { resolvePersonalMiniAppFactoryHome } from "../services/personalMiniAppPreview";
 import {
   createDevelopmentRunService,
   createPersistedDevelopmentRun,
@@ -470,6 +471,7 @@ export const spec226DevelopmentControlRouter = router({
       conversationId: z.number().int().positive(),
       mode: z.enum(["prompt", "spec_set"]),
       factoryMode: z.boolean().default(false),
+      appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/).optional(),
       prompt: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
@@ -488,6 +490,8 @@ export const spec226DevelopmentControlRouter = router({
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "valid prompt required" });
       if (input.mode === "spec_set" && (input.prompt || !input.workPackageId))
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "work package required" });
+      if (input.appId && !input.factoryMode)
+        refinement.addIssue({ code: z.ZodIssueCode.custom, message: "app continuation requires factory mode" });
       if (input.visualReferences.length !== input.visualFiles.length)
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "each visual reference must include one image" });
     }))
@@ -502,32 +506,43 @@ export const spec226DevelopmentControlRouter = router({
       try {
         if (input.factoryMode) {
           if (input.mode !== "prompt" || !input.prompt?.trim()) throw new Error("PERSONAL_MINIAPP_PROMPT_REQUIRED");
-          const sourceSha = getSpec224BackendRuntimeIdentity().runtimeRevision?.toLowerCase();
-          if (!sourceSha || !/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error("MINI_APP_FACTORY_SOURCE_REVISION_REQUIRED");
           const factoryPipeline = loadMiniAppFactoryPipeline();
-          const miniAppId = `app_${runDigest.slice(0, 24)}`;
-          const miniAppIdentity = await createPrivateMiniAppIdentity({
-            tenantId: scope.tenantId,
-            ownerUserId: scope.actorId,
-            idempotencyKey: `spec224:${runId}`,
-            preferredAppId: miniAppId,
-          });
+          const miniAppId = input.appId ?? `app_${runDigest.slice(0, 24)}`;
+          const previousFactory = input.appId
+            ? await resolvePersonalMiniAppFactoryHome({ tenantId: scope.tenantId, userId: scope.actorId }, miniAppId)
+            : null;
+          if (input.appId && !previousFactory) throw new Error("MINI_APP_CONTINUATION_NOT_FOUND");
+          const miniAppIdentity = input.appId
+            ? await resolveOwnedPrivateMiniAppIdentity({ appId: miniAppId, tenantId: scope.tenantId, ownerUserId: scope.actorId })
+            : await createPrivateMiniAppIdentity({
+                tenantId: scope.tenantId,
+                ownerUserId: scope.actorId,
+                idempotencyKey: `spec224:${runId}`,
+                preferredAppId: miniAppId,
+              });
+          if (!miniAppIdentity) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+          const priorArtifacts = previousFactory?.artifacts.filter(value => typeof value === "string" && /^(app-source:|app-source-digest:|app-repository:|app-repository-state:)/.test(value)) ?? [];
+          const repository = previousFactory?.repository as { mode: "SMARTAIHUB_MANAGED"; owner: string; name: string; url: string; revision: string } | null ?? null;
+          const sourceRevision = repository?.revision ?? previousFactory?.appSourceDigest ?? createHash("sha256").update(input.prompt.trim()).digest("hex");
           const factoryState = createMiniAppFactoryDurableState({
             programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
             miniAppId,
-            sourceSha,
             profile: "PERSONAL_MINIAPP",
+            initialArtifacts: priorArtifacts,
+            repository,
           });
+          const repositoryRef = repository ? `repo:${repository.owner}/${repository.name}` : `miniapp:${miniAppId}`;
           const workUnit = createDevelopmentWorkUnit({
             workId: `factory-work-${runDigest}`,
             projectId: `miniapp-${miniAppId}`,
-            repositoryId: `miniapp:${miniAppId}`,
-            source: { type: "prompt", ref: `spec224-run:${runId}` },
+            repositoryId: repository ? `github-${repository.owner}-${repository.name}` : `miniapp:${miniAppId}`,
+            source: { type: previousFactory ? "generated" : "prompt", ref: `spec224-run:${runId}` },
             objective: input.prompt.trim(),
             ownership: { actor: String(scope.actorId), session: `conversation:${input.conversationId}`, harness: "hosted-mini-app-factory" },
             canonicalTarget: { kind: "artifact-revision", locator: `miniapp:${miniAppId}` },
-            baseRevision: `git:${sourceSha}`,
+            baseRevision: repository ? `git:${repository.revision}` : `source-snapshot:${sourceRevision}`,
           });
+          workUnit.artifacts = [...priorArtifacts];
           const profileStages = factoryPipeline.profiles?.PERSONAL_MINIAPP?.stages ?? factoryPipeline.stages.map(stage => stage.id);
           workUnit.progress.state = "WORKING";
           workUnit.progress.remainingScope = [...profileStages];
@@ -536,12 +551,16 @@ export const spec226DevelopmentControlRouter = router({
             runId,
             ...scope,
             goal: input.prompt.trim(),
-            repositoryRef: `miniapp:${miniAppId}`,
-            baseRevision: `git:${sourceSha}`,
+            repositoryRef,
+            baseRevision: workUnit.baseRevision,
             contextPackHash: createHash("sha256").update(input.prompt.trim()).digest("hex"),
             workspaceId: `miniapp-${miniAppId}`,
             workUnit,
-            metadata: { [MINI_APP_FACTORY_STATE_KEY]: factoryState },
+            metadata: {
+              [MINI_APP_FACTORY_STATE_KEY]: factoryState,
+              conversationId: input.conversationId,
+              ...(previousFactory?.runId ? { miniAppPreviousRunId: previousFactory.runId } : {}),
+            },
           });
           await developmentRunService.initialize({
             run,
