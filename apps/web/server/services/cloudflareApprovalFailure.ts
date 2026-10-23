@@ -1,6 +1,6 @@
 const SAFE_APPROVAL_CODE = /^[A-Z][A-Z0-9_]{5,119}$/;
 const SAFE_FIELD_SEGMENT = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
-export type CloudflareApprovalFailureStage = "POLICY_CREATE" | "GRANT_CREATE";
+export type CloudflareApprovalFailureStage = "POLICY_LOOKUP" | "POLICY_CREATE" | "GRANT_CREATE";
 
 /** Return actionable validation locations without reflecting values or messages. */
 export function cloudflareApprovalFailureCode(

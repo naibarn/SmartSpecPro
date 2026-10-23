@@ -21,6 +21,16 @@ describe("Cloudflare Staging activation preflight", () => {
     })).toBe("STAGING_PRIVATE_DATABASE_BINDING_REQUIRED");
   });
 
+  it("requires both preconfigured runtime and control-plane secrets before creating a deployment grant", () => {
+    expect(cloudflareStagingActivationBlocker({
+      workflowExecution: "emergency-intake",
+      jobTransport: "queues",
+      nativeResources: { privateDatabase: {} },
+      workflowRuntimeTokenConfigured: true,
+      controlPlaneTokenConfigured: false,
+    })).toBe("STAGING_WORKFLOW_RUNTIME_SECRETS_REQUIRED");
+  });
+
   it("accepts Queues without requiring Workflow, Container, or Worker App bindings", () => {
     expect(cloudflareStagingActivationBlocker({
       workflowExecution: "emergency-intake",

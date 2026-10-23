@@ -120,6 +120,80 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
   });
 }
 
+/**
+ * Activate the minimum staging intake profile from the exact currently bound
+ * immutable configuration. Secrets remain server-side and are copied only
+ * after the target row is locked and its binding is rechecked. This stores and
+ * binds a new version; deployment still requires a separate staging grant/job.
+ */
+export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; configurationRef: string; actorUserId: number;
+  workflowRuntimeToken?: string; controlPlaneToken?: string;
+}) {
+  if (input.identity.provider !== "cloudflare" || input.identity.environment !== "staging" ||
+      !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0) denied();
+  return db.transaction(async tx => {
+    const rows = await tx.select().from(providerDeploymentTargets).where(and(
+      eq(providerDeploymentTargets.tenantId, input.identity.tenantId),
+      eq(providerDeploymentTargets.projectId, input.identity.projectId),
+      eq(providerDeploymentTargets.environment, "staging"),
+      eq(providerDeploymentTargets.provider, "cloudflare"),
+      eq(providerDeploymentTargets.enabled, true),
+    )).for("update");
+    const target = rows[0];
+    if (rows.length !== 1 || !target || target.runtimePolicy !== input.configurationRef ||
+        target.deploymentTargetId !== "smartspec-cloudflare-staging" || target.workerRef !== "smartspec-cloudflare-staging" ||
+        target.containerApplicationRef || authorizeDeploymentTarget({ target, callerTenantId: input.identity.tenantId,
+          projectId: input.identity.projectId, environment: "staging", provider: "cloudflare" }) !== "AUTHORIZED") denied();
+
+    const { stored } = await readVersion(tx, input.identity, input.configurationRef);
+    if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) <= Date.now()) denied();
+    const previous = stored.descriptor;
+    if (!previous.nativeResources?.privateDatabase) throw new Error("STAGING_PRIVATE_DATABASE_BINDING_REQUIRED");
+    const needsRuntimeSecrets = !stored.secrets.workflowRuntimeToken || !stored.secrets.controlPlaneToken;
+    const suppliedAnyRuntimeSecret = Boolean(input.workflowRuntimeToken || input.controlPlaneToken);
+    if (needsRuntimeSecrets && (!input.workflowRuntimeToken || !input.controlPlaneToken)) throw new Error("STAGING_WORKFLOW_RUNTIME_SECRETS_REQUIRED");
+    if (!needsRuntimeSecrets && suppliedAnyRuntimeSecret) throw new Error("STAGING_WORKFLOW_RUNTIME_SECRETS_ALREADY_CONFIGURED");
+    const secrets = needsRuntimeSecrets ? cloudflareOriginSecretsSchema.parse({ ...stored.secrets,
+      workflowRuntimeToken: input.workflowRuntimeToken, controlPlaneToken: input.controlPlaneToken }) : stored.secrets;
+    if (previous.workflowExecution === "emergency-intake" && previous.jobTransport === "queues") {
+      return { status: "ALREADY_CONFIGURED" as const, configurationRef: input.configurationRef,
+        configurationDigest: digest(previous), descriptor: previous, deploymentAuthorized: false as const };
+    }
+
+    const settings = cloudflareOriginSettingsSchema.parse({
+      origin: previous.origin, allowedPublicOrigins: previous.allowedPublicOrigins,
+      accessApplicationId: previous.accessApplicationId, accessTeamName: previous.accessTeamName,
+      accessAudience: previous.accessAudience, expiresAt: previous.expiresAt,
+      ...(previous.nativeResources ? { nativeResources: previous.nativeResources } : {}),
+      workflowExecution: "emergency-intake", jobTransport: "queues",
+      ...(previous.workflowDatabase ? { workflowDatabase: previous.workflowDatabase } : {}),
+      ...(previous.runnerReleaseCatalog ? { runnerReleaseCatalog: previous.runnerReleaseCatalog } : {}),
+      ...(previous.retentionSchedule ? { retentionSchedule: previous.retentionSchedule } : {}),
+      ...(previous.applicationHttp ? { applicationHttp: previous.applicationHttp } : {}),
+      ...(previous.applicationHttpPhase ? { applicationHttpPhase: previous.applicationHttpPhase } : {}),
+    });
+    assertCloudflareWorkflowConfiguration(settings, secrets);
+    validateSettings(settings, Date.now());
+    const descriptor = descriptorSchema.parse({ ...settings, schemaVersion: "cloudflare.origin-configuration.v1",
+      versionId: randomUUID(), ...input.identity, accountRef: target.accountRef, targetId: "smartspec-cloudflare-staging" });
+    await verifyNativeReceipt(tx, descriptor, input.actorUserId);
+    const configurationRef = reference(descriptor);
+    const existing = await tx.select({ id: systemSettings.id }).from(systemSettings)
+      .where(and(eq(systemSettings.category, category), eq(systemSettings.key, configurationRef))).limit(1);
+    if (existing.length) denied();
+    await tx.insert(systemSettings).values({ category, key: configurationRef, isSensitive: true,
+      value: encrypt(JSON.stringify({ descriptor, secrets, revokedAt: null })), valueJson: null,
+      updatedBy: input.actorUserId, description: "Scoped immutable staging queue activation profile; deployment requires a separate grant" });
+    const rebound = await tx.update(providerDeploymentTargets).set({ runtimePolicy: configurationRef, updatedBy: input.actorUserId, updatedAt: new Date() })
+      .where(and(eq(providerDeploymentTargets.id, target.id), eq(providerDeploymentTargets.runtimePolicy, input.configurationRef)))
+      .returning({ id: providerDeploymentTargets.id });
+    if (rebound.length !== 1) denied();
+    return { status: "STORED_AND_BOUND" as const, configurationRef, configurationDigest: digest(descriptor), descriptor,
+      deploymentAuthorized: false as const };
+  });
+}
+
 async function readVersion(db: DrizzleDB, identity: DeploymentTargetIdentity, configurationRef: string) {
   if (!/^cf-origin:[a-f0-9]{64}$/.test(configurationRef)) denied();
   const rows = await db.select({ id: systemSettings.id, value: systemSettings.value, isSensitive: systemSettings.isSensitive, updatedBy: systemSettings.updatedBy })
@@ -147,7 +221,10 @@ export async function getCloudflareOriginConfiguration(db: DrizzleDB, input: {
   const { stored } = await readVersion(db, input.identity, input.configurationRef);
   const status = stored.revokedAt ? "REVOKED" : Date.parse(stored.descriptor.expiresAt) <= Date.now() ? "EXPIRED" : "STORED";
   return { status, configurationRef: input.configurationRef, configurationDigest: digest(stored.descriptor),
-    descriptor: stored.descriptor, providerAccessVerified: false as const, deploymentAuthorized: false as const };
+    descriptor: stored.descriptor,
+    workflowRuntimeTokenConfigured: Boolean(stored.secrets.workflowRuntimeToken),
+    controlPlaneTokenConfigured: Boolean(stored.secrets.controlPlaneToken),
+    providerAccessVerified: false as const, deploymentAuthorized: false as const };
 }
 
 /** Exact target + expected immutable digest are mandatory for server execution. */

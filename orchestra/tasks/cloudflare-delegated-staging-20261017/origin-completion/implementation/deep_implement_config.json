@@ -42,7 +42,7 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Staging deploy preflight now blocks before policy/grant/job creation unless the exact saved origin config enables emergency-intake with Queues and the retained private DB binding; focused tests pass. Continue P0 repair by designing a bounded reuse path on the existing ApprovalRule authority: exact preapproved artifact/config scope, fresh per-job grants, idempotent operation budget, and explicit provenance; do not widen artifact/config authority. Then use the real owner Admin session to save/activate the staging profile, create a fresh canonical job, and verify runtime. Production remains independently gated.",
+      "next_action": "Integrate the bounded staging campaign reuse and exact-owner Queue-profile activation UI/service. Then deploy through the canonical Linux release path if available and verify hosted serving versions; owner must save/activate the profile and create a fresh staging job before runtime acceptance.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023",
       "checkpoint_sha": "cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e",
       "merged_main_sha": "cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e",
@@ -58,11 +58,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 156,
-  "updated_at": "2026-10-23T03:30:10.139944+00:00",
+  "generation": 158,
+  "updated_at": "2026-10-23T03:50:40.595714+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Staging deploy preflight now blocks before policy/grant/job creation unless the exact saved origin config enables emergency-intake with Queues and the retained private DB binding; focused tests pass. Continue P0 repair by designing a bounded reuse path on the existing ApprovalRule authority: exact preapproved artifact/config scope, fresh per-job grants, idempotent operation budget, and explicit provenance; do not widen artifact/config authority. Then use the real owner Admin session to save/activate the staging profile, create a fresh canonical job, and verify runtime. Production remains independently gated.",
+    "next_action": "Integrate the bounded staging campaign reuse and exact-owner Queue-profile activation UI/service. Then deploy through the canonical Linux release path if available and verify hosted serving versions; owner must save/activate the profile and create a fresh staging job before runtime acceptance.",
     "merged_main_sha": "cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023",
     "gaps": [
@@ -105,7 +105,8 @@
       "The build runner has no authenticated tenant-owner session. Staging policy/grant endpoints require the verified tenant owner; do not synthesize owner identity or bypass that authority.",
       "Production cutover is not authorized by the staging grant: production target/route and scoped provider authority, runtime binding parity, compatible rollback baseline, and staging acceptance remain absent.",
       "P0 campaign authorization is not implemented yet: queueCloudflareStagingDeploy still creates a one-operation policy and one 45-minute job grant. Existing exact artifact/config binding is a security requirement; only owner-approved allowlists may cover changed artifacts/configs.",
-      "Current Staging activation profile must be re-saved with workflowExecution=emergency-intake, jobTransport=queues, and privateDatabase enabled; otherwise preflight now returns a precise blocker before requesting authorization."
+      "Current Staging activation profile must be re-saved with workflowExecution=emergency-intake, jobTransport=queues, and privateDatabase enabled; otherwise preflight now returns a precise blocker before requesting authorization.",
+      "Live staging is still activation-disabled; authenticated tenant-owner action is required after source integration to bind the minimum Queue profile and enqueue a fresh grant-bound job."
     ],
     "outcome": "NOT_ACCEPTED"
   }

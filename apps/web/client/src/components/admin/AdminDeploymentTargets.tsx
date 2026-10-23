@@ -30,6 +30,7 @@ type DeploymentTarget = {
   containerApplicationRef: string | null;
   enabled: boolean;
   provenance: string;
+  runtimePolicy?: string | null;
 };
 
 type TargetFields = {
@@ -238,6 +239,8 @@ export default function AdminDeploymentTargets() {
   const [tenantId, setTenantId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [environment, setEnvironment] = useState("");
+  const [workflowRuntimeToken, setWorkflowRuntimeToken] = useState("");
+  const [controlPlaneToken, setControlPlaneToken] = useState("");
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery();
   const validTenantId = tenantId.length > 0 && tenantId.length <= 36
@@ -266,6 +269,10 @@ export default function AdminDeploymentTargets() {
   );
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
+  const currentStagingConfigRef = cloudflareTargets.find(target => target.enabled)?.runtimePolicy ?? "";
+  const stagingOriginConfiguration = trpc.infrastructure.getCloudflareOriginConfiguration.useQuery({
+    tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: currentStagingConfigRef,
+  }, { enabled: validScope && environment === "staging" && /^cf-origin:[a-f0-9]{64}$/.test(currentStagingConfigRef) });
   const enabledCloudflareTargets = cloudflareTargets.filter(target => target.enabled);
   const isConflict = enabledCloudflareTargets.length > 1;
   const canCreate = validScope && !targetsQuery.isLoading && !targetsQuery.isError && !isConflict && enabledCloudflareTargets.length === 0;
@@ -287,6 +294,13 @@ export default function AdminDeploymentTargets() {
   });
   const stagingDeployMutation = trpc.infrastructure.queueCloudflareStagingDeploy.useMutation({
     onSuccess: async () => { await stagingDeployPreflight.refetch(); },
+  });
+  const activateStagingProfile = trpc.infrastructure.activateCloudflareStagingQueueProfile.useMutation({
+    onSuccess: async () => {
+      setWorkflowRuntimeToken("");
+      setControlPlaneToken("");
+      await Promise.all([refreshTargets(), stagingDeployPreflight.refetch(), stagingRuntimeReadiness.refetch()]);
+    },
   });
   const text = useText();
   const setNewField = (key: keyof TargetFields) => (event: ChangeEvent<HTMLInputElement>) =>
@@ -325,7 +339,7 @@ export default function AdminDeploymentTargets() {
               };
             })}
             value={tenantId}
-            onValueChange={value => { setTenantId(value); setProjectId(""); }}
+            onValueChange={value => { setTenantId(value); setProjectId(""); setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}
           />
           {tenantId && !validTenantId ? <p role="status">{text("Select an existing tenant to configure deployment targets.", "เลือก tenant ที่มีอยู่ในระบบเพื่อตั้งค่า deployment target")}</p> : null}
         </VStack>
@@ -339,7 +353,7 @@ export default function AdminDeploymentTargets() {
             options={(projectsQuery.data ?? []).map(project => ({ value: project.projectId, label: `${project.title} · ${project.projectType} · ${project.projectId}` }))}
             value={projectId}
             disabled={!validTenantId || projectsQuery.isLoading}
-            onValueChange={setProjectId}
+            onValueChange={value => { setProjectId(value); setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}
           />
           {validTenantId && !projectsQuery.isLoading && projectsQuery.data?.length === 0 ? <p role="status">{text("No active canonical projects were found for this tenant.", "ไม่พบ canonical project ที่ active ใน tenant นี้")}</p> : null}
         </VStack>
@@ -469,6 +483,33 @@ export default function AdminDeploymentTargets() {
               </HStack>
               {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
+              {runtime.status === "ACTIVATION_DISABLED" ? (() => {
+                const configRef = currentStagingConfigRef;
+                const config = stagingOriginConfiguration.data;
+                const secretsMissing = config?.workflowRuntimeTokenConfigured === false || config?.controlPlaneTokenConfigured === false;
+                return <VStack gap={1}>
+                  <p>{text(
+                    "The current Worker is intentionally inactive. You can bind the minimum Staging intake profile from the existing encrypted configuration. This does not deploy code or enable production traffic; the existing private database and workflow/control-plane secrets must already be present.",
+                    "Worker ปัจจุบันปิด activation ไว้โดยตั้งใจ สามารถผูก profile สำหรับ Staging ขั้นต่ำจาก config เข้ารหัสเดิมได้ การทำนี้ไม่ deploy code และไม่เปิด production traffic โดยต้องมี private database และ workflow/control-plane secrets อยู่ใน config เดิมก่อน",
+                  )}</p>
+                  {secretsMissing ? <VStack gap={1}>
+                    <p>{text("This stored profile is missing runtime credentials. Enter both values once; the server stores them encrypted and never returns them.", "config เดิมยังไม่มี runtime credentials กรุณากรอกทั้งสองค่า ระบบจะเก็บแบบเข้ารหัสและไม่ส่งค่ากลับมาอีก")}</p>
+                    <Label htmlFor="staging-workflow-runtime-token">{text("Staging workflow runtime token", "Staging workflow runtime token")}</Label>
+                    <Input id="staging-workflow-runtime-token" type="password" autoComplete="new-password" value={workflowRuntimeToken} onChange={event => setWorkflowRuntimeToken(event.target.value)} />
+                    <Label htmlFor="staging-control-plane-token">{text("Staging control-plane token", "Staging control-plane token")}</Label>
+                    <Input id="staging-control-plane-token" type="password" autoComplete="new-password" value={controlPlaneToken} onChange={event => setControlPlaneToken(event.target.value)} />
+                  </VStack> : null}
+                  {stagingOriginConfiguration.isError ? <p role="alert">{text("Stored staging profile metadata could not be verified. Refresh the registry before continuing.", "ตรวจ metadata ของ staging profile ไม่สำเร็จ กรุณารีเฟรช registry ก่อนดำเนินการ")}</p> : null}
+                  <Button type="button" variant="outline" disabled={!/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
+                    stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
+                    (secretsMissing && (workflowRuntimeToken.length < 32 || controlPlaneToken.length < 32))}
+                    onClick={() => activateStagingProfile.mutate({ tenantId, projectId, environment: "staging", configurationRef: configRef,
+                      ...(secretsMissing ? { workflowRuntimeToken, controlPlaneToken } : {}) })}>
+                    {activateStagingProfile.isPending ? text("Saving staging profile…", "กำลังบันทึก staging profile…") : text("Enable minimum Staging Queue profile", "เปิด Staging Queue profile ขั้นต่ำ")}
+                  </Button>
+                  {activateStagingProfile.error ? <p role="alert"><code>{activateStagingProfile.error.message}</code></p> : null}
+                </VStack>;
+              })() : null}
               {runtime.transport === "all" ? <p>{text("No job transport has been selected yet. The missing list reflects the Worker’s current all-transports profile; Containers are only needed for workloads that require isolated execution.", "ยังไม่ได้เลือก transport สำหรับงาน รายการที่ขาดอ้างอิง profile ที่เปิดตรวจทุก transport ในขณะนี้ และต้องใช้ Containers เฉพาะงานที่ต้องแยก runtime เท่านั้น")}</p> : null}
               <p>{text("This live probe is separate from the deploy preflight below. A successful artifact deployment does not mean app traffic has moved from the Linux origin.", "ผลตรวจ runtime นี้แยกจาก preflight ด้านล่าง การ deploy artifact ผ่านไม่ได้แปลว่า traffic ของแอปย้ายจาก Linux origin แล้ว")}</p>
               <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(runtime.checkedAt).toLocaleString()}</p>
@@ -482,7 +523,10 @@ export default function AdminDeploymentTargets() {
             {stagingDeployPreflight.data.ready && stagingDeployPreflight.data.artifact && stagingDeployPreflight.data.baseline ? <>
               <p>{text("Candidate", "รุ่นที่จะ deploy")}: <code>{stagingDeployPreflight.data.artifact.sourceSha}</code> · <code>{stagingDeployPreflight.data.artifact.artifactRef}</code></p>
               <p>{text("Verified rollback baseline", "รุ่น rollback ที่ตรวจสอบแล้ว")}: <code>{stagingDeployPreflight.data.baseline.deploymentId}</code> · <code>{stagingDeployPreflight.data.baseline.sourceSha}</code></p>
-              <p>{text("One action creates an owner-scoped policy and grant for this artifact, config, target, and job, then queues through worker_jobs. It cannot change production DNS or routes.", "คำสั่งนี้สร้าง policy/grant ของ owner ที่ผูกกับ artifact, config, target และ job นี้ แล้วส่งผ่าน worker_jobs เท่านั้น ไม่มีการเปลี่ยน DNS หรือ route ของ production")}</p>
+              <p>{text(
+                "One owner action opens a four-hour campaign for up to four staging jobs, bound to this exact candidate, configuration, target, executor, and verified rollback release. Every job receives a fresh one-job grant. A different artifact or configuration requires new owner authorization. This cannot change production DNS or routes.",
+                "การอนุมัติของ owner หนึ่งครั้งเปิด campaign 4 ชั่วโมง สูงสุด 4 staging jobs โดยผูกกับ candidate, configuration, target, executor และ rollback release ที่ตรวจแล้วชุดนี้เท่านั้น แต่ละ job ได้ grant ใหม่ที่ใช้ได้งานเดียว หาก artifact หรือ configuration เปลี่ยนต้องอนุมัติ scope ใหม่ และคำสั่งนี้เปลี่ยน DNS หรือ route ของ production ไม่ได้",
+              )}</p>
               <Button type="button" disabled={stagingDeployMutation.isPending} onClick={() => stagingDeployMutation.mutate({ tenantId, projectId, environment: "staging" })}>
                 {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize and deploy to staging", "อนุมัติและ deploy ไป staging")}
               </Button>

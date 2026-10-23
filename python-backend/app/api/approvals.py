@@ -348,6 +348,12 @@ class CloudflareStagingPolicyCreate(BaseModel):
     definition: dict
 
 
+class CloudflareStagingPolicyLookup(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
+    definition: dict
+
+
 class CloudflareStagingPolicyGrantIssue(CloudflareStagingGrantIssue):
     policy_id: StrictStr = Field(..., alias="policyId", pattern=r"^[a-f0-9-]{36}$")
     job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[a-f0-9-]{36}$")
@@ -378,6 +384,23 @@ class CloudflareOriginProvisionGrantIssue(BaseModel):
 
 class CloudflareNativeProvisionGrantIssue(CloudflareOriginProvisionGrantIssue):
     pass
+
+
+@router.post("/cloudflare-staging-policies/lookup")
+async def lookup_cloudflare_staging_policy(
+    data: CloudflareStagingPolicyLookup,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    try:
+        return await ApprovalDBService(db).find_reusable_cloudflare_staging_policy(
+            tenant_id=tenant_id, project_id=data.project_id, actor_id=int(current_user.id), definition=data.definition)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.post("/cloudflare-staging-policies", status_code=201)

@@ -12,7 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
-import { canonicalProjects, systemSettings, workerJobs } from "../../drizzle/schema";
+import { canonicalProjects, systemSettings, tenants, users, workerJobs } from "../../drizzle/schema";
 import { eq, and, asc, desc } from "drizzle-orm";
 import { getFeatureFlag, setFeatureFlag } from "../services/featureFlags";
 import {
@@ -53,7 +53,7 @@ import {
 } from "../services/cloudflareCredentialCenter";
 import { auditLogger } from "../services/auditLogger";
 import { cloudflareOriginSettingsSchema, cloudflareOriginSecretsSchema, saveCloudflareOriginConfiguration,
-  getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration } from "../services/cloudflareOriginConfiguration";
+  getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration, activateCloudflareStagingQueueProfile } from "../services/cloudflareOriginConfiguration";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
@@ -402,7 +402,9 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
   if (!configurationRef || !configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_REQUIRED");
   const originConfiguration = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef }).catch(() => null);
   if (!originConfiguration || originConfiguration.status !== "STORED" || originConfiguration.configurationDigest !== configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE");
-  const activationBlocker = cloudflareStagingActivationBlocker(originConfiguration.descriptor);
+  const activationBlocker = cloudflareStagingActivationBlocker({ ...originConfiguration.descriptor,
+    workflowRuntimeTokenConfigured: originConfiguration.workflowRuntimeTokenConfigured,
+    controlPlaneTokenConfigured: originConfiguration.controlPlaneTokenConfigured });
   if (activationBlocker) return unavailable(activationBlocker);
   const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) return unavailable("PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE");
@@ -524,6 +526,38 @@ export const infrastructureRouter = router({
     return result;
   }),
 
+  activateCloudflareStagingQueueProfile: exactAdminProcedure
+    .input(originIdentitySchema.extend({ environment: z.literal("staging"), configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/),
+      workflowRuntimeToken: z.string().min(32).max(4096).optional(), controlPlaneToken: z.string().min(32).max(4096).optional() }).strict()
+      .superRefine((value, ctx) => {
+        if (Boolean(value.workflowRuntimeToken) !== Boolean(value.controlPlaneToken)) ctx.addIssue({ code: "custom", message: "Both runtime secrets must be supplied together" });
+      }))
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match staging target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [owner] = await db.select({ ownerId: tenants.ownerId, active: tenants.isActive, role: users.role, disabled: users.isDisabled })
+        .from(tenants).innerJoin(users, eq(users.id, ctx.user!.id)).where(eq(tenants.id, tenantId)).limit(1);
+      if (!owner || owner.ownerId !== ctx.user!.id || !owner.active || owner.role !== "admin" || owner.disabled) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "CLOUDFLARE_STAGING_ACTIVE_TENANT_OWNER_REQUIRED" });
+      }
+      const { configurationRef, workflowRuntimeToken, controlPlaneToken, ...identity } = input;
+      let result: Awaited<ReturnType<typeof activateCloudflareStagingQueueProfile>>;
+      try {
+        result = await activateCloudflareStagingQueueProfile(db, { identity, configurationRef, actorUserId: ctx.user!.id,
+          ...(workflowRuntimeToken ? { workflowRuntimeToken, controlPlaneToken } : {}) });
+      } catch (error) {
+        const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "STAGING_PROFILE_ACTIVATION_FAILED";
+        throw new TRPCError({ code: code.endsWith("_REQUIRED") ? "PRECONDITION_FAILED" : "BAD_REQUEST", message: code });
+      }
+      auditLogger.log({ eventType: "cloudflare_staging_queue_profile_activated", userId: ctx.user!.id,
+        requestType: "cloudflare_staging_queue_profile_activate", responsePayload: { ...identity,
+          previousConfigurationRef: configurationRef, configurationRef: result.configurationRef,
+          configurationDigest: result.configurationDigest, deploymentAuthorized: false }, statusCode: 200 });
+      return result;
+    }),
+
   listProviderDeploymentTargets: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32) }))
     .query(async ({ input }) => {
@@ -623,7 +657,7 @@ export const infrastructureRouter = router({
         return value;
       };
       const operationId = randomUUID();
-      const policyExpiresAt = new Date(Date.now() + 60 * 60_000).toISOString();
+      const policyExpiresAt = new Date(Date.now() + 3 * 60 * 60_000 + 45 * 60_000).toISOString();
       const grantExpiresAt = new Date(Date.now() + 45 * 60_000).toISOString();
       const candidateRelease = { ...preflight.artifact, configurationRef: preflight.configurationRef, configurationDigest: preflight.configurationDigest };
       const baselineRelease = { artifactRef: preflight.baseline.artifactRef, sourceSha: preflight.baseline.sourceSha, buildDigest: preflight.baseline.buildDigest,
@@ -632,14 +666,22 @@ export const infrastructureRouter = router({
         ? [candidateRelease] : [candidateRelease, baselineRelease];
       let policyId: string | null = null;
       let grantRef: string | null = null;
+      let policyCreated = false;
       let canonicalJobCreationStarted = false;
       try {
-        const policy = await postApproval("/api/v1/approvals/cloudflare-staging-policies", {
-          projectId: input.projectId,
-          definition: { contractVersion: "cloudflare-staging-origin-v2", accountRef: preflight.accountRef, executorId, actorUserId: ctx.user.id,
-            targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging", releases, maxOperations: 1, expiresAt: policyExpiresAt },
-        }, "POLICY_CREATE");
-        policyId = typeof policy.policyId === "string" ? policy.policyId : null;
+        const campaign = { contractVersion: "cloudflare-staging-origin-v2", accountRef: preflight.accountRef, executorId, actorUserId: ctx.user.id,
+          targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging", releases, maxOperations: 4, expiresAt: policyExpiresAt };
+        const reusable = await postApproval("/api/v1/approvals/cloudflare-staging-policies/lookup", {
+          projectId: input.projectId, definition: campaign,
+        }, "POLICY_LOOKUP");
+        policyId = typeof reusable?.policyId === "string" ? reusable.policyId : null;
+        if (!policyId) {
+          const policy = await postApproval("/api/v1/approvals/cloudflare-staging-policies", {
+            projectId: input.projectId, definition: campaign,
+          }, "POLICY_CREATE");
+          policyId = typeof policy.policyId === "string" ? policy.policyId : null;
+          policyCreated = true;
+        }
         if (!policyId) throw new Error("STAGING_POLICY_CREATE_FAILED");
         const grant = await postApproval("/api/v1/approvals/cloudflare-staging-grants/policy", {
           idempotencyKey: `cf-staging:${operationId}`, policyId, jobId: operationId, projectId: input.projectId, executorId,
@@ -671,7 +713,7 @@ export const infrastructureRouter = router({
             responsePayload: { tenantId, projectId: input.projectId, jobId: job.jobId, grantRef, sourceSha: preflight.artifact.sourceSha,
               buildDigest: preflight.artifact.buildDigest, configurationDigest: preflight.configurationDigest }, statusCode: 202 });
         } catch { /* The canonical job and its outbox remain authoritative if audit projection is temporarily unavailable. */ }
-        return { jobId: job.jobId, grantRef, status: "queued" as const, sourceSha: preflight.artifact.sourceSha, artifactRef: preflight.artifact.artifactRef };
+        return { jobId: job.jobId, grantRef, policyId, status: "queued" as const, sourceSha: preflight.artifact.sourceSha, artifactRef: preflight.artifact.artifactRef };
       } catch (error) {
         // Before the canonical insert starts, unused approval state can be revoked.
         // Once job creation starts its transaction outcome may be ambiguous; retain
@@ -680,7 +722,7 @@ export const infrastructureRouter = router({
           if (grantRef) await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/cloudflare-staging-grants/${encodeURIComponent(grantRef)}/revoke`, {
             method: "POST", headers: authHeaders, body: JSON.stringify({ reason: "Canonical staging job creation did not start" }), signal: AbortSignal.timeout(10_000),
           }).catch(() => undefined);
-          if (policyId) await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/cloudflare-staging-policies/${encodeURIComponent(policyId)}/revoke`, {
+          if (policyCreated && policyId) await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/cloudflare-staging-policies/${encodeURIComponent(policyId)}/revoke`, {
             method: "POST", headers: authHeaders, signal: AbortSignal.timeout(10_000),
           }).catch(() => undefined);
         }

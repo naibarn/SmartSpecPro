@@ -7,7 +7,7 @@ from uuid import uuid4
 import pytest
 from app.models.approval import ApprovalRule, ApprovalType
 from app.services.approval_db_service import ApprovalDBService, normalize_cloudflare_staging_grant_payload
-from app.services.cloudflare_staging_policy import SCHEMA, _version, validate_staging_policy
+from app.services.cloudflare_staging_policy import ORIGIN_SCHEMA, ORIGIN_CONTRACT, SCHEMA, _version, validate_staging_policy
 
 
 def definition():
@@ -55,6 +55,57 @@ def service_fixture():
     service._require_cloudflare_policy_owner = AsyncMock()
     service._check_cloudflare_policy_bindings = AsyncMock()
     return service, rule, prior, bootstrap(policy)
+
+
+def origin_campaign():
+    release = {"artifactRef": "sha256:" + "b" * 64, "sourceSha": "c" * 40, "buildDigest": "b" * 64,
+        "configurationRef": "cf-origin:" + "d" * 64, "configurationDigest": "d" * 64}
+    return {"contractVersion": ORIGIN_CONTRACT, "accountRef": "a" * 32, "executorId": "cf-staging-executor:policy-test",
+        "actorUserId": 17, "targetId": "smartspec-cloudflare-staging", "environment": "staging", "releases": [release],
+        "maxOperations": 4, "expiresAt": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat()}
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_reusable_origin_campaign_returns_only_exact_unexpired_scope_and_budget():
+    policy = origin_campaign()
+    rule = ApprovalRule(id=str(uuid4()), tenant_id="tenant-1", project_id="project-1", trigger_type=ApprovalType.DEPLOYMENT,
+        conditions={"schemaVersion": ORIGIN_SCHEMA, "ownerUserId": 17, "definition": policy, "version": _version(policy)}, is_active=True)
+    results = [SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [rule])),
+        SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: []))]
+    db = AsyncMock()
+    db.execute.side_effect = results
+    service = ApprovalDBService(db)
+    service._require_cloudflare_policy_owner = AsyncMock()
+    service._check_cloudflare_policy_bindings = AsyncMock()
+
+    found = await service.find_reusable_cloudflare_staging_policy(
+        tenant_id="tenant-1", project_id="project-1", actor_id=17, definition=policy)
+    assert found == {"policyId": rule.id, "remainingOperations": 4, "expiresAt": policy["expiresAt"]}
+    service._check_cloudflare_policy_bindings.assert_awaited_once_with("tenant-1", "project-1", policy,
+        datetime.fromisoformat(policy["expiresAt"]), active_origin_ref=policy["releases"][0]["configurationRef"])
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_reusable_origin_campaign_does_not_admit_changed_artifact_or_exhausted_budget():
+    policy = origin_campaign()
+    rule = ApprovalRule(id=str(uuid4()), tenant_id="tenant-1", project_id="project-1", trigger_type=ApprovalType.DEPLOYMENT,
+        conditions={"schemaVersion": ORIGIN_SCHEMA, "ownerUserId": 17, "definition": policy, "version": _version(policy)}, is_active=True)
+    service = ApprovalDBService(AsyncMock())
+    service._require_cloudflare_policy_owner = AsyncMock()
+    service._check_cloudflare_policy_bindings = AsyncMock()
+
+    for requested in [
+        {**policy, "releases": [{**policy["releases"][0], "sourceSha": "e" * 40}]},
+        policy,
+    ]:
+        prior = [] if requested is not policy else [SimpleNamespace(extra_data={"cloudflareStagingPolicyDecisionV1": {"policyId": rule.id}}) for _ in range(4)]
+        responses = [SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [rule])),
+            SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: prior))]
+        service.db.execute.side_effect = responses
+        assert await service.find_reusable_cloudflare_staging_policy(
+            tenant_id="tenant-1", project_id="project-1", actor_id=17, definition=requested) is None
 
 
 @pytest.mark.unit

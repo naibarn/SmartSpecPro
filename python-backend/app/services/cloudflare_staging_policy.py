@@ -155,6 +155,55 @@ class CloudflareStagingPolicyAuthority:
         await self.db.refresh(rule)
         return rule
 
+    async def find_reusable_cloudflare_staging_policy(self, *, tenant_id: str, project_id: str, actor_id: int, definition: dict):
+        """Find a live, exact-scope origin campaign with unused bounded operations.
+
+        This only reuses existing owner authority. Artifact/config releases must
+        match exactly; a changed release cannot inherit the campaign.
+        """
+        await self._require_cloudflare_policy_owner(tenant_id, actor_id)
+        now = datetime.now(timezone.utc)
+        requested = validate_staging_policy(definition, now)
+        if requested.get("contractVersion") != ORIGIN_CONTRACT or requested["actorUserId"] != actor_id:
+            raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
+        result = await self.db.execute(select(ApprovalRule).where(
+            ApprovalRule.tenant_id == tenant_id, ApprovalRule.project_id == project_id,
+            ApprovalRule.trigger_type == ApprovalType.DEPLOYMENT, ApprovalRule.is_active.is_(True),
+        ).order_by(ApprovalRule.created_at.desc()).limit(20).with_for_update())
+        rules = result.scalars().all()
+        requests_result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.tenant_id == tenant_id,
+            ApprovalRequest.project_id == project_id,
+            ApprovalRequest.correlation_key.like("cf-staging-grant:%"),
+        ))
+        prior_requests = requests_result.scalars().all()
+        for rule in rules:
+            conditions = rule.conditions if isinstance(rule.conditions, dict) else {}
+            if conditions.get("schemaVersion") != ORIGIN_SCHEMA or conditions.get("ownerUserId") != actor_id:
+                continue
+            try:
+                existing = validate_staging_policy(conditions.get("definition"), now)
+            except ValueError:
+                continue
+            if (conditions.get("version") != _version(existing) or existing.get("contractVersion") != ORIGIN_CONTRACT
+                or any(existing[key] != requested[key] for key in ("accountRef", "executorId", "actorUserId", "targetId", "environment", "releases"))):
+                continue
+            active_ref = next((release["configurationRef"] for release in requested["releases"] if release["configurationRef"]), None)
+            try:
+                expiry = datetime.fromisoformat(existing["expiresAt"].replace("Z", "+00:00"))
+                await self._check_cloudflare_policy_bindings(tenant_id, project_id, existing, expiry, active_origin_ref=active_ref)
+            except (ValueError, PermissionError):
+                continue
+            used = 0
+            for request in prior_requests:
+                decision = (request.extra_data or {}).get("cloudflareStagingPolicyDecisionV1")
+                if isinstance(decision, dict) and decision.get("policyId") == rule.id:
+                    used += 1
+            remaining = existing["maxOperations"] - used
+            if remaining > 0:
+                return {"policyId": rule.id, "remainingOperations": remaining, "expiresAt": existing["expiresAt"]}
+        return None
+
     async def revoke_cloudflare_staging_policy(self, *, tenant_id: str, actor_id: int, policy_id: str):
         await self._require_cloudflare_policy_owner(tenant_id, actor_id)
         result = await self.db.execute(select(ApprovalRule).where(ApprovalRule.id == policy_id, ApprovalRule.tenant_id == tenant_id).with_for_update())
