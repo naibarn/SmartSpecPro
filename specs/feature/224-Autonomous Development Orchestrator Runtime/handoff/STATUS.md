@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 1261 unresolved of 1261
+- Requirements: 0 pass / 1267 unresolved of 1267
 - Next action: Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.
-- Manifest generation: 138
+- Manifest generation: 141
 
 ## Source-declared status and relationship claims
 

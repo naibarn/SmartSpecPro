@@ -901,13 +901,13 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "44d02607f28fcdb97480f0da4dc182718c07824e",
-    "expected_spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd"
+    "expected_spec_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3"
   },
   "continuation": {
-    "next_action": "Wait for SmartSpecWeb in CI 39903295562 to finish; classify any failure and repair only task-related SPEC-224/226 failures. The failed turbo_build and python results are recorded in the evidence document, including the six PostgreSQL integration cases queued for a properly provisioned disposable target. Then continue only after existing Database Owner, Source Trust, Tenant Owner, and Windows Runner authorities and live admission evidence satisfy the recorded reactivation predicates.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: repository owner must provision the exact Database Owner team reviewer and main-only branch policy for GitHub environment production, prevent self-review, and set SPEC224_DATABASE_OWNER_TEAM_ID to the configured team ID. Current environment has no reviewer protection and no deployment branch policy. No production migration may run until the guard reports READY and the owner approval reference is available.",
-    "reactivation_predicate": "Resume only after read-only GitHub environment verification returns exactly one required-reviewers rule containing only the configured Database Owner team, prevent_self_review=true, exactly one production branch policy named main, and SPEC224_DATABASE_OWNER_TEAM_ID matches that team. Then an authorized Database Owner reviews the workflow deployment; targeted migration must pass exact database fingerprint, migration-ledger drift, concurrency, and enum postcondition checks. If any preflight blocks, do not widen the migration set.",
-    "resume_point": "Code SHA 2132aef1795eeece482423ce08386667fc3946c0 passed the canonical package build with artifact sha256:6edcf6d089ce421c06e72718782ccaeed2792ea55bcf1090666b6b4c7928ac8f (126593 files); immutable Cloudflare staging object sha256:9ba80bd4c0238ca3dd962da5fd73a4a3e9b743a4c6b0a4b80275da6366133653 was stored with no Worker deployment. CI 39903295562 has 503 repo-wide TS diagnostics but none in SPEC-224/226 paths; Python has 49 failures (4858 passed/32 skipped), with 6 SPEC-224 Postgres tests RESOURCE_BLOCKED/QUEUED_RESOURCE because the exact disposable target is unavailable. SmartSpecWeb remains in progress. Latest evidence and detail are in handoff/evidence/spec224-canonical-build-recovery-20261023.md; the evidence update is integrated at 44d02607f28fcdb97480f0da4dc182718c07824e. SPEC-224 remains incomplete pending protected production migration authority, non-production Source Trust authority, authenticated Tenant/Windows Runner crosswalk, admission, recovery grant, dispatch, settlement and Final Verify. No production DB/migration, service deployment, or end-to-end acceptance was performed.",
+    "next_action": "Continue SPEC-224 Development Acceptance from the clean canonical source: implement the next source/runtime gaps, run focused checks on disposable test infrastructure, and integrate safe checkpoints. Production migration 0395 and production deployment remain independent protected release operations and are not prerequisites. Full non-production Runner acceptance may proceed only through the existing exact-scope policy and authenticated tenant/source-trust/Runner authority; do not label local or partial evidence as full E2E PASS.",
+    "next_ready_workunit": "IMPLEMENTATION: Continue the next SPEC-224 non-production source/runtime work unit using existing worker_jobs/outbox, authorization policy and evidence contracts. For live Runner execution, use an already authorized test tenant and non-production target; if exact external source-trust, tenant, Runner/session/workspace, grant or deployment authority is absent, continue independent code/test/build work and record only that live acceptance boundary.",
+    "reactivation_predicate": "Resume remote non-production Runner acceptance when the existing Platform/Security and tenant authorities provide exact scoped policy decisions and authenticated current source-trust, Runner/session/capability, workspace, DevelopmentRun/job/attempt, lease/fencing/idempotency, recovery-grant and budget evidence. Validate those facts through existing authority APIs before dispatch. Production migration/deployment approval is not a development or non-production acceptance prerequisite; production operations remain separately guarded.",
+    "resume_point": "The production-only targeted migration 0395 workflow remains protected and independent of Development Acceptance. The CI workflow provisions two task-scoped disposable PostgreSQL 15.17 clusters: one applies migration 0395 against the pre-migration enum and verifies the external_runtime label; the other applies the existing Spec 224 fresh-baseline projection and runs the existing disposable-target guard plus recovery-grant binding PostgreSQL integration suite. Local focused PostgreSQL result: 3 files / 8 tests passed; policy/admission regression result: 3 files / 32 tests passed. These checks do not run a production migration or deployment. Continue source/runtime implementation and authorized non-production acceptance; remote Runner/source-trust/Tenant authority remains a separate boundary. No partial evidence is full E2E acceptance.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1148,13 +1148,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 138,
+  "generation": 141,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-    "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+    "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-20T23:27:53.336893Z",
+      "last_evidence_at": "2026-10-23T06:47:36.318475Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -2562,10 +2562,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-20T23:27:53.336893Z",
+    "reconciled_at": "2026-10-23T06:47:36.318475Z",
     "sources": [
       {
-        "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+        "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -2580,17 +2580,17 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-spec.md"
       },
       {
-        "digest": "cb84fd855b9aa6ef7c0edcb15d2116921a21b09de867ebaf5f34eb0f6fdb8baf",
+        "digest": "e6b716c4c85b8053bdb16e6485770e7eced9ab6e08e6b7ec3fdba3143dc53345",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/HANDOFF.md"
       },
       {
-        "digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json"
       },
       {
-        "digest": "2c2bbc6c530226a87e47091b4c805d81c691b64f0dcf923c4b7ba56c9ce3c2bd",
+        "digest": "8a79b3294085f68dcf43e55a7dd8de35e3e883498f869db11bddb61bd189a20a",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/handoff_history.jsonl"
       },
@@ -2630,7 +2630,7 @@
         "line": null,
         "section": "section-01-local-fast-lane",
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-        "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "value": "checkpointed"
       },
       {
@@ -2644,7 +2644,7 @@
         "line": null,
         "section": "section-02-atomic-continuation",
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-        "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "value": "checkpointed"
       },
       {
@@ -2658,7 +2658,7 @@
         "line": null,
         "section": "section-04-working-ui-acceptance",
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-        "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "value": "checkpointed"
       },
       {
@@ -2669,7 +2669,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+        "source_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
@@ -2703,7 +2703,7 @@
         "line": null,
         "section": "section-01-local-fast-lane",
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-        "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "value": "checkpointed"
       },
       {
@@ -2716,7 +2716,7 @@
         "line": null,
         "section": "section-02-atomic-continuation",
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-        "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "value": "checkpointed"
       },
       {
@@ -2729,7 +2729,7 @@
         "line": null,
         "section": "section-04-working-ui-acceptance",
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-        "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "value": "checkpointed"
       },
       {
@@ -2739,14 +2739,14 @@
         "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+        "source_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+        "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -2761,17 +2761,17 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-spec.md"
       },
       {
-        "digest": "cb84fd855b9aa6ef7c0edcb15d2116921a21b09de867ebaf5f34eb0f6fdb8baf",
+        "digest": "e6b716c4c85b8053bdb16e6485770e7eced9ab6e08e6b7ec3fdba3143dc53345",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/HANDOFF.md"
       },
       {
-        "digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+        "digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json"
       },
       {
-        "digest": "2c2bbc6c530226a87e47091b4c805d81c691b64f0dcf923c4b7ba56c9ce3c2bd",
+        "digest": "8a79b3294085f68dcf43e55a7dd8de35e3e883498f869db11bddb61bd189a20a",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/handoff_history.jsonl"
       },
@@ -2807,16 +2807,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 2,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1261,
-    "unresolved": 1261
+    "total": 1267,
+    "unresolved": 1267
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T05:22:49.786206Z",
+  "updated_at": "2026-10-23T06:49:08.182120Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
