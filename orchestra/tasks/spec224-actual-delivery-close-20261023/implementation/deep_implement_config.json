@@ -1,0 +1,72 @@
+{
+  "plugin_root": "/home/dev/.codex/skills/deep-implement",
+  "sections_dir": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections",
+  "target_dir": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
+  "state_dir": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/implementation",
+  "git_root": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-contract-continuation",
+    "section-02-live-hosted-execution",
+    "section-03-real-browser-acceptance",
+    "section-04-release-final-verify"
+  ],
+  "sections_state": {
+    "section-01-contract-continuation": {
+      "status": "checkpointed",
+      "next_action": "Continue through section 02: run real hosted Gateway generation using an authorized non-production tenant and bind its app source/artifact; retain preview-state projection fix.",
+      "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
+      "checkpoint_sha": "24e252092c95fd9b71018deed5b1cf0c03eaa909",
+      "merged_main_sha": "24e252092c95fd9b71018deed5b1cf0c03eaa909"
+    },
+    "section-02-live-hosted-execution": {
+      "status": "in_progress",
+      "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
+      "next_action": "Run real hosted PERSONAL_MINIAPP generation and artifact binding after the exact non-production Gateway target and test tenant are available."
+    },
+    "section-04-release-final-verify": {
+      "status": "checkpointed",
+      "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
+      "next_action": "Final acceptance remains open. Resume only after an authorized non-production Gateway/runtime plus test tenant and app-owner GitHub write connection are provisioned; complete exact expense-tracker browser journey, then use guarded release with authenticated sudo.",
+      "checkpoint_sha": "acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28",
+      "merged_main_sha": "acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28"
+    },
+    "section-03-real-browser-acceptance": {
+      "status": "in_progress",
+      "next_action": "Run authenticated owner and second-identity browser journey against the exact real model-generated artifact after section 02."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-23T11:54:52.232432+00:00",
+  "generation": 10,
+  "updated_at": "2026-10-23T12:22:13.030187+00:00",
+  "progress": {
+    "active_section": "section-02-live-hosted-execution",
+    "next_action": "Run real hosted PERSONAL_MINIAPP generation and artifact binding after the exact non-production Gateway target and test tenant are available.",
+    "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
+    "gaps": [
+      "No USER_TRIAL_READY trusted receipt is currently emitted into the Mini-App factory DevelopmentRun; current addition validates a receipt but has no production caller.",
+      "Per-app GitHub provisioning only supports SMARTAIHUB_MANAGED and no authorized GitHub write token or user-owned repo connection is configured in this environment.",
+      "No USER_TRIAL_READY trusted receipt is currently emitted into the Mini-App factory DevelopmentRun; current addition validates receipts but has no production caller.",
+      "Per-app GitHub provisioning only supports SMARTAIHUB_MANAGED; the authorized GitHub identity cannot read the SmartAIHub organization and no app-owner GitHub connection is configured.",
+      "Repository-owned disposable worker/outbox lane passes, but actual Gateway model generation and an authorized non-production service target have not been demonstrated.",
+      "The earlier full-migration disposable attempt blocked on the prior database directory on NTFS; the dedicated baseline worker lane passed on ext4.",
+      "The current execution context reports sudo password required; existing release attempt is stuck in NTFS I/O before authorization.",
+      "Dedicated disposable PostgreSQL worker/outbox retry lane passes at 24e252092c95fd9b71018deed5b1cf0c03eaa909; its stage adapter intentionally uses a synthetic retry fixture and does not prove model generation.",
+      "Current local configuration points CONTROL_PLANE_URL to loopback port 1 and has no direct model provider key; no hosted non-production Gateway target was provided.",
+      "No real artifact/appId or registered non-production HTTPS target exists yet; the existing public production route cannot substitute for non-production acceptance.",
+      "No hosted non-production runtime/Gateway/model receipt or real private appId/artifact/browser journey exists; the local test lane uses a synthetic stage.",
+      "Current sudo noninteractive check fails because this session has no password credential; existing release preparation remains blocked in NTFS I/O before its authorization gate.",
+      "The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes."
+    ],
+    "merged_main_sha": "acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28"
+  }
+}
