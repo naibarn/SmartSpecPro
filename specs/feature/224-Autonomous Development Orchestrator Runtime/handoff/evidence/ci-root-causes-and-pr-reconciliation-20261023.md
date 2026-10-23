@@ -19,3 +19,9 @@ All three PRs are authored under the connected `naibarn` account. They remain op
 ## Still open
 
 The latest main CI run must establish whether the two focused fixes clear their failures. Other Python, SmartSpecWeb, turbo/type, protected Runner, external approval, deployment, and end-to-end acceptance gaps remain unresolved. No acceptance or production release is claimed here.
+
+## Canonical lifecycle authority checks
+
+At canonical source `9681b5679bf481b69f24cb64a29b29581406729a`, the previously integrated `promote_ready_pr.py` guards expected PR head, canonical base ancestry, and current integration readiness. `TMPDIR=/mnt/ExpansionHD/smartspec-tmp python3 skills/integration-controller/tests/test_promote_ready_pr.py` passed 20/20.
+
+The canonical source builder includes the post-checkpoint fix `3b1c4f71f` for fallback-storage admission and safe receipt replication. `TMPDIR=/mnt/ExpansionHD/smartspec-tmp python3 scripts/development-lifecycle/test_canonical_source.py` exited 0, covering canonical source isolation and fallback receipt handling. Neither check performs deployment.

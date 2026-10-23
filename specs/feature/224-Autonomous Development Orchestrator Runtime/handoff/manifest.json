@@ -900,7 +900,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "9681b5679bf481b69f24cb64a29b29581406729a",
+    "expected_canonical_sha": "06e0c68a02",
     "expected_spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd"
   },
   "continuation": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 132,
+  "generation": 133,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -1366,11 +1366,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "9681b5679bf481b69f24cb64a29b29581406729a",
+    "canonical_sha": "06e0c68a02",
     "integrated": true,
-    "integrated_at": "2026-10-23T08:18:37+07:00",
+    "integrated_at": "2026-10-23T08:20:40+07:00",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "9681b5679bf481b69f24cb64a29b29581406729a"
+    "source_sha": "06e0c68a02"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T01:20:33.914313Z",
+  "updated_at": "2026-10-23T01:21:25.307591Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3097,13 +3097,20 @@
         "scope": "Recorded two CI root-cause fixes integrated through origin/main at 8bbf6c42be and reconciled requested PRs #1174, #944, and #961 against that exact mainline. Focused tests pass; full CI remains pending and PR heads remain stale/open.",
         "source_sha": "8bbf6c42be",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_CANONICAL_LIFECYCLE_GUARDS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/ci-root-causes-and-pr-reconciliation-20261023.md",
+        "scope": "At exact main source 9681b5679bf481b69f24cb64a29b29581406729a, focused promotion guard tests passed 20/20 and canonical-source fallback/admission regression suite exited 0. These verify canonical repository authority code; no deployment was performed.",
+        "source_sha": "9681b5679bf481b69f24cb64a29b29581406729a",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "9681b5679bf481b69f24cb64a29b29581406729a",
+    "sha": "06e0c68a02",
     "status": "PARTIAL",
     "task_regressions": []
   }
