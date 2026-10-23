@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `155`
-- Updated (UTC): `2026-10-22T03:08:07.101098+00:00`
+- State generation: `156`
+- Updated (UTC): `2026-10-23T03:30:10.139944+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
-- Worktree: `/mnt/SmartSpecDev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/34bd27a3bc15a4d5a7f39895da1535848a446678-test`
-- Latest recorded merged Main SHA: `34bd27a3bc15a4d5a7f39895da1535848a446678`
+- Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023`
+- Latest recorded merged Main SHA: `cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Admin deployment workflow is live and verified on Linux source 34bd27a3bc15a4d5a7f39895da1535848a446678 (healthz/readyz/admin settings HTTP 200; bundled workflow asset present). Staging artifact is PUBLISHED for this SHA (digest 809e0acad6c5f5232461a2d772cb5703efbbb1596df19e8148ed41d14c7b6029). Queue it through the Admin button using the real authenticated tenant-owner session; then verify staging runtime and rollback. Keep production traffic on Linux until staging acceptance and production-specific route, binding, IAM, grant, and rollback evidence pass.
+- Next action: Staging deploy preflight now blocks before policy/grant/job creation unless the exact saved origin config enables emergency-intake with Queues and the retained private DB binding; focused tests pass. Continue P0 repair by designing a bounded reuse path on the existing ApprovalRule authority: exact preapproved artifact/config scope, fresh per-job grants, idempotent operation budget, and explicit provenance; do not widen artifact/config authority. Then use the real owner Admin session to save/activate the staging profile, create a fresh canonical job, and verify runtime. Production remains independently gated.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-cutover-20261022 | /mnt/SmartSpecDev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/34bd27a3bc15a4d5a7f39895da1535848a446678-test | 6b41d39573c5c819330f3eb80addd207e023a6ff | 34bd27a3bc15a4d5a7f39895da1535848a446678 | Admin deployment workflow is live and verified on Linux source 34bd27a3bc15a4d5a7f39895da1535848a446678 (healthz/readyz/admin settings HTTP 200; bundled workflow asset present). Staging artifact is PUBLISHED for this SHA (digest 809e0acad6c5f5232461a2d772cb5703efbbb1596df19e8148ed41d14c7b6029). Queue it through the Admin button using the real authenticated tenant-owner session; then verify staging runtime and rollback. Keep production traffic on Linux until staging acceptance and production-specific route, binding, IAM, grant, and rollback evidence pass. |
+| section-05-acceptance | checkpointed | codex-cloudflare-approval-loop-p0-20261023 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023 | cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e | cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e | Staging deploy preflight now blocks before policy/grant/job creation unless the exact saved origin config enables emergency-intake with Queues and the retained private DB binding; focused tests pass. Continue P0 repair by designing a bounded reuse path on the existing ApprovalRule authority: exact preapproved artifact/config scope, fresh per-job grants, idempotent operation budget, and explicit provenance; do not widen artifact/config authority. Then use the real owner Admin session to save/activate the staging profile, create a fresh canonical job, and verify runtime. Production remains independently gated. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -63,6 +63,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No active staging origin-v2 policy/grant exists for the current artifact; current Admin UI lacks policy/grant/job workflow, and this shell cannot act as authenticated tenant owner.
 - The build runner has no authenticated tenant-owner session. Staging policy/grant endpoints require the verified tenant owner; do not synthesize owner identity or bypass that authority.
 - Production cutover is not authorized by the staging grant: production target/route and scoped provider authority, runtime binding parity, compatible rollback baseline, and staging acceptance remain absent.
+- P0 campaign authorization is not implemented yet: queueCloudflareStagingDeploy still creates a one-operation policy and one 45-minute job grant. Existing exact artifact/config binding is a security requirement; only owner-approved allowlists may cover changed artifacts/configs.
+- Current Staging activation profile must be re-saved with workflowExecution=emergency-intake, jobTransport=queues, and privateDatabase enabled; otherwise preflight now returns a precise blocker before requesting authorization.
 
 ## Resume
 
