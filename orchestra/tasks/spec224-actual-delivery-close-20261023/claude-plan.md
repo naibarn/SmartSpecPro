@@ -23,6 +23,10 @@ The handoff inventory contains 1,280 requirements: 1,268 `OPEN/UNVERIFIED`, 9 `P
 
 The following sections are an execution plan with truthful incomplete predicates, not a statement that all four sections or SPEC-224 are accepted. Continue independent engineering and scoped verification; resume the external paths as soon as their exact existing authority is available.
 
+### SPEC-wide closure work still required
+
+Before marking SPEC-224 complete, run one requirement-by-requirement reconciliation for all 1,280 ledger rows. Preserve the canonical requirement IDs and use the existing `tools.spec_handoff` writers. For every `OPEN/UNVERIFIED` row, identify its source clause and decide applicability/current relevance from repository evidence; implement applicable gaps and attach exact-SHA verification, or retain an evidence-backed external blocker with its owner and retry predicate. Resolve the handoff's low/unresolved authority, active disposition, and lifecycle state from the existing canonical source. Revisit the 9 `PARTIAL` rows and 3 external rows individually; do not bulk-promote statuses. Then run the required SPEC-level verification, regenerate views, and require `validate` to report `completion_eligible=true` with no missing required evidence. This workstream is broader than the Personal Mini-App delivery and remains unexecuted; the current environment provides no evidence to close those rows.
+
 | ID | Requirement | Current evidence | Work / completion evidence |
 |---|---|---|---|
 | R1 | Personal milestones distinguish preview from trial acceptance | Durable state has statuses and deploy/smoke transitions; trial transition is not wired in the personal profile | Section 01: configure a trusted transition path and tests proving missing browser evidence stays VERIFICATION_PENDING and valid independent evidence can produce USER_TRIAL_READY |
