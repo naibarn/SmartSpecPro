@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 127,
+  "generation": 128,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T00:48:49.083213Z",
+  "updated_at": "2026-10-23T00:49:57.523994Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3066,6 +3066,14 @@
         "kind": "SPEC224_RETIRED_APPROVAL_RESUME_BOUNDARY",
         "path": "python-backend/app/api/approvals.py; python-backend/tests/test_spec224_external_agent_approval.py",
         "scope": "Candidate source c899776f32626f7baf542baccec58e2da78f0103 removes the generic LangGraph/workflow fallback from approval resume. Only recognized SPEC-224 and P213 durable continuations dispatch; unknown legacy approvals log and fail closed without deleting approval data. Focused test tests/test_spec224_external_agent_approval.py passed 11/11 with DEBUG=false and --no-cov; the CI run cited above is on predecessor SHA d8d1bfe8606fb063f4829c6291a797fcb9757038 and does not include this fix; rerun CI on the integrated candidate.",
+        "source_sha": "c899776f32626f7baf542baccec58e2da78f0103",
+        "status": "PASS"
+      },
+      {
+        "canonical_sha": "6041559b0fe692b4f660b994b7e5ece3831f8d28",
+        "kind": "SPEC224_CANONICAL_RECOVERY_CHECKPOINT",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/integration-checkpoint-20261023.md",
+        "scope": "Candidate approval-boundary fix and associated evidence were integrated by fast-forward to origin/main at exact SHA 6041559b0fe692b4f660b994b7e5ece3831f8d28. Focused test passed 11/11; handoff validates. Remaining SPEC-224 authority, Runner, and E2E acceptance requirements remain open.",
         "source_sha": "c899776f32626f7baf542baccec58e2da78f0103",
         "status": "PASS"
       }
