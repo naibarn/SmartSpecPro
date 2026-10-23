@@ -105,6 +105,7 @@ import { updateTaskRunArtifact } from "../services/taskRunStore";
 import type { UnifiedExecutionRequest } from "../services/executors/types";
 import { getAppRuntimeConfig } from "../services/appRuntimeConfig";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
+import { createCanonicalComputerUseBrowserJob } from "../services/computerUseFeature195Gateway";
 import {
   normalizeSkillRevenuePricing,
   settleSkillRun,
@@ -841,6 +842,34 @@ function isValidUploadUrl(url: string): boolean {
 // ==================== Chat Router ====================
 
 export const chatRouter = router({
+  /**
+   * Safe Chat → local Runner ingress for the first personal-companion slice.
+   * This intentionally admits observation only; the existing computer-use
+   * producer remains the sole capability, lease, approval and receipt owner.
+   */
+  runOnRunner: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      runnerId: z.string().trim().min(1).max(160),
+      goal: z.string().trim().min(1).max(2_000),
+      idempotencyKey: z.string().trim().min(1).max(200),
+    }).strict())
+    .mutation(async ({ ctx, input }) => {
+      const conversation = await getConversationById(input.conversationId, ctx.user.id);
+      if (!conversation || (conversation.tenantId ?? null) !== (ctx.tenantId ?? null)) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Conversation is outside the authenticated tenant" });
+      }
+      return createCanonicalComputerUseBrowserJob(ctx, {
+        runnerId: input.runnerId,
+        idempotencyKey: input.idempotencyKey,
+        goal: input.goal,
+        operation: "observe",
+        action: "none",
+      }, {
+        conversationId: input.conversationId,
+      });
+    }),
+
   // ==================== Conversations ====================
 
   /**

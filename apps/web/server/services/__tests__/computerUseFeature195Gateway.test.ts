@@ -70,9 +70,10 @@ describe("P213 canonical Feature 195 producer", () => {
     const result = await createCanonicalComputerUseBrowserJob(context, {
       runnerId: "runner-p213",
       idempotencyKey: "p213-golden-1",
+      goal: "Read the current page title and summarize the visible state",
       operation: "observe",
       action: "none",
-    });
+    }, { conversationId: 77 });
 
     expect(result).toMatchObject({ jobId: "job-p213", route: "localRunner" });
     expect(mockCreateControlPlaneJob).toHaveBeenCalledWith(expect.objectContaining({
@@ -86,7 +87,7 @@ describe("P213 canonical Feature 195 producer", () => {
             requiresIndependentVerification: true,
             decisionRequest: expect.objectContaining({
               requestedProvider: "rules",
-              goal: "observe page",
+              goal: "Read the current page title and summarize the visible state",
             }),
           }),
         }),
