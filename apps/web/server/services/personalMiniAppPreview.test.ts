@@ -20,6 +20,7 @@ import {
   buildAndStorePersonalMiniApp,
   generatePersonalMiniApp,
   provisionManagedMiniAppRepository,
+  resolvePersonalMiniAppHomeMilestone,
   resolvePersonalMiniAppPreview,
 } from "./personalMiniAppPreview";
 
@@ -32,6 +33,24 @@ const generated = {
 };
 
 describe("personal Mini-App artifact assembly", () => {
+  it("keeps an existing preview available when a later factory stage fails", () => {
+    expect(resolvePersonalMiniAppHomeMilestone({
+      failed: true,
+      hasUsableArtifact: true,
+      storedMilestone: "VERIFICATION_PENDING",
+    })).toBe("VERIFICATION_PENDING");
+    expect(resolvePersonalMiniAppHomeMilestone({
+      failed: true,
+      hasUsableArtifact: false,
+      storedMilestone: "BUILDING",
+    })).toBe("BUILD_FAILED");
+    expect(resolvePersonalMiniAppHomeMilestone({
+      failed: false,
+      hasUsableArtifact: true,
+      storedMilestone: "BUILDING",
+    })).toBe("PREVIEW_AVAILABLE");
+  });
+
   it("creates a dedicated private GitHub repository and commits the generated source snapshot", async () => {
     vi.stubEnv("SMARTAIHUB_MINIAPP_GITHUB_TOKEN", "test-github-token");
     vi.stubEnv("SMARTAIHUB_MINIAPP_GITHUB_OWNER", "");

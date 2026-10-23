@@ -7,6 +7,7 @@ import {
   createMiniAppFactoryDurableState,
   MINI_APP_FACTORY_STATE_KEY,
   parseMiniAppFactoryDurableState,
+  type MiniAppFactoryDurableState,
 } from "./miniAppFactoryDurableState";
 import type { createDevelopmentRunService } from "./spec224DevelopmentRunPersistence";
 
@@ -36,6 +37,77 @@ export type MiniAppFactoryRunResult = {
   nextEligibleStages: string[];
   state: "READY" | "WAITING_DEPENDENCY" | "IMPLEMENTATION_SCOPE_COMPLETE";
 };
+
+export type MiniAppIndependentBrowserReceipt = {
+  verifierType: "spec208-independent";
+  result: "PASS" | "FAIL" | "REOBSERVE" | "INCONCLUSIVE";
+  verificationEvidenceRef: string;
+  verificationEvidenceHash: string;
+  verifiedAt: string;
+  targetUrl: string;
+  appId: string;
+  artifactDigest: string;
+};
+
+/**
+ * Record USER_TRIAL_READY only after the independent browser verifier has
+ * exercised the exact private artifact that is already bound to this App.
+ * This is an internal verifier integration point, not a user-facing claim API.
+ */
+export async function recordMiniAppIndependentBrowserAcceptance(input: {
+  service: DevelopmentRunService;
+  run: { runId: string; tenantId: string; actorId: number };
+  receipt: MiniAppIndependentBrowserReceipt;
+}): Promise<void> {
+  const current = await input.service.get(input.run);
+  const rawState = current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY];
+  const state = parseMiniAppFactoryDurableState(rawState);
+  const { receipt } = input;
+  const expectedUrl = `https://smartaihub.app/miniapp/${encodeURIComponent(state.miniAppId)}`;
+  const artifactDigest = current.run.workUnit?.artifacts
+    .find(value => value.startsWith("app-artifact-digest:"))
+    ?.slice("app-artifact-digest:".length);
+  if (
+    state.profile !== "PERSONAL_MINIAPP" ||
+    receipt.appId !== state.miniAppId ||
+    receipt.targetUrl !== expectedUrl ||
+    receipt.verifierType !== "spec208-independent" ||
+    receipt.result !== "PASS" ||
+    !/^verification-evidence:sha256:[a-f0-9]{64}$/.test(receipt.verificationEvidenceRef) ||
+    receipt.verificationEvidenceRef !== `verification-evidence:sha256:${receipt.verificationEvidenceHash}` ||
+    !/^[a-f0-9]{64}$/.test(receipt.verificationEvidenceHash) ||
+    !Number.isFinite(Date.parse(receipt.verifiedAt)) ||
+    !/^[a-f0-9]{64}$/.test(receipt.artifactDigest) ||
+    receipt.artifactDigest !== artifactDigest ||
+    !current.run.workUnit?.progress.completedScope.includes("deploy") ||
+    !current.run.workUnit.progress.completedScope.includes("smoke")
+  ) {
+    throw new Error("MINI_APP_INDEPENDENT_BROWSER_RECEIPT_INVALID");
+  }
+
+  const nextState: MiniAppFactoryDurableState = {
+    ...state,
+    deliveryMilestone: "USER_TRIAL_READY",
+    artifacts: [...new Set([...state.artifacts, `browser-journey:${receipt.verificationEvidenceRef}`])],
+  };
+  await input.service.recordVerificationEvent({
+    ...input.run,
+    type: "VERIFICATION_OUTCOME",
+    idempotencyKey: `miniapp-browser-acceptance:${receipt.verificationEvidenceHash}`,
+    occurredAt: receipt.verifiedAt,
+    payload: {
+      profile: "PERSONAL_MINIAPP",
+      appId: state.miniAppId,
+      artifactDigest: receipt.artifactDigest,
+      targetUrl: receipt.targetUrl,
+      outcome: "USER_TRIAL_READY",
+      verifierType: receipt.verifierType,
+      verificationEvidenceRef: receipt.verificationEvidenceRef,
+      verificationEvidenceHash: receipt.verificationEvidenceHash,
+    },
+    runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: nextState },
+  });
+}
 
 /**
  * Execute dependency-ready stages on the existing DevelopmentRun. Each

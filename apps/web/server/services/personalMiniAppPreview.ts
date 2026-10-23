@@ -343,7 +343,7 @@ export async function resolvePersonalMiniAppPreview(input: {
 }) {
   const app = await resolveMiniAppForViewer(input);
   if (!app?.lastKnownGoodArtifactRef)
-    return app ? { app, html: null, artifactDigest: null, factory: await resolvePersonalMiniAppFactoryHome(input, app.appId) } : null;
+    return app ? { app, html: null, artifactDigest: null, factory: await resolvePersonalMiniAppFactoryHome(input, app.appId, false) } : null;
   const match =
     /^r2:\/\/(mini-app-previews\/([A-Za-z0-9_-]{1,64})\/(app_[A-Za-z0-9_-]{1,120})\/sha256\/([a-f0-9]{64}))$/.exec(
       app.lastKnownGoodArtifactRef
@@ -358,12 +358,24 @@ export async function resolvePersonalMiniAppPreview(input: {
   const bytes = await storageReadBuffer(match[1]!);
   const digest = createHash("sha256").update(bytes).digest("hex");
   if (digest !== match[4]) return null;
-  return { app, html: bytes.toString("utf8"), artifactDigest: digest, factory: await resolvePersonalMiniAppFactoryHome(input, app.appId) };
+  return { app, html: bytes.toString("utf8"), artifactDigest: digest, factory: await resolvePersonalMiniAppFactoryHome(input, app.appId, true) };
+}
+
+export function resolvePersonalMiniAppHomeMilestone(input: {
+  failed: boolean;
+  hasUsableArtifact: boolean;
+  storedMilestone: unknown;
+}): string {
+  if (input.failed && !input.hasUsableArtifact) return "BUILD_FAILED";
+  if (input.hasUsableArtifact && input.storedMilestone === "BUILDING") return "PREVIEW_AVAILABLE";
+  if (typeof input.storedMilestone === "string") return input.storedMilestone;
+  return input.hasUsableArtifact ? "PREVIEW_AVAILABLE" : "BUILDING";
 }
 
 export async function resolvePersonalMiniAppFactoryHome(
   input: { tenantId: string | null; userId: number | null },
   appId: string,
+  hasUsableArtifact = false,
 ) {
   if (!input.tenantId || !Number.isSafeInteger(input.userId) || !input.userId) return null;
   let rows: Array<{ progressJson: Record<string, unknown>; status: string; errorCode: string | null; errorMessage: string | null; createdAt: Date }>;
@@ -408,7 +420,11 @@ export async function resolvePersonalMiniAppFactoryHome(
       ? Number((run!.metadata as Record<string, unknown>).conversationId)
       : null,
     jobState: root?.status ?? "unknown",
-    milestone: failed ? "BUILD_FAILED" : typeof factory.deliveryMilestone === "string" ? factory.deliveryMilestone : "BUILDING",
+    milestone: resolvePersonalMiniAppHomeMilestone({
+      failed,
+      hasUsableArtifact,
+      storedMilestone: factory.deliveryMilestone,
+    }),
     currentStage: typeof factory.currentStage === "string" ? factory.currentStage : null,
     completedStages: Array.isArray(factory.completedStages) ? factory.completedStages : [],
     artifacts,

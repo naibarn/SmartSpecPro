@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   recordCanonicalCheckpoint,
   completeDevelopmentWorkUnit,
@@ -6,6 +6,8 @@ import {
 } from "./developmentLifecycleContracts";
 import { buildDevelopmentRun } from "./spec224DevelopmentRunContracts";
 import { executeMiniAppFactoryStages } from "./miniAppFactoryRunExecutor";
+import { recordMiniAppIndependentBrowserAcceptance } from "./miniAppFactoryRunExecutor";
+import { MINI_APP_FACTORY_STATE_KEY, createMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
 import type { MiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 
 const pipeline: MiniAppFactoryPipeline = {
@@ -47,6 +49,79 @@ function makeRun() {
 }
 
 describe("Mini App Factory DevelopmentRun executor", () => {
+  it("records USER_TRIAL_READY only from an independent pass bound to the deployed app artifact", async () => {
+    let run = makeRun();
+    const artifactDigest = "c".repeat(64);
+    run.workUnit!.progress.completedScope = ["deploy", "smoke"];
+    run.workUnit!.artifacts = [`app-artifact-digest:${artifactDigest}`];
+    run.metadata = {
+      [MINI_APP_FACTORY_STATE_KEY]: createMiniAppFactoryDurableState({
+        programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+        miniAppId: "app_expenses",
+        profile: "PERSONAL_MINIAPP",
+      }),
+    };
+    let event: any;
+    const service = {
+      get: async () => ({ run, revision: 1, events: [] }),
+      recordVerificationEvent: async (input: any) => {
+        event = input;
+        run = { ...run, metadata: { ...run.metadata, ...input.runMetadata } };
+        return { accepted: true, run, revision: 2, event: null };
+      },
+    };
+    const evidenceHash = "d".repeat(64);
+
+    await recordMiniAppIndependentBrowserAcceptance({
+      service: service as any,
+      run: { runId: run.runId, tenantId: run.tenantId, actorId: run.actorId },
+      receipt: {
+        verifierType: "spec208-independent",
+        result: "PASS",
+        verificationEvidenceRef: `verification-evidence:sha256:${evidenceHash}`,
+        verificationEvidenceHash: evidenceHash,
+        verifiedAt: "2026-10-23T12:00:00.000Z",
+        targetUrl: "https://smartaihub.app/miniapp/app_expenses",
+        appId: "app_expenses",
+        artifactDigest,
+      },
+    });
+
+    expect(event.payload).toMatchObject({ outcome: "USER_TRIAL_READY", appId: "app_expenses", artifactDigest });
+    expect(run.metadata?.[MINI_APP_FACTORY_STATE_KEY]).toMatchObject({ deliveryMilestone: "USER_TRIAL_READY" });
+  });
+
+  it("rejects a non-pass, wrong-app, or stale-artifact browser receipt", async () => {
+    const run = makeRun();
+    const artifactDigest = "e".repeat(64);
+    run.workUnit!.progress.completedScope = ["deploy", "smoke"];
+    run.workUnit!.artifacts = [`app-artifact-digest:${artifactDigest}`];
+    run.metadata = {
+      [MINI_APP_FACTORY_STATE_KEY]: createMiniAppFactoryDurableState({
+        programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+        miniAppId: "app_expenses",
+        profile: "PERSONAL_MINIAPP",
+      }),
+    };
+    const service = { get: async () => ({ run, revision: 1, events: [] }), recordVerificationEvent: vi.fn() };
+
+    await expect(recordMiniAppIndependentBrowserAcceptance({
+      service: service as any,
+      run: { runId: run.runId, tenantId: run.tenantId, actorId: run.actorId },
+      receipt: {
+        verifierType: "spec208-independent",
+        result: "FAIL",
+        verificationEvidenceRef: `verification-evidence:sha256:${"f".repeat(64)}`,
+        verificationEvidenceHash: "f".repeat(64),
+        verifiedAt: "2026-10-23T12:00:00.000Z",
+        targetUrl: "https://smartaihub.app/miniapp/app_expenses",
+        appId: "app_expenses",
+        artifactDigest,
+      },
+    })).rejects.toThrow("MINI_APP_INDEPENDENT_BROWSER_RECEIPT_INVALID");
+    expect(service.recordVerificationEvent).not.toHaveBeenCalled();
+  });
+
   it("persists each stage before selecting and executing its dependent stage", async () => {
     let run = makeRun();
     let revision = 0;
