@@ -4,15 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Type apply-spec224-0395-to-confirmed-production-database to authorize the exact target operation."
+        description: "Acknowledgement only; the configured Database Owner team must approve the production environment deployment."
         required: true
         type: string
       authorization_reference:
-        description: "Audit reference for the Database Owner authorization."
+        description: "Reference to the Database Owner decision for the migration receipt."
         required: true
         type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -56,6 +57,24 @@ jobs:
 
       - name: Install web migration tooling
         run: pnpm install --frozen-lockfile --filter @smartspec/web...
+
+      - name: Verify Database Owner environment protection
+        working-directory: apps/web
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPEC224_DATABASE_OWNER_TEAM_ID: ${{ vars.SPEC224_DATABASE_OWNER_TEAM_ID }}
+        run: |
+          set -Eeuo pipefail
+          if [[ ! "$SPEC224_DATABASE_OWNER_TEAM_ID" =~ ^[0-9]+$ ]]; then
+            echo "SPEC224_DATABASE_OWNER_TEAM_ID is not configured; refusing production migration."
+            exit 1
+          fi
+          environment_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production")"
+          branch_policies_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production/deployment-branch-policies?per_page=100")"
+          export SPEC224_GITHUB_ENVIRONMENT_JSON="$environment_json"
+          export SPEC224_GITHUB_BRANCH_POLICIES_JSON="$branch_policies_json"
+          node --import tsx scripts/verify-spec224-migration-environment.ts "$SPEC224_DATABASE_OWNER_TEAM_ID"
 
       - name: Run exact audited SPEC-224 migration
         working-directory: apps/web
