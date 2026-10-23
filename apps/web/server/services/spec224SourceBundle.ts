@@ -1002,7 +1002,7 @@ export async function attestGitTreeSourceManifest(input: { repositoryRoot: strin
   const treeObjectId = await gitText(repositoryRoot, ["rev-parse", "--verify", treeReference], "SPEC224_GIT_TREE_PATH_NOT_FOUND");
   const treeType = await gitText(repositoryRoot, ["cat-file", "-t", treeObjectId], "SPEC224_GIT_TREE_PATH_NOT_FOUND");
   if (treeType !== "tree") throw new Error("SPEC224_GIT_TREE_PATH_NOT_FOUND");
-  let entries: GitTreeEntry[];
+  let entries: GitTreeEntry[] = [];
   if (manifest.schemaVersion === "spec224.git-tree-source-attestation.v1") {
     try {
       entries = parseGitTreeEntries(await runGit(repositoryRoot, ["ls-tree", "-rz", "--full-tree", sourceRevision, "--", manifest.treePath]), manifest.treePath);

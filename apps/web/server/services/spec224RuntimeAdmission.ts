@@ -1183,7 +1183,7 @@ export async function commitSpec224ProtectedExecutionStart(input: {
           outcome: "ALREADY_STARTED",
           operationId: identity.operationId,
           eventIdempotencyKey: identity.eventIdempotencyKey,
-          authorizedCommandId: payload.authorizedCommandId,
+          authorizedCommandId: spec224AuthorizedCommandId(identity.operationId),
           eventSequence: Number(prior.eventSequence ?? 0),
         };
       }
