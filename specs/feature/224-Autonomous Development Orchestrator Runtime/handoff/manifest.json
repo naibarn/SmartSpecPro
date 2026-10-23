@@ -1067,7 +1067,7 @@
         "path": "apps/web/server/routes/jobControlPlane.ts"
       }
     ],
-    "next_action": "Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.",
+    "next_action": "Reconcile CI run 39917362883 and the follow-up run for commit c3253c255956c977d23b859f1e1748d181e73542; the follow-up runs the disposable PostgreSQL lane even if broad SmartSpecWeb baseline tests fail. Repair any SPEC-224 lane regression by exact SHA and keep known baseline failures separate. Continue authorized hosted Mini-App and Windows Runner paths independently. Full live acceptance still requires owner-authorized exact-artifact staging and fresh Platform/Security, Tenant Owner and Runner source/workspace/session/grant/budget evidence; then complete real dispatch, harness receipt, settlement and independent Final Verify.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -1155,7 +1155,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 144,
+  "generation": 145,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
@@ -2412,7 +2412,7 @@
           "path": "apps/web/server/routes/jobControlPlane.ts"
         }
       ],
-      "next_action": "Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.",
+      "next_action": "Reconcile CI run 39917362883 and the follow-up run for commit c3253c255956c977d23b859f1e1748d181e73542; the follow-up runs the disposable PostgreSQL lane even if broad SmartSpecWeb baseline tests fail. Repair any SPEC-224 lane regression by exact SHA and keep known baseline failures separate. Continue authorized hosted Mini-App and Windows Runner paths independently. Full live acceptance still requires owner-authorized exact-artifact staging and fresh Platform/Security, Tenant Owner and Runner source/workspace/session/grant/budget evidence; then complete real dispatch, harness receipt, settlement and independent Final Verify.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -2852,7 +2852,7 @@
     "unresolved": 1267
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T07:27:27.569082Z",
+  "updated_at": "2026-10-23T07:33:15.285184Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
