@@ -12,6 +12,15 @@ const BLOB_ROOT = "cloudflare-staging/blobs/sha256";
 const MAX_OBJECT_BYTES = 10 * 1024 * 1024;
 const MAX_FILE_BYTES = 25 * 1024 * 1024;
 const MANIFEST_VERSION = "cloudflare-staging-artifact-v1";
+const RETRYABLE_PUBLISH_REASONS = new Set([
+  "artifact_publish_failed",
+  "artifact_storage_unavailable",
+  "publisher_unavailable",
+]);
+
+export function isRetryableCloudflareStagingPublishReason(reason: unknown): boolean {
+  return typeof reason === "string" && RETRYABLE_PUBLISH_REASONS.has(reason);
+}
 
 export type CloudflareStagingBuildReceipt = Readonly<{
   buildId: string;
@@ -78,8 +87,7 @@ export function createCanonicalBuildReceiptAuthority(resultsRoot: string): Cloud
             artifact?.build_digest?.toLowerCase() === receipt.cloudflareBundleDigest.toLowerCase() &&
             artifact?.artifact_ref === `sha256:${receipt.cloudflareBundleDigest.toLowerCase()}` &&
             (["BUNDLE_READY", "PUBLISHED"].includes(artifact?.status) ||
-            (artifact?.status === "PUBLISH_PENDING" &&
-              ["artifact_publish_failed", "artifact_storage_unavailable"].includes(artifact?.reason)));
+            (artifact?.status === "PUBLISH_PENDING" && isRetryableCloudflareStagingPublishReason(artifact?.reason)));
         } catch {
           return false;
         }

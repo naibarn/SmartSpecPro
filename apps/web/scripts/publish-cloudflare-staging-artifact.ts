@@ -10,6 +10,7 @@ import {
   createCanonicalBuildReceiptAuthority,
   createCloudflareStagingArtifactAuthority,
   isCloudflareStagingArtifactPathAllowed,
+  isRetryableCloudflareStagingPublishReason,
   type CloudflareStagingBuildReceipt,
 } from "../server/services/cloudflareStagingArtifactAuthority";
 
@@ -49,7 +50,7 @@ async function main() {
   const bundleVerified = artifact?.status === "BUNDLE_READY" ||
     artifact?.status === "PUBLISHED" ||
     artifact?.status === "PUBLISH_PENDING" &&
-      ["artifact_publish_failed", "artifact_storage_unavailable"].includes(artifact?.reason);
+      isRetryableCloudflareStagingPublishReason(artifact?.reason);
   if (record.status !== "BUILD_PASSED" || record.source_revision?.toLowerCase() !== sourceSha.toLowerCase() ||
       record.canonical_ref !== "refs/heads/main" || record.canonical_tip_after_build?.toLowerCase() !== sourceSha.toLowerCase() ||
       !bundleVerified || !/^[a-f0-9]{64}$/i.test(artifact.build_digest ?? "") ||

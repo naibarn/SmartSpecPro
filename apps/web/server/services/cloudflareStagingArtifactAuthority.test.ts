@@ -8,6 +8,7 @@ import {
   createCanonicalBuildReceiptAuthority,
   createCloudflareStagingArtifactAuthority,
   isCloudflareStagingArtifactPathAllowed,
+  isRetryableCloudflareStagingPublishReason,
   type CloudflareStagingArtifactStorage,
   type CloudflareStagingBuildReceipt,
 } from "./cloudflareStagingArtifactAuthority";
@@ -86,6 +87,13 @@ function canonicalBuildRecord() {
 }
 
 describe("Cloudflare staging artifact authority", () => {
+  it("allows the canonical builder's publisher-unavailable result to be retried", () => {
+    expect(isRetryableCloudflareStagingPublishReason("publisher_unavailable")).toBe(true);
+    expect(isRetryableCloudflareStagingPublishReason("artifact_storage_unavailable")).toBe(true);
+    expect(isRetryableCloudflareStagingPublishReason("canonical_build_receipt_unavailable")).toBe(false);
+    expect(isRetryableCloudflareStagingPublishReason(undefined)).toBe(false);
+  });
+
   it("rechecks content-addressed metadata and the live build receipt without reading all blobs", async () => {
     let authorized = true;
     const { storage, objects } = fixture();
@@ -193,6 +201,10 @@ describe("Cloudflare staging artifact authority", () => {
       const authority = createCanonicalBuildReceiptAuthority(resultsRoot);
       expect(await authority.verify(receipt)).toBe(true);
 
+      record.cloudflare_staging_artifact.reason = "publisher_unavailable";
+      await writeFile(resultPath, JSON.stringify(record));
+      expect(await authority.verify(receipt)).toBe(true);
+
       record.cloudflare_staging_artifact.reason = "canonical_build_receipt_unavailable";
       await writeFile(resultPath, JSON.stringify(record));
       expect(await authority.verify(receipt)).toBe(false);
@@ -214,7 +226,7 @@ describe("Cloudflare staging artifact authority", () => {
     const resultsRoot = await mkdtemp(join(tmpdir(), "cf-staging-receipt-"));
     try {
       const authority = createCanonicalBuildReceiptAuthority(resultsRoot);
-      for (const reason of ["artifact_publish_failed", "artifact_storage_unavailable"]) {
+      for (const reason of ["artifact_publish_failed", "artifact_storage_unavailable", "publisher_unavailable"]) {
         const record = canonicalBuildRecord();
         await writeFile(join(resultsRoot, `${receipt.buildId}.json`), JSON.stringify({ ...record, ...recordChanges,
           cloudflare_staging_artifact: { ...record.cloudflare_staging_artifact, reason, ...artifactChanges },
