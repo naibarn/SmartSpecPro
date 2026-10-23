@@ -214,6 +214,7 @@ jobs:
         run: |
           cd apps/web
           npm run db:migrate
+          npm run db:verify-runtime-migrations
           npm run test:db-integration
       - name: Upload migration execution receipts
         if: always()

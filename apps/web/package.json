@@ -92,6 +92,7 @@
     "db:migrate": "node --import tsx scripts/db-migrate-with-receipt.ts migrate",
     "db:audit-ledger": "tsx scripts/audit-drizzle-ledger.ts",
     "db:audit-catalog": "tsx scripts/audit-drizzle-catalog.ts",
+    "db:verify-runtime-migrations": "tsx scripts/verify-core-runtime-migrations.ts",
     "db:migrate:spec224-0395": "node --import tsx scripts/spec224-targeted-0395-migration.ts",
     "db:repair:cloudflare-deployment": "node --import tsx scripts/cloudflare-deployment-schema.ts",
     "db:repair:content-composer-schema": "node --import tsx scripts/content-composer-schema-repair.ts",
