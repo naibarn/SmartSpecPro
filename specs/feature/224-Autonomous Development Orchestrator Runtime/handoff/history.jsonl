@@ -119,3 +119,5 @@
 {"changes": ["acceptance.evidence", "acceptance.status", "deployment.artifact_digest", "deployment.environment", "deployment.evidence", "deployment.source_sha", "deployment.status"], "event_type": "CURRENT_TRANSITION", "generation": 123, "observed_at": "2026-10-23T00:43:52.909070Z", "provenance": "OBSERVED"}
 {"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 124, "observed_at": "2026-10-23T00:47:04.846612Z", "provenance": "OBSERVED"}
 {"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 125, "observed_at": "2026-10-23T00:47:20.584455Z", "provenance": "OBSERVED"}
+{"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 126, "observed_at": "2026-10-23T00:48:23.826720Z", "provenance": "OBSERVED"}
+{"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 127, "observed_at": "2026-10-23T00:48:49.083213Z", "provenance": "OBSERVED"}
