@@ -114,7 +114,7 @@ class TestAPIKeyService:
         
         result = await APIKeyService.validate_api_key(
             mock_db,
-            "sk-test.short456789"
+            "sk-smartspec-test.short456789"
         )
         
         assert result is None
@@ -131,7 +131,7 @@ class TestAPIKeyService:
         
         result = await APIKeyService.validate_api_key(
             mock_db,
-            "sk-test.short456789"
+            "sk-smartspec-test.short456789"
         )
         
         assert result is not None
@@ -153,7 +153,7 @@ class TestAPIKeyService:
         
         result = await APIKeyService.validate_api_key(
             mock_db,
-            "sk-test.short456789"
+            "sk-smartspec-test.short456789"
         )
         
         assert result is None
