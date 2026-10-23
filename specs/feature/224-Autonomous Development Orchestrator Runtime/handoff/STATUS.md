@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 1280 unresolved of 1280
-- Next action: PostgreSQL acceptance is now PASS/FRESH on the exact implementation SHA. Keep overall SPEC-224 acceptance PARTIAL. Continue the separately owner-authorized hosted Mini-App and protected Windows Runner paths; the exact authority and runtime evidence required for reactivation are recorded in continuation.next_action, continuation.reactivation_predicate and blocker R11_DISPOSABLE_AUTHORITY_ACCEPTANCE. Do not use production runtime or fabricate authority/evidence.
-- Manifest generation: 153
+- Requirements: 0 pass / 1277 unresolved of 1280
+- Next action: Keep overall SPEC-224 acceptance PARTIAL. Continue PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E from canonical main; the current code/worker slices are tested, while the hosted test target, actual Gateway receipt, owner browser trial and deployed revision remain unverified. Existing protected Runner/tenant/workspace authority blockers remain separate.
+- Manifest generation: 156
 
 ## Source-declared status and relationship claims
 

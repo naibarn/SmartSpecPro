@@ -3009,7 +3009,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 4,
-      "next_action": "Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.",
+      "next_action": "Keep overall SPEC-224 acceptance PARTIAL. Continue PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E from canonical main; the current code/worker slices are tested, while the hosted test target, actual Gateway receipt, owner browser trial and deployed revision remain unverified. Existing protected Runner/tenant/workspace authority blockers remain separate.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",

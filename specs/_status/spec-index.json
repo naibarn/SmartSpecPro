@@ -51456,7 +51456,7 @@
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11",
+      "digest": "bd953c1ad4ad6d7b7d36b994194c6fe7440f27849fc7af45d980f137d2ef4548",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
@@ -93329,7 +93329,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "UNRESOLVED",
-      "canonical_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
+      "canonical_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -94586,17 +94586,36 @@
         "requirement REQ-DDD2EA5BB7E7 is OPEN",
         "requirement REQ-14A5DA7A0641 is OPEN",
         "requirement REQ-5CDFE238FD4B is OPEN",
-        "requirement REQ-95B9D5DDF432 is OPEN",
+        "requirement REQ-95B9D5DDF432 is PARTIAL",
         "requirement REQ-C28DF8A2F9AA is OPEN",
-        "requirement REQ-D09BD13A7892 is OPEN",
-        "requirement REQ-A30D460A0255 is OPEN",
+        "requirement REQ-D09BD13A7892 is BLOCKED_TRUE_EXTERNAL",
+        "requirement REQ-A30D460A0255 is BLOCKED_TRUE_EXTERNAL",
         "requirement REQ-A01391DB8631 is OPEN",
         "requirement REQ-C55B70CB1BF5 is OPEN",
         "requirement REQ-DC7031835D42 is OPEN",
         "requirement REQ-239F4616E882 is OPEN",
-        "requirement REQ-8008288311DD is OPEN",
+        "requirement REQ-8008288311DD is PARTIAL",
         "requirement REQ-224-UWAC-01 is OPEN",
         "requirement REQ-224-UWAC-02 is OPEN",
+        "requirement REQ-F80B73DB0E73 is OPEN",
+        "requirement REQ-DC0E0E98CDAA is OPEN",
+        "requirement REQ-7DDC282C51AC is OPEN",
+        "requirement REQ-4E1ADF6E9441 is OPEN",
+        "requirement REQ-8CDD6E6B6F93 is OPEN",
+        "requirement REQ-C56A2FB7C43A is OPEN",
+        "requirement REQ-B95023F859E5 is PARTIAL",
+        "requirement REQ-7FFA6D016F01 is PARTIAL",
+        "requirement REQ-FBC84B09B937 is PARTIAL",
+        "requirement REQ-7E10DD454AB6 is OPEN",
+        "requirement REQ-97838E3380FD is PARTIAL",
+        "requirement REQ-AB20DAF74BE7 is OPEN",
+        "requirement REQ-18C96D37EC47 is OPEN",
+        "requirement REQ-1703565316F7 is PARTIAL",
+        "requirement REQ-E6F67662AE86 is BLOCKED_TRUE_EXTERNAL",
+        "requirement REQ-EDFA71F1EBC2 is PARTIAL",
+        "requirement REQ-93AB0C1D412F is PARTIAL",
+        "requirement REQ-B310A2A1325A is OPEN",
+        "requirement REQ-5CF5549D3EE6 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -94618,7 +94637,7 @@
           "line": null,
           "section": "section-01-local-fast-lane",
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
           "value": "checkpointed"
         },
         {
@@ -94631,7 +94650,7 @@
           "line": null,
           "section": "section-02-atomic-continuation",
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
           "value": "checkpointed"
         },
         {
@@ -94644,7 +94663,7 @@
           "line": null,
           "section": "section-04-working-ui-acceptance",
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
           "value": "checkpointed"
         },
         {
@@ -94654,7 +94673,7 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+          "source_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
         }
       ],
@@ -94667,18 +94686,18 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+          "source_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
         }
       ],
       "deployment": "PASS",
-      "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+      "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-20T23:27:53.336893Z",
+      "last_reconciled": "2026-10-23T08:21:16.454832Z",
       "lifecycle": "WAITING_APPROVAL",
-      "next_action": "Continue the independent hosted Mini-App path: make the route accurately show BUILDING without an artifact, wire each text-only Factory phase through Skill→SmartAIHub Gateway, and build the isolated artifact runtime after owner-provisioned non-production Cloudflare authority is available. Separately, protected Runner acceptance and workspace convergence remain open under R11; do not infer them from gateway or browser UI tests.",
+      "next_action": "Keep overall SPEC-224 acceptance PARTIAL. Continue PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E from canonical main; the current code/worker slices are tested, while the hosted test target, actual Gateway receipt, owner browser trial and deployed revision remain unverified. Existing protected Runner/tenant/workspace authority blockers remain separate.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": {
         "class": "AUTHORITY",
@@ -95567,7 +95586,7 @@
             "line": null,
             "section": "section-01-local-fast-lane",
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-            "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
             "value": "checkpointed"
           },
           {
@@ -95580,7 +95599,7 @@
             "line": null,
             "section": "section-02-atomic-continuation",
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-            "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
             "value": "checkpointed"
           },
           {
@@ -95593,7 +95612,7 @@
             "line": null,
             "section": "section-04-working-ui-acceptance",
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-            "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
             "value": "checkpointed"
           },
           {
@@ -95603,14 +95622,14 @@
             "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
             "line": 4,
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-            "source_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+            "source_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
             "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
+            "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
           },
@@ -95625,17 +95644,17 @@
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/claude-spec.md"
           },
           {
-            "digest": "cb84fd855b9aa6ef7c0edcb15d2116921a21b09de867ebaf5f34eb0f6fdb8baf",
+            "digest": "e6b716c4c85b8053bdb16e6485770e7eced9ab6e08e6b7ec3fdba3143dc53345",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/HANDOFF.md"
           },
           {
-            "digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+            "digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json"
           },
           {
-            "digest": "2c2bbc6c530226a87e47091b4c805d81c691b64f0dcf923c4b7ba56c9ce3c2bd",
+            "digest": "8a79b3294085f68dcf43e55a7dd8de35e3e883498f869db11bddb61bd189a20a",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/handoff_history.jsonl"
           },
@@ -95671,9 +95690,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 1261,
+        "open": 1277,
         "pass": 0,
-        "total": 1261
+        "total": 1280
       },
       "revision": "24",
       "root_kind": "CANONICAL",
@@ -95688,7 +95707,7 @@
           "line": null,
           "section": "section-01-local-fast-lane",
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
           "value": "checkpointed"
         },
         {
@@ -95701,7 +95720,7 @@
           "line": null,
           "section": "section-02-atomic-continuation",
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
           "value": "checkpointed"
         },
         {
@@ -95714,7 +95733,7 @@
           "line": null,
           "section": "section-04-working-ui-acceptance",
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/implementation/deep_implement_config.json",
-          "source_digest": "4a25c4f2d71a6425aeb2ea05400a9af6fdaadf48149d858004834f126236d81a",
+          "source_digest": "f69b7fe60620150ab728c64016ad9495ecc6f17ac8c2ac6f02345044fd46c32f",
           "value": "checkpointed"
         }
       ],
@@ -95725,7 +95744,7 @@
       "spec_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
       "successors": [],
       "title": "Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime",
-      "true_blockers": 2,
+      "true_blockers": 3,
       "verification": "PARTIAL"
     },
     {
@@ -127604,7 +127623,7 @@
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "80d2f783473ba46002c40ba205c12fae1cbf8c8c32c09e3fa3695dcfb379dda0",
+      "digest": "eb5e3510d299410ac143d632198e5921ea4b7b05c823b5b22c5e38a753bae724",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
