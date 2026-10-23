@@ -1,8 +1,16 @@
 {
   "acceptance": {
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "PUBLIC_HTTPS_HEALTH_PROBE",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/production-release-health-probe-d8d1bfe-20261023.md",
+        "scope": "At 2026-10-23T00:42:56Z, GET https://smartaihub.app/api/health returned 200 with status=ok/service=smartaihub-web; HEAD / returned 200. No authenticated UI, Runner, DevelopmentRun dispatch, crash/restart, or final verification was exercised.",
+        "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
+        "status": "PARTIAL"
+      }
+    ],
     "required": false,
-    "status": "UNKNOWN"
+    "status": "PARTIAL"
   },
   "authority": {
     "claims": [
@@ -1063,12 +1071,20 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": null,
-    "environment": null,
-    "evidence": [],
+    "artifact_digest": "sha256:498974bd106f206294774f927584a83b3b1f7599958813dc3b58bb0d652985f8",
+    "environment": "production_linux_systemd",
+    "evidence": [
+      {
+        "kind": "LINUX_PRODUCTION_RELEASE_VERIFIED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/production-release-health-probe-d8d1bfe-20261023.md",
+        "scope": "Existing sudo-gated Linux full-stack release promoted exact source SHA d8d1bfe8606fb063f4829c6291a797fcb9757038. Active runtime symlink and release manifest bind canonical artifact sha256:498974bd106f206294774f927584a83b3b1f7599958813dc3b58bb0d652985f8 and release digest sha256:069b233fc7401255227bdd4fac8813e1ec9d7c94a757394f16f9938c79238638. smartspec-web.service was active/running; public HTTPS /api/health and / both returned 200. This is deployment health evidence, not SPEC-224 acceptance.",
+        "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
+        "status": "PASS"
+      }
+    ],
     "required": false,
-    "source_sha": null,
-    "status": "UNKNOWN"
+    "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
+    "status": "PASS"
   },
   "disposition": {
     "confidence": "UNRESOLVED",
@@ -1132,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 122,
+  "generation": 125,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -2800,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T00:28:59.509146Z",
+  "updated_at": "2026-10-23T00:47:20.584455Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3037,6 +3053,20 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/canonical-web-build-d8d1bfe-20261023.md",
         "scope": "Canonical scoped package build at exact origin/main SHA d8d1bfe8606fb063f4829c6291a797fcb9757038 passed. Artifact digest sha256:498974bd106f206294774f927584a83b3b1f7599958813dc3b58bb0d652985f8 (128170 files), duration 296.16 seconds; output on ExpansionHD. Cloudflare staging publish passed with 1593 assets and digest sha256:6a53b87e3fee22e20ef5122a82cefece229a8b4d1b08f7eb1331ce9d1340b965. Main JS chunk 2959.24 kB triggered Vite advisory. Primary workspace sync was BLOCKED_WRONG_BRANCH; no service promotion or production acceptance evidenced.",
         "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
+        "status": "PASS"
+      },
+      {
+        "kind": "CANONICAL_CI_DIAGNOSIS_PARTIAL",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/ci-diagnosis-d8d1bfe-20261023.md",
+        "scope": "CI run 39876063126 at canonical SHA d8d1bfe8606fb063f4829c6291a797fcb9757038: Python 52 failed/4845 passed/40 skipped; turbo_build 545 TypeScript diagnostics. Jobs local_ai_runtime and smartspecweb were still running at record time. Root-cause groups and non-restoration constraints are in the linked evidence.",
+        "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_RETIRED_APPROVAL_RESUME_BOUNDARY",
+        "path": "python-backend/app/api/approvals.py; python-backend/tests/test_spec224_external_agent_approval.py",
+        "scope": "Candidate source d999ab4a9904459cfe987d6939e9d301b1d31428 removes the generic LangGraph/workflow fallback from approval resume. Only recognized SPEC-224 and P213 durable continuations dispatch; unknown legacy approvals log and fail closed without deleting approval data. Focused test tests/test_spec224_external_agent_approval.py passed 11/11 with DEBUG=false and --no-cov; this candidate SHA is not yet integrated and the previous CI run does not include it.",
+        "source_sha": "d999ab4a9904459cfe987d6939e9d301b1d31428",
         "status": "PASS"
       }
     ],
