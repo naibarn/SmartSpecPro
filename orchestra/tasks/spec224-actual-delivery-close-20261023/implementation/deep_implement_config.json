@@ -21,9 +21,11 @@
       "merged_main_sha": "24e252092c95fd9b71018deed5b1cf0c03eaa909"
     },
     "section-02-live-hosted-execution": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
-      "next_action": "Use the new GitHub OAuth connection UI (no pasted token), apply migration 0410 on the authorized non-production DB, configure GitHub OAuth Mini-App callback once, then run hosted PERSONAL_MINIAPP generation with the registered non-production Gateway and owner test identity; bind and verify the real artifact."
+      "next_action": "Use GitHub OAuth with the test owner, apply migration 0410 only on authorized non-production DB, configure the OAuth App callback once, then run hosted PERSONAL_MINIAPP generation and verify artifact + private browser access. Exact non-production Gateway/test tenant is still missing.",
+      "checkpoint_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d",
+      "merged_main_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d"
     },
     "section-04-release-final-verify": {
       "status": "checkpointed",
@@ -46,11 +48,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 11,
-  "updated_at": "2026-10-23T12:53:09.770698+00:00",
+  "generation": 12,
+  "updated_at": "2026-10-23T12:54:35.001552+00:00",
   "progress": {
     "active_section": "section-02-live-hosted-execution",
-    "next_action": "Use the new GitHub OAuth connection UI (no pasted token), apply migration 0410 on the authorized non-production DB, configure GitHub OAuth Mini-App callback once, then run hosted PERSONAL_MINIAPP generation with the registered non-production Gateway and owner test identity; bind and verify the real artifact.",
+    "next_action": "Use GitHub OAuth with the test owner, apply migration 0410 only on authorized non-production DB, configure the OAuth App callback once, then run hosted PERSONAL_MINIAPP generation and verify artifact + private browser access. Exact non-production Gateway/test tenant is still missing.",
     "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
     "gaps": [
       "No USER_TRIAL_READY trusted receipt is currently emitted into the Mini-App factory DevelopmentRun; current addition validates a receipt but has no production caller.",
@@ -68,6 +70,6 @@
       "The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes.",
       "Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration."
     ],
-    "merged_main_sha": "acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28"
+    "merged_main_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d"
   }
 }
