@@ -20,7 +20,7 @@ export type SourceDependencyEdge = {
   specifier: string;
   to: string | null;
   kind: "static-import" | "dynamic-import" | "workspace-dependency" | "declared-package-dependency" | "profile-input";
-  status: "resolved-local" | "verified-external-artifact" | "optional-dependency-excluded" | "profile-dependency-excluded" | "external-package" | "unresolved";
+  status: "resolved-local" | "runtime-builtin" | "verified-external-artifact" | "optional-dependency-excluded" | "profile-dependency-excluded" | "external-package" | "unresolved";
 };
 export type SourceBundleFile = {
   path: string;
@@ -191,6 +191,10 @@ export type SourceClosureInput = {
   selectedManifestDependencies?: Record<string, string[]>;
   /** Inspect only these script commands; unknown selected names fail closed. */
   selectedManifestScripts?: Record<string, string[]>;
+  /** Explicit package scripts selected by a source-closure profile. */
+  selectedPackageScripts?: Array<{ manifestPath: string; scripts: string[] }>;
+  /** Whether devDependencies participate in the selected package closure. */
+  includeDevelopmentDependencies?: boolean;
   /** Original artifacts staged in sourceRoot; each binding must exactly match its lock entry. */
   externalArtifacts?: SourceExternalArtifactBinding[];
   /** Optional roots for absolute in-repository imports such as Python `app.*`. */
@@ -807,7 +811,7 @@ export function calculateGitTreeSourceManifestDigest(manifest: Omit<GitTreeSourc
 export async function createGitTreeSourceManifest(input: { repositoryRoot: string; sourceRevision: string; treePath: string }): Promise<GitTreeSourceManifest> {
   const treePath = gitTreeRelativePath(input.treePath, true);
   const sourceRevision = await gitText(input.repositoryRoot, ["rev-parse", "--verify", `${input.sourceRevision}^{commit}`], "SPEC224_GIT_TREE_SOURCE_REVISION_INVALID");
-  let entries: GitTreeEntry[];
+  let entries: GitTreeEntry[] = [];
   try {
     entries = parseGitTreeEntries(await runGit(input.repositoryRoot, ["ls-tree", "-rz", "--full-tree", sourceRevision, "--", treePath]), treePath);
   } catch (error) {
@@ -1138,6 +1142,7 @@ function importsIn(
   localFromMembers: Record<string, string[]>;
   external: string[];
   externalSpecifiers: string[];
+  runtimeBuiltins: Array<{ specifier: string; kind: "static-import" | "dynamic-import" }>;
   dynamic: string[];
   unresolved: string[];
 } {
@@ -1145,6 +1150,7 @@ function importsIn(
   const localFromMembers = new Map<string, Set<string>>();
   const external = new Set<string>();
   const externalSpecifiers = new Set<string>();
+  const runtimeBuiltins = new Map<string, "static-import" | "dynamic-import">();
   const dynamic = new Set<string>();
   const unresolved = new Set<string>();
   const isPython = filePath.endsWith(".py");
@@ -1198,7 +1204,9 @@ function importsIn(
         if (importedNames.length && importedNames.every(name => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name))) {
           localFromMembers.set(specifier, new Set([...(localFromMembers.get(specifier) ?? []), ...importedNames]));
         }
-      } else if (!pythonStandardLibrary.has(specifier.split(".")[0])) {
+      } else if (pythonStandardLibrary.has(specifier.split(".")[0])) {
+        runtimeBuiltins.set(specifier, "static-import");
+      } else {
         external.add(specifier.split(".")[0]);
         externalSpecifiers.add(specifier);
       }
@@ -1206,7 +1214,9 @@ function importsIn(
     for (const match of source.matchAll(/^\s*import\s+([\w.]+)/gm)) {
       const specifier = match[1].trim();
       if (specifier.split(".")[0] === "app") local.add(specifier);
-      else if (!pythonStandardLibrary.has(specifier.split(".")[0])) {
+      else if (pythonStandardLibrary.has(specifier.split(".")[0])) {
+        runtimeBuiltins.set(specifier, "static-import");
+      } else {
         external.add(specifier.split(".")[0]);
         externalSpecifiers.add(specifier);
       }
@@ -1220,11 +1230,14 @@ function importsIn(
         ? ts.ScriptKind.JS
         : ts.ScriptKind.TS;
     const sourceFile = ts.createSourceFile(filePath, source, ts.ScriptTarget.Latest, true, scriptKind);
-    if (sourceFile.parseDiagnostics.length > 0) unresolved.add("<javascript-parse-error>");
+    const parseDiagnostics = (sourceFile as ts.SourceFile & { parseDiagnostics?: readonly ts.Diagnostic[] }).parseDiagnostics;
+    if (!parseDiagnostics || parseDiagnostics.length > 0) unresolved.add("<javascript-parse-error>");
     const addModule = (specifier: string, isDynamic: boolean) => {
       if (isDynamic) dynamic.add(specifier);
       if (specifier.startsWith(".") || specifier.startsWith("/")) local.add(specifier);
-      else if (!specifier.startsWith("node:") && !NODE_BUILTINS.has(specifier.split("/")[0])) external.add(specifier);
+      else if (specifier.startsWith("node:") || NODE_BUILTINS.has(specifier.split("/")[0])) {
+        runtimeBuiltins.set(specifier, isDynamic ? "dynamic-import" : "static-import");
+      } else external.add(specifier);
     };
     const visit = (node: ts.Node) => {
       if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
@@ -1274,6 +1287,7 @@ function importsIn(
     localFromMembers: Object.fromEntries([...localFromMembers].map(([module, names]) => [module, [...names]])),
     external: [...external],
     externalSpecifiers: [...externalSpecifiers],
+    runtimeBuiltins: [...runtimeBuiltins].map(([specifier, kind]) => ({ specifier, kind })),
     dynamic: [...dynamic],
     unresolved: [...unresolved],
   };
@@ -1905,11 +1919,17 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
   const profile = input.executionProfile;
   const generatedArtifactPaths = new Set(profile?.generatedArtifacts.map(artifact => artifact.path) ?? []);
   const rawPythonDependencySelections = input.pythonDependencySelections ?? profile?.pythonDependencySelections ?? {};
-  const normalizePythonSelections = (selections: typeof rawPythonDependencySelections) => Object.fromEntries(Object.entries(selections)
-    .map(([path, categories]) => [safeRelative(sourceRoot, path), Object.fromEntries(
-      Object.entries(categories).map(([category, names]) => [category, [...new Set((names ?? []).map(normalizePythonPackageName))].sort(compareText)]),
-    )])
-    .sort(([left], [right]) => compareText(left, right)));
+  const normalizePythonSelections = (selections: typeof rawPythonDependencySelections) => Object.fromEntries(
+    Object.entries(selections)
+      .map(([path, categories]) => [
+        safeRelative(sourceRoot, path),
+        Object.fromEntries(Object.entries(categories).map(([category, names]) => [
+          category,
+          [...new Set((names ?? []).map(normalizePythonPackageName))].sort(compareText),
+        ])),
+      ] as const)
+      .sort(([left], [right]) => compareText(left, right))
+  );
   const pythonDependencySelections = normalizePythonSelections(rawPythonDependencySelections) as typeof rawPythonDependencySelections;
   if (profile && canonicalJson(pythonDependencySelections) !== canonicalJson(normalizePythonSelections(profile.pythonDependencySelections ?? {}))) {
     unresolved.push({ from: "<profile>", specifier: "<execution-profile-python-requirement-selection-mismatch>" });
@@ -2034,7 +2054,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     "dependency",
   );
   const selectedManifestScripts = normalizeManifestSelection(
-    input.selectedManifestScripts ?? profile?.selectedManifestScripts,
+    input.selectedManifestScripts ?? (input.selectedPackageScripts
+      ? Object.fromEntries(input.selectedPackageScripts.map(selection => [selection.manifestPath, selection.scripts]))
+      : undefined) ?? profile?.selectedManifestScripts,
     "script",
   );
   if (profile && (
@@ -2260,7 +2282,9 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
               specifier: "<hook-inputs-not-declared-in-profile>",
             });
         }
-        const dependencies = ["dependencies", "optionalDependencies", "peerDependencies", "devDependencies"].flatMap(key => Object.entries((manifest[key] && typeof manifest[key] === "object" ? manifest[key] : {}) as Record<string, unknown>).map(entry => ({ entry, optional: key === "optionalDependencies" })));
+        const dependencySections = ["dependencies", "optionalDependencies", "peerDependencies"];
+        if (input.includeDevelopmentDependencies !== false) dependencySections.push("devDependencies");
+        const dependencies = dependencySections.flatMap(key => Object.entries((manifest[key] && typeof manifest[key] === "object" ? manifest[key] : {}) as Record<string, unknown>).map(entry => ({ entry, optional: key === "optionalDependencies" })));
         const manifestDependencyNames = new Set(dependencies.map(({ entry: [name] }) => normalizePackageName(name)));
         const selectedDependencies = selectedManifestDependencies[filePath];
         if (selectedDependencies) {
@@ -2496,10 +2520,20 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
           local: [] as string[],
           external: [] as string[],
           externalSpecifiers: [] as string[],
+          runtimeBuiltins: [] as Array<{ specifier: string; kind: "static-import" | "dynamic-import" }>,
           localFromMembers: {} as Record<string, string[]>,
           dynamic: [] as string[],
           unresolved: [] as string[],
         };
+    for (const builtin of imports.runtimeBuiltins) {
+      dependencyEdges.push({
+        from: filePath,
+        specifier: builtin.specifier,
+        to: null,
+        kind: builtin.kind,
+        status: "runtime-builtin",
+      });
+    }
     for (const name of imports.externalSpecifiers.length ? imports.externalSpecifiers : imports.external) {
       if (filePath.endsWith(".py")) external.add(name.split(".")[0]);
       const aliased = await resolveLocalImport(sourceRoot, filePath, name, input.moduleRoots, rustCrateRoots);
@@ -3076,7 +3110,7 @@ export async function discoverSourceClosure(input: SourceClosureInput): Promise<
     ...(Object.keys(selectedManifestScripts).length ? { selectedManifestScripts } : {}),
     requiredExternalPackages: [...requiredExternalSet].sort(),
     closureComplete: unresolved.length === 0
-      && dependencyEdges.every(edge => edge.status === "resolved-local" || edge.status === "verified-external-artifact" || edge.status === "optional-dependency-excluded" || edge.status === "profile-dependency-excluded")
+      && dependencyEdges.every(edge => edge.status === "resolved-local" || edge.status === "runtime-builtin" || edge.status === "verified-external-artifact" || edge.status === "optional-dependency-excluded" || edge.status === "profile-dependency-excluded")
       && [...requiredExternalSet].every(locator => externalPackageIdentities.find(item => item.locator === locator)?.artifactStatus === "VERIFIED_ARTIFACT"),
   };
 }
@@ -3102,7 +3136,7 @@ async function assembleReadOnlySourceBundleInternal(input: ReadOnlyBundleInput, 
   )) throw new Error("SPEC224_BUNDLE_PROFILE_SOURCE_MISMATCH");
   if (closure.profileDigest && !sourceTreeVerified) throw new Error("SPEC224_BUNDLE_PROFILE_SOURCE_ATTESTATION_REQUIRED");
   if (input.sourceTreeAttestation && ((input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.schemaVersion !== "spec224.git-tree-source-attestation.v2") || !input.sourceTreeAttestation.treePath.trim() || !/^[a-f0-9]{64}$/i.test(input.sourceTreeAttestation.manifestDigest) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v1" && input.sourceTreeAttestation.scopeMode !== undefined) || (input.sourceTreeAttestation.schemaVersion === "spec224.git-tree-source-attestation.v2" && input.sourceTreeAttestation.scopeMode !== "exact-path-set"))) throw new Error("SPEC224_BUNDLE_SOURCE_TREE_ATTESTATION_INVALID");
-  if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded" && edge.status !== "profile-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
+  if (!closure.closureComplete || closure.unresolvedImports.length || closure.dependencyEdges.some(edge => edge.status !== "resolved-local" && edge.status !== "runtime-builtin" && edge.status !== "verified-external-artifact" && edge.status !== "optional-dependency-excluded" && edge.status !== "profile-dependency-excluded")) throw new Error("SPEC224_BUNDLE_CLOSURE_INCOMPLETE");
   const destRelative = relative(sourceRoot, destination);
   if (!destRelative || (destRelative !== ".." && !destRelative.startsWith(`..${sep}`))) throw new Error("SPEC224_BUNDLE_DESTINATION_INSIDE_SOURCE");
   const files = [...new Set(closure.files.map(file => safeRelative(sourceRoot, file)))].sort();

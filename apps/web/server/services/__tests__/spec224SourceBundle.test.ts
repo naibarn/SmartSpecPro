@@ -805,8 +805,18 @@ describe("Spec 224 source bundle tooling", () => {
     );
     expect(closure.externalPackageIdentities).toContainEqual(expect.objectContaining({ name: "transitive-pkg", version: "2.1.0" }));
     expect(closure.externalPackageIdentities.find(item => item.name === "sample-pkg")?.dependencies).toEqual(["transitive-pkg"]);
-    expect(closure.externalPackageIdentities.find(item => item.name === "sample-pkg")).toMatchObject({ artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: "declared-present" });
-    expect(closure.externalPackageIdentities.find(item => item.name === "transitive-pkg")).toMatchObject({ artifactBytesCaptured: false, artifactIntegrityVerified: false, installationHooks: "unknown-without-artifact" });
+    expect(closure.externalPackageIdentities.find(item => item.name === "sample-pkg")).toMatchObject({
+      artifactStatus: "UNVERIFIED_ARTIFACT",
+      artifactPath: null,
+      artifactSha256: null,
+      lockedArtifacts: [{ kind: "npm-tarball", integrity: [integrity] }],
+    });
+    expect(closure.externalPackageIdentities.find(item => item.name === "transitive-pkg")).toMatchObject({
+      artifactStatus: "UNVERIFIED_ARTIFACT",
+      artifactPath: null,
+      artifactSha256: null,
+      lockedArtifacts: [{ kind: "npm-tarball", integrity: ["sha512-cHJvZw=="] }],
+    });
     expect(closure.closureComplete).toBe(false);
     expect(closure.unresolvedImports).toContainEqual(
       expect.objectContaining({
@@ -1946,6 +1956,36 @@ describe("Spec 224 source bundle tooling", () => {
     expect(closure.requiredExternalPackages).not.toContain("fs");
     expect(closure.requiredExternalPackages).not.toContain("dns");
     expect(closure.requiredExternalPackages).not.toContain("net");
+  });
+
+  it("records runtime builtins and applies source-profile package script and dev dependency selections", async () => {
+    const root = await sourceFixture();
+    await writeFile(join(root, "src/main.ts"), 'import { readFileSync } from "node:fs";\nexport const read = readFileSync;\n');
+    await writeFile(join(root, "package.json"), JSON.stringify({
+      name: "fixture",
+      dependencies: { runtimePackage: "1.0.0" },
+      devDependencies: { devOnlyPackage: "1.0.0" },
+      scripts: { build: "node src/main.ts" },
+    }));
+    const closure = await discoverSourceClosure({
+      sourceRoot: root,
+      entryPaths: ["src/main.ts"],
+      dependencyArtifacts: ["pnpm-lock.yaml"],
+      profileInputs: [{ path: "package.json", kind: "runtime-config" }],
+      selectedPackageScripts: [{ manifestPath: "package.json", scripts: ["build"] }],
+      includeDevelopmentDependencies: false,
+      profileId: "source-profile-package-selection",
+      runtimeIdentity: { node: process.version, packageManager: "pnpm@10.4.1" },
+    });
+
+    expect(closure.selectedManifestScripts).toEqual({ "package.json": ["build"] });
+    expect(closure.externalImports).toContain("runtimePackage");
+    expect(closure.externalImports).not.toContain("devOnlyPackage");
+    expect(closure.dependencyEdges).toContainEqual(expect.objectContaining({
+      specifier: "node:fs",
+      kind: "static-import",
+      status: "runtime-builtin",
+    }));
   });
 
   it("requires selected scripts to include their executable dependency and nested scripts", async () => {

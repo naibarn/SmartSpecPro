@@ -78,6 +78,9 @@ export type Spec224ProtectedExecutionStartResult =
     }
   | { outcome: "DENIED"; reason: Spec224AdmissionDenialReason };
 
+type Spec224LeaseProof = Omit<LeaseContext, "leaseToken" | "expiresAt"> &
+  Partial<Pick<LeaseContext, "leaseToken" | "expiresAt">>;
+
 const PROTECTED_EXECUTION_STARTED = "SPEC224_PROTECTED_EXECUTION_STARTED";
 const PROTECTED_EXECUTION_START_DENIED =
   "SPEC224_PROTECTED_EXECUTION_START_DENIED";
@@ -519,8 +522,7 @@ export async function loadSpec224CanonicalAdmissionSnapshot(
   input: {
     tenantId: string;
     workerJobId: string;
-    lease: Omit<LeaseContext, "leaseToken"> &
-      Partial<Pick<LeaseContext, "leaseToken">>;
+    lease: Spec224LeaseProof;
   },
   transaction?: DrizzleDB,
   options?: { allowTokenlessCurrentLeaseProof?: boolean }
@@ -891,7 +893,7 @@ async function recordGrantValidation(input: {
     });
   };
   if (input.transaction) await persist(input.transaction);
-  else await db.instance.transaction(persist);
+  else await db.transaction(persist);
 }
 
 export function spec224GrantBindingMatchesSnapshot(
@@ -1005,7 +1007,7 @@ export async function checkSpec224RuntimeAdmission(input: {
     // PostgreSQL transaction fence as grant revocation.
     if (!testSnapshotLoader && initialSnapshot.grantBinding) {
       const grantId = String(initialSnapshot.grantBinding.grantId ?? "");
-      return await db.instance.transaction(async tx => {
+      return await db.transaction(async tx => {
         await acquireSpec224RecoveryGrantFence(tx, {
           tenantId: initialSnapshot.tenantId,
           grantId,
@@ -1063,7 +1065,7 @@ export async function commitSpec224ProtectedExecutionStart(input: {
       return { outcome: "DENIED", reason: "DENIED_NO_GRANT" };
     }
 
-    return await db.instance.transaction(async tx => {
+    return await db.transaction(async tx => {
       await acquireSpec224RecoveryGrantFence(tx, {
         tenantId: initial.tenantId,
         grantId: initialGrantId,
@@ -1346,7 +1348,7 @@ export async function dispatchWithPersistedSpec224RunnerStart<T>(input: {
     const grantId = String(initial.grantBinding.grantId ?? "");
     if (!grantId) return { authorized: false };
 
-    return await db.instance.transaction(async tx => {
+    return await db.transaction(async tx => {
       await acquireSpec224RecoveryGrantFence(tx, {
         tenantId: initial.tenantId,
         grantId,

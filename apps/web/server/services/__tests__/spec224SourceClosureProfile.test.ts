@@ -42,9 +42,15 @@ describe("Spec 224 source closure profile", () => {
   it("keeps a statically complete fixture blocked when target and artifact attestations are absent", async () => {
     const sourceRoot = await mkdtemp(join(tmpdir(), "spec224-profile-report-"));
     await mkdir(join(sourceRoot, "src"));
-    await writeFile(join(sourceRoot, "src/main.ts"), "export const ok = true;\n");
+    await writeFile(join(sourceRoot, "src/main.ts"), 'import { readFileSync } from "node:fs";\nexport const ok = readFileSync;\n');
     await writeFile(join(sourceRoot, "pnpm-lock.yaml"), "lockfileVersion: '9.0'\n");
-    await writeFile(join(sourceRoot, "package.json"), JSON.stringify({ name: "fixture", version: "1.0.0" }));
+    await writeFile(join(sourceRoot, "package.json"), JSON.stringify({
+      name: "fixture",
+      version: "1.0.0",
+      scripts: { build: "node src/main.ts" },
+      dependencies: { "runtime-package": "1.0.0" },
+      devDependencies: { "dev-only-package": "1.0.0" },
+    }));
     const profile: SourceClosureProfile = {
       schemaVersion: "spec224.source-closure-profile.v1",
       profileId: "fixture-profile",
@@ -52,7 +58,7 @@ describe("Spec 224 source closure profile", () => {
       dependencyArtifacts: ["pnpm-lock.yaml"],
       profileInputs: [{ path: "package.json", kind: "runtime-config" }],
       workspaceManifestPaths: [],
-      selectedPackageScripts: [],
+      selectedPackageScripts: [{ manifestPath: "package.json", scripts: ["build"] }],
       includeDevelopmentDependencies: false,
       moduleRoots: [],
       runtimeIdentity: { node: "22.22.3", python: null, packageManager: "pnpm@10.4.1", platform: "linux-x64", pythonCompatibility: null },
@@ -79,6 +85,7 @@ describe("Spec 224 source closure profile", () => {
         status: "BLOCKED",
         admissionEligible: false,
         runtimeIdentity: profile.runtimeIdentity,
+        summary: { runtimeBuiltinCount: 1 },
       });
       expect(report.blockers).toEqual(expect.arrayContaining([
         "RUNTIME_BASE_IMAGE_DIGEST_MISSING",

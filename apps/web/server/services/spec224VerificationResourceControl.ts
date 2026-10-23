@@ -205,7 +205,7 @@ function resourceAdmissionFailure(
   observation: VerificationResourceObservation,
   now: Date,
   requiredMemoryMiB = PROFILE_MEMORY_MIB[profile]
-): VerificationAdmission["reason"] | null {
+): Extract<VerificationAdmission, { state: "QUEUED_RESOURCE" }>["reason"] | null {
   const required = requiredMemoryMiB;
   const oomDelta = observation.cgroupOomKillDelta ?? 0;
   if (!Number.isSafeInteger(oomDelta) || oomDelta < 0) {
