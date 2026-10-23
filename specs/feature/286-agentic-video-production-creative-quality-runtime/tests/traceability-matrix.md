@@ -96,3 +96,28 @@ forbidden duplicate owner(s)
 ```
 
 If the task cannot identify these, it is not implementation-ready.
+
+## Code-driven Motion / Mediabunny Additive Traceability (Spec 286 §167)
+
+The following are **new acceptance obligations**, not implemented PASS
+claims. Resolve file owners and fixture locations against latest main before
+coding. Existing evidence listed above stays authoritative.
+
+| Req ID | Requirement / owning seam | Existing baseline to reuse | New evidence (pending) |
+|---|---|---|---|
+| \`VID-MOTION-101\` | Template-first code-motion candidates; Spec 133 + Spec 286 §165–167 | Motion Template Registry, candidates, prompt recipes, rights | rights-filtered discovery and proposal/no-execution tests |
+| \`VID-MOTION-102\` | Rational-time frame interface and deterministic seek; Spec 286 timebase + generated sandbox | project revision, generated candidate, §105/154 | fixture D/E exact-frame replay, loop seam, seeded state and off-order frame rendering |
+| \`VID-MOTION-103\` | Isolated Canvas, SVG/GSAP and Three.js frames | Spec 133 adapters and sandbox | D/E/F sandbox real render, no trusted DOM code injection |
+| \`VID-MEDIA-101\` | Optional Mediabunny/WebCodecs media adapter, actual codec/container probe | Spec 286 media capability resolver, existing Remotion/FFmpeg | D/G/H real encode, decode/probe and unsupported-codec fallback |
+| \`VID-MEDIA-102\` | Bounded streaming, honest NodeAV/FFmpeg and runtime/version provenance | Worker render and media probe | long/memory-constrained export, stream seekability, server native dependency check |
+| \`VID-MEDIA-103\` | Correct Thai captions/audio/timebase/color and preview/final parity | existing QA, audio/caption and final verification | D/G output inspection, timestamp/loudness/subtitle fixtures |
+| \`VID-SEC-101\` | Generated code, SVG and external reference quarantine | Spec 286 §60/95/166, existing sandbox/rights | I isolated hostile media, SSRF/network/secret/CPU-time denial |
+| \`VID-OPS-101\` | Host placement, mobile cloud opt-in, quote and deterministic fallback | worker_jobs, Spec 207/280, mobile review | H/J local vs cloud/cancel/retry/credit receipt E2E |
+| \`VID-REP-101\` | Revision-safe partial repair, locks and no unintended scene changes | Spec 286 §138/139, existing revision and QA | K stale-revision + adjacent scene seam + keep-best tests |
+| \`VID-DEL-101\` | Final artifact fidelity and truthful gate labels | WP0.4 A/B/C; current QA + Library/R2 | D–K runtime evidence; original A–C baseline preserved as still pending until executed |
+
+A task MUST record the requirement ID, exact current source owner, scoped
+test command, fixture hash/revision, execution host, proof reference and
+real outcome. Documentation, mock rights/capability probes or green compile
+checks MUST NOT be reported as actual rendered-artifact acceptance.
+

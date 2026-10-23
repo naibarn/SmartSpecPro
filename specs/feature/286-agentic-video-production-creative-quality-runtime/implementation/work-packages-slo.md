@@ -138,3 +138,22 @@ Regardless of environment-specific numeric targets:
 
 ---
 
+## R1.7.x Additive Code-motion / Mediabunny slices (Spec 286 §167)
+
+These are **sub-slices of existing WP0/WP2/WP3/WP6/WP7**, not a competing
+milestone framework, renderer service or new project/queue authority. Do not
+skip baseline WP0.4 when claiming comparisons.
+
+| Slice | Existing owner package | Deliverable | Exit evidence |
+|---|---|---|---|
+| \`WP0.M\` | WP0.2/0.3 | Latest-main composer/adapter/worker source mapping; no duplicate owner | path-precise reuse/extension map and captured runtime constraints |
+| \`WP2.M1\` | WP2.1/2.2 | Flag-disabled optional Mediabunny adapter + host codec/container and memory probe | Canvas fixture D valid MP4 decode/probe with exact version record |
+| \`WP6.M1\` | WP6.1/6.2 | Deterministic frame seam; sandboxed SVG/GSAP and Three.js adapters | E/F replay/per-host conformance and hostile fixture I denial |
+| \`WP2.M2\` | WP2.2/2.3 | Audio/timebase/streaming and fallback routing | G/H/J A/V, out-of-memory/backpressure and cloud-authority receipts |
+| \`WP7.M\` | WP7.1–7.3 | Unified Motion Studio edit/review/progress/revision and scoped repair | H/K mobile and stale-revision E2E with user edits preserved |
+| \`WP3.M\` | WP3.1–3.3 | Actual rendered preview/final comparison and QC | D–K proof plus A–C WP0.4 comparison when baseline exists |
+
+A completed design contract or implementation unit is not proof of end-to-end
+production operation. Existing feature-flag, production authority, cloud
+billing and runtime-certification gates remain intact.
+

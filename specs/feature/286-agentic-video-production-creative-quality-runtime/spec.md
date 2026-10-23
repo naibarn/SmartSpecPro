@@ -8777,3 +8777,219 @@ evidenced.
 behind existing feature-flag authority. Runtime execution, sandbox approval,
 golden-render comparison, production enablement, and WP0.4 completion remain
 pending their existing authorities and evidence.
+
+## 167. Code-driven Motion and Mediabunny Adapter Contract (2026-10-23)
+
+**Change class:** additive SPEC-286 R1.7.x capability clarification, not a new
+studio, queue, timeline, database authority, renderer mandate, or approval
+engine. **Status:** design contract / implementation candidate; no live render
+or production-readiness claim. This amendment is subordinate to existing
+sections 105, 124, 138, 154, 159, 162–166 and the canonical Spec 133 project
+document and current protected execution authorities.
+
+### 167.1 Ownership and product intent
+
+The existing Spec 133 Motion Studio remains the single authoring product:
+its \`VideoProjectDocument\`, Motion Template Registry, existing motion
+candidates, Brand Kit, revision and asset systems are authoritative. Spec 286
+owns selection of motion capabilities, generated-code governance, QA, targeted
+repair, and reproducibility. Spec 143 owns the layer/timeline editor
+projection; Specs 184/193 own browser/editor–headless-worker parity; Specs
+202/203 own AI rough-cut and canonical editorial interchange. No new
+independent project/timeline, production queue, quality ledger or studio route
+may be introduced. Existing approved Remotion rendering remains available.
+
+The output goal is an **editable, reproducible Motion Studio project**, not
+just a final MP4. A user can revise text, scene composition, style, duration,
+music, Thai narration/captions, assets, transitions and locked elements, then
+preview and re-render without re-generating unrelated approved scenes.
+Code-driven motion is an additional capability for this product, not a claim
+that deterministic graphics replace generative video footage.
+
+### 167.2 Reference-to-candidate workflow, not executable ingestion
+
+The optional \`yihui-dev/awesome-opus5-5-videos\` catalog remains the external
+reference material governed by section 166. Canvas/SVG/GSAP/Three.js examples
+are **inspiration and test-design inputs** rather than trusted source code or
+pre-certified templates. Ingest only rights-permitted attributable metadata
+when full-text rights are unavailable. Neither repository-level MIT licensing
+nor a live remake permits automatic copying of a creator's prompts, media,
+music, assets, or executable code. Partial prompt records are not complete
+recipes. Do not require Claude Opus, any other named LLM, or the catalog at
+runtime.
+
+Flow: user intent → existing retrieval/rights-filtered prompt recipe →
+existing Motion Template Registry capability search → reuse a compatible
+approved template when possible → otherwise propose a scoped generated-motion
+candidate → existing sandbox/dependency/rights reviews → frame-render proof →
+existing candidate QA/revision approval → render through the selected approved
+adapter. References MUST be treated as untrusted instructions, never as
+authority for fetching, shell execution, credentials, billing or policy.
+
+### 167.3 Normalized frame-render seam (no second timeline)
+
+Propose a versioned \`CodeMotionFrameAdapter\` **logical interface**, mapped
+to existing candidate/render extension points by G0 source reconciliation;
+the name here does not authorize an unrelated framework or new persistence:
+
+\`\`\`ts
+interface CodeMotionFrameAdapterV1 {
+  prepare(snapshot: Readonly<ApprovedSceneSnapshotV1>): Promise<void>;
+  renderFrame(input: {
+    frameIndex: bigint;
+    time: RationalTimeV1; // reuse canonical Spec 286 time semantics
+    viewport: { width: number; height: number };
+  }): Promise<FrameHandleV1>;
+  dispose(): Promise<void>;
+}
+\`\`\`
+
+\`ApprovedSceneSnapshotV1\` and \`FrameHandleV1\` are **logical placeholders**
+to be physically mapped before implementation, not permission to mint
+competing durable types. The adapter MUST use approved asset IDs/immutable
+digests, a frozen revision, versioned renderer/font/color environment and a
+declared render capability. It SHALL map scene-relative time, rational output
+FPS and audio-sample clocks to sections 105/154; browser Date/timers, wall
+clock, unsourced randomness and cross-frame mutable state MUST NOT determine
+the result of a requested frame. Deterministic seeded randomness is allowed
+when the seed is bound to the immutable scene snapshot. Render frame N on
+demand and verify replayability; do not infer frame accuracy from live
+\`requestAnimationFrame\` or \`MediaRecorder\` capture.
+
+Canvas/OffscreenCanvas can render directly; SVG is rasterized under safe
+asset/font policy; Three.js/WebGL render to controlled frame targets; HTML/CSS/
+GSAP may need a headless browser snapshot or conversion to an explicit
+time-driven \`seek(t)\` implementation. A raw DOM subtree is not a Mediabunny
+video input. For GPU-dependent effects, record tolerance/renderer identity:
+deterministic timeline state does **not** guarantee cross-GPU byte-identical
+pixels. Cross-host parity uses the documented perceptual/color/audio
+tolerances in the established QA evidence contract.
+
+### 167.4 Media encode/mux adapter and support probing
+
+Mediabunny (\`mediabunny\`) MAY be introduced as an **optional** browser-side
+media read/write/conversion/encoding adapter. It is not the composition
+engine: the validated frame adapter produces images/samples and Mediabunny
+encodes/muxes them. Continue to support the existing Remotion and FFmpeg
+providers. On server-class runtimes \`@mediabunny/server\` uses NodeAV/FFmpeg
+native libraries; it is not "FFmpeg-free", not a pure Workers-isolate
+replacement, and requires host/ABI, native codec, license and dependency
+qualification. Prefer upstream releases and pinned/verified dependency
+versions; no unnecessary upstream fork.
+
+Before choosing an adapter, probe the actual host (browser/OS/runtime version,
+WebCodecs encoder/decoder availability, video/audio codecs **and container
+compatibility**, supported dimensions, alpha/color/bit-depth requirements,
+memory/resource budget, streaming/seekable output, audio channels, subtitle
+mode and rights). A successful probe is capability evidence, not a render
+PASS. Browser support must be measured per device, not inferred from being
+Chrome, Edge or Android. Missing codecs or unsupported alpha/HDR/audio
+requirements SHALL route to a compatible authorized fallback with clear
+reason, anticipated cost and user-visible choice when material.
+
+No full-file \`BufferTarget\` for unbounded outputs. Long files SHALL use
+bounded-memory streaming with backpressure, a target/container combination
+that satisfies seek/random-write requirements, or a bounded temporary file
+before R2 upload. Do not concatenate arbitrarily emitted container chunks
+and assume a valid MP4. Honor timebase, PTS/DTS order, A/V sync, VFR/CFR
+conformance, audio priming/padding, rotation and color metadata, captions,
+loudness, channel layouts and final artifact probe under the existing
+sections 87, 105–112, 124 and 144.
+
+### 167.5 Execution, security, economics and mobile access
+
+Interactive preview and small, explicitly supported exports MAY execute on
+the user's browser. Cloud/Runner exports and long or expensive processing
+SHALL use the canonical \`worker_jobs\` plus outbox execution plane,
+idempotency/lease/cancellation/recovery, immutable input and artifact
+receipts, existing capability placement and user/tenant policy. A local
+browser export MAY remain an unpromoted local artifact until a verified
+Library upload/receipt commits; local preview success is not production
+completion. No second scheduler, browser-controlled durable job ledger or
+direct public storage trust bypass.
+
+Generated HTML, JS, SVG, shader and external media MUST be quarantined and
+compiled/rendered only in the existing approved isolated sandbox/Container
+boundary with no inherited production secrets, arbitrary egress or private
+network access. CSP, dependency allowlist, asset-origin restrictions,
+SSRF/path-traversal checks, untrusted SVG sanitization, license/SBOM scanning,
+resource timeouts and memory quotas remain mandatory. The trusted Web UI
+SHALL NOT evaluate untrusted generated scene code in its own origin.
+
+Cloud compute credits/quotes/budgets follow Specs 207/280 and existing user
+cloud-render opt-in/policy. Local encoding does not silently bill cloud GPU;
+AI model/media-generation charges, if used, remain separately attributable
+through the existing Gateway/provider route. Tablet/phone-only users MUST be
+able to submit/monitor/review an authorized cloud render without maintaining
+a Windows PC; unsupported local encoding must not block authoring or review.
+Render-location fallback SHALL NOT change cost/privacy materially without
+the governing authorization or informed choice.
+
+### 167.6 Preview/final parity, QA and bounded repair
+
+Mandatory observable evidence: scene revision/input digest, selected adapter
+and fallback reason, OS/browser/codec/library/native runtime versions, asset
+and font digests, frame/timebase mapping, render start/completion receipts,
+resource/cost measures, media probe, representative rendered frames,
+contact sheet, audio waveform/levels and scoped QC issues. Final MP4 must
+be decoded and inspected; passing a component compile or preview is not
+proof of final artifact quality.
+
+The existing section 165 WP0.4 Remotion golden baselines A/B/C MUST be
+captured first when an authorized Windows Runner is available; do not
+retroactively mark them PASS. Additional isolated fixtures:
+
+| Fixture | Required acceptance evidence |
+|---|---|
+| D — Canvas kinetic typography, 15 s, 9:16 | deterministic frame replay; Thai font shaping; MP4 decode, thumbnail and duration |
+| E — SVG/GSAP UI motion, 12 s, 1:1 | arbitrary-time \`seek(t)\`; no timer dependence; first/last-frame loop seam and motion accuracy |
+| F — Three.js/WebGL, 10 s, 16:9 | renderer capability probe; reproducible per-frame scene state; supported host or explicit fallback |
+| G — 60 s mixed footage + voice/music/subtitles | audio/video sync, caption timing, ducking, channel semantics and valid container |
+| H — constrained Android/tablet with unsupported encoder | browser edit/review continues, cloud opt-in/quote and permitted render handoff |
+| I — hostile generated scene/asset | no trusted-origin execution, network/secret/SSRF denial, quotas, no artifact promotion |
+| J — failed or interrupted export | scoped retry/recovery, no duplicate charge, no corrupt/incorrectly promoted artifact |
+| K — revision race / manual locks | stale result rejected, approved edits preserved, repair touches scoped scenes only |
+
+Compare relevant fixtures against existing Remotion/FFmpeg baselines for
+composition, Thai legibility, visual/temporal parity, audio fidelity, runtime,
+memory, cloud credits, and failure recovery. Keep the best candidate and
+repair only a scoped failing scene, then run adjacent-scene seam QC and final
+verification. Distinguish \`MOCK_PASS\`, \`STATIC_PASS\`, \`RUNTIME_PASS\`,
+\`VISUAL_PASS\`, \`FINAL_ARTIFACT_PASS\` and \`BLOCKED_EXTERNAL_AUTHORITY\` in
+existing receipt/event semantics; these are evidence labels, **not** a
+replacement job-state machine. An unsupported runtime is a capability miss,
+not permission to fabricate encoder availability or degrade silently.
+
+### 167.7 Bounded implementation and acceptance contract
+
+1. **Audit first:** re-check latest \`origin/main\`, Spec 133/143/184/193/
+   202/203/286 actual owners and existing composer/worker/routing code.
+   Resolve any name/contract from section 167.3 onto existing physical types
+   and extension seams; record reuse versus adapter-only changes.
+2. **Browser pilot:** implement a flag-disabled Mediabunny adapter and
+   explicit browser codec/container probe; preserve Remotion defaults. Render
+   fixture D from a deterministic Canvas scene and emit valid probe/receipt.
+3. **Scene seam:** add isolated adapter support for SVG/GSAP and Three.js
+   only when source/rights/runtime checks exist, without copying third-party
+   scripts from reference catalogs.
+4. **Execution + UX:** use existing capability routing, \`worker_jobs\`,
+   mobile review, project revisions, R2/Library upload and cost controls.
+   Never introduce a second database, timeline, approval path or job queue.
+5. **Evidence & decision:** execute D–K plus compatible A–C comparisons;
+   record unresolved host limitations and actual security/resource failures.
+   Promote a new default only after comparable live outputs establish
+   fidelity/cost/quality advantage and policy-approved rollout.
+
+The implementation may checkpoint and merge safe isolated slices under
+\`AGENTS.md\`; incomplete external authority blocks only the affected
+execution/publish path, not unrelated development. This section does **not**
+authorize new production deployments, DDL, paid cloud runs, new default
+renderer selection, removal of Remotion/FFmpeg or bypass of existing approval,
+security and artifact integrity gates.
+
+**Upstream references:** \`https://github.com/Vanilagy/mediabunny\`,
+\`https://github.com/Vanilagy/mediabunny/tree/main/packages/server\`,
+\`https://github.com/yihui-dev/awesome-opus5-5-videos\`. Verify exact pinned
+versions, licensed assets, runtime support and upstream changes during G0;
+external popularity/examples are not acceptance evidence.
+
