@@ -1,5 +1,5 @@
 {
-  "generation": 18,
+  "generation": 19,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -27787,10 +27787,11 @@
       "implementation_evidence": [
         "scripts/ci/spec224_disposable_postgres_acceptance.sh",
         "scripts/spec224_certification/run_disposable_postgres.py",
+        "apps/web/server/services/__tests__/support/spec224DisposablePostgres.ts",
         "python-backend/tests/integration/support/spec224_test_database.py"
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "Complete CI run 39918932580 for exact SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1. Refresh evidence_sha to that tested SHA and mark PASS only after the dedicated PostgreSQL job passes.",
+      "next_action": "Run 39919548818 on exact SHA de6a65001849f8971503feffc1f5dd47e9a8fca8. Run 39918932580 on a70cb7f0 failed before tests because a mutable pgvector image tag drifted; the exact image digest and both Python/Node guard expectations are fixed. Mark PASS and refresh evidence SHA only if the dedicated acceptance job succeeds.",
       "requirement_digest": "a09f6732ce97194455c3abac8715176d51c95ac155aafd3a074efad65634014b",
       "requirement_id": "REQ-DC0E0E98CDAA",
       "requirement_text": "2. Disposable test authority MUST be provisioned independently of production. PostgreSQL migration and integration tests MUST use an isolated, task-scoped disposable database and role. The test runtime role MUST remain non-superuser and tests MUST fail closed when target identity, version, scope, or isolation cannot be verified. Production databases MUST never substitute for unavailable test infrastructure.",
@@ -27798,9 +27799,10 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-e2e-closure-checkpoint-777933e-20261023.md",
-        "https://github.com/naibarn/SmartSpecPro/actions/runs/39918932580"
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/39918932580",
+        "https://github.com/naibarn/SmartSpecPro/actions/runs/39919548818"
       ],
-      "verification_method": "Run the independent CI acceptance job on exact canonical SHA: two fresh isolated PostgreSQL 15.17 clusters, task-scoped role and identity/isolation checks, migration plus Node/Python DB suites, and no production fallback."
+      "verification_method": "Run the independent CI acceptance job on exact canonical SHA using pinned pgvector image digest sha256:7f5681e45237acdf546cf7cdc0dfc0ed7752ede857fda6e54f6ea21b936f8742, two fresh isolated PostgreSQL 15.17 clusters, task-scoped runtime role and exact identity/isolation guards."
     },
     {
       "applicability": "UNASSESSED",

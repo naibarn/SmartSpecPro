@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1267 unresolved of 1267
-- Next action: Verify the independent disposable PostgreSQL acceptance job in CI run 39918932580 on exact SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1; repair any SPEC-224 failure. The exact-SHA Python baseline is 43 failures and the typecheck baseline is 503 identical diagnostics across 11879babc2 and 777933e8. Continue the authorized hosted Mini-App and Windows Runner paths separately. Full live acceptance requires the existing exact-artifact staging grant and fresh Platform/Security, tenant-owner and Runner source/workspace/session/grant/budget evidence, then actual dispatch, harness receipt, settlement and independent Final Verify.
-- Manifest generation: 147
+- Next action: Verify independent PostgreSQL job run 39919548818 on exact SHA de6a65001849f8971503feffc1f5dd47e9a8fca8; the immediately preceding exact SHA a70cb7f0 failed on mutable Docker image drift and the Node verifier image-name guard. The repair pins the verified 15.17 image digest and updates both guards. Keep SPEC-224 requirement evidence pending until the dedicated job passes; continue the separately blocked hosted Mini-App and Windows Runner owner-authorized runtime paths.
+- Manifest generation: 149
 
 ## Source-declared status and relationship claims
 
