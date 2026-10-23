@@ -900,14 +900,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
+    "expected_canonical_sha": "1893edb8997f46262aeb6c324cab628cd186be44",
     "expected_spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd"
   },
   "continuation": {
-    "next_action": "The exact-0395 migration path is now implemented and fail-closed at the production GitHub environment boundary. Repository Owner must configure production required reviewers to the Database Owner team only, enable prevent-self-review, restrict environment branch policy to main, and set SPEC224_DATABASE_OWNER_TEAM_ID to that exact team ID. Current read-only observation found no protection rules or branch policy, so do not dispatch migration. Once provisioned, require the Database Owner decision reference, run the workflow, verify its database-side and external receipts plus external_runtime enum postcondition, then resume authenticated startWorkspaceRun and exact Windows Runner admission/certification/lease/Recovery Grant/dispatch/settlement/Final Verify. Source Trust approval remains a separate blocker.",
+    "next_action": "Retrieve the completed CI run 39903295562 logs for source 2132aef1795eeece482423ce08386667fc3946c0; repair any SPEC-224/226-owned diagnostics and checkpoint. Continue the protected migration and live Runner acceptance only after the existing owner authorities and exact runtime evidence in the waiting predicates are available.",
     "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: repository owner must provision the exact Database Owner team reviewer and main-only branch policy for GitHub environment production, prevent self-review, and set SPEC224_DATABASE_OWNER_TEAM_ID to the configured team ID. Current environment has no reviewer protection and no deployment branch policy. No production migration may run until the guard reports READY and the owner approval reference is available.",
     "reactivation_predicate": "Resume only after read-only GitHub environment verification returns exactly one required-reviewers rule containing only the configured Database Owner team, prevent_self_review=true, exactly one production branch policy named main, and SPEC224_DATABASE_OWNER_TEAM_ID matches that team. Then an authorized Database Owner reviews the workflow deployment; targeted migration must pass exact database fingerprint, migration-ledger drift, concurrency, and enum postcondition checks. If any preflight blocks, do not widen the migration set.",
-    "resume_point": "Latest integrated recovery code is at 6a1c12f2b1409d3ef0bb3a26cefbb960784563ae. Build recovery at exact main SHA ff5ad9c6dec780548a9f93c88157a09fada81bf3 produced the Vite web/widget output, verified Linux backend runtime package, and local Cloudflare staging bundle (digest 714b54d1098651d3144ccca423cc1e3caa54d92380972d027c8745965515aa49; 2 modules/1593 assets). The canonical builder receipt remains BUILD_FAILED because /mnt/SmartSpecDev exhausted temporary capacity; backend packaging was rerun successfully using ExpansionHD temp storage. No service promotion, Cloudflare publish, production migration, or production DB operation occurred. CI 39897733162 has turbo_build and python failures while desktop_app and smartspecweb remain pending. SPEC-224 is incomplete: repository Owner must provision the protected Database Owner review policy/team ID before exact migration 0395; Source Trust and Windows Runner authority/admission/dispatch/settlement/Final Verify remain open. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-canonical-build-recovery-20261023.md and spec224-production-migration-authority-gate-20261023.md.",
+    "resume_point": "Latest integrated code SHA 2132aef1795eeece482423ce08386667fc3946c0 repaired the remaining SPEC-224/226 diagnostics discovered in prior CI runs. Canonical package build passed at exact SHA with artifact digest sha256:6edcf6d089ce421c06e72718782ccaeed2792ea55bcf1090666b6b4c7928ac8f (126593 files); immutable staging artifact sha256:9ba80bd4c0238ca3dd962da5fd73a4a3e9b743a4c6b0a4b80275da6366133653 was stored but no Worker was deployed or activated. Evidence is in handoff/evidence/spec224-canonical-build-recovery-20261023.md. Evidence documentation is integrated at 1893edb8997f46262aeb6c324cab628cd186be44. CI run 39903295562 remains open for final SmartSpecWeb logs; python and turbo_build failed and must be classified from their completed logs. SPEC-224 remains incomplete: production Database Owner environment policy/team, non-production Source Trust authority, and authenticated Tenant/Windows Runner crosswalk, admission, grant, dispatch, settlement, and Final Verify remain required. No production DB, migration, service deployment, or end-to-end acceptance was performed.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 136,
+  "generation": 137,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -1366,11 +1366,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
+    "canonical_sha": "1893edb8997f46262aeb6c324cab628cd186be44",
     "integrated": true,
-    "integrated_at": "2026-10-23T10:55:53+07:00",
+    "integrated_at": "2026-10-23T05:19:00+00:00",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae"
+    "source_sha": "1893edb8997f46262aeb6c324cab628cd186be44"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T04:12:44.258748Z",
+  "updated_at": "2026-10-23T05:19:06.640496Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3125,13 +3125,20 @@
         "scope": "Exact main source ff5ad9c6dec780548a9f93c88157a09fada81bf3 produced a Vite web/widget build, Linux backend package, and Cloudflare staging bundle in the isolated canonical workspace. The canonical build receipt remains BUILD_FAILED/exit 1 after /mnt/SmartSpecDev ran out of temporary capacity; backend packaging was rerun successfully with TMPDIR on ExpansionHD. Cloudflare bundle digest 714b54d1098651d3144ccca423cc1e3caa54d92380972d027c8745965515aa49 (2 modules, 1593 assets), local artifact only. No deploy or production promotion. CI run 39897733162 still in progress with turbo_build and python failed and desktop_app/smartspecweb pending.",
         "source_sha": "ff5ad9c6dec780548a9f93c88157a09fada81bf3",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_CANONICAL_BUILD_RECOVERY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-canonical-build-recovery-20261023.md",
+        "scope": "Exact canonical main source 2132aef1795eeece482423ce08386667fc3946c0 passed the canonical package build at 2026-10-23 05:10 UTC. Artifact sha256:6edcf6d089ce421c06e72718782ccaeed2792ea55bcf1090666b6b4c7928ac8f (126593 files); immutable Cloudflare staging artifact sha256:9ba80bd4c0238ca3dd962da5fd73a4a3e9b743a4c6b0a4b80275da6366133653 (1593 assets/2 modules). No Worker deployment or production action. CI 39903295562 turbo_build and python failed, SmartSpecWeb was pending at capture; detailed CI closure remains open.",
+        "source_sha": "2132aef1795eeece482423ce08386667fc3946c0",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "ff5ad9c6dec780548a9f93c88157a09fada81bf3",
+    "sha": "2132aef1795eeece482423ce08386667fc3946c0",
     "status": "PARTIAL",
     "task_regressions": []
   }
