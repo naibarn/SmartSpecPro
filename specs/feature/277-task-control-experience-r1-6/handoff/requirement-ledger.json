@@ -1,5 +1,5 @@
 {
-  "generation": 14,
+  "generation": 15,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -9805,7 +9805,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+      "evidence_sha": "c022847a4",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -9850,6 +9850,16 @@
           ],
           "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
           "summary": "Additive owner-scoped Runner Companion state projection reuses Task Control and Runner read models; no new task or approval authority."
+        },
+        {
+          "kind": "WP2A_HARDENING_REGRESSION",
+          "paths": [
+            "apps/web/server/services/runnerCompanionViewState.ts",
+            "apps/web/server/services/__tests__/runnerCompanionViewState.test.ts",
+            "apps/web/server/services/__tests__/runnerGateway.test.ts"
+          ],
+          "source_sha": "9f8234844",
+          "summary": "Terminal precedence, bounded evidence overflow and tenant-shared visibility versus execution-authority regressions pass; canonical read models and approval authority remain unchanged."
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
@@ -9912,6 +9922,12 @@
           "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
           "status": "PASS_SCOPED",
           "summary": "Focused projection/route tests and existing Runner/Task Control regressions pass; Windows, browser/mobile UAT and real-device E2E remain unverified."
+        },
+        {
+          "kind": "WP2A_HARDENING_FOCUSED_TESTS",
+          "source_sha": "9f8234844",
+          "status": "PASS_SCOPED",
+          "summary": "Focused Runner Companion, Task Control, worker-job, observability and Runner gateway suites: 5 files / 57 tests passed; no real-device E2E claim."
         }
       ],
       "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
@@ -9972,7 +9988,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
+      "evidence_sha": "c022847a4",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -10011,6 +10027,18 @@
           ],
           "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
           "summary": "Additive owner-scoped Runner Companion state projection reuses Task Control and Runner read models; no new task or approval authority."
+        },
+        {
+          "kind": "WP2B_NATIVE_FLOATING_SHELL",
+          "paths": [
+            "apps/runner-desktop/src-tauri/src/main.rs",
+            "apps/runner-desktop/src-tauri/tauri.conf.json",
+            "apps/runner-desktop/ui/companion.html",
+            "apps/runner-desktop/ui/companion.js"
+          ],
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1163",
+          "source_sha": "c022847a4",
+          "summary": "Tauri companion window, tray/settings integration, bounded monitor-aware preferences and explicit unauthenticated projection state; no duplicate task or approval authority."
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
@@ -10064,6 +10092,13 @@
           "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
           "status": "PASS_SCOPED",
           "summary": "Focused projection/route tests and existing Runner/Task Control regressions pass; Windows, browser/mobile UAT and real-device E2E remain unverified."
+        },
+        {
+          "kind": "WP2B_NATIVE_SHELL_FOCUSED_VERIFICATION",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1163",
+          "source_sha": "c022847a4",
+          "status": "PASS_SCOPED",
+          "summary": "cargo check/fmt/test, JS syntax and companion contract checks pass; 12 gap reviews completed. Windows UI, screenshots and real-device E2E remain unverified because this environment is headless/non-Windows."
         }
       ],
       "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
@@ -10077,7 +10112,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+      "evidence_sha": "c022847a4",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -10108,6 +10143,28 @@
           ],
           "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
           "summary": "Additive owner-scoped Runner Companion state projection reuses Task Control and Runner read models; no new task or approval authority."
+        },
+        {
+          "kind": "WP2A_HARDENING_REGRESSION",
+          "paths": [
+            "apps/web/server/services/runnerCompanionViewState.ts",
+            "apps/web/server/services/__tests__/runnerCompanionViewState.test.ts",
+            "apps/web/server/services/__tests__/runnerGateway.test.ts"
+          ],
+          "source_sha": "9f8234844",
+          "summary": "Terminal precedence, bounded evidence overflow and tenant-shared visibility versus execution-authority regressions pass; canonical read models and approval authority remain unchanged."
+        },
+        {
+          "kind": "WP2B_NATIVE_FLOATING_SHELL",
+          "paths": [
+            "apps/runner-desktop/src-tauri/src/main.rs",
+            "apps/runner-desktop/src-tauri/tauri.conf.json",
+            "apps/runner-desktop/ui/companion.html",
+            "apps/runner-desktop/ui/companion.js"
+          ],
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1163",
+          "source_sha": "c022847a4",
+          "summary": "Tauri companion window, tray/settings integration, bounded monitor-aware preferences and explicit unauthenticated projection state; no duplicate task or approval authority."
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
@@ -10143,6 +10200,19 @@
           "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
           "status": "PASS_SCOPED",
           "summary": "Focused projection/route tests and existing Runner/Task Control regressions pass; Windows, browser/mobile UAT and real-device E2E remain unverified."
+        },
+        {
+          "kind": "WP2A_HARDENING_FOCUSED_TESTS",
+          "source_sha": "9f8234844",
+          "status": "PASS_SCOPED",
+          "summary": "Focused Runner Companion, Task Control, worker-job, observability and Runner gateway suites: 5 files / 57 tests passed; no real-device E2E claim."
+        },
+        {
+          "kind": "WP2B_NATIVE_SHELL_FOCUSED_VERIFICATION",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1163",
+          "source_sha": "c022847a4",
+          "status": "PASS_SCOPED",
+          "summary": "cargo check/fmt/test, JS syntax and companion contract checks pass; 12 gap reviews completed. Windows UI, screenshots and real-device E2E remain unverified because this environment is headless/non-Windows."
         }
       ],
       "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
@@ -10156,7 +10226,7 @@
       "blocker": null,
       "current_relevance": "RELEVANT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+      "evidence_sha": "c022847a4",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -10191,6 +10261,18 @@
           "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
           "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
           "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
+        },
+        {
+          "kind": "WP2B_NATIVE_FLOATING_SHELL",
+          "paths": [
+            "apps/runner-desktop/src-tauri/src/main.rs",
+            "apps/runner-desktop/src-tauri/tauri.conf.json",
+            "apps/runner-desktop/ui/companion.html",
+            "apps/runner-desktop/ui/companion.js"
+          ],
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1163",
+          "source_sha": "c022847a4",
+          "summary": "Tauri companion window, tray/settings integration, bounded monitor-aware preferences and explicit unauthenticated projection state; no duplicate task or approval authority."
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
@@ -10246,6 +10328,13 @@
           "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
           "status": "PASS_SCOPED",
           "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
+        },
+        {
+          "kind": "WP2B_NATIVE_SHELL_FOCUSED_VERIFICATION",
+          "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1163",
+          "source_sha": "c022847a4",
+          "status": "PASS_SCOPED",
+          "summary": "cargo check/fmt/test, JS syntax and companion contract checks pass; 12 gap reviews completed. Windows UI, screenshots and real-device E2E remain unverified because this environment is headless/non-Windows."
         }
       ],
       "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."

@@ -1,1 +1,1 @@
-{"runner-main":{"identifier":"runner-main","description":"SmartAIHub Runner controls for the local user","local":true,"windows":["main"],"permissions":["core:default"]}}
+{"runner-companion":{"identifier":"runner-companion","description":"Least-privilege permissions for the hidden floating companion","local":true,"windows":["companion"],"permissions":["core:default","notification:allow-notify"]},"runner-main":{"identifier":"runner-main","description":"SmartAIHub Runner controls for the local user","local":true,"windows":["main"],"permissions":["core:default"]}}

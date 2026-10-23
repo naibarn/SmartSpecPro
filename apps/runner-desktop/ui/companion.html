@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>SmartAIHub Companion</title>
+    <link rel="stylesheet" href="companion.css" />
+  </head>
+  <body>
+    <main class="companion-shell" aria-label="SmartAIHub Floating Companion">
+      <header class="companion-header" data-tauri-drag-region>
+        <section class="identity" data-tauri-drag-region>
+          <span class="mascot" aria-hidden="true"><span></span></span>
+          <section data-tauri-drag-region>
+            <p class="eyebrow">SMARTAIHUB</p>
+            <h1>Companion</h1>
+          </section>
+        </section>
+        <button class="icon-button" id="collapse-button" type="button" aria-expanded="false" aria-controls="expanded-panel" aria-label="Expand companion details">⌄</button>
+      </header>
+
+      <section class="compact-status" aria-live="polite">
+        <output class="status-dot" id="runner-dot" aria-label="Runner connection status"></output>
+        <section class="status-copy">
+          <strong id="runner-status">Checking Runner…</strong>
+          <p id="projection-status">Task Control projection unavailable</p>
+        </section>
+        <button class="text-button" id="refresh-button" type="button">Refresh</button>
+      </section>
+
+      <section class="expanded-panel" id="expanded-panel" hidden aria-label="Companion task status">
+        <section class="status-card">
+          <p class="eyebrow">TASK CONTROL</p>
+          <h2 id="task-heading">Waiting for an authenticated projection</h2>
+          <p id="task-detail">No task status, progress, approval or evidence is displayed until the desktop has an authorized user-scoped transport.</p>
+        </section>
+        <section class="detail-grid" aria-label="Projection details">
+          <output><span>Contract</span><strong id="contract-value">runner-companion.v1</strong></output>
+          <output><span>Authentication</span><strong id="auth-value">Not available</strong></output>
+          <output><span>Transport</span><strong id="transport-value">Not configured</strong></output>
+          <output><span>Permission</span><strong>Never inferred from visibility</strong></output>
+        </section>
+      </section>
+
+      <footer class="companion-actions">
+        <button class="action-button" id="dock-button" type="button">Dock</button>
+        <button class="action-button" id="topmost-button" type="button" aria-pressed="false">Stay on top</button>
+        <button class="action-button" id="theme-button" type="button">Theme</button>
+        <button class="action-button primary" id="settings-button" type="button">Settings</button>
+        <button class="action-button quiet" id="hide-button" type="button">Hide</button>
+      </footer>
+      <output class="companion-notice" id="notice" aria-live="polite"></output>
+    </main>
+    <script src="companion.js"></script>
+  </body>
+</html>
