@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { readdir } from "node:fs/promises";
@@ -86,7 +87,10 @@ async function main() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL_REQUIRED");
   const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const journal = JSON.parse(await readFile(path.join(appRoot, "drizzle/meta/_journal.json"), "utf8")) as { entries: JournalEntry[] };
+  const journalBytes = await readFile(path.join(appRoot, "drizzle/meta/_journal.json"));
+  const journal = JSON.parse(journalBytes.toString("utf8")) as { entries: JournalEntry[] };
+  const sourceSha = process.env.GITHUB_SHA ?? process.env.SOURCE_SHA ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: appRoot, encoding: "utf8" }).trim();
+  const journalHash = createHash("sha256").update(journalBytes).digest("hex");
   const fileNames = (await readdir(path.join(appRoot, "drizzle"))).filter(name => name.endsWith(".sql"));
   const sqlFiles = await Promise.all(fileNames.map(async name => ({
     name,
@@ -102,7 +106,15 @@ async function main() {
       "SELECT id, hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC",
     );
     const report = classifyDrizzleLedger(journal.entries, sqlFiles, result.rows);
-    process.stdout.write(`${JSON.stringify({ schema: "drizzle-ledger-audit.v1", databaseTargetId, access: "read_only", ...report }, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify({
+      schema: "drizzle-ledger-audit.v1",
+      observedAt: new Date().toISOString(),
+      sourceSha,
+      journalArtifact: { path: "apps/web/drizzle/meta/_journal.json", sha256: journalHash },
+      databaseTargetId,
+      access: "read_only",
+      ...report,
+    }, null, 2)}\n`);
     await client.query("ROLLBACK");
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
