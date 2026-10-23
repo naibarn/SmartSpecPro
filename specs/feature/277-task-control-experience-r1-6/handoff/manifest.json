@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 73,
+  "generation": 75,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
@@ -837,10 +837,20 @@
             "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
             "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
             "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
+          },
+          {
+            "kind": "WP2A_TYPED_COMPANION_PROJECTION",
+            "paths": [
+              "apps/web/shared/runnerCompanion.ts",
+              "apps/web/server/services/runnerCompanionViewState.ts",
+              "apps/web/server/routers/runnerNodes.ts"
+            ],
+            "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
+            "summary": "Additive owner-scoped Runner Companion state projection reuses Task Control and Runner read models; no new task or approval authority."
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
+        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure. WP2A source checkpoint is recorded at 96e1ce9f190148627bc5c9d84252e19da8323d85; keep this requirement partial until protected integration and authenticated/native acceptance evidence exist.",
         "requirement_digest": "cfd943f4b21b5db767b04ea0f1bec2d7ccdcfde550a975e9105ad1c46a8f4696",
         "requirement_id": "REQ-277-OBS-05",
         "requirement_text": "- REQ-277-OBS-05: Public projections MUST use bounded allowlisted fields, immutable source refs, identity binding, source/ingest time, watermarks and freshness. Current-state quota/session evidence MUST expire according to source policy; historical measured usage remains historical evidence. Wrong-scope/conflicting identities MUST NOT enter totals. Credentials, lease tokens, raw prompts/selection/provider payloads and secret-bearing rationale MUST NOT be exposed.",
@@ -892,6 +902,13 @@
             "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
             "status": "PASS_SCOPED",
             "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
+          },
+          {
+            "kind": "WP2A_FOCUSED_SOURCE_VERIFICATION",
+            "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2a-view-state-20261022.md",
+            "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
+            "status": "PASS_SCOPED",
+            "summary": "Focused projection/route tests and existing Runner/Task Control regressions pass; Windows, browser/mobile UAT and real-device E2E remain unverified."
           }
         ],
         "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
@@ -981,10 +998,20 @@
             "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json",
             "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1028",
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c"
+          },
+          {
+            "kind": "WP2A_TYPED_COMPANION_PROJECTION",
+            "paths": [
+              "apps/web/shared/runnerCompanion.ts",
+              "apps/web/server/services/runnerCompanionViewState.ts",
+              "apps/web/server/routers/runnerNodes.ts"
+            ],
+            "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
+            "summary": "Additive owner-scoped Runner Companion state projection reuses Task Control and Runner read models; no new task or approval authority."
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "Bind an existing trusted canonical Goal/WU source and complete authenticated API-to-Web and cross-source funding/helper/quota acceptance; keep missing inputs Unknown and full SPEC open.",
+        "next_action": "Bind an existing trusted canonical Goal/WU source and complete authenticated API-to-Web and cross-source funding/helper/quota acceptance; keep missing inputs Unknown and full SPEC open. WP2A source checkpoint is recorded at 96e1ce9f190148627bc5c9d84252e19da8323d85; keep this requirement partial until protected integration and authenticated/native acceptance evidence exist.",
         "requirement_digest": "f631efc848577f1fc1c9b6aa6b9f59b04a215ba95a7231962b88891a6b19a195",
         "requirement_id": "REQ-277-OBS-07",
         "requirement_text": "- REQ-277-OBS-07: Task Control and Agent Monitor MUST share read models/components and preserve existing controls. Desktop/tablet/mobile MUST expose equivalent facts, loading/error/empty/stale states, accessible keyboard interactions and evidence drilldown; mobile topology MUST offer a hierarchical list without forced horizontal tables. Browser fixtures MUST cover 1440,768,390 widths.",
@@ -1027,6 +1054,13 @@
             "source_sha": "86a16d13592b7be4063c0ab37044418a8212de7c",
             "status": "PASS_SCOPED",
             "summary": "PR1028 scope-bound Goal baseline regression: 82/82 focused tests in11files and actual-component three-viewport drilldown; trusted-source baseline must bind scope kind/id, Goalid, version,digest. Missing/mismatch yieldsUnknown. Independent295+5 remainbound47235563d; no fullSPECclosure."
+          },
+          {
+            "kind": "WP2A_FOCUSED_SOURCE_VERIFICATION",
+            "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2a-view-state-20261022.md",
+            "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
+            "status": "PASS_SCOPED",
+            "summary": "Focused projection/route tests and existing Runner/Task Control regressions pass; Windows, browser/mobile UAT and real-device E2E remain unverified."
           }
         ],
         "verification_method": "Focused Vitest, targeted strict module compile, scoped syntax and isolated Chromium actual component; simulated authentication is not live acceptance."
@@ -1061,10 +1095,20 @@
             "path": "orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json",
             "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1036",
             "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc"
+          },
+          {
+            "kind": "WP2A_TYPED_COMPANION_PROJECTION",
+            "paths": [
+              "apps/web/shared/runnerCompanion.ts",
+              "apps/web/server/services/runnerCompanionViewState.ts",
+              "apps/web/server/routers/runnerNodes.ts"
+            ],
+            "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
+            "summary": "Additive owner-scoped Runner Companion state projection reuses Task Control and Runner read models; no new task or approval authority."
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure.",
+        "next_action": "On an already-authorized exactSHA nonproduction target, verify actual authentication/currentpermission/revocation and API-to-Web/Runner parity. Preserve missingGoal/history/quota/helper sources asUnknown and no fullSPECclosure. WP2A source checkpoint is recorded at 96e1ce9f190148627bc5c9d84252e19da8323d85; keep this requirement partial until protected integration and authenticated/native acceptance evidence exist.",
         "requirement_digest": "d1dfaabb10de772858efc144fdae5a1d3146690544bc2b9f0620749afd326b20",
         "requirement_id": "REQ-277-OBS-08",
         "requirement_text": "- REQ-277-OBS-08: Authenticated APIs MUST enforce tenant/principal/current permission on every read and evidence dereference, with bounded pagination, snapshot expiry, replay/dedupe and source health. Monitoring GETs, reconnects and failures MUST invoke no execution/admission/billing/provider/authorization mutation, and MUST NOT become a runtime dependency of SPEC-224.",
@@ -1089,6 +1133,13 @@
             "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
             "status": "PASS_SCOPED",
             "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
+          },
+          {
+            "kind": "WP2A_FOCUSED_SOURCE_VERIFICATION",
+            "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-companion-wp2a-view-state-20261022.md",
+            "source_sha": "96e1ce9f190148627bc5c9d84252e19da8323d85",
+            "status": "PASS_SCOPED",
+            "summary": "Focused projection/route tests and existing Runner/Task Control regressions pass; Windows, browser/mobile UAT and real-device E2E remain unverified."
           }
         ],
         "verification_method": "Native owner-marked PostgreSQL read-only enforcement and scoped Vitest; independently reviewed actualdiff. Suppliedscope tests do not prove real auth/session revocation or liveRunner."
@@ -1408,7 +1459,7 @@
     "unresolved": 442
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:39:55.223411Z",
+  "updated_at": "2026-10-22T04:27:00.583225Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."

@@ -11,6 +11,7 @@ import {
   CLOUDFLARE_STAGING_EXECUTOR_TARGET,
   validateCloudflareStagingExecutorRegistration,
 } from "../services/cloudflareStagingExecutorIdentityService";
+import { getRunnerCompanionState } from "../services/runnerCompanionViewState";
 
 function tenantRequired(ctx: {
   tenantId?: unknown;
@@ -143,6 +144,11 @@ export function safeWorkspaceFacts(
 }
 
 export const runnerNodesRouter = router({
+  companionState: protectedProcedure.query(({ ctx }) => getRunnerCompanionState({
+    tenantId: tenantRequired(ctx),
+    userId: ctx.user.id,
+  })),
+
   list: protectedProcedure.query(async ({ ctx }) => {
     const tenantId = tenantRequired(ctx);
     const db = getDb();
