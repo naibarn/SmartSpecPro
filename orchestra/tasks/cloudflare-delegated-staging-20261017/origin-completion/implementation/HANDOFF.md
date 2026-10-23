@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `158`
-- Updated (UTC): `2026-10-23T03:50:40.595714+00:00`
+- State generation: `160`
+- Updated (UTC): `2026-10-23T05:51:09.698348+00:00`
 - Sections source: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/sections`
 - Target checkout: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020`
 - Worktree: `/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023`
-- Latest recorded merged Main SHA: `cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e`
+- Latest recorded merged Main SHA: `26640e87162576a1505e02a026cc35a846eb8517`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-05-acceptance`
-- Next action: Integrate the bounded staging campaign reuse and exact-owner Queue-profile activation UI/service. Then deploy through the canonical Linux release path if available and verify hosted serving versions; owner must save/activate the profile and create a fresh staging job before runtime acceptance.
+- Next action: Authenticated tenant owner: bind the minimum Staging Queue profile in Admin (workflowExecution=emergency-intake, jobTransport=queues, retain the existing private DB receipt, configure two distinct workflow/control-plane secrets each >=32 chars), then create a fresh campaign-bound job under the existing valid policy. Monitor worker_jobs/outbox through final receipt; verify Worker readiness, Python/API, PostgreSQL and rollback. Production remains separate.
 
 ## Sections
 
@@ -21,7 +21,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-02-origin-transport | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-staging-preflight-20261019 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | bc800e1e02ad15efa7ab9d609edf4a851c5cf0d8 | Section 02 source support integrated, live proof pending; continue origin configuration authority |
 | section-03-config-authority | checkpointed | — | — | 6491cb159874579a571f55c271b9b452e41c45b2 | 6491cb159874579a571f55c271b9b452e41c45b2 | Continue section 04 actual protected-origin inventory and exact canonical source build; origin v2 source composition is integrated, hosted acceptance remains pending |
 | section-04-provision-release | checkpointed | — | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-native-completion-20261020 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | e15f72f70b50bca1ebc902ac80826a91d4886a95 | Last verified deployed source remains e15; preserve its exact runtime/artifact/approval/recovery proof and expiry fallback. New pre-subscription source186 is integrated but unreleased. Workers Paid is a Container dependency; WFP is not automatically required for registered Worker Apps. Continue remaining software and live qualification from section05; no automatic production activation or credential/entitlement invention. |
-| section-05-acceptance | checkpointed | codex-cloudflare-approval-loop-p0-20261023 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023 | cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e | cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e | Integrate the bounded staging campaign reuse and exact-owner Queue-profile activation UI/service. Then deploy through the canonical Linux release path if available and verify hosted serving versions; owner must save/activate the profile and create a fresh staging job before runtime acceptance. |
+| section-05-acceptance | checkpointed | codex-cloudflare-approval-loop-p0-20261023 | /mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023 | e2851ebc0b2a9d1ffed86a853832c3f0c8de979f | 26640e87162576a1505e02a026cc35a846eb8517 | Authenticated tenant owner: bind the minimum Staging Queue profile in Admin (workflowExecution=emergency-intake, jobTransport=queues, retain the existing private DB receipt, configure two distinct workflow/control-plane secrets each >=32 chars), then create a fresh campaign-bound job under the existing valid policy. Monitor worker_jobs/outbox through final receipt; verify Worker readiness, Python/API, PostgreSQL and rollback. Production remains separate. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -66,6 +66,11 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - P0 campaign authorization is not implemented yet: queueCloudflareStagingDeploy still creates a one-operation policy and one 45-minute job grant. Existing exact artifact/config binding is a security requirement; only owner-approved allowlists may cover changed artifacts/configs.
 - Current Staging activation profile must be re-saved with workflowExecution=emergency-intake, jobTransport=queues, and privateDatabase enabled; otherwise preflight now returns a precise blocker before requesting authorization.
 - Live staging is still activation-disabled; authenticated tenant-owner action is required after source integration to bind the minimum Queue profile and enqueue a fresh grant-bound job.
+- Live staging remains activation-disabled; owner must bind the Queue profile from the encrypted current staging config and authorize a fresh job; no production change is authorized by this staging campaign.
+- 2026-10-23 verified canonical Linux release: origin/main 26640e87162576a1505e02a026cc35a846eb8517 was built and promoted through release:web:linux as generation g43; receipt is DEPLOYED_VERIFIED with web and Node worker on the same source SHA. Local Node /healthz, /readyz (database ok), and /admin/settings passed. Cloudflare staging artifact for the same source was PUBLISHED with digest a6e95ddfa07582ad07d6972cae6f5c4db3447b907d25e05a61f7439dc7479664.
+- Python backend remains served from stale mutable /home/dev/projects/SmartSpecPro/python-backend; /api/v1/health/ready returns 503 while /health/ready returns 200. Do not restart from the dirty checkout. No exact-SHA Python release lane is currently available.
+- Direct public probes of smartaihub.app and the staging Worker returned Cloudflare 1010 from this host; this does not establish public application/Worker health.
+- No new Cloudflare Worker job, grant, staging profile mutation, or production traffic change occurred. Existing staging origin profile is activation-disabled and needs authenticated Tenant Owner binding before a fresh policy-authorized campaign job can be created.
 
 ## Resume
 

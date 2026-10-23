@@ -42,10 +42,10 @@
     },
     "section-05-acceptance": {
       "status": "checkpointed",
-      "next_action": "Integrate the bounded staging campaign reuse and exact-owner Queue-profile activation UI/service. Then deploy through the canonical Linux release path if available and verify hosted serving versions; owner must save/activate the profile and create a fresh staging job before runtime acceptance.",
+      "next_action": "Authenticated tenant owner: bind the minimum Staging Queue profile in Admin (workflowExecution=emergency-intake, jobTransport=queues, retain the existing private DB receipt, configure two distinct workflow/control-plane secrets each >=32 chars), then create a fresh campaign-bound job under the existing valid policy. Monitor worker_jobs/outbox through final receipt; verify Worker readiness, Python/API, PostgreSQL and rollback. Production remains separate.",
       "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023",
-      "checkpoint_sha": "cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e",
-      "merged_main_sha": "cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e",
+      "checkpoint_sha": "e2851ebc0b2a9d1ffed86a853832c3f0c8de979f",
+      "merged_main_sha": "26640e87162576a1505e02a026cc35a846eb8517",
       "session_id": "codex-cloudflare-approval-loop-p0-20261023"
     }
   },
@@ -58,12 +58,12 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-19T12:45:13.250123+00:00",
-  "generation": 158,
-  "updated_at": "2026-10-23T03:50:40.595714+00:00",
+  "generation": 160,
+  "updated_at": "2026-10-23T05:51:09.698348+00:00",
   "progress": {
     "active_section": "section-05-acceptance",
-    "next_action": "Integrate the bounded staging campaign reuse and exact-owner Queue-profile activation UI/service. Then deploy through the canonical Linux release path if available and verify hosted serving versions; owner must save/activate the profile and create a fresh staging job before runtime acceptance.",
-    "merged_main_sha": "cac4b5bc3c4be49ae0e1f089463712cafd3bfb3e",
+    "next_action": "Authenticated tenant owner: bind the minimum Staging Queue profile in Admin (workflowExecution=emergency-intake, jobTransport=queues, retain the existing private DB receipt, configure two distinct workflow/control-plane secrets each >=32 chars), then create a fresh campaign-bound job under the existing valid policy. Monitor worker_jobs/outbox through final receipt; verify Worker readiness, Python/API, PostgreSQL and rollback. Production remains separate.",
+    "merged_main_sha": "26640e87162576a1505e02a026cc35a846eb8517",
     "worktree": "/mnt/SmartSpecDev/task-worktrees/smartspecpro/cloudflare-approval-loop-p0-20261023",
     "gaps": [
       "Production application ingress/jobs remain Debian; original PostgreSQL is retained. Public catalog was historically qualified, not a complete current production cutover.",
@@ -106,7 +106,12 @@
       "Production cutover is not authorized by the staging grant: production target/route and scoped provider authority, runtime binding parity, compatible rollback baseline, and staging acceptance remain absent.",
       "P0 campaign authorization is not implemented yet: queueCloudflareStagingDeploy still creates a one-operation policy and one 45-minute job grant. Existing exact artifact/config binding is a security requirement; only owner-approved allowlists may cover changed artifacts/configs.",
       "Current Staging activation profile must be re-saved with workflowExecution=emergency-intake, jobTransport=queues, and privateDatabase enabled; otherwise preflight now returns a precise blocker before requesting authorization.",
-      "Live staging is still activation-disabled; authenticated tenant-owner action is required after source integration to bind the minimum Queue profile and enqueue a fresh grant-bound job."
+      "Live staging is still activation-disabled; authenticated tenant-owner action is required after source integration to bind the minimum Queue profile and enqueue a fresh grant-bound job.",
+      "Live staging remains activation-disabled; owner must bind the Queue profile from the encrypted current staging config and authorize a fresh job; no production change is authorized by this staging campaign.",
+      "2026-10-23 verified canonical Linux release: origin/main 26640e87162576a1505e02a026cc35a846eb8517 was built and promoted through release:web:linux as generation g43; receipt is DEPLOYED_VERIFIED with web and Node worker on the same source SHA. Local Node /healthz, /readyz (database ok), and /admin/settings passed. Cloudflare staging artifact for the same source was PUBLISHED with digest a6e95ddfa07582ad07d6972cae6f5c4db3447b907d25e05a61f7439dc7479664.",
+      "Python backend remains served from stale mutable /home/dev/projects/SmartSpecPro/python-backend; /api/v1/health/ready returns 503 while /health/ready returns 200. Do not restart from the dirty checkout. No exact-SHA Python release lane is currently available.",
+      "Direct public probes of smartaihub.app and the staging Worker returned Cloudflare 1010 from this host; this does not establish public application/Worker health.",
+      "No new Cloudflare Worker job, grant, staging profile mutation, or production traffic change occurred. Existing staging origin profile is activation-disabled and needs authenticated Tenant Owner binding before a fresh policy-authorized campaign job can be created."
     ],
     "outcome": "NOT_ACCEPTED"
   }
