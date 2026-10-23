@@ -89,25 +89,32 @@ describe("MiniAppRoute", () => {
   it("reports BUILDING when the canonical Mini App route has no runnable artifact", async () => {
     mocks.miniAppParams = { appId: "app_created" };
     mocks.appQuery.data = {
-      appId: "app_created",
-      deploymentVersion: 0,
-      lastKnownGoodArtifactRef: null,
+      app: {
+        appId: "app_created",
+        deploymentVersion: 0,
+        lastKnownGoodArtifactRef: null,
+      },
+      html: null,
+      factory: null,
     };
     render(<MiniAppRoute />);
     expect(await screen.findByText("BUILDING")).toBeInTheDocument();
-    expect(await screen.findByText("No runnable artifact is available yet. The Mini App will appear here after its build and deployment complete.")).toBeInTheDocument();
+    expect(await screen.findByText("Your private Mini App project is being prepared.")).toBeInTheDocument();
     expect(mocks.resolveMiniApp).toHaveBeenCalledWith({ appId: "app_created" }, expect.objectContaining({ enabled: true, retry: false }));
   });
 
   it("renders a private last-known-good artifact in a script-only sandbox", async () => {
     mocks.miniAppParams = { appId: "app_private" };
     mocks.appQuery.data = {
-      appId: "app_private",
-      visibility: "private",
-      deploymentVersion: 1,
-      lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_private/sha256/" + "a".repeat(64),
+      app: {
+        appId: "app_private",
+        visibility: "private",
+        deploymentVersion: 1,
+        lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_private/sha256/" + "a".repeat(64),
+      },
       html: "<!doctype html><main>Expense tracker</main>",
       artifactDigest: "a".repeat(64),
+      factory: null,
     };
     render(<MiniAppRoute />);
     const frame = await screen.findByTestId("miniapp-preview-frame");
