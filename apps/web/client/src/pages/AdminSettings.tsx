@@ -5002,7 +5002,7 @@ export default function AdminSettings() {
                         </code>
                       </p>
                     </div>
-                    <div>
+                    <section>
                       <Label htmlFor="githubMiniAppRedirectUri">Mini-App repository callback URI</Label>
                       <Input
                         id="githubMiniAppRedirectUri"
@@ -5010,10 +5010,10 @@ export default function AdminSettings() {
                         value={oauthForm.githubMiniAppRedirectUri || ""}
                         onChange={e => setOauthForm(prev => ({ ...prev, githubMiniAppRedirectUri: e.target.value }))}
                       />
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-sm text-muted-foreground">
                         เพิ่ม URL นี้เป็น callback URL ใน GitHub OAuth App เพื่อให้ผู้ใช้เชื่อม repo ส่วนตัวได้ โดยไม่กระทบ callback สำหรับล็อกอิน
                       </p>
-                    </div>
+                    </section>
                   </div>
 
                   {/* Microsoft / OneDrive OAuth */}

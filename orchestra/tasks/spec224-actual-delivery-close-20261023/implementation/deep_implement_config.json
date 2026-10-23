@@ -23,7 +23,7 @@
     "section-02-live-hosted-execution": {
       "status": "checkpointed",
       "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
-      "next_action": "Use GitHub OAuth with the test owner, apply migration 0410 only on authorized non-production DB, configure the OAuth App callback once, then run hosted PERSONAL_MINIAPP generation and verify artifact + private browser access. Exact non-production Gateway/test tenant is still missing.",
+      "next_action": "Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks.",
       "checkpoint_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d",
       "merged_main_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d"
     },
@@ -48,11 +48,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 12,
-  "updated_at": "2026-10-23T12:54:35.001552+00:00",
+  "generation": 13,
+  "updated_at": "2026-10-23T12:56:04.428125+00:00",
   "progress": {
     "active_section": "section-02-live-hosted-execution",
-    "next_action": "Use GitHub OAuth with the test owner, apply migration 0410 only on authorized non-production DB, configure the OAuth App callback once, then run hosted PERSONAL_MINIAPP generation and verify artifact + private browser access. Exact non-production Gateway/test tenant is still missing.",
+    "next_action": "Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks.",
     "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
     "gaps": [
       "No USER_TRIAL_READY trusted receipt is currently emitted into the Mini-App factory DevelopmentRun; current addition validates a receipt but has no production caller.",
@@ -68,7 +68,8 @@
       "No hosted non-production runtime/Gateway/model receipt or real private appId/artifact/browser journey exists; the local test lane uses a synthetic stage.",
       "Current sudo noninteractive check fails because this session has no password credential; existing release preparation remains blocked in NTFS I/O before its authorization gate.",
       "The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes.",
-      "Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration."
+      "Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration.",
+      "The shared dev web process is serving stale checkout 4539aee (282 commits behind main) with unrelated dirty work; dev tunnel DNS currently fails for dev.aimarkethubs.com. Do not overwrite that checkout; real browser verification requires a clean preview built from the merged SHA and restored test hostname."
     ],
     "merged_main_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d"
   }

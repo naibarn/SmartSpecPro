@@ -3,22 +3,22 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `12`
-- Updated (UTC): `2026-10-23T12:54:35.001552+00:00`
+- State generation: `13`
+- Updated (UTC): `2026-10-23T12:56:04.428125+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Latest recorded merged Main SHA: `08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-02-live-hosted-execution`
-- Next action: Use GitHub OAuth with the test owner, apply migration 0410 only on authorized non-production DB, configure the OAuth App callback once, then run hosted PERSONAL_MINIAPP generation and verify artifact + private browser access. Exact non-production Gateway/test tenant is still missing.
+- Next action: Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-contract-continuation | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | Continue through section 02: run real hosted Gateway generation using an authorized non-production tenant and bind its app source/artifact; retain preview-state projection fix. |
-| section-02-live-hosted-execution | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d | 08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d | Use GitHub OAuth with the test owner, apply migration 0410 only on authorized non-production DB, configure the OAuth App callback once, then run hosted PERSONAL_MINIAPP generation and verify artifact + private browser access. Exact non-production Gateway/test tenant is still missing. |
+| section-02-live-hosted-execution | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d | 08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d | Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks. |
 | section-03-real-browser-acceptance | in_progress | — | — | — | — | Run authenticated owner and second-identity browser journey against the exact real model-generated artifact after section 02. |
 | section-04-release-final-verify | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28 | acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28 | Final acceptance remains open. Resume only after an authorized non-production Gateway/runtime plus test tenant and app-owner GitHub write connection are provisioned; complete exact expense-tracker browser journey, then use guarded release with authenticated sudo. |
 
@@ -38,6 +38,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Current sudo noninteractive check fails because this session has no password credential; existing release preparation remains blocked in NTFS I/O before its authorization gate.
 - The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes.
 - Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration.
+- The shared dev web process is serving stale checkout 4539aee (282 commits behind main) with unrelated dirty work; dev tunnel DNS currently fails for dev.aimarkethubs.com. Do not overwrite that checkout; real browser verification requires a clean preview built from the merged SHA and restored test hostname.
 
 ## Resume
 
