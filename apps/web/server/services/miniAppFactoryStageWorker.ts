@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { MiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
-import { selectReadyMiniAppFactoryStages } from "./miniAppFactoryPipeline";
+import { getMiniAppFactoryProfileStages, selectReadyMiniAppFactoryStages } from "./miniAppFactoryPipeline";
 import { executeMiniAppFactoryStages, type MiniAppFactoryStageOutput } from "./miniAppFactoryRunExecutor";
 import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
@@ -111,9 +111,12 @@ export async function enqueueNextMiniAppFactoryStage(input: {
   const current = await input.service.get(input.run);
   const unit = current.run.workUnit;
   if (!unit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
-  const remaining = unit.progress.remainingScope.filter(scope => input.pipeline.stages.some(stage => stage.id === scope));
+  const storedState = current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY];
+  const profile = storedState ? parseMiniAppFactoryDurableState(storedState).profile : "PERSONAL_MINIAPP";
+  const eligibleStages = getMiniAppFactoryProfileStages(input.pipeline, profile);
+  const remaining = unit.progress.remainingScope.filter(scope => eligibleStages.some(stage => stage.id === scope));
   if (remaining.length === 0) return { stageId: null, jobId: null, created: false, state: "IMPLEMENTATION_SCOPE_COMPLETE" };
-  const ready = selectReadyMiniAppFactoryStages(input.pipeline, unit);
+  const ready = selectReadyMiniAppFactoryStages(input.pipeline, unit, profile);
   if (ready.length === 0) return { stageId: null, jobId: null, created: false, state: "WAITING_DEPENDENCY" };
   const stageId = ready[0]!;
   if (input.createRunnerStage) {

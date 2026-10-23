@@ -47,6 +47,24 @@ describe("Mini App Factory durable state projection", () => {
     expect(state.migrationState).toBe("APPLIED");
   });
 
+  it("records trial readiness separately from release and platform certification", () => {
+    const initial = createMiniAppFactoryDurableState({
+      programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+      miniAppId: "app_personal_expenses",
+      sourceSha: "e".repeat(40),
+    });
+    const ready = advanceMiniAppFactoryDurableState(initial, {
+      stageId: "trial_ready",
+      artifacts: ["journey:primary-flow-pass", "known-issues:secondary-deferred"],
+      nextEligibleStages: [],
+      deliveryMilestone: "USER_TRIAL_READY",
+    });
+    expect(ready.profile).toBe("PERSONAL_MINIAPP");
+    expect(ready.deliveryMilestone).toBe("USER_TRIAL_READY");
+    expect(ready.deliveryMilestone).not.toBe("RELEASE_VERIFIED");
+    expect(ready.deliveryMilestone).not.toBe("PLATFORM_CERTIFIED");
+  });
+
   it("rejects malformed or source-unbound state", () => {
     const valid = createMiniAppFactoryDurableState({
       programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",

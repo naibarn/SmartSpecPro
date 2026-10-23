@@ -9,7 +9,10 @@ export type MiniAppFactoryStage = {
   inputs?: string[];
   outputs?: string[];
   gate?: string;
+  profileDependsOn?: Partial<Record<MiniAppFactoryProfile, string[]>>;
 };
+
+export type MiniAppFactoryProfile = "PERSONAL_MINIAPP" | "PLATFORM_SELF_DEVELOPMENT";
 
 /** Loads the canonical Factory pipeline contract used by the autonomous program. */
 export function loadMiniAppFactoryPipeline(path = process.env.SMARTSPEC_MINI_APP_FACTORY_PIPELINE_PATH): MiniAppFactoryPipeline {
@@ -27,6 +30,7 @@ export function loadMiniAppFactoryPipeline(path = process.env.SMARTSPEC_MINI_APP
     schemaVersion: value.schemaVersion,
     pipelineId: value.pipelineId,
     stages: value.stages,
+    profiles: value.profiles,
   } as MiniAppFactoryPipeline;
   validateMiniAppFactoryPipeline(pipeline);
   return pipeline;
@@ -36,6 +40,7 @@ export type MiniAppFactoryPipeline = {
   schemaVersion: "mini-app-factory-pipeline.v1";
   pipelineId: string;
   stages: MiniAppFactoryStage[];
+  profiles?: Partial<Record<MiniAppFactoryProfile, { stages: string[]; trialReadyStage?: string }>>;
 };
 
 export type MiniAppFactoryStageState =
@@ -60,6 +65,11 @@ export function validateMiniAppFactoryPipeline(pipeline: MiniAppFactoryPipeline)
     for (const dependency of stage.dependsOn) {
       if (!stages.has(dependency)) throw new Error(`FACTORY_DEPENDENCY_MISSING:${stage.id}:${dependency}`);
     }
+    for (const dependencies of Object.values(stage.profileDependsOn ?? {})) {
+      for (const dependency of dependencies ?? []) {
+        if (!stages.has(dependency)) throw new Error(`FACTORY_DEPENDENCY_MISSING:${stage.id}:${dependency}`);
+      }
+    }
   }
   const visiting = new Set<string>();
   const visited = new Set<string>();
@@ -72,6 +82,23 @@ export function validateMiniAppFactoryPipeline(pipeline: MiniAppFactoryPipeline)
     visited.add(id);
   };
   for (const stage of pipeline.stages) visit(stage.id);
+  for (const [profile, contract] of Object.entries(pipeline.profiles ?? {})) {
+    if (!contract || !Array.isArray(contract.stages) || contract.stages.some(id => !stages.has(id))) {
+      throw new Error(`FACTORY_PROFILE_INVALID:${profile}`);
+    }
+    if (contract.trialReadyStage && !contract.stages.includes(contract.trialReadyStage)) {
+      throw new Error(`FACTORY_PROFILE_TRIAL_STAGE_INVALID:${profile}`);
+    }
+  }
+}
+
+export function getMiniAppFactoryProfileStages(
+  pipeline: MiniAppFactoryPipeline,
+  profile: MiniAppFactoryProfile = "PERSONAL_MINIAPP",
+): MiniAppFactoryStage[] {
+  validateMiniAppFactoryPipeline(pipeline);
+  const ids = new Set(pipeline.profiles?.[profile]?.stages ?? pipeline.stages.map(({ id }) => id));
+  return pipeline.stages.filter(({ id }) => ids.has(id));
 }
 
 /**
@@ -82,17 +109,21 @@ export function validateMiniAppFactoryPipeline(pipeline: MiniAppFactoryPipeline)
 export function selectReadyMiniAppFactoryStages(
   pipeline: MiniAppFactoryPipeline,
   workUnit: DevelopmentWorkUnit,
+  profile: MiniAppFactoryProfile = "PERSONAL_MINIAPP",
 ): string[] {
   validateMiniAppFactoryPipeline(pipeline);
-  const stageIds = new Set(pipeline.stages.map(({ id }) => id));
+  const profileContract = pipeline.profiles?.[profile];
+  const eligibleIds = new Set(profileContract?.stages ?? pipeline.stages.map(({ id }) => id));
+  const selectedStages = pipeline.stages.filter(({ id }) => eligibleIds.has(id));
+  const stageIds = new Set(selectedStages.map(({ id }) => id));
   const completed = new Set(workUnit.progress.completedScope.filter((scope) => stageIds.has(scope)));
   const remaining = new Set(workUnit.progress.remainingScope.filter((scope) => stageIds.has(scope)));
   const blocked = new Set(workUnit.dependencies
     .filter((dependency) => dependency.state === "UNSATISFIED")
     .flatMap((dependency) => dependency.blockedScope));
 
-  return pipeline.stages
+  return selectedStages
     .filter((stage) => remaining.has(stage.id) && !completed.has(stage.id) && !blocked.has(stage.id))
-    .filter((stage) => stage.dependsOn.every((dependency) => completed.has(dependency)))
+    .filter((stage) => (stage.profileDependsOn?.[profile] ?? stage.dependsOn).every((dependency) => completed.has(dependency)))
     .map(({ id }) => id);
 }

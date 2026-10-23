@@ -566,13 +566,14 @@ export const spec226DevelopmentControlRouter = router({
         }) : undefined;
         if (factoryPipeline && factoryWorkUnit) {
           factoryWorkUnit.progress.state = "WORKING";
-          factoryWorkUnit.progress.remainingScope = factoryPipeline.stages.map(stage => stage.id);
+          factoryWorkUnit.progress.remainingScope = factoryPipeline.profiles?.PERSONAL_MINIAPP?.stages ?? factoryPipeline.stages.map(stage => stage.id);
           factoryWorkUnit.progress.immediatelyRunnableScope = selectReadyMiniAppFactoryStages(factoryPipeline, factoryWorkUnit);
         }
         const factoryState = factoryPipeline && sourceSha ? createMiniAppFactoryDurableState({
           programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
           miniAppId: `app_${runDigest.slice(0, 24)}`,
           sourceSha,
+          profile: "PERSONAL_MINIAPP",
         }) : undefined;
         const firstFactoryStage = factoryPipeline?.stages.find(stage => stage.id === factoryWorkUnit?.progress.immediatelyRunnableScope[0]);
         const factoryStageDocument = factoryPipeline && factoryState && firstFactoryStage ? {

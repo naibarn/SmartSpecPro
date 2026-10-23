@@ -4,6 +4,8 @@ export type MiniAppFactoryDurableState = {
   schemaVersion: "mini-app-factory-program-state.v1";
   programId: string;
   miniAppId: string;
+  profile: "PERSONAL_MINIAPP" | "PLATFORM_SELF_DEVELOPMENT";
+  deliveryMilestone: "BUILDING" | "USER_TRIAL_READY" | "USER_FEEDBACK_REQUIRED" | "USER_ACCEPTED" | "RELEASE_VERIFIED" | "PLATFORM_CERTIFIED";
   currentStage: string | null;
   completedStages: string[];
   waitingStages: string[];
@@ -27,6 +29,7 @@ export function createMiniAppFactoryDurableState(input: {
   programId: string;
   miniAppId: string;
   sourceSha: string;
+  profile?: MiniAppFactoryDurableState["profile"];
 }): MiniAppFactoryDurableState {
   if (!/^[A-Za-z0-9_.:-]{1,160}$/.test(input.programId)) throw new Error("FACTORY_PROGRAM_ID_INVALID");
   if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.miniAppId)) throw new Error("FACTORY_MINI_APP_ID_INVALID");
@@ -35,6 +38,8 @@ export function createMiniAppFactoryDurableState(input: {
     schemaVersion: "mini-app-factory-program-state.v1",
     programId: input.programId,
     miniAppId: input.miniAppId,
+    profile: input.profile ?? "PERSONAL_MINIAPP",
+    deliveryMilestone: "BUILDING",
     currentStage: null,
     completedStages: [],
     waitingStages: [],
@@ -56,6 +61,8 @@ export function parseMiniAppFactoryDurableState(value: unknown): MiniAppFactoryD
     state.schemaVersion !== "mini-app-factory-program-state.v1" ||
     typeof state.programId !== "string" || !/^[A-Za-z0-9_.:-]{1,160}$/.test(state.programId) ||
     typeof state.miniAppId !== "string" || !/^app_[A-Za-z0-9_-]{1,120}$/.test(state.miniAppId) ||
+    !(state.profile === undefined || ["PERSONAL_MINIAPP", "PLATFORM_SELF_DEVELOPMENT"].includes(String(state.profile))) ||
+    !(state.deliveryMilestone === undefined || ["BUILDING", "USER_TRIAL_READY", "USER_FEEDBACK_REQUIRED", "USER_ACCEPTED", "RELEASE_VERIFIED", "PLATFORM_CERTIFIED"].includes(String(state.deliveryMilestone))) ||
     !(state.currentStage === null || (typeof state.currentStage === "string" && /^[A-Za-z0-9_.:-]{1,128}$/.test(state.currentStage))) ||
     !stageList(state.completedStages) || !stageList(state.waitingStages) || !stageList(state.artifacts) ||
     !/^[a-f0-9]{40}$/i.test(String(state.sourceSha)) ||
@@ -70,12 +77,16 @@ export function parseMiniAppFactoryDurableState(value: unknown): MiniAppFactoryD
     !((state.blockerState as Record<string, unknown>).code === null || typeof (state.blockerState as Record<string, unknown>).code === "string") ||
     !stageList(state.nextEligibleStages)
   ) throw new Error("FACTORY_DURABLE_STATE_INVALID");
-  return structuredClone(state) as unknown as MiniAppFactoryDurableState;
+  return {
+    ...structuredClone(state),
+    profile: state.profile ?? "PERSONAL_MINIAPP",
+    deliveryMilestone: state.deliveryMilestone ?? "BUILDING",
+  } as unknown as MiniAppFactoryDurableState;
 }
 
 export function advanceMiniAppFactoryDurableState(
   current: MiniAppFactoryDurableState,
-  input: { stageId: string; artifacts: string[]; nextEligibleStages: string[] },
+  input: { stageId: string; artifacts: string[]; nextEligibleStages: string[]; deliveryMilestone?: MiniAppFactoryDurableState["deliveryMilestone"] },
 ): MiniAppFactoryDurableState {
   const state = parseMiniAppFactoryDurableState(current);
   if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(input.stageId) || !stageList(input.artifacts) || !stageList(input.nextEligibleStages)) {
@@ -89,6 +100,7 @@ export function advanceMiniAppFactoryDurableState(
   return {
     ...state,
     currentStage: input.stageId,
+    deliveryMilestone: input.deliveryMilestone ?? state.deliveryMilestone,
     completedStages: [...new Set([...state.completedStages, input.stageId])],
     waitingStages: [],
     artifacts,

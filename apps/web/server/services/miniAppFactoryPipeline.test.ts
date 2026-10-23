@@ -40,6 +40,7 @@ describe("Mini App Factory pipeline evaluator", () => {
       schemaVersion: pipeline.schemaVersion,
       pipelineId: pipeline.pipelineId,
       stages: pipeline.stages,
+      profiles: pipeline.profiles,
     });
     expect(pipeline.stages.find(stage => stage.id === "requirements_intake")?.inputs).toContain("visualReferences");
     expect(pipeline.stages.find(stage => stage.id === "spec_compile")?.inputs).toContain("visualBlueprint");
@@ -61,6 +62,18 @@ describe("Mini App Factory pipeline evaluator", () => {
     validateMiniAppFactoryPipeline(pipeline);
     expect(selectReadyMiniAppFactoryStages(pipeline, workUnit())).toEqual(["requirements_intake"]);
     expect(selectReadyMiniAppFactoryStages(pipeline, workUnit(["requirements_intake"]))).toEqual(["spec_compile", "recovery"]);
+  });
+
+  it("keeps personal trial delivery independent from optional certification stages", () => {
+    const personal = new Set(pipeline.profiles?.PERSONAL_MINIAPP?.stages);
+    expect(personal.has("trial_ready")).toBe(true);
+    expect(personal.has("tests")).toBe(false);
+    expect(personal.has("migrate")).toBe(false);
+    expect(personal.has("uat")).toBe(false);
+    expect(personal.has("evidence")).toBe(false);
+    expect(pipeline.profiles?.PLATFORM_SELF_DEVELOPMENT?.stages).toContain("uat");
+    const afterScaffold = workUnit(["requirements_intake", "spec_compile", "plan", "manifest_validate", "scaffold"]);
+    expect(selectReadyMiniAppFactoryStages(pipeline, afterScaffold)).toContain("ui_implementation");
   });
 
   it("rejects a missing dependency and a dependency cycle", () => {

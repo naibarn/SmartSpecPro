@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { CanonicalCheckpointInput } from "./developmentLifecycleContracts";
 import type { MiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
-import { selectReadyMiniAppFactoryStages } from "./miniAppFactoryPipeline";
+import { getMiniAppFactoryProfileStages, selectReadyMiniAppFactoryStages, type MiniAppFactoryProfile } from "./miniAppFactoryPipeline";
 import {
   advanceMiniAppFactoryDurableState,
   createMiniAppFactoryDurableState,
@@ -74,12 +74,12 @@ export async function executeMiniAppFactoryStages(input: {
       : undefined;
 
   while (executedStages.length < maxStages) {
-    const workUnit = latest.run.workUnit;
+  const workUnit = latest.run.workUnit;
     if (!workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
-    const ready = selectReadyMiniAppFactoryStages(input.pipeline, workUnit);
-    const remaining = workUnit.progress.remainingScope.filter(scope =>
-      input.pipeline.stages.some(stage => stage.id === scope)
-    );
+    const profile: MiniAppFactoryProfile = durableState?.profile ?? "PERSONAL_MINIAPP";
+    const ready = selectReadyMiniAppFactoryStages(input.pipeline, workUnit, profile);
+    const eligibleStages = getMiniAppFactoryProfileStages(input.pipeline, profile);
+    const remaining = workUnit.progress.remainingScope.filter(scope => eligibleStages.some(stage => stage.id === scope));
 
     if (remaining.length === 0) {
       return { executedStages, nextEligibleStages: [], state: "IMPLEMENTATION_SCOPE_COMPLETE" };
@@ -106,9 +106,11 @@ export async function executeMiniAppFactoryStages(input: {
       progress: { ...workUnit.progress, completedScope, remainingScope },
       artifacts,
     };
-    const nextEligibleStages = selectReadyMiniAppFactoryStages(input.pipeline, checkpointProjection);
+    const trialReadyStage = input.pipeline.profiles?.[profile]?.trialReadyStage;
+    const deliveryMilestone = stageId === trialReadyStage ? "USER_TRIAL_READY" as const : undefined;
+    const nextEligibleStages = selectReadyMiniAppFactoryStages(input.pipeline, checkpointProjection, profile);
     const nextFactoryState = durableState
-      ? advanceMiniAppFactoryDurableState(durableState, { stageId, artifacts: output.artifacts, nextEligibleStages })
+      ? advanceMiniAppFactoryDurableState(durableState, { stageId, artifacts: output.artifacts, nextEligibleStages, deliveryMilestone })
       : undefined;
 
     if (remainingScope.length === 0) {
@@ -157,7 +159,7 @@ export async function executeMiniAppFactoryStages(input: {
 
   const current = await input.service.get(input.run);
   const nextEligibleStages = current.run.workUnit
-    ? selectReadyMiniAppFactoryStages(input.pipeline, current.run.workUnit)
+    ? selectReadyMiniAppFactoryStages(input.pipeline, current.run.workUnit, durableState?.profile ?? "PERSONAL_MINIAPP")
     : [];
   return {
     executedStages,

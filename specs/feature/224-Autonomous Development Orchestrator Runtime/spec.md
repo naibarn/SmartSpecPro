@@ -17311,3 +17311,27 @@ This amendment separates ordinary implementation and non-production evidence fro
 6. Production database migrations, production deployment, security-policy changes, and external operations remain under their existing protected authorities. Those gates MUST NOT be prerequisites for development acceptance or appropriately authorized non-production acceptance.
 
 The CI disposable PostgreSQL lane uses the existing Spec 224 fresh-baseline projection and existing database target guard. Its result is Development Acceptance evidence only; it does not certify production upgrades, remote source trust, a live tenant, a deployed service, or full E2E acceptance.
+
+## 2026-10-23 — Personal Mini-App trial-first product contract
+
+This amendment corrects the default Mini-App product path while preserving the separate platform-development and production-release authorities.
+
+1. `PERSONAL_MINIAPP` is the default Factory profile for an authenticated user creating a private app for their own use. `PLATFORM_SELF_DEVELOPMENT` remains a distinct higher-risk profile and retains its full tests, migration, UAT, evidence, and certification obligations. A personal app MUST NOT inherit platform certification gates unless a requested operation actually enters that protected scope.
+2. The authenticated Start action authorizes bounded development of that user's app under existing tenant, actor, policy, budget, worker, and audit authority. The durable DevelopmentRun MUST reuse that authorization for ordinary planning, isolated edits, policy-compliant dependencies, build/repair, tests, disposable data, private preview, browser verification, and continuation. It MUST NOT prompt again for an action already inside the grant. Production mutation, unrelated-user data, secret exposure, destructive operations, and spending beyond the grant remain protected.
+3. Personal delivery proceeds through goal intake, minimum plan, core implementation, build/repair, private preview, and primary-journey smoke. `USER_TRIAL_READY` is reached when the stable owner-private app URL opens a real runnable artifact, the declared primary journey succeeds, no known catastrophic defect prevents personal testing, and secondary gaps are durably recorded. A percentage score is not acceptance evidence.
+4. `USER_TRIAL_READY`, `USER_FEEDBACK_REQUIRED`, `USER_ACCEPTED`, `RELEASE_VERIFIED`, and `PLATFORM_CERTIFIED` are separate durable milestones. Trial readiness MUST NOT imply full regression, release verification, or platform certification. Optional QA and release work can continue after the preview is usable.
+5. The first-delivery scope is frozen at Start. Secondary features do not delay the core journey. Failed builds/tests trigger bounded repair or an eligible alternative automatically; optional QA failure does not block private trial delivery. Retries use changed inputs or evidence, backoff, and the existing durable checkpoint/recovery mechanism. The last-known-good preview remains available while a candidate is repaired.
+6. The DevelopmentRun and its worker job/outbox continuation MUST proceed without the originating chat/browser session. Hosted personal work MUST NOT depend on the user's Windows machine. A personal Runner is selected only for a capability that requires that machine.
+7. Static personal apps SHOULD use the smallest existing authorized private artifact-serving runtime. Dynamic code MUST run only in an approved isolated non-production runtime without SmartAIHub production privileges. Canonical app identity/URL remains stable and private by default; tenant and owner checks run before any private artifact bytes or data are returned. All model calls remain on Skill Execution → SmartAIHub Gateway.
+8. Natural-language user feedback MUST resume the same app/run/workspace and preserve its identity and last-known-good version. It MUST NOT silently restart the entire lifecycle or widen the original authorization scope.
+9. Existing protected Runner admission, source trust, tenant isolation, Gateway, billing, audit, and production controls remain authoritative. Missing authority blocks only the affected capability; no synthetic evidence, privilege, identity, or completion may be invented.
+
+### Personal Mini-App acceptance
+
+- [ ] One Start begins bounded personal development with no repeated ordinary approval prompts; unauthorized protected operations remain denied.
+- [ ] Build failure causes a bounded automatic repair, and optional test failure does not prevent an otherwise valid private preview from reaching trial readiness.
+- [ ] A real private app URL renders the app and its primary journey works; shell-only HTTP responses and mock-only tests do not qualify.
+- [ ] The run resumes after worker/process interruption and retains the same app identity, owner, URL, scope, checkpoint, and preview.
+- [ ] Cross-user, cross-tenant, and anonymous access to a private preview are denied before artifact bytes/data are returned.
+- [ ] User feedback continues the existing app/run; release and platform certification remain separately evidenced.
+- [ ] For the expense-tracker scenario, create expense, create income, monthly totals and chart work on a mobile viewport and expected data persists.
