@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 1 pass / 1266 unresolved of 1267
+- Requirements: 0 pass / 1280 unresolved of 1280
 - Next action: PostgreSQL acceptance is now PASS/FRESH on the exact implementation SHA. Keep overall SPEC-224 acceptance PARTIAL. Continue the separately owner-authorized hosted Mini-App and protected Windows Runner paths; the exact authority and runtime evidence required for reactivation are recorded in continuation.next_action, continuation.reactivation_predicate and blocker R11_DISPOSABLE_AUTHORITY_ACCEPTANCE. Do not use production runtime or fabricate authority/evidence.
-- Manifest generation: 151
+- Manifest generation: 153
 
 ## Source-declared status and relationship claims
 

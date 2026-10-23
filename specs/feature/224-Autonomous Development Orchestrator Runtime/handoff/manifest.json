@@ -921,14 +921,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "de6a65001849f8971503feffc1f5dd47e9a8fca8",
-    "expected_spec_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3"
+    "expected_canonical_sha": "0dbde80ae8935ef42ddae7c76144dda20ae524a8",
+    "expected_spec_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68"
   },
   "continuation": {
-    "next_action": "Disposable PostgreSQL acceptance is verified: exact canonical implementation SHA de6a65001849f8971503feffc1f5dd47e9a8fca8 passed dedicated CI run 39919548818; the later handoff-only main SHA efe26a915e1396b0ec46d5145f76fec31629fa26 also passed run 39919928631. The requirement is PASS/FRESH. Continue live non-production Mini-App and Windows Runner acceptance independently. Exact remaining external authority: Platform/Security must provision the recorded REMOTE_TEST_TRUSTED issuer/key/source-storage decision; Tenant Owner must bind one authorized test DevelopmentRun and recovery grant/budget; Runner Owner must refresh the registered Windows Runner session/capabilities and workspace crosswalk. Cloudflare Admin must make the existing exact-artifact staging Queue profile/credential grant available for the hosted Mini-App path. Then execute the real request through current APIs, collect receipt/settlement and run independent Final Verify. Keep production deployment/migration protected; do not claim full E2E PASS meanwhile.",
-    "next_ready_workunit": "IMPLEMENTATION: Continue the next SPEC-224 non-production source/runtime work unit using existing worker_jobs/outbox, authorization policy and evidence contracts. For live Runner execution, use an already authorized test tenant and non-production target; if exact external source-trust, tenant, Runner/session/workspace, grant or deployment authority is absent, continue independent code/test/build work and record only that live acceptance boundary.",
-    "reactivation_predicate": "Resume remote non-production Runner acceptance when the existing Platform/Security and tenant authorities provide exact scoped policy decisions and authenticated current source-trust, Runner/session/capability, workspace, DevelopmentRun/job/attempt, lease/fencing/idempotency, recovery-grant and budget evidence. Validate those facts through existing authority APIs before dispatch. Production migration/deployment approval is not a development or non-production acceptance prerequisite; production operations remain separately guarded.",
-    "resume_point": "Disposable PostgreSQL lane passed locally 15/15 and in dedicated CI on de6a6500 and handoff-only efe26a9: migration 0395 1/1, Node 7/7, Python 7/7, using pinned PostgreSQL 15.17 pgvector digest sha256:7f5681e45237acdf546cf7cdc0dfc0ed7752ede857fda6e54f6ea21b936f8742 and two fresh isolated clusters. Requirement REQ-DC0E0E98CDAA is PASS/FRESH on implementation SHA de6a6500. Focused Final Verify and closure-contract tests pass 17/17, but they do not represent a live DevelopmentRun. Python broad-job baseline remains the same 43 failure IDs as 11879babc2 and the 503 type diagnostics are unchanged baseline. Public Mini-App readiness is 200 but hosted runtime readiness is 503; Windows Runner ports 22/443/5432/8000 at 192.168.1.123 are unreachable. No authenticated tenant flow, hosted artifact execution, live Runner dispatch, receipt, settlement or actual Final Verify exists; overall acceptance remains PARTIAL.",
+    "next_action": "Implement the missing private static artifact serving/rendering path and a hosted PERSONAL_MINIAPP execution route using existing policy, worker_jobs, outbox, and Gateway controls. Current SPEC-224 code audit found the canonical /miniapp/:appId route returns Preview runtime unavailable even when lastKnownGoodArtifactRef exists, and Start still binds to a local Runner. Do not claim USER_TRIAL_READY until an actual private artifact renders and the primary journey is independently browser-verified. Existing remote Runner source-trust and Windows Runner gaps remain separate.",
+    "next_ready_workunit": "PERSONAL_MINIAPP_PRIVATE_PREVIEW_RUNTIME_AND_HOSTED_EXECUTION",
+    "reactivation_predicate": "Continue implementation from canonical main. Trial readiness can be claimed only after the authenticated owner opens the stable private URL, a real preview artifact renders, and an independent browser proves the core user journey on mobile with data persistence. Keep Release Verified and Platform Certified separately evidenced. Remote protected Runner acceptance still requires the existing Platform/Security source-trust approval, authenticated Tenant scope/recovery grant, and fresh Windows Runner session/workspace evidence.",
+    "resume_point": "Integrated 0dbde80ae8935ef42ddae7c76144dda20ae524a8 adding PERSONAL_MINIAPP as the default profile, a profile-scoped trial-first stage DAG, durable delivery milestone separation, and regression tests. Focused Vitest: 38/38 passed across Factory pipeline/state/executor/worker plus MiniAppRoute and app identity routing/isolation. Actual expense tracker preview was not built or browser-accepted: artifact-serving runtime is disconnected and Start remains Runner-bound.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1169,13 +1169,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 151,
+  "generation": 153,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-    "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
+    "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-23T06:47:36.318475Z",
+      "last_evidence_at": "2026-10-23T08:21:16.454832Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -1187,23 +1187,7 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "074eb72c5bd3a3c62028e052f60831d451e3f4e9",
-      "76d88dd7e9c81f6a8a244074463e1a850410769b",
-      "bb832db746f11db7a2bf15533ac9135634ad3db9",
-      "1a4d7dcafe5bf2dec441564b6bfe8bbc358164ce",
-      "0cae9cc21a30c5b16c1a271fe37c4f8891e0482b",
-      "f2c9609b6a5b0beb8801c8036c6dfd1c0c5a7507",
-      "e61dc75cc86b0108f12b49b7c94fb8b53c4d3018",
-      "9bfe80208293b47153b4736e5c8a29ac98609e8b",
-      "0683e8eec2324672355e3329f9d05a987462f6b7",
-      "5bc461753c6fbf968b9874257892631ad8c4b089",
-      "45783a68631008ea604b3ef5c4dbcda03193d2d2",
-      "7fa2103c437462de3ff5e5ddac66fdc4a6d725a0",
-      "1d080e1e0a44470cbf0ae5da6a615f432c35fce4",
-      "265b7f79ed26e7df9931bf80f6b0e0099b10ae12",
-      "4a5a2317004d79f4a5c3cce15fc616dc1564fb25",
-      "e2e535af7aa274e937e0f4adf04fdbf9ff262456",
-      "32120b2d34b48cd5bc622e11c29cd3c066a3a231"
+      "0dbde80ae8935ef42ddae7c76144dda20ae524a8"
     ],
     "mapping": [
       {
@@ -1387,11 +1371,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "de6a65001849f8971503feffc1f5dd47e9a8fca8",
+    "canonical_sha": "0dbde80ae8935ef42ddae7c76144dda20ae524a8",
     "integrated": true,
     "integrated_at": "2026-10-23T07:42:17Z",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "de6a65001849f8971503feffc1f5dd47e9a8fca8"
+    "source_sha": "0dbde80ae8935ef42ddae7c76144dda20ae524a8"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2614,10 +2598,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-23T06:47:36.318475Z",
+    "reconciled_at": "2026-10-23T08:21:16.454832Z",
     "sources": [
       {
-        "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
+        "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -2721,7 +2705,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
+        "source_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
@@ -2791,14 +2775,14 @@
         "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
+        "source_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
+        "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -2859,16 +2843,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 1,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 1,
-    "total": 1267,
-    "unresolved": 1266
+    "pass": 0,
+    "total": 1280,
+    "unresolved": 1280
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T07:56:33.353465Z",
+  "updated_at": "2026-10-23T08:21:20.295806Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
