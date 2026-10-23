@@ -7,7 +7,7 @@
   "workers_dev": true,
   "preview_urls": false,
   "vars": {
-    "CLOUDFLARE_ACTIVATION": "disabled",
+    "CLOUDFLARE_ACTIVATION": "enabled",
     "CLOUDFLARE_ENVIRONMENT": "staging",
     "CLOUDFLARE_JOB_TRANSPORT": "queues"
   },
