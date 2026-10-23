@@ -35,6 +35,7 @@ const ACCESS_TOKEN_EXPIRY = 15 * 60; // 15 minutes in seconds
 const REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days in seconds
 export const RUNNER_COMPANION_CLIENT_ID = "smartaihub-runner-companion";
 export const RUNNER_COMPANION_SCOPE = "runner:companion:read";
+export const RUNNER_COMPANION_CHAT_SCOPE = "llm:chat";
 
 // User code characters (no ambiguous chars: 0/O, 1/l/I)
 const USER_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -433,7 +434,8 @@ export function registerDeviceAuthRoutes(app: Express) {
       return;
     }
 
-    // Get requested scopes or use defaults. Runner Companion is read-only.
+    // Get requested scopes or use defaults. Runner Companion only accepts the
+    // narrowly-scoped projection read and canonical Chat ingress permissions.
     const requestedScopes = Array.isArray(req.body?.scopes)
       ? req.body.scopes.map(String)
       : isRunnerCompanion ? [RUNNER_COMPANION_SCOPE] : ["llm:chat", "mcp:read"];
@@ -457,10 +459,16 @@ export function registerDeviceAuthRoutes(app: Express) {
       "media:download",
     ]);
     const scopes = isRunnerCompanion
-      ? requestedScopes.filter((scope: string) => scope === RUNNER_COMPANION_SCOPE)
+      ? requestedScopes.filter(
+        (scope: string) => scope === RUNNER_COMPANION_SCOPE || scope === RUNNER_COMPANION_CHAT_SCOPE
+      )
       : requestedScopes.filter((s: string) => allowedScopes.has(s));
-    if (isRunnerCompanion && scopes.length !== 1) {
-      res.status(400).json({ error: "invalid_scope", error_description: "Runner Companion requires runner:companion:read" });
+    const validRunnerCompanionScopes = isRunnerCompanion && (
+      (scopes.length === 1 && scopes[0] === RUNNER_COMPANION_SCOPE) ||
+      (scopes.length === 2 && scopes.includes(RUNNER_COMPANION_SCOPE) && scopes.includes(RUNNER_COMPANION_CHAT_SCOPE))
+    );
+    if (isRunnerCompanion && !validRunnerCompanionScopes) {
+      res.status(400).json({ error: "invalid_scope", error_description: "Runner Companion requires runner:companion:read and may request llm:chat" });
       return;
     }
     const deviceIdHash = isRunnerCompanion

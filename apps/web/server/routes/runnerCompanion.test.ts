@@ -27,6 +27,15 @@ describe("runner companion transport binding", () => {
     expect(isValidRunnerCompanionBinding(auth(), deviceId)).toBe(true);
   });
 
+  it("accepts the bounded read plus canonical Chat scope", () => {
+    expect(
+      isValidRunnerCompanionBinding(
+        auth({ scopes: ["runner:companion:read", "llm:chat"] }),
+        deviceId,
+      ),
+    ).toBe(true);
+  });
+
   it.each([
     ["wrong device", "other-installation", {}],
     ["wrong audience", deviceId, { audience: "other-client" }],
@@ -34,7 +43,7 @@ describe("runner companion transport binding", () => {
     [
       "extra scope",
       deviceId,
-      { scopes: ["runner:companion:read", "llm:chat"] },
+      { scopes: ["runner:companion:read", "mcp:write"] },
     ],
     ["missing tenant", deviceId, { tenantId: "" }],
     ["missing session", deviceId, { sessionId: "" }],

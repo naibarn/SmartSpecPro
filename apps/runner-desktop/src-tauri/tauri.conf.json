@@ -31,6 +31,28 @@
         "visible": false,
         "resizable": false,
         "skipTaskbar": true
+      },
+      {
+        "label": "chat",
+        "url": "chat.html",
+        "title": "SmartAIHub Chat Panel",
+        "width": 520,
+        "height": 700,
+        "minWidth": 400,
+        "minHeight": 520,
+        "visible": false,
+        "resizable": true
+      },
+      {
+        "label": "workspace",
+        "url": "workspace.html",
+        "title": "SmartAIHub Runner Workspace",
+        "width": 1200,
+        "height": 780,
+        "minWidth": 900,
+        "minHeight": 600,
+        "visible": false,
+        "resizable": true
       }
     ],
     "security": {

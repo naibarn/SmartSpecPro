@@ -415,6 +415,23 @@ async fn companion_state(state: State<'_, RunnerState>) -> Result<serde_json::Va
 }
 
 #[tauri::command]
+async fn companion_chat(
+    content: String,
+    conversation_id: Option<u64>,
+    state: State<'_, RunnerState>,
+) -> Result<smartaihub_runner::companion_auth::CompanionChatResult, String> {
+    if content.trim().is_empty() || content.len() > 100_000 {
+        return Err("RUNNER_COMPANION_CHAT_INPUT_INVALID".into());
+    }
+    let data_root = state.config.data_root.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        smartaihub_runner::companion_auth::submit_chat(&data_root, content.trim(), conversation_id)
+    })
+    .await
+    .map_err(|_| "RUNNER_COMPANION_CHAT_TASK_FAILED".to_string())?
+}
+
+#[tauri::command]
 async fn logout_companion(
     state: State<'_, RunnerState>,
 ) -> Result<companion_auth::CompanionLogoutResult, String> {
@@ -507,6 +524,28 @@ fn open_runner_settings(app: tauri::AppHandle) -> Result<(), String> {
     window
         .set_focus()
         .map_err(|_| "RUNNER_SETTINGS_FOCUS_FAILED".to_string())
+}
+
+fn show_named_window(app: &tauri::AppHandle, label: &str, error_prefix: &str) -> Result<(), String> {
+    let window = app
+        .get_webview_window(label)
+        .ok_or_else(|| format!("{error_prefix}_WINDOW_UNAVAILABLE"))?;
+    window
+        .show()
+        .map_err(|_| format!("{error_prefix}_SHOW_FAILED"))?;
+    window
+        .set_focus()
+        .map_err(|_| format!("{error_prefix}_FOCUS_FAILED"))
+}
+
+#[tauri::command]
+fn open_chat_panel(app: tauri::AppHandle) -> Result<(), String> {
+    show_named_window(&app, "chat", "RUNNER_CHAT_PANEL")
+}
+
+#[tauri::command]
+fn open_full_workspace(app: tauri::AppHandle) -> Result<(), String> {
+    show_named_window(&app, "workspace", "RUNNER_WORKSPACE")
 }
 
 #[tauri::command]
@@ -1273,8 +1312,10 @@ fn main() {
                 true,
                 None::<&str>,
             )?;
+            let chat = MenuItem::with_id(app, "chat", "Open Chat Panel", true, None::<&str>)?;
+            let workspace = MenuItem::with_id(app, "workspace", "Open Full Workspace", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit Runner", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&companion, &open, &quit])?;
+            let menu = Menu::with_items(app, &[&companion, &chat, &workspace, &open, &quit])?;
             let tray_icon = app
                 .default_window_icon()
                 .cloned()
@@ -1294,6 +1335,12 @@ fn main() {
                             let _ = window.show();
                             let _ = window.set_focus();
                         }
+                    }
+                    "chat" => {
+                        let _ = open_chat_panel(app.clone());
+                    }
+                    "workspace" => {
+                        let _ = open_full_workspace(app.clone());
                     }
                     "quit" => {
                         if let Some(state) = app.try_state::<RunnerState>() {
@@ -1369,6 +1416,7 @@ fn main() {
             start_companion_auth,
             poll_companion_auth,
             companion_state,
+            companion_chat,
             logout_companion,
             companion_preferences,
             set_companion_preferences,
@@ -1376,6 +1424,8 @@ fn main() {
             hide_companion,
             toggle_companion,
             open_runner_settings,
+            open_chat_panel,
+            open_full_workspace,
             snap_companion_to_edge,
             set_companion_expanded,
             notify_companion,

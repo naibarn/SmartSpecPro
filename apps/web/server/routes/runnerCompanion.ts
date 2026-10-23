@@ -3,6 +3,7 @@ import { authorizeRequest, type AuthResult } from "../_core/authz";
 import { hashJti } from "../_core/revocation";
 import {
   RUNNER_COMPANION_CLIENT_ID,
+  RUNNER_COMPANION_CHAT_SCOPE,
   RUNNER_COMPANION_SCOPE,
 } from "../_core/deviceAuthRoutes";
 import { getRunnerCompanionState } from "../services/runnerCompanionViewState";
@@ -30,8 +31,12 @@ export function isValidRunnerCompanionBinding(
     deviceIdHash &&
     deviceId &&
     hashJti(deviceId) === deviceIdHash &&
-    auth.scopes.length === 1 &&
-    auth.scopes[0] === RUNNER_COMPANION_SCOPE
+    (
+      (auth.scopes.length === 1 && auth.scopes[0] === RUNNER_COMPANION_SCOPE) ||
+      (auth.scopes.length === 2 &&
+        auth.scopes.includes(RUNNER_COMPANION_SCOPE) &&
+        auth.scopes.includes(RUNNER_COMPANION_CHAT_SCOPE))
+    )
   );
 }
 

@@ -18,9 +18,15 @@ const rust = fs.readFileSync(path.join(root, "src-tauri", "src", "main.rs"), "ut
 
 const windows = new Map(config.app.windows.map(window => [window.label, window]));
 assert.ok(windows.has("main"));
+assert.ok(windows.has("chat"));
+assert.ok(windows.has("workspace"));
 assert.equal(windows.get("companion").url, "companion.html");
 assert.equal(windows.get("companion").visible, false);
 assert.equal(windows.get("companion").skipTaskbar, true);
+assert.equal(windows.get("chat").visible, false);
+assert.equal(windows.get("workspace").visible, false);
+assert.equal(windows.get("chat").minWidth, 400);
+assert.equal(windows.get("workspace").minWidth, 900);
 assert.deepEqual(capability.windows, ["main"]);
 assert.deepEqual(companionCapability.windows, ["companion"]);
 assert.deepEqual(companionCapability.permissions, ["core:default", "notification:allow-notify"]);
@@ -54,6 +60,8 @@ for (const command of [
   "poll_companion_auth",
   "companion_state",
   "logout_companion",
+  "open_chat_panel",
+  "open_full_workspace",
 ]) {
   assert.match(rust, new RegExp(`\\b${command}\\b`));
 }
