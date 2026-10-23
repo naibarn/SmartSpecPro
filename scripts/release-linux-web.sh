@@ -31,6 +31,23 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   usage
   exit 0
 fi
+
+# The release build and its nested packaging/publication steps invoke `pnpm`
+# directly. Some Linux hosts provide Corepack without a global pnpm shim, so
+# provision an ephemeral shim for this release process and its child commands.
+PNPM_SHIM_DIR=""
+if ! command -v pnpm >/dev/null 2>&1; then
+  if ! command -v corepack >/dev/null 2>&1; then
+    echo "Neither pnpm nor Corepack is available for the Linux release." >&2
+    exit 127
+  fi
+  PNPM_SHIM_DIR="$(mktemp -d "${TMPDIR:-/tmp}/smartspec-pnpm-shim.XXXXXX")"
+  trap 'rm -rf -- "$PNPM_SHIM_DIR"' EXIT
+  corepack enable --install-directory "${PNPM_SHIM_DIR}" pnpm
+  export PATH="${PNPM_SHIM_DIR}:${PATH}"
+  hash -r
+fi
+
 BUILD_ENTRYPOINT="${REPOSITORY_ROOT}/skills/canonical-checkout-sync/scripts/build-canonical-main.sh"
 
 if [[ ! -f "${BUILD_ENTRYPOINT}" ]]; then
