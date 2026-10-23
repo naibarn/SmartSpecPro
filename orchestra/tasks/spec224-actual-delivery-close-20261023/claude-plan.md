@@ -6,6 +6,23 @@ Continue from current canonical `main`; retain prior integrated code. Close conc
 
 ## Requirement ledger
 
+## Current closure status at `origin/main` (`026f958abe0ee2319cd8e097d62903703c3346a6`)
+
+The handoff inventory contains 1,280 requirements: 1,268 `OPEN/UNVERIFIED`, 9 `PARTIAL`, and 3 `BLOCKED_TRUE_EXTERNAL`. The Personal Mini-App work below covers the 12 rows reconciled for this delivery path; it does not certify the remaining SPEC-224 inventory. Canonical handoff validation is structurally valid but `completion_eligible=false` because the Spec-wide authority/reconciliation/lifecycle, open requirements, and required evidence are unresolved.
+
+| Mission gap | Current status | Remaining closure evidence |
+|---|---|---|
+| 1. Trial milestone | Preview and verification-pending projection are implemented and tested. The independent receipt validator exists, but no trusted verifier invokes it. | A real independent browser receipt bound to appId, URL, and deployed artifact digest; only then record `USER_TRIAL_READY`. |
+| 2. Repository ownership | Managed repository provisioning and source snapshots exist. User-owned GitHub binding is not implemented or configured; no existing account-connection authority is available in this runtime. | An existing authorized app-owner GitHub connection or managed repository token, then a durable per-app repository binding. |
+| 3. App Home | Owner-scoped `/miniapp/{appId}` project home, progress/error/history projection, continuation, and sandboxed last-known-good preview exist. | Real browser evidence for initial creation, source/artifact availability, failure retention, and continuation. |
+| 4. Two development paths | Personal apps use hosted worker execution; platform self-development remains Runner-admitted. | Focused profile regression evidence is present; retain Runner/source-trust protections and verify no cross-profile regression in required CI. |
+| 5. Resume without restart | Continuation preserves appId and carries forward source/repository/artifact references into a linked DevelopmentRun. | Prove a real retry after worker interruption preserves source, artifact, repository, and observable build history for the same appId. |
+| 6. Hosted execution | Disposable PostgreSQL worker/outbox retry, recovery, and settlement lane passes; its stage is synthetic. | A real authorized non-production Gateway run, provider receipt, source snapshot, artifact storage/binding, and settled job. |
+| 7. Core deployment | Existing guarded Linux release workflow is available; current runtime serves `26640e87162576a1505e02a026cc35a846eb8517`. | Authenticated sudo release using the required integrated revision, followed by served-SHA and HTTPS verification. Current `sudo -n -v` reports that a password is required. |
+| 8. User acceptance | No expense tracker appId or live trial exists. Unit and worker-lane checks are not user acceptance. | Run the supplied real prompt, then owner/second-identity browser checks for actions, totals/chart, reload, mobile usability, privacy, and prior-artifact retention. |
+
+The following sections are an execution plan with truthful incomplete predicates, not a statement that all four sections or SPEC-224 are accepted. Continue independent engineering and scoped verification; resume the external paths as soon as their exact existing authority is available.
+
 | ID | Requirement | Current evidence | Work / completion evidence |
 |---|---|---|---|
 | R1 | Personal milestones distinguish preview from trial acceptance | Durable state has statuses and deploy/smoke transitions; trial transition is not wired in the personal profile | Section 01: configure a trusted transition path and tests proving missing browser evidence stays VERIFICATION_PENDING and valid independent evidence can produce USER_TRIAL_READY |
