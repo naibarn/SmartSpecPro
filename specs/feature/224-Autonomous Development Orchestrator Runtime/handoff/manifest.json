@@ -1169,7 +1169,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 149,
+  "generation": 150,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
@@ -2581,9 +2581,9 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17307",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "STALE",
-        "evidence_sha": "777933e84252dadc165dfb01b166521e831f07bc",
-        "final_state": "VALIDATION_PENDING",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "de6a65001849f8971503feffc1f5dd47e9a8fca8",
+        "final_state": "PASS",
         "implementation_evidence": [
           "scripts/ci/spec224_disposable_postgres_acceptance.sh",
           "scripts/spec224_certification/run_disposable_postgres.py",
@@ -2591,7 +2591,7 @@
           "python-backend/tests/integration/support/spec224_test_database.py"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Run 39919548818 on exact SHA de6a65001849f8971503feffc1f5dd47e9a8fca8. Run 39918932580 on a70cb7f0 failed before tests because a mutable pgvector image tag drifted; the exact image digest and both Python/Node guard expectations are fixed. Mark PASS and refresh evidence SHA only if the dedicated acceptance job succeeds.",
+        "next_action": "This disposable PostgreSQL requirement is verified on canonical implementation SHA de6a65001849f8971503feffc1f5dd47e9a8fca8. Continue hosted Mini-App and Windows Runner live acceptance independently; do not treat this isolated database lane as full SPEC-224 acceptance.",
         "requirement_digest": "a09f6732ce97194455c3abac8715176d51c95ac155aafd3a074efad65634014b",
         "requirement_id": "REQ-DC0E0E98CDAA",
         "requirement_text": "2. Disposable test authority MUST be provisioned independently of production. PostgreSQL migration and integration tests MUST use an isolated, task-scoped disposable database and role. The test runtime role MUST remain non-superuser and tests MUST fail closed when target identity, version, scope, or isolation cannot be verified. Production databases MUST never substitute for unavailable test infrastructure.",
@@ -2599,8 +2599,8 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-e2e-closure-checkpoint-777933e-20261023.md",
-          "https://github.com/naibarn/SmartSpecPro/actions/runs/39918932580",
-          "https://github.com/naibarn/SmartSpecPro/actions/runs/39919548818"
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/39919548818",
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/39919928631"
         ],
         "verification_method": "Run the independent CI acceptance job on exact canonical SHA using pinned pgvector image digest sha256:7f5681e45237acdf546cf7cdc0dfc0ed7752ede857fda6e54f6ea21b936f8742, two fresh isolated PostgreSQL 15.17 clusters, task-scoped runtime role and exact identity/isolation guards."
       }
@@ -2863,12 +2863,12 @@
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 0,
+    "pass": 1,
     "total": 1267,
-    "unresolved": 1267
+    "unresolved": 1266
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T07:42:43.383706Z",
+  "updated_at": "2026-10-23T07:54:33.924207Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
