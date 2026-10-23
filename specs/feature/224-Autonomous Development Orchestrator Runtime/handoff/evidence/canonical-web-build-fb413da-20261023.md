@@ -1,6 +1,6 @@
 # Canonical web build — 2026-10-23
 
-- Outcome: `BUILD_PASSED`; canonical source `fb413da88c302b297e324394e22a29be55d4d6d3` (`refs/heads/main`).
+- Outcome: `BUILD_PASSED`; canonical source `fb413da88c302b297e324394e22a29be55d4d6d3` (`refs/heads/main`). Scoped profile: `package` (isolated application artifact build). Total canonical build duration: 378.87 seconds, from builder start through receipt completion.
 - Required integrated revisions verified by the canonical builder: `92ff9736314e673ccbb395b61898ec55e6a73b03`, `c899776f32626f7baf542baccec58e2da78f0103`, and `76420b858a2f793995eec11c3720cf01c7d98bc7`. Main advanced to `fb413da...` during the build; the canonical tip remained unchanged through completion.
 - Command: `corepack pnpm run build:canonical` with the three `--required-integrated-revision` arguments above. Exit code `0`; source verification passed. Web and widget builds and MapLibre worker verification passed. Resource preflight recorded 24,115,252 KiB host available, memory PSI some avg10 `0.00`, and 3,279,009,944 bytes effective user-slice memory.
 - Artifact: `/mnt/ExpansionHD/.codex/smartspecpro/canonical-sources/f29801373bfd4154c0d8/fb413da88c302b297e324394e22a29be55d4d6d3-build/apps/web/dist`; digest `sha256:4ee9f1c8d51b4fb3a1f0dd2949cb36a5ec0422d67b7e509045136dcb62e36e32`; 126,468 files.
