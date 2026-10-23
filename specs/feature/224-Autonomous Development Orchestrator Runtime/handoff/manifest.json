@@ -900,7 +900,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "44d02607f28fcdb97480f0da4dc182718c07824e",
+    "expected_canonical_sha": "aa8b8f01de870ccc13847a2882c0fea9e91e8b6f",
     "expected_spec_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3"
   },
   "continuation": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 141,
+  "generation": 142,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
@@ -1366,11 +1366,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "44d02607f28fcdb97480f0da4dc182718c07824e",
+    "canonical_sha": "aa8b8f01de870ccc13847a2882c0fea9e91e8b6f",
     "integrated": true,
-    "integrated_at": "2026-10-23T05:22:49+00:00",
+    "integrated_at": "2026-10-23T06:51:19Z",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "44d02607f28fcdb97480f0da4dc182718c07824e"
+    "source_sha": "aa8b8f01de870ccc13847a2882c0fea9e91e8b6f"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2816,7 +2816,7 @@
     "unresolved": 1267
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T06:49:08.182120Z",
+  "updated_at": "2026-10-23T06:51:25.566780Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
