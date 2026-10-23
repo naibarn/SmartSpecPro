@@ -124,34 +124,40 @@ def prepare_artifact(source_root: Path, artifact_store: Path = RELEASE_ROOT, *, 
     source_sha = source_sha or _run(["git", "rev-parse", "HEAD"], cwd=source_root)
     validate_source(source_root, source_sha)
     source_backend = source_root / "python-backend"
-    digest = tree_manifest(source_backend)
-    release_id = f"smartspec-python-{source_sha}-{digest['artifact_digest'][7:19]}"
-    manifest = {
-        "schema_version": 1,
-        "release_id": release_id,
-        "source_sha": source_sha,
-        "canonical_ref": "refs/heads/main",
-        "source_workspace": str(source_root),
-        "artifact_digest": digest["artifact_digest"],
-        "artifact_file_count": digest["file_count"],
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
+    slip_parser_source = source_root / "apps/web/skills/unified-payin-slip-parser/src/unified_slip_parser"
+    if not slip_parser_source.is_dir() or not (slip_parser_source / "router.py").is_file():
+        raise ReleaseError("Canonical source is missing the Python pay-in-slip parser runtime package")
+    tree_manifest(source_backend)
+    tree_manifest(slip_parser_source)
     artifact_store.mkdir(parents=True, exist_ok=True)
-    target = artifact_store / release_id
-    if target.exists():
-        existing = validate_artifact(target)
-        if existing["artifact_digest"] != manifest["artifact_digest"]:
-            raise ReleaseError("Immutable Python release ID already exists with different contents")
-        return {"status": "ARTIFACT_READY", "release_id": release_id, "artifact_path": str(target), "manifest": existing}
-    staging = artifact_store / f".{release_id}.{uuid.uuid4().hex}.tmp"
+    staging = artifact_store / f".smartspec-python-{source_sha}-{uuid.uuid4().hex}.tmp"
     try:
         shutil.copytree(source_backend, staging, ignore=_ignore, symlinks=False)
+        vendor_package = staging / "vendor/unified-payin-slip-parser/src/unified_slip_parser"
+        vendor_package.parent.mkdir(parents=True)
+        shutil.copytree(slip_parser_source, vendor_package, ignore=_ignore, symlinks=False)
         for path in staging.rglob("*"):
             if path.name == ".env" or path.name.startswith(".env.") or path.name in {".venv", "venv"}:
                 raise ReleaseError("Secret or virtual environment entered Python release artifact")
         copied = tree_manifest(staging)
-        if copied != {key: manifest["artifact_digest"] if key == "artifact_digest" else manifest["artifact_file_count"] for key in copied}:
-            raise ReleaseError("Prepared Python release digest differs from canonical source")
+        release_id = f"smartspec-python-{source_sha}-{copied['artifact_digest'][7:19]}"
+        manifest = {
+            "schema_version": 1,
+            "release_id": release_id,
+            "source_sha": source_sha,
+            "canonical_ref": "refs/heads/main",
+            "source_workspace": str(source_root),
+            "artifact_digest": copied["artifact_digest"],
+            "artifact_file_count": copied["file_count"],
+            "runtime_paths": [".", "vendor/unified-payin-slip-parser/src"],
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        target = artifact_store / release_id
+        if target.exists():
+            existing = validate_artifact(target)
+            if existing["artifact_digest"] != manifest["artifact_digest"]:
+                raise ReleaseError("Immutable Python release ID already exists with different contents")
+            return {"status": "ARTIFACT_READY", "release_id": release_id, "artifact_path": str(target), "manifest": existing}
         write_json_atomic(staging / "release-manifest.json", manifest, mode=0o444)
         _freeze(staging)
         os.replace(staging, target)
@@ -194,7 +200,8 @@ def validate_artifact(artifact_path: Path) -> dict[str, Any]:
     match = RELEASE_ID_RE.fullmatch(str(manifest.get("release_id", "")))
     if (manifest.get("schema_version") != 1 or not match or artifact_path.name != manifest["release_id"] or
             manifest.get("source_sha") != match.group("sha") or manifest.get("canonical_ref") != "refs/heads/main" or
-            not (artifact_path / "app/main.py").is_file()):
+            not (artifact_path / "app/main.py").is_file() or
+            not (artifact_path / "vendor/unified-payin-slip-parser/src/unified_slip_parser/router.py").is_file()):
         raise ReleaseError("Python release manifest or application identity is invalid")
     actual = tree_manifest(artifact_path)
     if actual["artifact_digest"] != manifest.get("artifact_digest") or actual["file_count"] != manifest.get("artifact_file_count"):
@@ -326,6 +333,15 @@ class SystemdRuntime:
             raise ReleaseError("Serving process is not bound to an immutable Python app directory") from exc
         if app_dir != release_path.resolve(strict=True):
             raise ReleaseError("Serving Python app directory does not match promoted immutable release")
+        process_env: dict[str, str] = {}
+        for item in Path(f"/proc/{pid}/environ").read_bytes().split(b"\0"):
+            if b"=" in item:
+                key, value = item.split(b"=", 1)
+                process_env[key.decode("utf-8", "replace")] = value.decode("utf-8", "replace")
+        expected_vendor_path = str(release_path.resolve(strict=True) / "vendor/unified-payin-slip-parser/src")
+        python_path = process_env.get("PYTHONPATH", "")
+        if expected_vendor_path not in python_path.split(os.pathsep):
+            raise ReleaseError("Serving Python process is missing the immutable pay-in-slip parser runtime path")
         release_match = RELEASE_ID_RE.fullmatch(release_path.name)
         if not release_match or release_match.group("sha") != source_sha:
             raise ReleaseError("Serving app directory is not bound to the promoted source revision")
@@ -335,6 +351,7 @@ class SystemdRuntime:
             raise ReleaseError("Python database readiness payload did not confirm ready")
         return {"status": "HEALTHY", "service": SERVICE, "pid": pid, "working_directory": process_cwd,
                 "app_directory": str(app_dir), "runtime_revision": source_sha,
+                "vendor_python_path": expected_vendor_path,
                 "health_http": health_status, "database_readiness_http": ready_status,
                 "readiness_payload_status": (ready_payload or {}).get("status")}
 
@@ -380,7 +397,8 @@ def systemd_dropin(exec_start: list[str], release_path: Path, source_sha: str) -
         raise ReleaseError("Python service command source does not match the immutable release")
     argv = [exec_start[0], "--app-dir", str(release_path), *exec_start[1:]]
     quoted = " ".join(shlex.quote(part) for part in argv)
-    return ("[Service]\n" "ExecStart=\n" f"ExecStart={quoted}\n").encode()
+    python_path = release_path / "vendor/unified-payin-slip-parser/src"
+    return ("[Service]\n" f"Environment=PYTHONPATH={python_path}\n" "ExecStart=\n" f"ExecStart={quoted}\n").encode()
 
 
 def promote_artifact(artifact_path: Path, *, runtime: Runtime | None = None, receipt_root: Path = RELEASE_ROOT / "production-deployments",

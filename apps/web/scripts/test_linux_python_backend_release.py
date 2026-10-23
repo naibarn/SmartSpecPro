@@ -76,6 +76,9 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
             (backend / ".env.production").write_text("SECRET=must-not-copy\n")
             (backend / ".venv/bin").mkdir(parents=True)
             (backend / ".venv/bin/python").write_text("venv\n")
+            slip_parser = source / "apps/web/skills/unified-payin-slip-parser/src/unified_slip_parser"
+            slip_parser.mkdir(parents=True)
+            (slip_parser / "router.py").write_text("def parse_slip(value): return value\n")
             (source / ".development-repository.toml").write_text(
                 '[repository]\nremote="origin"\ncanonical_ref="refs/heads/main"\n'
             )
@@ -100,6 +103,7 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
             self.assertFalse((artifact / ".env").exists())
             self.assertFalse((artifact / ".env.production").exists())
             self.assertFalse((artifact / ".venv").exists())
+            self.assertTrue((artifact / "vendor/unified-payin-slip-parser/src/unified_slip_parser/router.py").is_file())
             self.assertEqual(release.validate_artifact(artifact)["source_sha"], source_sha)
 
     def _artifact(self, root: Path) -> tuple[Path, str]:
@@ -107,6 +111,9 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
         artifact = root / "smartspec-python-placeholder"
         (artifact / "app").mkdir(parents=True)
         (artifact / "app/main.py").write_text("app = object()\n")
+        vendor = artifact / "vendor/unified-payin-slip-parser/src/unified_slip_parser"
+        vendor.mkdir(parents=True)
+        (vendor / "router.py").write_text("def parse_slip(value): return value\n")
         digest = release.tree_manifest(artifact)["artifact_digest"]
         artifact.rename(root / f"smartspec-python-{sha}-{digest[7:19]}")
         artifact = root / f"smartspec-python-{sha}-{digest[7:19]}"
@@ -130,6 +137,7 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
             self.assertEqual(len(list((root / "receipts").glob("*.json"))), 1)
             service_dropin = release.systemd_dropin(runtime.exec, artifact, sha).decode()
             self.assertIn("--app-dir", service_dropin)
+            self.assertIn("Environment=PYTHONPATH=" + str(artifact / "vendor/unified-payin-slip-parser/src"), service_dropin)
             self.assertNotIn("EnvironmentFile", service_dropin)
             self.assertIn("ExecStart=", service_dropin)
 
