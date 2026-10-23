@@ -1250,6 +1250,7 @@ export default function AdminSettings() {
       githubClientId?: string;
       githubClientSecret?: string;
       githubRedirectUri?: string;
+      githubMiniAppRedirectUri?: string;
       microsoftClientId?: string;
       microsoftClientSecret?: string;
       microsoftOneDriveRedirectUri?: string;
@@ -2348,6 +2349,7 @@ export default function AdminSettings() {
           (oauthSettings.googleDriveRedirectUri as string) || "",
         githubClientId: (oauthSettings.githubClientId as string) || "",
         githubRedirectUri: (oauthSettings.githubRedirectUri as string) || "",
+        githubMiniAppRedirectUri: (oauthSettings.githubMiniAppRedirectUri as string) || "",
         microsoftClientId: (oauthSettings.microsoftClientId as string) || "",
         microsoftOneDriveRedirectUri:
           (oauthSettings.microsoftOneDriveRedirectUri as string) || "",
@@ -2431,6 +2433,7 @@ export default function AdminSettings() {
       githubClientId: oauthForm.githubClientId,
       githubClientSecret: oauthForm.githubClientSecret,
       githubRedirectUri: oauthForm.githubRedirectUri,
+      githubMiniAppRedirectUri: oauthForm.githubMiniAppRedirectUri,
       microsoftClientId: oauthForm.microsoftClientId,
       microsoftClientSecret: oauthForm.microsoftClientSecret,
       microsoftOneDriveRedirectUri: oauthForm.microsoftOneDriveRedirectUri,
@@ -4997,6 +5000,18 @@ export default function AdminSettings() {
                         <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono select-all">
                           https://smartaihub.app/auth/callback/github
                         </code>
+                      </p>
+                    </div>
+                    <div>
+                      <Label htmlFor="githubMiniAppRedirectUri">Mini-App repository callback URI</Label>
+                      <Input
+                        id="githubMiniAppRedirectUri"
+                        placeholder="https://smartaihub.app/api/oauth/github/miniapp/callback"
+                        value={oauthForm.githubMiniAppRedirectUri || ""}
+                        onChange={e => setOauthForm(prev => ({ ...prev, githubMiniAppRedirectUri: e.target.value }))}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        เพิ่ม URL นี้เป็น callback URL ใน GitHub OAuth App เพื่อให้ผู้ใช้เชื่อม repo ส่วนตัวได้ โดยไม่กระทบ callback สำหรับล็อกอิน
                       </p>
                     </div>
                   </div>

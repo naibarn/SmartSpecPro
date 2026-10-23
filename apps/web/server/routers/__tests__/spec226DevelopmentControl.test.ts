@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
   resolveOwnedMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.appId, tenantId: input.tenantId, ownerUserId: input.ownerUserId, visibility: "private" })),
   resolveMiniAppFactoryHome: vi.fn(),
+  getUserGitHubConnection: vi.fn(async () => ({ configured: false, githubLogin: null })),
   developmentRunService: { initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })) },
   enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
   VisionUnavailableError: class MiniAppVisionCapabilityUnavailableError extends Error {},
@@ -99,6 +100,10 @@ vi.mock("../../services/appIdentityRepository", () => ({
 
 vi.mock("../../services/personalMiniAppPreview", () => ({
   resolvePersonalMiniAppFactoryHome: (...args: unknown[]) => mocks.resolveMiniAppFactoryHome(...args),
+}));
+
+vi.mock("../../services/userGithubConnectionService", () => ({
+  getUserGitHubConnection: (...args: unknown[]) => mocks.getUserGitHubConnection(...args),
 }));
 
 vi.mock("../../services/workspaceAuthoritySafeActions", () => ({
@@ -256,7 +261,7 @@ describe("spec226DevelopmentControlRouter", () => {
         metadata: expect.objectContaining({ miniAppFactoryProgramState: expect.objectContaining({ profile: "PERSONAL_MINIAPP" }) }),
         workUnit: expect.objectContaining({
           baseRevision: expect.stringMatching(/^source-snapshot:/),
-          progress: expect.objectContaining({ remainingScope: ["ui_implementation", "package", "deploy", "smoke", "source_repository"] }),
+          progress: expect.objectContaining({ remainingScope: ["ui_implementation", "package", "deploy", "smoke"] }),
         }),
       }),
     }));
@@ -268,6 +273,28 @@ describe("spec226DevelopmentControlRouter", () => {
     }));
     expect(mocks.workspaceSpecSets.resolveWorkspaceRunInput).not.toHaveBeenCalled();
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+  });
+
+  it("adds the per-app GitHub source stage when the owner has connected GitHub", async () => {
+    mocks.getUserGitHubConnection.mockResolvedValueOnce({ configured: true, githubLogin: "owner" });
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8,
+        mode: "prompt",
+        factoryMode: true,
+        prompt: "Create a personal Mini-App",
+        idempotencyKey: "spec224-factory-with-github-key-0001",
+      },
+    });
+    expect(mocks.developmentRunService.initialize).toHaveBeenCalledWith(expect.objectContaining({
+      run: expect.objectContaining({
+        workUnit: expect.objectContaining({
+          progress: expect.objectContaining({ remainingScope: ["ui_implementation", "package", "deploy", "smoke", "source_repository"] }),
+        }),
+      }),
+    }));
+    expect(result.dispatchStatus).toBe("ENQUEUED");
   });
 
   it("continues a private Mini-App on the same identity, repository and saved source snapshot", async () => {

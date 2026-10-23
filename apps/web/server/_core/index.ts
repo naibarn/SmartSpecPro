@@ -96,6 +96,7 @@ import contentComposerStreamRouter from "../routes/contentComposerStream";
 import internalOrchestratorRouter from "../routes/internalOrchestrator";
 import { registerDeviceAuthRoutes } from "./deviceAuthRoutes";
 import { registerOAuthProxyRoutes } from "./oauthProxy";
+import { registerMiniAppGitHubOAuthRoutes } from "./miniAppGitHubOAuth";
 import { createCloudflareOriginMiddleware } from "./cloudflareOriginMiddleware";
 import { authorizeCloudflareOriginUpgrade } from "./cloudflareOriginIngress";
 import { createAllowedBrowserOrigin } from "./browserOriginPolicy";
@@ -572,6 +573,7 @@ const csrfCheck = createCsrfProtection({
 app.use("/trpc", csrfCheck);
 app.use("/api", csrfCheck);
 registerOAuthProxyRoutes(app);
+registerMiniAppGitHubOAuthRoutes(app);
 
 app.use("/trpc/chat.executeSkill", (req, res, next) => {
   const skillExecutionTimeoutMs = 600_000;

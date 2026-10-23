@@ -9,6 +9,7 @@ import {
 } from "../storage";
 import { callLLMStructured } from "./callLLMStructured";
 import { resolveMiniAppForViewer } from "./appIdentityRepository";
+import { getUserGitHubToken, validateGitHubToken } from "./userGithubConnectionService";
 
 const ASSET_MIME = new Set([
   "image/png",
@@ -276,6 +277,7 @@ export async function buildAndStorePersonalMiniApp(input: {
 }
 
 export async function provisionMiniAppRepositoryFromSnapshot(input: {
+  userId: number;
   appId: string;
   sourceRef: string;
   sourceDigest: string;
@@ -289,7 +291,60 @@ export async function provisionMiniAppRepositoryFromSnapshot(input: {
   if (createHash("sha256").update(bytes).digest("hex") !== input.sourceDigest) throw new Error("MINI_APP_SOURCE_DIGEST_MISMATCH");
   const sourceJson = bytes.toString("utf8");
   const source = GENERATED_APP_SCHEMA.parse(JSON.parse(sourceJson));
-  return provisionManagedMiniAppRepository({ appId: input.appId, sourceJson: JSON.stringify(source) });
+  const normalizedSource = JSON.stringify(source);
+  const userToken = await getUserGitHubToken(input.userId);
+  if (!userToken) return provisionManagedMiniAppRepository({ appId: input.appId, sourceJson: normalizedSource });
+
+  const githubLogin = await validateGitHubToken(userToken);
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${userToken}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+    "Content-Type": "application/json",
+  };
+  const api = async (path: string, init?: RequestInit) => {
+    const response = await fetch(`https://api.github.com${path}`, {
+      ...init,
+      headers: { ...headers, ...init?.headers },
+      signal: AbortSignal.timeout(20_000),
+    });
+    if (!response.ok) throw new Error(`GITHUB_HTTP_${response.status}`);
+    return response.json() as Promise<Record<string, any>>;
+  };
+  const name = `smartaihub-${input.appId.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
+  let repo: Record<string, any>;
+  try {
+    repo = await api(`/repos/${encodeURIComponent(githubLogin)}/${encodeURIComponent(name)}`);
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "GITHUB_HTTP_404") throw error;
+    repo = await api("/user/repos", {
+      method: "POST",
+      body: JSON.stringify({ name, private: true, auto_init: true, description: `SmartAIHub personal Mini-App ${input.appId}` }),
+    });
+  }
+  if (repo.private !== true || repo.owner?.login?.toLowerCase() !== githubLogin.toLowerCase()) {
+    throw new Error("GITHUB_REPOSITORY_SCOPE_INVALID");
+  }
+  const branch = String(repo.default_branch || "main");
+  let existingFileSha: string | undefined;
+  try {
+    const existingFile = await api(`/repos/${encodeURIComponent(githubLogin)}/${encodeURIComponent(name)}/contents/app-source.json?ref=${encodeURIComponent(branch)}`);
+    if (typeof existingFile.sha === "string") existingFileSha = existingFile.sha;
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "GITHUB_HTTP_404") throw error;
+  }
+  const committed = await api(`/repos/${encodeURIComponent(githubLogin)}/${encodeURIComponent(name)}/contents/app-source.json`, {
+    method: "PUT",
+    body: JSON.stringify({
+      message: `Build SmartAIHub Mini-App ${input.appId}`,
+      branch,
+      ...(existingFileSha ? { sha: existingFileSha } : {}),
+      content: Buffer.from(normalizedSource, "utf8").toString("base64"),
+    }),
+  });
+  const revision = String(committed.commit?.sha || "");
+  if (!/^[a-f0-9]{40}$/i.test(revision)) throw new Error("GITHUB_SOURCE_COMMIT_MISSING");
+  return { mode: "USER_OWNED" as const, owner: githubLogin, name, url: String(repo.html_url), revision };
 }
 
 export async function bindPersonalMiniAppArtifact(input: {

@@ -373,6 +373,11 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
             ) : null}
             <>
               {mode === "prompt" ? <Textarea aria-label={requestKind === "mini_app" ? "Mini App requirements" : "Spec 224 prompt"} value={prompt} onChange={event => { setPrompt(event.target.value); setPreparation(null); }} placeholder={requestKind === "mini_app" ? "อธิบายหน้าจอ ข้อมูล และพฤติกรรมของ Mini App ที่ต้องการ" : "อธิบายงานที่ต้องการให้ทำต่อใน workspace นี้"} maxLength={requestKind === "mini_app" ? 3600 : 4000} className="min-h-20 resize-y text-sm" /> : null}
+              {requestKind === "mini_app" && mode === "prompt" ? (
+                <p className="text-xs text-muted-foreground">
+                  การสร้างและทดสอบ Preview ไม่ต้องใช้ Windows Runner หรือ GitHub ส่วน GitHub จะใช้เก็บ source ใน repo ส่วนตัวหลังมี artifact แล้ว หากยังไม่มี provider สำหรับสร้างแอป ให้ตั้งค่าได้ที่ <a className="underline" href="/settings?tab=localAi">Settings → Local AI</a>
+                </p>
+              ) : null}
                 {requestKind === "development" ? <fieldset className="space-y-2 rounded-md border border-[var(--color-border)] p-2" aria-label="Design references">
                   <legend className="px-1 text-xs font-medium">Design References (optional)</legend>
                   <input type="file" multiple accept="image/png,image/jpeg,image/webp" aria-label="แนบภาพอ้างอิงหลายภาพ" onChange={event => { addVisualReferences(event.target.files); event.currentTarget.value = ""; }} />

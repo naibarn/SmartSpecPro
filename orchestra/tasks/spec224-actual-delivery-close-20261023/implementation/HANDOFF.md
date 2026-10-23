@@ -3,22 +3,22 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `10`
-- Updated (UTC): `2026-10-23T12:22:13.030187+00:00`
+- State generation: `11`
+- Updated (UTC): `2026-10-23T12:53:09.770698+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Latest recorded merged Main SHA: `acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-02-live-hosted-execution`
-- Next action: Run real hosted PERSONAL_MINIAPP generation and artifact binding after the exact non-production Gateway target and test tenant are available.
+- Next action: Use the new GitHub OAuth connection UI (no pasted token), apply migration 0410 on the authorized non-production DB, configure GitHub OAuth Mini-App callback once, then run hosted PERSONAL_MINIAPP generation with the registered non-production Gateway and owner test identity; bind and verify the real artifact.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-contract-continuation | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | Continue through section 02: run real hosted Gateway generation using an authorized non-production tenant and bind its app source/artifact; retain preview-state projection fix. |
-| section-02-live-hosted-execution | in_progress | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | — | — | Run real hosted PERSONAL_MINIAPP generation and artifact binding after the exact non-production Gateway target and test tenant are available. |
+| section-02-live-hosted-execution | in_progress | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | — | — | Use the new GitHub OAuth connection UI (no pasted token), apply migration 0410 on the authorized non-production DB, configure GitHub OAuth Mini-App callback once, then run hosted PERSONAL_MINIAPP generation with the registered non-production Gateway and owner test identity; bind and verify the real artifact. |
 | section-03-real-browser-acceptance | in_progress | — | — | — | — | Run authenticated owner and second-identity browser journey against the exact real model-generated artifact after section 02. |
 | section-04-release-final-verify | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28 | acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28 | Final acceptance remains open. Resume only after an authorized non-production Gateway/runtime plus test tenant and app-owner GitHub write connection are provisioned; complete exact expense-tracker browser journey, then use guarded release with authenticated sudo. |
 
@@ -37,6 +37,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No hosted non-production runtime/Gateway/model receipt or real private appId/artifact/browser journey exists; the local test lane uses a synthetic stage.
 - Current sudo noninteractive check fails because this session has no password credential; existing release preparation remains blocked in NTFS I/O before its authorization gate.
 - The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes.
+- Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration.
 
 ## Resume
 

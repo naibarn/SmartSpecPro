@@ -19,6 +19,7 @@ import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "..
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
 import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
 import { resolvePersonalMiniAppFactoryHome } from "../services/personalMiniAppPreview";
+import { getUserGitHubConnection } from "../services/userGithubConnectionService";
 import {
   createDevelopmentRunService,
   createPersistedDevelopmentRun,
@@ -543,7 +544,11 @@ export const spec226DevelopmentControlRouter = router({
             baseRevision: repository ? `git:${repository.revision}` : `source-snapshot:${sourceRevision}`,
           });
           workUnit.artifacts = [...priorArtifacts];
-          const profileStages = factoryPipeline.profiles?.PERSONAL_MINIAPP?.stages ?? factoryPipeline.stages.map(stage => stage.id);
+          const repositoryProvisioningAvailable = Boolean(
+            process.env.SMARTAIHUB_MINIAPP_GITHUB_TOKEN || (await getUserGitHubConnection(scope.actorId)).configured,
+          );
+          const profileStages = (factoryPipeline.profiles?.PERSONAL_MINIAPP?.stages ?? factoryPipeline.stages.map(stage => stage.id))
+            .filter(stageId => stageId !== "source_repository" || repositoryProvisioningAvailable);
           workUnit.progress.state = "WORKING";
           workUnit.progress.remainingScope = [...profileStages];
           workUnit.progress.immediatelyRunnableScope = selectReadyMiniAppFactoryStages(factoryPipeline, workUnit, "PERSONAL_MINIAPP");

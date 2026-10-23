@@ -1711,6 +1711,7 @@ export const systemSettingsRouter = router({
       githubClientSecret: undefined,
       githubClientSecretConfigured: false,
       githubRedirectUri: undefined,
+      githubMiniAppRedirectUri: undefined,
       microsoftClientId: undefined,
       microsoftClientSecret: undefined,
       microsoftClientSecretConfigured: false,
@@ -1746,6 +1747,8 @@ export const systemSettingsRouter = router({
         result.githubClientSecretConfigured = true;
       } else if (setting.key === "githubRedirectUri") {
         result.githubRedirectUri = setting.value || undefined;
+      } else if (setting.key === "githubMiniAppRedirectUri") {
+        result.githubMiniAppRedirectUri = setting.value || undefined;
       } else if (setting.key === "microsoftClientId") {
         result.microsoftClientId = setting.value || undefined;
       } else if (setting.key === "microsoftClientSecret" && setting.value) {
@@ -1818,6 +1821,12 @@ export const systemSettingsRouter = router({
         githubClientId: z.string().optional(),
         githubClientSecret: z.string().optional(),
         githubRedirectUri: z.string().optional(),
+        githubMiniAppRedirectUri: z.string().trim().max(2048).refine(
+          value => !value || (value.startsWith("https://") && (() => {
+            try { const uri = new URL(value); return uri.pathname === "/api/oauth/github/miniapp/callback" && !uri.search && !uri.hash; } catch { return false; }
+          })()),
+          "Mini-App GitHub callback must use HTTPS and /api/oauth/github/miniapp/callback"
+        ).optional(),
         microsoftClientId: z.string().optional(),
         microsoftClientSecret: z.string().optional(),
         microsoftOneDriveRedirectUri: z.string().optional(),
@@ -1875,6 +1884,7 @@ export const systemSettingsRouter = router({
           value: input.githubRedirectUri,
           sensitive: false,
         },
+        { key: "githubMiniAppRedirectUri", value: input.githubMiniAppRedirectUri, sensitive: false },
         {
           key: "microsoftClientId",
           value: input.microsoftClientId,

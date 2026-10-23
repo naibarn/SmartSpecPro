@@ -2773,6 +2773,13 @@
       "when": 1792468101544,
       "tag": "0409_desktop_device_registry",
       "breakpoints": true
+    },
+    {
+      "idx": 410,
+      "version": "7",
+      "when": 1792759457921,
+      "tag": "0410_mini_app_github_connections",
+      "breakpoints": true
     }
   ]
 }

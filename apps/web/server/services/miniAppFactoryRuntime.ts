@@ -39,7 +39,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           `app-source:${artifact.sourceRef}`,
           `app-source-digest:${artifact.sourceDigest}`,
           `app-repository-state:${artifact.repositoryState}`,
-          ...(artifact.repository ? [`app-repository:managed:${artifact.repository.owner}/${artifact.repository.name}@${artifact.repository.revision}`] : []),
+          ...(artifact.repository ? [`app-repository:${artifact.repository.mode === "USER_OWNED" ? "user" : "managed"}:${artifact.repository.owner}/${artifact.repository.name}@${artifact.repository.revision}`] : []),
         ] };
       }
       if (stageId === "package") {
@@ -65,11 +65,11 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
         const sourceRef = context.artifacts.find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
         const sourceDigest = context.artifacts.find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
         if (!sourceRef || !sourceDigest) throw new Error("MINI_APP_SOURCE_SNAPSHOT_MISSING");
-        const repository = await provisionMiniAppRepositoryFromSnapshot({ appId: state.miniAppId, sourceRef, sourceDigest });
+        const repository = await provisionMiniAppRepositoryFromSnapshot({ userId: context.actorId, appId: state.miniAppId, sourceRef, sourceDigest });
         if (!repository) throw new Error("MINI_APP_GITHUB_AUTHORITY_NOT_CONFIGURED");
         return { artifacts: [
           "app-repository-state:BOUND",
-          `app-repository:managed:${repository.owner}/${repository.name}@${repository.revision}`,
+          `app-repository:${repository.mode === "USER_OWNED" ? "user" : "managed"}:${repository.owner}/${repository.name}@${repository.revision}`,
         ] };
       }
       throw new Error("PERSONAL_MINIAPP_FACTORY_STAGE_UNSUPPORTED:" + stageId);

@@ -171,6 +171,8 @@ export type AuditEventType =
   | "age_safety_operational_degraded"
   | "user_llm_key_set"
   | "user_llm_key_deleted"
+  | "user_github_connection_set"
+  | "user_github_connection_deleted"
   | "unified_route"
   | "unified_credit"
   | "unified_error"

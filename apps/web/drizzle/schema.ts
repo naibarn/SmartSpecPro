@@ -23311,6 +23311,23 @@ export const userLlmApiKeys = pgTable(
 export type UserLlmApiKey = typeof userLlmApiKeys.$inferSelect;
 export type InsertUserLlmApiKey = typeof userLlmApiKeys.$inferInsert;
 
+/** User-owned GitHub credentials for private Mini-App source repositories. */
+export const userGithubConnections = pgTable(
+  "user_github_connections",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 }),
+    githubLogin: varchar("github_login", { length: 39 }).notNull(),
+    tokenEncrypted: text("token_encrypted").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [uniqueIndex("user_github_connections_user_unique").on(t.userId)],
+);
+export type UserGithubConnection = typeof userGithubConnections.$inferSelect;
+export type InsertUserGithubConnection = typeof userGithubConnections.$inferInsert;
+
 // ==================== MCP Server Registry ====================
 
 /**

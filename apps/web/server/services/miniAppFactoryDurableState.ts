@@ -125,15 +125,15 @@ export function advanceMiniAppFactoryDurableState(
   const sourceDigestArtifact = [...input.artifacts].reverse().find(item => item.startsWith("app-source-digest:"))
     ?? [...artifacts].reverse().find(item => item.startsWith("app-source-digest:"));
   const sourceDigest = sourceDigestArtifact?.slice("app-source-digest:".length) ?? state.appSourceDigest;
-  const repositoryArtifact = [...input.artifacts].reverse().find(item => item.startsWith("app-repository:managed:"))
-    ?? [...artifacts].reverse().find(item => item.startsWith("app-repository:managed:"));
-  const repositoryMatch = repositoryArtifact && /^app-repository:managed:([A-Za-z0-9-]{1,39})\/([a-z0-9-]{1,100})@([a-f0-9]{40})$/i.exec(repositoryArtifact);
+  const repositoryArtifact = [...input.artifacts].reverse().find(item => /^app-repository:(?:managed|user):/.test(item))
+    ?? [...artifacts].reverse().find(item => /^app-repository:(?:managed|user):/.test(item));
+  const repositoryMatch = repositoryArtifact && /^app-repository:(managed|user):([A-Za-z0-9-]{1,39})\/([a-z0-9-]{1,100})@([a-f0-9]{40})$/i.exec(repositoryArtifact);
   const repository = repositoryMatch ? {
-    mode: "SMARTAIHUB_MANAGED" as const,
-    owner: repositoryMatch[1]!,
-    name: repositoryMatch[2]!,
-    url: `https://github.com/${repositoryMatch[1]}/${repositoryMatch[2]}`,
-    revision: repositoryMatch[3]!.toLowerCase(),
+    mode: repositoryMatch[1] === "user" ? "USER_OWNED" as const : "SMARTAIHUB_MANAGED" as const,
+    owner: repositoryMatch[2]!,
+    name: repositoryMatch[3]!,
+    url: `https://github.com/${repositoryMatch[2]}/${repositoryMatch[3]}`,
+    revision: repositoryMatch[4]!.toLowerCase(),
   } : state.repository;
   const packageDigest = packageArtifact?.slice("package-digest:".length) ?? state.packageDigest;
   const migrationState: MiniAppFactoryDurableState["migrationState"] = ["migrate", "data_migration", "MIGRATE"].includes(input.stageId) ? "APPLIED" : state.migrationState;

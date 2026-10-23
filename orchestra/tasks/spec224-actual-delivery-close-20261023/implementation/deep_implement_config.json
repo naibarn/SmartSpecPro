@@ -23,7 +23,7 @@
     "section-02-live-hosted-execution": {
       "status": "in_progress",
       "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
-      "next_action": "Run real hosted PERSONAL_MINIAPP generation and artifact binding after the exact non-production Gateway target and test tenant are available."
+      "next_action": "Use the new GitHub OAuth connection UI (no pasted token), apply migration 0410 on the authorized non-production DB, configure GitHub OAuth Mini-App callback once, then run hosted PERSONAL_MINIAPP generation with the registered non-production Gateway and owner test identity; bind and verify the real artifact."
     },
     "section-04-release-final-verify": {
       "status": "checkpointed",
@@ -46,11 +46,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 10,
-  "updated_at": "2026-10-23T12:22:13.030187+00:00",
+  "generation": 11,
+  "updated_at": "2026-10-23T12:53:09.770698+00:00",
   "progress": {
     "active_section": "section-02-live-hosted-execution",
-    "next_action": "Run real hosted PERSONAL_MINIAPP generation and artifact binding after the exact non-production Gateway target and test tenant are available.",
+    "next_action": "Use the new GitHub OAuth connection UI (no pasted token), apply migration 0410 on the authorized non-production DB, configure GitHub OAuth Mini-App callback once, then run hosted PERSONAL_MINIAPP generation with the registered non-production Gateway and owner test identity; bind and verify the real artifact.",
     "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
     "gaps": [
       "No USER_TRIAL_READY trusted receipt is currently emitted into the Mini-App factory DevelopmentRun; current addition validates a receipt but has no production caller.",
@@ -65,7 +65,8 @@
       "No real artifact/appId or registered non-production HTTPS target exists yet; the existing public production route cannot substitute for non-production acceptance.",
       "No hosted non-production runtime/Gateway/model receipt or real private appId/artifact/browser journey exists; the local test lane uses a synthetic stage.",
       "Current sudo noninteractive check fails because this session has no password credential; existing release preparation remains blocked in NTFS I/O before its authorization gate.",
-      "The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes."
+      "The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes.",
+      "Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration."
     ],
     "merged_main_sha": "acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28"
   }

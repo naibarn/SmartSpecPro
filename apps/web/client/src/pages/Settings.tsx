@@ -79,6 +79,7 @@ import { McpServersSettingsPanel } from '@/components/settings/McpServersSetting
 import { MarketplaceConnectorSettingsPanel } from '@/components/settings/MarketplaceConnectorSettingsPanel';
 import { OneDrivePanel } from '@/components/settings/OneDrivePanel';
 import { UploadPostGatewayPanel } from '@/components/settings/UploadPostGatewayPanel';
+import { MiniAppGitHubConnectionPanel } from '@/components/settings/MiniAppGitHubConnectionPanel';
 import { UserAPIKeysPanel } from '@/components/settings/UserAPIKeysPanel';
 import { UserLlmKeysPanel } from '@/components/settings/UserLlmKeysPanel';
 import { BudgetPanel } from '@/components/settings/BudgetPanel';
@@ -3033,6 +3034,7 @@ export default function Settings() {
                     </div>
                   </div>
                   <UploadPostGatewayPanel tenantId={user.currentTenantId ?? null} />
+                  <MiniAppGitHubConnectionPanel />
                   <MarketplaceConnectorSettingsPanel />
                   <McpConnectPanel />
                   <HermesConnectPanel />

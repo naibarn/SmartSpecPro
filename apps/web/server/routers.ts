@@ -154,6 +154,7 @@ import { connectedDevicesRouter } from "./routers/connectedDevices";
 import { runnerNodesRouter } from "./routers/runnerNodes";
 import { inviteCodeRouter } from "./routers/inviteCode";
 import { userApiKeysRouter } from "./routers/userApiKeys";
+import { userGithubConnectionsRouter } from "./routers/userGithubConnections";
 import { notificationPreferencesRouter } from "./routers/notificationPreferences";
 import { alertRulesRouter } from "./routers/alertRules";
 import { notificationWebhooksRouter } from "./routers/notificationWebhooks";
@@ -3357,6 +3358,7 @@ type AppRouterShape = {
   contentQuality: typeof contentQualityRouter;
   apiKeys: typeof apiKeysRouter;
   userApiKeys: typeof userApiKeysRouter;
+  userGithubConnections: typeof userGithubConnectionsRouter;
   virtualAdmin: typeof virtualAdminRouter;
   feedback: typeof feedbackRouter;
   team: typeof teamRouter;
@@ -3545,6 +3547,7 @@ const appRouterInternal = router<AppRouterShape>({
   contentQuality: contentQualityRouter,
   apiKeys: apiKeysRouter,
   userApiKeys: userApiKeysRouter,
+  userGithubConnections: userGithubConnectionsRouter,
   virtualAdmin: virtualAdminRouter,
   feedback: feedbackRouter,
 
