@@ -296,10 +296,24 @@ export default function AdminDeploymentTargets() {
     onSuccess: async () => { await stagingDeployPreflight.refetch(); },
   });
   const activateStagingProfile = trpc.infrastructure.activateCloudflareStagingQueueProfile.useMutation({
-    onSuccess: async () => {
+    onSuccess: async result => {
       setWorkflowRuntimeToken("");
       setControlPlaneToken("");
-      await Promise.all([refreshTargets(), stagingDeployPreflight.refetch(), stagingRuntimeReadiness.refetch()]);
+      await refreshTargets();
+      await utils.infrastructure.listProviderDeploymentTargets.fetch(scope);
+      const reboundConfiguration = {
+        tenantId,
+        projectId,
+        environment: "staging" as const,
+        provider: "cloudflare" as const,
+        configurationRef: result.configurationRef,
+      };
+      await utils.infrastructure.getCloudflareOriginConfiguration.invalidate(reboundConfiguration);
+      await Promise.all([
+        utils.infrastructure.getCloudflareOriginConfiguration.fetch(reboundConfiguration),
+        stagingDeployPreflight.refetch(),
+        stagingRuntimeReadiness.refetch(),
+      ]);
     },
   });
   const text = useText();
@@ -321,8 +335,8 @@ export default function AdminDeploymentTargets() {
         <p>{text("This registry authorizes Cloudflare only. Other providers are shown for visibility and cannot be changed here.", "registry นี้ให้สิทธิ์เฉพาะ Cloudflare ผู้ให้บริการอื่นจะแสดงเพื่อให้อ้างอิง แต่แก้ไขจากหน้านี้ไม่ได้")}</p>
       </VStack>
 
-      <HStack gap={3} wrap="wrap">
-        <VStack gap={1}>
+      <HStack gap={3} wrap="wrap" width="100%">
+        <VStack gap={1} width="30%" style={{ minWidth: "28%" }}>
           <Label htmlFor="deployment-tenant">{text("Authenticated tenant", "Tenant ที่ยืนยันตัวตนแล้ว")}</Label>
           <SearchableScopeSelect
             label={text("Authenticated tenant", "Tenant ที่ยืนยันตัวตนแล้ว")}
@@ -343,7 +357,7 @@ export default function AdminDeploymentTargets() {
           />
           {tenantId && !validTenantId ? <p role="status">{text("Select an existing tenant to configure deployment targets.", "เลือก tenant ที่มีอยู่ในระบบเพื่อตั้งค่า deployment target")}</p> : null}
         </VStack>
-        <VStack gap={1}>
+        <VStack gap={1} width="52%" style={{ minWidth: "48%" }}>
           <Label htmlFor="deployment-project">{text("Canonical project", "Canonical project")}</Label>
           <SearchableScopeSelect
             label={text("Canonical project", "Canonical project")}
@@ -357,7 +371,7 @@ export default function AdminDeploymentTargets() {
           />
           {validTenantId && !projectsQuery.isLoading && projectsQuery.data?.length === 0 ? <p role="status">{text("No active canonical projects were found for this tenant.", "ไม่พบ canonical project ที่ active ใน tenant นี้")}</p> : null}
         </VStack>
-        <VStack gap={1}>
+        <VStack gap={1} width="15%" style={{ minWidth: "14%" }}>
           <Label htmlFor="deployment-environment">{text("Environment", "Environment")}</Label>
           <Select value={environment} onValueChange={setEnvironment}>
             <SelectTrigger id="deployment-environment"><SelectValue placeholder={text("Select environment", "เลือก environment")} /></SelectTrigger>
@@ -473,6 +487,8 @@ export default function AdminDeploymentTargets() {
           {stagingRuntimeReadiness.data ? (() => {
             const runtime = stagingRuntimeReadiness.data;
             const ready = runtime.status === "READY";
+            const activationRecoveryStatus = runtime.status === "ACTIVATION_DISABLED" || runtime.status === "UNAVAILABLE" ||
+              runtime.status === "NOT_DEPLOYED" || runtime.status === "NOT_READY";
             return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare Worker readiness", "ความพร้อมของ Cloudflare Worker ที่กำลังทำงาน")}>
               <HStack gap={2} wrap="wrap">
                 <Badge variant={ready ? "default" : "destructive"}>{runtime.status}</Badge>
@@ -483,15 +499,29 @@ export default function AdminDeploymentTargets() {
               </HStack>
               {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
-              {runtime.status === "ACTIVATION_DISABLED" ? (() => {
+              {(activationRecoveryStatus ||
+                stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED") ? (() => {
                 const configRef = currentStagingConfigRef;
                 const config = stagingOriginConfiguration.data;
                 const secretsMissing = config?.workflowRuntimeTokenConfigured === false || config?.controlPlaneTokenConfigured === false;
+                const target = enabledCloudflareTargets[0];
+                const activationRequired = stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED";
+                const targetAllowsActivation = enabledCloudflareTargets.length === 1 &&
+                  target?.deploymentTargetId === "smartspec-cloudflare-staging" &&
+                  target.workerRef === "smartspec-cloudflare-staging" && !target.containerApplicationRef;
+                const configurationVerified = config?.status === "STORED" &&
+                  Boolean(config.descriptor.nativeResources?.privateDatabase);
+                const activationBlocker = stagingDeployPreflight.data?.reason;
                 return <VStack gap={1}>
                   <p>{text(
-                    "The current Worker is intentionally inactive. You can bind the minimum Staging intake profile from the existing encrypted configuration. This does not deploy code or enable production traffic; the existing private database and workflow/control-plane secrets must already be present.",
-                    "Worker ปัจจุบันปิด activation ไว้โดยตั้งใจ สามารถผูก profile สำหรับ Staging ขั้นต่ำจาก config เข้ารหัสเดิมได้ การทำนี้ไม่ deploy code และไม่เปิด production traffic โดยต้องมี private database และ workflow/control-plane secrets อยู่ใน config เดิมก่อน",
+                    "Staging configuration recovery is separate from the live Worker probe. A failed or unavailable /readyz response does not prevent this panel from checking the authorized target and stored configuration. Activation only binds the minimum queue profile; it does not deploy code or change production traffic.",
+                    "การกู้คืน config ของ Staging แยกจากการตรวจ Worker ที่กำลังทำงาน หาก /readyz ล้มเหลวหรือเข้าไม่ถึง แผงนี้ยังตรวจ target ที่ได้รับอนุญาตและ config ที่บันทึกไว้ได้ การ activate จะผูกเฉพาะ queue profile ขั้นต่ำ ไม่ได้ deploy code หรือเปลี่ยน production traffic",
                   )}</p>
+                  {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
+                    <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
+                  {stagingOriginConfiguration.data?.status === "EXPIRED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_EXPIRED</code> · {text("Replace the expired immutable configuration through the authorized origin-configuration workflow.", "ให้บันทึก immutable configuration ชุดใหม่ผ่านขั้นตอน origin-configuration ที่ได้รับอนุญาต")}</p> : null}
+                  {stagingOriginConfiguration.data?.status === "REVOKED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_REVOKED</code> · {text("Save a new authorized immutable configuration before activation.", "บันทึก immutable configuration ชุดใหม่ที่ได้รับอนุญาตก่อน activate")}</p> : null}
+                  {stagingOriginConfiguration.data && !stagingOriginConfiguration.data.descriptor.nativeResources?.privateDatabase ? <p role="alert"><code>STAGING_PRIVATE_DATABASE_BINDING_REQUIRED</code> · {text("The stored configuration has no verified private database receipt. Complete the authorized database binding workflow before activation.", "config ไม่มี receipt ของ private database ที่ตรวจสอบแล้ว ให้ทำขั้นตอนผูก database ที่ได้รับอนุญาตก่อน activate")}</p> : null}
                   {secretsMissing ? <VStack gap={1}>
                     <p>{text("This stored profile is missing runtime credentials. Enter both values once; the server stores them encrypted and never returns them.", "config เดิมยังไม่มี runtime credentials กรุณากรอกทั้งสองค่า ระบบจะเก็บแบบเข้ารหัสและไม่ส่งค่ากลับมาอีก")}</p>
                     <Label htmlFor="staging-workflow-runtime-token">{text("Staging workflow runtime token", "Staging workflow runtime token")}</Label>
@@ -499,14 +529,15 @@ export default function AdminDeploymentTargets() {
                     <Label htmlFor="staging-control-plane-token">{text("Staging control-plane token", "Staging control-plane token")}</Label>
                     <Input id="staging-control-plane-token" type="password" autoComplete="new-password" value={controlPlaneToken} onChange={event => setControlPlaneToken(event.target.value)} />
                   </VStack> : null}
-                  {stagingOriginConfiguration.isError ? <p role="alert">{text("Stored staging profile metadata could not be verified. Refresh the registry before continuing.", "ตรวจ metadata ของ staging profile ไม่สำเร็จ กรุณารีเฟรช registry ก่อนดำเนินการ")}</p> : null}
-                  <Button type="button" variant="outline" disabled={!/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
+                  {stagingOriginConfiguration.isError ? <p role="alert"><code>{activationBlocker && activationBlocker.startsWith("STAGING_") ? activationBlocker : "STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE"}</code> · {text("Stored configuration or its resource receipts could not be verified. Use the authorized origin-configuration repair path, then refresh this registry.", "ตรวจสอบ config หรือ resource receipt ที่บันทึกไว้ไม่สำเร็จ ให้ใช้ขั้นตอนซ่อม origin-configuration ที่ได้รับอนุญาต แล้วรีเฟรช registry")}</p> : null}
+                  <Button type="button" variant="outline" disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
                     (secretsMissing && (workflowRuntimeToken.length < 32 || controlPlaneToken.length < 32))}
                     onClick={() => activateStagingProfile.mutate({ tenantId, projectId, environment: "staging", configurationRef: configRef,
                       ...(secretsMissing ? { workflowRuntimeToken, controlPlaneToken } : {}) })}>
                     {activateStagingProfile.isPending ? text("Saving staging profile…", "กำลังบันทึก staging profile…") : text("Enable minimum Staging Queue profile", "เปิด Staging Queue profile ขั้นต่ำ")}
                   </Button>
+                  {!activationRequired && configurationVerified ? <p role="status">{text("The stored configuration is verified. The server preflight has not identified profile activation as the current blocker.", "ตรวจ config ที่บันทึกไว้แล้ว แต่ server preflight ยังไม่ได้ระบุว่าการ activate profile เป็น blocker ปัจจุบัน")}</p> : null}
                   {activateStagingProfile.error ? <p role="alert"><code>{activateStagingProfile.error.message}</code></p> : null}
                 </VStack>;
               })() : null}

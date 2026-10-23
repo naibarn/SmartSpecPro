@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cloudflareStagingActivationBlocker } from "./cloudflareStagingActivationReadiness";
+import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "./cloudflareStagingActivationReadiness";
 
 describe("Cloudflare Staging activation preflight", () => {
   it("blocks before policy or job creation when activation is disabled", () => {
@@ -37,5 +37,16 @@ describe("Cloudflare Staging activation preflight", () => {
       jobTransport: "queues",
       nativeResources: { privateDatabase: { hyperdriveRef: "existing-db" } },
     })).toBeNull();
+  });
+
+  it("surfaces a precise private database receipt blocker without exposing provider details", () => {
+    expect(cloudflareStagingOriginConfigurationBlocker(
+      Object.assign(new Error("internal detail"), { diagnosticCode: "PRIVATE_DATABASE_PROVISION_RECEIPT_DENIED" }),
+    )).toBe("STAGING_PRIVATE_DATABASE_RECEIPT_INVALID");
+    expect(cloudflareStagingOriginConfigurationBlocker(
+      Object.assign(new Error("internal detail"), { diagnosticCode: "CLOUDFLARE_NATIVE_PROVISION_RECEIPT_DENIED" }),
+    )).toBe("STAGING_NATIVE_RESOURCE_RECEIPT_INVALID");
+    expect(cloudflareStagingOriginConfigurationBlocker(new Error("sensitive internal detail")))
+      .toBe("STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE");
   });
 });

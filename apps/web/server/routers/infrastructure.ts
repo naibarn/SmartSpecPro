@@ -77,7 +77,7 @@ import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_J
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
-import { cloudflareStagingActivationBlocker } from "../services/cloudflareStagingActivationReadiness";
+import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -400,8 +400,12 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
   const configurationRef = target.runtimePolicy;
   const configurationDigest = configurationRef?.match(/^cf-origin:([a-f0-9]{64})$/)?.[1] ?? null;
   if (!configurationRef || !configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_REQUIRED");
-  const originConfiguration = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef }).catch(() => null);
-  if (!originConfiguration || originConfiguration.status !== "STORED" || originConfiguration.configurationDigest !== configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE");
+  const originConfiguration = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef })
+    .catch(error => ({ blocker: cloudflareStagingOriginConfigurationBlocker(error) } as const));
+  if ("blocker" in originConfiguration) return unavailable(originConfiguration.blocker);
+  if (originConfiguration.status === "EXPIRED") return unavailable("STAGING_ORIGIN_CONFIGURATION_EXPIRED");
+  if (originConfiguration.status === "REVOKED") return unavailable("STAGING_ORIGIN_CONFIGURATION_REVOKED");
+  if (originConfiguration.status !== "STORED" || originConfiguration.configurationDigest !== configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_INVALID");
   const activationBlocker = cloudflareStagingActivationBlocker({ ...originConfiguration.descriptor,
     workflowRuntimeTokenConfigured: originConfiguration.workflowRuntimeTokenConfigured,
     controlPlaneTokenConfigured: originConfiguration.controlPlaneTokenConfigured });
