@@ -361,6 +361,7 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                     AuditLog.action == "spec224.recovery_grant.issued",
                 )
             )).scalar_one()
+            original_audit_details = dict(audit_row.details)
             audit_row.details = {"tenantId": tenant_id, "scopeDigest": "0" * 64}
             await session.commit()
             invalid_audit = await service.validate_spec224_recovery_grant_contract(
@@ -370,11 +371,7 @@ async def test_owner_scoped_grant_issue_validate_revoke_and_audit_are_transactio
                 runtime_scope="python-approval", environment_scope="isolated-non-production",
             )
             assert invalid_audit["result"] == "INVALID_AUDIT"
-            audit_row.details = {
-                "tenantId": tenant_id,
-                "scopeDigest": grant["scopeDigest"],
-                "eventDigest": grant["auditEvents"][0]["eventDigest"],
-            }
+            audit_row.details = original_audit_details
             await session.commit()
             assert await service.validate_spec224_recovery_grant(
                 grant_id=grant_id, tenant_id=tenant_id, source_commit="a" * 40,

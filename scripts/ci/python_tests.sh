@@ -25,7 +25,12 @@ python -m pip install -r "$ROOT/python-backend/requirements.txt"
 
 echo "[PY] python-backend tests (coverage gate via pytest.ini/.coveragerc)..."
 pushd "$ROOT/python-backend" >/dev/null
-PYTHONPATH="." pytest
+# The two PostgreSQL-backed SPEC-224 files run in the dedicated smartspecweb
+# lane, where the exact disposable cluster, Drizzle baseline and Node bridge
+# dependencies are provisioned together. Running them here would use no DB.
+PYTHONPATH="." pytest \
+  --ignore=tests/integration/test_spec224_approval_postgres.py \
+  --ignore=tests/integration/test_spec224_recovery_grant_postgres.py
 popd >/dev/null
 
 echo "[PY] root tests (.smartspec runtime/validators)..."

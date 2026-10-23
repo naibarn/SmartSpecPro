@@ -1,23 +1,21 @@
 """Focused ApprovalDBService certification against a disposable PostgreSQL DB."""
 
 import asyncio
-import os
+import sys
 import uuid
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
+from pathlib import Path
 
 import pytest
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+sys.path.insert(0, str(Path(__file__).resolve().parent / "support"))
+from spec224_test_database import database_url as _database_url  # noqa: E402
+
 
 def _test_database_url() -> str:
-    raw = os.environ.get("DATABASE_URL", "")
-    parsed = urlparse(raw)
-    database = parsed.path.lstrip("/")
-    if parsed.hostname not in {"127.0.0.1", "localhost"} or not database.startswith("spec224_") or not database.endswith("_test"):
-        raise RuntimeError("Approval integration requires a loopback spec224_*_test PostgreSQL database")
-    return raw
+    return _database_url()
 
 
 pytestmark = pytest.mark.asyncio
