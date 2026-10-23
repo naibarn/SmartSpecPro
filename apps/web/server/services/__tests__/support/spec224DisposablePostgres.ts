@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 const DATABASE_NAME = "spec224_d385_test";
 const RUNTIME_ROLE = "spec224_d385_runtime";
 const PG_VERSION = "PostgreSQL 15.17";
-const PG_IMAGE = "pgvector/pgvector:pg15";
+const PG_IMAGE = "pgvector/pgvector:pg15@sha256:7f5681e45237acdf546cf7cdc0dfc0ed7752ede857fda6e54f6ea21b936f8742";
 const TASK_LABEL = "spec224-safe-postgres-admission";
 
 export type Spec224DisposablePostgresTarget = {

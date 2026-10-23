@@ -20,7 +20,7 @@ import time
 from pathlib import Path
 
 
-IMAGE = "pgvector/pgvector:pg15"
+IMAGE = "pgvector/pgvector:pg15@sha256:7f5681e45237acdf546cf7cdc0dfc0ed7752ede857fda6e54f6ea21b936f8742"
 WORKUNIT = "spec224-safe-postgres-admission"
 DATABASE = "spec224_d385_test"
 RUNTIME_ROLE = "spec224_d385_runtime"
@@ -169,7 +169,9 @@ def main() -> int:
         ], capture=True)
         # PostgreSQL appends the Debian build suffix to SHOW server_version.
         if not version.startswith("15.17"):
-            raise RuntimeError("SPEC224_TEST_POSTGRES_VERSION_MISMATCH")
+            raise RuntimeError(
+                f"SPEC224_TEST_POSTGRES_VERSION_MISMATCH: expected 15.17, observed {version}"
+            )
         run([
             "docker", "exec", container, "psql", "-U", BOOTSTRAP_ROLE,
             "-d", "postgres", "-v", "ON_ERROR_STOP=1",

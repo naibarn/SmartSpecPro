@@ -72,7 +72,8 @@ def database_url() -> str:
     )
     if (
         inspected.get("Name") != f"/{container_name}"
-        or inspected.get("Config", {}).get("Image") != "pgvector/pgvector:pg15"
+        or inspected.get("Config", {}).get("Image")
+        != "pgvector/pgvector:pg15@sha256:7f5681e45237acdf546cf7cdc0dfc0ed7752ede857fda6e54f6ea21b936f8742"
         or inspected.get("Config", {}).get("Labels", {}).get("com.smartspecpro.workunit")
         != "spec224-safe-postgres-admission"
         or inspected.get("Config", {}).get("Labels", {}).get("com.smartspecpro.run-id")
