@@ -900,14 +900,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "d3586100e8eb70a12c2f01b767e49e5024444003",
+    "expected_canonical_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
     "expected_spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd"
   },
   "continuation": {
-    "next_action": "Database recovery is now the active SPEC-224 blocker: Admin diagnostics verified the current production Backend database and showed 0395 pending, external_runtime absent, 88 pending migrations, 41 unknown hashes, and no matching historical failure audit. Obtain Database Owner authorization for a protected operation scoped only to 0395 through the canonical migration authority; that target-scoped operation is not currently available. Do not run the full journal. After an authorized postcondition succeeds, retry authenticated startWorkspaceRun and continue exact-run Windows binding, admission, certification, lease/fencing, Recovery Grant if required, dispatch, settlement, and Final Verify. Source Trust readiness remains recorded as separate work.",
-    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: Database Owner authorization and an available protected migration operation targeting exact production DB fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f / migration 0395; operation must validate drift and prove enum postcondition. Do not run full-journal db:migrate.",
-    "reactivation_predicate": "Resume production schema recovery only when the Database Owner authorizes a protected and audited operation targeting the current production DB fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f and migration 0395 alone, with drift/concurrency preconditions and enum postcondition. The current db:migrate command applies the full Drizzle journal and is not safe for the observed 88 pending / 41 unknown state. This evidence identifies the DB serving the diagnostics request, but not the connection that handled the historical failed run request; keep that limitation explicit. After postcondition verification, resume canonical run creation and exact Windows admission.",
-    "resume_point": "Latest DB identity observation: production Backend revision 319fbc7a107341b466e5c1e0f4ddf50c630af6e4, instance label production:pid-3876410 (PID fallback), database smartspec/public, role smartspec, fingerprint sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f. 0395 is PENDING, external_runtime is absent, migration evidence shows 88 pending / 41 unknown, reconciliation FAILURE_HISTORY_UNAVAILABLE, zero observed active candidates, and no matching failure audit. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-database-identity-admin-observation-20261019.md. No DB mutation/run/dispatch occurred. Existing db:migrate calls drizzle-kit migrate for the full journal; no protected targeted-0395 path exists. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-224, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. The existing primary DB/source-trust recovery action and waiting/reactivation predicates take precedence. UWAC is a separate consumer-compatibility delta only; do not reset phases, create a new run, mutate DB or dispatch to satisfy this documentation task. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers. | Historical sections01/02/04 checkpoint 6b88efc57d1013a19c98e377b50714d6e218796b is resolved through merged PR945 at 1d09faf79086d836f2361f2016b5636f44a535b5, with identical PR-head/squash tree. Reuse integrated source and corrected implementation/HANDOFF.md; do not reopen PR945 or replay its checkpoint. Current 37 local focused tests pass; original/later browser receipts remain historical and normative acceptance partial. Comparison: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.md. Section03/PR944 remains separate; current primary DB/source-trust/Runner actions and all existing predicates unchanged.",
+    "next_action": "The exact-0395 migration path is now implemented and fail-closed at the production GitHub environment boundary. Repository Owner must configure production required reviewers to the Database Owner team only, enable prevent-self-review, restrict environment branch policy to main, and set SPEC224_DATABASE_OWNER_TEAM_ID to that exact team ID. Current read-only observation found no protection rules or branch policy, so do not dispatch migration. Once provisioned, require the Database Owner decision reference, run the workflow, verify its database-side and external receipts plus external_runtime enum postcondition, then resume authenticated startWorkspaceRun and exact Windows Runner admission/certification/lease/Recovery Grant/dispatch/settlement/Final Verify. Source Trust approval remains a separate blocker.",
+    "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: repository owner must provision the exact Database Owner team reviewer and main-only branch policy for GitHub environment production, prevent self-review, and set SPEC224_DATABASE_OWNER_TEAM_ID to the configured team ID. Current environment has no reviewer protection and no deployment branch policy. No production migration may run until the guard reports READY and the owner approval reference is available.",
+    "reactivation_predicate": "Resume only after read-only GitHub environment verification returns exactly one required-reviewers rule containing only the configured Database Owner team, prevent_self_review=true, exactly one production branch policy named main, and SPEC224_DATABASE_OWNER_TEAM_ID matches that team. Then an authorized Database Owner reviews the workflow deployment; targeted migration must pass exact database fingerprint, migration-ledger drift, concurrency, and enum postcondition checks. If any preflight blocks, do not widen the migration set.",
+    "resume_point": "Latest integrated recovery code at 6a1c12f2b1409d3ef0bb3a26cefbb960784563ae: production 0395 gate now requires the GitHub production environment to be protected by the configured Database Owner team, self-review disabled, and main-only branch policy. Focused gate and migration tests passed 19/19. Current environment observation remains unprotected (no reviewers/branch policy), so no workflow or production DB operation was run. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-production-migration-authority-gate-20261023.md. After repository-owner configuration and actual owner review, execute only 0395 and verify receipt/postcondition; then continue exact-run SPEC-224 Runner acceptance. Existing Source Trust and Runner authority blockers remain open.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 134,
+  "generation": 135,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -1366,11 +1366,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "d3586100e8eb70a12c2f01b767e49e5024444003",
+    "canonical_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
     "integrated": true,
-    "integrated_at": "2026-10-23T08:25:58+07:00",
+    "integrated_at": "2026-10-23T10:55:53+07:00",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "d3586100e8eb70a12c2f01b767e49e5024444003"
+    "source_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T01:42:32.015280Z",
+  "updated_at": "2026-10-23T03:56:50.636585Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3111,13 +3111,20 @@
         "scope": "Canonical package build passed on exact main SHA d3586100e8eb70a12c2f01b767e49e5024444003; artifact digest sha256:003275b7ebd4887e2ee7cc291fb6971ffd5a86e547e1b16fec0a7513fb547188 (126468 files), duration 308.91 seconds. Cloudflare staging publication PUBLISHED with digest sha256:994899b0e965d7fc6e0989feda18dfddd4af9bcddab6094f5cd4b844e5a47ada (1593 assets/2 modules). No service promotion, production deployment, runtime acceptance, or SPEC end-to-end acceptance claim.",
         "source_sha": "d3586100e8eb70a12c2f01b767e49e5024444003",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_PRODUCTION_MIGRATION_AUTHORITY_GATE",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-production-migration-authority-gate-20261023.md",
+        "scope": "Integrated fail-closed guard for targeted production migration 0395 at exact main SHA 6a1c12f2b1409d3ef0bb3a26cefbb960784563ae. Guard requires exactly the configured Database Owner reviewer team, prevents self-review, and restricts production environment branch policy to main. Focused tests passed 19/19; actual GitHub environment currently has no reviewer or branch policy, so the guard blocks. No migration or production DB connection was attempted.",
+        "source_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "d3586100e8eb70a12c2f01b767e49e5024444003",
+    "sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
     "status": "PARTIAL",
     "task_regressions": []
   }
