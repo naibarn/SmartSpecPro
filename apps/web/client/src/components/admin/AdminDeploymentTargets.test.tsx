@@ -152,6 +152,21 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByRole("combobox", { name: "Authenticated tenant" })).toHaveTextContent("Tenant One");
   });
 
+  it("keeps the tenant and project scope selectors readable and gives project results room to scan", async () => {
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+
+    const tenantSelector = screen.getByRole("combobox", { name: "Authenticated tenant" });
+    const projectSelector = screen.getByRole("combobox", { name: "Canonical project" });
+    expect(tenantSelector.parentElement).toHaveStyle({ flex: "1 1 22rem", minWidth: "min(100%, 22rem)" });
+    expect(projectSelector.parentElement).toHaveStyle({ flex: "2 1 36rem", minWidth: "min(100%, 36rem)" });
+
+    await chooseScope(user);
+    await user.click(projectSelector);
+    const search = await screen.findByPlaceholderText("Search project name or ID…");
+    expect(search.closest('[data-slot="popover-content"]')).toHaveClass("w-[min(42rem,calc(100vw-2rem))]");
+  });
+
   it("finds a tenant by its domain when the display name and ID differ", async () => {
     const user = userEvent.setup();
     render(<AdminDeploymentTargets />);

@@ -64,6 +64,7 @@ function SearchableScopeSelect({
   emptyMessage,
   options,
   value,
+  menuSize,
   disabled = false,
   onValueChange,
 }: {
@@ -73,6 +74,7 @@ function SearchableScopeSelect({
   emptyMessage: string;
   options: ScopeOption[];
   value: string;
+  menuSize: "tenant" | "project";
   disabled?: boolean;
   onValueChange: (value: string) => void;
 }) {
@@ -95,7 +97,12 @@ function SearchableScopeSelect({
           <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[var(--radix-popover-trigger-width)] p-0">
+      <PopoverContent
+        align="start"
+        className={menuSize === "project"
+          ? "w-[min(42rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] p-0"
+          : "w-[min(28rem,calc(100vw-2rem))] max-w-[calc(100vw-2rem)] p-0"}
+      >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
@@ -336,7 +343,7 @@ export default function AdminDeploymentTargets() {
       </VStack>
 
       <HStack gap={3} wrap="wrap" width="100%">
-        <VStack gap={1} width="30%" style={{ minWidth: "28%" }}>
+        <VStack gap={1} style={{ flex: "1 1 22rem", minWidth: "min(100%, 22rem)" }}>
           <Label htmlFor="deployment-tenant">{text("Authenticated tenant", "Tenant ที่ยืนยันตัวตนแล้ว")}</Label>
           <SearchableScopeSelect
             label={text("Authenticated tenant", "Tenant ที่ยืนยันตัวตนแล้ว")}
@@ -353,11 +360,12 @@ export default function AdminDeploymentTargets() {
               };
             })}
             value={tenantId}
+            menuSize="tenant"
             onValueChange={value => { setTenantId(value); setProjectId(""); setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}
           />
           {tenantId && !validTenantId ? <p role="status">{text("Select an existing tenant to configure deployment targets.", "เลือก tenant ที่มีอยู่ในระบบเพื่อตั้งค่า deployment target")}</p> : null}
         </VStack>
-        <VStack gap={1} width="52%" style={{ minWidth: "48%" }}>
+        <VStack gap={1} style={{ flex: "2 1 36rem", minWidth: "min(100%, 36rem)" }}>
           <Label htmlFor="deployment-project">{text("Canonical project", "Canonical project")}</Label>
           <SearchableScopeSelect
             label={text("Canonical project", "Canonical project")}
@@ -366,12 +374,13 @@ export default function AdminDeploymentTargets() {
             emptyMessage={text("No active project matches this search.", "ไม่พบ project ที่ active และตรงกับคำค้น")}
             options={(projectsQuery.data ?? []).map(project => ({ value: project.projectId, label: `${project.title} · ${project.projectType} · ${project.projectId}` }))}
             value={projectId}
+            menuSize="project"
             disabled={!validTenantId || projectsQuery.isLoading}
             onValueChange={value => { setProjectId(value); setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}
           />
           {validTenantId && !projectsQuery.isLoading && projectsQuery.data?.length === 0 ? <p role="status">{text("No active canonical projects were found for this tenant.", "ไม่พบ canonical project ที่ active ใน tenant นี้")}</p> : null}
         </VStack>
-        <VStack gap={1} width="15%" style={{ minWidth: "14%" }}>
+        <VStack gap={1} style={{ flex: "0 0 14rem", minWidth: "min(100%, 14rem)" }}>
           <Label htmlFor="deployment-environment">{text("Environment", "Environment")}</Label>
           <Select value={environment} onValueChange={setEnvironment}>
             <SelectTrigger id="deployment-environment"><SelectValue placeholder={text("Select environment", "เลือก environment")} /></SelectTrigger>
