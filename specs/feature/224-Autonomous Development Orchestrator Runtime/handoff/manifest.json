@@ -14,6 +14,13 @@
         "scope": "On exact main SHA 777933e84252dadc165dfb01b166521e831f07bc: disposable PostgreSQL lane passed locally (0395 1/1, Node 7/7, Python 7/7); Final Verify contract suites 9/9. Public health/Factory shell respond 200 while hosted runtime readiness returns 503. Windows Runner ports are unreachable and no fresh authenticated Runner/tenant/grant exists. CI run 39917362883 was pending at evidence capture. This is partial evidence only; no live DevelopmentRun, hosted Mini-App acceptance, protected Runner receipt, settlement or actual Final Verify receipt.",
         "source_sha": "777933e84252dadc165dfb01b166521e831f07bc",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_POSTGRES_CI_ISOLATION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-e2e-closure-checkpoint-777933e-20261023.md",
+        "scope": "The SPEC-224 disposable PostgreSQL checks now run in a dedicated CI job independent of the broad SmartSpecWeb suite. Exact source SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1; CI run 39918932580 was queued at evidence update. Local test evidence remains bound to source SHA 777933e84252dadc165dfb01b166521e831f07bc. This records job isolation only, not a hosted CI pass.",
+        "source_sha": "a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -907,14 +914,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "777933e84252dadc165dfb01b166521e831f07bc",
+    "expected_canonical_sha": "a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1",
     "expected_spec_digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3"
   },
   "continuation": {
-    "next_action": "Reconcile exact-SHA CI run 39917362883 and repair any SPEC-224 lane regression. Continue authorized Mini-App and Windows Runner acceptance independently: use the existing owner-authorized staging campaign and the fresh Platform/Security + Tenant Owner + Runner evidence required by R11. Run actual receipt settlement and independent Final Verify only after the real protected dispatch completes. Do not report full E2E PASS from local PostgreSQL, contract tests, health probes, build or artifact publication.",
+    "next_action": "Verify the independent SPEC-224 PostgreSQL CI job in run 39918932580 on exact SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1. Repair any lane-specific failures; broad Python/typecheck baseline failures are separately diagnosed by exact SHA. Then continue the already owner-authorized hosted Mini-App and Windows Runner paths independently. Full live acceptance still requires exact staging authorization and fresh authenticated source-trust, tenant/run/grant, Windows Runner/session/workspace and budget evidence, followed by real receipt settlement and independent Final Verify.",
     "next_ready_workunit": "IMPLEMENTATION: Continue the next SPEC-224 non-production source/runtime work unit using existing worker_jobs/outbox, authorization policy and evidence contracts. For live Runner execution, use an already authorized test tenant and non-production target; if exact external source-trust, tenant, Runner/session/workspace, grant or deployment authority is absent, continue independent code/test/build work and record only that live acceptance boundary.",
     "reactivation_predicate": "Resume remote non-production Runner acceptance when the existing Platform/Security and tenant authorities provide exact scoped policy decisions and authenticated current source-trust, Runner/session/capability, workspace, DevelopmentRun/job/attempt, lease/fencing/idempotency, recovery-grant and budget evidence. Validate those facts through existing authority APIs before dispatch. Production migration/deployment approval is not a development or non-production acceptance prerequisite; production operations remain separately guarded.",
-    "resume_point": "Exact canonical source is 777933e84252dadc165dfb01b166521e831f07bc. Integration changes now run all previously environment-blocked SPEC-224 PostgreSQL cases in CI using two isolated task-scoped PostgreSQL 15.17 clusters; local result is migration 1/1, Node 7/7 and Python 7/7. The focused Final Verify contract suites passed 9/9 but no live DevelopmentRun exists to finalize. CI run 39917362883 is pending and must be reconciled by exact SHA. Public SmartAIHub health and Factory shell return 200, but hosted runtime readiness is 503. A fresh read-only Runner host probe timed out; protected dispatch, receipt, settlement and live Final Verify remain unverified. Existing R11 source-trust/tenant/Runner owner actions remain authoritative; no production DB or deployment was used.",
+    "resume_point": "Latest code/workflow source is a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1. Local disposable PostgreSQL verification on code SHA 777933e84252dadc165dfb01b166521e831f07bc passed migration 1/1, Node 7/7 and Python 7/7; focused Final Verify contracts passed 9/9. GitHub run 39917362883 showed 43 Python baseline failures, exactly matching prior SHA 11879babc25eb5fc2e1f27f6c7e09d550bbfc141 after the six SPEC-224 DB cases were moved to the dedicated lane. Its 503 TypeScript diagnostics also matched the previous run exactly, zero added/removed. CI run 39918932580 on latest SHA places PostgreSQL acceptance in its own job and is pending. Public health/Factory shell return 200, hosted runtime readiness is 503; Windows host ports remain unreachable. No live DevelopmentRun, Runner receipt, settlement or actual Final Verify receipt exists.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1067,7 +1074,7 @@
         "path": "apps/web/server/routes/jobControlPlane.ts"
       }
     ],
-    "next_action": "Reconcile CI run 39917362883 and the follow-up run for commit c3253c255956c977d23b859f1e1748d181e73542; the follow-up runs the disposable PostgreSQL lane even if broad SmartSpecWeb baseline tests fail. Repair any SPEC-224 lane regression by exact SHA and keep known baseline failures separate. Continue authorized hosted Mini-App and Windows Runner paths independently. Full live acceptance still requires owner-authorized exact-artifact staging and fresh Platform/Security, Tenant Owner and Runner source/workspace/session/grant/budget evidence; then complete real dispatch, harness receipt, settlement and independent Final Verify.",
+    "next_action": "Verify the independent disposable PostgreSQL acceptance job in CI run 39918932580 on exact SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1; repair any SPEC-224 failure. The exact-SHA Python baseline is 43 failures and the typecheck baseline is 503 identical diagnostics across 11879babc2 and 777933e8. Continue the authorized hosted Mini-App and Windows Runner paths separately. Full live acceptance requires the existing exact-artifact staging grant and fresh Platform/Security, tenant-owner and Runner source/workspace/session/grant/budget evidence, then actual dispatch, harness receipt, settlement and independent Final Verify.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -1155,7 +1162,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 145,
+  "generation": 147,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "40a549ba2333d57f5dafe636ff969e77c1d15610bec3976c9b695e3eb55cd4c3",
@@ -1373,11 +1380,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "777933e84252dadc165dfb01b166521e831f07bc",
+    "canonical_sha": "a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1",
     "integrated": true,
-    "integrated_at": "2026-10-23T07:23:13Z",
+    "integrated_at": "2026-10-23T07:36:51Z",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "777933e84252dadc165dfb01b166521e831f07bc"
+    "source_sha": "a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2412,7 +2419,7 @@
           "path": "apps/web/server/routes/jobControlPlane.ts"
         }
       ],
-      "next_action": "Reconcile CI run 39917362883 and the follow-up run for commit c3253c255956c977d23b859f1e1748d181e73542; the follow-up runs the disposable PostgreSQL lane even if broad SmartSpecWeb baseline tests fail. Repair any SPEC-224 lane regression by exact SHA and keep known baseline failures separate. Continue authorized hosted Mini-App and Windows Runner paths independently. Full live acceptance still requires owner-authorized exact-artifact staging and fresh Platform/Security, Tenant Owner and Runner source/workspace/session/grant/budget evidence; then complete real dispatch, harness receipt, settlement and independent Final Verify.",
+      "next_action": "Verify the independent disposable PostgreSQL acceptance job in CI run 39918932580 on exact SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1; repair any SPEC-224 failure. The exact-SHA Python baseline is 43 failures and the typecheck baseline is 503 identical diagnostics across 11879babc2 and 777933e8. Continue the authorized hosted Mini-App and Windows Runner paths separately. Full live acceptance requires the existing exact-artifact staging grant and fresh Platform/Security, tenant-owner and Runner source/workspace/session/grant/budget evidence, then actual dispatch, harness receipt, settlement and independent Final Verify.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -2567,7 +2574,7 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17307",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "777933e84252dadc165dfb01b166521e831f07bc",
         "final_state": "VALIDATION_PENDING",
         "implementation_evidence": [
@@ -2576,7 +2583,7 @@
           "python-backend/tests/integration/support/spec224_test_database.py"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Verify the SPEC-224 disposable PostgreSQL acceptance step in CI run 39917362883 on exact SHA 777933e84252dadc165dfb01b166521e831f07bc. If that step passes, update this requirement to PASS; do not close live Runner or hosted Mini-App requirements from this lane.",
+        "next_action": "Complete CI run 39918932580 for exact SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1. Refresh evidence_sha to that tested SHA and mark PASS only after the dedicated PostgreSQL job passes.",
         "requirement_digest": "a09f6732ce97194455c3abac8715176d51c95ac155aafd3a074efad65634014b",
         "requirement_id": "REQ-DC0E0E98CDAA",
         "requirement_text": "2. Disposable test authority MUST be provisioned independently of production. PostgreSQL migration and integration tests MUST use an isolated, task-scoped disposable database and role. The test runtime role MUST remain non-superuser and tests MUST fail closed when target identity, version, scope, or isolation cannot be verified. Production databases MUST never substitute for unavailable test infrastructure.",
@@ -2584,9 +2591,9 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-e2e-closure-checkpoint-777933e-20261023.md",
-          "https://github.com/naibarn/SmartSpecPro/actions/runs/39917362883"
+          "https://github.com/naibarn/SmartSpecPro/actions/runs/39918932580"
         ],
-        "verification_method": "Run the CI acceptance script on its exact source SHA: fresh isolated PostgreSQL 15.17 migration target; separate fresh baseline target shared by Node and Python integration tests; strict target identity and role validation; no production database fallback."
+        "verification_method": "Run the independent CI acceptance job on exact canonical SHA: two fresh isolated PostgreSQL 15.17 clusters, task-scoped role and identity/isolation checks, migration plus Node/Python DB suites, and no production fallback."
       }
     }
   },
@@ -2852,7 +2859,7 @@
     "unresolved": 1267
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T07:33:15.285184Z",
+  "updated_at": "2026-10-23T07:37:30.082306Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

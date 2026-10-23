@@ -5,8 +5,8 @@
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 1267 unresolved of 1267
-- Next action: Reconcile CI run 39917362883 and the follow-up run for commit c3253c255956c977d23b859f1e1748d181e73542; the follow-up runs the disposable PostgreSQL lane even if broad SmartSpecWeb baseline tests fail. Repair any SPEC-224 lane regression by exact SHA and keep known baseline failures separate. Continue authorized hosted Mini-App and Windows Runner paths independently. Full live acceptance still requires owner-authorized exact-artifact staging and fresh Platform/Security, Tenant Owner and Runner source/workspace/session/grant/budget evidence; then complete real dispatch, harness receipt, settlement and independent Final Verify.
-- Manifest generation: 145
+- Next action: Verify the independent disposable PostgreSQL acceptance job in CI run 39918932580 on exact SHA a70cb7f03686c6c937cf3c99f0bcfbbb4e0ef3c1; repair any SPEC-224 failure. The exact-SHA Python baseline is 43 failures and the typecheck baseline is 503 identical diagnostics across 11879babc2 and 777933e8. Continue the authorized hosted Mini-App and Windows Runner paths separately. Full live acceptance requires the existing exact-artifact staging grant and fresh Platform/Security, tenant-owner and Runner source/workspace/session/grant/budget evidence, then actual dispatch, harness receipt, settlement and independent Final Verify.
+- Manifest generation: 147
 
 ## Source-declared status and relationship claims
 
