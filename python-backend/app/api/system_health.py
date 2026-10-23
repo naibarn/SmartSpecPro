@@ -3,6 +3,8 @@ System Health API
 Endpoints for system health monitoring
 """
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import Optional
 
@@ -198,8 +200,6 @@ async def health_check():
     }
     ```
     """
-    from datetime import datetime
-    
     return {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
@@ -254,8 +254,6 @@ async def liveness_check():
     **Response:**
     - 200 OK: Service is alive
     """
-    from datetime import datetime
-    
     return {
         "status": "alive",
         "timestamp": datetime.utcnow().isoformat()

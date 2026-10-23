@@ -1051,11 +1051,27 @@ def main(argv: list[str] | None = None) -> int:
     prepare.add_argument("--build-result", required=True, type=Path)
     promote = commands.add_parser("promote", help="promote one immutable artifact to smartspec-web.service")
     promote.add_argument("--artifact", required=True, type=Path)
+    prepare_python = commands.add_parser("prepare-python", help="prepare exact-SHA Python source from a clean origin/main checkout")
+    prepare_python.add_argument("--source", required=True, type=Path)
+    prepare_python.add_argument("--source-sha")
+    prepare_python.add_argument("--artifact-store", type=Path)
+    promote_python = commands.add_parser("promote-python", help="promote one immutable artifact to smartspec-backend.service")
+    promote_python.add_argument("--artifact", required=True, type=Path)
     args = parser.parse_args(argv)
     try:
         if args.action == "prepare":
             default_store = Path(args.build_result).parent / "artifacts"
             result = prepare_artifact(args.build_result, default_store)
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.action == "prepare-python":
+            from linux_python_backend_release import prepare_artifact as prepare_python_artifact
+            result = prepare_python_artifact(args.source, args.artifact_store or Path("/home/dev/production-releases/smartspec-python-releases"), source_sha=args.source_sha)
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        if args.action == "promote-python":
+            from linux_python_backend_release import promote_artifact as promote_python_artifact
+            result = promote_python_artifact(args.artifact)
             print(json.dumps(result, sort_keys=True))
             return 0
         manifest = validate_published_artifact(args.artifact)

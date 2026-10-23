@@ -15,6 +15,7 @@ from app.api.health import (
     liveness_check,
     readiness_check,
 )
+from app.api.system_health import readiness_check as system_readiness_check
 
 
 class TestHealthServiceChecks:
@@ -182,6 +183,19 @@ class TestHealthEndpoints:
             content = json.loads(response.body)
             assert content["status"] == "ready"
             mock_db.execute.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_system_readiness_check_returns_timestamp_when_database_is_healthy(self):
+        mock_db = AsyncMock()
+        healthy = AsyncMock(return_value={"status": "healthy"})
+
+        with patch("app.api.system_health.HealthService") as service:
+            service.return_value._check_database = healthy
+            response = await system_readiness_check(mock_db)
+
+        assert response["status"] == "ready"
+        assert "timestamp" in response
+        healthy.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_readiness_check_not_ready_db(self):
