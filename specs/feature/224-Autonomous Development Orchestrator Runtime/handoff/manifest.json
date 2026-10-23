@@ -900,7 +900,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "d2e54be0c3",
+    "expected_canonical_sha": "8bbf6c42be",
     "expected_spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd"
   },
   "continuation": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 130,
+  "generation": 131,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -1366,11 +1366,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "d2e54be0c3",
+    "canonical_sha": "8bbf6c42be",
     "integrated": true,
-    "integrated_at": "2026-10-23T08:15:16+07:00",
+    "integrated_at": "2026-10-23T08:17:17+07:00",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "d2e54be0c3"
+    "source_sha": "8bbf6c42be"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T01:15:50.010781Z",
+  "updated_at": "2026-10-23T01:18:12.992336Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3090,13 +3090,20 @@
         "scope": "Integrated CI dependency fix at d2e54be0c3 installs ffmpeg for the failing Python media test. Focused test passed 1/1 and workflow YAML parsed; full CI on this revision remains pending.",
         "source_sha": "d2e54be0c3",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_CI_ROOT_CAUSES_AND_PR_RECONCILIATION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/ci-root-causes-and-pr-reconciliation-20261023.md",
+        "scope": "Recorded two CI root-cause fixes integrated through origin/main at 8bbf6c42be and reconciled requested PRs #1174, #944, and #961 against that exact mainline. Focused tests pass; full CI remains pending and PR heads remain stale/open.",
+        "source_sha": "8bbf6c42be",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "d2e54be0c3",
+    "sha": "8bbf6c42be",
     "status": "PARTIAL",
     "task_regressions": []
   }
