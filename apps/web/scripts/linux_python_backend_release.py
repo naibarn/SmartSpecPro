@@ -124,11 +124,15 @@ def prepare_artifact(source_root: Path, artifact_store: Path = RELEASE_ROOT, *, 
     source_sha = source_sha or _run(["git", "rev-parse", "HEAD"], cwd=source_root)
     validate_source(source_root, source_sha)
     source_backend = source_root / "python-backend"
-    slip_parser_source = source_root / "apps/web/skills/unified-payin-slip-parser/src/unified_slip_parser"
+    slip_parser_root = source_root / "apps/web/skills/unified-payin-slip-parser"
+    slip_parser_source = slip_parser_root / "src/unified_slip_parser"
     if not slip_parser_source.is_dir() or not (slip_parser_source / "router.py").is_file():
         raise ReleaseError("Canonical source is missing the Python pay-in-slip parser runtime package")
+    if not all((slip_parser_root / f"configs/{name}").is_file() for name in ("issuer-detection.rules.json", "transaction-type.rules.json")):
+        raise ReleaseError("Canonical source is missing the Python pay-in-slip parser runtime configuration")
     tree_manifest(source_backend)
     tree_manifest(slip_parser_source)
+    tree_manifest(slip_parser_root / "configs")
     artifact_store.mkdir(parents=True, exist_ok=True)
     staging = artifact_store / f".smartspec-python-{source_sha}-{uuid.uuid4().hex}.tmp"
     try:
@@ -136,6 +140,7 @@ def prepare_artifact(source_root: Path, artifact_store: Path = RELEASE_ROOT, *, 
         vendor_package = staging / "vendor/unified-payin-slip-parser/src/unified_slip_parser"
         vendor_package.parent.mkdir(parents=True)
         shutil.copytree(slip_parser_source, vendor_package, ignore=_ignore, symlinks=False)
+        shutil.copytree(slip_parser_root / "configs", staging / "vendor/unified-payin-slip-parser/configs", ignore=_ignore, symlinks=False)
         for path in staging.rglob("*"):
             if path.name == ".env" or path.name.startswith(".env.") or path.name in {".venv", "venv"}:
                 raise ReleaseError("Secret or virtual environment entered Python release artifact")

@@ -79,6 +79,10 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
             slip_parser = source / "apps/web/skills/unified-payin-slip-parser/src/unified_slip_parser"
             slip_parser.mkdir(parents=True)
             (slip_parser / "router.py").write_text("def parse_slip(value): return value\n")
+            slip_config = source / "apps/web/skills/unified-payin-slip-parser/configs"
+            slip_config.mkdir(parents=True)
+            (slip_config / "issuer-detection.rules.json").write_text("{}\n")
+            (slip_config / "transaction-type.rules.json").write_text("{}\n")
             (source / ".development-repository.toml").write_text(
                 '[repository]\nremote="origin"\ncanonical_ref="refs/heads/main"\n'
             )
@@ -104,6 +108,7 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
             self.assertFalse((artifact / ".env.production").exists())
             self.assertFalse((artifact / ".venv").exists())
             self.assertTrue((artifact / "vendor/unified-payin-slip-parser/src/unified_slip_parser/router.py").is_file())
+            self.assertTrue((artifact / "vendor/unified-payin-slip-parser/configs/issuer-detection.rules.json").is_file())
             self.assertEqual(release.validate_artifact(artifact)["source_sha"], source_sha)
 
     def _artifact(self, root: Path) -> tuple[Path, str]:
@@ -114,6 +119,10 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
         vendor = artifact / "vendor/unified-payin-slip-parser/src/unified_slip_parser"
         vendor.mkdir(parents=True)
         (vendor / "router.py").write_text("def parse_slip(value): return value\n")
+        configs = artifact / "vendor/unified-payin-slip-parser/configs"
+        configs.mkdir(parents=True)
+        (configs / "issuer-detection.rules.json").write_text("{}\n")
+        (configs / "transaction-type.rules.json").write_text("{}\n")
         digest = release.tree_manifest(artifact)["artifact_digest"]
         artifact.rename(root / f"smartspec-python-{sha}-{digest[7:19]}")
         artifact = root / f"smartspec-python-{sha}-{digest[7:19]}"
