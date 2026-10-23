@@ -24,6 +24,15 @@ if [[ ! -f "$WEB_ROOT/dist/public/index.html" ]]; then
   exit 2
 fi
 
+if command -v pnpm >/dev/null 2>&1; then
+  PNPM=(pnpm)
+elif command -v corepack >/dev/null 2>&1; then
+  PNPM=(corepack pnpm)
+else
+  echo "Neither pnpm nor corepack is available in PATH" >&2
+  exit 127
+fi
+
 bash "$WEB_ROOT/scripts/materialize-public-releases.sh" "$WEB_ROOT"
 
 if [[ -e "$WEB_ROOT/dist/backend-runtime" ]]; then
@@ -47,7 +56,7 @@ cleanup() {
 trap cleanup EXIT
 PACKAGE_ROOT="$STAGING_ROOT/runtime"
 
-pnpm --filter @smartspec/web --prod deploy --legacy "$PACKAGE_ROOT"
+"${PNPM[@]}" --filter @smartspec/web --prod deploy --legacy "$PACKAGE_ROOT"
 # Some npm packages ship their own test .env (for example Bottleneck's Redis
 # fixture). Runtime environments are supplied outside the immutable artifact.
 # find does not follow pnpm symlinks; deletion affects only this owned staging tree.
