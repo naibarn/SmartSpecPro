@@ -21,11 +21,13 @@ export default function MiniAppRoute() {
     return <AppPage title="Mini App unavailable" state="error" error={{ title: "This App is unavailable", description: "Check the app link and your tenant access, then try again.", onRetry: () => { void appQuery.refetch(); } }} />;
   }
   if (isMiniAppRoute) {
-    const previewAvailable = Boolean(miniAppQuery.data.lastKnownGoodArtifactRef);
+    const miniAppData = miniAppQuery.data;
+    if (!miniAppData) return <AppPage title="Mini App unavailable" state="error" />;
+    const previewAvailable = Boolean(miniAppData.lastKnownGoodArtifactRef);
     return (
       <AppPage
         title="Mini App"
-        description={`/miniapp/${miniAppQuery.data.appId}`}
+        description={`/miniapp/${miniAppData.appId}`}
         state="empty"
         empty={{
           title: previewAvailable ? "Preview runtime unavailable" : "BUILDING",
