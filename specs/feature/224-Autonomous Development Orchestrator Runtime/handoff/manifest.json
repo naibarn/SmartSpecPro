@@ -900,7 +900,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "b8b433963d624aac0dbb771b725470e90daec72c",
+    "expected_canonical_sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
     "expected_spec_digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd"
   },
   "continuation": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 128,
+  "generation": 129,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -1366,11 +1366,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b8b433963d624aac0dbb771b725470e90daec72c",
+    "canonical_sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
     "integrated": true,
-    "integrated_at": "2026-10-18T12:12:32Z",
+    "integrated_at": "2026-10-23T07:50:00+07:00",
     "pull_request": "https://github.com/naibarn/SmartSpecPro/pull/1147",
-    "source_sha": "5a320640c88e228d0959767ccd6ff6d2cb6f55e3"
+    "source_sha": "76420b858a2f793995eec11c3720cf01c7d98bc7"
   },
   "lifecycle": {
     "current_state": "WAITING_APPROVAL",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T00:49:57.523994Z",
+  "updated_at": "2026-10-23T01:10:54.767339Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3076,13 +3076,20 @@
         "scope": "Candidate approval-boundary fix and associated evidence were integrated by fast-forward to origin/main at exact SHA 6041559b0fe692b4f660b994b7e5ece3831f8d28. Focused test passed 11/11; handoff validates. Remaining SPEC-224 authority, Runner, and E2E acceptance requirements remain open.",
         "source_sha": "c899776f32626f7baf542baccec58e2da78f0103",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_CANONICAL_WEB_BUILD",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/canonical-web-build-fb413da-20261023.md",
+        "scope": "Canonical web build passed on exact main SHA fb413da88c302b297e324394e22a29be55d4d6d3 after verifying required integrated SPEC-224 revisions. Artifact digest sha256:4ee9f1c8d51b4fb3a1f0dd2949cb36a5ec0422d67b7e509045136dcb62e36e32. Cloudflare staging publication remains pending because publisher unavailable; no deployment or SPEC acceptance claim.",
+        "source_sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "dcd0e66f2981a5270e6162d5e7bdff2f21e1f465",
+    "sha": "fb413da88c302b297e324394e22a29be55d4d6d3",
     "status": "PARTIAL",
     "task_regressions": []
   }
