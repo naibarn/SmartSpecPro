@@ -157,7 +157,10 @@ function databaseRunList(): Spec226DevelopmentRunList {
         .orderBy(desc(workerJobs.createdAt))
         .limit(limit);
       return rows.flatMap((row: { progressJson: unknown }) => {
-        const projection = asRecord(row.progressJson)?.spec224;
+        const progress = row.progressJson;
+        const projection = progress && typeof progress === "object" && !Array.isArray(progress)
+          ? (progress as Record<string, unknown>).spec224
+          : undefined;
         if (
           !projection ||
           typeof projection !== "object" ||

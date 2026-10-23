@@ -726,8 +726,8 @@ export async function bindSpec224RecoveryGrant(input: {
         );
       return {
         grantId: input.grantId,
-        scopeDigest: validation.scopeDigest,
-        grantVersion: validation.grantVersion,
+        scopeDigest: validation.scopeDigest!,
+        grantVersion: validation.grantVersion!,
         replayed: true,
       };
     }
@@ -740,8 +740,8 @@ export async function bindSpec224RecoveryGrant(input: {
     });
     return {
       grantId: input.grantId,
-      scopeDigest: validation.scopeDigest,
-      grantVersion: validation.grantVersion,
+      scopeDigest: validation.scopeDigest!,
+      grantVersion: validation.grantVersion!,
       replayed: false,
     };
   });
