@@ -79,24 +79,24 @@ async function main() {
   await client.connect();
   try {
     await client.query("BEGIN READ ONLY");
-    const [tables, columns, constraints, indexes, enumLabels] =
-      await Promise.all([
-        client.query<{ name: string }>(
-          "SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p')"
-        ),
-        client.query<{ name: string }>(
-          "SELECT table_name || '.' || column_name AS name FROM information_schema.columns WHERE table_schema='public'"
-        ),
-        client.query<{ name: string }>(
-          "SELECT conname AS name FROM pg_constraint WHERE connamespace='public'::regnamespace"
-        ),
-        client.query<{ name: string }>(
-          "SELECT indexname AS name FROM pg_indexes WHERE schemaname='public'"
-        ),
-        client.query<{ name: string }>(
-          "SELECT e.enumlabel AS name FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace JOIN pg_enum e ON e.enumtypid=t.oid WHERE n.nspname='public' AND t.typname='worker_runtime_type'"
-        ),
-      ]);
+    const database = await client.query<{ name: string }>(
+      "SELECT current_database() AS name"
+    );
+    const tables = await client.query<{ name: string }>(
+      "SELECT c.relname AS name FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p')"
+    );
+    const columns = await client.query<{ name: string }>(
+      "SELECT table_name || '.' || column_name AS name FROM information_schema.columns WHERE table_schema='public'"
+    );
+    const constraints = await client.query<{ name: string }>(
+      "SELECT conname AS name FROM pg_constraint WHERE connamespace='public'::regnamespace"
+    );
+    const indexes = await client.query<{ name: string }>(
+      "SELECT indexname AS name FROM pg_indexes WHERE schemaname='public'"
+    );
+    const enumLabels = await client.query<{ name: string }>(
+      "SELECT e.enumlabel AS name FROM pg_type t JOIN pg_namespace n ON n.oid=t.typnamespace JOIN pg_enum e ON e.enumtypid=t.oid WHERE n.nspname='public' AND t.typname='worker_runtime_type'"
+    );
     const report = evaluateCoreRuntimeMigrationPostconditions({
       tables: tables.rows.map(row => row.name),
       columns: columns.rows.map(row => row.name),
@@ -108,8 +108,7 @@ async function main() {
       `${JSON.stringify(
         {
           schema: "core-runtime-migration-postconditions.v1",
-          database: (await client.query("SELECT current_database() AS name"))
-            .rows[0].name,
+          database: database.rows[0].name,
           access: "read_only",
           ...report,
         },
