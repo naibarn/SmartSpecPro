@@ -18,7 +18,7 @@ const pipeline: MiniAppFactoryPipeline = {
   stages: [{ id: "SPEC", dependsOn: [] }, { id: "TEST", dependsOn: ["SPEC"] }],
 };
 
-function makeRun() {
+function makeRun(profile: "PERSONAL_MINIAPP" | "PLATFORM_SELF_DEVELOPMENT" = "PERSONAL_MINIAPP") {
   const sha = "a".repeat(40);
   const workUnit = createDevelopmentWorkUnit({
     workId: "factory-worker-work",
@@ -37,6 +37,7 @@ function makeRun() {
     contextPackHash: "b".repeat(64), workspaceId: "factory-worker-workspace", workUnit,
     metadata: { [MINI_APP_FACTORY_STATE_KEY]: createMiniAppFactoryDurableState({
       programId: "test-program", miniAppId: "app_test", sourceSha: sha,
+      profile,
     }) },
   });
 }
@@ -91,7 +92,7 @@ describe("Mini App Factory worker_jobs binding", () => {
     const assertActive = vi.fn(async () => undefined);
     const reporter = { assertActive, progress: vi.fn(async () => undefined) };
     const canonicalCreate = vi.fn(async () => ({ jobId: "auto-next-stage-job", created: true }));
-    const executor = createMiniAppFactoryStageJobExecutor(() => ({ pipeline, service: service as any, executeStage, allowSyntheticExecution: true }));
+    const executor = createMiniAppFactoryStageJobExecutor(() => ({ pipeline, service: service as any, executeStage, allowHostedPersonalExecution: true }));
     const job = {
       context: {
         jobId: "canonical-worker-job", tenantId: run.tenantId, requestedByUserId: run.actorId,
@@ -110,6 +111,7 @@ describe("Mini App Factory worker_jobs binding", () => {
     expect(run.workUnit?.progress.completedScope).toEqual(["SPEC"]);
     expect(run.workUnit?.progress.remainingScope).toEqual(["TEST"]);
     expect(assertActive).toHaveBeenCalledTimes(3);
+    expect(executeStage).toHaveBeenCalledWith("SPEC", expect.objectContaining({ runId: run.runId, tenantId: run.tenantId, actorId: run.actorId }));
 
     const duplicate = await executor(job as any);
     expect(duplicate).toEqual({ output: { stageId: "SPEC", state: "ALREADY_CHECKPOINTED", nextJobId: "auto-next-stage-job" } });
@@ -117,7 +119,7 @@ describe("Mini App Factory worker_jobs binding", () => {
   });
 
   it("routes production stages to a deferred DevelopmentRun and never invokes a synthetic stage callback", async () => {
-    const run = makeRun();
+    const run = makeRun("PLATFORM_SELF_DEVELOPMENT");
     const executeStage = vi.fn(async () => ({ artifacts: ["synthetic"] }));
     const createRunnerStage = vi.fn(async () => ({ runId: "factory-stage-run", jobId: "held-runner-job", created: true, state: "PENDING_AUTHORIZATION" as const }));
     const executor = createMiniAppFactoryStageJobExecutor(() => ({

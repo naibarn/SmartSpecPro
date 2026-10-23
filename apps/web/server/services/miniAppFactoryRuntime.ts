@@ -2,8 +2,10 @@ import { createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter } 
 import { loadMiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { createMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerStageAdapter";
 import type { MiniAppFactoryStageWorkerRuntime } from "./miniAppFactoryStageWorker";
+import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
+import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, resolvePersonalMiniAppPreview } from "./personalMiniAppPreview";
 
-/** Production composition uses the canonical pipeline and existing Runner control plane. */
+/** Personal apps use hosted Skill Execution -> Gateway; platform development stays Runner-admitted. */
 export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWorkerRuntime {
   const service = createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter);
   return {
@@ -13,11 +15,43 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
       ...input,
       service,
     }),
-    // This callback is intentionally unusable in production. Stage code runs
-    // only in an external_agent_task dispatched by the trusted Runner.
-    executeStage: async () => {
-      throw new Error("FACTORY_SYNTHETIC_EXECUTION_DISABLED");
+    allowHostedPersonalExecution: true,
+    executeStage: async (stageId, context) => {
+      const runScope = { runId: context.runId, tenantId: context.tenantId, actorId: context.actorId };
+      const { run } = await service.get(runScope);
+      const state = parseMiniAppFactoryDurableState(run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
+      if (state.profile !== "PERSONAL_MINIAPP") throw new Error("FACTORY_HOSTED_PROFILE_FORBIDDEN");
+      const baseRef = `miniapp:${state.miniAppId}`;
+      if (stageId === "ui_implementation") {
+        const artifact = await buildAndStorePersonalMiniApp({
+          userId: context.actorId,
+          tenantId: context.tenantId,
+          appId: state.miniAppId,
+          runId: context.runId,
+          prompt: run.goal,
+        });
+        return { artifacts: [`app-artifact:${artifact.artifactRef}`, `app-artifact-digest:${artifact.artifactDigest}`, `app-artifact-bytes:${artifact.bytes}`] };
+      }
+      if (stageId === "package") {
+        const artifact = context.artifacts.find(value => value.startsWith("app-artifact:r2://"));
+        if (!artifact) throw new Error("MINI_APP_ARTIFACT_NOT_BUILT");
+        return { artifacts: [`package-verified:${artifact.slice("app-artifact:".length)}`] };
+      }
+      if (stageId === "deploy") {
+        const artifactRef = context.artifacts.find(value => value.startsWith("app-artifact:r2://"))?.slice("app-artifact:".length);
+        const artifactDigest = context.artifacts.find(value => value.startsWith("app-artifact-digest:"))?.slice("app-artifact-digest:".length);
+        if (!artifactRef || !artifactDigest) throw new Error("MINI_APP_ARTIFACT_BINDING_MISSING");
+        const bound = await bindPersonalMiniAppArtifact({ tenantId: context.tenantId, ownerUserId: context.actorId, appId: state.miniAppId, artifactRef, artifactDigest });
+        return { artifacts: [`deployment:${baseRef}:v${bound.deploymentVersion}`, `deployment-artifact:${artifactRef}`] };
+      }
+      if (stageId === "smoke") {
+        const preview = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId });
+        if (!preview?.html || !preview.artifactDigest || !preview.html.includes("Content-Security-Policy")) throw new Error("MINI_APP_PRIVATE_PREVIEW_SMOKE_FAILED");
+        const unauthorized = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId + 1 });
+        if (unauthorized) throw new Error("MINI_APP_PRIVATE_PREVIEW_AUTHORIZATION_FAILED");
+        return { artifacts: [`private-preview-smoke:${preview.artifactDigest}`, `private-preview-owner-access:${state.miniAppId}`, `private-preview-unauthorized-denied:${state.miniAppId}`] };
+      }
+      throw new Error("PERSONAL_MINIAPP_FACTORY_STAGE_UNSUPPORTED:" + stageId);
     },
-    allowSyntheticExecution: false,
   };
 }

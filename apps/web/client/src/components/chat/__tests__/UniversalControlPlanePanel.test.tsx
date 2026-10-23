@@ -284,12 +284,7 @@ describe("UniversalControlPlanePanel", () => {
     expect(mocks.startWorkspaceMutateAsync.mock.calls[0][0].idempotencyKey.length).toBeGreaterThanOrEqual(16);
   });
 
-  it("stages an attached screenshot with page and rights hints on the existing prompt run", async () => {
-    mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
-      planId: "plan-visual", planRevision: 1, requirementCount: 0,
-      runnableWorkPackageIds: ["prompt"], blockers: [],
-      workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [] }],
-    });
+  it("starts a private Mini App directly from its prompt without Runner preparation", async () => {
     mocks.conversationWorkspaceQuery.mockReturnValue({
       ...emptyQuery,
       data: {
@@ -299,26 +294,20 @@ describe("UniversalControlPlanePanel", () => {
       },
     });
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    mocks.startWorkspaceMutateAsync.mockResolvedValueOnce({
+      runId: "run-mini", jobId: "job-mini", dispatchStatus: "ENQUEUED",
+      previewUrl: "https://smartaihub.app/miniapp/app_private",
+    });
     fireEvent.click(screen.getByLabelText("สร้าง Mini App"));
     fireEvent.change(screen.getByRole("textbox", { name: "Mini App requirements" }), { target: { value: "A dashboard with a project summary" } });
-    const screenshotBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-    const screenshot = new File([screenshotBytes], "dashboard.png", { type: "image/png" });
-    fireEvent.change(screen.getByLabelText("แนบภาพอ้างอิงหลายภาพ"), { target: { files: [screenshot] } });
-    expect(screen.getByLabelText("อนุญาตให้นำ asset ในภาพไปใช้ซ้ำ")).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("Page hint 1"), { target: { value: "/dashboard" } });
-    fireEvent.change(screen.getByLabelText("Reference rights 1"), { target: { value: "user_owned" } });
-    expect(screen.getByLabelText("อนุญาตให้นำ asset ในภาพไปใช้ซ้ำ")).toBeEnabled();
-    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
-    await waitFor(() => expect(mocks.prepareWorkspaceMutateAsync).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+    fireEvent.click(screen.getByRole("button", { name: "สร้าง Mini App จาก prompt" }));
     await waitFor(() => expect(mocks.startWorkspaceMutateAsync).toHaveBeenCalledWith(expect.objectContaining({
       mode: "prompt",
       factoryMode: true,
-      prompt: expect.stringContaining("Create a functional Mini App"),
-      visualReferences: [expect.objectContaining({ type: "image", pageHint: "/dashboard", rights: "user_owned" })],
-      visualFiles: [expect.objectContaining({ fileName: "dashboard.png", mimeType: "image/png", contentBase64: "iVBORw0KGgo=" })],
-      designPreferences: expect.objectContaining({ similarityMode: "close", devices: ["mobile", "desktop"] }),
+      prompt: expect.stringContaining("A dashboard with a project summary"),
     })));
+    expect(mocks.prepareWorkspaceMutateAsync).not.toHaveBeenCalled();
+    expect(await screen.findByRole("link", { name: "เปิด Mini App preview" })).toHaveAttribute("href", "https://smartaihub.app/miniapp/app_private");
   });
 
   it("starts one ready Spec package while leaving a blocked package unstartable", async () => {

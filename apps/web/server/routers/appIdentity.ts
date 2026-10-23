@@ -8,8 +8,11 @@ import {
   resolveAppRouteForTenant,
   setMiniAppVisibility,
 } from "../services/appIdentityRepository";
+import { resolvePersonalMiniAppPreview } from "../services/personalMiniAppPreview";
 
-type AppIdentityService = Pick<typeof import("../services/appIdentityRepository"), "resolveAppRouteForTenant" | "resolveActiveAppByPublicId" | "createPrivateMiniAppIdentity" | "resolveMiniAppForViewer" | "setMiniAppVisibility">;
+type AppIdentityService = Pick<typeof import("../services/appIdentityRepository"), "resolveAppRouteForTenant" | "resolveActiveAppByPublicId" | "createPrivateMiniAppIdentity" | "resolveMiniAppForViewer" | "setMiniAppVisibility"> & {
+  resolvePersonalMiniAppPreview?: typeof resolvePersonalMiniAppPreview;
+};
 
 function authenticatedTenant(ctx: { user: { currentTenantId?: string | number | null } }) {
   const tenantId = String(ctx.user.currentTenantId ?? "").trim();
@@ -23,6 +26,7 @@ export function createAppIdentityRouter(service: AppIdentityService = {
   createPrivateMiniAppIdentity,
   resolveMiniAppForViewer,
   setMiniAppVisibility,
+  resolvePersonalMiniAppPreview,
 }) {
   return router({
     createMiniApp: protectedProcedure
@@ -63,11 +67,14 @@ export function createAppIdentityRouter(service: AppIdentityService = {
       .input(z.object({ appId: z.string().trim().min(1).max(128) }).strict())
       .query(async ({ ctx, input }) => {
         const user = ctx.user;
-        const app = await service.resolveMiniAppForViewer({
+        const viewer = {
           appId: input.appId,
           tenantId: user?.currentTenantId == null ? null : String(user.currentTenantId),
           userId: user?.id == null ? null : Number(user.id),
-        });
+        };
+        const app = service.resolvePersonalMiniAppPreview
+          ? await service.resolvePersonalMiniAppPreview(viewer)
+          : await service.resolveMiniAppForViewer(viewer);
         if (!app) throw new TRPCError({ code: "NOT_FOUND", message: "Mini App unavailable" });
         return app;
       }),

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+vi.mock("../services/personalMiniAppPreview", () => ({ resolvePersonalMiniAppPreview: vi.fn() }));
 import { createAppIdentityRouter } from "./appIdentity";
 import * as appIdentityRepository from "../services/appIdentityRepository";
 
@@ -127,6 +128,22 @@ describe("appIdentity runtime router", () => {
       tenantId: "tenant-owner",
       userId: 91,
     });
+  });
+
+  it("returns private artifact bytes to the owner and no app data to another user", async () => {
+    const resolvePersonalMiniAppPreview = vi.fn(async (viewer: any) => viewer.userId === 91 && viewer.tenantId === "tenant-owner"
+      ? { app: { appId: "app_private", visibility: "private" }, html: "<main>private bytes</main>", artifactDigest: "a".repeat(64) }
+      : null);
+    const service = {
+      resolveAppRouteForTenant: vi.fn(), resolveActiveAppByPublicId: vi.fn(), createPrivateMiniAppIdentity: vi.fn(),
+      resolveMiniAppForViewer: vi.fn(), setMiniAppVisibility: vi.fn(), resolvePersonalMiniAppPreview,
+    };
+    const owner = createAppIdentityRouter(service).createCaller({ user: { id: 91, currentTenantId: "tenant-owner" }, tenantId: "tenant-owner" } as any);
+    const other = createAppIdentityRouter(service).createCaller({ user: { id: 92, currentTenantId: "tenant-owner" }, tenantId: "tenant-owner" } as any);
+    await expect(owner.resolveMiniApp({ appId: "app_private" })).resolves.toMatchObject({ html: "<main>private bytes</main>" });
+    await expect(other.resolveMiniApp({ appId: "app_private" })).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(resolvePersonalMiniAppPreview).toHaveBeenNthCalledWith(1, { appId: "app_private", tenantId: "tenant-owner", userId: 91 });
+    expect(resolvePersonalMiniAppPreview).toHaveBeenNthCalledWith(2, { appId: "app_private", tenantId: "tenant-owner", userId: 92 });
   });
 
   it("permits the public resolver to serve published apps without a session", async () => {

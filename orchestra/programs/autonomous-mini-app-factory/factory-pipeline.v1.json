@@ -27,7 +27,7 @@
     { "id": "scaffold", "dependsOn": ["manifest_validate"], "inputs": ["validatedManifest"], "outputs": ["appSource", "ownershipMap"], "gate": "generated paths are app-scoped and do not overwrite unrelated work" },
     { "id": "data_migration", "dependsOn": ["manifest_validate", "scaffold"], "inputs": ["validatedManifest", "target"], "outputs": ["migrationSet", "rollbackPlan"], "gate": "migration scope and rollback or recovery behavior are declared" },
     { "id": "backend_actions", "dependsOn": ["scaffold", "data_migration"], "inputs": ["validatedManifest", "fixture"], "outputs": ["authenticatedActions", "authorizationTests"], "gate": "actions enforce tenant, project, app, and principal permissions" },
-    { "id": "ui_implementation", "dependsOn": ["scaffold", "backend_actions"], "profileDependsOn": { "PERSONAL_MINIAPP": ["scaffold"] }, "inputs": ["validatedManifest", "authenticatedActions"], "outputs": ["responsiveUI", "accessibilityEvidence"], "gate": "required user journeys and accessibility-critical interactions are covered" },
+    { "id": "ui_implementation", "dependsOn": ["scaffold", "backend_actions"], "profileDependsOn": { "PERSONAL_MINIAPP": [] }, "inputs": ["validatedManifest", "authenticatedActions"], "outputs": ["responsiveUI", "accessibilityEvidence"], "gate": "required user journeys and accessibility-critical interactions are covered" },
     { "id": "ai_capabilities", "dependsOn": ["backend_actions"], "inputs": ["capabilities", "fixture"], "outputs": ["capabilityBindings", "fallbackEvidence"], "gate": "provider absence or failure has a declared fallback or a scoped wait" },
     { "id": "background_jobs", "dependsOn": ["backend_actions", "data_migration"], "inputs": ["capabilities", "fixture"], "outputs": ["jobBindings", "retryIdempotencyEvidence"], "gate": "jobs use worker_jobs/outbox and prove retry, idempotency, and recovery" },
     { "id": "tests", "dependsOn": ["ui_implementation", "ai_capabilities", "background_jobs"], "inputs": ["appSource", "fixture"], "outputs": ["testEvidence"], "gate": "focused unit, authorization, isolation, action, job, and UI checks pass" },
@@ -42,8 +42,7 @@
   ],
   "profiles": {
     "PERSONAL_MINIAPP": {
-      "stages": ["requirements_intake", "spec_compile", "plan", "manifest_validate", "scaffold", "ui_implementation", "package", "deploy", "smoke", "trial_ready", "recovery"],
-      "trialReadyStage": "trial_ready"
+      "stages": ["ui_implementation", "package", "deploy", "smoke"]
     },
     "PLATFORM_SELF_DEVELOPMENT": {
       "stages": ["requirements_intake", "spec_compile", "plan", "manifest_validate", "scaffold", "data_migration", "backend_actions", "ui_implementation", "ai_capabilities", "background_jobs", "tests", "package", "deploy", "migrate", "smoke", "uat", "evidence", "recovery"]
@@ -58,5 +57,5 @@
     "scheduler": "Call the dependency-ready selector after each persisted WorkUnit checkpoint; enqueue execution through the existing worker_jobs/outbox path.",
     "prohibited": "Do not create a parallel stage database, queue, orchestrator, or finality authority."
   },
-  "completionRule": "PERSONAL_MINIAPP reaches USER_TRIAL_READY after a private runnable preview and primary journey smoke pass; skipped optional QA, migration, UAT, and release evidence remain explicitly incomplete. PLATFORM_SELF_DEVELOPMENT retains the full certification pipeline."
+  "completionRule": "PERSONAL_MINIAPP builds and binds a private static preview after owner-scoped runtime and isolation smoke checks. USER_TRIAL_READY is recorded only after independently verified real-browser primary journey evidence; skipped optional QA, migration, UAT, and release evidence remain explicitly incomplete. PLATFORM_SELF_DEVELOPMENT retains the full certification pipeline."
 }

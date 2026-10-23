@@ -50,23 +50,24 @@ describe("Mini App Factory pipeline evaluator", () => {
     ]));
   });
 
-  it("production worker composition uses the trusted Runner adapter and disables synthetic execution", async () => {
+  it("production worker composition keeps the Runner adapter and enables the scoped hosted personal executor", () => {
     const runtime = createMiniAppFactoryStageWorkerRuntime();
     expect(runtime.pipeline.stages).toHaveLength(pipeline.stages.length);
     expect(runtime.createRunnerStage).toEqual(expect.any(Function));
-    expect(runtime.allowSyntheticExecution).toBe(false);
-    await expect(runtime.executeStage("SPEC", { completedScope: [], artifacts: [], canonicalRevision: "a".repeat(40), attempt: 1 })).rejects.toThrow("FACTORY_SYNTHETIC_EXECUTION_DISABLED");
+    expect(runtime.allowHostedPersonalExecution).toBe(true);
+    expect(runtime.allowSyntheticExecution).toBeUndefined();
   });
 
   it("validates the checked-in DAG and selects only dependency-ready stages", () => {
     validateMiniAppFactoryPipeline(pipeline);
-    expect(selectReadyMiniAppFactoryStages(pipeline, workUnit())).toEqual(["requirements_intake"]);
-    expect(selectReadyMiniAppFactoryStages(pipeline, workUnit(["requirements_intake"]))).toEqual(["spec_compile", "recovery"]);
+    expect(selectReadyMiniAppFactoryStages(pipeline, workUnit())).toEqual(["ui_implementation"]);
+    expect(selectReadyMiniAppFactoryStages(pipeline, workUnit(["requirements_intake"]))).toEqual(["ui_implementation"]);
   });
 
-  it("keeps personal trial delivery independent from optional certification stages", () => {
+  it("keeps a personal private preview independent from optional certification stages", () => {
     const personal = new Set(pipeline.profiles?.PERSONAL_MINIAPP?.stages);
-    expect(personal.has("trial_ready")).toBe(true);
+    expect([...personal]).toEqual(["ui_implementation", "package", "deploy", "smoke"]);
+    expect(personal.has("trial_ready")).toBe(false);
     expect(personal.has("tests")).toBe(false);
     expect(personal.has("migrate")).toBe(false);
     expect(personal.has("uat")).toBe(false);
@@ -96,6 +97,6 @@ describe("Mini App Factory pipeline evaluator", () => {
       state: "UNSATISFIED",
       watcher: { watcherId: "watch-runtime", status: "ACTIVE", registeredAt: "2026-10-08T00:00:00.000Z" },
     });
-    expect(selectReadyMiniAppFactoryStages(pipeline, unit)).toEqual(["spec_compile", "recovery"]);
+    expect(selectReadyMiniAppFactoryStages(pipeline, unit, "PLATFORM_SELF_DEVELOPMENT")).toEqual(["spec_compile", "recovery"]);
   });
 });

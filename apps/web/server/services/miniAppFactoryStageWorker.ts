@@ -31,7 +31,12 @@ export type MiniAppFactoryStageWorkerRuntime = {
   }) => Promise<{ runId: string; jobId: string; created: boolean; state: "PENDING_AUTHORIZATION" }>;
   /** Test-only opt-in; production composition must use createRunnerStage. */
   allowSyntheticExecution?: boolean;
+  /** Hosted executor is permitted only for the PERSONAL_MINIAPP profile. */
+  allowHostedPersonalExecution?: boolean;
   executeStage: (stageId: string, context: {
+    runId: string;
+    tenantId: string;
+    actorId: number;
     completedScope: string[];
     artifacts: string[];
     canonicalRevision: string;
@@ -161,7 +166,7 @@ export function createMiniAppFactoryStageJobExecutor(
         pipeline: runtime.pipeline,
         service: runtime.service,
         run,
-        ...(runtime.createRunnerStage ? { createRunnerStage: runtime.createRunnerStage } : {}),
+        ...(runtime.createRunnerStage && parseMiniAppFactoryDurableState((await runtime.service.get(run)).run.metadata?.[MINI_APP_FACTORY_STATE_KEY]).profile === "PLATFORM_SELF_DEVELOPMENT" ? { createRunnerStage: runtime.createRunnerStage } : {}),
         createJob: job => createControlPlaneJob({ ...job, controlPlane }),
       });
       return next.jobId;
@@ -179,15 +184,18 @@ export function createMiniAppFactoryStageJobExecutor(
       const nextJobId = await enqueueNext();
       return { output: { stageId: input.stageId, state: "ALREADY_CHECKPOINTED", ...(nextJobId ? { nextJobId } : {}) } };
     }
-    const ready = selectReadyMiniAppFactoryStages(runtime.pipeline, unit);
+    const ready = selectReadyMiniAppFactoryStages(runtime.pipeline, unit, durableState.profile);
     if (ready[0] !== input.stageId) throw new Error("FACTORY_STAGE_JOB_NOT_NEXT_ELIGIBLE");
     await reporter.assertActive(lease);
-    if (runtime.createRunnerStage) {
+    if (durableState.profile === "PLATFORM_SELF_DEVELOPMENT" && runtime.createRunnerStage) {
       const stage = runtime.pipeline.stages.find(candidate => candidate.id === input.stageId)!;
       const child = await runtime.createRunnerStage({ pipeline: runtime.pipeline, stage, run });
       return { output: { stageId: input.stageId, state: "WAITING_AUTHORIZATION", childRunId: child.runId, jobId: child.jobId } };
     }
-    if (!runtime.allowSyntheticExecution) {
+    if (durableState.profile === "PERSONAL_MINIAPP" && !runtime.allowHostedPersonalExecution && !runtime.allowSyntheticExecution) {
+      throw new Error("FACTORY_HOSTED_PERSONAL_EXECUTOR_NOT_CONFIGURED");
+    }
+    if (durableState.profile === "PLATFORM_SELF_DEVELOPMENT" && !runtime.createRunnerStage && !runtime.allowSyntheticExecution) {
       const error = new Error("FACTORY_TRUSTED_RUNNER_ADAPTER_NOT_CONFIGURED") as Error & { class: "retryable"; diagnosticCode: string };
       error.class = "retryable";
       error.diagnosticCode = "FACTORY_TRUSTED_RUNNER_ADAPTER_NOT_CONFIGURED";
@@ -200,6 +208,9 @@ export function createMiniAppFactoryStageJobExecutor(
       run,
       maxStages: 1,
       executeStage: (stageId, stageContext) => runtime.executeStage(stageId, {
+        runId: run.runId,
+        tenantId: run.tenantId,
+        actorId: run.actorId,
         ...stageContext,
         attempt: context.attempt,
       }),

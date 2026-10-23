@@ -16,6 +16,7 @@ import { buildDevelopmentRun } from "../services/spec224DevelopmentRunContracts"
 import { createDevelopmentWorkUnit } from "../services/developmentLifecycleContracts";
 import { loadMiniAppFactoryPipeline, selectReadyMiniAppFactoryStages } from "../services/miniAppFactoryPipeline";
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../services/miniAppFactoryDurableState";
+import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
 import { createPrivateMiniAppIdentity } from "../services/appIdentityRepository";
 import {
   createDevelopmentRunService,
@@ -499,6 +500,80 @@ export const spec226DevelopmentControlRouter = router({
         .slice(0, 40);
       const runId = `run-${runDigest}`;
       try {
+        if (input.factoryMode) {
+          if (input.mode !== "prompt" || !input.prompt?.trim()) throw new Error("PERSONAL_MINIAPP_PROMPT_REQUIRED");
+          const sourceSha = getSpec224BackendRuntimeIdentity().runtimeRevision?.toLowerCase();
+          if (!sourceSha || !/^[a-f0-9]{40}$/.test(sourceSha)) throw new Error("MINI_APP_FACTORY_SOURCE_REVISION_REQUIRED");
+          const factoryPipeline = loadMiniAppFactoryPipeline();
+          const miniAppId = `app_${runDigest.slice(0, 24)}`;
+          const miniAppIdentity = await createPrivateMiniAppIdentity({
+            tenantId: scope.tenantId,
+            ownerUserId: scope.actorId,
+            idempotencyKey: `spec224:${runId}`,
+            preferredAppId: miniAppId,
+          });
+          const factoryState = createMiniAppFactoryDurableState({
+            programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+            miniAppId,
+            sourceSha,
+            profile: "PERSONAL_MINIAPP",
+          });
+          const workUnit = createDevelopmentWorkUnit({
+            workId: `factory-work-${runDigest}`,
+            projectId: `miniapp-${miniAppId}`,
+            repositoryId: `miniapp:${miniAppId}`,
+            source: { type: "prompt", ref: `spec224-run:${runId}` },
+            objective: input.prompt.trim(),
+            ownership: { actor: String(scope.actorId), session: `conversation:${input.conversationId}`, harness: "hosted-mini-app-factory" },
+            canonicalTarget: { kind: "artifact-revision", locator: `miniapp:${miniAppId}` },
+            baseRevision: `git:${sourceSha}`,
+          });
+          const profileStages = factoryPipeline.profiles?.PERSONAL_MINIAPP?.stages ?? factoryPipeline.stages.map(stage => stage.id);
+          workUnit.progress.state = "WORKING";
+          workUnit.progress.remainingScope = [...profileStages];
+          workUnit.progress.immediatelyRunnableScope = selectReadyMiniAppFactoryStages(factoryPipeline, workUnit, "PERSONAL_MINIAPP");
+          const run = buildDevelopmentRun({
+            runId,
+            ...scope,
+            goal: input.prompt.trim(),
+            repositoryRef: `miniapp:${miniAppId}`,
+            baseRevision: `git:${sourceSha}`,
+            contextPackHash: createHash("sha256").update(input.prompt.trim()).digest("hex"),
+            workspaceId: `miniapp-${miniAppId}`,
+            workUnit,
+            metadata: { [MINI_APP_FACTORY_STATE_KEY]: factoryState },
+          });
+          await developmentRunService.initialize({
+            run,
+            eventIdempotencyKey: `personal-miniapp:${runId}`,
+            scope,
+          });
+          const firstStage = await enqueueNextMiniAppFactoryStage({
+            pipeline: factoryPipeline,
+            service: developmentRunService,
+            run: { runId, tenantId: scope.tenantId, actorId: scope.actorId },
+          });
+          auditLogger.log({
+            eventType: "spec226_development_control" as AuditEventType,
+            traceId,
+            tenantId: scope.tenantId,
+            userId: scope.actorId,
+            metadata: { runId, jobId: firstStage.jobId, status: firstStage.state, profile: "PERSONAL_MINIAPP", appId: miniAppIdentity.appId },
+          });
+          return {
+            runId,
+            jobId: firstStage.jobId,
+            factoryStageRunId: runId,
+            factoryStageId: firstStage.stageId,
+            miniAppId: miniAppIdentity.appId,
+            previewUrl: `https://smartaihub.app/miniapp/${encodeURIComponent(miniAppIdentity.appId)}`,
+            state: "DISCOVERY" as const,
+            dispatchStatus: "ENQUEUED" as const,
+            inputDigest: createHash("sha256").update(input.prompt.trim()).digest("hex"),
+            specSetRevision: null,
+            workPackageId: "personal-miniapp",
+          };
+        }
         const prepared = await defaultSpec224WorkspaceSpecSetService.resolveWorkspaceRunInput({
           ...scope,
           conversationId: input.conversationId,

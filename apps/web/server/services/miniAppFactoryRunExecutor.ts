@@ -28,6 +28,7 @@ function assertArtifactRefs(artifacts: string[]): void {
 
 export type MiniAppFactoryStageOutput = {
   artifacts: string[];
+  deliveryMilestone?: "USER_TRIAL_READY";
 };
 
 export type MiniAppFactoryRunResult = {
@@ -107,7 +108,9 @@ export async function executeMiniAppFactoryStages(input: {
       artifacts,
     };
     const trialReadyStage = input.pipeline.profiles?.[profile]?.trialReadyStage;
-    const deliveryMilestone = stageId === trialReadyStage ? "USER_TRIAL_READY" as const : undefined;
+    const deliveryMilestone = stageId === trialReadyStage && output.deliveryMilestone === "USER_TRIAL_READY"
+      ? "USER_TRIAL_READY" as const
+      : undefined;
     const nextEligibleStages = selectReadyMiniAppFactoryStages(input.pipeline, checkpointProjection, profile);
     const nextFactoryState = durableState
       ? advanceMiniAppFactoryDurableState(durableState, { stageId, artifacts: output.artifacts, nextEligibleStages, deliveryMilestone })

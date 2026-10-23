@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   runnerInputStaging: { preStageRunnerInput: vi.fn(), bindSourceToWorkerJob: vi.fn() },
   analyzeVisualReferences: vi.fn(),
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
+  developmentRunService: { initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })) },
+  enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
   VisionUnavailableError: class MiniAppVisionCapabilityUnavailableError extends Error {},
   workspaceSafeActions: { enqueue: vi.fn(), status: vi.fn() },
 }));
@@ -48,9 +50,18 @@ vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
   createPersistedDevelopmentRun: (...args: unknown[]) =>
     mocks.createRun(...args),
   createDevelopmentRunService: () => ({
+    initialize: (...args: unknown[]) => mocks.developmentRunService.initialize(...args),
     requestFullVerification: (...args: unknown[]) => mocks.requestFullVerification(...args),
   }),
   defaultDevelopmentRunPersistenceAdapter: {},
+}));
+
+vi.mock("../../services/miniAppFactoryStageWorker", () => ({
+  enqueueNextMiniAppFactoryStage: (...args: unknown[]) => mocks.enqueueMiniAppStage(...args),
+}));
+
+vi.mock("../../services/spec224BackendRuntimeIdentity", () => ({
+  getSpec224BackendRuntimeIdentity: () => ({ environment: "test", runtimeRevision: "a".repeat(40), instanceId: "test" }),
 }));
 
 vi.mock("../../services/spec224DeveloperFastLane", () => ({
@@ -207,56 +218,24 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.workspaceSpecSets.prepareWorkspaceRun).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "tenant-acme", actorId: 42, conversationId: 8, mode: "spec_set" }));
   });
 
-  it("starts Mini App Factory requirements_intake on the same run and carries the authorized screenshot input", async () => {
-    mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
-      workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },
-      runner: { runnerId: "runner-a", snapshotRevision: "snap-1", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64) },
-      goal: "Create a settings Mini App",
-      planId: "plan:ready",
-      planRevision: 1,
-      contextPackHash: "b".repeat(64),
-      repositoryRef: "runner:runner-a/workspace-a",
-      baseRevision: `git:${"a".repeat(40)}`,
-      specSetRevision: null,
-      workPackageId: null,
-      allowedWriteSet: ["**"],
-      inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from("Create a settings Mini App").toString("base64") }],
-    });
-    const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-    const visualBlueprint = {
-      schemaVersion: "mini-app-visual-blueprint.v1",
-      summary: "Settings page with a narrow left navigation and profile form.",
-      pages: [{ page: "Settings home", referenceIds: ["ref-1"], state: "default", viewport: "desktop", layout: "Left navigation and form panel", hierarchy: ["Settings title", "Profile form"], components: [{ name: "Profile form", placement: "Main column" }] }],
-      designTokens: [{ name: "surface", value: "warm white", role: "page background" }],
-      responsiveTargets: [{ viewport: "mobile", changes: ["Collapse left navigation"] }],
-      confidence: 0.9,
-    };
-    mocks.analyzeVisualReferences.mockResolvedValueOnce({ blueprint: visualBlueprint, modelId: "enabled/test-vision", creditsUsed: 1, inputDigest: "e".repeat(64) });
-    mocks.runnerInputStaging.preStageRunnerInput.mockResolvedValueOnce({ inputSourceRef: "spec224-source:factory", inputDigest: "c".repeat(64), totalBytes: png.length, files: [] });
-    mocks.createRun.mockImplementationOnce(async (value: any) => ({ run: value.run, jobRef: { jobId: "canonical-factory-job", created: true } }));
-    mocks.runnerInputStaging.bindSourceToWorkerJob.mockResolvedValueOnce(undefined);
-
+  it("starts a personal Mini-App on hosted worker_jobs without resolving a Runner workspace", async () => {
     const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
       ctx: CTX,
       input: {
         conversationId: 8,
         mode: "prompt",
         factoryMode: true,
-        prompt: "Create a settings Mini App",
+        prompt: "Create a personal expense tracker",
         idempotencyKey: "spec224-factory-screenshot-key-0001",
-        visualReferences: [{ id: "ref-screen", type: "image", sourceRef: "ref-screen", pageHint: "Settings home", stateHint: "default", rights: "user_owned", assetReuseAllowed: false }],
-        visualFiles: [{ referenceId: "ref-screen", fileName: "settings.png", mimeType: "image/png", contentBase64: png.toString("base64") }],
-        designPreferences: { similarityMode: "close", devices: ["desktop"] },
       },
     });
-
     expect(result).toMatchObject({
-      jobId: "canonical-factory-job",
+      jobId: "hosted-factory-job",
       factoryStageRunId: result.runId,
-      factoryStageId: "requirements_intake",
+      factoryStageId: "ui_implementation",
       miniAppId: expect.stringMatching(/^app_/),
       previewUrl: `https://smartaihub.app/miniapp/${result.miniAppId}`,
-      dispatchStatus: "PENDING_AUTHORIZATION",
+      dispatchStatus: "ENQUEUED",
     });
     expect(mocks.createMiniAppIdentity).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: "tenant-acme",
@@ -264,33 +243,18 @@ describe("spec226DevelopmentControlRouter", () => {
       idempotencyKey: `spec224:${result.runId}`,
       preferredAppId: result.miniAppId,
     }));
-    const stagedBlueprint = mocks.runnerInputStaging.preStageRunnerInput.mock.calls[0]![0].files.find((file: any) => file.path === "visual-blueprint.json");
-    expect(stagedBlueprint).toBeDefined();
-    expect(JSON.parse(Buffer.from(stagedBlueprint.contentBase64, "base64").toString("utf8"))).toEqual(visualBlueprint);
-    const stageDocument = JSON.parse(Buffer.from(mocks.runnerInputStaging.preStageRunnerInput.mock.calls[0]![0].files.find((file: any) => file.path === "mini-app-factory-stage.json").contentBase64, "base64").toString("utf8"));
-    expect(stageDocument).toMatchObject({ visualBlueprintRequired: true, visualBlueprintModelId: "enabled/test-vision", visualBlueprintSource: "enabled-vision-model" });
-    expect(mocks.analyzeVisualReferences).toHaveBeenCalledWith(expect.objectContaining({
-      userId: 42,
-      tenantId: "tenant-acme",
-      runId: result.runId,
-      references: [expect.objectContaining({ id: "ref-screen", pageHint: "Settings home", contentBase64: png.toString("base64") })],
-    }));
-    expect(mocks.runnerInputStaging.preStageRunnerInput).toHaveBeenCalledWith(expect.objectContaining({
-      files: expect.arrayContaining([
-        expect.objectContaining({ path: "visual-reference-manifest.json" }),
-        expect.objectContaining({ path: "design-references/ref-1.png" }),
-        expect.objectContaining({ path: "mini-app-factory-stage.json" }),
-      ]),
-    }));
-    expect(mocks.createRun).toHaveBeenCalledWith(expect.objectContaining({ run: expect.objectContaining({
-      workUnit: expect.objectContaining({ progress: expect.objectContaining({ remainingScope: expect.arrayContaining(["requirements_intake", "ui_implementation"]) }) }),
-      metadata: expect.objectContaining({
-        miniAppFactoryProgramState: expect.objectContaining({ miniAppId: expect.stringMatching(/^app_/) }),
-        miniAppFactoryStage: expect.objectContaining({ parentRunId: result.runId, stageId: "requirements_intake" }),
-        spec224VisualBlueprint: expect.objectContaining({ schemaVersion: "mini-app-visual-blueprint.v1", modelId: "enabled/test-vision", inputDigest: "e".repeat(64) }),
-        spec224Input: expect.objectContaining({ inputSourceRef: "spec224-source:factory" }),
+    expect(mocks.developmentRunService.initialize).toHaveBeenCalledWith(expect.objectContaining({
+      run: expect.objectContaining({
+        goal: "Create a personal expense tracker",
+        metadata: expect.objectContaining({ miniAppFactoryProgramState: expect.objectContaining({ profile: "PERSONAL_MINIAPP" }) }),
+        workUnit: expect.objectContaining({ progress: expect.objectContaining({ remainingScope: ["ui_implementation", "package", "deploy", "smoke"] }) }),
       }),
-    }) }));
+    }));
+    expect(mocks.enqueueMiniAppStage).toHaveBeenCalledWith(expect.objectContaining({
+      run: expect.objectContaining({ runId: result.runId, tenantId: "tenant-acme", actorId: 42 }),
+    }));
+    expect(mocks.workspaceSpecSets.resolveWorkspaceRunInput).not.toHaveBeenCalled();
+    expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
   });
 
   it("starts a prompt run from server-derived workspace facts and stages bytes before canonical admission", async () => {
