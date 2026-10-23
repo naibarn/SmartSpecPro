@@ -1368,3 +1368,40 @@ Video Editor bridge (F133F), Vertical Drama export adapter (§8.5).
 ## Appendix B. Version History
 
 - 0.1 (2026-07-12) — initial proposal, research-grounded.
+
+## Appendix C. Code-driven Motion / Mediabunny additive alignment (2026-10-23)
+
+**Status:** forward-looking design alignment only; not implementation or
+production acceptance. The current authoring and ownership contract remains
+Feature 133's \`VideoProjectDocument\`, motion template registry, project
+revisions, Brand Kit, asset resolver, Remotion adapter and job/artifact flow.
+Specs 143/184/193/202/203 retain their existing editor/timeline/worker roles.
+Spec 286 §§165–167 owns template-first AI motion selection, prompt-recipe
+rights, generated-code sandbox, creative QC, reproducible frame rendering,
+and optional Mediabunny-backed encode/export qualification.
+
+Feature 133 SHALL allow vetted **adapter-backed code motion** (Canvas,
+SVG/GSAP, Three.js/WebGL, and approved headless HTML/CSS capture) by
+referencing a reviewed, immutable motion candidate or asset through existing
+\`VideoProjectDocument\` extension mechanisms. It MUST NOT persist arbitrary
+user/AI JavaScript as the canonical project, replace the timeline with
+renderer-specific source, duplicate the template registry, or bypass the
+existing compile/security/revision/asset contracts. The physical optional
+extension field/asset mapping MUST be resolved against latest source before
+code change; this appendix does not declare a migration or alter frozen
+legacy Remotion payload schemas.
+
+Mediabunny is an optional **media read/encode/mux/conversion adapter**, not an
+alternate product, React compositor or guaranteed zero-FFmpeg cloud runtime.
+Render routing SHALL remain capability- and policy-driven; unsupported
+browser codec, audio/subtitle, color, resource or container configurations
+must preserve existing Remotion/FFmpeg fallback and the authorized cloud/
+Runner lane. Browser preview and permitted local export must not change
+Cloudflare render billing or job/tenant policies silently. User-visible
+Motion Studio remains unified and editable with preview/final parity,
+Thai audio/captions, scoped repair and cross-device review.
+
+Normative detailed requirements and D–K acceptance fixtures are in Spec
+286 §167, and existing WP0.4 golden A/B/C remain required. This is an
+additive cross-spec alignment, not evidence that the new adapter has shipped.
+
