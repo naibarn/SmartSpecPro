@@ -542,8 +542,8 @@ export async function bindSpec224RecoveryGrant(input: {
 
   const payload = createSpec224RecoveryGrantBindingPayload({
     grantId: input.grantId,
-    grantVersion: validation.grantVersion,
-    scopeDigest: validation.scopeDigest,
+    grantVersion: validation.grantVersion!,
+    scopeDigest: validation.scopeDigest!,
     canonical,
     operation: input.operation,
     path: input.path,

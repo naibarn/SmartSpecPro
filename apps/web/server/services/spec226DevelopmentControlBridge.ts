@@ -156,8 +156,8 @@ function databaseRunList(): Spec226DevelopmentRunList {
         .where(and(...predicates))
         .orderBy(desc(workerJobs.createdAt))
         .limit(limit);
-      return rows.flatMap(row => {
-        const projection = row.progressJson?.spec224;
+      return rows.flatMap((row: { progressJson: unknown }) => {
+        const projection = asRecord(row.progressJson)?.spec224;
         if (
           !projection ||
           typeof projection !== "object" ||

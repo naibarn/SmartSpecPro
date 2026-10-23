@@ -401,9 +401,9 @@ async function loadRun(
         )
       )
       .limit(100);
-    job = rows.find(candidate => {
-      const projection = asRecord(candidate.progressJson?.spec224);
-      const inputRun = asRecord(candidate.inputJson?.spec224Run);
+    job = rows.find((candidate: { progressJson: unknown; inputJson: unknown }) => {
+      const projection = asRecord(asRecord(candidate.progressJson)?.spec224);
+      const inputRun = asRecord(asRecord(candidate.inputJson)?.spec224Run);
       return projection?.runId === runId || inputRun?.runId === runId;
     });
   }
@@ -554,6 +554,7 @@ function reserveInput(
       resourceRef: `spec224:${loaded.run.runId}`,
       amount: { minorUnits: amountMinorUnits, currency: normalizedCurrency },
       policyVersion: "spec224-authorization-binding-v1",
+      createdAt: new Date().toISOString(),
     },
     journalDescription: `Reserve Spec 224 Codex execution ${loaded.run.runId}`,
     journalLines: [
@@ -849,7 +850,7 @@ export function createSpec224AuthorizationService() {
       )
         throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_MISMATCH");
       const hold = await reserveEconomicHold(
-        db,
+        db.instance,
         reserveInput(
           input.context,
           loaded,
@@ -942,7 +943,7 @@ export function createSpec224AuthorizationService() {
           },
         ],
       };
-      await releaseEconomicHold(db, releaseInput);
+      await releaseEconomicHold(db.instance, releaseInput);
       const runtime = await getAppRuntimeConfig();
       const response = await fetch(
         `${runtime.pythonBackendUrl}/api/v1/approvals/requests/${encodeURIComponent(input.approvalRef)}/cancel`,

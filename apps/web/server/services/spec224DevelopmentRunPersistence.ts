@@ -1529,7 +1529,7 @@ function eventFromRow(row: {
 
 function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
   return {
-    async transaction<T>(work) {
+    async transaction<T>(work: (tx: DevelopmentRunPersistenceTx) => Promise<T>) {
       getDb();
       return db.transaction(async query => {
         const findRow = async (

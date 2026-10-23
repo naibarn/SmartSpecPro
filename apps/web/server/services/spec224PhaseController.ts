@@ -171,7 +171,7 @@ export async function createAndBindNextPhase(
   const commandIdempotencyKey = normalizedEventIdempotencyKey(
     input.idempotencyKey
   );
-  let admittedJob: JobRef | null = null;
+  const admission = { job: undefined as JobRef | undefined };
   try {
     return await input.persistence.transaction(async tx => {
       const record = await tx.load(input.runId, scope);
@@ -235,7 +235,7 @@ export async function createAndBindNextPhase(
         ...(isRecovery ? { retryAttempt: phaseRun.phaseAttempt } : {}),
       });
       const canonicalJobId = stableCanonicalJobId(jobIdempotencyKey);
-      admittedJob = await createControlPlaneJob({
+      admission.job = await createControlPlaneJob({
         context: {
           tenantId: record.run.tenantId,
           actorType: "user",
@@ -262,6 +262,7 @@ export async function createAndBindNextPhase(
         createOptions: { runtimeType: "external_runtime", canonicalJobId },
       });
 
+      const admittedJob = admission.job!;
       const bound = bindWorkerJob(temporaryRun, admittedJob.jobId);
       const recorded = recordDevelopmentEvent(bound, {
         eventId: eventIdFor(record.run.runId, commandIdempotencyKey),
@@ -295,10 +296,10 @@ export async function createAndBindNextPhase(
       };
     });
   } catch (error) {
-    if (admittedJob?.created) {
+    if (admission.job?.created) {
       throw new Spec224PhaseControllerError(
         "PHASE_ADMISSION_BIND_UNCERTAIN",
-        admittedJob.jobId
+        admission.job.jobId
       );
     }
     throw error;

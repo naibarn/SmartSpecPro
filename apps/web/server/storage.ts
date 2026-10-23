@@ -421,9 +421,6 @@ async function readS3ObjectBytes(config: S3Config, key: string): Promise<Buffer>
   // Node's AWS SDK body is an async iterable. Prefer it so an unexpected large
   // object cannot be buffered into memory before the size limit is checked.
   if (typeof body[Symbol.asyncIterator] !== "function" && typeof body.transformToByteArray === "function") {
-    if (!Number.isSafeInteger(contentLength) || contentLength! < 0) {
-      throw new Error("STORAGE_OBJECT_CONTENT_SIZE_UNKNOWN");
-    }
     const bytes = Buffer.from(await body.transformToByteArray());
     if (bytes.byteLength > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
     return bytes;
@@ -460,7 +457,9 @@ async function s3StoragePutIfAbsent(
     return { key, url: `/api/storage/files/${encodeURI(key)}`, created: true };
   } catch (error: any) {
     const status = error?.$metadata?.httpStatusCode;
-    if (status !== 412 && error?.name !== "PreconditionFailed") throw error;
+    const isPreconditionFailure =
+      error?.name === "PreconditionFailed" || error?.Code === "PreconditionFailed";
+    if (status !== 412 || !isPreconditionFailure) throw error;
     const existing = await readS3ObjectBytes(config, key);
     if (!existing.equals(body)) throw new Error("STORAGE_OBJECT_CONTENT_CONFLICT");
     return { key, url: `/api/storage/files/${encodeURI(key)}`, created: false };
@@ -763,6 +762,116 @@ export async function storagePutIfAbsent(
     case "forge":
       throw new Error("STORAGE_CONDITIONAL_CREATE_UNSUPPORTED");
   }
+}
+
+/** Conditional content-addressed write using an explicitly scoped S3 client. */
+export async function storagePutContentAddressedIfAbsentWithClient(
+  access: ContentAddressedS3Access,
+  namespace: string,
+  data: Buffer | Uint8Array,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; sha256: string }> {
+  const bytes = Buffer.from(data);
+  if (bytes.byteLength < 1 || bytes.byteLength > MAX_IMMUTABLE_OBJECT_BYTES) {
+    throw new Error("STORAGE_IMMUTABLE_OBJECT_SIZE_INVALID");
+  }
+  const digest = crypto.createHash("sha256").update(bytes).digest("hex");
+  const key = normalizeKey(`${namespace}/sha256/${digest}`);
+  const config: S3Config = {
+    provider: "s3",
+    storageKind: "s3",
+    client: access.client,
+    bucket: access.bucket,
+    publicUrlPrefix: null,
+  };
+  const stored = await s3StoragePutIfAbsent(config, key, bytes, contentType);
+  if (stored.created) {
+    const readback = await readS3ObjectBytes(config, key);
+    if (!readback.equals(bytes)) throw new Error("STORAGE_CONTENT_ADDRESS_VERIFY_FAILED");
+  }
+  return { key, sha256: digest };
+}
+
+/** Writes a content-addressed object through the active shared S3/R2 provider. */
+export async function storagePutContentAddressedIfAbsent(
+  namespace: string,
+  data: Buffer | Uint8Array | string,
+  contentType = "application/octet-stream",
+): Promise<{ key: string; url: string; sha256: string }> {
+  const config = await getActiveStorageConfig();
+  if (config.provider !== "s3") {
+    throw new Error("STORAGE_CONDITIONAL_CREATE_UNSUPPORTED");
+  }
+  let stored: { key: string; sha256: string };
+  try {
+    stored = await storagePutContentAddressedIfAbsentWithClient(
+      { client: config.client, bucket: config.bucket },
+      namespace,
+      Buffer.from(data),
+      contentType,
+    );
+  } catch (error: any) {
+    if (error?.message === "STORAGE_OBJECT_CONTENT_CONFLICT" || error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+      throw new Error("STORAGE_CONTENT_ADDRESS_CONFLICT");
+    }
+    throw error;
+  }
+  return {
+    ...stored,
+    url: `/api/storage/files/${encodeURI(stored.key)}`,
+  };
+}
+
+/** Reads object metadata through an explicitly scoped S3 client. */
+export async function storageHeadContentAddressedWithClient(
+  access: ContentAddressedS3Access,
+  objectKey: string,
+): Promise<{ contentLength?: number; etag?: string } | null> {
+  const key = normalizeKey(objectKey);
+  try {
+    const response = await access.client.send(
+      new HeadObjectCommand({ Bucket: access.bucket, Key: key }),
+    );
+    return { contentLength: response.ContentLength, etag: response.ETag };
+  } catch (error: any) {
+    if (error?.name === "NotFound" || error?.name === "NoSuchKey" || error?.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/** Reads immutable object bytes through an explicitly scoped S3 client. */
+export async function storageReadBufferWithClient(
+  access: ContentAddressedS3Access,
+  objectKey: string,
+): Promise<Buffer> {
+  const key = normalizeKey(objectKey);
+  const result = await access.client.send(
+    new GetObjectCommand({ Bucket: access.bucket, Key: key }),
+  );
+  const body = result.Body as { transformToByteArray?: () => Promise<Uint8Array> } & AsyncIterable<Uint8Array> | undefined;
+  if (!body) throw new Error("STORAGE_OBJECT_CONTENT_CONFLICT");
+  if (typeof result.ContentLength === "number" && result.ContentLength > MAX_IMMUTABLE_OBJECT_BYTES) {
+    throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+  }
+  if (typeof body[Symbol.asyncIterator] === "function") {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of body) {
+      const bytes = Buffer.from(chunk);
+      size += bytes.length;
+      if (size > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+      chunks.push(bytes);
+    }
+    return Buffer.concat(chunks);
+  }
+  if (typeof body.transformToByteArray !== "function") {
+    throw new Error("STORAGE_OBJECT_CONTENT_UNREADABLE");
+  }
+  const bytes = Buffer.from(await body.transformToByteArray());
+  if (bytes.length > MAX_IMMUTABLE_OBJECT_BYTES) throw new Error("STORAGE_IMMUTABLE_OBJECT_TOO_LARGE");
+  return bytes;
 }
 
 async function readFileChunk(

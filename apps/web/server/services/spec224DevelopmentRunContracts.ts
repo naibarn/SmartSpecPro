@@ -714,6 +714,7 @@ export async function enqueueDevelopmentHarnessJob(input: {
   jobRef: JobRef;
   manifest: AgentTaskManifest;
   definition: ReturnType<typeof buildAgentJobDefinition>;
+  run: DevelopmentRun;
 }> {
   const prepared = buildDevelopmentHarnessJob(input);
   const jobRef = await createControlPlaneJob({

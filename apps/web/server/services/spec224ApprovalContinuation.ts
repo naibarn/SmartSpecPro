@@ -204,7 +204,16 @@ export function createSpec224ExternalApprovalAuthority() {
       const body = await response.json().catch(() => ({})) as {
         status?: string;
         correlation?: Record<string, unknown>;
-        delivery?: { event?: Record<string, unknown>; canonicalPayload?: string; payloadDigest?: string; state?: string; receipt?: Record<string, unknown> | null } | null;
+        delivery?: {
+          event?: Record<string, unknown>;
+          canonicalPayload?: string;
+          payloadDigest?: string;
+          state?: string;
+          receipt?: Record<string, unknown> | null;
+          leaseOwner?: string;
+          leaseEpoch?: number;
+          leaseExpiresAt?: string;
+        } | null;
       };
       const delivery = body.delivery;
       if (!delivery?.event || typeof delivery.canonicalPayload !== "string" || typeof delivery.payloadDigest !== "string") {
@@ -395,9 +404,11 @@ export function createSpec224ApprovalContinuation(
       const event = delivery?.event;
       if (!delivery || !event || typeof event.deliveryId !== "string" || typeof event.decisionEpoch !== "number")
         return "operator_review";
+      const leaseOwner = input.leaseOwner;
+      const leaseEpoch = input.leaseEpoch;
       if (
-        !input.leaseOwner || !Number.isSafeInteger(input.leaseEpoch) || Number(input.leaseEpoch) < 1
-        || delivery.leaseOwner !== input.leaseOwner || delivery.leaseEpoch !== input.leaseEpoch
+        typeof leaseOwner !== "string" || !Number.isSafeInteger(leaseEpoch) || typeof leaseEpoch !== "number" || leaseEpoch < 1
+        || delivery.leaseOwner !== leaseOwner || delivery.leaseEpoch !== leaseEpoch
       ) return "ignored";
       const deliveryId = event.deliveryId;
       const payloadDigest = delivery.payloadDigest;
@@ -438,8 +449,8 @@ export function createSpec224ApprovalContinuation(
           tenantId: input.tenantId,
           jobId: input.jobId,
           operationId: input.operationId,
-          leaseOwner: input.leaseOwner,
-          leaseEpoch: input.leaseEpoch,
+          leaseOwner,
+          leaseEpoch,
           deliveryId,
           payloadDigest,
           receipt: recoveredReceipt,
@@ -518,7 +529,8 @@ export function createSpec224ApprovalContinuation(
         result = "operator_review";
       } else {
         if (record.status !== "approved" && record.status !== "rejected") return "operator_review";
-        if (!Number.isSafeInteger(record.approverId) || (record.approverId ?? 0) <= 0)
+        const approverId = record.approverId;
+        if (typeof approverId !== "number" || !Number.isSafeInteger(approverId) || approverId <= 0)
           return "operator_review";
         const resolved = await deps.controlPlane.resolveComputerUseApproval({
           jobId: correlation.jobId,
@@ -531,7 +543,7 @@ export function createSpec224ApprovalContinuation(
           actionId: correlation.actionId,
           runnerSessionId: correlation.runnerSessionId,
           fencingVersion: correlation.fencingVersion,
-          approverId: record.approverId,
+          approverId,
           schemaVersion: "spec224.approval-decision.v1",
           deliveryId,
           decisionEpoch: event.decisionEpoch,
@@ -586,8 +598,8 @@ export function createSpec224ApprovalContinuation(
         tenantId: input.tenantId,
         jobId: input.jobId,
         operationId: input.operationId,
-        leaseOwner: input.leaseOwner,
-        leaseEpoch: input.leaseEpoch,
+        leaseOwner: input.leaseOwner!,
+        leaseEpoch: input.leaseEpoch!,
         deliveryId,
         payloadDigest,
         receipt,
