@@ -907,7 +907,7 @@
     "next_action": "The exact-0395 migration path is now implemented and fail-closed at the production GitHub environment boundary. Repository Owner must configure production required reviewers to the Database Owner team only, enable prevent-self-review, restrict environment branch policy to main, and set SPEC224_DATABASE_OWNER_TEAM_ID to that exact team ID. Current read-only observation found no protection rules or branch policy, so do not dispatch migration. Once provisioned, require the Database Owner decision reference, run the workflow, verify its database-side and external receipts plus external_runtime enum postcondition, then resume authenticated startWorkspaceRun and exact Windows Runner admission/certification/lease/Recovery Grant/dispatch/settlement/Final Verify. Source Trust approval remains a separate blocker.",
     "next_ready_workunit": "WAITING_EXTERNAL_AUTHORITY: repository owner must provision the exact Database Owner team reviewer and main-only branch policy for GitHub environment production, prevent self-review, and set SPEC224_DATABASE_OWNER_TEAM_ID to the configured team ID. Current environment has no reviewer protection and no deployment branch policy. No production migration may run until the guard reports READY and the owner approval reference is available.",
     "reactivation_predicate": "Resume only after read-only GitHub environment verification returns exactly one required-reviewers rule containing only the configured Database Owner team, prevent_self_review=true, exactly one production branch policy named main, and SPEC224_DATABASE_OWNER_TEAM_ID matches that team. Then an authorized Database Owner reviews the workflow deployment; targeted migration must pass exact database fingerprint, migration-ledger drift, concurrency, and enum postcondition checks. If any preflight blocks, do not widen the migration set.",
-    "resume_point": "Latest integrated recovery code at 6a1c12f2b1409d3ef0bb3a26cefbb960784563ae: production 0395 gate now requires the GitHub production environment to be protected by the configured Database Owner team, self-review disabled, and main-only branch policy. Focused gate and migration tests passed 19/19. Current environment observation remains unprotected (no reviewers/branch policy), so no workflow or production DB operation was run. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-production-migration-authority-gate-20261023.md. After repository-owner configuration and actual owner review, execute only 0395 and verify receipt/postcondition; then continue exact-run SPEC-224 Runner acceptance. Existing Source Trust and Runner authority blockers remain open.",
+    "resume_point": "Latest integrated recovery code is at 6a1c12f2b1409d3ef0bb3a26cefbb960784563ae. Build recovery at exact main SHA ff5ad9c6dec780548a9f93c88157a09fada81bf3 produced the Vite web/widget output, verified Linux backend runtime package, and local Cloudflare staging bundle (digest 714b54d1098651d3144ccca423cc1e3caa54d92380972d027c8745965515aa49; 2 modules/1593 assets). The canonical builder receipt remains BUILD_FAILED because /mnt/SmartSpecDev exhausted temporary capacity; backend packaging was rerun successfully using ExpansionHD temp storage. No service promotion, Cloudflare publish, production migration, or production DB operation occurred. CI 39897733162 has turbo_build and python failures while desktop_app and smartspecweb remain pending. SPEC-224 is incomplete: repository Owner must provision the protected Database Owner review policy/team ID before exact migration 0395; Source Trust and Windows Runner authority/admission/dispatch/settlement/Final Verify remain open. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-canonical-build-recovery-20261023.md and spec224-production-migration-authority-gate-20261023.md.",
     "waiting_predicate": "Resume Source Trust adapter/runtime integration when an authenticated Platform/Security approval record supplies exact non-production issuer workload identity/owner/entrypoint, signing operation/key ID/fingerprint and rotation/revocation, storage provider/account/bucket/prefix and separate writer/read-only verifier identities, isolation/readback evidence, tenant/project/profile scope, TTL/clock skew/replay/retention/incident owner, budget limits and durable audit reference. Then verify signed evidence against a fresh authenticated Windows Runner/session/profile/workspace crosswalk, Tenant scope, job/attempt/lease/fencing/idempotency before a single authorized dispatch."
   },
   "continuation_assessment": {
@@ -1148,7 +1148,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 135,
+  "generation": 136,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -2816,7 +2816,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T03:56:50.636585Z",
+  "updated_at": "2026-10-23T04:12:44.258748Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3118,13 +3118,20 @@
         "scope": "Integrated fail-closed guard for targeted production migration 0395 at exact main SHA 6a1c12f2b1409d3ef0bb3a26cefbb960784563ae. Guard requires exactly the configured Database Owner reviewer team, prevents self-review, and restricts production environment branch policy to main. Focused tests passed 19/19; actual GitHub environment currently has no reviewer or branch policy, so the guard blocks. No migration or production DB connection was attempted.",
         "source_sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_CANONICAL_BUILD_RECOVERY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-canonical-build-recovery-20261023.md",
+        "scope": "Exact main source ff5ad9c6dec780548a9f93c88157a09fada81bf3 produced a Vite web/widget build, Linux backend package, and Cloudflare staging bundle in the isolated canonical workspace. The canonical build receipt remains BUILD_FAILED/exit 1 after /mnt/SmartSpecDev ran out of temporary capacity; backend packaging was rerun successfully with TMPDIR on ExpansionHD. Cloudflare bundle digest 714b54d1098651d3144ccca423cc1e3caa54d92380972d027c8745965515aa49 (2 modules, 1593 assets), local artifact only. No deploy or production promotion. CI run 39897733162 still in progress with turbo_build and python failed and desktop_app/smartspecweb pending.",
+        "source_sha": "ff5ad9c6dec780548a9f93c88157a09fada81bf3",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "6a1c12f2b1409d3ef0bb3a26cefbb960784563ae",
+    "sha": "ff5ad9c6dec780548a9f93c88157a09fada81bf3",
     "status": "PARTIAL",
     "task_regressions": []
   }

@@ -280,36 +280,6 @@
       "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare",
-      "priority": "R1_RUNTIME_REFERENCE",
-      "record_key": "canonical:specs/feature/219-managed-tenant-runtime-deployment-cloudflare",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 6,
-        "TEST": 1
-      },
-      "spec_id": "219"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/220-tenant-data-capability-security-gateway",
-      "priority": "R1_RUNTIME_REFERENCE",
-      "record_key": "canonical:specs/feature/220-tenant-data-capability-security-gateway",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 2,
-        "TEST": 3
-      },
-      "spec_id": "220"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/221-smartaihub-skill-engineering-framework",
       "priority": "R1_RUNTIME_REFERENCE",
       "record_key": "canonical:specs/feature/221-smartaihub-skill-engineering-framework",
@@ -574,21 +544,6 @@
         "TEST": 1
       },
       "spec_id": "217"
-    },
-    {
-      "authority": "UNRESOLVED",
-      "confidence": "LOW",
-      "declared_claim_count": 8,
-      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
-      "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0",
-      "priority": "R2_TEST_REFERENCE",
-      "record_key": "canonical:specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0",
-      "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 0,
-        "SOURCE": 0,
-        "TEST": 2
-      },
-      "spec_id": "261"
     },
     {
       "authority": "UNRESOLVED",
@@ -3010,6 +2965,36 @@
       "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/219-managed-tenant-runtime-deployment-cloudflare",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "219"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/220-tenant-data-capability-security-gateway",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/220-tenant-data-capability-security-gateway",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "220"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/223-zcode-external-harness-adapter",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/223-zcode-external-harness-adapter",
@@ -3443,6 +3428,21 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
+      "declared_claim_count": 8,
+      "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
+      "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "261"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
       "declared_claim_count": 1,
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/264-emergency-hazard-intelligence-temporal-observation-impact-coordination-extension",
@@ -3824,7 +3824,7 @@
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations",
       "reference_counts": {
-        "DOCUMENTATION_OR_CONFIG": 4,
+        "DOCUMENTATION_OR_CONFIG": 0,
         "SOURCE": 0,
         "TEST": 0
       },
@@ -3919,6 +3919,21 @@
         "TEST": 0
       },
       "spec_id": "308"
+    },
+    {
+      "authority": "UNRESOLVED",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Recover the original R1.0 source; route each of the seven G1 decisions to its owner; continue only independent offline contract work while live gates stay closed.",
+      "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "310"
     },
     {
       "authority": "UNRESOLVED",
