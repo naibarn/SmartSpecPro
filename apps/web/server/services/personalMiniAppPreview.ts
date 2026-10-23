@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { appIdentities } from "../../drizzle/schema";
+import { appIdentities, workerJobs } from "../../drizzle/schema";
 import { getDb } from "../db";
 import {
   storagePutContentAddressedIfAbsent,
@@ -37,6 +37,72 @@ const GENERATED_APP_SCHEMA = z
   .strict();
 
 export type GeneratedPersonalMiniApp = z.infer<typeof GENERATED_APP_SCHEMA>;
+
+export type PersonalMiniAppRepository = {
+  mode: "SMARTAIHUB_MANAGED";
+  owner: string;
+  name: string;
+  url: string;
+  revision: string;
+};
+
+export async function provisionManagedMiniAppRepository(input: {
+  appId: string;
+  sourceJson: string;
+}): Promise<PersonalMiniAppRepository | null> {
+  const token = process.env.SMARTAIHUB_MINIAPP_GITHUB_TOKEN;
+  if (!token) return null;
+  const headers = {
+    Accept: "application/vnd.github+json",
+    Authorization: `Bearer ${token}`,
+    "X-GitHub-Api-Version": "2022-11-28",
+    "Content-Type": "application/json",
+  };
+  const api = async (path: string, init?: RequestInit) => {
+    const response = await fetch(`https://api.github.com${path}`, { ...init, headers: { ...headers, ...init?.headers } });
+    if (!response.ok) throw new Error(`GITHUB_HTTP_${response.status}`);
+    return response.json() as Promise<Record<string, any>>;
+  };
+  const account = await api("/user");
+  const owner = process.env.SMARTAIHUB_MINIAPP_GITHUB_OWNER?.trim() || String(account.login || "");
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(owner)) throw new Error("GITHUB_OWNER_INVALID");
+  const name = `smartaihub-${input.appId.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
+  if (!/^[a-z0-9-]{1,100}$/.test(name)) throw new Error("GITHUB_REPOSITORY_NAME_INVALID");
+  let repo: Record<string, any>;
+  try {
+    repo = await api(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`);
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "GITHUB_HTTP_404") throw error;
+    const createPath = owner.toLowerCase() === String(account.login || "").toLowerCase()
+      ? "/user/repos"
+      : `/orgs/${encodeURIComponent(owner)}/repos`;
+    repo = await api(createPath, {
+      method: "POST",
+      body: JSON.stringify({ name, private: true, auto_init: true, description: `SmartAIHub personal Mini-App ${input.appId}` }),
+    });
+  }
+  if (repo.private !== true || repo.owner?.login?.toLowerCase() !== owner.toLowerCase()) throw new Error("GITHUB_REPOSITORY_SCOPE_INVALID");
+  const branch = String(repo.default_branch || "main");
+  let existingFileSha: string | undefined;
+  try {
+    const existingFile = await api(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/app-source.json?ref=${encodeURIComponent(branch)}`);
+    if (typeof existingFile.sha === "string") existingFileSha = existingFile.sha;
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== "GITHUB_HTTP_404") throw error;
+  }
+  const committed = await api(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/app-source.json`, {
+    method: "PUT",
+    body: JSON.stringify({
+      message: `Build SmartAIHub Mini-App ${input.appId}`,
+      branch,
+      ...(existingFileSha ? { sha: existingFileSha } : {}),
+      content: Buffer.from(input.sourceJson, "utf8").toString("base64"),
+    }),
+  });
+  const revision = String(committed.commit?.sha || "");
+  if (!/^[a-f0-9]{40}$/i.test(revision)) throw new Error("GITHUB_SOURCE_COMMIT_MISSING");
+  return { mode: "SMARTAIHUB_MANAGED", owner, name, url: String(repo.html_url), revision };
+}
 
 function escapeScriptBody(value: string): string {
   return value.replace(/<\/script/gi, "<\\/script");
@@ -166,8 +232,16 @@ export async function buildAndStorePersonalMiniApp(input: {
   runId: string;
   prompt: string;
   generate?: typeof generatePersonalMiniApp;
-}): Promise<{ artifactRef: string; artifactDigest: string; bytes: number }> {
+}): Promise<{ artifactRef: string; artifactDigest: string; bytes: number; sourceRef: string; sourceDigest: string; repository: PersonalMiniAppRepository | null; repositoryState: "BOUND" | "PROVISIONING_PENDING" }> {
   const generated = await (input.generate ?? generatePersonalMiniApp)(input);
+  const sourceBytes = Buffer.from(JSON.stringify(generated), "utf8");
+  const sourceDigest = createHash("sha256").update(sourceBytes).digest("hex");
+  const storedSource = await storagePutContentAddressedIfAbsent(
+    "mini-app-sources/" + input.tenantId + "/" + input.appId,
+    sourceBytes,
+    "application/json; charset=utf-8"
+  );
+  if (storedSource.sha256 !== sourceDigest) throw new Error("MINI_APP_SOURCE_DIGEST_MISMATCH");
   const bytes = Buffer.from(assembleIsolatedMiniAppHtml(generated), "utf8");
   const digest = createHash("sha256").update(bytes).digest("hex");
   const stored = await storagePutContentAddressedIfAbsent(
@@ -181,7 +255,28 @@ export async function buildAndStorePersonalMiniApp(input: {
     artifactRef: "r2://" + stored.key,
     artifactDigest: digest,
     bytes: bytes.length,
+    sourceRef: "r2://" + storedSource.key,
+    sourceDigest,
+    repository: null,
+    repositoryState: "PROVISIONING_PENDING",
   };
+}
+
+export async function provisionMiniAppRepositoryFromSnapshot(input: {
+  appId: string;
+  sourceRef: string;
+  sourceDigest: string;
+}) {
+  const prefix = `r2://mini-app-sources/`;
+  const match = /^r2:\/\/mini-app-sources\/([A-Za-z0-9_-]{1,64})\/(app_[A-Za-z0-9_-]{1,120})\/sha256\/([a-f0-9]{64})$/.exec(input.sourceRef);
+  if (!match || match[2] !== input.appId || match[3] !== input.sourceDigest || !input.sourceRef.startsWith(prefix)) {
+    throw new Error("MINI_APP_SOURCE_BINDING_INVALID");
+  }
+  const bytes = await storageReadBuffer(input.sourceRef.slice("r2://".length));
+  if (createHash("sha256").update(bytes).digest("hex") !== input.sourceDigest) throw new Error("MINI_APP_SOURCE_DIGEST_MISMATCH");
+  const sourceJson = bytes.toString("utf8");
+  const source = GENERATED_APP_SCHEMA.parse(JSON.parse(sourceJson));
+  return provisionManagedMiniAppRepository({ appId: input.appId, sourceJson: JSON.stringify(source) });
 }
 
 export async function bindPersonalMiniAppArtifact(input: {
@@ -235,7 +330,7 @@ export async function resolvePersonalMiniAppPreview(input: {
 }) {
   const app = await resolveMiniAppForViewer(input);
   if (!app?.lastKnownGoodArtifactRef)
-    return app ? { app, html: null, artifactDigest: null } : null;
+    return app ? { app, html: null, artifactDigest: null, factory: await resolvePersonalMiniAppFactoryHome(input, app.appId) } : null;
   const match =
     /^r2:\/\/(mini-app-previews\/([A-Za-z0-9_-]{1,64})\/(app_[A-Za-z0-9_-]{1,120})\/sha256\/([a-f0-9]{64}))$/.exec(
       app.lastKnownGoodArtifactRef
@@ -250,5 +345,57 @@ export async function resolvePersonalMiniAppPreview(input: {
   const bytes = await storageReadBuffer(match[1]!);
   const digest = createHash("sha256").update(bytes).digest("hex");
   if (digest !== match[4]) return null;
-  return { app, html: bytes.toString("utf8"), artifactDigest: digest };
+  return { app, html: bytes.toString("utf8"), artifactDigest: digest, factory: await resolvePersonalMiniAppFactoryHome(input, app.appId) };
+}
+
+async function resolvePersonalMiniAppFactoryHome(
+  input: { tenantId: string | null; userId: number | null },
+  appId: string,
+) {
+  if (!input.tenantId || !Number.isSafeInteger(input.userId) || !input.userId) return null;
+  let rows: Array<{ progressJson: Record<string, unknown>; status: string; errorCode: string | null; errorMessage: string | null; createdAt: Date }>;
+  try {
+    rows = await getDb().select({
+      progressJson: workerJobs.progressJson,
+      status: workerJobs.status,
+      errorCode: workerJobs.errorCode,
+      errorMessage: workerJobs.errorMessage,
+      createdAt: workerJobs.createdAt,
+    }).from(workerJobs).where(and(
+      eq(workerJobs.tenantId, input.tenantId),
+      eq(workerJobs.requestedByUserId, input.userId),
+      sql`${workerJobs.progressJson}->'spec224'->'metadata'->'miniAppFactoryProgramState'->>'miniAppId' = ${appId}`,
+    )).orderBy(sql`${workerJobs.createdAt} DESC`).limit(20);
+  } catch {
+    return null;
+  }
+  const root = rows.find(row => {
+    const projection = row.progressJson.spec224;
+    return projection && typeof projection === "object" && !Array.isArray(projection) &&
+      (projection as Record<string, unknown>).runId !== undefined;
+  });
+  const projection = root?.progressJson.spec224 as Record<string, unknown> | undefined;
+  const run = projection && typeof projection.runId === "string" ? projection : null;
+  const metadata = run?.metadata && typeof run.metadata === "object" ? run.metadata as Record<string, unknown> : {};
+  const factory = metadata.miniAppFactoryProgramState && typeof metadata.miniAppFactoryProgramState === "object"
+    ? metadata.miniAppFactoryProgramState as Record<string, unknown>
+    : null;
+  if (!factory) return null;
+  const artifacts = Array.isArray(factory.artifacts) ? factory.artifacts : [];
+  const sourceSnapshot = artifacts.find(value => typeof value === "string" && value.startsWith("app-source:r2://"));
+  const repositoryState = artifacts.find(value => typeof value === "string" && value.startsWith("app-repository-state:"));
+  const failed = root?.status === "failed";
+  return {
+    runId: run?.runId ?? null,
+    goal: typeof run?.goal === "string" ? run.goal : "",
+    jobState: root?.status ?? "unknown",
+    milestone: failed ? "BUILD_FAILED" : typeof factory.deliveryMilestone === "string" ? factory.deliveryMilestone : "BUILDING",
+    currentStage: typeof factory.currentStage === "string" ? factory.currentStage : null,
+    completedStages: Array.isArray(factory.completedStages) ? factory.completedStages : [],
+    artifacts,
+    repository: factory.repository && typeof factory.repository === "object" ? factory.repository : null,
+    repositoryState: typeof repositoryState === "string" ? repositoryState.slice("app-repository-state:".length) : factory.repository ? "BOUND" : "PROVISIONING_PENDING",
+    sourceSnapshotRef: typeof factory.sourceSnapshotRef === "string" ? factory.sourceSnapshotRef : typeof sourceSnapshot === "string" ? sourceSnapshot.slice("app-source:".length) : null,
+    error: failed ? { code: root.errorCode, message: root.errorMessage } : null,
+  };
 }

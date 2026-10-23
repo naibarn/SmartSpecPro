@@ -44,7 +44,7 @@ export async function settleMiniAppFactoryRunnerStage(input: {
   if (!unit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
   const state = parseMiniAppFactoryDurableState(parent.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
   const sourceSha = /^git:([a-f0-9]{40})$/i.exec(parent.run.baseRevision)?.[1]?.toLowerCase();
-  if (sourceSha !== link.sourceSha || sourceSha !== state.sourceSha || state.programId !== link.programId || state.miniAppId !== link.miniAppId) {
+  if (state.profile !== "PLATFORM_SELF_DEVELOPMENT" || sourceSha !== link.sourceSha || sourceSha !== state.sourceSha || state.programId !== link.programId || state.miniAppId !== link.miniAppId) {
     throw new Error("FACTORY_RUNNER_STAGE_SOURCE_BINDING_STALE");
   }
   const pipeline = input.pipeline ?? loadMiniAppFactoryPipeline();

@@ -59,7 +59,7 @@ describe("Mini App Factory trusted Runner settlement", () => {
       contextPackHash: "b".repeat(64),
       workspaceId: "workspace-real-ref",
       workUnit: unit,
-      metadata: { [MINI_APP_FACTORY_STATE_KEY]: createMiniAppFactoryDurableState({ programId: "factory-program", miniAppId: "app_research_notes", sourceSha: sha }) },
+      metadata: { [MINI_APP_FACTORY_STATE_KEY]: createMiniAppFactoryDurableState({ programId: "factory-program", miniAppId: "app_research_notes", sourceSha: sha, profile: "PLATFORM_SELF_DEVELOPMENT" }) },
     });
     const child = buildDevelopmentRun({
       runId: "factory-child-run",

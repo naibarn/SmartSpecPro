@@ -43,6 +43,7 @@ function makeParent() {
         programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
         miniAppId: "app_research_notes",
         sourceSha: sha,
+        profile: "PLATFORM_SELF_DEVELOPMENT",
       }),
     },
   });

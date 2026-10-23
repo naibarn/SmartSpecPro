@@ -66,7 +66,7 @@ describe("Mini App Factory pipeline evaluator", () => {
 
   it("keeps a personal private preview independent from optional certification stages", () => {
     const personal = new Set(pipeline.profiles?.PERSONAL_MINIAPP?.stages);
-    expect([...personal]).toEqual(["ui_implementation", "package", "deploy", "smoke"]);
+    expect([...personal]).toEqual(["ui_implementation", "package", "deploy", "smoke", "source_repository"]);
     expect(personal.has("trial_ready")).toBe(false);
     expect(personal.has("tests")).toBe(false);
     expect(personal.has("migrate")).toBe(false);

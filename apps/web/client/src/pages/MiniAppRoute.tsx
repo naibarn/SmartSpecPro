@@ -65,37 +65,50 @@ export default function MiniAppRoute() {
   if (isMiniAppRoute) {
     const miniAppData = miniAppQuery.data;
     if (!miniAppData) return <AppPage title="Mini App unavailable" state="error" />;
-    const previewAvailable = Boolean(miniAppData.lastKnownGoodArtifactRef && "html" in miniAppData && miniAppData.html);
-    if (previewAvailable && "html" in miniAppData && miniAppData.html) {
+    const app = miniAppData.app;
+    const factory = miniAppData.factory;
+    const previewAvailable = Boolean(app?.lastKnownGoodArtifactRef && miniAppData.html);
+    if (previewAvailable && miniAppData.html) {
       return (
-        <AppPage title={miniAppData.appId} description={`/miniapp/${miniAppData.appId}`}>
-          <iframe
-            ref={frameRef}
-            title={miniAppData.appId}
-            srcDoc={miniAppData.html}
-            sandbox="allow-scripts"
-            referrerPolicy="no-referrer"
-            data-testid="miniapp-preview-frame"
-            style={{ display: "block", width: "100%", height: "82vh", border: 0 }}
-          />
+        <AppPage title={app?.appId ?? appId} description={factory?.goal || `/miniapp/${appId}`}>
+          <section aria-label="Mini App project home" data-testid="miniapp-project-home">
+            <h2>{factory?.milestone ?? "PREVIEW_AVAILABLE"}</h2>
+            {factory ? <p>Job: {factory.jobState ?? "unknown"}{factory.currentStage ? ` · Stage: ${factory.currentStage}` : ""}</p> : null}
+            {factory?.repository?.url ? <p>Source repository: <a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></p> : factory ? <p>Source repository: {factory.repositoryState ?? "PROVISIONING_PENDING"}</p> : null}
+            {factory?.sourceSnapshotRef ? <p>Source snapshot: {factory.appSourceDigest ?? "saved"}</p> : null}
+            {factory?.error ? <p role="alert">Build failed: {factory.error.message || factory.error.code}</p> : null}
+            {factory?.completedStages?.length ? (
+              <section aria-label="Build history">
+                <h3>Build history</h3>
+                <ol>{factory.completedStages.map((stage: string) => <li key={stage}>{stage}</li>)}</ol>
+              </section>
+            ) : null}
+            <iframe
+              ref={frameRef}
+              title={app?.appId ?? appId}
+              srcDoc={miniAppData.html}
+              sandbox="allow-scripts"
+              referrerPolicy="no-referrer"
+              data-testid="miniapp-preview-frame"
+              style={{ display: "block", width: "100%", height: "82vh", border: 0 }}
+            />
+          </section>
         </AppPage>
       );
     }
-    if (miniAppData.lastKnownGoodArtifactRef) {
-      return <AppPage title="Mini App preview unavailable" state="error" error={{ title: "The saved preview could not be loaded", description: "The last-known-good build is retained. Reload to try again." }} />;
-    }
     return (
-      <AppPage
-        title="Mini App"
-        description={`/miniapp/${miniAppData.appId}`}
-        state="empty"
-        empty={{
-          title: previewAvailable ? "Preview runtime unavailable" : "BUILDING",
-          description: previewAvailable
-            ? "A last-known-good artifact is retained, but the preview delivery runtime is not yet connected."
-            : "No runnable artifact is available yet. The Mini App will appear here after its build and deployment complete.",
-        }}
-      />
+      <AppPage title={app?.appId ?? appId} description={factory?.goal || `/miniapp/${appId}`}>
+        <section aria-label="Mini App project home" data-testid="miniapp-project-home">
+          <h2>{factory?.milestone ?? (app?.lastKnownGoodArtifactRef ? "PREVIEW_UNAVAILABLE" : "BUILDING")}</h2>
+          <p>{factory ? `Job: ${factory.jobState ?? "unknown"}${factory.currentStage ? ` · Stage: ${factory.currentStage}` : ""}` : "Your private Mini App project is being prepared."}</p>
+          {factory?.repository?.url ? <p>Source repository: <a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></p> : factory ? <p>Source repository: {factory.repositoryState ?? "PROVISIONING_PENDING"}</p> : null}
+          {factory?.error ? <p role="alert">Build failed: {factory.error.message || factory.error.code}</p> : null}
+          {factory?.completedStages?.length ? (
+            <section aria-label="Build history"><h3>Build history</h3><ol>{factory.completedStages.map((stage: string) => <li key={stage}>{stage}</li>)}</ol></section>
+          ) : null}
+          {factory?.sourceSnapshotRef ? <p>Source snapshot saved.</p> : null}
+        </section>
+      </AppPage>
     );
   }
   if (appQuery.data.appId === "app_project_wiki_pages") return <ProjectWikiPagesPage appId={appQuery.data.appId} />;

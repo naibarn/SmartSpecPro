@@ -563,6 +563,7 @@ export function createDevelopmentRunService(
       idempotencyKey: string;
       type: "VERIFICATION_ADMISSION" | "VERIFICATION_OUTCOME";
       payload: Record<string, unknown>;
+      runMetadata?: Record<string, unknown>;
       occurredAt?: string;
     }): Promise<DevelopmentRunCommandResult> {
       const scope = scopeFor(input);
@@ -597,8 +598,12 @@ export function createDevelopmentRunService(
           ...(input.occurredAt ? { occurredAt: input.occurredAt } : {}),
         });
         if (!recorded.event) throw new Error("RUN_EVENT_DUPLICATE_UNEXPECTED");
+        const nextRun: DevelopmentRun = {
+          ...recorded.run,
+          ...(input.runMetadata ? { metadata: { ...recorded.run.metadata, ...structuredClone(input.runMetadata) } } : {}),
+        };
         const next: DevelopmentRunStoreRecord = {
-          run: recorded.run,
+          run: nextRun,
           revision: record.revision + 1,
           events: [...record.events, recorded.event],
         };
@@ -606,7 +611,7 @@ export function createDevelopmentRunService(
         await tx.appendEvent(recorded.event, scope);
         return {
           accepted: true,
-          run: recorded.run,
+          run: nextRun,
           event: recorded.event,
           revision: next.revision,
         };

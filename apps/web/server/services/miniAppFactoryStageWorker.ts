@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import type { MiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { getMiniAppFactoryProfileStages, selectReadyMiniAppFactoryStages } from "./miniAppFactoryPipeline";
 import { executeMiniAppFactoryStages, type MiniAppFactoryStageOutput } from "./miniAppFactoryRunExecutor";
-import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
+import { failMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import type { JobExecutor } from "./jobExecutor";
 import type { JobDefinition } from "./jobControlPlaneTypes";
@@ -176,7 +176,7 @@ export function createMiniAppFactoryStageJobExecutor(
     if (!unit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
     const durableState = parseMiniAppFactoryDurableState(current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
     const revisionMatch = /^git:([a-f0-9]{40})$/i.exec(current.run.baseRevision);
-    if (!revisionMatch || durableState.sourceSha !== revisionMatch[1]!.toLowerCase()) {
+    if (durableState.profile === "PLATFORM_SELF_DEVELOPMENT" && (!revisionMatch || durableState.sourceSha !== revisionMatch[1]!.toLowerCase())) {
       throw new Error("FACTORY_STAGE_SOURCE_SHA_MISMATCH");
     }
     if (unit.progress.completedScope.includes(input.stageId)) {
@@ -202,23 +202,44 @@ export function createMiniAppFactoryStageJobExecutor(
       throw error;
     }
     await reporter.progress(lease, { progress: 10, stage: input.stageId, message: "Factory stage execution started" });
-    const result = await executeMiniAppFactoryStages({
-      pipeline: runtime.pipeline,
-      service: runtime.service,
-      run,
-      maxStages: 1,
-      executeStage: (stageId, stageContext) => runtime.executeStage(stageId, {
-        runId: run.runId,
-        tenantId: run.tenantId,
-        actorId: run.actorId,
-        ...stageContext,
-        attempt: context.attempt,
-      }),
-      beforeCheckpoint: async stageId => {
-        if (stageId !== input.stageId) throw new Error("FACTORY_STAGE_JOB_BINDING_MISMATCH");
-        await reporter.assertActive(lease);
-      },
-    });
+    let result;
+    try {
+      result = await executeMiniAppFactoryStages({
+        pipeline: runtime.pipeline,
+        service: runtime.service,
+        run,
+        maxStages: 1,
+        executeStage: (stageId, stageContext) => runtime.executeStage(stageId, {
+          runId: run.runId,
+          tenantId: run.tenantId,
+          actorId: run.actorId,
+          ...stageContext,
+          attempt: context.attempt,
+        }),
+        beforeCheckpoint: async stageId => {
+          if (stageId !== input.stageId) throw new Error("FACTORY_STAGE_JOB_BINDING_MISMATCH");
+          await reporter.assertActive(lease);
+        },
+      });
+    } catch (error) {
+      const current = await runtime.service.get(run);
+      const currentState = parseMiniAppFactoryDurableState(current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
+      if (currentState.profile === "PERSONAL_MINIAPP") {
+        const state = failMiniAppFactoryDurableState(currentState, error instanceof Error ? error.message.slice(0, 128).replace(/[^A-Za-z0-9_.:-]/g, "_") : "FACTORY_STAGE_FAILED");
+        try {
+          await runtime.service.recordVerificationEvent({
+            ...run,
+            type: "VERIFICATION_OUTCOME",
+            idempotencyKey: `miniapp-factory-failed:${createHash("sha256").update(`${run.runId}:${input.stageId}:${context.attempt}`).digest("hex")}`,
+            payload: { profile: "PERSONAL_MINIAPP", stageId: input.stageId, outcome: "BUILD_FAILED", code: state.blockerState.code },
+            runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: state },
+          });
+        } catch {
+          // The worker failure remains authoritative; the next durable attempt can repair a stale projection.
+        }
+      }
+      throw error;
+    }
     if (result.executedStages.length !== 1 || result.executedStages[0] !== input.stageId) {
       throw new Error("FACTORY_STAGE_JOB_NOT_EXECUTED");
     }

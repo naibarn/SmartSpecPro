@@ -3,7 +3,7 @@ import { loadMiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { createMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerStageAdapter";
 import type { MiniAppFactoryStageWorkerRuntime } from "./miniAppFactoryStageWorker";
 import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
-import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, resolvePersonalMiniAppPreview } from "./personalMiniAppPreview";
+import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppPreview } from "./personalMiniAppPreview";
 
 /** Personal apps use hosted Skill Execution -> Gateway; platform development stays Runner-admitted. */
 export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWorkerRuntime {
@@ -30,7 +30,15 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           runId: context.runId,
           prompt: run.goal,
         });
-        return { artifacts: [`app-artifact:${artifact.artifactRef}`, `app-artifact-digest:${artifact.artifactDigest}`, `app-artifact-bytes:${artifact.bytes}`] };
+        return { artifacts: [
+          `app-artifact:${artifact.artifactRef}`,
+          `app-artifact-digest:${artifact.artifactDigest}`,
+          `app-artifact-bytes:${artifact.bytes}`,
+          `app-source:${artifact.sourceRef}`,
+          `app-source-digest:${artifact.sourceDigest}`,
+          `app-repository-state:${artifact.repositoryState}`,
+          ...(artifact.repository ? [`app-repository:managed:${artifact.repository.owner}/${artifact.repository.name}@${artifact.repository.revision}`] : []),
+        ] };
       }
       if (stageId === "package") {
         const artifact = context.artifacts.find(value => value.startsWith("app-artifact:r2://"));
@@ -50,6 +58,17 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
         const unauthorized = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId + 1 });
         if (unauthorized) throw new Error("MINI_APP_PRIVATE_PREVIEW_AUTHORIZATION_FAILED");
         return { artifacts: [`private-preview-smoke:${preview.artifactDigest}`, `private-preview-owner-access:${state.miniAppId}`, `private-preview-unauthorized-denied:${state.miniAppId}`] };
+      }
+      if (stageId === "source_repository") {
+        const sourceRef = context.artifacts.find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
+        const sourceDigest = context.artifacts.find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
+        if (!sourceRef || !sourceDigest) throw new Error("MINI_APP_SOURCE_SNAPSHOT_MISSING");
+        const repository = await provisionMiniAppRepositoryFromSnapshot({ appId: state.miniAppId, sourceRef, sourceDigest });
+        if (!repository) throw new Error("MINI_APP_GITHUB_AUTHORITY_NOT_CONFIGURED");
+        return { artifacts: [
+          "app-repository-state:BOUND",
+          `app-repository:managed:${repository.owner}/${repository.name}@${repository.revision}`,
+        ] };
       }
       throw new Error("PERSONAL_MINIAPP_FACTORY_STAGE_UNSUPPORTED:" + stageId);
     },

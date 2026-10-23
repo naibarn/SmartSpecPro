@@ -47,7 +47,7 @@ export async function createMiniAppFactoryRunnerStage(input: {
   if (!unit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
   const state = parseMiniAppFactoryDurableState(parent.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
   const sourceSha = /^git:([a-f0-9]{40})$/i.exec(parent.run.baseRevision)?.[1]?.toLowerCase();
-  if (!sourceSha || sourceSha !== state.sourceSha) throw new Error("FACTORY_STAGE_SOURCE_SHA_MISMATCH");
+  if (state.profile !== "PLATFORM_SELF_DEVELOPMENT" || !sourceSha || sourceSha !== state.sourceSha) throw new Error("FACTORY_STAGE_SOURCE_SHA_MISMATCH");
   const parentJob = parent.run.workerJobId
     ? await controlPlane.getContext(parent.run.workerJobId, { tenantId: input.run.tenantId, requestedByUserId: input.run.actorId })
     : null;

@@ -35,6 +35,7 @@
     { "id": "deploy", "dependsOn": ["package"], "inputs": ["portableArtifact", "packageDigest", "target"], "outputs": ["deploymentReceipt", "runtimeIdentity"], "gate": "deployment consumes the recorded artifact on an isolated non-production target" },
     { "id": "migrate", "dependsOn": ["deploy", "data_migration"], "inputs": ["target", "migrationSet", "sourceRevision"], "outputs": ["migrationReceipt", "schemaEvidence"], "gate": "normal migration path records STARTED and SUCCEEDED for the declared target" },
     { "id": "smoke", "dependsOn": ["deploy", "migrate"], "profileDependsOn": { "PERSONAL_MINIAPP": ["deploy"] }, "inputs": ["target", "fixture", "runtimeIdentity"], "outputs": ["healthEvidence", "apiEvidence", "jobEvidence"], "gate": "authenticated API and required background behavior pass without production access" },
+    { "id": "source_repository", "dependsOn": ["smoke"], "inputs": ["appSourceSnapshot", "miniAppIdentity"], "outputs": ["privateRepositoryBinding", "sourceCommit"], "gate": "the generated source snapshot is committed to a dedicated private SmartAIHub-managed repository without blocking the already-bound private preview" },
     { "id": "uat", "dependsOn": ["smoke", "tests"], "inputs": ["fixture", "runtimeIdentity", "packageDigest", "visualReferences", "visualBlueprint"], "outputs": ["journeyEvidence", "isolationEvidence", "visualComparison", "visualRepairEvidence", "functionalRegressionEvidence"], "gate": "end-to-end user and equivalent headless journeys pass across required viewports; visual evidence is reported separately from functional acceptance" },
     { "id": "evidence", "dependsOn": ["uat"], "inputs": ["contractReport", "testEvidence", "deploymentReceipt", "migrationReceipt", "journeyEvidence"], "outputs": ["handoff", "milestoneReport"], "gate": "all claims bind to exact revisions, target, artifact, and evidence freshness" },
     { "id": "trial_ready", "dependsOn": ["smoke"], "inputs": ["runtimeIdentity", "journeyEvidence", "knownIssues"], "outputs": ["userTrialReady", "remainingIssues"], "gate": "stable private app identity, runnable preview, and the primary user journey work; secondary gaps are recorded" },
@@ -42,7 +43,7 @@
   ],
   "profiles": {
     "PERSONAL_MINIAPP": {
-      "stages": ["ui_implementation", "package", "deploy", "smoke"]
+      "stages": ["ui_implementation", "package", "deploy", "smoke", "source_repository"]
     },
     "PLATFORM_SELF_DEVELOPMENT": {
       "stages": ["requirements_intake", "spec_compile", "plan", "manifest_validate", "scaffold", "data_migration", "backend_actions", "ui_implementation", "ai_capabilities", "background_jobs", "tests", "package", "deploy", "migrate", "smoke", "uat", "evidence", "recovery"]

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   advanceMiniAppFactoryDurableState,
   createMiniAppFactoryDurableState,
+  failMiniAppFactoryDurableState,
   parseMiniAppFactoryDurableState,
 } from "./miniAppFactoryDurableState";
 
@@ -24,7 +25,7 @@ describe("Mini App Factory durable state projection", () => {
       currentStage: "SPEC",
       completedStages: ["SPEC"],
       artifacts: ["factory-evidence:spec"],
-      sourceSha: "a".repeat(40),
+      sourceSha: null,
       nextEligibleStages: ["SCAFFOLD"],
     });
   });
@@ -47,6 +48,22 @@ describe("Mini App Factory durable state projection", () => {
     expect(state.migrationState).toBe("APPLIED");
   });
 
+  it("keeps the core runtime revision out of the personal app source identity", () => {
+    const personal = createMiniAppFactoryDurableState({
+      programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+      miniAppId: "app_personal_expenses",
+      sourceSha: "9".repeat(40),
+      profile: "PERSONAL_MINIAPP",
+    });
+    expect(personal.sourceSha).toBeNull();
+    const withSource = advanceMiniAppFactoryDurableState(personal, {
+      stageId: "ui_implementation",
+      artifacts: [`app-source-digest:${"8".repeat(64)}`],
+      nextEligibleStages: ["package"],
+    });
+    expect(withSource.appSourceDigest).toBe("8".repeat(64));
+  });
+
   it("records trial readiness separately from release and platform certification", () => {
     const initial = createMiniAppFactoryDurableState({
       programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
@@ -63,6 +80,32 @@ describe("Mini App Factory durable state projection", () => {
     expect(ready.deliveryMilestone).toBe("USER_TRIAL_READY");
     expect(ready.deliveryMilestone).not.toBe("RELEASE_VERIFIED");
     expect(ready.deliveryMilestone).not.toBe("PLATFORM_CERTIFIED");
+  });
+
+  it("exposes preview and verification milestones before browser evidence", () => {
+    const initial = createMiniAppFactoryDurableState({
+      programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+      miniAppId: "app_personal_expenses",
+      sourceSha: "f".repeat(40),
+    });
+    const preview = advanceMiniAppFactoryDurableState(initial, { stageId: "deploy", artifacts: ["preview"], nextEligibleStages: ["smoke"] });
+    expect(preview.deliveryMilestone).toBe("PREVIEW_AVAILABLE");
+    const awaitingBrowserProof = advanceMiniAppFactoryDurableState(preview, { stageId: "smoke", artifacts: ["owner-access"], nextEligibleStages: [] });
+    expect(awaitingBrowserProof.deliveryMilestone).toBe("VERIFICATION_PENDING");
+    expect(awaitingBrowserProof.deliveryMilestone).not.toBe("USER_TRIAL_READY");
+  });
+
+  it("records an early build failure without changing the app identity", () => {
+    const initial = createMiniAppFactoryDurableState({
+      programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+      miniAppId: "app_personal_expenses",
+      sourceSha: "1".repeat(40),
+    });
+    expect(failMiniAppFactoryDurableState(initial, "GATEWAY_TIMEOUT")).toMatchObject({
+      miniAppId: "app_personal_expenses",
+      deliveryMilestone: "BUILD_FAILED",
+      blockerState: { status: "NONE", code: "GATEWAY_TIMEOUT" },
+    });
   });
 
   it("rejects malformed or source-unbound state", () => {

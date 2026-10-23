@@ -237,6 +237,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
         reason: "INSUFFICIENT_MEMORY_HEADROOM",
         requiredMemoryMiB: 10_240,
       },
+      runMetadata: { testProjection: { state: "persisted" } },
       occurredAt: "2026-10-03T01:00:00.000Z",
     });
     const duplicate = await service.recordVerificationEvent({
@@ -268,6 +269,7 @@ describe("Spec 224 durable DevelopmentRun persistence", () => {
     expect(recorded.accepted).toBe(true);
     expect(duplicate.accepted).toBe(false);
     expect(persisted?.run.state).toBe("DISCOVERY");
+    expect(persisted?.run.metadata.testProjection).toEqual({ state: "persisted" });
     expect(persisted?.run.phaseAttempt).toBe(0);
     expect(persisted?.events.at(-1)).toMatchObject({
       type: "VERIFICATION_ADMISSION",
