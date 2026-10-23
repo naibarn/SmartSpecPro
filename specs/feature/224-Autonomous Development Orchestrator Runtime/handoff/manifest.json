@@ -1132,7 +1132,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 121,
+  "generation": 122,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "46b4331eb31f922d74bdbb64e243320a5eb7a99d27e34a1bfba15ac9ef9f5bbd",
@@ -2800,7 +2800,7 @@
     "unresolved": 1261
   },
   "schema_version": 1,
-  "updated_at": "2026-10-21T00:03:39.150344Z",
+  "updated_at": "2026-10-23T00:28:59.509146Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3030,6 +3030,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/checkpoint-squash-comparison-20261021.json",
         "scope": "Historical checkpoints01/02/04 source integration/lineage and 37 existing local fixture tests only; no complete section/production/Runner acceptance.",
         "source_sha": "4c31b3eda3d43a28865db60f23caaaa4ed6d0481",
+        "status": "PASS"
+      },
+      {
+        "kind": "CANONICAL_SMARTSPEC_WEB_BUILD",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/canonical-web-build-d8d1bfe-20261023.md",
+        "scope": "Canonical scoped package build at exact origin/main SHA d8d1bfe8606fb063f4829c6291a797fcb9757038 passed. Artifact digest sha256:498974bd106f206294774f927584a83b3b1f7599958813dc3b58bb0d652985f8 (128170 files), duration 296.16 seconds; output on ExpansionHD. Cloudflare staging publish passed with 1593 assets and digest sha256:6a53b87e3fee22e20ef5122a82cefece229a8b4d1b08f7eb1331ce9d1340b965. Main JS chunk 2959.24 kB triggered Vite advisory. Primary workspace sync was BLOCKED_WRONG_BRANCH; no service promotion or production acceptance evidenced.",
+        "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
         "status": "PASS"
       }
     ],
