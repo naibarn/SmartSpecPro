@@ -3,12 +3,12 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `13`
-- Updated (UTC): `2026-10-23T12:56:04.428125+00:00`
+- State generation: `14`
+- Updated (UTC): `2026-10-23T12:56:38.899676+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
-- Latest recorded merged Main SHA: `08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d`
+- Latest recorded merged Main SHA: `d0dd405c435f1dba90f78b388b394d43868f24a8`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-02-live-hosted-execution`
 - Next action: Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks.
@@ -18,7 +18,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-contract-continuation | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | Continue through section 02: run real hosted Gateway generation using an authorized non-production tenant and bind its app source/artifact; retain preview-state projection fix. |
-| section-02-live-hosted-execution | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d | 08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d | Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks. |
+| section-02-live-hosted-execution | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | d0dd405c435f1dba90f78b388b394d43868f24a8 | d0dd405c435f1dba90f78b388b394d43868f24a8 | Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks. |
 | section-03-real-browser-acceptance | in_progress | — | — | — | — | Run authenticated owner and second-identity browser journey against the exact real model-generated artifact after section 02. |
 | section-04-release-final-verify | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28 | acd0ea83e7b13f4bc4bd54a43d5a8d18903d3c28 | Final acceptance remains open. Resume only after an authorized non-production Gateway/runtime plus test tenant and app-owner GitHub write connection are provisioned; complete exact expense-tracker browser journey, then use guarded release with authenticated sudo. |
 

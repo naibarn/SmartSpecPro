@@ -24,8 +24,8 @@
       "status": "checkpointed",
       "worktree": "/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023",
       "next_action": "Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks.",
-      "checkpoint_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d",
-      "merged_main_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d"
+      "checkpoint_sha": "d0dd405c435f1dba90f78b388b394d43868f24a8",
+      "merged_main_sha": "d0dd405c435f1dba90f78b388b394d43868f24a8"
     },
     "section-04-release-final-verify": {
       "status": "checkpointed",
@@ -48,8 +48,8 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 13,
-  "updated_at": "2026-10-23T12:56:04.428125+00:00",
+  "generation": 14,
+  "updated_at": "2026-10-23T12:56:38.899676+00:00",
   "progress": {
     "active_section": "section-02-live-hosted-execution",
     "next_action": "Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks.",
@@ -71,6 +71,6 @@
       "Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration.",
       "The shared dev web process is serving stale checkout 4539aee (282 commits behind main) with unrelated dirty work; dev tunnel DNS currently fails for dev.aimarkethubs.com. Do not overwrite that checkout; real browser verification requires a clean preview built from the merged SHA and restored test hostname."
     ],
-    "merged_main_sha": "08c9491f64aecfd3b4fcb46d7d4b5f18fb3e9a6d"
+    "merged_main_sha": "d0dd405c435f1dba90f78b388b394d43868f24a8"
   }
 }
