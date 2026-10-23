@@ -1,5 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import type { User } from "../../drizzle/schema";
+import type { AuthUserRow } from "../db";
 import type { TenantRequest } from "./tenant";
 import { sdk } from "./sdk";
 import { debugLog } from "./logger";
@@ -16,7 +16,7 @@ import {
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
   res: CreateExpressContextOptions["res"];
-  user: User | null;
+  user: AuthUserRow | null;
   /** The user's bearer token from the request header (for passing to Python backend) */
   userToken: string | null;
   /** Temporary unlock token for private vault access */
@@ -69,7 +69,7 @@ export function createContextWithTrustedAppIngress(
 export async function createContext(
   opts: CreateExpressContextOptions
 ): Promise<TrpcContext> {
-  let user: User | null = null;
+  let user: AuthUserRow | null = null;
   let userToken: string | null = null;
   let privateVaultToken: string | null = null;
   let protectedSurfaceToken: string | null = null;

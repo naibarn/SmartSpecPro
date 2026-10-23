@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
+import type { McpToolSession } from "../mcpRegistry";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
 let mockRedisData: Record<string, string> = {};
+let mockMcpSessions: Record<string, McpToolSession> = {};
+let mockMcpSessionTtls: Record<string, number> = {};
 
 vi.mock("../../services/redisClients", () => ({
   getCacheClient: () => ({
@@ -17,6 +20,19 @@ vi.mock("../../services/redisClients", () => ({
     }),
     expire: vi.fn(async () => 1),
   }),
+}));
+
+vi.mock("../../services/mcpPostgresState", () => ({
+  saveMcpSession: vi.fn(async (id: string, session: McpToolSession, ttlSeconds: number) => {
+    mockMcpSessions[id] = session;
+    mockMcpSessionTtls[id] = ttlSeconds;
+  }),
+  loadMcpSession: vi.fn(async (id: string) => mockMcpSessions[id] ?? null),
+  deleteMcpSession: vi.fn(async (id: string) => {
+    delete mockMcpSessions[id];
+  }),
+  loadMcpToolReplay: vi.fn(async () => null),
+  saveMcpToolReplay: vi.fn(async () => undefined),
 }));
 
 vi.mock("../../middleware/apiKeyAuth", () => ({
@@ -135,6 +151,8 @@ async function initializeSession(app: any, scopes?: string[]): Promise<string> {
 
 beforeEach(() => {
   mockRedisData = {};
+  mockMcpSessions = {};
+  mockMcpSessionTtls = {};
   vi.clearAllMocks();
 });
 
@@ -198,51 +216,41 @@ describe("M28: JSON-RPC error does not reflect method name", () => {
 });
 
 describe("M14: Session TTL configurable", () => {
-  it("default session TTL is 1800 seconds", async () => {
-    // Verify the code reads MCP_SESSION_TTL_SECONDS env var
-    // By default (no env var), should be 900
-    const app = await makeApp();
-    const sessionId = await initializeSession(app);
+  it("uses the current runtime default of 1800 seconds", async () => {
+    const previousTtl = process.env.MCP_SESSION_TTL_SECONDS;
+    delete process.env.MCP_SESSION_TTL_SECONDS;
+    try {
+      const app = await makeApp();
+      const sessionId = await initializeSession(app);
 
-    // Verify session was stored in Redis
-    const sessionData = mockRedisData[`mcp:session:${sessionId}`];
-    expect(sessionData).toBeDefined();
-    const parsed = JSON.parse(sessionData);
-    expect(parsed.state).toBe("ready");
-    // The TTL is set via Redis EX param — we verify the session was created successfully
-    // which means the TTL was accepted by Redis
+      expect(mockMcpSessions[sessionId]).toBeDefined();
+      expect(mockMcpSessionTtls[sessionId]).toBe(1800);
+    } finally {
+      if (previousTtl === undefined) delete process.env.MCP_SESSION_TTL_SECONDS;
+      else process.env.MCP_SESSION_TTL_SECONDS = previousTtl;
+    }
   });
 });
 
-describe("M23: Tool name validation in agencyMcpService", () => {
-  it("rejects tool names with dots", async () => {
-    const { formatToolsAsMcp } = await import("../../services/agencyMcpService");
+describe("M23: active MCP rejects unknown tool names without reflecting input", () => {
+  it("returns a fixed not-implemented error for an unregistered tool", async () => {
+    const app = await makeApp();
+    const sessionId = await initializeSession(app);
+    const untrustedName = "smartspec.<script>alert(1)</script>";
 
-    expect(() =>
-      formatToolsAsMcp([
-        { toolId: "valid-tool", agencyId: "foo.bar", name: "test", inputSchema: {} },
-      ]),
-    ).toThrow(/Invalid characters/);
-  });
+    const res = await request(app)
+      .post("/v1/mcp")
+      .set("Mcp-Session-Id", sessionId)
+      .send({
+        jsonrpc: "2.0",
+        method: "tools/call",
+        params: { name: untrustedName, arguments: {} },
+        id: 2,
+      });
 
-  it("rejects tool names with slashes", async () => {
-    const { formatToolsAsMcp } = await import("../../services/agencyMcpService");
-
-    expect(() =>
-      formatToolsAsMcp([
-        { toolId: "valid-tool", agencyId: "foo/bar", name: "test", inputSchema: {} },
-      ]),
-    ).toThrow(/Invalid characters/);
-  });
-
-  it("accepts valid tool name components", async () => {
-    const { formatToolsAsMcp } = await import("../../services/agencyMcpService");
-
-    const result = formatToolsAsMcp([
-      { toolId: "my-tool_123", agencyId: "agency-abc", name: "Test Tool", inputSchema: {} },
-    ]);
-    expect(result).toHaveLength(1);
-    expect(result[0].name).toBe("agency.agency-abc.my-tool_123");
+    expect(res.body.error.code).toBe(-32601);
+    expect(res.body.error.message).toBe("Tool not implemented");
+    expect(JSON.stringify(res.body)).not.toContain(untrustedName);
   });
 });
 
