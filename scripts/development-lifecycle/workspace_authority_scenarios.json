@@ -92,15 +92,15 @@
       "number": 13,
       "name": "stash-already-integrated",
       "proof_kind": "LOCAL_EXECUTABLE",
-      "assert": "stash content is classified; resolver never drops stash",
-      "test_name": "test_retirement_classifies_integrated_stash_without_dropping_it"
+      "assert": "retiring a clean integrated worktree preserves the shared integrated stash and its objects",
+      "test_name": "test_retirement_preserves_integrated_stash_without_dropping_it"
     },
     {
       "number": 14,
       "name": "stash-unique-intended-work",
       "proof_kind": "LOCAL_EXECUTABLE",
-      "assert": "unique stash blocks completion until separately preserved/integrated",
-      "test_name": "test_workspace_retirement_blocks_stash_and_missing_unproven_workspace"
+      "assert": "retiring a clean integrated worktree leaves unique shared stash content restorable; missing workspaces still require recovery proof",
+      "test_name": "test_workspace_retirement_preserves_shared_stash_and_missing_unproven_workspace"
     },
     {
       "number": 15,

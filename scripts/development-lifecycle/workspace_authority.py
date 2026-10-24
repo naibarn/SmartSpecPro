@@ -2089,6 +2089,7 @@ def retire_completed_worktree(
     workspace_id: str,
     *,
     apply: bool = False,
+    include_recovery: bool = False,
 ) -> dict[str, Any]:
     repo = _repo_root(repo)
     policy = load_workspace_policy(repo, policy_path)
@@ -2096,7 +2097,9 @@ def retire_completed_worktree(
         workspace = _workspace_by_id(db, workspace_id)
     if not workspace:
         raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED")
-    if workspace["role"] not in RETIRABLE_ROLES:
+    if workspace["role"] not in RETIRABLE_ROLES and not (
+        include_recovery and workspace["role"] == "RECOVERY_WORKSPACE"
+    ):
         return {"status": "RETIREMENT_BLOCKED_ROLE", "role": workspace["role"], "workspace_id": workspace_id}
     if workspace["session_state"] == "ACTIVE_SESSION":
         return {"status": "RETIREMENT_BLOCKED_LIVE_OWNER", "workspace_id": workspace_id}
@@ -2115,13 +2118,10 @@ def retire_completed_worktree(
     if ignored:
         return {"status": "RETIREMENT_BLOCKED_IGNORED_CONTENT", "workspace_id": workspace_id, "ignored_path_count": len([item for item in ignored.split(b"\0") if item])}
     canonical_sha = _fetch_canonical(path, policy)
-    stash_classification = _classify_stashes(path, canonical_sha)
-    if stash_classification:
-        return {
-            "status": "RETIREMENT_BLOCKED_STASH_PRESENT",
-            "workspace_id": workspace_id,
-            "stash_classification": stash_classification,
-        }
+    # Linked worktrees share refs/stash and its objects in the common Git
+    # directory. Removing this clean worktree leaves those recovery objects
+    # intact; classifying all shared stashes against canonical history both
+    # blocks unrelated cleanup and can scan thousands of large commits.
     classification = _local_commit_classification(path, facts["head_sha"], canonical_sha)
     if classification["unique_commits"]:
         bundle = _preserve_local_commits(path, policy, {**workspace, **facts}, canonical_sha)
@@ -2164,10 +2164,6 @@ def retire_completed_worktree(
             if ignored:
                 db.rollback()
                 return {"status": "RETIREMENT_BLOCKED_IGNORED_CONTENT", "workspace_id": workspace_id, "ignored_path_count": len([item for item in ignored.split(b"\0") if item])}
-            stash_classification = _classify_stashes(path, canonical_sha)
-            if stash_classification:
-                db.rollback()
-                return {"status": "RETIREMENT_BLOCKED_STASH_PRESENT", "workspace_id": workspace_id, "stash_classification": stash_classification}
             final_classification = _local_commit_classification(path, final_facts["head_sha"], canonical_sha)
             if final_classification["unique_commits"]:
                 bundle = _preserve_local_commits(path, policy, {**latest, **final_facts}, canonical_sha)
@@ -2183,6 +2179,7 @@ def retire_completed_worktree(
                 "workspace_id": workspace_id,
                 "previous_path": str(path),
                 "workspace_role": latest["role"],
+                "explicit_recovery_retirement": include_recovery and latest["role"] == "RECOVERY_WORKSPACE",
                 "task_id": latest.get("task_id"),
                 "workspace_sha": final_facts["head_sha"],
                 "canonical_sha": canonical_sha,
@@ -2353,6 +2350,7 @@ def _cli() -> int:
     parser.add_argument("--integrated-sha")
     parser.add_argument("--workspace-id")
     parser.add_argument("--apply", action="store_true", help="apply a retirement; default is dry-run")
+    parser.add_argument("--include-recovery", action="store_true", help="allow explicit retirement of a verified integrated recovery worktree; never used by automatic collection")
     parser.add_argument("--mode", choices=("AUDIT_ONLY", "RETIRE_SAFE", "REPORT_ONLY"), default="AUDIT_ONLY")
     parser.add_argument("--production-evidence", type=Path, help="SPEC-295 evidence JSON for Mission Control projection")
     args = parser.parse_args()
@@ -2411,7 +2409,7 @@ def _cli() -> int:
         else:
             if not args.workspace_id:
                 raise WorkspaceAuthorityError("WORKSPACE_ID_REQUIRED")
-            result = retire_completed_worktree(repo, args.policy, args.workspace_id, apply=args.apply)
+            result = retire_completed_worktree(repo, args.policy, args.workspace_id, apply=args.apply, include_recovery=args.include_recovery)
         print(json.dumps(result, sort_keys=True))
         return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "WORKTREE_CREATED_AND_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY"} else 20
     except WorkspaceAuthorityError as exc:

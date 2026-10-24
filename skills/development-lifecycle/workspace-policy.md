@@ -83,6 +83,15 @@ the same lifecycle after integration and before claiming workspace closure:
   and next action in the existing HandOff. Repair safe task-owned causes;
   do not hide the leftover behind a completion claim or open another copy.
 
+Shared stashes live in the common Git database and remain available after a
+linked worktree is retired; their presence alone does not block retirement of
+a clean integrated checkout. Do not drop or apply them as a cleanup step.
+For an explicit user-requested cleanup of a verified recovery workspace, the
+authority supports `retire --workspace-id <id> --include-recovery`, followed by
+the same command with `--apply` after an eligible dry run. Automatic collection
+does not opt into recovery retirement. Dirty/untracked/ignored content, active
+owners and unique local commits retain their existing protection.
+
 Existing immutable build/release directories have separate lease, artifact
 retention and rollback ownership. Lease expiry does not mean disk cleanup.
 Do not delete a serving generation, required artifact or rollback source, and

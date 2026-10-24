@@ -916,23 +916,26 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(blocked_dirty["status"], "RETIREMENT_BLOCKED_DIRTY")
         self.assertTrue((task / "user.txt").exists())
 
-    def test_workspace_retirement_blocks_stash_and_missing_unproven_workspace(self) -> None:
+    def test_workspace_retirement_preserves_shared_stash_and_missing_unproven_workspace(self) -> None:
         task = self.root / "task-with-stash"
         git(self.canonical, "worktree", "add", "-b", "task/stash", str(task), "HEAD")
         (task / "tracked.txt").write_text("stashed work\n", encoding="utf-8")
         git(task, "stash", "push", "-m", "keep this work")
         stash_before = git(task, "stash", "list", "--format=%H")
         workspace = authority.register_workspace(self.canonical, self.policy, task, role="TASK_WORKTREE")
-        result = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
-        self.assertEqual(result["status"], "RETIREMENT_BLOCKED_STASH_PRESENT")
-        self.assertEqual(result["stash_classification"][0]["state"], "UNIQUE_OR_UNPROVEN_STASH")
-        self.assertTrue(task.exists())
-        self.assertEqual(git(task, "stash", "list", "--format=%H"), stash_before)
-        git(self.canonical, "worktree", "remove", "--force", str(task))
+        with patch.object(authority, "_classify_stashes", side_effect=AssertionError("cleanup must not scan shared history")):
+            preview = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"])
+            self.assertEqual(preview["status"], "RETIREMENT_DRY_RUN")
+            result = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
+        self.assertEqual(result["status"], "WORKTREE_RETIRED")
+        self.assertFalse(task.exists())
+        self.assertEqual(git(self.canonical, "stash", "list", "--format=%H"), stash_before)
+        git(self.canonical, "stash", "apply", stash_before)
+        self.assertEqual((self.canonical / "tracked.txt").read_text(), "stashed work\n")
         missing = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"], apply=True)
         self.assertEqual(missing["status"], "RETIREMENT_BLOCKED_MISSING_WITHOUT_RECOVERY_PROOF")
 
-    def test_retirement_classifies_integrated_stash_without_dropping_it(self) -> None:
+    def test_retirement_preserves_integrated_stash_without_dropping_it(self) -> None:
         task = self.root / "task-with-integrated-stash"
         git(self.canonical, "worktree", "add", "-b", "task/integrated-stash", str(task), "HEAD")
         (task / "tracked.txt").write_text("integrated stash patch\n", encoding="utf-8")
@@ -947,14 +950,18 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         workspace = authority.register_workspace(
             self.canonical, self.policy, task, role="TASK_WORKTREE", task_id="integrated-stash"
         )
+        preview = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"]
+        )
+        self.assertEqual(preview["status"], "RETIREMENT_DRY_RUN")
         result = authority.retire_completed_worktree(
             self.canonical, self.policy, workspace["workspace_id"], apply=True
         )
 
-        self.assertEqual(result["status"], "RETIREMENT_BLOCKED_STASH_PRESENT")
-        self.assertEqual(result["stash_classification"][0]["state"], "PATCH_EQUIVALENT_IN_CANONICAL")
-        self.assertTrue(task.exists())
-        self.assertEqual(git(task, "stash", "list", "--format=%H"), stash_before)
+        self.assertEqual(result["status"], "WORKTREE_RETIRED")
+        self.assertFalse(task.exists())
+        self.assertEqual(git(self.canonical, "stash", "list", "--format=%H"), stash_before)
+        self.assertEqual(git(self.canonical, "show", f"{stash_before}:tracked.txt"), "integrated stash patch")
 
     def test_recovery_workspace_is_never_automatically_retired(self) -> None:
         recovery = self.root / "recovery-worktree"
@@ -986,6 +993,42 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         project = authority.resolve_project_authority(self.canonical, self.policy)
         stale_record = next(row for row in project["workspaces"] if row["workspace_id"] == workspace["workspace_id"])
         self.assertEqual(stale_record["location"], str(task))
+
+    def test_explicit_recovery_retirement_keeps_data_and_canonical_guards(self) -> None:
+        recovery = self.root / "completed-recovery"
+        git(self.canonical, "worktree", "add", "--detach", str(recovery), "HEAD")
+        workspace = authority.register_workspace(
+            self.canonical, self.policy, recovery, role="RECOVERY_WORKSPACE"
+        )
+        blocked = authority.retire_completed_worktree(self.canonical, self.policy, workspace["workspace_id"])
+        self.assertEqual(blocked["status"], "RETIREMENT_BLOCKED_ROLE")
+        (recovery / "unique.txt").write_text("keep recovery data\n")
+        dirty = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"], include_recovery=True
+        )
+        self.assertEqual(dirty["status"], "RETIREMENT_BLOCKED_DIRTY")
+        self.assertTrue((recovery / "unique.txt").exists())
+        (recovery / "unique.txt").unlink()
+        preview = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"], include_recovery=True
+        )
+        self.assertEqual(preview["status"], "RETIREMENT_DRY_RUN")
+        still_blocked = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"], apply=True
+        )
+        self.assertEqual(still_blocked["status"], "RETIREMENT_BLOCKED_ROLE")
+        retired = authority.retire_completed_worktree(
+            self.canonical, self.policy, workspace["workspace_id"], apply=True, include_recovery=True
+        )
+        self.assertEqual(retired["status"], "WORKTREE_RETIRED")
+        self.assertTrue(retired["receipt"]["explicit_recovery_retirement"])
+        self.assertFalse(recovery.exists())
+        canonical = authority.get_canonical_user_workspace(self.canonical, self.policy)
+        protected = authority.retire_completed_worktree(
+            self.canonical, self.policy, canonical["workspace_id"], apply=True, include_recovery=True
+        )
+        self.assertEqual(protected["status"], "RETIREMENT_BLOCKED_ROLE")
+        self.assertTrue(self.canonical.exists())
 
     def test_retirement_requires_fresh_dry_run_and_writes_receipt(self) -> None:
         task = self.root / "task-safe-retire"
