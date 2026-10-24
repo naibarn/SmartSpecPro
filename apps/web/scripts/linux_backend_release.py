@@ -199,6 +199,48 @@ def canonical_tip(workspace: Path, remote: str, ref: str) -> str:
     return rows[0]
 
 
+def source_advance_is_documentation_only(workspace: Path, source_sha: str, current_sha: str) -> bool:
+    """Keep immutable build evidence usable across documentation-only main advances.
+
+    Source identity remains pinned to ``source_sha``. Any executable, config,
+    dependency, workflow, asset, or unknown path change makes the old candidate
+    ineligible and requires a fresh build.
+    """
+    if source_sha == current_sha:
+        return True
+    git = ["git", "-c", f"safe.directory={workspace.resolve()}", "-C", str(workspace)]
+    ancestor = subprocess.run(
+        [*git, "merge-base", "--is-ancestor", source_sha, current_sha],
+        capture_output=True,
+        check=False,
+    )
+    if ancestor.returncode != 0:
+        return False
+    changed = subprocess.run(
+        [*git, "diff", "--name-only", "--no-renames", f"{source_sha}..{current_sha}"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if changed.returncode != 0:
+        return False
+    paths = [Path(line) for line in changed.stdout.splitlines() if line]
+    if not paths:
+        return False
+    documentation_roots = {"docs", "specs", "handoff", "orchestra"}
+    for path in paths:
+        normalized = path.as_posix()
+        if path.suffix.lower() not in {".md", ".mdx", ".rst"}:
+            return False
+        if len(path.parts) == 1 and path.name.lower() in {"readme.md", "contributing.md", "changelog.md", "security.md"}:
+            continue
+        if path.parts[0] not in documentation_roots:
+            return False
+        if normalized.startswith("apps/") or normalized.startswith("packages/") or normalized.startswith("scripts/"):
+            return False
+    return True
+
+
 def validate_build_result(
     path: Path, *, verify_artifact_contents: bool = True
 ) -> tuple[dict[str, Any], Path, Path]:
@@ -305,8 +347,15 @@ def prepare_artifact(build_result_path: Path, artifact_store: Path) -> dict[str,
         raise ReleaseError("Pinned build workspace is missing repository release policy")
     import tomllib
     policy = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
-    if canonical_tip(workspace, str(policy["remote"]), str(policy["canonical_ref"])) != source_sha:
-        raise ReleaseError("Stale source rejected: origin/main moved after this build")
+    current_sha = canonical_tip(workspace, str(policy["remote"]), str(policy["canonical_ref"]))
+    if not source_advance_is_documentation_only(workspace, source_sha, current_sha):
+        raise ReleaseError("Stale source rejected: executable or deployment inputs advanced after this build")
+    source_tree = subprocess.run(
+        ["git", "-c", f"safe.directory={workspace.resolve()}", "-C", str(workspace), "rev-parse", f"{source_sha}^{{tree}}"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
 
     release_digest = artifact_manifest(source_root)
     release_id = f"smartspec-web-{source_sha}-{release_digest['artifact_digest'][7:19]}"
@@ -319,6 +368,12 @@ def prepare_artifact(build_result_path: Path, artifact_store: Path) -> dict[str,
         "canonicalRef": "refs/heads/main",
         "canonicalBuildResult": str(build_result_path.resolve()),
         "canonicalBuildArtifactDigest": record["artifact"]["artifact_digest"],
+        "sourceTreeSha": source_tree,
+        "sourceDependencyDigest": hashlib.sha256(
+            f"{source_tree}\0{record['artifact']['artifact_digest']}".encode("utf-8")
+        ).hexdigest(),
+        "canonicalTipAtPreparation": current_sha,
+        "documentationOnlyAdvance": current_sha != source_sha,
         "releaseArtifactDigest": release_digest["artifact_digest"],
         "releaseArtifactFileCount": release_digest["artifact_file_count"],
         "releaseArtifactSymlinkCount": release_digest["artifact_symlink_count"],
@@ -865,14 +920,14 @@ def promote_artifact(
     runtime.assert_supported_target()
     manifest = validate_published_artifact(artifact_path)
     source_sha = manifest["sourceSha"]
-    observed_tip = current_tip(manifest)
-    if observed_tip != source_sha:
-        _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
-        raise ReleaseError("Stale source rejected: release SHA is not current origin/main")
     build_path = Path(manifest["canonicalBuildResult"])
     build, _, workspace = validate_build_result(
         build_path, verify_artifact_contents=False
     )
+    observed_tip = current_tip(manifest)
+    if not source_advance_is_documentation_only(workspace, source_sha, observed_tip):
+        _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
+        raise ReleaseError("Stale source rejected: executable or deployment inputs advanced after build")
     if build.get("source_revision") != source_sha:
         raise ReleaseError("Release manifest does not match canonical build evidence")
     if build["artifact"].get("artifact_digest") != manifest.get("canonicalBuildArtifactDigest"):
@@ -890,9 +945,9 @@ def promote_artifact(
     with lock_path.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         observed_tip = current_tip(manifest)
-        if observed_tip != source_sha:
+        if not source_advance_is_documentation_only(workspace, source_sha, observed_tip):
             _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
-            raise ReleaseError("Canonical source advanced while waiting for deployment fence")
+            raise ReleaseError("Executable or deployment inputs advanced while waiting for deployment fence")
         if current_link.is_symlink():
             active_target = current_link.resolve()
             try:
@@ -1022,8 +1077,9 @@ def promote_artifact(
             activation_started = True
             runtime.restart()
             health = runtime.verify(target, source_sha)
-            if current_tip(manifest) != source_sha:
-                raise ReleaseError("Canonical source advanced during activation")
+            activation_tip = current_tip(manifest)
+            if not source_advance_is_documentation_only(workspace, source_sha, activation_tip):
+                raise ReleaseError("Executable or deployment inputs advanced during activation")
             release_status = json.loads((target / "release-manifest.json").read_text(encoding="utf-8"))
             receipt = {
                 **release_status,

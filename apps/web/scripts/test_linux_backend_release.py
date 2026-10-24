@@ -247,6 +247,42 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertEqual(result["status"], "ARTIFACT_READY")
         return Path(result["artifact_path"])
 
+    def commit_canonical_advance(self, relative_path: str, contents: str) -> str:
+        advance = self.root / f"advance-{hashlib.sha256(relative_path.encode()).hexdigest()[:8]}"
+        subprocess.run(["git", "-C", str(self.workspace), "worktree", "add", "--detach", str(advance), self.source_sha], check=True, capture_output=True)
+        try:
+            target = advance / relative_path
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(contents)
+            subprocess.run(["git", "-C", str(advance), "add", relative_path], check=True)
+            subprocess.run(["git", "-C", str(advance), "commit", "-qm", "advance canonical source"], check=True)
+            return subprocess.check_output(["git", "-C", str(advance), "rev-parse", "HEAD"], text=True).strip()
+        finally:
+            subprocess.run(["git", "-C", str(self.workspace), "worktree", "remove", "--force", str(advance)], check=True, capture_output=True)
+
+    def test_documentation_only_main_advance_keeps_source_exact_and_candidate_eligible(self):
+        current_tip = self.commit_canonical_advance("docs/release-notes.md", "Clarify release behavior.\n")
+        self.assertTrue(release.source_advance_is_documentation_only(self.workspace, self.source_sha, current_tip))
+        self.assertNotEqual(current_tip, self.source_sha)
+        with patch.object(release, "canonical_tip", return_value=current_tip):
+            prepared = release.prepare_artifact(self.build_result_path, self.artifact_store)
+        self.assertEqual(prepared["manifest"]["sourceSha"], self.source_sha)
+        self.assertTrue(prepared["manifest"]["documentationOnlyAdvance"])
+        self.assertEqual(prepared["manifest"]["canonicalTipAtPreparation"], current_tip)
+        self.tip = lambda _manifest: current_tip
+        promoted = self.promote(Path(prepared["artifact_path"]))
+        self.assertEqual(promoted["status"], "DEPLOYED_VERIFIED")
+        runtime = promoted.get("runtime_verification", promoted.get("runtime", {}))
+        self.assertEqual(runtime["runtimeRevision"], self.source_sha)
+
+    def test_executable_advance_keeps_old_candidate_ineligible(self):
+        current_tip = self.commit_canonical_advance("apps/web/server/new-runtime.ts", "export const value = true;\n")
+        self.assertFalse(release.source_advance_is_documentation_only(self.workspace, self.source_sha, current_tip))
+        with patch.object(release, "canonical_tip", return_value=current_tip):
+            with self.assertRaisesRegex(release.ReleaseError, "executable or deployment inputs advanced"):
+                release.prepare_artifact(self.build_result_path, self.artifact_store)
+        self.assertFalse(list(self.artifact_store.glob("smartspec-web-*")))
+
     def promote(self, artifact: Path):
         return release.promote_artifact(
             artifact,

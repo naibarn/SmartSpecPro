@@ -3,14 +3,17 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Build and promote the latest compatible origin/main full-stack Linux release.
+Build and promote a full-stack Linux release, or reuse a verified build receipt.
 
 Usage:
   pnpm run release:web:linux [-- --required-integrated-revision <sha>]
+  pnpm run release:web:linux -- --build-result <receipt.json>
   pnpm run build:deploy              # compatibility alias
   (run from repository root or apps/web)
 
-This builds an immutable artifact, prepares it, then invokes the existing
+By default this builds an immutable artifact. With --build-result it reuses
+that exact verified build receipt and artifact without rebuilding. It then
+prepares the immutable release and invokes the existing
 sudo-gated smartspec-web.service promotion with health checks and rollback.
 It does not run database migrations or SPEC-224 jobs.
 EOF
@@ -55,10 +58,69 @@ if [[ ! -f "${BUILD_ENTRYPOINT}" ]]; then
   exit 20
 fi
 
-echo "[linux-release] Building latest configured canonical revision..." >&2
-if ! BUILD_RECORD="$(bash "${BUILD_ENTRYPOINT}" "${REPOSITORY_ROOT}" "$@")"; then
-  echo "[linux-release] Canonical build failed; production was not changed." >&2
-  exit 21
+BUILD_RESULT_INPUT=""
+REQUIRED_REVISION=""
+BUILD_ARGS=()
+while (($#)); do
+  case "$1" in
+    --build-result)
+      if (($# < 2)) || [[ -z "$2" ]]; then
+        echo "[linux-release] --build-result requires a receipt path." >&2
+        exit 2
+      fi
+      BUILD_RESULT_INPUT="$2"
+      shift 2
+      ;;
+    --required-integrated-revision)
+      if (($# < 2)) || [[ -z "$2" ]]; then
+        echo "[linux-release] --required-integrated-revision requires a SHA." >&2
+        exit 2
+      fi
+      REQUIRED_REVISION="$2"
+      BUILD_ARGS+=("$1" "$2")
+      shift 2
+      ;;
+    *)
+      BUILD_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ -n "${BUILD_RESULT_INPUT}" ]]; then
+  if [[ ! -f "${BUILD_RESULT_INPUT}" ]]; then
+    echo "[linux-release] Build receipt does not exist; production was not changed." >&2
+    exit 21
+  fi
+  BUILD_RECORD="$(python3 - "${BUILD_RESULT_INPUT}" "${REQUIRED_REVISION}" <<'PY'
+import json
+import re
+import sys
+from pathlib import Path
+
+record = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+source = record.get("source_revision")
+if (record.get("status") != "BUILD_PASSED" or record.get("source_verified") is not True
+        or record.get("canonical_ref") != "refs/heads/main"
+        or not isinstance(source, str) or not re.fullmatch(r"[0-9a-f]{40,64}", source)
+        or record.get("canonical_tip_after_build") != source
+        or not isinstance(record.get("artifact"), dict)):
+    raise SystemExit("Build receipt is not a verified immutable origin/main build.")
+if sys.argv[2] and source != sys.argv[2]:
+    raise SystemExit("Build receipt SHA does not match --required-integrated-revision.")
+print(json.dumps(record, sort_keys=True))
+PY
+)" || {
+    echo "[linux-release] Existing build receipt is invalid; production was not changed." >&2
+    exit 21
+  }
+  echo "[linux-release] Reusing verified build receipt ${BUILD_RESULT_INPUT}; no rebuild." >&2
+else
+  echo "[linux-release] Building latest configured canonical revision..." >&2
+  if ! BUILD_RECORD="$(bash "${BUILD_ENTRYPOINT}" "${REPOSITORY_ROOT}" "${BUILD_ARGS[@]}")"; then
+    echo "[linux-release] Canonical build failed; production was not changed." >&2
+    exit 21
+  fi
 fi
 BUILD_STATUS="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("status", ""))' <<<"${BUILD_RECORD}")"
 if [[ "${BUILD_STATUS}" != "BUILD_PASSED" ]]; then
@@ -66,7 +128,7 @@ if [[ "${BUILD_STATUS}" != "BUILD_PASSED" ]]; then
   exit 21
 fi
 
-BUILD_RESULT="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["result_file"])' <<<"${BUILD_RECORD}")"
+BUILD_RESULT="$(python3 -c 'import json,sys; print(json.load(sys.stdin).get("result_file") or sys.argv[1])' "${BUILD_RESULT_INPUT}" <<<"${BUILD_RECORD}")"
 BUILD_WORKSPACE="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["isolated_workspace"])' <<<"${BUILD_RECORD}")"
 SOURCE_SHA="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["source_revision"])' <<<"${BUILD_RECORD}")"
 RELEASE_TOOL="${BUILD_WORKSPACE}/apps/web/scripts/linux_backend_release.py"
