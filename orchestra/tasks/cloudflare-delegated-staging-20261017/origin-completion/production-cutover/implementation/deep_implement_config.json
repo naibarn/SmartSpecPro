@@ -21,9 +21,9 @@
     },
     "section-03-production-runtime-composition": {
       "status": "checkpointed",
-      "next_action": "On the authenticated Production Admin page, the latest canonical Queue job is now recoverable after reload with attempt and lease telemetry. Verify job eb327c3c-44f5-462f-98f2-0e40065e6caa status/receipt, then provision/verify Production Hyperdrive, Node/Python Container bindings, activation and application ingress before the existing canary-authorized route cutover.",
-      "checkpoint_sha": "679fa0af44838515228f799166d41e92bc0de316",
-      "merged_main_sha": "679fa0af44838515228f799166d41e92bc0de316"
+      "next_action": "Linux release generation 74 verified source 2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f (artifact sha256:0a5ee38dff454ae632065b2057607b15bcb7ea8fc170828b08cf7a5c47028ff4; receipt smartspec-web-2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f-0f019890ac84-74.json; public healthz 200). In authenticated Production Admin, retry Queue setup once to create a fresh canonical job under the updated executor; verify provider receipt, then continue exact production Hyperdrive/Worker app binding preparation and keep activation/routes disabled until canary authority.",
+      "checkpoint_sha": "2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f",
+      "merged_main_sha": "2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f"
     },
     "section-01-production-target-ui": {
       "checkpoint_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
@@ -41,11 +41,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 33,
-  "updated_at": "2026-10-24T16:58:18.351168+00:00",
+  "generation": 38,
+  "updated_at": "2026-10-24T17:23:20.910994+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "On the authenticated Production Admin page, the latest canonical Queue job is now recoverable after reload with attempt and lease telemetry. Verify job eb327c3c-44f5-462f-98f2-0e40065e6caa status/receipt, then provision/verify Production Hyperdrive, Node/Python Container bindings, activation and application ingress before the existing canary-authorized route cutover.",
+    "next_action": "Linux release generation 74 verified source 2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f (artifact sha256:0a5ee38dff454ae632065b2057607b15bcb7ea8fc170828b08cf7a5c47028ff4; receipt smartspec-web-2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f-0f019890ac84-74.json; public healthz 200). In authenticated Production Admin, retry Queue setup once to create a fresh canonical job under the updated executor; verify provider receipt, then continue exact production Hyperdrive/Worker app binding preparation and keep activation/routes disabled until canary authority.",
     "gaps": [
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
       "PostgreSQL accepts TLS, but the application session is non-TLS and strict CA verification fails UNABLE_TO_VERIFY_LEAF_SIGNATURE; a trusted matching certificate and actual Tunnel route remain unverified.",
@@ -54,12 +54,12 @@
       "Production still has no saved Production runtime config, verified rollback release identity, selected Worker workload bindings, or smartaihub.app/* route. Production cutover remains unverified.",
       "Last exact provider inventory at 2026-10-24 15:03 UTC: only Staging Queue/Hyperdrive existed, no production config or main-domain route, and active 100% Worker lacked verified SmartAIHub identity or workload bindings.",
       "Production Queue write job has not run from the authenticated Admin session, so no Cloudflare resource receipt exists yet.",
-      "Public runtime.smartaihub.app/readyz is HTTP 503 activation=disabled; all seven bindings are absent (HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX). This current runtime result is the direct blocker to staging/runtime acceptance.",
       "Production Worker workload configuration, trusted PostgreSQL certificate/Production Tunnel route/Hyperdrive binding, application/auth/database acceptance, rollback baseline, canary and cutover remain unverified.",
-      "Exact Production Queue job eb327c3c-44f5-462f-98f2-0e40065e6caa is shown queued in the owner screenshot, but it is absent from this checkout’s local worker_jobs database; the production Admin session/database must provide the canonical attempt, lease, executor and provider receipt before claiming completion.",
       "Public runtime.smartaihub.app/readyz remains HTTP 503 activation=disabled with HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET and VECTOR_INDEX absent. Production application ingress still requires Node/Python Container bindings and retained PostgreSQL readiness.",
-      "PostgreSQL remains on the existing host, but the only configured Cloudflare Tunnel database hostname is db-staging.smartaihub.app; strict TLS CA verification and a Production Hyperdrive/Tunnel route are unverified."
+      "PostgreSQL remains on the existing host, but the only configured Cloudflare Tunnel database hostname is db-staging.smartaihub.app; strict TLS CA verification and a Production Hyperdrive/Tunnel route are unverified.",
+      "Production Queue job eb327c34-44f5-462f-98f2-0e40065ce6aa was rejected by outbox contract admission, then expired; exact evidence: DISPATCH_FAILED adapter_contract_unsupported at 2026-10-24T16:43:27Z, EXPIRED JOB_DEADLINE_EXPIRED at 16:50:25Z. Fix is integrated and Linux release generation 74 serves 2f4abcd8. This old job must remain expired; fresh canonical job required.",
+      "As of 2026-10-24T17:21Z, public https://runtime.smartaihub.app/readyz returns 503 activation=disabled in production with HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET and VECTOR_INDEX absent; this is a production runtime configuration/resource gap, not a staging job status."
     ],
-    "merged_main_sha": "679fa0af44838515228f799166d41e92bc0de316"
+    "merged_main_sha": "2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f"
   }
 }
