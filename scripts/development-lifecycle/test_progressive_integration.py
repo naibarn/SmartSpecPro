@@ -110,7 +110,7 @@ class ProgressiveIntegrationTests(unittest.TestCase):
             self.assertTrue((main / "alpha.txt").is_file())
             self.assertTrue((main / "beta.txt").is_file())
             self.assertEqual(
-                "ISOLATE_WORKTREE",
+            "SERIALIZE_OWNED_PATH",
                 lifecycle_policy.decide_closure({
                     "event": "concurrent_writer_collision",
                     "facts": {"isolated_workspace_available": True},
