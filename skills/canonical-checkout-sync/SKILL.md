@@ -175,6 +175,10 @@ references, and serialize with artifact publication. Build/deployment receipts
 and fencing history remain. Task worktrees still use workspace authority retirement. Report any
 retained path and its reason; an expired lease alone is not deletion evidence.
 
+For artifact-only housekeeping during a build, use the same command with
+`collect-artifacts` instead of `collect`. It takes only release/publication
+locks and preserves active build sources; it does not wait for the full build.
+
 ## Boundaries
 
 - This skill certifies source selection and execution placement only. A successful source lease is not a passing build, test, deployment, or runtime check. `BUILD_PASSED` certifies an artifact for its recorded source SHA and digest only; it does not establish publication or that a frontend/backend process is serving that revision. Report those states separately with evidence.

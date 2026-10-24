@@ -654,6 +654,30 @@ def _source_release_lock(path: Path):
         stream.close()
 
 
+def _retained_release_revisions(repo: Path, release_root: Path) -> set[str]:
+    protected_revisions: set[str] = set()
+    # Release directories are independently materialized, but retain their
+    # source tuples too, including rollback and a concurrently prepared one.
+    if release_root.exists():
+        for directory in release_root.iterdir():
+            if directory.is_symlink() or not directory.is_dir():
+                continue
+            manifest = directory / 'release-manifest.json'
+            if not manifest.exists():
+                continue
+            try:
+                release = json.loads(manifest.read_text(encoding='utf-8'))
+                protected_revisions.add(str(release['source_revision']))
+            except (OSError, ValueError, KeyError) as exc:
+                raise LifecycleError('SOURCE_RETENTION_RELEASE_MANIFEST_INVALID') from exc
+        for link in release_root.iterdir():
+            if link.is_symlink():
+                for workspace in _registered_worktrees(repo):
+                    if _inside(link.resolve(), workspace):
+                        protected_revisions.add(workspace.name.split('-')[0])
+    return protected_revisions
+
+
 def _collect_build_artifacts(repo: Path, policy: dict[str, Any], protected: set[str], *, apply: bool) -> dict[str, Any]:
     """Collect reproducible prepared artifacts, preserving all release receipts."""
     key = _hash(policy['repository_id'])[:20]
@@ -716,6 +740,30 @@ def _collect_build_artifacts(repo: Path, policy: dict[str, Any], protected: set[
     return report
 
 
+def collect_prepared_artifacts(repo: Path, policy_path: Path | None = None, *, apply: bool = False,
+                               release_root: Path = Path('/home/dev/production-releases')) -> dict[str, Any]:
+    policy = load_policy(repo, policy_path)
+    lease_dir = Path(policy['lease_root']) / _hash(policy['repository_id'])[:20]
+    lease_dir.mkdir(parents=True, exist_ok=True)
+    with _source_release_lock(lease_dir / 'production-release.lock'):
+        protected = _retained_release_revisions(repo, release_root)
+        leases = []
+        for state_path in lease_dir.glob('*-build.json'):
+            try:
+                state = json.loads(state_path.read_text(encoding='utf-8'))
+                if state.get('repository_id') == policy['repository_id'] and Path(state['isolated_workspace']).exists():
+                    leases.append((state_path.stat().st_mtime, state))
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+        for _last_use, state in sorted(leases, key=lambda item: item[0], reverse=True)[:2]:
+            protected.add(state['source_revision'])
+        for _last_use, state in leases:
+            if state.get('expires_at', 0) > time.time():
+                protected.add(state['source_revision'])
+        return {'status': 'APPLIED' if apply else 'DRY_RUN',
+                **_collect_build_artifacts(repo, policy, protected, apply=apply)}
+
+
 def collect_build_sources(
     repo: Path, policy_path: Path | None = None, *, apply: bool = False,
     min_idle_seconds: int = 3600, keep_recent: int = 2,
@@ -740,26 +788,7 @@ def collect_build_sources(
         if not build_lock_held:
             locks.enter_context(_nonblocking_file_lock(lease_dir / 'canonical-build.lock'))
         locks.enter_context(_source_release_lock(lease_dir / 'production-release.lock'))
-        protected_revisions: set[str] = set()
-        # Release directories are independently materialized, but retain their
-        # source tuples too, including rollback and a concurrently prepared one.
-        if release_root.exists():
-            for directory in release_root.iterdir():
-                if directory.is_symlink() or not directory.is_dir():
-                    continue
-                manifest = directory / 'release-manifest.json'
-                if not manifest.exists():
-                    continue
-                try:
-                    release = json.loads(manifest.read_text(encoding='utf-8'))
-                    protected_revisions.add(str(release['source_revision']))
-                except (OSError, ValueError, KeyError) as exc:
-                    raise LifecycleError('SOURCE_RETENTION_RELEASE_MANIFEST_INVALID') from exc
-            for link in release_root.iterdir():
-                if link.is_symlink():
-                    for workspace in _registered_worktrees(repo):
-                        if _inside(link.resolve(), workspace):
-                            protected_revisions.add(workspace.name.split('-')[0])
+        protected_revisions = _retained_release_revisions(repo, release_root)
         entries = []
         for state_path in lease_dir.glob('*-build.json'):
             try:
@@ -1447,6 +1476,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     build.add_argument("--lease-seconds", type=int, default=900)
     build.add_argument("--max-stale-rebuilds", type=int, default=0)
     build.add_argument("command", nargs=argparse.REMAINDER)
+    artifacts = commands.add_parser("collect-artifacts")
+    artifacts.add_argument("--repository", required=True, type=Path)
+    artifacts.add_argument("--policy", type=Path)
+    artifacts.add_argument("--apply", action="store_true")
+    artifacts.add_argument("--release-root", type=Path, default=Path("/home/dev/production-releases"))
     collect = commands.add_parser("collect")
     collect.add_argument("--repository", required=True, type=Path)
     collect.add_argument("--policy", type=Path)
@@ -1466,6 +1500,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(json.dumps(result, sort_keys=True))
             return 0 if result["ready"] else 21
+        if args.action == "collect-artifacts":
+            print(json.dumps(collect_prepared_artifacts(args.repository, args.policy, apply=args.apply, release_root=args.release_root), sort_keys=True))
+            return 0
         if args.action == "collect":
             result = collect_build_sources(args.repository, args.policy, apply=args.apply, release_root=args.release_root)
             print(json.dumps(result, sort_keys=True))

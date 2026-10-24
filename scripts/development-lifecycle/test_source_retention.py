@@ -6,11 +6,10 @@ import sys
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 import test_canonical_source as fixtures
-from canonical_source import FileLock, LifecycleError, collect_build_sources
+from canonical_source import FileLock, collect_build_sources, collect_prepared_artifacts
 
 
 @unittest.skipUnless(sys.platform == 'linux', 'Local source consumers use /proc')
@@ -151,7 +150,9 @@ class SourceRetentionTests(unittest.TestCase):
         with FileLock(store / '.artifact-publish.lock'):
             deferred = self.collect()
             self.assertEqual(deferred['artifact_status'], 'DEFERRED')
-        report = self.collect(apply=True)
+        with FileLock(state.parent / 'canonical-build.lock'):
+            report = collect_prepared_artifacts(self.shared, self.policy, apply=True,
+                                               release_root=self.root / 'releases')
         self.assertEqual(report['artifact_removed'], [str(artifacts[0])])
         self.assertTrue(all(path.exists() for path in artifacts[1:]))
         self.assertEqual((outside / 'keep.txt').read_text(), 'keep this')
