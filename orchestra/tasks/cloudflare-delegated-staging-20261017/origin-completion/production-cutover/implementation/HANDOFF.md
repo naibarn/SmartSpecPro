@@ -3,12 +3,12 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `19`
-- Updated (UTC): `2026-10-24T14:59:33+00:00`
+- State generation: `20`
+- Updated (UTC): `2026-10-24T15:00:12+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `fc04df452265c73eb3146a974f6591aef5f8128e`
+- Latest recorded merged Main SHA: `977f709c72cc37c40ece095662bb0f4fca552553`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
 - Next action: Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.
@@ -18,7 +18,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | Section | Stage | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- |
 | section-02-production-deploy-authority | checkpointed | 57da33899915f7a9497e1cefcec5362c6b583d7a | ac35b9303842c63377e6ea9f38ffb5667db2ca84 | Connectivity Directory Admin is now confirmed by HTTP 200 read access. Continue a production-scoped resource preparation path using existing bounded ApprovalDBService + worker_jobs; Queue/Hyperdrive write scopes are not proven by read-only checks, and Hyperdrive stays gated on trusted PostgreSQL TLS plus a Production-only Tunnel route. |
-| section-03-production-runtime-composition | in_progress | fc04df452265c73eb3146a974f6591aef5f8128e | fc04df452265c73eb3146a974f6591aef5f8128e | Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes. |
+| section-03-production-runtime-composition | in_progress | 977f709c72cc37c40ece095662bb0f4fca552553 | 977f709c72cc37c40ece095662bb0f4fca552553 | Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes. |
 | section-01-production-target-ui | checkpointed | a96a1d2307a77fea47b929a71122fec229b844ac | a96a1d2307a77fea47b929a71122fec229b844ac | Release endpoint-level Production inventory diagnostics to Linux and verify runtime SHA/health. Continue implementing Production Queue preparation through existing bounded authority and canonical worker_jobs; retain the PostgreSQL TLS/Tunnel blocker. |
 
 ## Open gaps

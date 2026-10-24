@@ -22,8 +22,8 @@
     "section-03-production-runtime-composition": {
       "status": "in_progress",
       "next_action": "Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.",
-      "checkpoint_sha": "fc04df452265c73eb3146a974f6591aef5f8128e",
-      "merged_main_sha": "fc04df452265c73eb3146a974f6591aef5f8128e"
+      "checkpoint_sha": "977f709c72cc37c40ece095662bb0f4fca552553",
+      "merged_main_sha": "977f709c72cc37c40ece095662bb0f4fca552553"
     },
     "section-01-production-target-ui": {
       "checkpoint_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
@@ -41,8 +41,8 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 19,
-  "updated_at": "2026-10-24T14:59:33+00:00",
+  "generation": 20,
+  "updated_at": "2026-10-24T15:00:12+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
     "next_action": "Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.",
@@ -58,6 +58,6 @@
       "Production still has no production Queue or Hyperdrive, no saved Production runtime config, active Worker lacks verified release identity and app bindings, and smartaihub.app/* is not attached. Production /readyz remains 503 with activation disabled and required HYPERDRIVE/JOB_QUEUE plus selected application bindings absent.",
       "Fresh exact Production credential probe at 2026-10-24 14:55 UTC: Connectivity Directory Read now returns HTTP 200; Queue and Hyperdrive are still only read-verified. No provider write was attempted."
     ],
-    "merged_main_sha": "fc04df452265c73eb3146a974f6591aef5f8128e"
+    "merged_main_sha": "977f709c72cc37c40ece095662bb0f4fca552553"
   }
 }
