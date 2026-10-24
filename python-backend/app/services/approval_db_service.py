@@ -58,6 +58,7 @@ _CF_STAGING_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 
 _CF_PRODUCTION_GRANT_SCHEMA = "cloudflare.production-deployment-grant.v2"
 _CF_PRODUCTION_TARGET = "smartspec-cloudflare-runtime"
+_CF_PRODUCTION_SINGLE_ADMIN_ISSUER = "single_admin_owner_approval_v1"
 
 
 def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
@@ -763,7 +764,7 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
     async def create_cloudflare_production_grant_request(
         self, *, tenant_id: str, requester_id: int, idempotency_key: str, payload: dict,
     ) -> ApprovalRequest:
-        """Create a pending, separately typed production grant request for independent approval."""
+        """Record one admin's explicit approval for one exact production operation."""
         if not tenant_id or len(tenant_id) > 36:
             raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_TENANT_REQUIRED")
         if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 160:
@@ -791,26 +792,32 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         if existing:
             existing_payload = existing.payload if isinstance(existing.payload, dict) else {}
             if (existing.request_type != ApprovalType.DEPLOYMENT or existing.requester_id != requester_id or
-                    existing_payload != grant or (existing.extra_data or {}).get("cloudflareProductionGrantIssuerV1") != "admin_approval_workflow"):
+                    existing_payload != grant or (existing.extra_data or {}).get("cloudflareProductionGrantIssuerV1") != _CF_PRODUCTION_SINGLE_ADMIN_ISSUER):
                 raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_IDEMPOTENCY_CONFLICT")
             return existing
 
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         request = ApprovalRequest(
             id=grant_id, request_type=ApprovalType.DEPLOYMENT,
             title="Cloudflare production deployment grant",
-            description="Independent admin approval required for this exact production Worker release and rollback scope.",
+            description="Explicitly approved by the authenticated Admin for this exact production Worker operation, artifact, target, canary, and rollback scope.",
             tenant_id=tenant_id, project_id=grant["projectId"], requester_id=requester_id,
-            requester_type="user", status=ApprovalStatus.PENDING, payload=grant,
-            extra_data={"approvers": [], "cloudflareProductionGrantIssuerV1": "admin_approval_workflow"},
+            requester_type="user", status=ApprovalStatus.APPROVED, payload=grant,
+            extra_data={"approvers": [requester_id], "cloudflareProductionGrantIssuerV1": _CF_PRODUCTION_SINGLE_ADMIN_ISSUER},
             action_digest=hashlib.sha256(json.dumps(grant, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
             correlation_key=correlation_key, risk_level="critical", required_approvers=1,
-            current_approvals=0, expires_at=expires_at.replace(tzinfo=None),
+            current_approvals=1, expires_at=expires_at.replace(tzinfo=None), resolved_at=now,
         )
         self.db.add(request)
+        self.db.add(ApprovalResponse(
+            id=str(uuid4()), request_id=grant_id, approver_id=requester_id,
+            decision="approved", comment="Authenticated Admin approved the bounded Cloudflare production operation.",
+            created_at=now,
+        ))
         self.db.add(AuditLog(
             user_id=str(requester_id),
             user_role=str(requester_role.value if hasattr(requester_role, "value") else requester_role),
-            action="cloudflare.production_grant.requested", resource_type="cloudflare_production_deployment_grant",
+            action="cloudflare.production_grant.owner_approved", resource_type="cloudflare_production_deployment_grant",
             resource_id=grant_id,
             details={"tenantId": tenant_id, "projectId": grant["projectId"], "targetId": _CF_PRODUCTION_TARGET,
                      "environment": "production", "actionDigest": request.action_digest, "correlationKey": correlation_key},
@@ -820,7 +827,7 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         return request
 
     async def resolve_cloudflare_production_grant(self, grant_ref: str, *, now: Optional[datetime] = None) -> Optional[dict]:
-        """Resolve only an independently approved, unrevoked production grant."""
+        """Resolve only a directly Admin-approved, unrevoked exact production grant."""
         result = await self.db.execute(select(ApprovalRequest).where(
             ApprovalRequest.id == grant_ref, ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
         ))
@@ -829,7 +836,9 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
                 request.resolved_at is None or request.current_approvals < max(1, request.required_approvers)):
             return None
         extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
-        if extra_data.get("cloudflareProductionGrantIssuerV1") != "admin_approval_workflow":
+        if extra_data.get("cloudflareProductionGrantIssuerV1") not in (
+            "admin_approval_workflow", _CF_PRODUCTION_SINGLE_ADMIN_ISSUER,
+        ):
             return None
         try:
             grant = normalize_cloudflare_production_grant_payload(request.payload if isinstance(request.payload, dict) else {})
@@ -857,7 +866,7 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
     async def revoke_cloudflare_production_grant(
         self, *, grant_ref: str, tenant_id: str, actor_id: int, reason: str,
     ) -> ApprovalRequest:
-        """Revoke only production grants created by the production grant workflow."""
+        """Revoke only production grants created by the authenticated Admin workflow."""
         if not reason or len(reason.strip()) < 4 or len(reason) > 500:
             raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_REVOCATION_REASON_INVALID")
         role_result = await self.db.execute(select(User.role).where(User.id == actor_id))
@@ -871,7 +880,7 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         if request is None:
             raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_NOT_FOUND")
         extra_data = request.extra_data if isinstance(request.extra_data, dict) else {}
-        if extra_data.get("cloudflareProductionGrantIssuerV1") != "admin_approval_workflow":
+        if extra_data.get("cloudflareProductionGrantIssuerV1") not in ("admin_approval_workflow", _CF_PRODUCTION_SINGLE_ADMIN_ISSUER):
             raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_NOT_FOUND")
         grant = normalize_cloudflare_production_grant_payload(request.payload if isinstance(request.payload, dict) else {})
         if grant["grantRef"] != request.id or grant["tenantId"] != request.tenant_id:

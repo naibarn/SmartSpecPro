@@ -1560,7 +1560,7 @@ async def create_cloudflare_production_grant_request(
     tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
 ):
-    """Request approval for one exact production release; this endpoint never pre-approves it."""
+    """Record the authenticated Admin's explicit approval for one exact production operation."""
     if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
         raise HTTPException(status_code=403, detail="CLOUDFLARE_PRODUCTION_GRANT_ADMIN_REQUIRED")
     if data.expires_at.tzinfo is None:

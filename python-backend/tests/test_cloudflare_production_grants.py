@@ -76,7 +76,7 @@ def test_production_grant_payload_is_exact_bounded_and_separate_from_staging():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_production_grant_api_is_admin_only_and_never_auto_approves(monkeypatch):
+async def test_production_grant_api_is_admin_only(monkeypatch):
     issue = CloudflareProductionGrantIssue.model_validate({
         "idempotencyKey": "production-grant-001", "projectId": "project-1",
         "executorId": "cloudflare-production-executor", "targetId": "smartspec-cloudflare-runtime",
@@ -107,7 +107,7 @@ async def test_production_grant_api_is_admin_only_and_never_auto_approves(monkey
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_production_grant_request_is_pending_and_requires_independent_approval():
+async def test_production_grant_request_records_single_admin_approval():
     db = AsyncMock()
     db.add = Mock()
     db.execute.side_effect = [
@@ -120,11 +120,12 @@ async def test_production_grant_request_is_pending_and_requires_independent_appr
     request = await service.create_cloudflare_production_grant_request(
         tenant_id="tenant-1", requester_id=17, idempotency_key="production-grant-001", payload=payload,
     )
-    assert request.status == ApprovalStatus.PENDING
+    assert request.status == ApprovalStatus.APPROVED
     assert request.required_approvers == 1
-    assert request.current_approvals == 0
-    assert request.extra_data["cloudflareProductionGrantIssuerV1"] == "admin_approval_workflow"
+    assert request.current_approvals == 1
+    assert request.extra_data["cloudflareProductionGrantIssuerV1"] == "single_admin_owner_approval_v1"
     assert request.payload["grantRef"] == request.id
+    assert db.add.call_count == 3  # approval, decision receipt, audit receipt
     db.commit.assert_awaited_once()
 
 
@@ -158,7 +159,7 @@ async def test_production_grant_resolver_returns_only_approved_exact_requests():
         current_approvals=1, required_approvers=1, tenant_id=payload["tenantId"],
         project_id=payload["projectId"], requester_id=payload["requesterUserId"], payload=payload,
         action_digest=hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
-        extra_data={"cloudflareProductionGrantIssuerV1": "admin_approval_workflow"},
+        extra_data={"cloudflareProductionGrantIssuerV1": "single_admin_owner_approval_v1"},
     )
     db = AsyncMock()
     db.execute.return_value = SimpleNamespace(scalar_one_or_none=Mock(return_value=row))
@@ -170,7 +171,7 @@ async def test_production_grant_resolver_returns_only_approved_exact_requests():
     row.status = ApprovalStatus.APPROVED
     row.extra_data = {}
     assert await service.resolve_cloudflare_production_grant(row.id) is None
-    row.extra_data = {"cloudflareProductionGrantIssuerV1": "admin_approval_workflow"}
+    row.extra_data = {"cloudflareProductionGrantIssuerV1": "single_admin_owner_approval_v1"}
     row.payload = _grant_payload(expiresAt=(datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat())
     assert await service.resolve_cloudflare_production_grant(row.id) is None
 
@@ -181,7 +182,7 @@ async def test_production_grant_revoke_is_tenant_scoped_audited_and_idempotent()
     payload = _grant_payload()
     request = SimpleNamespace(
         id=payload["grantRef"], request_type=ApprovalType.DEPLOYMENT, tenant_id=payload["tenantId"],
-        payload=payload, extra_data={"cloudflareProductionGrantIssuerV1": "admin_approval_workflow"},
+        payload=payload, extra_data={"cloudflareProductionGrantIssuerV1": "single_admin_owner_approval_v1"},
         revoked_at=None,
     )
     db = AsyncMock()

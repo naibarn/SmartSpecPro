@@ -1,5 +1,12 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Single-Admin production authorization checkpoint — 2026-10-24
+
+- Removed the different-admin requirement from newly issued Cloudflare production grants. The authenticated Admin's explicit grant request now records an immediately approved decision and immutable approval/audit receipts, bound to the exact production job, artifact, target, rollout stage, canary evidence, and rollback baseline. Tenant/admin role checks, exact grant schema, expiry, revocation, digest checks, and the production canary executor remain enforced. Legacy pending grants still require their already-requested approval path and remain resolvable.
+- Focused verification: `DEBUG=false ./.venv/bin/python -m pytest tests/test_cloudflare_production_grants.py -q --no-cov` — 6/6 passed; `git diff --check` passed.
+- This is a partial authorization simplification, not the requested end-to-end one-click campaign yet. The Admin UI still queues staging separately and no campaign continuation currently connects staging acceptance to production preparation/canary/promotion. Production target/credential/bindings and runtime acceptance are still actual prerequisites; do not claim cutover.
+- Next: integrate this safe single-Admin grant checkpoint, then implement the smallest continuation using canonical `worker_jobs` that starts with the Admin's one bounded migration action and advances only after verified staging/runtime/canary gates. Keep PostgreSQL on the current host and show concrete missing configuration values in the UI instead of asking for repeated approvals.
+
 ## Admin activation deadlock and selector layout fixed — 2026-10-23 16:10 Asia/Bangkok
 
 - Root cause: `AdminDeploymentTargets` rendered the minimum Staging Queue activation panel only for runtime `ACTIVATION_DISABLED`. When the Worker probe returned `UNAVAILABLE` while server preflight returned `STAGING_ACTIVATION_PROFILE_REQUIRED`, the owner could not reach the prerequisite configuration action.
