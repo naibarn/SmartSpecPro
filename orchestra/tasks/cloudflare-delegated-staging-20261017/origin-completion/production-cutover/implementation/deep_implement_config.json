@@ -41,8 +41,8 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 21,
-  "updated_at": "2026-10-24T15:01:02+00:00",
+  "generation": 22,
+  "updated_at": "2026-10-24T15:03:03+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
     "next_action": "Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.",
@@ -51,12 +51,11 @@
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
       "Production origin configuration and private-database job contracts are staging-only; no production Queue/Hyperdrive preparation authority/job exists.",
       "PostgreSQL accepts TLS, but the application session is non-TLS and strict CA verification fails UNABLE_TO_VERIFY_LEAF_SIGNATURE; a trusted matching certificate and actual Tunnel route remain unverified.",
-      "Read-only production inventory (2026-10-24 13:52 UTC) confirms only Staging Queue and Hyperdrive exist; no production origin config, no main-domain Worker route, and current active Worker version lacks a verified SmartAIHub release identity.",
       "Retained Tunnel config exposes only db-staging.smartaihub.app -> tcp://127.0.0.1:5432; no production DB hostname route. PostgreSQL accepts TLS but app sessions are plaintext and strict CA validation fails UNABLE_TO_VERIFY_LEAF_SIGNATURE.",
       "Production prep contract/job for Queue and Hyperdrive does not exist yet; current Worker /readyz is 503 with activation disabled and all seven runtime bindings absent.",
       "Live token probe after user update (2026-10-24 14:05 UTC) confirms vpcServices Connectivity Directory Read returns HTTP 200; token verification, Queue/Hyperdrive/Worker/Container reads also pass. Read access does not prove Queue/Hyperdrive/VPC write scopes.",
       "Production still has no production Queue or Hyperdrive, no saved Production runtime config, active Worker lacks verified release identity and app bindings, and smartaihub.app/* is not attached. Production /readyz remains 503 with activation disabled and required HYPERDRIVE/JOB_QUEUE plus selected application bindings absent.",
-      "Fresh exact Production credential probe at 2026-10-24 14:55 UTC: Connectivity Directory Read now returns HTTP 200; Queue and Hyperdrive are still only read-verified. No provider write was attempted."
+      "Fresh exact Production provider inventory at 2026-10-24 15:03 UTC: complete HTTP 200 readbacks; only Staging Queue/Hyperdrive exist, no Production runtime config or main-domain route, and the active 100% Worker has no verified SmartAIHub identity or workload bindings."
     ],
     "merged_main_sha": "5cee0f9edf55ddfd15e69da73a73fb03332d7dc3"
   }

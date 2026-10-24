@@ -1468,3 +1468,10 @@ Quick profile,24GiB available:38 focused Node tests across new native transport/
 - Exact next external credential action, if not already done: edit the saved Production token at Cloudflare API Tokens and include Account → Queues → Edit and Account → Hyperdrive → Edit. The probe is read-only, so after saving, run the target check again; the resource preparation still must be implemented through canonical `worker_jobs` and existing bounded Production authority. The owner role change alone does not provide these token permissions.
 
 - Integrated the Connectivity Directory read-probe regression at `977f709c72cc37c40ece095662bb0f4fca552553`; `HEAD == origin/main`. Focused test: `pnpm --dir apps/web exec vitest run server/services/cloudflareDeploymentCredential.test.ts` — 4/4 passed. This confirms the account-member role fix is visible to the saved Production token; it does not prove write scopes or deployment.
+
+
+### Production inventory after Connectivity Directory role update — 2026-10-24 15:03 UTC
+
+- Exact saved Production credential inventory is `CHECKED` with complete HTTP 200 readbacks for Queues, Hyperdrive, zone, Worker routes, deployments, and active version details. It confirms only Staging resources exist: `smartspec-staging-55e4a9dcc9d9-jobs` and `smartspec-staging-55e4a9dcc9d9-database-9e3a93b98627`.
+- Production has no saved origin/runtime config, no `smartaihub.app/*` route, and its active 100% Worker `81e64be8-af01-4efb-ad82-94e78da2510b` has only activation/environment/search-cache bindings, no containers, and no verified SmartAIHub source/artifact identity. Two deployments are listed but only one active 100% version.
+- No Cloudflare writes occurred. This is not a deploy or runtime acceptance receipt. Linux remains serving. Next: build the missing production-scoped resource/configuration job and verify trusted PostgreSQL TLS/Tunnel route; then create a verifiable origin-compatible rollback version before canary.
