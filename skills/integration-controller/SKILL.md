@@ -37,6 +37,14 @@ The executor rechecks the head, base, review and required checks, then merges wi
 
 After integration, continue with the next ready independent WorkUnit. A parent task may remain open after partial canonicalization.
 
+For executor-driven continuation, `--workunits`, `--worker-command` and
+`--receipt` reuse the configured primary checkout by default. Unrelated dirty
+files are preserved; a stale canonical branch is fast-forwarded only when Git
+can do so safely. `--next-workspace` selects an existing checkout. Only a
+necessary isolation exception uses `--next-worktree` with a concrete
+`--isolation-reason` recorded in the existing HandOff. A new WorkUnit or dirty
+status is not such a reason. Reconcile an unsafe refresh in place.
+
 ## Resume and repository recovery
 
 A user-requested *repository recovery* may inventory old PRs, merged/squash-equivalent branches, dirty worktrees and unique unpushed work. That expensive inventory is **not** part of every normal feature merge. Never delete, clean, prune, reset or retire another session's work without ownership and preservation proof. Preserve a dirty canonical checkout; if the task already has an exceptional registered checkout, its safe slice can integrate without waiting for historical workspace cleanup. Do not create another checkout as the default recovery strategy.

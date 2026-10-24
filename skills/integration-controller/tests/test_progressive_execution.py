@@ -135,6 +135,9 @@ run("git", "commit", "-m", "implement second ready WorkUnit")
 run("git", "push", "origin", "HEAD:refs/heads/slice-next")
 next_result = json.loads(run(sys.executable, SCRIPT_PATH, "--pr", "8", "--execute"))
 assert next_result["status"] == "MERGED", next_result
+run("git", "switch", "trunk")
+run("git", "merge", "--ff-only", "origin/trunk")
+run("git", "branch", "-d", "slice-next")
 Path(REPORT_PATH).write_text(json.dumps({"unit":args.workunit_id, "baseline":args.canonical_sha,
     "second_merge":next_result["merge_sha"], "build":"PASS", "spec":"OPEN"}))
 '''.replace("SCRIPT_PATH", repr(str(SCRIPT))).replace("REPORT_PATH", repr(str(self.root / "worker-report.json"))))
@@ -146,12 +149,17 @@ Path(REPORT_PATH).write_text(json.dumps({"unit":args.workunit_id, "baseline":arg
         ]}))
         receipt = self.root / "receipt.json"
         process = self.invoke("--execute", "--workunits", str(work), "--worker-command",
-            json.dumps([sys.executable, str(worker)]), "--next-worktree", str(self.root / "next"),
+            json.dumps([sys.executable, str(worker)]),
             "--receipt", str(receipt))
         self.assertEqual(0, process.returncode, process.stdout + process.stderr)
         result = json.loads(process.stdout)
         self.assertEqual("MERGED", result["status"])
         self.assertEqual("WORKER_SUCCEEDED", result["continuation"]["status"])
+        self.assertEqual(str(self.repo), result["continuation"]["workspace"])
+        self.assertFalse(result["continuation"]["isolated_worktree"])
+        self.assertFalse((self.root / "next").exists())
+        self.assertEqual("trunk", self.git(self.repo, "branch", "--show-current").stdout.strip())
+        self.assertEqual(self.git(self.repo, "rev-parse", "HEAD").stdout, self.git(self.repo, "rev-parse", "origin/trunk").stdout)
         report = json.loads((self.root / "worker-report.json").read_text())
         self.assertEqual(result["merge_sha"], report["baseline"])
         self.assertEqual("independent-next", report["unit"])
@@ -198,7 +206,7 @@ Path(REPORT_PATH).write_text(json.dumps({"unit":args.workunit_id, "baseline":arg
         receipt = self.root / "receipt.json"
         arguments = ("--execute", "--workunits", str(work), "--worker-command",
             json.dumps([sys.executable, "-c", "raise SystemExit(19)"]),
-            "--next-worktree", str(self.root / "next"), "--receipt", str(receipt))
+            "--receipt", str(receipt))
         process = self.invoke(*arguments)
         self.assertEqual(3, process.returncode, process.stdout + process.stderr)
         result = json.loads(receipt.read_text())

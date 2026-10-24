@@ -1,8 +1,11 @@
 import importlib.util
+import contextlib
+import io
 import json
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 
@@ -32,6 +35,126 @@ def pull_request(**overrides):
 
 
 class PromoteReadyPullRequestTests(unittest.TestCase):
+    def continuation_fixture(self):
+        repo = self.isolated_git_repo()
+        policy = repo / "skills/development-lifecycle/lifecycle_policy.py"
+        policy.parent.mkdir(parents=True)
+        policy.write_bytes((ROOT / "skills/development-lifecycle/lifecycle_policy.py").read_bytes())
+        return repo
+
+    def test_preflight_accepts_failed_and_pending_check_json_but_keeps_github_gate(self):
+        for exit_code, merge_state, expected in ((1, "UNSTABLE", "READY"), (8, "CLEAN", "READY"), (1, "BLOCKED", "BLOCKED")):
+            with self.subTest(exit_code=exit_code, merge_state=merge_state):
+                def runner(command, *, cwd, check=True):
+                    value = "c" * 40
+                    code = 0
+                    if command[:3] == ["gh", "pr", "view"]:
+                        value = json.dumps(pull_request(mergeStateStatus=merge_state))
+                    elif command[:3] == ["gh", "pr", "checks"]:
+                        value = json.dumps([{"name": "observed-check", "state": "FAILURE" if exit_code == 1 else "PENDING"}])
+                        code = exit_code
+                    return subprocess.CompletedProcess(command, code, value, "")
+                result, _ = PROMOTER.preflight(self.isolated_git_repo(), 7, runner=runner)
+                self.assertEqual(expected, result["status"])
+
+    def test_checks_auth_transport_and_malformed_responses_are_not_ready(self):
+        for code, output in ((1, '{"message":"Resource not accessible"}'), (1, "permission denied"), (124, "[]")):
+            with self.subTest(code=code, output=output):
+                def runner(command, *, cwd, check=True):
+                    if command[:3] == ["gh", "pr", "view"]:
+                        return subprocess.CompletedProcess(command, 0, json.dumps(pull_request()), "")
+                    if command[:3] == ["gh", "pr", "checks"]:
+                        return subprocess.CompletedProcess(command, code, output, "")
+                    return subprocess.CompletedProcess(command, 0, "c" * 40, "")
+                with self.assertRaises(RuntimeError):
+                    PROMOTER.preflight(self.isolated_git_repo(), 7, runner=runner)
+
+    def test_continuation_reuses_dirty_primary_and_preserves_other_edits(self):
+        repo = self.continuation_fixture()
+        (repo / "base.txt").write_text("other unfinished work\n")
+        (repo / "other.txt").write_text("untracked work\n")
+        commands = []
+        def runner(command, *, cwd, check=True):
+            commands.append((command, cwd))
+            if command[:2] == ["git", "fetch"] or command[0] == "test-worker":
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if command == ["git", "rev-parse", "FETCH_HEAD"]:
+                command = ["git", "rev-parse", "HEAD"]
+            return PROMOTER.run_command(command, cwd=cwd, check=check)
+        result = PROMOTER.continue_next_workunit(
+            repo, {"status": "MERGED"}, {"workunits": [{"id": "next", "status": "READY"}]},
+            ["test-worker"], runner=runner,
+        )
+        self.assertEqual("WORKER_SUCCEEDED", result["status"])
+        self.assertEqual(str(repo), result["workspace"])
+        self.assertFalse(result["isolated_worktree"])
+        self.assertTrue(result["workspace_dirty"])
+        self.assertEqual("other unfinished work\n", (repo / "base.txt").read_text())
+        self.assertEqual("untracked work\n", (repo / "other.txt").read_text())
+        self.assertFalse(any("create" in command or command[:2] == ["git", "worktree"] for command, _ in commands))
+        self.assertEqual(repo, next(cwd for command, cwd in commands if command[0] == "test-worker"))
+
+    def test_continuation_fast_forwards_primary_without_replacing_dirty_source(self):
+        repo = self.continuation_fixture()
+        old = PROMOTER.run_command(["git", "rev-parse", "HEAD"], cwd=repo).stdout.strip()
+        (repo / "incoming.txt").write_text("canonical addition\n")
+        PROMOTER.run_command(["git", "add", "incoming.txt"], cwd=repo)
+        PROMOTER.run_command(["git", "commit", "-m", "canonical update"], cwd=repo)
+        tip = PROMOTER.run_command(["git", "rev-parse", "HEAD"], cwd=repo).stdout.strip()
+        PROMOTER.run_command(["git", "reset", "--hard", old], cwd=repo)
+        (repo / "base.txt").write_text("preserve this edit\n")
+        def runner(command, *, cwd, check=True):
+            if command[:2] == ["git", "fetch"] or command[0] == "test-worker":
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if command == ["git", "rev-parse", "FETCH_HEAD"]:
+                return subprocess.CompletedProcess(command, 0, tip, "")
+            return PROMOTER.run_command(command, cwd=cwd, check=check)
+        result = PROMOTER.continue_next_workunit(repo, {"status": "MERGED"}, {"workunits": [{"id": "next"}]}, ["test-worker"], runner=runner)
+        self.assertEqual("WORKER_SUCCEEDED", result["status"])
+        self.assertEqual(tip, result["canonical_sha"])
+        self.assertEqual("preserve this edit\n", (repo / "base.txt").read_text())
+        self.assertTrue((repo / "incoming.txt").exists())
+
+    def test_explicit_worktree_requires_a_necessity_reason_before_creation(self):
+        repo = self.continuation_fixture()
+        def runner(command, *, cwd, check=True):
+            if command[:2] == ["git", "fetch"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            self.assertNotIn("create", command)
+            return PROMOTER.run_command(command, cwd=cwd, check=check)
+        with self.assertRaisesRegex(RuntimeError, "WORKTREE_ISOLATION_REASON_REQUIRED"):
+            PROMOTER.continue_next_workunit(repo, {"status": "MERGED"}, {"workunits": [{"id": "next"}]}, ["test-worker"], isolated_worktree=True, runner=runner)
+
+    def test_unsafe_primary_refresh_preserves_edits_without_creating_a_worktree(self):
+        repo = self.continuation_fixture()
+        (repo / "base.txt").write_text("preserve this edit\n")
+        commands = []
+        def runner(command, *, cwd, check=True):
+            commands.append(command)
+            if command[:2] == ["git", "fetch"]:
+                return subprocess.CompletedProcess(command, 0, "", "")
+            if command == ["git", "rev-parse", "FETCH_HEAD"]:
+                return subprocess.CompletedProcess(command, 0, "f" * 40, "")
+            if command[:3] == ["git", "merge", "--ff-only"]:
+                return subprocess.CompletedProcess(command, 1, "", "overlapping local edit")
+            self.assertNotEqual("test-worker", command[0])
+            return PROMOTER.run_command(command, cwd=cwd, check=check)
+        with self.assertRaisesRegex(RuntimeError, "PRIMARY_WORKSPACE_RECONCILIATION_REQUIRED"):
+            PROMOTER.continue_next_workunit(repo, {"status": "MERGED"}, {"workunits": [{"id": "next"}]}, ["test-worker"], runner=runner)
+        self.assertEqual("preserve this edit\n", (repo / "base.txt").read_text())
+        self.assertFalse(any("create" in command or command[:2] == ["git", "worktree"] for command in commands))
+
+    def test_continuation_cli_does_not_require_a_new_worktree(self):
+        repo = self.isolated_git_repo()
+        work = repo / "work.json"
+        work.write_text('{"workunits": []}')
+        receipt = repo / "receipt.json"
+        with patch.object(PROMOTER, "preflight", return_value=({}, {})), patch.object(PROMOTER, "execute_merge", return_value={"status": "MERGED"}), patch.object(PROMOTER, "continue_next_workunit", return_value={"status": "NO_READY_WORKUNIT"}) as continuation, contextlib.redirect_stdout(io.StringIO()):
+            result = PROMOTER.main(["--repository", str(repo), "--pr", "7", "--execute", "--workunits", str(work), "--worker-command", '["test-worker"]', "--receipt", str(receipt)])
+        self.assertEqual(0, result)
+        self.assertIsNone(continuation.call_args.args[4])
+        self.assertFalse(continuation.call_args.kwargs["isolated_worktree"])
+
     def isolated_git_repo(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

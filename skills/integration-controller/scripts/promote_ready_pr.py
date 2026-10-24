@@ -163,11 +163,18 @@ def repository_merge_lock(repo: Path):
 
 def continue_next_workunit(
     repo: Path, result: dict[str, Any], work: dict[str, Any],
-    command: list[str], workspace: Path, *, runner: Runner = run_command,
+    command: list[str], workspace: Path | None = None, *,
+    isolated_worktree: bool = False, isolation_reason: str | None = None,
+    runner: Runner = run_command,
 ) -> dict[str, Any]:
     """Dispatch an explicitly authorized worker using the existing WorkUnit policy."""
     if result.get("status") not in {"MERGED", "ALREADY_MERGED"}:
         return {"status": "NOT_INTEGRATED"}
+    if isolated_worktree:
+        if not isolation_reason or not isolation_reason.strip():
+            raise RuntimeError("WORKTREE_ISOLATION_REASON_REQUIRED")
+        if workspace is None:
+            raise RuntimeError("EXPLICIT_WORKTREE_PATH_REQUIRED")
     policy_source = repo / "skills/development-lifecycle/lifecycle_policy.py"
     spec = importlib.util.spec_from_file_location("integration_lifecycle_policy", policy_source)
     if spec is None or spec.loader is None:
@@ -185,22 +192,40 @@ def continue_next_workunit(
     )
     if unit is None:
         return {"status": "NO_READY_WORKUNIT", "canonical_sha": canonical_sha}
-    # Use shared admission/recovery and register ownership before dispatching.
-    authority = repo / "scripts/development-lifecycle/workspace_authority.py"
-    created = runner(
-        [sys.executable, str(authority), "create", "--repository", str(repo),
-         "--workspace", str(workspace), "--base-sha", canonical_sha,
-         "--role", "TASK_WORKTREE", "--task-id", unit],
-        cwd=repo,
-    )
-    try:
-        workspace_result = json.loads(created.stdout)
-        workspace = Path(workspace_result["workspace"])
-    except (json.JSONDecodeError, KeyError, TypeError) as error:
-        raise RuntimeError("CONTINUATION_WORKSPACE_ADMISSION_RESULT_INVALID") from error
+    workspace = (workspace or Path(repository_policy.get("canonical_user_workspace", repo))).resolve()
+    if isolated_worktree:
+        # Only an explicit isolation request creates another source directory.
+        authority = repo / "scripts/development-lifecycle/workspace_authority.py"
+        created = runner(
+            [sys.executable, str(authority), "create", "--repository", str(repo),
+             "--workspace", str(workspace), "--base-sha", canonical_sha,
+             "--role", "TASK_WORKTREE", "--task-id", unit],
+            cwd=repo,
+        )
+        try:
+            workspace_result = json.loads(created.stdout)
+            workspace = Path(workspace_result["workspace"])
+        except (json.JSONDecodeError, KeyError, TypeError) as error:
+            raise RuntimeError("CONTINUATION_WORKSPACE_ADMISSION_RESULT_INVALID") from error
+    else:
+        def common_directory(checkout: Path) -> Path:
+            value = Path(runner(["git", "rev-parse", "--git-common-dir"], cwd=checkout).stdout.strip())
+            return (checkout / value).resolve() if not value.is_absolute() else value.resolve()
+
+        if common_directory(workspace) != common_directory(repo):
+            raise RuntimeError("CONTINUATION_WORKSPACE_IS_ANOTHER_REPOSITORY")
+        branch = runner(["git", "branch", "--show-current"], cwd=workspace).stdout.strip()
+        if branch != repository_policy["canonical_ref"].removeprefix("refs/heads/"):
+            raise RuntimeError("PRIMARY_WORKSPACE_RECONCILIATION_REQUIRED: wrong branch")
+        if runner(["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip() != canonical_sha:
+            # Git refuses divergent histories and updates overlapping dirty paths.
+            # Never stash/reset another delta or create a replacement checkout.
+            refreshed = runner(["git", "merge", "--ff-only", canonical_sha], cwd=workspace, check=False)
+            if refreshed.returncode:
+                raise RuntimeError("PRIMARY_WORKSPACE_RECONCILIATION_REQUIRED: fast-forward failed")
     actual = runner(["git", "rev-parse", "HEAD"], cwd=workspace).stdout.strip()
     dirty = runner(["git", "status", "--porcelain"], cwd=workspace).stdout.strip()
-    if actual != canonical_sha or dirty:
+    if actual != canonical_sha or (isolated_worktree and dirty):
         raise RuntimeError("CONTINUATION_WORKSPACE_NOT_CANONICAL_AND_CLEAN")
     worker = runner(
         [*command, "--workunit-id", unit, "--canonical-sha", canonical_sha],
@@ -210,12 +235,18 @@ def continue_next_workunit(
         "status": "WORKER_SUCCEEDED" if worker.returncode == 0 else "WORKER_FAILED",
         "workunit_id": unit, "canonical_sha": canonical_sha,
         "workspace": str(workspace), "exit_code": worker.returncode,
+        "workspace_dirty": bool(dirty),
+        "isolated_worktree": isolated_worktree,
+        "isolation_reason": isolation_reason if isolated_worktree else None,
     }
 
 
-def _json_command(command: list[str], *, cwd: Path, runner: Runner) -> Any:
+def _json_command(
+    command: list[str], *, cwd: Path, runner: Runner,
+    allowed_returncodes: tuple[int, ...] = (0,),
+) -> Any:
     result = runner(command, cwd=cwd, check=False)
-    if result.returncode:
+    if result.returncode not in allowed_returncodes:
         raise RuntimeError(f"GITHUB_QUERY_FAILED: {command[1:3]}")
     try:
         return json.loads(result.stdout)
@@ -298,7 +329,14 @@ def _repository_policy(repo: Path) -> dict[str, Any]:
     canonical_ref = policy.get("canonical_ref")
     if not remote or not isinstance(canonical_ref, str) or not canonical_ref.startswith("refs/heads/"):
         raise RuntimeError("CANONICAL_REPOSITORY_POLICY_INVALID")
-    return {"remote": str(remote), "canonical_ref": canonical_ref}
+    result = {"remote": str(remote), "canonical_ref": canonical_ref}
+    platform = "windows" if os.name == "nt" else "macos" if sys.platform == "darwin" else "linux"
+    primary = policy.get("platforms", {}).get(platform, {}).get(
+        "canonical_user_workspace", policy.get("canonical_user_workspace")
+    )
+    if primary:
+        result["canonical_user_workspace"] = str(Path(primary).expanduser())
+    return result
 
 
 def preflight(
@@ -328,6 +366,9 @@ def preflight(
         ["gh", "pr", "checks", str(pr_number), "--json", "name,state,bucket,link"],
         cwd=repo,
         runner=runner,
+        # gh uses 1 for failed checks and 8 for pending checks even with valid
+        # JSON. These are observations; normal GitHub merge enforces protection.
+        allowed_returncodes=(0, 1, 8),
     )
     if not isinstance(pull_request, dict) or not isinstance(checks, list):
         raise RuntimeError("GITHUB_RESPONSE_SHAPE_INVALID")
@@ -538,25 +579,33 @@ def main(argv: list[str] | None = None, *, runner: Runner = run_command) -> int:
     parser.add_argument("--execute", action="store_true", help="perform normal GitHub merge after passing preflight")
     parser.add_argument("--workunits", type=Path, help="existing WorkUnit ledger export; never contains executable commands")
     parser.add_argument("--worker-command", help="explicitly authorized worker argv as a JSON array; no shell execution")
-    parser.add_argument("--next-worktree", type=Path, help="new isolated path for the next ready WorkUnit")
+    workspace_args = parser.add_mutually_exclusive_group()
+    workspace_args.add_argument("--next-workspace", type=Path, help="existing same-repository workspace; defaults to the primary checkout")
+    workspace_args.add_argument("--next-worktree", type=Path, help="explicit exceptional isolation: create a new task worktree")
+    parser.add_argument("--isolation-reason", help="concrete necessity for an exceptional --next-worktree; record it in the existing task HandOff")
     parser.add_argument("--receipt", type=Path, help="new durable integration receipt, written before worker dispatch")
     args = parser.parse_args(argv)
     retrying_runner = RetryingCommandRunner(runner)
     try:
-        continuation = [args.workunits, args.worker_command, args.next_worktree]
+        continuation = [args.workunits, args.worker_command]
         work = None
         worker_command = None
-        if any(continuation):
+        if args.next_worktree and not (args.isolation_reason or "").strip():
+            raise ValueError("WORKTREE_ISOLATION_REASON_REQUIRED")
+        if args.isolation_reason and not args.next_worktree:
+            raise ValueError("ISOLATION_REASON_REQUIRES_EXPLICIT_WORKTREE")
+        if any(continuation) or args.next_worktree or args.next_workspace:
             if not all(continuation) or not args.receipt or not args.execute:
-                raise ValueError("CONTINUATION_REQUIRES_WORKUNITS_COMMAND_WORKTREE_RECEIPT_AND_EXECUTE")
+                raise ValueError("CONTINUATION_REQUIRES_WORKUNITS_COMMAND_RECEIPT_AND_EXECUTE")
             worker_command = json.loads(args.worker_command)
             if not isinstance(worker_command, list) or not worker_command or not all(isinstance(x, str) and x for x in worker_command):
                 raise ValueError("WORKER_COMMAND_MUST_BE_NONEMPTY_ARGV")
             work = json.loads(args.workunits.read_text())
             if not isinstance(work, dict) or not isinstance(work.get("workunits"), list):
                 raise ValueError("WORKUNIT_LEDGER_INVALID")
-            args.next_worktree = args.next_worktree.resolve()
-            if args.next_worktree.exists():
+            if args.next_worktree:
+                args.next_worktree = args.next_worktree.resolve()
+            if args.next_worktree and args.next_worktree.exists():
                 raise ValueError("CONTINUATION_WORKSPACE_ALREADY_EXISTS")
         if args.receipt and (args.receipt.exists() or not args.receipt.parent.is_dir()):
             raise ValueError("RECEIPT_MUST_BE_NEW_WITH_EXISTING_PARENT")
@@ -582,7 +631,9 @@ def main(argv: list[str] | None = None, *, runner: Runner = run_command) -> int:
             # execute_merge has released its lock: implementation runs in parallel.
             try:
                 result["continuation"] = continue_next_workunit(
-                    repo, result, work, worker_command, args.next_worktree, runner=runner,
+                    repo, result, work, worker_command, args.next_worktree or args.next_workspace,
+                    isolated_worktree=bool(args.next_worktree),
+                    isolation_reason=args.isolation_reason, runner=runner,
                 )
             except (OSError, RuntimeError, KeyError, TypeError, ValueError) as error:
                 result["continuation"] = {"status": "WORKER_BLOCKED", "reason": str(error)}
