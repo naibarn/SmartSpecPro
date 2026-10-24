@@ -261,6 +261,8 @@ interface WizardState {
   seasonNumber?: string;
   /** Free-form "โจทย์ภาคใหม่ที่อยากได้" sent to `proposeSeasonCarryOver` — separate from `userPremise` (which is a top-level `create` field for ALL modes). */
   carryOverPremise: string;
+  /** Selected continuation direction for how the sequel advances beyond the parent finale. */
+  selectedSeasonDirection: string;
   /**
    * User edits layered on top of `proposeSeasonCarryOver`'s AI-proposed
    * `characters[]` — keyed by `characterKey` so `handleCreate` can merge
@@ -333,6 +335,7 @@ const INITIAL_WIZARD: WizardState = {
   parentSeriesId: undefined,
   seasonNumber: undefined,
   carryOverPremise: "",
+  selectedSeasonDirection: "",
   carryOverOverrides: {},
   storyFunctionChoice: undefined,
   productDescription: "",
@@ -2897,6 +2900,7 @@ export function CreateSeriesWizard({
       parentSeriesId: undefined,
       seasonNumber: mode === "sequel" ? "2" : undefined,
       carryOverPremise: "",
+      selectedSeasonDirection: "",
       carryOverOverrides: {},
       storyFunctionChoice: mode === "special_edition" ? "review" : undefined,
       // Stage 2.5 hard cap — clamp an existing (likely double-digit) planned
@@ -2919,6 +2923,7 @@ export function CreateSeriesWizard({
       ...prev,
       parentSeriesId: seriesId,
       carryOverOverrides: {},
+      selectedSeasonDirection: "",
     }));
     carryOverMutation.reset();
     specialEditionMutation.reset();
@@ -3322,6 +3327,10 @@ export function CreateSeriesWizard({
         parentEpisodeCount: carryOverResult?.parentEpisodeCount,
         createMode: "sequel",
         seasonNumber: Number(form.seasonNumber) || undefined,
+        seasonDirection:
+          form.selectedSeasonDirection.trim() ||
+          form.carryOverPremise.trim() ||
+          undefined,
         priorSeasonSummary: parentSeries?.memory
           ? ((parentSeries.memory as Record<string, unknown>).compactSummary as
               | string
@@ -4235,6 +4244,7 @@ function buildSynthesisSourceSignature(params: {
       .sort()
       .map(id => [id, mixWeights[id] ?? DEFAULT_MIX_WEIGHT]),
     carryOverPremise: form.carryOverPremise.trim(),
+    selectedSeasonDirection: form.selectedSeasonDirection.trim(),
     // Production-look changes are image-only by default and therefore must
     // not invalidate a story draft. Only the explicit story-facing opt-in is
     // part of the draft source contract.
@@ -4974,6 +4984,113 @@ function WizardStep({
                               </AstryxText>
                             )}
                           </VStack>
+                        )}
+                      </VStack>
+                    </AstryxCard>
+                  )}
+
+                  {isSequel && form.parentSeriesId && (
+                    <AstryxCard padding={3}>
+                      <VStack gap={2}>
+                        <VStack gap={1}>
+                          <AstryxText as="p" type="label">
+                            {th
+                              ? "แนวทางเดินเรื่องภาค 2"
+                              : "How season 2 continues"}
+                          </AstryxText>
+                          <AstryxText as="p" type="supporting">
+                            {th
+                              ? "เลือกผลต่อเนื่องจากตอนจบภาค 1 ให้เป็นปมหลักและเส้นเรื่องใหม่ของภาค 2 ไม่ใช่สรุปภาคเดิม"
+                              : "Choose how the season 1 finale leads into season 2's new central conflict and story arc."}
+                          </AstryxText>
+                        </VStack>
+                        <Button
+                          type="button"
+                          onClick={onProposeCarryOver}
+                          disabled={carryOverLoading || !form.parentSeriesId}
+                          className="w-fit gap-2"
+                        >
+                          {carryOverLoading && (
+                            <Loader2
+                              className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                              aria-hidden="true"
+                            />
+                          )}
+                          {carryOverDraft
+                            ? th
+                              ? "เสนอแนวทางภาค 2 ใหม่"
+                              : "Suggest new season 2 directions"
+                            : th
+                              ? "ให้ AI เสนอแนวทางภาค 2"
+                              : "Ask AI for season 2 directions"}
+                        </Button>
+                        {carryOverError && (
+                          <AstryxText
+                            as="p"
+                            type="supporting"
+                            role="alert"
+                          >
+                            {carryOverError}
+                          </AstryxText>
+                        )}
+                        {carryOverLoading && (
+                          <AstryxText as="p" type="supporting" role="status">
+                            {th
+                              ? "กำลังอ่านบทสรุป ปมค้าง ความสัมพันธ์ และตัวละครภาค 1 เพื่อคิดทางไปต่อ…"
+                              : "Reading season 1's finale, open threads, relationships, and cast to plan what comes next…"}
+                          </AstryxText>
+                        )}
+                        {carryOverDraft && (
+                          <VStack gap={1.5}>
+                            <AstryxText as="p" type="label">
+                              {th
+                                ? "เลือกทิศทางหลักของภาค 2"
+                                : "Select the main season 2 direction"}
+                            </AstryxText>
+                            <VStack
+                              gap={1}
+                              role="radiogroup"
+                              aria-label={
+                                th ? "ทิศทางภาค 2" : "Season 2 direction"
+                              }
+                            >
+                              {carryOverDraft.newConflictDirections.map(
+                                (direction, index) => {
+                                  const selected =
+                                    form.selectedSeasonDirection === direction;
+                                  return (
+                                    <button
+                                      key={`${index}-${direction}`}
+                                      type="button"
+                                      role="radio"
+                                      aria-checked={selected}
+                                      onClick={() =>
+                                        set(
+                                          "selectedSeasonDirection",
+                                          direction
+                                        )
+                                      }
+                                      className={cn(
+                                        "rounded-md border px-3 py-2 text-left text-xs transition-colors",
+                                        selected
+                                          ? "border-primary bg-primary/10 text-primary"
+                                          : "bg-background hover:bg-accent"
+                                      )}
+                                    >
+                                      {direction}
+                                    </button>
+                                  );
+                                }
+                              )}
+                            </VStack>
+                          </VStack>
+                        )}
+                        {!carryOverDraft && !carryOverLoading && (
+                          <AstryxText as="p" type="supporting">
+                            {th
+                              ? "เลือกแนวทางจาก AI ได้ก่อนสร้าง draft หรือพิมพ์โจทย์ภาคใหม่เองในแท็บตัวละคร ระบบจะส่งแนวที่เลือกไปเป็นทิศทางหลักของภาค 2"
+                              : "Choose an AI direction before drafting, or write your own in Characters. The selected direction becomes the season 2 story spine."}
+                          </AstryxText>
                         )}
                       </VStack>
                     </AstryxCard>
@@ -6013,14 +6130,18 @@ function WizardStep({
                     <button
                       key={`${i}-${direction}`}
                       type="button"
-                      onClick={() =>
+                      aria-pressed={
+                        form.selectedSeasonDirection === direction
+                      }
+                      onClick={() => {
+                        set("selectedSeasonDirection", direction);
                         set(
                           "mainPlot",
                           form.mainPlot.trim()
                             ? `${form.mainPlot}\n${direction}`
                             : direction
-                        )
-                      }
+                        );
+                      }}
                       className="rounded-full border bg-background px-2.5 py-1 text-left text-[11px] hover:border-primary hover:bg-accent"
                     >
                       {direction}

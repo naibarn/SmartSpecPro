@@ -774,6 +774,38 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     );
   });
 
+  it("lets the creator select a season 2 direction and sends it as the sequel story spine", () => {
+    mockCarryOverMutationState = {
+      data: {
+        draft: carryOverDraft,
+        creditsUsed: 1,
+        model: "test-model",
+        parentEpisodeCount: 30,
+      },
+      isPending: false,
+    };
+    renderWizard();
+    switchToSequelAndPickParent();
+
+    fireEvent.click(
+      screen.getByRole("radio", { name: "ธุรกิจครอบครัวใกล้ล้มละลาย" })
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "ให้ AI อ่านเรื่องเดิมและสร้างแนวคิดภาค 2",
+      })
+    );
+
+    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lineageContext: expect.objectContaining({
+          seasonDirection: "ธุรกิจครอบครัวใกล้ล้มละลาย",
+          priorSeasonSummary: parentSeriesRow.memory.compactSummary,
+        }),
+      })
+    );
+  });
+
   it("premise synthesis still forwards the parent lineage snapshot", () => {
     renderWizard();
     switchToSequelAndPickParent();

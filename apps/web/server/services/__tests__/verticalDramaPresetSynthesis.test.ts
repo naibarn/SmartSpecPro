@@ -1353,12 +1353,16 @@ describe("buildUserPrompt (via synthesizeVerticalDramaPreset) — premise alone,
         parentTitle: "คาเฟ่ริมนาวเพ้อรัก",
         createMode: "sequel",
         priorSeasonSummary: "พระเอกและนางเอกฝ่าปัญหาครอบครัวมาด้วยกัน",
+        seasonDirection: "The family business collapses after the finale, forcing them to rebuild together",
       },
     });
     const prompt = capturedUserPrompt();
 
     expect(prompt).toContain("SEQUEL CONTINUITY (PRIMARY CANON):");
     expect(prompt).toContain("This is a continuation, not a reboot.");
+    expect(prompt).toContain("The priorSeasonSummary describes what already happened");
+    expect(prompt).toContain("The new installment's logline, mainPlot, and seasonArc must describe what happens NEXT");
+    expect(prompt).toContain("CREATOR-SELECTED NEW-SEASON DIRECTION: The family business collapses after the finale, forcing them to rebuild together");
     expect(prompt).toContain("USER PREMISE (NEW-SEASON DIRECTION):");
     expect(prompt).not.toContain("build the ENTIRE draft from the premise alone");
     expect(prompt).not.toContain("The user premise is the primary story spine");

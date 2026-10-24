@@ -421,6 +421,21 @@ function buildLineageContinuityBlock(
     "SEQUEL CONTINUITY (PRIMARY CANON):",
     "This is a continuation, not a reboot.",
     "- Treat the lineageContext payload as non-negotiable canon: preserve the parent series identity, prior-season events, returning characters, established relationships, world, and unresolved threads.",
+    ...(lineageContext.createMode === "sequel"
+      ? [
+          "- The priorSeasonSummary describes what already happened in the parent season; it is source context, never the requested story or the new season's synopsis.",
+          "- The new installment's logline, mainPlot, and seasonArc must describe what happens NEXT: a consequence of the parent finale, a distinct new central pressure, how returning characters respond, and the new season's forward progression/payoff.",
+          "- Do not answer with a recap, reworded summary, or list of facts about the parent season. Mention old events only as setup for a new consequence, conflict, decision, or goal.",
+          ...(lineageContext.seasonDirection?.trim()
+            ? [
+                `CREATOR-SELECTED NEW-SEASON DIRECTION: ${lineageContext.seasonDirection.trim()}`,
+                "- Build the sequel's main conflict and season progression around this selected direction while preserving canon; make the consequence and character choices concrete.",
+              ]
+            : [
+                "- No new-season direction was selected. Invent a specific, consequential continuation from the finale and unresolved canon; do not merely summarize the parent season.",
+              ]),
+        ]
+      : []),
     "- Advance those existing characters and conflicts into the new installment. Never replace them with an unrelated protagonist, business, community, setting, or story premise.",
     "- Any user premise is a NEW-SEASON DIRECTION layered onto this canon. Use it to evolve the existing story; it must not erase, contradict, or displace continuity.",
     "- If a requested detail conflicts with canon, preserve canon and record the conflict in `warnings`.",

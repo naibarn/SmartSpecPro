@@ -127,6 +127,8 @@ export type VerticalDramaSeriesLineage = {
   parentEpisodeCount?: number;
   createMode: VerticalDramaSeriesCreateMode;
   seasonNumber?: number;
+  /** Creator-selected direction for the new season, distinct from the parent-season summary. */
+  seasonDirection?: string;
   priorSeasonSummary?: string;
   carryOver?: VerticalDramaSeasonCarryOverDraft & {
     /** The free-form premise the user typed into `proposeSeasonCarryOver`, if any — carried forward for display/audit. */

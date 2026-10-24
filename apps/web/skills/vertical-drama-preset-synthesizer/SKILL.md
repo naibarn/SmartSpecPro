@@ -388,6 +388,18 @@ whether the creator also supplies a user premise or presets.
 - Create a continuation, never an unrelated reboot.
 - Preserve the parent series identity, prior events, returning characters,
   established relationships, world, and unresolved threads.
+- `priorSeasonSummary` is a record of what already happened, not the requested
+  content of the new season. Do not answer with a recap or paraphrase of it.
+- The new season's `logline`, `mainPlot`, and `seasonArc` must explain what
+  happens next: a concrete consequence of the parent finale, a distinct new
+  central pressure, how returning characters respond, and the new season's
+  progression toward its own payoff.
+- When `lineageContext.seasonDirection` is present, make it the main conflict
+  and direction of the sequel while preserving canon. When it is absent,
+  invent a specific consequential continuation from the finale and open canon.
+- Mention prior events only as setup for a new consequence, conflict, decision,
+  or goal. The creator-facing synopsis must pitch the new season, not describe
+  the old one.
 - Treat the user premise as a requested new-season direction layered onto
   canon. It may evolve the story, but it must not replace or contradict it.
 - Presets remain supporting flavor and cannot displace lineage.
