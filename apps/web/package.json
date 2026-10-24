@@ -245,7 +245,7 @@
     "date-fns": "^4.1.0",
     "discord.js": "^14.25.1",
     "dockerode": "^5.0.1",
-    "dompurify": "^3.4.5",
+    "dompurify": "^3.4.17",
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.45.2",
     "embla-carousel-react": "^8.6.0",

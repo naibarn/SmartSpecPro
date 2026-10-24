@@ -7,6 +7,7 @@ settings:
 overrides:
   tailwindcss>nanoid: 3.3.7
   proxy-addr: 2.0.8
+  dompurify: 3.4.17
 
 patchedDependencies:
   wouter@3.7.1:
@@ -481,8 +482,8 @@ importers:
         specifier: ^5.0.1
         version: 5.0.1
       dompurify:
-        specifier: ^3.4.5
-        version: 3.4.12
+        specifier: 3.4.17
+        version: 3.4.17
       dotenv:
         specifier: ^17.2.2
         version: 17.4.2
@@ -5914,8 +5915,8 @@ packages:
     resolution: {integrity: sha512-gYzvtM72ZtxQO0T048kd6HWSbbGCNOUwcnfQ01cqIJ4X2IYKFFHZ5mKvrQETcFXxsRObZulDaKmy//R7TPtsBg==}
     engines: {node: '>=20.19.0'}
 
-  dompurify@3.4.12:
-    resolution: {integrity: sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==}
+  dompurify@3.4.17:
+    resolution: {integrity: sha512-B/pSlYVHQ58kqISD/yDjuJ1yfzI34m1gF4lAod2bwSRhiN4K5Cl3H8Af7hqB2PmTL911tdEudnnXn5FnhRoz0w==}
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
@@ -12262,7 +12263,7 @@ snapshots:
   '@runtypelabs/persona@4.4.0':
     dependencies:
       '@mcp-b/webmcp-polyfill': 3.0.0
-      dompurify: 3.4.12
+      dompurify: 3.4.17
       idiomorph: 0.7.4
       lucide: 1.24.0
       marked: 12.0.2
@@ -13257,7 +13258,7 @@ snapshots:
 
   '@types/dompurify@3.2.0':
     dependencies:
-      dompurify: 3.4.12
+      dompurify: 3.4.17
 
   '@types/eslint-scope@3.7.7':
     dependencies:
@@ -14588,7 +14589,7 @@ snapshots:
     dependencies:
       domelementtype: 3.0.0
 
-  dompurify@3.4.12:
+  dompurify@3.4.17:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -16145,7 +16146,7 @@ snapshots:
       d3-sankey: 0.12.3
       dagre-d3-es: 7.0.14
       dayjs: 1.11.21
-      dompurify: 3.4.12
+      dompurify: 3.4.17
       es-toolkit: 1.49.0
       katex: 0.16.47
       khroma: 2.1.0
@@ -16796,7 +16797,7 @@ snapshots:
       '@posthog/core': 1.40.2
       '@posthog/types': 1.393.0
       core-js: 3.49.0
-      dompurify: 3.4.12
+      dompurify: 3.4.17
       fflate: 0.4.8
       preact: 10.29.7
       query-selector-shadow-dom: 1.0.1
