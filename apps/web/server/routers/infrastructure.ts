@@ -13,7 +13,7 @@ import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure }
 import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
 import { canonicalProjects, systemSettings, tenants, users, workerJobs } from "../../drizzle/schema";
-import { eq, and, asc, desc } from "drizzle-orm";
+import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { getFeatureFlag, setFeatureFlag } from "../services/featureFlags";
 import {
   getAllQueueMetrics,
@@ -704,7 +704,10 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [job] = await db.select({ tenantId: workerJobs.tenantId, jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion,
-        status: workerJobs.status, errorCode: workerJobs.errorCode, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+        status: workerJobs.status, errorCode: workerJobs.errorCode, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson,
+        attempt: workerJobs.attempt, maxAttempts: workerJobs.maxAttempts, createdAt: workerJobs.createdAt, startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt, scheduledAt: workerJobs.scheduledAt, nextRetryAt: workerJobs.nextRetryAt,
+        leaseExpiresAt: workerJobs.leaseExpiresAt, heartbeatAt: workerJobs.heartbeatAt })
         .from(workerJobs).where(and(eq(workerJobs.id, input.jobId), eq(workerJobs.tenantId, tenantId))).limit(1);
       const jobInput = job?.inputJson as Record<string, unknown> | null;
       if (!job || job.jobType !== CLOUDFLARE_PRODUCTION_QUEUE_JOB || job.contractVersion !== CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT || jobInput?.projectId !== input.projectId) {
@@ -712,6 +715,42 @@ export const infrastructureRouter = router({
       }
       const output = job.outputJson as Record<string, unknown> | null;
       return { jobId: input.jobId, status: job.status, errorCode: job.errorCode,
+        attempt: job.attempt, maxAttempts: job.maxAttempts, createdAt: job.createdAt?.toISOString() ?? null,
+        startedAt: job.startedAt?.toISOString() ?? null, finishedAt: job.finishedAt?.toISOString() ?? null,
+        scheduledAt: job.scheduledAt?.toISOString() ?? null, nextRetryAt: job.nextRetryAt?.toISOString() ?? null,
+        leaseExpiresAt: job.leaseExpiresAt?.toISOString() ?? null, heartbeatAt: job.heartbeatAt?.toISOString() ?? null,
+        queueName: typeof output?.queueName === "string" ? output.queueName : null,
+        deadLetterQueueName: typeof output?.deadLetterQueueName === "string" ? output.deadLetterQueueName : null,
+        providerConfigurationVerified: output?.providerConfigurationVerified === true,
+        workerBound: output?.workerBound === true, trafficShifted: output?.trafficShifted === true };
+    }),
+
+  getLatestCloudflareProductionQueueJob: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("production") }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [job] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, jobType: workerJobs.jobType,
+        contractVersion: workerJobs.contractVersion, status: workerJobs.status, errorCode: workerJobs.errorCode,
+        inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson, attempt: workerJobs.attempt,
+        maxAttempts: workerJobs.maxAttempts, createdAt: workerJobs.createdAt, startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt, scheduledAt: workerJobs.scheduledAt, nextRetryAt: workerJobs.nextRetryAt,
+        leaseExpiresAt: workerJobs.leaseExpiresAt, heartbeatAt: workerJobs.heartbeatAt })
+        .from(workerJobs).where(and(eq(workerJobs.tenantId, tenantId), eq(workerJobs.jobType, CLOUDFLARE_PRODUCTION_QUEUE_JOB),
+          eq(workerJobs.contractVersion, CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT),
+          sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`,
+          sql`${workerJobs.inputJson}->>'targetId' = 'smartspec-cloudflare-runtime'`,
+          sql`${workerJobs.inputJson}->>'environment' = 'production'`))
+        .orderBy(desc(workerJobs.createdAt)).limit(1);
+      if (!job) return null;
+      const output = job.outputJson as Record<string, unknown> | null;
+      return { jobId: job.id, status: job.status, errorCode: job.errorCode,
+        attempt: job.attempt, maxAttempts: job.maxAttempts, createdAt: job.createdAt?.toISOString() ?? null,
+        startedAt: job.startedAt?.toISOString() ?? null, finishedAt: job.finishedAt?.toISOString() ?? null,
+        scheduledAt: job.scheduledAt?.toISOString() ?? null, nextRetryAt: job.nextRetryAt?.toISOString() ?? null,
+        leaseExpiresAt: job.leaseExpiresAt?.toISOString() ?? null, heartbeatAt: job.heartbeatAt?.toISOString() ?? null,
         queueName: typeof output?.queueName === "string" ? output.queueName : null,
         deadLetterQueueName: typeof output?.deadLetterQueueName === "string" ? output.deadLetterQueueName : null,
         providerConfigurationVerified: output?.providerConfigurationVerified === true,

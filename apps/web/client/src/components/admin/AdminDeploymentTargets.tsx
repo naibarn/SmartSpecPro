@@ -394,11 +394,17 @@ export default function AdminDeploymentTargets() {
     { tenantId, projectId, environment: "production" },
     { enabled: validScope && environment === "production", refetchOnWindowFocus: false },
   );
+  const latestProductionQueueJob = trpc.infrastructure.getLatestCloudflareProductionQueueJob.useQuery(
+    { tenantId, projectId, environment: "production" },
+    { enabled: validScope && environment === "production", refetchInterval: query =>
+      !query.state.data || ["succeeded", "failed", "cancelled"].includes(query.state.data.status) ? false : 2_000 },
+  );
   const productionQueueJob = trpc.infrastructure.getCloudflareProductionQueueJobStatus.useQuery(
-    { tenantId, projectId, jobId: productionQueueJobId, environment: "production" },
-    { enabled: validScope && environment === "production" && Boolean(productionQueueJobId), refetchInterval: query =>
+    { tenantId, projectId, jobId: productionQueueJobId || latestProductionQueueJob.data?.jobId || "00000000-0000-4000-8000-000000000000", environment: "production" },
+    { enabled: validScope && environment === "production" && Boolean(productionQueueJobId || latestProductionQueueJob.data?.jobId), refetchInterval: query =>
       query.state.data?.status === "succeeded" || query.state.data?.status === "failed" ? false : 2_000 },
   );
+  const productionQueueJobData = productionQueueJob.data ?? latestProductionQueueJob.data;
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const stagingCloudflareTargets = ((stagingTargetsQuery.data ?? []) as DeploymentTarget[])
@@ -436,14 +442,18 @@ export default function AdminDeploymentTargets() {
   const productionQueueMutation = trpc.infrastructure.prepareCloudflareProductionQueue.useMutation({
     onSuccess: async result => {
       setProductionQueueJobId(result.jobId);
-      await Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
+      await latestProductionQueueJob.refetch();
     },
   });
   useEffect(() => {
-    if (productionQueueJob.data?.status === "succeeded") {
+    const latestJobId = latestProductionQueueJob.data?.jobId;
+    if (latestJobId && latestJobId !== productionQueueJobId) setProductionQueueJobId(latestJobId);
+  }, [latestProductionQueueJob.data?.jobId, productionQueueJobId]);
+  useEffect(() => {
+    if (productionQueueJobData?.status === "succeeded") {
       void Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
     }
-  }, [productionQueueJob.data?.status]);
+  }, [productionQueueJobData?.status]);
   const activateStagingProfile = trpc.infrastructure.activateCloudflareStagingQueueProfile.useMutation({
     onSuccess: async result => {
       setSavedStagingScope({ tenantId, projectId });
@@ -717,20 +727,27 @@ export default function AdminDeploymentTargets() {
                   "Prepare the missing Production Queue and dead-letter queue now. The server uses the encrypted credential already saved for this Production target, creates or reuses the exact queues in the Worker config, and verifies both. This does not bind or activate the Worker and cannot change traffic.",
                   "เตรียม Production Queue และ dead-letter queue ที่ยังขาด โดยใช้ credential แบบเข้ารหัสของ Production target สร้างหรือใช้ Queue ตามชื่อใน Worker config แล้วตรวจยืนยันทั้งคู่ ขั้นตอนนี้ยังไม่ผูกหรือเปิด Worker และเปลี่ยน traffic ไม่ได้",
                 )}</p>
-                <Button type="button" disabled={productionQueueMutation.isPending || Boolean(productionQueueJobId && productionQueueJob.data?.status !== "failed")} onClick={() => productionQueueMutation.mutate({ tenantId, projectId, environment: "production" })}>
+                <Button type="button" disabled={productionQueueMutation.isPending || Boolean((productionQueueJobId || productionQueueJobData) && (!productionQueueJobData || !["failed", "cancelled"].includes(productionQueueJobData.status)))} onClick={() => productionQueueMutation.mutate({ tenantId, projectId, environment: "production" })}>
                   {productionQueueMutation.isPending ? text("Queueing Production setup…", "กำลังส่งงานเตรียม Production…") : productionQueueJobId
-                    ? productionQueueJob.data?.status === "failed"
+                    ? productionQueueJobData?.status === "failed"
                       ? text("Retry Production Queue setup", "ลองเตรียม Production Queue อีกครั้ง")
                       : text("Production Queue setup submitted", "ส่งงานเตรียม Production Queue แล้ว")
                     : text("Prepare Production Queue", "เตรียม Production Queue")}
                 </Button>
                 {productionQueueMutation.error ? <p role="alert"><code>{productionQueueMutation.error.message}</code></p> : null}
-                {productionQueueJobId && productionQueueJob.data ? <p role="status">
-                  {text("Preparation job", "งานเตรียมระบบ")}: <code>{productionQueueJob.data.jobId}</code> · {text("Status", "สถานะ")}: <strong>{productionQueueJob.data.status}</strong>
-                  {productionQueueJob.data.queueName ? <> · Queue: <code>{productionQueueJob.data.queueName}</code></> : null}
-                  {productionQueueJob.data.deadLetterQueueName ? <> · DLQ: <code>{productionQueueJob.data.deadLetterQueueName}</code></> : null}
-                  {productionQueueJob.data.errorCode ? <> · <code>{productionQueueJob.data.errorCode}</code></> : null}
-                </p> : null}
+                {productionQueueJobId ? <VStack gap={1} role="status" aria-label={text("Production Queue job status", "สถานะงานเตรียม Production Queue")}>
+                  <p>{text("Preparation job", "งานเตรียมระบบ")}: <code>{productionQueueJobData?.jobId ?? productionQueueJobId}</code> · {text("Status", "สถานะ")}: <strong>{productionQueueJobData?.status ?? "queued"}</strong></p>
+                  {productionQueueJobData ? <p>{text("Attempt", "ครั้งที่")}: {productionQueueJobData.attempt}/{productionQueueJobData.maxAttempts}
+                    {productionQueueJobData.createdAt ? <> · {text("Queued", "ส่งเข้าคิว")}: {new Date(productionQueueJobData.createdAt).toLocaleString()}</> : null}
+                    {productionQueueJobData.startedAt ? <> · {text("Started", "เริ่มทำ")}: {new Date(productionQueueJobData.startedAt).toLocaleString()}</> : null}
+                    {productionQueueJobData.heartbeatAt ? <> · {text("Last worker heartbeat", "worker ติดต่อครั้งล่าสุด")}: {new Date(productionQueueJobData.heartbeatAt).toLocaleString()}</> : null}
+                    {productionQueueJobData.leaseExpiresAt ? <> · {text("Lease expires", "lease หมดอายุ")}: {new Date(productionQueueJobData.leaseExpiresAt).toLocaleString()}</> : null}
+                  </p> : null}
+                  {productionQueueJobData?.queueName ? <> · Queue: <code>{productionQueueJobData.queueName}</code></> : null}
+                  {productionQueueJobData?.deadLetterQueueName ? <> · DLQ: <code>{productionQueueJobData.deadLetterQueueName}</code></> : null}
+                  {productionQueueJobData?.errorCode ? <> · <code>{productionQueueJobData.errorCode}</code></> : null}
+                  {productionQueueJobData?.status === "queued" ? <p>{text("The job is waiting for a worker claim. This page is tracking the existing job and will not create another one.", "งานกำลังรอ worker รับไปทำ หน้านี้ติดตาม job เดิมและจะไม่สร้างซ้ำ")}</p> : null}
+                </VStack> : null}
               </VStack> : null}
               <p><strong>Production Hyperdrive</strong>: {productionHyperdrives.length > 0
                 ? text(`Found ${productionHyperdrives.length}`, `พบ ${productionHyperdrives.length} รายการ`)

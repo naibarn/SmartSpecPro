@@ -27,6 +27,8 @@ const mocks = vi.hoisted(() => ({
   refetchStagingOriginConfiguration: vi.fn(),
   refetchProductionRuntimeReadiness: vi.fn(),
   refetchProductionProviderInventory: vi.fn(),
+  refetchLatestProductionQueueJob: vi.fn(),
+  latestProductionQueueJob: null as Record<string, unknown> | null,
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   probeCredential: vi.fn(),
@@ -47,6 +49,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionRuntimeReadiness: { invalidate: mocks.invalidate },
       getCloudflareProductionProviderInventory: { invalidate: mocks.invalidate },
       getCloudflareProductionQueueJobStatus: { invalidate: mocks.invalidate },
+      getLatestCloudflareProductionQueueJob: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
       { id: "tenant-system", name: "System", selectorKind: "system" },
@@ -72,6 +75,7 @@ vi.mock("@/lib/trpc", () => ({
           versions: [{ versionId: "11111111-1111-4111-8111-111111111111", percentage: 100, bindingNames: ["CLOUDFLARE_ACTIVATION"], containerNames: [], hasVerifiedReleaseIdentity: false, checked: true }] } },
         isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionProviderInventory }) },
       getCloudflareProductionQueueJobStatus: { useQuery: () => ({ data: null }) },
+      getLatestCloudflareProductionQueueJob: { useQuery: () => ({ data: mocks.latestProductionQueueJob, refetch: mocks.refetchLatestProductionQueueJob }) },
       getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED" }, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
@@ -164,6 +168,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.targets = [];
     mocks.stagingTargets = [];
     mocks.targetsError = false;
+    mocks.latestProductionQueueJob = null;
     mocks.activationError = null;
     mocks.activationSucceeds = false;
     mocks.stagingPreflight = { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null };
@@ -594,6 +599,23 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/Connectivity Directory Admin/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute("href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/");
     expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
+  });
+
+  it("recovers and follows the latest canonical Production Queue job after a page reload", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.latestProductionQueueJob = { jobId: "eb327c3c-44f5-462f-98f2-0e40065e6caa", status: "queued",
+      attempt: 1, maxAttempts: 3, createdAt: "2026-10-24T16:30:00.000Z", startedAt: null,
+      finishedAt: null, scheduledAt: null, nextRetryAt: null, leaseExpiresAt: null, heartbeatAt: null,
+      errorCode: null, queueName: null, deadLetterQueueName: null };
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(await screen.findByText("eb327c3c-44f5-462f-98f2-0e40065e6caa")).toBeInTheDocument();
+    expect(screen.getByText(/Attempt: 1\/3/)).toBeInTheDocument();
+    expect(screen.getByText(/waiting for a worker claim/i)).toBeInTheDocument();
+    expect(mocks.prepareProductionQueue).not.toHaveBeenCalled();
   });
 
   it("does not guess a production account when no enabled Staging target can establish it", async () => {
