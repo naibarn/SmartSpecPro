@@ -60,6 +60,10 @@ type Deployment = {
   versions?: Array<{ version_id?: string; percentage?: number }>;
   annotations?: Record<string, string>;
 };
+type VerifiedDeployment = Deployment & {
+  id: string;
+  versions: Array<{ version_id: string; percentage?: number }>;
+};
 type Version = {
   id?: string;
   metadata?: { main_module?: string };
@@ -177,7 +181,15 @@ export function createCloudflareStagingApiTransport(input: {
   prepareHttpApplications?: (origin: CloudflareOriginVersionBindings, target: CloudflareStagingTarget, assertAuthorized: () => Promise<void>) => Promise<void>;
   ensureHttpApplications?: (origin: CloudflareOriginVersionBindings, target: CloudflareStagingTarget, version: Version,
     operationKey: string, assertAuthorized: () => Promise<void>) => Promise<unknown>;
-}): CloudflareStagingApi {
+}): CloudflareStagingApi & Readonly<{
+  prepareVersion: (input: {
+    token: string;
+    target: CloudflareStagingTarget;
+    artifact: CloudflareStagingArtifact;
+    originConfiguration: CloudflareOriginVersionBindings;
+    assertMutationAuthorized: () => Promise<void>;
+  }) => Promise<{ versionId: string; sourceSha: string; buildDigest: string; configurationDigest: string; trafficShifted: false }>;
+}> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const mutationAuthority = new AsyncLocalStorage<() => Promise<void>>();
 
@@ -368,7 +380,9 @@ export function createCloudflareStagingApiTransport(input: {
     const form = new FormData();
     form.set("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }), "metadata.json");
     for (const [name, file] of Object.entries(bundle.moduleFiles)) {
-      form.set(name, new Blob([file.bytes], { type: moduleContentType(name, file.contentType) }), name);
+      const bytes = new ArrayBuffer(file.bytes.byteLength);
+      new Uint8Array(bytes).set(file.bytes);
+      form.set(name, new Blob([bytes], { type: moduleContentType(name, file.contentType) }), name);
     }
     const result = await api<{ id?: string }>(token,
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}${bootstrapKey ? "" : "/versions"}`, {
@@ -381,7 +395,7 @@ export function createCloudflareStagingApiTransport(input: {
     return result.id;
   }
 
-  async function getDeployment(token: string, target: CloudflareStagingTarget, deploymentId: string) {
+  async function getDeployment(token: string, target: CloudflareStagingTarget, deploymentId: string): Promise<VerifiedDeployment> {
     if (!VERSION_ID.test(deploymentId)) throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ID_INVALID");
     const result = await api<Deployment>(token,
       `${API_ROOT}/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/deployments/${encodeURIComponent(deploymentId)}`);
@@ -389,7 +403,7 @@ export function createCloudflareStagingApiTransport(input: {
         result.versions.some(version => !version.version_id || !VERSION_ID.test(version.version_id))) {
       throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_RECEIPT_INVALID");
     }
-    return result;
+    return result as VerifiedDeployment;
   }
 
   async function createDeployment(token: string, target: CloudflareStagingTarget, versions: Array<{ version_id: string; percentage: number }>, idempotencyKey: string) {

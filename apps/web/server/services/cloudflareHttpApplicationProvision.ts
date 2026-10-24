@@ -75,7 +75,8 @@ export async function prepareHttpApplicationImages(settings: HttpApplicationSett
 }
 
 type ApplicationVersion = { resources?: { bindings?: unknown; script_runtime?: { containers?: unknown } } };
-export function assertHttpApplicationVersionMetadata(settings: HttpApplicationSettings, scope: Scope,
+export function assertHttpApplicationVersionMetadata(settings: HttpApplicationSettings,
+  scope: Pick<Scope, "tenantId" | "projectId" | "accountRef" | "environment">,
   version: ApplicationVersion, namespaceOnly = false) {
   const expected = httpApplicationWorkerMetadata(settings, scope, namespaceOnly);
   const bindings = version.resources?.bindings, containers = version.resources?.script_runtime?.containers;
