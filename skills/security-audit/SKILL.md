@@ -264,6 +264,6 @@ This skill's domain workflow remains in force. When its work changes files insid
 - Follow that repository's `AGENTS.md` and configured canonical repository policy.
 - Use `$session-finish` or the repository equivalent at meaningful safe checkpoints, before pausing or ending, and when handing work to another owner. Task completion and heavy verification are not prerequisites for a safe checkpoint.
 - Use `$integration-controller` or the repository's integration workflow to promote safe checkpoints through the normal protected path. Keep the exact canonical revision, completed and remaining scope, pending checks, and next action in the handoff.
-- For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
+- Reuse the primary source checkout for development and focused checks, following the repository's workspace policy. Use `$canonical-checkout-sync` only when an existing artifact build/release or verification controller requires immutable exact-SHA source; a task, dirty status or PR alone does not require a worktree. Integrate safe owned changes promptly and close any task-created temporary branch/worktree in the same lifecycle. Release and deployment retain their own controls.
 
 For work that does not change a Git repository, this lifecycle does not add a commit or integration step.

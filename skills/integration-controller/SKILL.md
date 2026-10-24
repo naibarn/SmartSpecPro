@@ -11,11 +11,13 @@ The configured canonical ref is the shared **development** baseline, not a fully
 
 ## Normal integration of the current WorkUnit
 
+Use the primary checkout under the [workspace policy](../development-lifecycle/workspace-policy.md). Direct canonical pushes need no temporary branch/worktree; a required PR normally needs only a branch in the same checkout. Do not create a clean integration worktree merely because unrelated files are dirty.
+
 1. Read the owned change and current canonical SHA. Do not start with a global scan of historical branches/worktrees for each normal development merge.
 2. Check the smallest affected syntax/compile/focused test boundary, absence of unresolved Git conflicts, and no accidentally committed secrets. Repair failures caused by the change. Run actual required repository checks when branch protection requires them; they apply only to merging that PR and do not block independent work. Do not require full build, browser UAT, final SPEC verification, production resources, or workspace convergence for an ordinary code checkpoint.
 3. Preserve unrelated staged, unstaged and untracked files. Stage/commit only owned paths; use the existing version-aware `git_capabilities.py` for conflict resolution when relevant. Never force-push, bypass protection or conceal a failed check.
 4. Record the owned commit and pending action in the existing HandOff when one is already used for the task. Push directly to `main` when repository rules allow; otherwise open/use the required PR flow. Do not wait for unrelated work or full acceptance. For a PR, repair failures that belong to the slice and merge as soon as required conditions pass. Confirm the resulting canonical SHA.
-5. Record the confirmed merged SHA, PR, WorkUnit/section, remaining gaps, checks pending and next action in the same HandOff. If interrupted between merge and record-write, first query GitHub/current Main to reconcile **whether it already merged**; do not create duplicate PRs or repeat a commit. Refresh next-slice work from the verified SHA without resetting other active worktrees. Workspace convergence is separate housekeeping: never let a dirty checkout delay this PR flow; if safe convergence is attempted and blocked, record the concrete reason and keep working from a clean canonical worktree.
+5. Fetch and verify that the integrated commit is reachable from the configured canonical ref; for squash merges reconcile the actual merge SHA and owned diff. Record the confirmed SHA, PR, WorkUnit/section, remaining gaps, checks pending and next action in the same HandOff. If interrupted, reconcile whether it already merged before creating another PR/commit. Safely refresh the primary checkout in place without resetting unrelated edits. A convergence blocker does not undo integration or justify creating another checkout. Finish safe cleanup of any task-created temporary branch/worktree, or record its exact path and cleanup blocker.
 6. Run additional verification or a development preview after integration when requested or useful for the change. These are not default prerequisites for every checkpoint. If verification finds a defect, repair and promote a new checkpoint.
 
 If a delta is not integration-ready, split out a smaller independently useful checkpoint and preserve the rest. If an actual required GitHub check cannot pass, keep the PR open with the precise failing check and actionable repair; proceed on independent work. Never mark a skipped, resource-blocked or absent check PASS.
@@ -35,7 +37,7 @@ After integration, continue with the next ready independent WorkUnit. A parent t
 
 ## Resume and repository recovery
 
-A user-requested *repository recovery* may inventory old PRs, merged/squash-equivalent branches, dirty worktrees and unique unpushed work. That expensive inventory is **not** part of every normal feature merge. Never delete, clean, prune, reset or retire another session's work without ownership and preservation proof. A dirty canonical user checkout is preserved; it does not prevent integration from a clean registered task checkout.
+A user-requested *repository recovery* may inventory old PRs, merged/squash-equivalent branches, dirty worktrees and unique unpushed work. That expensive inventory is **not** part of every normal feature merge. Never delete, clean, prune, reset or retire another session's work without ownership and preservation proof. Preserve a dirty canonical checkout; if the task already has an exceptional registered checkout, its safe slice can integrate without waiting for historical workspace cleanup. Do not create another checkout as the default recovery strategy.
 
 ## Completion report
 

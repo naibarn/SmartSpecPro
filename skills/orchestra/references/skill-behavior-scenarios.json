@@ -999,7 +999,7 @@
         "overwrite-dirty-worktree",
         "claim-sync-without-openable-path-and-sha"
       ],
-      "why": "The conductor verifies the actual SSH/editor path, preserves dirty or divergent work, and exposes a clean worktree at the exact current canonical SHA."
+      "why": "The conductor verifies the actual primary SSH/editor path, preserves unrelated edits and safely reconciles in place. It reports the actual source SHA or exact sync blocker without automatically creating another worktree."
     },
     {
       "id": "SPEC-HANDOFF-RESUME-001",

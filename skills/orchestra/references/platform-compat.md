@@ -53,9 +53,10 @@ default and should not ask the user unless runtime evidence is genuinely contrad
 
 Full feature set available. Use exact `ssp-*` native agent names from the agent mapping
 table in `sub-agent-dispatch.md`. Parallel waves dispatch all independent agents in a
-single message. Use `isolation: worktree` for file-editing agents running in parallel when
-the platform supports worktree isolation; otherwise split writers into sequential
-sub-waves.
+single message when authorized and useful. Prefer disjoint owned edits in the primary
+checkout and serialize overlapping writers. Use `isolation: worktree` only for a justified
+exception under the shared workspace policy; platform support is not itself a reason.
+Only the conductor mutates the shared Git index/branch, while other writers are idle.
 
 **Dispatch example for a frontend + backend wave (claude-code):**
 
@@ -65,7 +66,7 @@ Dispatch (single message, both Task calls simultaneously):
   Task #1:
     agent: "ssp-frontend"
     background: false
-    isolation: worktree
+    isolation: none
     prompt: |
       TASK: Add the UserDashboard React page component
       DOMAIN: CMD-1 Frontend
@@ -81,7 +82,7 @@ Dispatch (single message, both Task calls simultaneously):
   Task #2:
     agent: "ssp-backend"
     background: false
-    isolation: worktree
+    isolation: none
     prompt: |
       TASK: Implement trpc.dashboard.getSummary procedure
       DOMAIN: CMD-2 Backend

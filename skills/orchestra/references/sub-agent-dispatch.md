@@ -170,12 +170,17 @@ Guidance:
 - `background: true` is only for read-only or non-blocking analysis whose result will be
   collected before it is needed.
 - File-editing agents use `background: false` because later waves depend on their files.
-- If two file-editing agents run in the same wave, either use worktree isolation or prove
-  their write sets are disjoint in `orchestra/contracts.md`.
+- Prefer disjoint owned edits in the primary checkout when authorized parallel work is
+  useful. Serialize overlapping writers; a second writer alone does not require a
+  worktree. Use isolation only under the shared workspace policy's exception criteria.
 - Every file-editing worker must have explicit `ownership_paths`; do not let workers fight
   over the same files.
 - If the platform cannot enforce isolation and two writers might touch the same file, split
   them into sequential sub-waves.
+- In a shared checkout, only the conductor stages, commits, switches branches or integrates;
+  other writers must be idle for these operations. A delegated worker must not create a
+  worktree or branch independently. The conductor owns exception reuse, integration and
+  safe retirement in the same task lifecycle.
 - If `same_wave_peers` is non-empty and `dispatch_mode` is not parallel, `sequential_reason`
   is mandatory.
 - If dispatch would exceed `agent-loop-policy.md` limits for active sub-agents,

@@ -31,7 +31,7 @@ Decomposes vague, high-level project requirements into well-scoped components to
 - Split structure approval — present and auto-continue
 - Technical decisions (framework, architecture, patterns) — decide based on codebase
 - File/directory creation — proceed automatically
-- Session conflicts — preserve existing work; isolate or resume the owning session
+- Session conflicts — preserve existing work; resume the owning session or use separate task state without creating another source checkout
 - Branch/working tree warnings — log and continue
 
 **For technical decisions:** Analyze the codebase, pick the best option, and log the decision. Do NOT ask the user to choose between technical alternatives they'll just ask you to choose anyway.
@@ -137,7 +137,7 @@ Parse the JSON output.
 
 1. **If `success == true` and `workflow_backend == "task_list"` and `tasks_written > 0`:** Task-list mode is active. If the host exposes a task-list viewer, you may inspect it, but the JSON output and session files remain the source of truth.
 
-2. **If `mode == "conflict"`:** Preserve the existing task list and its owner. Continue in a separate isolated session/worktree or resume that task list only when it is the current task. Never use `--force` to overwrite another session's work; use it only after the user explicitly requests that destructive replacement.
+2. **If `mode == "conflict"`:** Preserve the existing task list and its owner. Resume it only when it belongs to the current task; otherwise use separate file-based/session state in the same source checkout. A task-list conflict does not require a Git worktree. Never use `--force` to overwrite another session's work; use it only after the user explicitly requests that destructive replacement.
 
 3. **If `mode == "file_based"` or `task_list_id` is null:** Continue in file-based mode; the workflow still progresses using session state on disk.
 
@@ -432,7 +432,7 @@ This skill's domain workflow remains in force. When its work changes files insid
 - Follow that repository's `AGENTS.md` and configured canonical repository policy.
 - Use `$session-finish` or the repository equivalent at meaningful safe checkpoints, before pausing or ending, and when handing work to another owner. Task completion and heavy verification are not prerequisites for a safe checkpoint.
 - Use `$integration-controller` or the repository's integration workflow to promote safe checkpoints through the normal protected path. Keep the exact canonical revision, completed and remaining scope, pending checks, and next action in the handoff.
-- For builds or operations that consume an integrated revision, use `$canonical-checkout-sync` when available, or the repository's equivalent canonical-source workflow, to prepare an isolated workspace pinned to the exact revision. Release and deployment remain separate gates.
+- Reuse the primary source checkout for development and focused checks, following the repository's workspace policy. Use `$canonical-checkout-sync` only when an existing artifact build/release or verification controller requires immutable exact-SHA source; a task, dirty status or PR alone does not require a worktree. Integrate safe owned changes promptly and close any task-created temporary branch/worktree in the same lifecycle. Release and deployment retain their own controls.
 
 For work that does not change a Git repository, this lifecycle does not add a commit or integration step.
 

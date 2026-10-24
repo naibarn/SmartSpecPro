@@ -19,3 +19,9 @@ If a check fails, repair from current canonical state, pass the fast gate, and p
 ## Concurrency and cleanup
 
 Serialize the short promotion step to protect the configured canonical ref, not implementation or post-integration verification. Temporary branches/PRs may be used only when required by concurrency or repository protection; merge them in the same task lifecycle and verify the resulting SHA before cleanup. Preserve dirty or unclassified worktrees until all valuable changes are integrated or durably saved.
+
+Use a branch in the primary checkout for a required PR. Worktrees need the
+separate exception criteria in the shared workspace policy. After integration,
+return to the primary checkout and retire a task-created temporary workspace
+through the ownership-safe dry-run/apply path. A blocked cleanup must retain
+the exact path, content, reason and next action; it does not undo integration.

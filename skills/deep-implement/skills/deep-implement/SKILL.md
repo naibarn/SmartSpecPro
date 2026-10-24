@@ -17,7 +17,7 @@ Input: `/deep-implement @path/to/sections/` containing `index.md` with `SECTION_
 uv run {plugin_root}/scripts/checks/setup_implementation_session.py --sections-dir "{sections_dir}" --plugin-root "{plugin_root}"
 ```
 
-Pass `--session-id` or `--target-dir` only if actually needed and valid for the script. Use the configured target repository and preserve unrelated dirty files. An existing dirty checkout is not a reason to reset it or block work in a separate owned worktree. Task-list reminders and external reviewer availability are optional execution aids. The setup script creates implementation/commit/checkpoint tasks, not mandatory review interviews or periodic compaction prompts.
+Pass `--session-id` or `--target-dir` only if actually needed and valid for the script. Use the configured primary source checkout and preserve unrelated dirty files. Resume task-owned edits in place. A dirty checkout, new section or required PR does not justify another worktree; follow the shared development lifecycle workspace policy and serialize overlapping edits. Task-list reminders and external reviewer availability are optional execution aids. The setup script creates implementation/commit/checkpoint tasks, not mandatory review interviews or periodic compaction prompts.
 
 ## Implementation loop
 

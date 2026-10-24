@@ -4,7 +4,7 @@ The user delegates **technical execution**, not repeated requests to authorize p
 
 ## Development progression
 
-- Implement the next ready useful slice, commit/integrate through protected Git, build on the authorized development runtime, test, debug and repeat.
+- Implement the next ready useful slice in the primary checkout, run focused checks, commit/integrate through protected Git, test/debug and repeat. Build on the authorized development runtime when requested or needed for the change; do not create an isolated build after every checkpoint. Follow the shared workspace policy for exceptional isolation, reuse and cleanup.
 - Track remaining requirements and checks in the existing HandOff; do not make final outcome acceptance a prerequisite of development integration.
 - An unavailable or inconclusive verification route is not evidence that the code failed. Find an approved alternative or defer its evidence; continue independent work.
 

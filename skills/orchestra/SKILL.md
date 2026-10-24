@@ -8,6 +8,8 @@ license: MIT
 
 Use the existing repository `AGENTS.md` and [development lifecycle](../development-lifecycle/SKILL.md). The goal is working software, not completion of an orchestration checklist. Prefer direct execution when delegation adds no value. Never invent a new control plane or an extra approval boundary.
 
+Use the existing primary source checkout by default under the [workspace policy](../development-lifecycle/workspace-policy.md). For a single developer, work on the configured canonical branch, normally local `main` tracking `origin/main`. Resume owned dirty work in place and preserve unrelated files. Do not create a worktree per task, SPEC, section, session, reviewer or PR. Serialize overlapping writers before considering isolation. Read [worktree discipline](references/worktree-discipline.md) only for an actual isolation exception; it includes reuse and same-task integration/cleanup obligations. This default takes precedence over older parallel examples.
+
 ## Route the task
 
 ### Canonical SPEC-ID requests
@@ -48,12 +50,12 @@ Load the relevant existing reference **only when needed**, rather than loading t
 
 ## Execute
 
-1. Identify the user's intended functional outcome, existing work, and current canonical Git ref. Inspect targeted source and tests; avoid rebuilding already completed plans or running global branch audits during ordinary feature work.
+1. Identify the user's intended functional outcome, existing work, primary checkout, and current canonical Git ref. Inspect targeted source and tests; fetch and safely refresh the existing canonical branch in place. Avoid rebuilding completed plans or running global branch audits during ordinary feature work.
 2. Make a short implementation plan only when necessary. Choose and own the next independently useful code slice; preserve unrelated working-tree edits.
 3. Implement and debug with the available LLM, scripts and tools. Use focused syntax/compile/checks for the changed scope. If a normal technical failure occurs, diagnose and fix it instead of asking the user merely to authorize continuation.
 4. **Integrate each coherent development checkpoint** through the repository's normal non-force, protected Git path. Use [integration-controller](../integration-controller/SKILL.md); do not wait for full SPEC acceptance, all UI screenshots, all test suites, hosted UAT, or production provisioning. Required repository checks still apply and must not be misreported or bypassed.
 5. Record the integrated SHA, finished scope, unresolved gaps and next action in the existing HandOff. Refresh the base for the next slice; reconcile in-flight changes at their next checkpoint without resetting other sessions.
-6. Build/preview the integrated development source on the authorized development runtime as soon as possible. Review, test and close remaining gaps iteratively; each subsequent fix can become another integrated checkpoint.
+6. Run additional build/preview work when requested or needed for the changed behavior; do not launch an isolated build after every checkpoint. Review, test and close remaining gaps iteratively; each subsequent fix can become another integrated checkpoint.
 7. Continue until the requested scope is implemented and the relevant testing is done, or until an **actual external permission/product decision** prevents the affected path. Continue independent work while any path is waiting.
 
 ### SmartAIHub authenticated UAT
@@ -81,5 +83,7 @@ A routine UI/UX change does not trigger a three-specialist security review or a 
 ## Reporting and handoff
 
 Be concise: **what now works**, code/Main SHA, focused checks, development preview/build status, outstanding gaps with owners and next actions. Do not claim a pending or unrun check passed. Do not report completion for functionality that has not been implemented or verified; an integrated partial checkpoint is valuable progress but not final acceptance.
+
+Verify canonical integration from fetched Git state. Report the primary source path and SHA. If this task created an exceptional worktree/branch, finish its safe retirement after integration, or report its exact path, retained content and cleanup blocker. A pushed branch, open PR or cleanup promise does not close the task's Git lifecycle.
 
 Do not make banners, reviewer waves, requirement matrices, repeated clean review rounds, lifecycle ledgers, resource leases or broad repo inventories mandatory for ordinary development. Use the existing specialized tools where they provide concrete value and do not turn an optional diagnostic into a transition blocker.

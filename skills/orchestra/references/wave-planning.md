@@ -4,8 +4,11 @@ Wave planning structures parallel agent work into sequential waves. Each wave co
 that share no file-level dependencies, allowing them to be dispatched concurrently. Waves
 execute one after another; each wave's output is injected as context into the next.
 
-**Goal:** Parallel speed without file conflicts. Agents in the same wave cannot see changes
-from each other — they only see the completed output of the previous wave.
+**Goal:** Useful authorized parallelism without file conflicts or unnecessary source
+copies. The default for one developer is direct work in the primary checkout under the
+[workspace policy](../../development-lifecycle/workspace-policy.md). Use this reference
+when parallel agents actually add value; it is not a requirement to create workers or
+worktrees. Shared-checkout agents can see each other's edits, so enforce file ownership.
 
 ---
 
@@ -45,9 +48,9 @@ Derive this boundary from targeted shell impact searches, import/caller inspecti
 and relevant tests before grouping waves.
 
 > **Rule:** Parallel dispatch requires a contract — no contract = sequential execution.
-> For parallelizable work, the conductor must first create the minimal safe contract and
-> ownership map. Falling back to sequential because no contract was written is a planning
-> failure; sequential is allowed only with a recorded `sequential_reason`.
+> When parallel work is useful and authorized, write a minimal ownership map first.
+> Direct or sequential work is valid for a single developer and for overlapping writers;
+> do not create agents or worktrees merely to satisfy a dispatch template.
 
 ### Example Contract Stub
 
@@ -91,14 +94,13 @@ next work. Before any wait, re-evaluate readiness and select a ready independent
 unit. A session, owner, branch, provider wait, resource queue, or pending gate is
 not by itself a dependency predicate.
 
-**Default:** Build parallel waves first. Sequential execution is the exception, not the
-baseline. If two tasks are independent by file ownership and dependency graph, the conductor
-must group them into the same wave until a hard constraint is reached.
+**Default:** Execute directly in the primary checkout. For useful authorized delegation,
+group independent read-only or disjoint owned work when it improves delivery. Serialize
+overlapping writers and all shared index/branch operations before considering isolation.
 
 ### Parallelization Preflight Checklist
 
-Before accepting a sequential plan, answer and record these fields in
-`orchestra/plan.md`:
+When planning an actual parallel wave, record these fields in the existing task plan:
 
 | Field | Required answer |
 |---|---|
@@ -109,8 +111,9 @@ Before accepting a sequential plan, answer and record these fields in
 | `dispatch_mode` | `parallel_batch`, `parallel_with_worktree`, `single_agent`, or `sequential_exception` |
 | `sequential_reason` | Required only when not using parallel for 2+ candidate agents |
 
-If 2+ safe same-wave candidates exist, use `parallel_batch` or
-`parallel_with_worktree`. Do not choose sequential merely because it is simpler to execute.
+For useful authorized same-wave candidates, prefer `parallel_batch` in the shared checkout
+with disjoint owned files. `single_agent` or sequential execution needs no special approval.
+Use `parallel_with_worktree` only when the shared workspace policy's exception applies.
 
 **Grouping guidelines:**
 
@@ -142,7 +145,7 @@ These limits are non-negotiable. The conductor must enforce them when building t
 | Constraint | Limit | Enforcement |
 |-----------|-------|-------------|
 | Concurrent agents | Max 4 or active `agent-loop-policy.md` `max_active_subagents`, whichever is lower | Count active Task tool calls; queue excess into the next sub-wave |
-| File-editing agents in parallel | Max 2 or active `agent-loop-policy.md` `max_parallel_writers`, whichever is lower | Use `isolation: worktree` for parallel writers; if more than 2 write tasks are needed, split into sub-waves |
+| File-editing agents in parallel | Max 2 or active `agent-loop-policy.md` `max_parallel_writers`, whichever is lower | Prefer disjoint owned files in the primary checkout; serialize overlapping edits and shared index/branch operations |
 | DB agents active simultaneously | 1 | Database tasks always run alone in their wave |
 | Git agents active simultaneously | 1 | Git tasks always run alone in their wave |
 | Parallel dispatch without contract | Not allowed | Write contract first; if contract is missing, dispatch sequentially |
@@ -169,7 +172,7 @@ For every wave containing file-editing agents, write this dispatch metadata into
 Rules:
 
 - Use `parallel` only when writers have disjoint write sets and no shared generated files.
-- Use `parallel-with-worktree` when two writers can run safely but may need merge review.
+- Use `parallel-with-worktree` only for a justified isolation exception under the workspace policy, with a conductor-owned integration and cleanup plan.
 - Use `sequential` when two writers need the same file, when more than two writers would edit
   files, or when the platform cannot enforce worktree isolation.
 - Read-only reviewers may run in parallel with each other, but not against unmerged writer
@@ -180,9 +183,11 @@ Rules:
 
 Use this exact protocol when `dispatch_mode: parallel-with-worktree`:
 
-1. Name worktrees predictably:
-   - `<repo>/.worktrees/orchestra-wave-<N>-<portable-role>`
-   - branch `orchestra/wave-<N>/<portable-role>`
+1. Reuse a suitable owned workspace first. If creation is justified, record its owner,
+   base SHA, integration target and cleanup condition in the existing HandOff. Create it
+   through `workspace_authority.py` at an absolute path outside the repository. Do not
+   create a new worktree for each wave or role; single-developer work keeps at most one
+   temporary task worktree. Serialize other writers when that suffices.
 2. Give each writer a disjoint `ownership_map`. If a writer needs a file outside its map,
    it must stop and return a blocker instead of editing.
 3. After writers finish, the conductor collects each worktree result as:
@@ -200,8 +205,11 @@ Use this exact protocol when `dispatch_mode: parallel-with-worktree`:
    - keep the contract-compliant side
    - reapply non-conflicting changes from the other side manually
    - re-dispatch the losing writer only when its intent cannot be preserved safely
-7. Delete temporary worktrees only after verification passes and the conductor has recorded
-   the merge decision.
+7. Verify actual integration into the fetched canonical ref, return to the primary
+   checkout and complete authority-supported retirement after the focused fast gate and
+   required repository checks. Optional full verification is not a cleanup gate. Inspect
+   remaining content and leases; never delete valuable/unknown files or serving artifacts.
+   Report any exact cleanup blocker and next action instead of abandoning the workspace.
 
 ---
 

@@ -65,7 +65,7 @@ Use these replacement boundaries for new work:
 - Choose a scoped profile (`quick`, `package`, `integration`, or `full`) for the work. Keep full-check leases serialized; scoped work does not wait for a full-check lease.
 - Classify OOM, exit 137, SIGKILL, or missing/stale resource evidence as `RESOURCE_BLOCKED` / `QUEUED_RESOURCE`, not code failure. Retry only after fresh resource evidence or changed capacity; keep baseline failures distinct.
 - Record profile, revision, command/scope, time, resource evidence and outcome. Redact secrets and never store lease tokens. Do not run `npm run typecheck` in a local/shared implementation session.
-- Create task worktrees through `workspace_authority.py` and canonical source worktrees through `canonical_source.py`; preserve unknown worktrees.
+- Reuse the primary checkout for ordinary development and focused verification. Only when isolation is actually necessary, create task worktrees through `workspace_authority.py` and immutable build/release source worktrees through `canonical_source.py`; preserve unknown worktrees. These tools are creation mechanisms, not a requirement to create a worktree.
 
 ## Codebase Discovery
 
@@ -173,7 +173,7 @@ When the user says "pordee", "พอดี", "ตอบสั้น", "สั้
 - No unnecessary bullets.
 - Give the practical answer first.
 
-## Parallel Codex Development Workflow
+## Single-Developer Git Workflow
 
 Use `skills/development-lifecycle/SKILL.md`, `$integration-controller`, and `$session-finish` for checkpoint and integration details. `origin/main` is the current shared development baseline; it does not certify production readiness.
 
@@ -181,7 +181,11 @@ Use `skills/development-lifecycle/SKILL.md`, `$integration-controller`, and `$se
 
 `sync latest main → implement → focused check → commit and push/integrate → continue`
 
-Start from the latest `origin/main`. If the current checkout is behind and clean, fast-forward it. If it is dirty or cannot be safely updated, preserve it and automatically use a clean canonical checkout; do not ask the user to reconcile it. Never build from an arbitrary stale checkout.
+The default is one developer using the existing primary source checkout on local `main`, tracking `origin/main`. `origin/main` is a remote-tracking ref, not another source directory. Follow `skills/development-lifecycle/workspace-policy.md` across Orchestra and all related skills; this policy overrides older parallel/worktree examples.
+
+Fetch `origin/main` and inspect the current branch, index and diff. Fast-forward a clean, behind `main` with `git merge --ff-only origin/main`. Resume task-owned unfinished work in place. Unrelated dirty files, task size, risk level, a new SPEC/section/session, or a PR requirement alone do not justify another worktree. Preserve unrelated edits and work only within owned paths. For actual overlapping writers, serialize the edits first. If updating a dirty checkout is unsafe, reconcile/checkpoint the owned work in place; do not automatically create a replacement checkout or stash/reset unknown work. A genuinely ambiguous overlapping edit blocks only that edit.
+
+Use a temporary branch in the same checkout when repository protection requires a PR. An additional worktree is an exception for an explicit user request, demonstrated concurrent incompatible source needs, or an immutable build/release controller. Reuse a suitable existing owned workspace first. Before creating a task worktree, record the concrete reason, owner, integration target and cleanup condition in the existing task HandOff. For single-developer work, keep at most one temporary task worktree; finish/reuse it instead of opening another for each task or retry.
 
 For a coherent safe change, commit and integrate promptly, including when a subtask ends or the user switches tasks. Push directly to `main` when repository rules permit. Use a PR only when branch protection or an explicit repository rule requires it; do not create extra review steps. Never bypass actual required checks or force-push. A check blocks only the PR/action to which repository protection applies; continue independent work.
 
@@ -189,11 +193,13 @@ Run a focused check appropriate to the changed files. Do not wait for full tests
 
 ### Workspace and release evidence
 
-- Preserve dirty or separately owned work. Workspace convergence is housekeeping and must not delay integration from a clean canonical checkout.
+- Preserve dirty or separately owned work. Keep the primary source checkout current in place when safe. Historical workspace housekeeping must not delay integration of the current safe change.
 - Keep integration, build, publication, and serving claims distinct. Claim a user-visible or runtime fix only after checking the actual target environment. A build alone does not prove deployment.
 - Production release, database mutation, external publication, or other irreversible operations use their existing authorization and safety controls. Those controls do not block ordinary development or code integration.
 
 At a checkpoint, stage only task-owned paths, run the fast gate (valid patch, no conflict, no accidental secret), commit, and push/integrate through the path repository rules allow. If branch protection requires a PR, open it without delaying unrelated work and merge when its required conditions pass. Never stage or overwrite another owner's changes, force-push, bypass protection, or perform production actions without their existing authorization.
+
+Before reporting an integrated task finished, fetch and verify the resulting integrated commit is reachable from `origin/main`; for squash merges verify the actual merge SHA and owned diff. A local commit, pushed feature branch, or open PR is not integration. For any temporary task branch/worktree created by this task, return to the primary checkout, safely sync `main`, and complete ownership-safe retirement after integration. If cleanup is blocked, report the exact path, retained content, reason and next action; do not silently abandon it or create another copy to avoid the blocker. Build/release workspaces and artifacts retain their existing lease, retention and rollback controls; never delete a serving or rollback source as ordinary task cleanup.
 
 <!-- ASTRYX:START -->
 Astryx v0.6.3 · 164 components

@@ -1,60 +1,48 @@
 # Worktree Discipline
 
-Use worktree discipline to isolate risky or broad code changes from unrelated
-dirty work. This is a workflow rule, not a requirement for every tiny edit.
+Follow the shared [primary checkout and worktree policy](../../development-lifecycle/workspace-policy.md).
+Use the primary source checkout for ordinary work, including large changes,
+migrations, skill updates and focused verification. Neither risk labels nor
+dirty files alone require a worktree. Preserve unrelated edits and serialize
+overlapping writers. A required PR can use a branch in the same checkout.
 
-Workspace freshness is a separate required outcome: after integration, a dirty
-or task-branch worktree remains preserved, while a clean worktree at the latest
-configured canonical SHA is made available for new/unrelated work and reported
-by absolute path. Do not conflate keeping an active task isolated with leaving
-the user's only visible editor/SSH workspace stale.
+## Exceptional isolation
 
-## When Worktrees Are Required
+Only an explicit user request, demonstrated incompatible concurrent source
+needs that cannot safely be serialized, or the existing immutable artifact
+controller justifies another source directory. First reuse/resume a suitable
+owned workspace. Record the reason, owner, integration target and cleanup
+condition in the existing HandOff; no new approval step is needed.
 
-Create or recommend a separate worktree when any of these are true:
+If a task worktree is still necessary, create it outside the source checkout
+through the existing authority, preserving resource admission and ownership:
 
-- scope is `large` or `project`
-- risk is `high` or `critical`
-- the repository has unrelated dirty files in the same paths that will be edited
-- multiple write agents would otherwise touch overlapping directories
-- the work involves migrations, release automation, or large mechanical rewrites
+```bash
+python3 scripts/development-lifecycle/workspace_authority.py create \
+  --repository <repository-root> \
+  --workspace <absolute-destination-outside-repository> \
+  --base-sha <canonical-base-sha> \
+  --role TASK_WORKTREE \
+  --task-id <task-id> \
+  --session-id <session-id>
+```
 
-## When Worktrees Are Optional
+Use the returned path and base SHA. Do not call raw `git worktree add` as a
+session shortcut. For a single developer, finish/reuse the one temporary task
+worktree instead of creating another for each section or retry. Immutable
+build/release source workspaces remain owned by their existing controller.
 
-Worktrees are optional for:
+## Close the exception
 
-- skill documentation and agent registry updates
-- small single-domain patches with clean ownership
-- read-only audits and planning
-- work where the user explicitly asks to stay on the current branch
+The conductor owns integration and cleanup in the same task lifecycle. Pass
+the focused fast gate, integrate through the permitted Git path and confirm
+the resulting commit in fetched canonical history. Return to the primary
+checkout and safely refresh it. Leave the temporary directory, finish/release
+its owned writers/lease, inspect remaining content, then run the authority's
+retirement dry run and apply only when eligible.
 
-## Procedure
-
-1. Check `git status --short`.
-2. Identify unrelated dirty files and record them in `orchestra/progress.md`.
-3. If the next edit overlaps unrelated dirty files, stop and ask for direction.
-4. If worktree isolation is appropriate, create the task worktree through the
-   shared workspace authority command. It performs filesystem admission,
-   retries a resource failure only on an authorized policy fallback, preserves
-   the requested base SHA, and registers task/session ownership:
-
-   ```bash
-   python3 scripts/development-lifecycle/workspace_authority.py create \
-     --repository <repository-root> \
-     --workspace <absolute-destination> \
-     --base-sha <canonical-base-sha> \
-     --role TASK_WORKTREE \
-     --task-id <task-id> \
-     --session-id <session-id>
-   ```
-
-   Continue from the returned `workspace` and `base_sha`; if fallback was
-   selected, report that exact path. Do not replace this with raw
-   `git worktree add` in a session workflow.
-5. Never run destructive git commands to make a worktree clean.
-
-## Repository Default
-
-For repo-local skill-system updates, staying in the current worktree is allowed
-when edits are confined to `skills/`, `.claude/agents/`, and `orchestra/`.
-Existing dirty application files must be ignored and preserved.
+Never discard dirty, local-only, ignored, unknown or serving/rollback data to
+force cleanup. A blocked retirement must identify the path, content, exact
+reason and next action. Repair safe task-owned causes instead of silently
+abandoning the workspace. Historical cleanup and optional full verification
+do not block integration of a safe current slice.

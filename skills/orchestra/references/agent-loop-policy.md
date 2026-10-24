@@ -2,7 +2,7 @@
 
 Autonomous development should continue through ordinary errors instead of stopping because of arbitrary iteration, tool-call, repair-round, or estimated-cost counters. The goal is delivered code and a testable preview.
 
-For each ready slice: **implement → focused check → protected integration → build/preview → test/debug → repeat**. A failed test, missing development migration, merge conflict, unavailable optional verifier or stale base triggers technical repair or a better strategy. After two identical no-progress attempts, change the approach rather than retrying blindly.
+For each ready slice: **implement in the primary checkout → focused check → protected integration → test/debug → repeat**. Run a build/preview when requested or needed for the change, rather than launching one per checkpoint. Apply the shared workspace policy before any exceptional isolation. A failed test, missing development migration, merge conflict, unavailable optional verifier or stale base triggers technical repair or a better strategy. After two identical no-progress attempts, change the approach rather than retrying blindly.
 
 Resource and platform capacity should be respected; do not spawn uncontrolled parallel agents or exceed an explicit user-provided spending limit. If a tool has genuine hard execution limits, checkpoint state and use the existing authorized continuation mechanism; never interpret an arbitrary skill counter as human approval being required.
 

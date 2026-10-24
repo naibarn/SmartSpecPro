@@ -440,7 +440,7 @@ This means anyone—human or AI agent—can quickly understand what was built wi
 **Issue**: You're on main/master/release branch
 
 **Solution**:
-- Create a feature branch first: `git checkout -b feature/my-implementation`
+- Use the primary canonical checkout by default. If repository protection requires a PR, create a temporary branch in that checkout and merge it in the same lifecycle; a feature branch does not require another worktree.
 - Or choose "Continue" if you really want to commit to this branch
 
 ### Workflow interrupted mid-section

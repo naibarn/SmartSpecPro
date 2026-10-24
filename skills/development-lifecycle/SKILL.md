@@ -9,7 +9,9 @@ The existing WorkUnit/HandOff is the durable record; do not create another job s
 
 ## Normal development
 
-1. Start the next independent, useful slice from a verified canonical source. Preserve the ownership and base SHA of in-flight work; do not forcibly reset stale or dirty worktrees.
+Follow [primary checkout and worktree policy](workspace-policy.md) for source selection, dirty edits, exceptional isolation and cleanup. Reuse the primary checkout by default; a task, SPEC, PR or verification step does not require another source directory.
+
+1. Start the next independent, useful slice in the primary checkout, safely refreshed against the configured canonical ref. Resume owned in-flight work in place; preserve its ownership and base SHA without forcibly resetting stale or dirty files.
 2. Implement and run focused checks appropriate to the changed scope.
 3. Whenever the user stops, pauses, hands off, or switches to another subtask, immediately checkpoint all coherent safe work already done for the current slice. Run only the FAST INTEGRATION GATE before committing owned paths; do not wait for the parent task, unrelated work, full verification, UAT or deployment. Push the commit to the configured canonical branch directly when current repository rules allow it; use a PR only when branch protection or an explicit repository rule requires one. Honor actual required checks and reviews, and never bypass protection.
 4. Confirm the integrated canonical SHA, write a short HandOff (done, missing, checks, owner, next action) and continue. Refresh the base for the next slice; do not pause unrelated sessions for global workspace convergence.
@@ -25,7 +27,7 @@ On resume, read these records and the Deep Plan/Implement session config; reconc
 
 Normal flows never force-push, discard unrelated dirty files, overwrite another session's work, or bypass actual repository-required checks. A failed push requires fetch/reconcile, not forced history rewriting. For conflict ownership and Git-version specifics use `git_capabilities.py` when needed; stage owned paths only.
 
-Use `scripts/development-lifecycle/workspace_authority.py` where registered workspace identity/owner or recovery needs proof. A dirty primary user checkout may remain preserved while an isolated registered clean canonical worktree is used for build or new work. Workspace convergence is a separate housekeeping/recovery obligation, **not a prerequisite for promoting a verified slice from an isolated owned checkout**. Do not assert two machines or runtimes match without checking both.
+Use `scripts/development-lifecycle/workspace_authority.py` where registered workspace identity/owner or recovery needs proof. Preserve unrelated dirty edits and reconcile in place; do not automatically create a clean checkout when dirty. Reuse an owned temporary workspace only when isolation is actually necessary under the workspace policy. Historical workspace convergence does not block promoting a verified owned slice. Finish retirement of a task-created temporary workspace after integration, or report its exact cleanup blocker. Do not assert two machines or runtimes match without checking both.
 
 ## Blockers and status
 

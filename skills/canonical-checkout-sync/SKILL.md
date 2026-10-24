@@ -1,13 +1,15 @@
 ---
 name: canonical-checkout-sync
-description: Prepare a leased isolated workspace for an exact revision in the repository's configured canonical history; shared developer checkouts may be dirty or on another branch.
+description: Prepare exact immutable canonical source under a lease for artifact builds or release controllers; ordinary development and focused checks reuse the primary checkout.
 ---
 
 # Canonical Source Preparation
 
 Follow the shared [development lifecycle contract](../development-lifecycle/SKILL.md) for canonical target selection and validation handoff. This skill prepares an exact source revision; it does not define work ownership or dependency waiting.
 
-Use this after a requested revision is integrated into the repository's canonical history and before build, test, package, deploy, or verification work. It prepares an isolated Git worktree and a fenced source lease. It does not align, reset, clean, or switch the developer checkout.
+Use this when an existing artifact build, package, release or verification controller specifically needs immutable exact-SHA input under a lease. Ordinary coding, focused tests, syntax checks, documentation checks and session checkpoints run in the primary source checkout under the [workspace policy](../development-lifecycle/workspace-policy.md); do not invoke source preparation for each task or just because files are dirty. Safely refresh the primary checkout in place. A required PR does not require an isolated checkout.
+
+When immutable source is required, this controller prepares/reuses an isolated Git worktree and a fenced source lease. It does not align, reset, clean, or switch the developer checkout. Source isolation remains mandatory for the existing build/release controllers that depend on it; this skill is not the default implementation workspace selector.
 
 Before synchronization or preparation, inspect branch/worktree, staged,
 unstaged, untracked, and active merge/rebase/cherry-pick state with
@@ -83,8 +85,9 @@ python3 scripts/development-lifecycle/workspace_authority.py converge --reposito
 ```
 
 When this convergence is evidence for Spec 224 Final Verify, pass that run's
-exact ID with `--task-id`; register its task worktree with the same task ID so
-the convergence and retirement receipts bind to one run.
+exact ID with `--task-id`. If that run actually used a temporary task worktree,
+register it with the same task ID so convergence and retirement receipts bind
+to one run; do not create a task worktree merely to produce a receipt.
 
 The resolver only fast-forwards a clean workspace after checking its explicit
 role, repository identity, intended local commits, owner lease, and the latest
@@ -93,9 +96,10 @@ file/index entry untouched. If local commits, a stash, ownership, branch use,
 or canonical advancement make convergence uncertain, it returns a blocker and
 the workspace must remain unchanged. Never create a permanent alternate
 “canonical” directory to avoid resolving the registered workspace. Temporary
-internal clean worktrees remain allowed for exact-SHA builds; register their
-role and owner explicitly and retire them only through the resolver's dry-run
-then apply path.
+internal clean worktrees remain allowed for exact-SHA builds, with their
+controller's source lease and artifact retention controls. Task worktrees use
+the workspace authority's supported retirement dry-run/apply path. Do not send
+an immutable source role to a retirement API that does not support it.
 
 ## Run under the lease
 
@@ -146,9 +150,22 @@ For an older checkout that does not yet contain these package scripts, use the i
 
 The central entry point loads its controller from the latest configured canonical revision, serializes builds for the repository, invokes the repository's configured build target in the isolated source workspace, and returns a result record with the exact source SHA. `BUILD_PASSED` means the configured build command passed for that SHA. A completed development build that returns `STALE_CANONICAL_ADVANCED` keeps its artifact and digest bound to the recorded source SHA; report the newer canonical SHA separately. It is not a build failure and must not be described as the latest main. Production promotion keeps its latest-source recheck and rebuild behavior.
 
-After a passing build, the command fast-forwards the invoking checkout only when it is clean and already on the configured canonical branch. A dirty or feature-branch checkout is left untouched and reports `primary_workspace_sync` as blocked with the reason and a sample of dirty paths. Resolve/preserve that work, then run the command from a clean canonical checkout to make all integrated files visible there. The build output remains at the reported isolated workspace path.
+After a passing build, the command fast-forwards the invoking checkout only when it is clean and already on the configured canonical branch. A dirty or feature-branch checkout is left untouched and reports `primary_workspace_sync` as blocked with the reason and a sample of dirty paths. Preserve those edits and reconcile the primary checkout in place under the workspace policy. Do not rerun an artifact build merely to update the editor's source folder. The build output remains at the reported isolated workspace path.
 
 Concurrent operations for distinct repository/revision/purpose tuples use independent workspaces and leases. Requests for an already-active tuple are rejected. Do not run commands directly in the isolated workspace without the certified runner when the operation depends on the lease.
+
+## Source retention and disk use
+
+Reuse a matching inactive source tuple when the controller allows it; do not
+request new purposes or revisions merely to evade a lease/builder conflict.
+Do not launch a build after every merge when focused checks suffice. The
+current source manager expires execution leases but does not thereby remove
+source directories or build artifacts. Treat those retained bytes explicitly:
+check ownership, active consumers, artifact locations and rollback needs before
+using any supported cleanup path. If no supported retention/cleanup path is
+available, report the retained paths and engineering gap. Never blindly prune,
+delete serving/rollback sources, or claim that changing task policy reclaimed
+existing build disk space.
 
 ## Boundaries
 

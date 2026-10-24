@@ -31,7 +31,7 @@ At setup, check current branch:
 git branch --show-current
 ```
 
-If on `main` or `master`, warn clearly and continue by default. Only stop when the user explicitly asked for branch hygiene before implementation.
+Use the configured canonical branch in the primary checkout by default when repository policy permits it. A `main`/`master` label is not proof of GitHub branch protection and does not require a warning, feature branch or worktree. If actual repository protection requires a PR, use a temporary branch in this same checkout and integrate it through the required path. Preserve unrelated edits during any branch switch.
 
 ## Working Tree Check
 
@@ -105,6 +105,16 @@ git rev-parse HEAD
 ```
 
 Store in session config for resume verification.
+
+## Integration and temporary source cleanup
+
+A stored local commit or pushed branch is not canonical integration. Follow the
+shared development lifecycle workspace policy: fetch/reconcile, pass the
+focused fast gate, push directly when allowed or merge the required PR, and
+verify the actual integrated SHA. Return to the primary canonical checkout.
+If this task created an exceptional worktree/branch, finish safe retirement
+after integration or record its exact path and concrete cleanup blocker in the
+existing HandOff. Do not create another worktree per implementation section.
 
 ## Resume Verification
 

@@ -7,6 +7,8 @@ description: Checkpoint or finish an implementation session by promoting every s
 
 Follow the shared [development lifecycle contract](../development-lifecycle/SKILL.md) for WorkUnit ownership, checkpoint triggers, non-terminal waits, and machine-readable handoff fields.
 
+Follow the [workspace policy](../development-lifecycle/workspace-policy.md): finish in the primary source checkout by default. A dirty status or a checkpoint trigger is not a reason to create another worktree. Integrate and clean up any task-created isolation exception in the same lifecycle.
+
 Use this skill whenever a session reaches a safe checkpoint, is about to pause/stop/handoff, approaches quota or context exhaustion, or completes implementation. Task completion is **not** required. Safe valuable progress must not remain only on a session branch, local worktree, sandbox, or chat context.
 
 **A user instruction to stop, switch subtasks, or handle something else triggers a checkpoint immediately.** Treat safe changes from the current subtask as ready to checkpoint. Do not wait for the parent task, unrelated work, full verification, UAT, preview or production checks. After the FAST INTEGRATION GATE, commit only task-owned paths and push to `origin/main` when allowed. Use a PR only when branch protection requires it. Merge through the protected path when its required conditions pass; meanwhile continue independent work. Never bypass protection.
@@ -42,8 +44,8 @@ Run inexpensive scoped checks that establish these facts. Do not wait for full t
 3. Fetch the latest configured canonical ref, reconcile the task with it, and repeat the fast gate on the exact candidate commit.
 4. Commit the largest safe task-owned checkpoint and push it to the configured canonical branch when allowed. Use the normal PR path only when required by repository protection. Do not wait for the whole task to complete. If only a subset can safely integrate, promote it and preserve the unsafe/incomplete remainder.
 5. Confirm the integrated commit is reachable from the updated configured canonical ref. Report its SHA, whether progress is `PARTIAL` or `IMPLEMENTATION_COMPLETE`, remaining scope, next action, and post-integration checks still outstanding.
-6. Confirm the integrated SHA. Workspace synchronization is separate housekeeping and must not delay the next task. Preserve a dirty or separately owned user workspace; use a clean canonical source for subsequent work if needed.
-7. Record task source SHA, integrated SHA, optional workspace sync receipt, recovery linkage and retirement status in the existing HandOff. Retire an owned temporary worktree only after verified integration or durable archival and an ownership-safe dry run. Dirty, unpushed, leased or unknown worktrees stay preserved as a housekeeping obligation, not an integration failure.
+6. Safely return to the primary checkout/canonical branch and refresh it in place. Preserve unrelated dirty files; if they prevent switching/updating, report the concrete path and reason instead of creating another source directory. Historical workspace housekeeping does not delay the integrated checkpoint.
+7. Record task source SHA, integrated SHA, primary path/SHA and retirement status in the existing HandOff. Before claiming workspace closure, leave any temporary worktree created by this task, finish/release its owned writers/lease and complete ownership-safe retirement through the authority's dry-run/apply path after verified integration. Inspect untracked/ignored content as well as tracked edits. Repair safe task-owned cleanup causes; preserve valuable or unknown content and report exact paths, blockers and next actions when retirement cannot finish. Durable archival preserves progress but is not proof of integration or automatic permission to delete a workspace.
 8. Run post-integration checks when they are required for the requested outcome or useful for the change. Do not build/deploy automatically after every merge. Track any important outstanding check against the integrated SHA in the task's existing handoff.
 9. If verification finds a regression, repair it from current canonical source, pass the same fast gate, and promote a new checkpoint. Preserve history; do not hide the fix in a side branch.
 
@@ -77,7 +79,7 @@ not task completion until the outcome's Definition of Done is met.
 - A failed fast gate blocks promotion of the failing delta, not all useful progress. First split and promote any independent safe subset when possible. Preserve the remaining exact change durably and report `FAST_GATE_BLOCKED`, the failure, owner, and next action.
 - A heavy-check failure after promotion does not remove or strand the integrated work. Repair on configured canonical ref.
 - Preserve uncommitted work owned by other sessions. Never stage it, overwrite it, or remove its worktree as part of this lifecycle.
-- Do not treat `git fetch`, a pushed branch, or an isolated build as proof that the editor/SSH workspace is current. Report the exact workspace path and SHA after synchronization; if a clean canonical workspace cannot be prepared, state the concrete blocker and preserve the old checkout.
+- Do not treat `git fetch`, a pushed branch, or an isolated build as proof that the editor/SSH workspace is current. Verify the commit against fetched canonical history and report the primary path/SHA. If safe in-place synchronization is blocked, state why and preserve the checkout; do not automatically prepare an alternate primary workspace.
 
 ## Outcomes
 

@@ -45,8 +45,8 @@ Maintain scenario coverage for:
   proof, or ownership boundaries make them useful and dispatch is authorized
 - Codex standard light mode: routine small/medium work uses direct/inline execution unless
   the user explicitly asked for sub-agents, delegation, or parallel agent work
-- parallel-default behavior: 2+ independent agents dispatch as one batch unless a
-  `sequential_reason` is recorded
+- primary-checkout default: one developer works directly on the configured canonical
+  branch; useful authorized parallel work prefers disjoint ownership in that checkout
 - inline/direct execution is forbidden for non-trivial tasks only when an authorized
   Task/sub-agent tool is available and light mode does not apply
 - normal conductor and non-planning sub-agent work defaults to `gpt-5.6-terra` when model
@@ -58,10 +58,11 @@ Maintain scenario coverage for:
 - safe partial checkpoints route through `session-finish` and `integration-controller`
   before a pause/stop/handoff; task completion and heavy verification are not promotion
   prerequisites, and `main` does not imply release or production readiness
-- after promotion or resume, a dirty/divergent SSH/editor checkout is preserved while a
-  clean worktree at the latest configured canonical SHA is made available and its exact
-  user-openable path/SHA is reported; fetching refs in another checkout never counts as
-  workspace synchronization
+- after promotion or resume, safely refresh the primary checkout in place; preserve
+  unrelated dirty/divergent work without automatically creating another checkout.
+  Report the actual primary path/SHA and any concrete sync blocker. Fetching refs alone
+  never counts as workspace synchronization. Task-created temporary worktrees must be
+  integrated and safely retired, or have exact cleanup blockers and next actions recorded
 - quality evidence keeps applicable functional, visual, accessibility, security,
   performance, data-integrity, operational, deployment, and evidence-completeness checks
   distinct

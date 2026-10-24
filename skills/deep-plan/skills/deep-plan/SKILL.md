@@ -43,3 +43,5 @@ Planning artifacts may be committed as coherent checkpoints through the existing
 ## Shared lifecycle contract
 
 Use the shared `development-lifecycle` skill to map plan sections to the requirement ledger and keep evidence freshness explicit.
+
+Plan implementation in the existing primary source checkout under its workspace policy. A new plan, SPEC or section does not require a branch/worktree. Serialize overlapping owned edits; a required PR normally uses a branch in the same checkout. Any justified temporary workspace must include reuse, canonical integration and safe cleanup in the task lifecycle.
