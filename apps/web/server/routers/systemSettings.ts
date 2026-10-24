@@ -684,19 +684,35 @@ export const systemSettingsRouter = router({
     }),
 
   /**
-   * List all tenants (for admin tenant selector)
+   * Keep the complete admin inventory, with presentation metadata so operational
+   * pickers can distinguish retained UAT fixtures from customer tenants.
    */
   listTenants: adminProcedure.query(async () => {
     const db = await getDb();
     if (!db) return [];
 
-    return db
+    const rows = await db
       .select({
         id: tenants.id,
         name: tenants.name,
         domain: tenants.primaryDomain,
+        slug: tenants.slug,
+        isActive: tenants.isActive,
+        status: tenants.status,
       })
       .from(tenants);
+
+    return rows.map(({ id, name, domain, slug, isActive, status }) => ({
+      id,
+      name,
+      domain,
+      // Both identifiers must match the broker's reserved fixture namespace;
+      // a customer's display name alone must never hide their tenant.
+      selectorKind: id === "__system__" ? "system" as const
+        : id.startsWith("tenant-codex-") && /^codex-uat(?:-|$)/.test(slug) ? "test" as const
+        : !isActive || status !== "ACTIVE" ? "inactive" as const
+        : "operational" as const,
+    }));
   }),
 
   // ============================================================

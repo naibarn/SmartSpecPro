@@ -42,10 +42,11 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionRuntimeReadiness: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
-      { id: "tenant-system", name: "System" },
-      { id: "tenant-codex-uat", name: "Codex UAT Isolated Tenant" },
-      { id: "tenant-ZCSKEM9s", name: "Tenant One" },
-      { id: "tenant-smartaihub", name: "Production tenant", domain: "smartaihub.app" },
+      { id: "tenant-system", name: "System", selectorKind: "system" },
+      { id: "tenant-codex-uat", name: "Codex UAT Isolated Tenant", selectorKind: "test" },
+      { id: "tenant-ZCSKEM9s", name: "Tenant One", selectorKind: "operational" },
+      { id: "tenant-smartaihub", name: "Production tenant", domain: "smartaihub.app", selectorKind: "operational" },
+      { id: "tenant-inactive", name: "Former tenant", selectorKind: "inactive" },
     ] }) } },
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
@@ -136,6 +137,30 @@ describe("AdminDeploymentTargets", () => {
     mocks.stagingRuntime = { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", activation: "disabled", transport: "all", missing: ["JOB_WORKFLOW", "WORKER_APP"], jobHandlerConfigured: true, controlPlaneConfigured: false, reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" };
     mocks.originConfiguration = null;
     mocks.originConfigurationError = false;
+  });
+
+  it("defaults to active business tenants while preserving explicit access to other records", async () => {
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+    const toggle = screen.getByRole("checkbox", { name: "Show test, system, and inactive tenants" });
+    expect(toggle).not.toBeChecked();
+    expect(screen.getByText("Showing 2 active business tenants; 3 test, system, or inactive records hidden.")).toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
+    expect(screen.getAllByRole("option")).toHaveLength(2);
+    expect(screen.queryByRole("option", { name: /Codex UAT|System|Former tenant/ })).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(toggle);
+    await user.click(screen.getByRole("combobox", { name: "Authenticated tenant" }));
+    expect(screen.getAllByRole("option")).toHaveLength(5);
+    expect(screen.getByRole("option", { name: /Codex UAT Isolated Tenant.*Test/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Former tenant.*Inactive/ })).toBeInTheDocument();
+    await user.click(screen.getByRole("option", { name: /Codex UAT Isolated Tenant/ }));
+    await user.click(toggle);
+    expect(screen.getByRole("combobox", { name: "Authenticated tenant" })).toHaveTextContent("Select tenant");
+    expect(screen.getByRole("combobox", { name: "Canonical project" })).toBeDisabled();
+    expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
+    expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
   });
 
   it("filters the tenant list by name or ID instead of requiring scrolling", async () => {

@@ -14,6 +14,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
+import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
 const ENVIRONMENTS = ["preview", "staging", "production"] as const;
@@ -249,7 +250,11 @@ export default function AdminDeploymentTargets() {
   const [workflowRuntimeToken, setWorkflowRuntimeToken] = useState("");
   const [controlPlaneToken, setControlPlaneToken] = useState("");
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
+  const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery();
+  const tenantInventory = tenantsQuery.data ?? [];
+  const operationalTenants = tenantInventory.filter(tenant => !tenant.selectorKind || tenant.selectorKind === "operational");
+  const visibleTenants = showNonOperationalTenants ? tenantInventory : operationalTenants;
   const validTenantId = tenantId.length > 0 && tenantId.length <= 36
     && Boolean(tenantsQuery.data?.some(tenant => tenant.id === tenantId));
   const projectsQuery = trpc.infrastructure.listDeploymentTargetProjects.useQuery(
@@ -350,12 +355,15 @@ export default function AdminDeploymentTargets() {
             placeholder={text("Select tenant", "เลือก tenant")}
             searchPlaceholder={text("Search tenant name, domain, or ID…", "ค้นหาชื่อ domain หรือ ID ของ tenant…")}
             emptyMessage={text("No tenant matches this search.", "ไม่พบ tenant ที่ตรงกับคำค้น")}
-            options={(tenantsQuery.data ?? []).map(tenant => {
+            options={visibleTenants.map(tenant => {
               const id = String(tenant.id);
               const domain = typeof tenant.domain === "string" ? tenant.domain : "";
+              const kindLabel = tenant.selectorKind === "test" ? text("Test", "ทดสอบ")
+                : tenant.selectorKind === "system" ? text("System", "ระบบ")
+                : tenant.selectorKind === "inactive" ? text("Inactive", "ไม่ได้ใช้งาน") : "";
               return {
                 value: id,
-                label: `${tenant.name} · ${id}`,
+                label: `${tenant.name} · ${id}${kindLabel ? ` · ${kindLabel}` : ""}`,
                 searchValue: `${tenant.name} ${domain} ${id}`,
               };
             })}
@@ -388,6 +396,23 @@ export default function AdminDeploymentTargets() {
           </Select>
         </VStack>
       </HStack>
+
+      <VStack gap={1}>
+        <CheckboxInput
+          label={text("Show test, system, and inactive tenants", "แสดง tenant ทดสอบ ระบบ และที่ไม่ได้ใช้งาน")}
+          value={showNonOperationalTenants}
+          onChange={checked => {
+            setShowNonOperationalTenants(checked);
+            if (!checked && !operationalTenants.some(tenant => tenant.id === tenantId)) {
+              setTenantId(""); setProjectId(""); setWorkflowRuntimeToken(""); setControlPlaneToken("");
+            }
+          }}
+        />
+        {tenantsQuery.data ? <p role="status">{showNonOperationalTenants
+          ? text(`Showing all ${tenantInventory.length} tenants, including retained test and system records.`, `แสดง tenant ทั้งหมด ${tenantInventory.length} รายการ รวมข้อมูลทดสอบและระบบที่เก็บไว้`)
+          : text(`Showing ${operationalTenants.length} active business tenants; ${tenantInventory.length - operationalTenants.length} test, system, or inactive records hidden.`, `แสดง tenant ปกติที่ Active ${operationalTenants.length} รายการ · ซ่อนข้อมูลทดสอบ ระบบ หรือที่ไม่ได้ใช้งาน ${tenantInventory.length - operationalTenants.length} รายการ`)
+        }</p> : null}
+      </VStack>
 
       {validScope && environment === "production" ? <p role="status">{text(
         "Production target metadata only records the exact deployment destination. It does not create a deployment grant or enable a Worker, Container, DNS record, route, or production traffic. Those actions remain behind their separate production approval and rollback controls.",
