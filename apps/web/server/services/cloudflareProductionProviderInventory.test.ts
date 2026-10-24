@@ -42,6 +42,7 @@ describe("Cloudflare production provider inventory", () => {
     const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
     expect(result).toMatchObject({
       status: "CHECKED",
+      accountRef,
       originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false },
       queues: [{ name: "smartspec-staging-abc-jobs", environment: "staging" }],
       hyperdrives: [{ name: "smartspec-staging-abc-database", environment: "staging" }],

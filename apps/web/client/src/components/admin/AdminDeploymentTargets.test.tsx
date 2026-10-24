@@ -574,8 +574,9 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/cannot be used as a rollback baseline/i)).toBeInTheDocument();
     expect(screen.getByText(/The exact smartaihub\.app\/\* Worker Route is not attached/i)).toBeInTheDocument();
     expect(screen.getByText(/Account → Queues → Edit and Account → Hyperdrive → Edit/)).toBeInTheDocument();
-    expect(screen.getByText((_content, element) => element?.tagName === "P" &&
-      element.textContent?.includes("You reported updating the token, so keep using the saved Production credential; do not re-enter it.") === true)).toBeInTheDocument();
+    expect(screen.getByText(/Connectivity Directory → Write/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Cloudflare API Tokens to update these scopes" }))
+      .toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
     expect(screen.getByText(/strict certificate verification fails \(UNABLE_TO_VERIFY_LEAF_SIGNATURE\)/i)).toBeInTheDocument();
     expect(screen.getByText(/configure a CA-trusted server certificate whose hostname matches/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Check this target’s Cloudflare access" }));

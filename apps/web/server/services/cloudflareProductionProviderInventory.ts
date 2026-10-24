@@ -102,6 +102,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
     return {
       status: inventoryComplete ? "CHECKED" as const : "PARTIAL" as const,
       checkedAt: new Date().toISOString(),
+      accountRef: target.accountRef,
       originConfiguration,
       queueInventoryComplete: queues.complete,
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
