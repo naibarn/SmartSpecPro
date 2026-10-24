@@ -9,6 +9,14 @@
 - Do not remove or delete any functions, features, or UI capabilities unless explicitly requested by the user.
 - Use the package manager already used by this repo.
 - Do not add new dependencies unless necessary.
+- For project-owned skills, edit the canonical `skills/` sources first. Inspect
+  and reconcile installed differences before choosing a sync direction; do not
+  overwrite newer work with an older mirror. Before finishing a skill change,
+  run `bash skills/publish-to-installed-skills.sh` and
+  `bash skills/verify-installed-skills-sync.sh` so every package in
+  `skills/mirrored-skills.txt` matches its installed runtime mapping. Preserve
+  repo-only tests and host-managed `.system` skills. Known mirror drift is an
+  unfinished skill change, not a completed sync.
 - Do not run `npm run typecheck` in a local/shared implementation session because
   of RAM constraints. Repository-wide TypeScript checks may run in CI only after
   the implementation SHA is integrated into `origin/main`, or locally when the
