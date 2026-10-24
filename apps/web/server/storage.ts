@@ -47,6 +47,8 @@ type S3Config = {
   storageKind: "r2" | "s3";
   client: S3Client;
   bucket: string;
+  region: string;
+  endpointHost: string | null;
   publicUrlPrefix: string | null;
 };
 type LocalConfig = { provider: "local" };
@@ -149,6 +151,8 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
             storageKind: setting.providerType === "r2" ? "r2" : "s3",
             client,
             bucket: setting.bucket || "",
+            region: setting.region || "auto",
+            endpointHost: safeEndpointHost(setting.endpoint),
             publicUrlPrefix: setting.publicUrlPrefix || null,
           };
 
@@ -185,6 +189,8 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
       storageKind: "r2",
       client,
       bucket: r2Bucket,
+      region: "auto",
+      endpointHost: `${r2AccountId}.r2.cloudflarestorage.com`,
       publicUrlPrefix: null,
     };
 
@@ -204,6 +210,33 @@ export async function getActiveStorageConfig(): Promise<ResolvedConfig> {
  */
 export function invalidateStorageCache(): void {
   _configCache = null;
+}
+
+function safeEndpointHost(value: string): string | null {
+  try {
+    const parsed = new URL(value);
+    return parsed.hostname;
+  } catch {
+    return null;
+  }
+}
+
+/** Non-secret provider identity for operational diagnostics. */
+export async function getStorageBackendIdentity(): Promise<Readonly<Record<string, string | null>>> {
+  const config = await getActiveStorageConfig();
+  if (config.provider === "s3") {
+    return {
+      provider: config.provider,
+      storageKind: config.storageKind,
+      bucket: config.bucket || null,
+      region: config.region,
+      endpointHost: config.endpointHost,
+    };
+  }
+  if (config.provider === "forge") {
+    return { provider: config.provider, storageKind: null, bucket: null, region: null, endpointHost: safeEndpointHost(config.baseUrl) };
+  }
+  return { provider: config.provider, storageKind: null, bucket: null, region: null, endpointHost: null };
 }
 
 /**
@@ -782,6 +815,8 @@ export async function storagePutContentAddressedIfAbsentWithClient(
     storageKind: "s3",
     client: access.client,
     bucket: access.bucket,
+    region: "auto",
+    endpointHost: null,
     publicUrlPrefix: null,
   };
   const stored = await s3StoragePutIfAbsent(config, key, bytes, contentType);

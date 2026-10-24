@@ -61,6 +61,15 @@ export type CloudflareStagingArtifactStorage = Readonly<{
   readBuffer(key: string): Promise<Uint8Array | null>;
 }>;
 
+export type CloudflareStagingPublishPhase =
+  | "receipt_validation"
+  | "bundle_validation"
+  | "existing_artifact_check"
+  | "module_uploads"
+  | "asset_uploads"
+  | "manifest_commit"
+  | "readback_verification";
+
 export type CloudflareStagingBuildReceiptAuthority = Readonly<{
   /** Must check the canonical build authority, not merely trust caller fields. */
   verify(receipt: CloudflareStagingBuildReceipt): Promise<boolean>;
@@ -100,6 +109,7 @@ export function createCanonicalBuildReceiptAuthority(resultsRoot: string): Cloud
 export type CloudflareStagingArtifactPublisherInput = Readonly<{
   receipt: CloudflareStagingBuildReceipt;
   bundle: Omit<CloudflareStagingBundle, "sourceSha" | "buildDigest">;
+  onPhase?: (phase: CloudflareStagingPublishPhase) => void;
 }>;
 
 export type PublishedCloudflareStagingArtifact = Readonly<{
@@ -167,17 +177,28 @@ function blobKey(digest: string) {
 async function putBlob(storage: CloudflareStagingArtifactStorage, bytes: Uint8Array, contentType: string) {
   if (bytes.byteLength < 1 || bytes.byteLength > MAX_FILE_BYTES) throw new Error("CLOUDFLARE_ARTIFACT_FILE_SIZE_INVALID");
   const digest = sha256(bytes);
+  const writeIfMissing = async (key: string, value: Uint8Array, type: string, expectedDigest: string) => {
+    const existing = await storage.readBuffer(key);
+    if (existing) {
+      if (existing.byteLength !== value.byteLength || sha256(existing) !== expectedDigest ||
+          !Buffer.from(existing).equals(Buffer.from(value))) {
+        throw new Error("CLOUDFLARE_ARTIFACT_EXISTING_BLOB_CONFLICT");
+      }
+      return;
+    }
+    await storage.putIfAbsent(key, value, type);
+  };
   if (bytes.byteLength > MAX_OBJECT_BYTES) {
     const chunks: { sha256: string; size: number }[] = [];
     for (let offset = 0; offset < bytes.byteLength; offset += MAX_OBJECT_BYTES) {
       const chunk = bytes.subarray(offset, offset + MAX_OBJECT_BYTES);
       const chunkDigest = sha256(chunk);
-      await storage.putIfAbsent(blobKey(chunkDigest), chunk, "application/octet-stream");
+      await writeIfMissing(blobKey(chunkDigest), chunk, "application/octet-stream", chunkDigest);
       chunks.push({ sha256: chunkDigest, size: chunk.byteLength });
     }
     return { contentType, size: bytes.byteLength, sha256: digest, chunks } satisfies StoredFile;
   }
-  await storage.putIfAbsent(blobKey(digest), bytes, contentType);
+  await writeIfMissing(blobKey(digest), bytes, contentType, digest);
   return { contentType, size: bytes.byteLength, sha256: digest } satisfies StoredFile;
 }
 
@@ -231,9 +252,11 @@ export function createCloudflareStagingArtifactAuthority(input: {
 }) {
   async function publish(params: CloudflareStagingArtifactPublisherInput): Promise<PublishedCloudflareStagingArtifact> {
     const { receipt, bundle } = params;
+    params.onPhase?.("receipt_validation");
     if (!validateReceiptShape(receipt) || !await input.buildReceipts.verify(receipt)) {
       throw new Error("CLOUDFLARE_BUILD_RECEIPT_UNTRUSTED");
     }
+    params.onPhase?.("bundle_validation");
     if (!SOURCE_SHA.test(receipt.sourceSha) || !safePath(bundle.mainModule) ||
         !/^\d{4}-\d{2}-\d{2}$/.test(bundle.compatibilityDate)) {
       throw new Error("CLOUDFLARE_ARTIFACT_BUNDLE_INVALID");
@@ -269,6 +292,7 @@ export function createCloudflareStagingArtifactAuthority(input: {
       }
       return { artifactRef, sourceSha: receipt.sourceSha.toLowerCase(), buildDigest, immutable: true };
     };
+    params.onPhase?.("existing_artifact_check");
     const existing = await reuseExistingArtifact();
     if (existing) return existing;
 
@@ -287,7 +311,9 @@ export function createCloudflareStagingArtifactAuthority(input: {
       }
       return stored;
     }
+    params.onPhase?.("module_uploads");
     const moduleFiles = await publishFiles(bundle.moduleFiles);
+    params.onPhase?.("asset_uploads");
     const assets = await publishFiles(bundle.assets);
     const manifest: ArtifactManifest = {
       format: MANIFEST_VERSION,
@@ -306,6 +332,7 @@ export function createCloudflareStagingArtifactAuthority(input: {
       assets,
     };
     const manifestBytes = Buffer.from(JSON.stringify(manifest));
+    params.onPhase?.("manifest_commit");
     try {
       await input.storage.putIfAbsent(artifactKey(buildDigest, receipt.sourceSha), manifestBytes, "application/json");
     } catch (error) {
@@ -317,6 +344,21 @@ export function createCloudflareStagingArtifactAuthority(input: {
         if (concurrent) return concurrent;
       } catch { /* preserve the original conditional-create failure */ }
       throw error;
+    }
+    params.onPhase?.("readback_verification");
+    const readBack = await resolveBundle(artifactRef, receipt.sourceSha);
+    if (!readBack || readBack.mainModule !== bundle.mainModule ||
+        readBack.compatibilityDate !== bundle.compatibilityDate ||
+        Object.keys(readBack.moduleFiles).length !== Object.keys(bundle.moduleFiles).length ||
+        Object.keys(readBack.assets).length !== Object.keys(bundle.assets).length ||
+        !Object.entries(bundle.moduleFiles).every(([name, file]) => {
+          const actual = readBack.moduleFiles[name];
+          return actual?.contentType === file.contentType && Buffer.from(actual.bytes).equals(Buffer.from(file.bytes));
+        }) || !Object.entries(bundle.assets).every(([name, file]) => {
+          const actual = readBack.assets[name];
+          return actual?.contentType === file.contentType && Buffer.from(actual.bytes).equals(Buffer.from(file.bytes));
+        })) {
+      throw new Error("CLOUDFLARE_ARTIFACT_READBACK_VERIFY_FAILED");
     }
     return { artifactRef, sourceSha: receipt.sourceSha.toLowerCase(), buildDigest, immutable: true };
   }

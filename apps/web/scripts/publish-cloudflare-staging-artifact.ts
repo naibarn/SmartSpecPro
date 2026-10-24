@@ -1,8 +1,10 @@
-import { lstat, readFile, realpath } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { lstat, readFile, realpath, rename, writeFile } from "node:fs/promises";
 import { cloudflareStagingAssetContentType } from "../server/services/cloudflareStagingAssetMetadata";
 import { resolve, relative, sep } from "node:path";
 import {
   assertSharedImmutableStorageActive,
+  getStorageBackendIdentity,
   storagePutIfAbsent,
   storageReadBuffer,
 } from "../server/storage";
@@ -13,6 +15,11 @@ import {
   isRetryableCloudflareStagingPublishReason,
   type CloudflareStagingBuildReceipt,
 } from "../server/services/cloudflareStagingArtifactAuthority";
+import { classifyCloudflareArtifactPublishFailure } from "./cloudflareArtifactPublishDiagnostics";
+
+let activePhase = "receipt_validation";
+let storageBackend: Readonly<Record<string, string | null>> | null = null;
+let publishContext = { sourceSha: "", buildId: "", buildDigest: "", retryExisting: false };
 
 function argument(name: string) {
   const index = process.argv.indexOf(name);
@@ -34,19 +41,40 @@ function assertInside(path: string, root: string) {
 async function main() {
   const sourceSha = argument("--source-sha") ?? "";
   const buildId = argument("--build-id") ?? "";
+  const retryExisting = process.argv.includes("--retry-existing");
+  publishContext = { sourceSha, buildId, buildDigest: "", retryExisting };
   const resultsRoot = process.env.SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT?.trim();
   if (!/^[a-f0-9]{40}$/i.test(sourceSha) || !/^[a-z0-9._-]{8,120}$/i.test(buildId) || !resultsRoot) {
-    console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_authority_unavailable" }));
+    console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_authority_unavailable", diagnostics: {
+      phase: "receipt_validation", rootErrorCategory: "build_receipt_validation", diagnosticCode: "CANONICAL_BUILD_AUTHORITY_UNAVAILABLE",
+      retryable: false, timeoutResource: null, providerDiagnostics: {}, storageBackend: null,
+      artifact: { sourceSha: sourceSha || null, buildId: buildId || null, buildDigest: null },
+    } }));
     return;
   }
   const root = resolve(resultsRoot);
   let record: Record<string, any>;
   try { record = JSON.parse(await readFile(resolve(root, `${buildId}.json`), "utf8")); }
   catch {
-    console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_receipt_unavailable" }));
+    console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_receipt_unavailable", diagnostics: {
+      phase: "receipt_validation", rootErrorCategory: "build_receipt_validation", diagnosticCode: "CANONICAL_BUILD_RECEIPT_UNAVAILABLE",
+      retryable: false, timeoutResource: null, providerDiagnostics: {}, storageBackend: null,
+      artifact: { sourceSha, buildId, buildDigest: null },
+    } }));
     return;
   }
   const artifact = record.cloudflare_staging_artifact;
+  publishContext.buildDigest = typeof artifact?.build_digest === "string" ? artifact.build_digest : "";
+  activePhase = "receipt_validation";
+  if (retryExisting && !(artifact?.status === "PUBLISHED" ||
+      artifact?.status === "PUBLISH_PENDING" && isRetryableCloudflareStagingPublishReason(artifact?.reason))) {
+    console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_receipt_not_retryable", diagnostics: {
+      phase: activePhase, rootErrorCategory: "build_receipt_validation", diagnosticCode: "CANONICAL_BUILD_RECEIPT_NOT_RETRYABLE",
+      retryable: false, timeoutResource: null, providerDiagnostics: {}, storageBackend: null,
+      artifact: { sourceSha, buildId, buildDigest: publishContext.buildDigest || null },
+    } }));
+    return;
+  }
   const bundleVerified = artifact?.status === "BUNDLE_READY" ||
     artifact?.status === "PUBLISHED" ||
     artifact?.status === "PUBLISH_PENDING" &&
@@ -58,8 +86,12 @@ async function main() {
     console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason: "canonical_build_receipt_untrusted" }));
     return;
   }
+  storageBackend = await getStorageBackendIdentity();
+  activePhase = "storage_validation";
+  if (storageBackend.provider !== "s3") throw new Error("STORAGE_SHARED_CONTENT_STORE_REQUIRED");
   await assertSharedImmutableStorageActive();
   const workspace = resolve(String(record.isolated_workspace ?? ""));
+  activePhase = "manifest_validation";
   const manifestFile = resolve(workspace, "apps/cloudflare/.staging-artifact/bundle-manifest.json");
   const manifestRoot = await realpath(workspace);
   const actualManifest = await realpath(manifestFile);
@@ -84,6 +116,7 @@ async function main() {
   assertInside(publicSourceRoot, manifestRoot);
   async function loadFiles(entries: any[], base: string, destination: typeof modules, allowedRoots = [base]) {
     for (const entry of entries) {
+      activePhase = destination === modules ? "module_file_validation" : "asset_file_validation";
       const name = entry?.name;
       if (!safeRelative(name) || !/^[a-f0-9]{64}$/i.test(entry.sha256 ?? "") || !Number.isSafeInteger(entry.size) || entry.size < 1) {
         throw new Error("ARTIFACT_MANIFEST_ENTRY_INVALID");
@@ -96,6 +129,8 @@ async function main() {
       }
       const bytes = await readFile(resolvedPath);
       if (bytes.byteLength !== entry.size) throw new Error("ARTIFACT_FILE_SIZE_MISMATCH");
+      const actualSha256 = createHash("sha256").update(bytes).digest("hex");
+      if (actualSha256 !== entry.sha256.toLowerCase()) throw new Error("ARTIFACT_FILE_HASH_MISMATCH");
       destination[name] = { contentType: cloudflareStagingAssetContentType(name, entry.contentType), bytes };
     }
   }
@@ -117,6 +152,7 @@ async function main() {
     },
     buildReceipts: createCanonicalBuildReceiptAuthority(root),
   });
+  activePhase = "artifact_publication";
   const published = await authority.publish({
     receipt,
     bundle: {
@@ -125,17 +161,44 @@ async function main() {
       moduleFiles: modules,
       assets,
     },
+    onPhase: phase => { activePhase = phase; },
   });
-  console.log(JSON.stringify({ status: "PUBLISHED", artifactRef: published.artifactRef, sourceSha, buildDigest: published.buildDigest }));
+  // Keep the authentic build receipt and provenance fields intact. Only advance
+  // its publication state after the authority has read back and verified every
+  // manifest entry and blob. Atomic replacement prevents partial JSON on crash.
+  const receiptPath = resolve(root, `${buildId}.json`);
+  const updatedRecord = {
+    ...record,
+    cloudflare_staging_artifact: {
+      ...Object.fromEntries(Object.entries(artifact).filter(([key]) => key !== "diagnostic_code")),
+      status: "PUBLISHED",
+      reason: null,
+      artifact_ref: published.artifactRef,
+      source_sha: published.sourceSha,
+      build_digest: published.buildDigest,
+      published_at: new Date().toISOString(),
+      publication_verified_readback: true,
+      publication_storage_backend: storageBackend,
+    },
+  };
+  const temporaryReceiptPath = `${receiptPath}.${process.pid}.publish.tmp`;
+  await writeFile(temporaryReceiptPath, `${JSON.stringify(updatedRecord, null, 2)}\n`, { flag: "wx", mode: 0o600 });
+  await rename(temporaryReceiptPath, receiptPath);
+  console.log(JSON.stringify({ status: "PUBLISHED", buildId, artifactRef: published.artifactRef, sourceSha,
+    buildDigest: published.buildDigest, retryExisting, verifiedReadback: true, storageBackend }));
 }
 
 main().catch(error => {
-  const message = error instanceof Error ? error.message : "unknown";
-  const diagnosticCode = /^[A-Z][A-Z0-9_]{4,99}$/.test(message)
-    ? message
-    : "ARTIFACT_PUBLISH_FAILED";
-  const reason = message.startsWith("STORAGE_") || message.startsWith("R2_")
+  const failure = classifyCloudflareArtifactPublishFailure(error, activePhase);
+  const reason = failure.rootErrorCategory.startsWith("storage_") ||
+    failure.rootErrorCategory.startsWith("provider_") || failure.timeoutResource !== null
     ? "artifact_storage_unavailable"
     : "artifact_publish_failed";
-  console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason, diagnosticCode }));
+  console.log(JSON.stringify({ status: "PUBLISH_PENDING", reason, diagnosticCode: failure.diagnosticCode,
+    diagnostics: { ...failure, storageBackend, artifact: {
+      sourceSha: publishContext.sourceSha || null,
+      buildId: publishContext.buildId || null,
+      buildDigest: publishContext.buildDigest || null,
+    }, retryExisting: publishContext.retryExisting } }));
+  process.exitCode = 1;
 });
