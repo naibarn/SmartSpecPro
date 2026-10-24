@@ -21,9 +21,9 @@
     },
     "section-03-production-runtime-composition": {
       "status": "checkpointed",
-      "next_action": "Production Queue job b2b989d0-3476-4e04-afa6-f55a31add909 succeeded and its Queue/DLQ were read back. Fix the Admin readiness panel so it reflects current provider inventory and never repeats completed Queue setup. Next, implement a production-scoped PostgreSQL/Hyperdrive path only after proving the existing host identity, TLS trust and least-privilege runtime role; then persist immutable production bindings and verify /readyz. Do not attach smartaihub.app/* or shift traffic without the existing canary grant.",
-      "checkpoint_sha": "c881f756d0e84d9459bf0dc57db1ea0820dd1bd9",
-      "merged_main_sha": "c881f756d0e84d9459bf0dc57db1ea0820dd1bd9"
+      "next_action": "Admin readiness panel correction is integrated at a4649a528de6cb55ed27a67f1b483e0f5580bcc1 and its focused regression test passed 23/23. Production Queue/DLQ already succeeded on job b2b989d0-3476-4e04-afa6-f55a31add909. Continue production-scoped PostgreSQL/Hyperdrive runtime design and implementation; staging-only read-only DB authority cannot be reused. Public /readyz remains activation=disabled with missing bindings. Keep domain route and canary/traffic under existing independent production grant.",
+      "checkpoint_sha": "a4649a528de6cb55ed27a67f1b483e0f5580bcc1",
+      "merged_main_sha": "a4649a528de6cb55ed27a67f1b483e0f5580bcc1"
     },
     "section-01-production-target-ui": {
       "checkpoint_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
@@ -41,11 +41,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 43,
-  "updated_at": "2026-10-24T19:02:01.595128+00:00",
+  "generation": 44,
+  "updated_at": "2026-10-24T19:03:50.733563+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Production Queue job b2b989d0-3476-4e04-afa6-f55a31add909 succeeded and its Queue/DLQ were read back. Fix the Admin readiness panel so it reflects current provider inventory and never repeats completed Queue setup. Next, implement a production-scoped PostgreSQL/Hyperdrive path only after proving the existing host identity, TLS trust and least-privilege runtime role; then persist immutable production bindings and verify /readyz. Do not attach smartaihub.app/* or shift traffic without the existing canary grant.",
+    "next_action": "Admin readiness panel correction is integrated at a4649a528de6cb55ed27a67f1b483e0f5580bcc1 and its focused regression test passed 23/23. Production Queue/DLQ already succeeded on job b2b989d0-3476-4e04-afa6-f55a31add909. Continue production-scoped PostgreSQL/Hyperdrive runtime design and implementation; staging-only read-only DB authority cannot be reused. Public /readyz remains activation=disabled with missing bindings. Keep domain route and canary/traffic under existing independent production grant.",
     "gaps": [
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
       "PostgreSQL accepts TLS, but the application session is non-TLS and strict CA verification fails UNABLE_TO_VERIFY_LEAF_SIGNATURE; a trusted matching certificate and actual Tunnel route remain unverified.",
@@ -64,8 +64,11 @@
       "Production Queue job b2b989d0-3476-4e04-afa6-f55a31add909 completed successfully; exact Queue and DLQ were read back. Do not repeat queue prep. Worker binding is still absent.",
       "Live Production credential probe confirms DNS inventory permission missing (HTTP 403); determine whether a production database Tunnel route requires Zone DNS access or an existing authorized private connectivity path.",
       "Production Worker remains activation=disabled; live /readyz is 503 with all seven declared bindings absent. Selected queues transport requires HYPERDRIVE and JOB_QUEUE; application traffic also requires Node/Python ingress.",
-      "Production route and traffic cutover require existing canary authorization; no canary/deployment grant may be inferred from Queue setup."
+      "Production route and traffic cutover require existing canary authorization; no canary/deployment grant may be inferred from Queue setup.",
+      "Production Queue and DLQ succeeded and were verified; no repeated Queue provisioning is needed.",
+      "Production-scoped database runtime role, Hyperdrive and private Tunnel route are not yet implemented or verified.",
+      "The Admin UI source fix is integrated but its serving release generation has not yet been verified."
     ],
-    "merged_main_sha": "c881f756d0e84d9459bf0dc57db1ea0820dd1bd9"
+    "merged_main_sha": "a4649a528de6cb55ed27a67f1b483e0f5580bcc1"
   }
 }

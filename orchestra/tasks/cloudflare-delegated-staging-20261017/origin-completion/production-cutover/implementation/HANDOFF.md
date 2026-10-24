@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `43`
-- Updated (UTC): `2026-10-24T19:02:01.595128+00:00`
+- State generation: `44`
+- Updated (UTC): `2026-10-24T19:03:50.733563+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `c881f756d0e84d9459bf0dc57db1ea0820dd1bd9`
+- Latest recorded merged Main SHA: `a4649a528de6cb55ed27a67f1b483e0f5580bcc1`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
-- Next action: Production Queue job b2b989d0-3476-4e04-afa6-f55a31add909 succeeded and its Queue/DLQ were read back. Fix the Admin readiness panel so it reflects current provider inventory and never repeats completed Queue setup. Next, implement a production-scoped PostgreSQL/Hyperdrive path only after proving the existing host identity, TLS trust and least-privilege runtime role; then persist immutable production bindings and verify /readyz. Do not attach smartaihub.app/* or shift traffic without the existing canary grant.
+- Next action: Admin readiness panel correction is integrated at a4649a528de6cb55ed27a67f1b483e0f5580bcc1 and its focused regression test passed 23/23. Production Queue/DLQ already succeeded on job b2b989d0-3476-4e04-afa6-f55a31add909. Continue production-scoped PostgreSQL/Hyperdrive runtime design and implementation; staging-only read-only DB authority cannot be reused. Public /readyz remains activation=disabled with missing bindings. Keep domain route and canary/traffic under existing independent production grant.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Production inventory UI is integrated and serving Linux release generation 72 at db36dcbad2befa78635c2586816f9aeb6e3f1b43; login/settings/health endpoints return 200. Continue exact production resource provisioning and runtime composition. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | User reports Production token permissions have been updated; actual Queue write still needs the canonical Admin job receipt. Keep current independent Production deployment grant/canary authority intact; do not bypass it. |
-| section-03-production-runtime-composition | checkpointed | — | — | c881f756d0e84d9459bf0dc57db1ea0820dd1bd9 | c881f756d0e84d9459bf0dc57db1ea0820dd1bd9 | Production Queue job b2b989d0-3476-4e04-afa6-f55a31add909 succeeded and its Queue/DLQ were read back. Fix the Admin readiness panel so it reflects current provider inventory and never repeats completed Queue setup. Next, implement a production-scoped PostgreSQL/Hyperdrive path only after proving the existing host identity, TLS trust and least-privilege runtime role; then persist immutable production bindings and verify /readyz. Do not attach smartaihub.app/* or shift traffic without the existing canary grant. |
+| section-03-production-runtime-composition | checkpointed | — | — | a4649a528de6cb55ed27a67f1b483e0f5580bcc1 | a4649a528de6cb55ed27a67f1b483e0f5580bcc1 | Admin readiness panel correction is integrated at a4649a528de6cb55ed27a67f1b483e0f5580bcc1 and its focused regression test passed 23/23. Production Queue/DLQ already succeeded on job b2b989d0-3476-4e04-afa6-f55a31add909. Continue production-scoped PostgreSQL/Hyperdrive runtime design and implementation; staging-only read-only DB authority cannot be reused. Public /readyz remains activation=disabled with missing bindings. Keep domain route and canary/traffic under existing independent production grant. |
 | section-04-production-readiness-and-cutover | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)
@@ -42,6 +42,9 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Live Production credential probe confirms DNS inventory permission missing (HTTP 403); determine whether a production database Tunnel route requires Zone DNS access or an existing authorized private connectivity path.
 - Production Worker remains activation=disabled; live /readyz is 503 with all seven declared bindings absent. Selected queues transport requires HYPERDRIVE and JOB_QUEUE; application traffic also requires Node/Python ingress.
 - Production route and traffic cutover require existing canary authorization; no canary/deployment grant may be inferred from Queue setup.
+- Production Queue and DLQ succeeded and were verified; no repeated Queue provisioning is needed.
+- Production-scoped database runtime role, Hyperdrive and private Tunnel route are not yet implemented or verified.
+- The Admin UI source fix is integrated but its serving release generation has not yet been verified.
 
 ## Resume
 
