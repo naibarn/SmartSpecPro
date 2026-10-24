@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -354,6 +354,7 @@ export default function AdminDeploymentTargets() {
   const [environment, setEnvironment] = useState("");
   const [workflowRuntimeToken, setWorkflowRuntimeToken] = useState("");
   const [controlPlaneToken, setControlPlaneToken] = useState("");
+  const [productionQueueJobId, setProductionQueueJobId] = useState("");
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
@@ -393,6 +394,11 @@ export default function AdminDeploymentTargets() {
     { tenantId, projectId, environment: "production" },
     { enabled: validScope && environment === "production", refetchOnWindowFocus: false },
   );
+  const productionQueueJob = trpc.infrastructure.getCloudflareProductionQueueJobStatus.useQuery(
+    { tenantId, projectId, jobId: productionQueueJobId, environment: "production" },
+    { enabled: validScope && environment === "production" && Boolean(productionQueueJobId), refetchInterval: query =>
+      query.state.data?.status === "succeeded" || query.state.data?.status === "failed" ? false : 2_000 },
+  );
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const stagingCloudflareTargets = ((stagingTargetsQuery.data ?? []) as DeploymentTarget[])
@@ -427,6 +433,17 @@ export default function AdminDeploymentTargets() {
   const stagingDeployMutation = trpc.infrastructure.queueCloudflareStagingDeploy.useMutation({
     onSuccess: async () => { await stagingDeployPreflight.refetch(); },
   });
+  const productionQueueMutation = trpc.infrastructure.prepareCloudflareProductionQueue.useMutation({
+    onSuccess: async result => {
+      setProductionQueueJobId(result.jobId);
+      await Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
+    },
+  });
+  useEffect(() => {
+    if (productionQueueJob.data?.status === "succeeded") {
+      void Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
+    }
+  }, [productionQueueJob.data?.status]);
   const activateStagingProfile = trpc.infrastructure.activateCloudflareStagingQueueProfile.useMutation({
     onSuccess: async result => {
       setSavedStagingScope({ tenantId, projectId });
@@ -693,6 +710,25 @@ export default function AdminDeploymentTargets() {
               <p><strong>{text("Production Queue", "Production Queue")}</strong>: {productionQueues.length > 0
                 ? text(`Found ${productionQueues.length}`, `พบ ${productionQueues.length} รายการ`)
                 : text(stagingQueues.length > 0 ? `Not provisioned. Only Staging exists (${stagingQueues.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingQueues.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingQueues.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
+              {inventory.status === "CHECKED" && !productionQueues.some(queue => queue.name.startsWith("smartspec-production-")) && enabledCloudflareTargets.length === 1 ? <VStack as="section" gap={1}>
+                <p>{text(
+                  "Prepare the missing Production Queue now. The server uses the encrypted credential already saved for this Production target, creates one deterministic queue, and reads it back. This does not bind or activate the Worker and cannot change traffic.",
+                  "เริ่มเตรียม Production Queue ที่ยังขาดได้เลย ระบบใช้ credential แบบเข้ารหัสที่บันทึกไว้กับ Production target นี้ สร้าง Queue ชื่อมาตรฐานเพียงรายการเดียวและอ่านกลับยืนยัน ขั้นตอนนี้ยังไม่ผูกหรือเปิด Worker และเปลี่ยน traffic ไม่ได้",
+                )}</p>
+                <Button type="button" disabled={productionQueueMutation.isPending || Boolean(productionQueueJobId && productionQueueJob.data?.status !== "failed")} onClick={() => productionQueueMutation.mutate({ tenantId, projectId, environment: "production" })}>
+                  {productionQueueMutation.isPending ? text("Queueing Production setup…", "กำลังส่งงานเตรียม Production…") : productionQueueJobId
+                    ? productionQueueJob.data?.status === "failed"
+                      ? text("Retry Production Queue setup", "ลองเตรียม Production Queue อีกครั้ง")
+                      : text("Production Queue setup submitted", "ส่งงานเตรียม Production Queue แล้ว")
+                    : text("Prepare Production Queue", "เตรียม Production Queue")}
+                </Button>
+                {productionQueueMutation.error ? <p role="alert"><code>{productionQueueMutation.error.message}</code></p> : null}
+                {productionQueueJobId && productionQueueJob.data ? <p role="status">
+                  {text("Preparation job", "งานเตรียมระบบ")}: <code>{productionQueueJob.data.jobId}</code> · {text("Status", "สถานะ")}: <strong>{productionQueueJob.data.status}</strong>
+                  {productionQueueJob.data.queueName ? <> · Queue: <code>{productionQueueJob.data.queueName}</code></> : null}
+                  {productionQueueJob.data.errorCode ? <> · <code>{productionQueueJob.data.errorCode}</code></> : null}
+                </p> : null}
+              </VStack> : null}
               <p><strong>Production Hyperdrive</strong>: {productionHyperdrives.length > 0
                 ? text(`Found ${productionHyperdrives.length}`, `พบ ${productionHyperdrives.length} รายการ`)
                 : text(stagingHyperdrives.length > 0 ? `Not provisioned. Only Staging exists (${stagingHyperdrives.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingHyperdrives.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingHyperdrives.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
@@ -709,12 +745,12 @@ export default function AdminDeploymentTargets() {
                 "นี่คือสาเหตุที่ติดจริง: Production ยังไม่มี Queue หรือ Hyperdrive แยก, ไม่มี release ที่ตรวจสอบเป็น rollback ได้ และยังไม่มี route ของโดเมนหลัก การตรวจนี้อ่านอย่างเดียว ไม่ได้แก้ Cloudflare หรือย้าย traffic",
               )}</p>
               <p>{text(
-                `The saved Production token can read account ${inventory.accountRef}, but this read-only check cannot prove write access. To prepare the missing Queue and Hyperdrive, the token needs Account → Queues → Edit and Account → Hyperdrive → Edit. If the private database needs a new Workers VPC service, it also needs Connectivity Directory → Write. Worker release and cutover later need Workers Scripts → Edit, Workers Containers → Edit, and Zone → Workers Routes → Edit. Keep using the saved Production token; do not paste it here again.`,
-                `Token Production ที่บันทึกไว้อ่าน account ${inventory.accountRef} ได้ แต่การตรวจแบบอ่านอย่างเดียวนี้ยืนยันสิทธิ์เขียนไม่ได้ การเตรียม Queue และ Hyperdrive ต้องมี Account → Queues → Edit และ Account → Hyperdrive → Edit หากฐานข้อมูลส่วนตัวต้องสร้าง Workers VPC service ใหม่ ต้องมี Connectivity Directory → Write เพิ่ม ส่วนการปล่อย Worker และ cutover ต้องมี Workers Scripts → Edit, Workers Containers → Edit และ Zone → Workers Routes → Edit ใช้ token Production ที่บันทึกไว้ต่อ ไม่ต้องนำ token มาใส่ซ้ำ`,
+                `The saved Production token can read account ${inventory.accountRef}. Read-only checks cannot prove write access; the Queue action above tests Queue Edit through the canonical job and reports the exact Cloudflare error if denied. The token scopes and Connectivity Directory member role you updated are reused; do not paste the token again. Hyperdrive preparation is currently blocked by the PostgreSQL certificate and Production Tunnel route, not by the read probe.`,
+                `Token Production ที่บันทึกไว้อ่าน account ${inventory.accountRef} ได้ การตรวจแบบอ่านอย่างเดียวพิสูจน์สิทธิ์เขียนไม่ได้ ปุ่มเตรียม Queue ด้านบนจะทดสอบ Queues Edit ผ่าน canonical job และรายงาน error จาก Cloudflare ตรง ๆ ระบบจะใช้ token และ Connectivity Directory role ที่คุณเพิ่มไว้ ไม่ต้องใส่ token ซ้ำ ส่วน Hyperdrive ยังติด certificate ของ PostgreSQL และ Tunnel route สำหรับ Production ไม่ใช่ผล read probe`,
               )}</p>
               <p>
                 <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">
-                  {text("Open Cloudflare API Tokens to update these scopes", "เปิดหน้า Cloudflare API Tokens เพื่อเพิ่มสิทธิ์ตามรายการนี้")}
+                  {text("Open Cloudflare API Tokens only if a write operation reports a missing scope", "เปิดหน้า Cloudflare API Tokens เฉพาะเมื่อขั้นตอนเขียนแจ้งว่าขาดสิทธิ์")}
                 </a>
               </p>
               {productionHyperdrives.length === 0 ? <p role="status">{text(

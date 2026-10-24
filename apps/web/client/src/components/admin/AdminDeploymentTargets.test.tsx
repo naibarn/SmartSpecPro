@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   disable: vi.fn(),
   queueStagingDeploy: vi.fn(),
+  prepareProductionQueue: vi.fn(),
   activateStagingProfile: vi.fn(),
   activationError: null as string | null,
   activationSucceeds: false,
@@ -45,6 +46,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareOriginConfiguration: { invalidate: mocks.invalidate, fetch: mocks.fetchOriginConfiguration },
       getCloudflareProductionRuntimeReadiness: { invalidate: mocks.invalidate },
       getCloudflareProductionProviderInventory: { invalidate: mocks.invalidate },
+      getCloudflareProductionQueueJobStatus: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
       { id: "tenant-system", name: "System", selectorKind: "system" },
@@ -69,11 +71,16 @@ vi.mock("@/lib/trpc", () => ({
         worker: { deploymentInventoryComplete: true, deploymentCount: 1, activeVersionCount: 1,
           versions: [{ versionId: "11111111-1111-4111-8111-111111111111", percentage: 100, bindingNames: ["CLOUDFLARE_ACTIVATION"], containerNames: [], hasVerifiedReleaseIdentity: false, checked: true }] } },
         isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionProviderInventory }) },
+      getCloudflareProductionQueueJobStatus: { useQuery: () => ({ data: null }) },
       getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED" }, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
       disableProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.disable, isPending: false, error: null }) },
       queueCloudflareStagingDeploy: { useMutation: () => ({ mutate: mocks.queueStagingDeploy, isPending: false, error: null }) },
+      prepareCloudflareProductionQueue: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
+        mutate: (input: unknown) => { mocks.prepareProductionQueue(input); void options.onSuccess?.({ jobId: "33333333-3333-4333-8333-333333333333" }); },
+        isPending: false, error: null,
+      }) },
       activateCloudflareStagingQueueProfile: { useMutation: (options: { onSuccess?: (result: { configurationRef: string }) => unknown }) => ({
         mutate: (input: unknown) => {
           mocks.activateStagingProfile(input);
@@ -573,14 +580,18 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/Not configured or bound in the active Worker version/)).toBeInTheDocument();
     expect(screen.getByText(/cannot be used as a rollback baseline/i)).toBeInTheDocument();
     expect(screen.getByText(/The exact smartaihub\.app\/\* Worker Route is not attached/i)).toBeInTheDocument();
-    expect(screen.getByText(/Account → Queues → Edit and Account → Hyperdrive → Edit/)).toBeInTheDocument();
-    expect(screen.getByText(/Connectivity Directory → Write/)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open Cloudflare API Tokens to update these scopes" }))
+    expect(screen.getByText(/Queue action above tests Queue Edit through the canonical job/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Cloudflare API Tokens only if a write operation reports a missing scope" }))
       .toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
     expect(screen.getByText(/strict certificate verification fails \(UNABLE_TO_VERIFY_LEAF_SIGNATURE\)/i)).toBeInTheDocument();
     expect(screen.getByText(/configure a CA-trusted server certificate whose hostname matches/i)).toBeInTheDocument();
+    const prepareQueue = screen.getByRole("button", { name: "Prepare Production Queue" });
+    expect(prepareQueue).toBeEnabled();
+    await user.click(prepareQueue);
+    await waitFor(() => expect(mocks.prepareProductionQueue).toHaveBeenCalledWith({ tenantId, projectId, environment: "production" }));
     await user.click(screen.getByRole("button", { name: "Check this target’s Cloudflare access" }));
     expect(screen.getByText(/This is an account-member role, not a setting on the API token/i)).toBeInTheDocument();
+    expect(screen.getByText(/Connectivity Directory Admin/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute("href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/");
     expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
   });

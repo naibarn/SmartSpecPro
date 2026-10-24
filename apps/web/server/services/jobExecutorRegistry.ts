@@ -39,6 +39,7 @@ import { createCloudflareStagingDeploymentRuntime } from "./cloudflareStagingDep
 import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT } from "./cloudflareProductionDeploymentContract";
 import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB, createCloudflareProductionDeploymentExecutor } from "./cloudflareProductionDeploymentExecutor";
 import { createCloudflareProductionDeploymentRuntime } from "./cloudflareProductionDeploymentRuntime";
+import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB, createCloudflareProductionQueueExecutor } from "./cloudflareProductionQueueProvision";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -389,6 +390,13 @@ defaultJobExecutorRegistry.register({
   executionClass: "long",
   contractVersions: new Set([CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT]),
   executor: createCloudflareProductionDeploymentExecutor(createCloudflareProductionDeploymentRuntime),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: CLOUDFLARE_PRODUCTION_QUEUE_JOB,
+  executionClass: "long",
+  contractVersions: new Set([CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT]),
+  executor: createCloudflareProductionQueueExecutor(),
 });
 
 defaultJobExecutorRegistry.register({

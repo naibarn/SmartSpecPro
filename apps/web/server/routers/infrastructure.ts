@@ -78,6 +78,8 @@ import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_J
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
 import { probeCloudflareProductionProviderInventory } from "../services/cloudflareProductionProviderInventory";
+import { resolveCloudflareProductionDeploymentTarget } from "../services/cloudflareProductionDeploymentContract";
+import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB } from "../services/cloudflareProductionQueueProvision";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
@@ -653,6 +655,66 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       return probeCloudflareProductionProviderInventory({ db, tenantId: input.tenantId, projectId: input.projectId });
+    }),
+
+  prepareCloudflareProductionQueue: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("production") }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId, projectId: input.projectId });
+      if (!target) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_TARGET_NOT_CONFIGURED" });
+      const credential = await getCloudflareDeploymentCredentialState(db, {
+        identity: { tenantId, projectId: input.projectId, environment: "production", provider: "cloudflare" },
+        credentialRef: target.credentialRef,
+      });
+      if (credential.status !== "CONFIGURED") {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
+      }
+      const operationId = randomUUID();
+      const job = await createControlPlaneJob({
+        context: { tenantId, actorType: "user", actorId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_production_queue_prepare",
+          correlationId: ctx.req.requestId ?? operationId, idempotencyKey: `cloudflare-production-queue:${operationId}` },
+        definition: { contractVersion: CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, jobType: CLOUDFLARE_PRODUCTION_QUEUE_JOB,
+          executionClass: "long", priority: 45,
+          input: { contractVersion: CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, projectId: input.projectId,
+            targetId: "smartspec-cloudflare-runtime", environment: "production" },
+          idempotencyKey: `cloudflare-production-queue:${operationId}`,
+          activeDedupeKey: `cloudflare-production-queue:${tenantId}:${input.projectId}`,
+          retryPolicy: { maxAttempts: 3, baseDelayMs: 2_000, maxDelayMs: 5_000, jitter: "bounded", deadlineMs: 5 * 60_000, allowedErrorClasses: ["retryable"] },
+          timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 3 * 60_000 } },
+        createOptions: { runtimeType: "node_job_worker" },
+      });
+      try {
+        auditLogger.log({ eventType: "cloudflare_production_queue_prepare_queued", userId: ctx.user.id,
+          requestType: "cloudflare_production_queue_prepare", responsePayload: { tenantId, projectId: input.projectId, jobId: job.jobId }, statusCode: 202 });
+      } catch { /* The canonical job and outbox remain authoritative if audit projection is unavailable. */ }
+      return { jobId: job.jobId, status: "queued" as const, environment: "production" as const, trafficShifted: false as const };
+    }),
+
+  getCloudflareProductionQueueJobStatus: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), jobId: z.string().uuid(), environment: z.literal("production") }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [job] = await db.select({ tenantId: workerJobs.tenantId, jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion,
+        status: workerJobs.status, errorCode: workerJobs.errorCode, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+        .from(workerJobs).where(and(eq(workerJobs.id, input.jobId), eq(workerJobs.tenantId, tenantId))).limit(1);
+      const jobInput = job?.inputJson as Record<string, unknown> | null;
+      if (!job || job.jobType !== CLOUDFLARE_PRODUCTION_QUEUE_JOB || job.contractVersion !== CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT || jobInput?.projectId !== input.projectId) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "CLOUDFLARE_PRODUCTION_QUEUE_JOB_NOT_FOUND" });
+      }
+      const output = job.outputJson as Record<string, unknown> | null;
+      return { jobId: input.jobId, status: job.status, errorCode: job.errorCode,
+        queueName: typeof output?.queueName === "string" ? output.queueName : null,
+        providerConfigurationVerified: output?.providerConfigurationVerified === true,
+        workerBound: output?.workerBound === true, trafficShifted: output?.trafficShifted === true };
     }),
 
   queueCloudflareStagingDeploy: exactAdminProcedure
