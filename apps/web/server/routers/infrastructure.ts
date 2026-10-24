@@ -60,7 +60,7 @@ import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/g
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
 import { getSpec224DatabaseDiagnostics } from "../services/spec224DatabaseDiagnostics";
 import { composeProjectWikiHostedRoutePreflight } from "../services/projectWikiHostedRoutePreflight";
-import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
+import { createProviderDeploymentTarget, deploymentCredentialRef, disableProviderDeploymentTarget, listProviderDeploymentTargets, resolveProviderDeploymentTarget, updateProviderDeploymentTarget } from "../services/providerDeploymentTargetAuthority";
 import {
   PROJECT_WIKI_CANDIDATE,
   createDrizzleProjectWikiCandidateRepository,

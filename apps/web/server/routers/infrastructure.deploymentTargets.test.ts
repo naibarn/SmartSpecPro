@@ -70,6 +70,27 @@ describe("infrastructure deployment target project selector", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
+  it("resolves an exact production target before probing its deployment credential", async () => {
+    const where = vi.fn().mockResolvedValue([]);
+    const from = vi.fn(() => ({ where }));
+    getDbMock.mockResolvedValue({ select: vi.fn(() => ({ from })) });
+    const admin = infrastructureRouter.createCaller({
+      user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },
+      tenantId: "tenant-ZCSKEM9s",
+    } as any);
+
+    await expect(admin.probeCloudflareDeploymentCredential({
+      tenantId: "tenant-ZCSKEM9s",
+      projectId,
+      environment: "production",
+      provider: "cloudflare",
+    })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: "ENABLED_CLOUDFLARE_TARGET_REQUIRED",
+    });
+    expect(where).toHaveBeenCalledOnce();
+  });
+
   it.each([tenantId, "tenant-ZCSKEM9s"])("lists active canonical project identities for an exact admin with tenant %s", async (selectedTenantId) => {
     const projects = [
       {
