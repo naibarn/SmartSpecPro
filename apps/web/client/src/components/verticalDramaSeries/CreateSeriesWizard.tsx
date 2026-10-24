@@ -1455,8 +1455,7 @@ export function CreateSeriesWizard({
     if (job.status === "succeeded") {
       const result = job.result as {
         draft?:
-          | VerticalDramaSeasonCarryOverDraft
-          | SpecialEditionDraftForWizard;
+          VerticalDramaSeasonCarryOverDraft | SpecialEditionDraftForWizard;
         suggestedUserPremise?: string;
         parentEpisodeCount?: number;
       };
@@ -2149,8 +2148,8 @@ export function CreateSeriesWizard({
         setAppliedDraftKey(null);
         toast.success(
           lang === "th"
-              ? `เลือก Draft รอบ ${data.version} แล้ว — ยืนยันใช้ต่อได้เลย หรือจะตรวจ QC เพิ่มก็ได้`
-              : `Draft version ${data.version} selected — confirm it now, or run QC for optional feedback`
+            ? `เลือก Draft รอบ ${data.version} แล้ว — ยืนยันใช้ต่อได้เลย หรือจะตรวจ QC เพิ่มก็ได้`
+            : `Draft version ${data.version} selected — confirm it now, or run QC for optional feedback`
         );
       },
       onError: error =>
@@ -2293,8 +2292,7 @@ export function CreateSeriesWizard({
   }
 
   const synthesizedDraft = draftCompositionStatusQuery.data?.result?.draft as
-    | SynthesizedGenrePresetDraft
-    | undefined;
+    SynthesizedGenrePresetDraft | undefined;
 
   // A refreshed page restores the active composition job from the Series
   // ledger, but the original implementation only used that result for the
@@ -2306,8 +2304,7 @@ export function CreateSeriesWizard({
   useEffect(() => {
     if (!open || !planningSeriesId || recoveryJobId) return;
     const requestJson = restoredWorkspaceComposition?.requestJson as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const synthesis = requestJson?.synthesis;
     if (
       !synthesis ||
@@ -2377,8 +2374,7 @@ export function CreateSeriesWizard({
     if (planningDraftHydratedKeyRef.current === hydrationKey) return;
     planningDraftHydratedKeyRef.current = hydrationKey;
     const requestJson = restoredWorkspaceComposition.requestJson as
-      | Record<string, unknown>
-      | undefined;
+      Record<string, unknown> | undefined;
     const synthesis = (requestJson?.synthesis ?? {}) as Record<string, unknown>;
     setForm(previous =>
       mergeSynthesizedDraftIntoWizardForm(previous, synthesizedDraft, synthesis)
@@ -2546,8 +2542,7 @@ export function CreateSeriesWizard({
         draftQcAuthoritativeResult.best.draft as SynthesizedGenrePresetDraft,
         (
           restoredWorkspaceComposition?.requestJson as
-            | Record<string, unknown>
-            | undefined
+            Record<string, unknown> | undefined
         )?.synthesis as Record<string, unknown> | undefined
       )
     );
@@ -2619,8 +2614,7 @@ export function CreateSeriesWizard({
   const draftCanBeApplied = Boolean(draftToReview);
   const draftApplicationKey = synthesisRequestKey ?? 1;
   const draftGateSatisfied = Boolean(
-    draftCanBeApplied &&
-    appliedDraftKey === draftApplicationKey
+    draftCanBeApplied && appliedDraftKey === draftApplicationKey
   );
   const draftGateReason = !draftToReview
     ? lang === "th"
@@ -2675,12 +2669,7 @@ export function CreateSeriesWizard({
         targetEpisodeCount: Number(form.targetEpisodeCount) || undefined,
       },
       maxImprovementRounds: (maxRoundsOverride ?? draftQcMaxRounds) as
-        | 0
-        | 1
-        | 2
-        | 3
-        | 5
-        | 10,
+        0 | 1 | 2 | 3 | 5 | 10,
     });
   }
 
@@ -3333,8 +3322,7 @@ export function CreateSeriesWizard({
           undefined,
         priorSeasonSummary: parentSeries?.memory
           ? ((parentSeries.memory as Record<string, unknown>).compactSummary as
-              | string
-              | undefined)
+              string | undefined)
           : undefined,
         carryOver: draft
           ? {
@@ -3448,8 +3436,7 @@ export function CreateSeriesWizard({
           : undefined,
       draftQualityQcReceipt,
       draftQualityQcCandidate: draftToReview as
-        | Record<string, unknown>
-        | undefined,
+        Record<string, unknown> | undefined,
       // Stage 2.5 special edition — a special edition IS a product tie-in for
       // its entire runtime regardless of the (original-mode-only)
       // `productTieInEnabled` checkbox, so this branch is sent unconditionally
@@ -4077,8 +4064,7 @@ interface SynthesizedGenrePresetDraftV2 extends SynthesizedGenrePresetDraftBase 
 }
 
 type SynthesizedGenrePresetDraft =
-  | SynthesizedGenrePresetDraftV1
-  | SynthesizedGenrePresetDraftV2;
+  SynthesizedGenrePresetDraftV1 | SynthesizedGenrePresetDraftV2;
 
 /**
  * Rehydrate every editable wizard section from a generated Draft snapshot.
@@ -4515,12 +4501,7 @@ function WizardStep({
   draftGateSatisfied: boolean;
   draftGateReason: string;
   draftQualityQcStatus:
-    | "idle"
-    | "queued"
-    | "running"
-    | "succeeded"
-    | "failed"
-    | "cancelled";
+    "idle" | "queued" | "running" | "succeeded" | "failed" | "cancelled";
   draftQualityQcProgress?:
     | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcProgress
     | null;
@@ -4935,56 +4916,6 @@ function WizardStep({
                             </AstryxText>
                           )}
                         </VStack>
-
-                        {!hasUserPremise && seriesMode === "premise" && (
-                          <VStack gap={1.5}>
-                            <Button
-                              type="button"
-                              onClick={onSynthesizePreset}
-                              disabled={mixDraftLoading}
-                              className="w-fit gap-2"
-                            >
-                              {mixDraftLoading && (
-                                <Loader2
-                                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
-                                  aria-hidden="true"
-                                />
-                              )}
-                              {th
-                                ? "ให้ AI อ่านเรื่องเดิมและสร้างแนวคิดภาค 2"
-                                : "Read the original story and draft season 2"}
-                            </Button>
-                            <AstryxText as="p" type="supporting">
-                              {th
-                                ? "ระบบจะใช้เรื่องย่อ ปมค้าง ความสัมพันธ์ และตัวละครเดิม คุณเว้นโจทย์ใหม่ไว้ได้ หรือเพิ่มทิศทางในช่องด้านล่าง"
-                                : "The draft uses the original summary, open threads, relationships, and cast. Add a new direction below or leave it blank."}
-                            </AstryxText>
-                            {mixDraftLoading && (
-                              <AstryxText
-                                as="p"
-                                type="supporting"
-                                color="primary"
-                                role="status"
-                              >
-                                {th
-                                  ? "กำลังอ่านเรื่องเดิมและสร้าง draft — ผลจะอยู่ใต้ช่องโจทย์ด้านล่าง"
-                                  : "Reading the original story and creating a draft — the result will appear below the premise field."}
-                              </AstryxText>
-                            )}
-                            {!mixDraftLoading && mixDraft && (
-                              <AstryxText
-                                as="p"
-                                type="supporting"
-                                color="primary"
-                                role="status"
-                              >
-                                {th
-                                  ? "สร้าง draft แล้ว เลื่อนลงไปตรวจและแก้รายละเอียดก่อนนำไปใช้"
-                                  : "Draft created. Scroll down to review and edit it before applying."}
-                              </AstryxText>
-                            )}
-                          </VStack>
-                        )}
                       </VStack>
                     </AstryxCard>
                   )}
@@ -5006,30 +4937,51 @@ function WizardStep({
                         </VStack>
                         <Button
                           type="button"
-                          onClick={onProposeCarryOver}
-                          disabled={carryOverLoading || !form.parentSeriesId}
+                          onClick={
+                            carryOverDraft || hasUserPremise
+                              ? onSynthesizePreset
+                              : onProposeCarryOver
+                          }
+                          disabled={
+                            carryOverLoading ||
+                            mixDraftLoading ||
+                            !form.parentSeriesId ||
+                            (!!carryOverDraft && !form.selectedSeasonDirection)
+                          }
                           className="w-fit gap-2"
                         >
-                          {carryOverLoading && (
+                          {(carryOverLoading || mixDraftLoading) && (
                             <Loader2
                               className="h-4 w-4 animate-spin motion-reduce:animate-none"
                               aria-hidden="true"
                             />
                           )}
-                          {carryOverDraft
+                          {mixDraftLoading
                             ? th
-                              ? "เสนอแนวทางภาค 2 ใหม่"
-                              : "Suggest new season 2 directions"
-                            : th
-                              ? "ให้ AI เสนอแนวทางภาค 2"
-                              : "Ask AI for season 2 directions"}
+                              ? "กำลังสร้าง draft ภาค 2…"
+                              : "Creating the season 2 draft…"
+                            : carryOverLoading
+                              ? th
+                                ? "กำลังคิดแนวทางภาค 2…"
+                                : "Planning season 2 directions…"
+                              : carryOverDraft
+                                ? form.selectedSeasonDirection
+                                  ? th
+                                    ? "สร้าง draft ภาค 2 จากแนวทางที่เลือก"
+                                    : "Create season 2 draft from this direction"
+                                  : th
+                                    ? "เลือกแนวทางก่อนสร้าง draft"
+                                    : "Select a direction to create the draft"
+                                : hasUserPremise
+                                  ? th
+                                    ? "สร้าง draft ภาค 2 จากโจทย์ที่กรอก"
+                                    : "Create season 2 draft from your premise"
+                                  : th
+                                    ? "ให้ AI เสนอแนวทางภาค 2"
+                                    : "Ask AI for season 2 directions"}
                         </Button>
                         {carryOverError && (
-                          <AstryxText
-                            as="p"
-                            type="supporting"
-                            role="alert"
-                          >
+                          <AstryxText as="p" type="supporting" role="alert">
                             {carryOverError}
                           </AstryxText>
                         )}
@@ -5038,6 +4990,13 @@ function WizardStep({
                             {th
                               ? "กำลังอ่านบทสรุป ปมค้าง ความสัมพันธ์ และตัวละครภาค 1 เพื่อคิดทางไปต่อ…"
                               : "Reading season 1's finale, open threads, relationships, and cast to plan what comes next…"}
+                          </AstryxText>
+                        )}
+                        {mixDraftLoading && (
+                          <AstryxText as="p" type="supporting" role="status">
+                            {th
+                              ? "กำลังใช้เรื่องเดิม ตัวละคร และแนวทางที่เลือกสร้าง draft ภาค 2…"
+                              : "Using the original story, returning characters, and selected direction to create the season 2 draft…"}
                           </AstryxText>
                         )}
                         {carryOverDraft && (
@@ -5088,8 +5047,20 @@ function WizardStep({
                         {!carryOverDraft && !carryOverLoading && (
                           <AstryxText as="p" type="supporting">
                             {th
-                              ? "เลือกแนวทางจาก AI ได้ก่อนสร้าง draft หรือพิมพ์โจทย์ภาคใหม่เองในแท็บตัวละคร ระบบจะส่งแนวที่เลือกไปเป็นทิศทางหลักของภาค 2"
-                              : "Choose an AI direction before drafting, or write your own in Characters. The selected direction becomes the season 2 story spine."}
+                              ? "เริ่มจากให้ AI เสนอทิศทางต่อจากตอนจบภาค 1 จากนั้นเลือกแนวทาง แล้วกดปุ่มเดิมเพื่อสร้าง draft ภาค 2 โดยใช้ตัวละครและข้อมูลเดิม"
+                              : "First ask AI for directions continuing season 1. Select one, then use the same button to draft season 2 with the returning cast and story context."}
+                          </AstryxText>
+                        )}
+                        {carryOverDraft && mixDraft && !mixDraftLoading && (
+                          <AstryxText
+                            as="p"
+                            type="supporting"
+                            color="primary"
+                            role="status"
+                          >
+                            {th
+                              ? "สร้าง draft ภาค 2 แล้ว ตรวจและแก้รายละเอียดได้ในส่วนข้อมูลด้านล่าง"
+                              : "Season 2 draft created. Review and edit its details below."}
                           </AstryxText>
                         )}
                       </VStack>
@@ -5447,7 +5418,7 @@ function WizardStep({
                   selectedPresetIds={mixPresetIds}
                   hasUserPremise={hasUserPremise}
                   hasBasicSeed={hasBasicSeed}
-                  hideGenerateAction={!hasUserPremise}
+                  hideGenerateAction={hasSequelParent}
                   hasLineageSeed={Boolean(
                     form.createMode && form.parentSeriesId
                   )}
@@ -6130,9 +6101,7 @@ function WizardStep({
                     <button
                       key={`${i}-${direction}`}
                       type="button"
-                      aria-pressed={
-                        form.selectedSeasonDirection === direction
-                      }
+                      aria-pressed={form.selectedSeasonDirection === direction}
                       onClick={() => {
                         set("selectedSeasonDirection", direction);
                         set(
@@ -7482,12 +7451,7 @@ function PresetSynthesisActionPanel({
   draftGateSatisfied: boolean;
   draftGateReason: string;
   draftQualityQcStatus:
-    | "idle"
-    | "queued"
-    | "running"
-    | "succeeded"
-    | "failed"
-    | "cancelled";
+    "idle" | "queued" | "running" | "succeeded" | "failed" | "cancelled";
   draftQualityQcProgress?:
     | import("@shared/verticalDramaSeries/draftQualityQc").DraftQualityQcProgress
     | null;

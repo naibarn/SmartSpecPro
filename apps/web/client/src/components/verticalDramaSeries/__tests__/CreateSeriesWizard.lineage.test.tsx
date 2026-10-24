@@ -320,11 +320,25 @@ vi.mock("@/lib/trpc", () => ({
         useQuery: () => mockPlanningModelsQuery(),
       },
       proposeSeasonCarryOver: {
-        useMutation: (opts: { onError?: (err: unknown) => void } = {}) => ({
+        useMutation: (
+          opts: {
+            onSuccess?: (data: unknown) => void;
+            onError?: (err: unknown) => void;
+          } = {}
+        ) => ({
           mutate: (input: unknown) => {
             mockCarryOverMutate(input);
             if (mockCarryOverMutationState.error) {
               opts?.onError?.(mockCarryOverMutationState.error);
+            } else {
+              const data = {
+                draft: carryOverDraft,
+                creditsUsed: 1,
+                model: "test-model",
+                parentEpisodeCount: 30,
+              };
+              mockCarryOverMutationState.data = data;
+              opts?.onSuccess?.(data);
             }
           },
           get data() {
@@ -477,7 +491,24 @@ function satisfyDraftGate(title = "Lineage Test Series") {
   if (!titleInput.value) {
     fireEvent.change(titleInput, { target: { value: title } });
   }
-  fireEvent.click(screen.getByRole("button", { name: /ให้ AI สร้าง/ }));
+  const proposeDirectionButton = screen.queryByRole("button", {
+    name: "ให้ AI เสนอแนวทางภาค 2",
+  });
+  if (proposeDirectionButton) fireEvent.click(proposeDirectionButton);
+
+  const directionOption = screen.queryByRole("radio", {
+    name: "ธุรกิจครอบครัวใกล้ล้มละลาย",
+  });
+  if (directionOption) fireEvent.click(directionOption);
+
+  const sequelDraftButton = screen.queryByRole("button", {
+    name: /สร้าง draft ภาค 2/,
+  });
+  if (sequelDraftButton) {
+    fireEvent.click(sequelDraftButton);
+  } else {
+    fireEvent.click(screen.getByRole("button", { name: /ให้ AI สร้าง/ }));
+  }
   const qcButton = screen.queryByRole("button", { name: "เริ่มตรวจ QC" });
   if (qcButton && !qcButton.hasAttribute("disabled")) {
     fireEvent.click(qcButton);
@@ -748,28 +779,25 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     expect(genreInput.value).toBe(parentSeriesRow.genre);
   });
 
-  it("basics-only synthesis forwards the parent lineage snapshot before the series exists", () => {
+  it("offers season 2 directions from the selected parent before drafting", () => {
     renderWizard();
     switchToSequelAndPickParent();
 
+    expect(
+      screen.queryByRole("button", {
+        name: "ให้ AI อ่านเรื่องเดิมและสร้างแนวคิดภาค 2",
+      })
+    ).not.toBeInTheDocument();
     const button = screen.getByRole("button", {
-      name: /ให้ AI สร้างทั้งหมดให้/,
+      name: "ให้ AI เสนอแนวทางภาค 2",
     });
     expect(button).toBeEnabled();
     fireEvent.click(button);
 
-    expect(mockSynthesizeMutate).toHaveBeenCalledWith(
+    expect(mockCarryOverMutate).toHaveBeenCalledWith(
       expect.objectContaining({
-        selectedPresetIds: [],
-        userPremise: undefined,
-        genreHint: parentSeriesRow.genre,
-        toneHint: parentSeriesRow.tone,
-        lineageContext: expect.objectContaining({
-          parentSeriesId: 16,
-          parentTitle: parentSeriesRow.title,
-          createMode: "sequel",
-          priorSeasonSummary: parentSeriesRow.memory.compactSummary,
-        }),
+        parentSeriesId: "16",
+        premise: undefined,
       })
     );
   });
@@ -792,7 +820,7 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     );
     fireEvent.click(
       screen.getByRole("button", {
-        name: "ให้ AI อ่านเรื่องเดิมและสร้างแนวคิดภาค 2",
+        name: "สร้าง draft ภาค 2 จากแนวทางที่เลือก",
       })
     );
 
@@ -819,7 +847,7 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     });
     fireEvent.click(
       screen.getByRole("button", {
-        name: /ให้ AI สร้างภาคต่อจากเรื่องเดิม \+ โจทย์/,
+        name: "สร้าง draft ภาค 2 จากโจทย์ที่กรอก",
       })
     );
 
@@ -836,14 +864,11 @@ describe("CreateSeriesWizard — sequel (ภาค 2)", () => {
     );
   });
 
-  it("clicking the propose CTA calls `proposeSeasonCarryOver` with the chosen parent", () => {
+  it("uses one primary sequel CTA to propose directions before a draft exists", () => {
     renderWizard();
     switchToSequelAndPickParent();
-    satisfyDraftGate();
-
-    fireEvent.click(screen.getByRole("button", { name: /ตัวละคร/ }));
     fireEvent.click(
-      screen.getByRole("button", { name: "ให้ AI เสนอการกลับมาของตัวละคร" })
+      screen.getByRole("button", { name: "ให้ AI เสนอแนวทางภาค 2" })
     );
     expect(mockCarryOverMutate).toHaveBeenCalledWith(
       expect.objectContaining({ parentSeriesId: "16" })
