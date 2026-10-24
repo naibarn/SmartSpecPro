@@ -22,7 +22,7 @@ export interface MenuOverride {
   customLabel?: string | null;
   customIcon?: string | null;
   sortOrder?: number | null;
-  tenantId?: number | null;
+  tenantId?: string | null;
 }
 
 /**
@@ -30,7 +30,7 @@ export interface MenuOverride {
  */
 export async function getMenuOverrides(
   platform: Platform,
-  tenantId?: number
+  tenantId?: string
 ): Promise<MenuOverride[]> {
   const db = await getDb();
   if (!db) return [];
@@ -77,7 +77,7 @@ export async function getMenuOverrides(
 export async function getEffectiveMenuItems(
   platform: Platform,
   role: UserRole,
-  tenantId?: number
+  tenantId?: string
 ): Promise<MenuItem[]> {
   // Start with shared defaults
   const defaults = getVisibleMenuItems(platform, role);
@@ -127,7 +127,10 @@ export async function setMenuOverride(override: MenuOverride): Promise<void> {
       tenantId: override.tenantId,
     })
     .onConflictDoUpdate({
-      target: [menuConfig.menuItemId, menuConfig.platform],
+      target: override.tenantId == null
+        ? [menuConfig.menuItemId, menuConfig.platform]
+        : [menuConfig.menuItemId, menuConfig.platform, menuConfig.tenantId],
+      targetWhere: override.tenantId == null ? isNull(menuConfig.tenantId) : undefined,
       set: {
         visible: override.visible,
         customLabel: override.customLabel,
@@ -143,7 +146,7 @@ export async function setMenuOverride(override: MenuOverride): Promise<void> {
  */
 export async function resetMenuOverrides(
   platform: Platform,
-  tenantId?: number
+  tenantId?: string
 ): Promise<void> {
   const db = await getDb();
   if (!db) return;

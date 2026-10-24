@@ -5,7 +5,10 @@ import enum
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, JSON, String, Text
 
+from sqlalchemy.dialects.postgresql import ENUM
+
 from app.core.database import Base
+from app.core.shared_schema_types import UTCDateTime
 
 
 class CallbackEventStatus(str, enum.Enum):
@@ -41,14 +44,14 @@ class MediaCallbackEvent(Base):
     result_url = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
 
-    status = Column(String(24), nullable=False, default=CallbackEventStatus.PENDING.value, index=True)
+    status = Column(ENUM(*[value.value for value in CallbackEventStatus], name="media_callback_event_status", create_type=False), nullable=False, default=CallbackEventStatus.PENDING.value, index=True)
     attempt_count = Column(Integer, nullable=False, default=0)
     max_attempts = Column(Integer, nullable=False, default=5)
-    next_retry_at = Column(DateTime, nullable=True, index=True)
+    next_retry_at = Column(UTCDateTime(), nullable=True, index=True)
 
-    processed_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    processed_at = Column(UTCDateTime(), nullable=True)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
+    updated_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         Index("ix_media_callback_events_status_retry", "status", "next_retry_at"),
@@ -71,7 +74,7 @@ class MediaCallbackDLQ(Base):
     payload = Column(JSON, nullable=False, default=dict)
     error_message = Column(Text, nullable=False)
     retry_count = Column(Integer, nullable=False, default=0)
-    status = Column(String(24), nullable=False, default=CallbackDLQStatus.PENDING.value, index=True)
+    status = Column(ENUM(*[value.value for value in CallbackDLQStatus], name="media_callback_dlq_status", create_type=False), nullable=False, default=CallbackDLQStatus.PENDING.value, index=True)
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    resolved_at = Column(DateTime, nullable=True)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
+    resolved_at = Column(UTCDateTime(), nullable=True)

@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import enum
 
 from sqlalchemy import JSON, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
+from sqlalchemy.dialects.postgresql import ENUM, JSONB
+
 from app.core.database import Base
-
-
-class LiveBrowserSourceType(str, enum.Enum):
-    AUTOMATION = "automation"
-    WORKFLOW = "workflow"
-    AGENCY = "agency"
 
 
 class LiveBrowserSessionStatus(str, enum.Enum):
@@ -79,10 +75,10 @@ class LiveBrowserSession(Base):
     user_id = Column("userId", Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     source_type = Column("sourceType", String(32), nullable=False)
     source_id = Column("sourceId", String(128), nullable=True)
-    status = Column("status", String(64), nullable=False, default=LiveBrowserSessionStatus.CREATED.value)
-    control_mode = Column("controlMode", String(64), nullable=False, default=LiveBrowserControlMode.OBSERVE.value)
+    status = Column("status", ENUM(*[value.value for value in LiveBrowserSessionStatus], name="live_browser_session_status", create_type=False), nullable=False, default=LiveBrowserSessionStatus.CREATED.value)
+    control_mode = Column("controlMode", ENUM(*[value.value for value in LiveBrowserControlMode], name="live_browser_control_mode", create_type=False), nullable=False, default=LiveBrowserControlMode.OBSERVE.value)
     session_version = Column("sessionVersion", Integer, nullable=False, default=1)
-    controller_actor_type = Column("controllerActorType", String(32), nullable=True)
+    controller_actor_type = Column("controllerActorType", ENUM(*[value.value for value in LiveBrowserActorType], name="live_browser_actor_type", create_type=False), nullable=True)
     controller_actor_id = Column("controllerActorId", String(64), nullable=True)
     controller_connection_id = Column("controllerConnectionId", String(128), nullable=True)
     controller_lease_expires_at = Column("controllerLeaseExpiresAt", DateTime(timezone=True), nullable=True)
@@ -91,12 +87,12 @@ class LiveBrowserSession(Base):
     pause_reason = Column("pauseReason", String(128), nullable=True)
     pending_assist_request_id = Column("pendingAssistRequestId", String(64), nullable=True)
     pending_approval_request_id = Column("pendingApprovalRequestId", String(64), nullable=True)
-    policy_context_json = Column("policyContextJson", JSON, nullable=False, default=dict)
-    browser_context_ref = Column("browserContextRef", JSON, nullable=False, default=dict)
-    stream_ref = Column("streamRef", JSON, nullable=False, default=dict)
+    policy_context_json = Column("policyContextJson", JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict)
+    browser_context_ref = Column("browserContextRef", JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict)
+    stream_ref = Column("streamRef", JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict)
     active_tab_count = Column("activeTabCount", Integer, nullable=False, default=1)
-    started_at = Column("startedAt", DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    last_activity_at = Column("lastActivityAt", DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    started_at = Column("startedAt", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_activity_at = Column("lastActivityAt", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     ended_at = Column("endedAt", DateTime(timezone=True), nullable=True)
     end_reason = Column("endReason", String(128), nullable=True)
 
@@ -121,8 +117,8 @@ class LiveBrowserIdempotencyKey(Base):
     session_id = Column("sessionId", String(64), ForeignKey("live_browser_sessions.id", ondelete="CASCADE"), nullable=False)
     idempotency_key = Column("idempotencyKey", String(128), nullable=False)
     command_type = Column("commandType", String(64), nullable=False)
-    response_json = Column("responseJson", JSON, nullable=False, default=dict)
-    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    response_json = Column("responseJson", JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict)
+    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     expires_at = Column("expiresAt", DateTime(timezone=True), nullable=False)
 
     session = relationship("LiveBrowserSession", back_populates="idempotency_keys")
@@ -140,13 +136,13 @@ class LiveBrowserEvent(Base):
     session_id = Column("sessionId", String(64), ForeignKey("live_browser_sessions.id", ondelete="CASCADE"), nullable=False)
     session_version_at = Column("sessionVersionAt", Integer, nullable=False)
     tenant_id = Column("tenantId", String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    event_type = Column("eventType", String(64), nullable=False)
-    actor_type = Column("actorType", String(32), nullable=False)
+    event_type = Column("eventType", ENUM(*[value.value for value in LiveBrowserEventType], name="live_browser_event_type", create_type=False), nullable=False)
+    actor_type = Column("actorType", ENUM(*[value.value for value in LiveBrowserActorType], name="live_browser_actor_type", create_type=False), nullable=False)
     actor_id = Column("actorId", String(64), nullable=True)
-    payload_json = Column("payloadJson", JSON, nullable=False, default=dict)
+    payload_json = Column("payloadJson", JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict)
     screenshot_ref = Column("screenshotRef", String(255), nullable=True)
     cursor = Column("cursor", String(255), nullable=False)
-    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     session = relationship("LiveBrowserSession", back_populates="events")
 
@@ -164,13 +160,13 @@ class LiveBrowserAssistRequest(Base):
     session_id = Column("sessionId", String(64), ForeignKey("live_browser_sessions.id", ondelete="CASCADE"), nullable=False)
     session_version_at = Column("sessionVersionAt", Integer, nullable=False)
     tenant_id = Column("tenantId", String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    request_type = Column("requestType", String(32), nullable=False)
+    request_type = Column("requestType", ENUM("decision", "field_input", "review_page", "takeover_required", name="live_browser_assist_request_type", create_type=False), nullable=False)
     status = Column(String(32), nullable=False, default="pending")
     prompt = Column(Text, nullable=False)
-    context_json = Column("contextJson", JSON, nullable=False, default=dict)
-    response_json = Column("responseJson", JSON, nullable=False, default=dict)
+    context_json = Column("contextJson", JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict)
+    response_json = Column("responseJson", JSONB().with_variant(JSON, "sqlite"), nullable=False, default=dict)
     resolved_session_version_at = Column("resolvedSessionVersionAt", Integer, nullable=True)
-    requested_at = Column("requestedAt", DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    requested_at = Column("requestedAt", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
     resolved_at = Column("resolvedAt", DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
@@ -186,13 +182,13 @@ class LiveBrowserControlTransfer(Base):
     session_id = Column("sessionId", String(64), ForeignKey("live_browser_sessions.id", ondelete="CASCADE"), nullable=False)
     session_version_at = Column("sessionVersionAt", Integer, nullable=False)
     tenant_id = Column("tenantId", String(36), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False)
-    from_actor_type = Column("fromActorType", String(32), nullable=False)
+    from_actor_type = Column("fromActorType", ENUM(*[value.value for value in LiveBrowserActorType], name="live_browser_actor_type", create_type=False), nullable=False)
     from_actor_id = Column("fromActorId", String(64), nullable=True)
-    to_actor_type = Column("toActorType", String(32), nullable=False)
+    to_actor_type = Column("toActorType", ENUM(*[value.value for value in LiveBrowserActorType], name="live_browser_actor_type", create_type=False), nullable=False)
     to_actor_id = Column("toActorId", String(64), nullable=True)
     reason = Column(String(128), nullable=False)
     policy_check_hash = Column("policyCheckHash", String(128), nullable=True)
-    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at = Column("createdAt", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (
         Index("live_browser_control_transfers_session_created_idx", "sessionId", "createdAt"),

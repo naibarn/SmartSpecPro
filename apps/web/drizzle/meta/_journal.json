@@ -2787,6 +2787,13 @@
       "when": 1792805885107,
       "tag": "0411_active_schema_additive_reconciliation",
       "breakpoints": true
+    },
+    {
+      "idx": 412,
+      "version": "7",
+      "when": 1792809946401,
+      "tag": "0412_active_shared_schema_contract_repair",
+      "breakpoints": true
     }
   ]
 }

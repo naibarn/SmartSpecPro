@@ -15,10 +15,11 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.core.database import Base
+from app.core.shared_schema_types import UTCDateTime
 
 
 _SCOPE_LIST_TYPE = ARRAY(Text).with_variant(JSON, "sqlite")
@@ -38,8 +39,8 @@ class LibraryItem(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
-    status = Column(String(32), nullable=False, default="ready", index=True)
-    visibility = Column(String(16), nullable=False, default="private", index=True)
+    status = Column(ENUM("draft", "ready", "indexing", "archived", "failed", name="library_item_status", create_type=False), nullable=False, default="ready", index=True)
+    visibility = Column(ENUM("private", "team", "public", name="library_visibility", create_type=False), nullable=False, default="private", index=True)
 
     # `metadata` is reserved in SQLAlchemy declarative, so map DB column via alias.
     metadata_json = Column("metadata", JSON, nullable=False, default=dict)
@@ -50,9 +51,9 @@ class LibraryItem(Base):
     # Denormalized scope cache for vector DB filtering
     allowed_scopes = Column(_SCOPE_LIST_TYPE, default=list)
 
-    deleted_at = Column(DateTime, nullable=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    deleted_at = Column(UTCDateTime(), nullable=True, index=True)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
+    updated_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         Index("ix_library_items_tenant_visibility_status", "tenant_id", "visibility", "status"),
@@ -85,7 +86,7 @@ class LibraryLink(Base):
     provider_task_id = Column(String(128), nullable=True, index=True)
     tenant_id = Column(String(36), nullable=True, index=True)
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint("link_type", "link_id", "tenant_id", name="library_links_source_tenant_unique"),
@@ -122,7 +123,7 @@ class LibraryChunk(Base):
     is_parent = Column(Boolean, nullable=False, default=False, server_default="false")
     parent_chunk_id = Column(Text, nullable=True)
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint("library_item_id", "chunk_index", name="uq_library_chunks_item_chunk"),
@@ -165,15 +166,15 @@ class VectorIndexRecord(Base):
 
     content_hash = Column(String(64), nullable=False)
     source_revision = Column(String(256), nullable=False)
-    indexed_at = Column(DateTime(timezone=True), nullable=True)
+    indexed_at = Column(UTCDateTime(), nullable=True)
     last_mutation_id = Column(String(256), nullable=True)
     input_hash = Column(String(64), nullable=True)
     source_locator_kind = Column(String(64), nullable=True)
-    status = Column(String(24), nullable=False, default="queued")
+    status = Column(ENUM("queued", "indexing", "indexed", "stale", "delete_pending", "deleted", "failed", name="vector_projection_status", create_type=False), nullable=False, default="queued")
     failure_code = Column(String(96), nullable=True)
 
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
+    updated_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint("vector_index", "vector_id", name="vector_index_records_index_vector_unique"),
@@ -204,9 +205,9 @@ class LibraryPermission(Base):
     permission_level = Column(String(32), nullable=False, default="read")
     granted_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    expires_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    expires_at = Column(UTCDateTime(), nullable=True)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
+    updated_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint(
@@ -234,19 +235,19 @@ class LibraryIndexJob(Base):
     )
 
     job_type = Column(String(64), nullable=False)
-    status = Column(String(24), nullable=False, default="pending", index=True)
+    status = Column(ENUM("pending", "processing", "retry_pending", "completed", "failed", name="library_index_job_status", create_type=False), nullable=False, default="pending", index=True)
     attempt_count = Column(Integer, nullable=False, default=0)
     max_attempts = Column(Integer, nullable=False, default=5)
 
-    run_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    next_retry_at = Column(DateTime, nullable=True, index=True)
+    run_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
+    next_retry_at = Column(UTCDateTime(), nullable=True, index=True)
 
     last_error = Column(Text, nullable=True)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    started_at = Column(UTCDateTime(), nullable=True)
+    completed_at = Column(UTCDateTime(), nullable=True)
 
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow)
+    updated_at = Column(UTCDateTime(), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         Index("ix_library_index_jobs_tenant_status_run_at", "tenant_id", "status", "run_at"),

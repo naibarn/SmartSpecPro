@@ -58,7 +58,7 @@ const vector1536 = customType<{ data: number[]; driverParam: string }>({
 });
 
 /**
- * Enums
+ * Enums — ordered according to PostgreSQL forward-migration history.
  */
 export const roleEnum = pgEnum("role", [
   "user",
@@ -79,8 +79,8 @@ export const transactionTypeEnum = pgEnum("transaction_type", [
   "bonus",
   "refund",
   "adjustment",
-  "subscription",
   "creator_fee",
+  "subscription",
 ]);
 
 // Package type: one-time purchase or subscription
@@ -120,6 +120,11 @@ export const entityTypeEnum = pgEnum("entity_type", [
   "task",
   "code_knowledge",
   "rule",
+  "note",
+  "checklist",
+  "artifact_note",
+  "handoff_note",
+  "episode",
   "fact",
   "goal",
   "insight",
@@ -128,11 +133,6 @@ export const entityTypeEnum = pgEnum("entity_type", [
   "process",
   "constraint",
   "reference",
-  "note",
-  "checklist",
-  "artifact_note",
-  "handoff_note",
-  "episode",
 ]);
 
 // API style for different LLM provider endpoints (OpenCode Zen uses different endpoints per model family)
@@ -231,12 +231,6 @@ export const browserPageSensitivityEnum = pgEnum("browser_page_sensitivity", [
   "code",
 ]);
 
-export const liveBrowserSourceTypeEnum = pgEnum("live_browser_source_type", [
-  "automation",
-  "workflow",
-  "agency",
-]);
-
 export const liveBrowserSessionStatusEnum = pgEnum(
   "live_browser_session_status",
   [
@@ -314,16 +308,15 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "scheduler",
   "admin",
   "agency",
-  "creator_revenue",
   "other",
-  // ClawFeature additions
+  "creator_revenue",
   "tts",
   "browser_automation",
-  "worker_runtime",
   "widget_chat",
   "webhook_chat",
   "webhook_trigger",
-  // Public API (feature 043)
+  "worker_runtime",
+  "voice_agent",
   "api_skill",
   "api_agency",
   "api_job",
@@ -332,7 +325,6 @@ export const creditSourceTypeEnum = pgEnum("credit_source_type", [
   "api_video_project",
   "api_chat",
   "api_mcp",
-  "voice_agent",
 ]);
 
 export const voiceAgentProviderEnum = pgEnum("voice_agent_provider", [
@@ -508,7 +500,7 @@ export const users = pgTable(
      */
     id: serial("id").primaryKey(),
     /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-    openId: varchar("openId", { length: 64 }).notNull().unique(),
+    openId: varchar("openId", { length: 64 }).unique(),
     name: text("name"),
     email: varchar("email", { length: 320 }),
     /** Optional contact identity used for profile and licensing communication. */
@@ -564,7 +556,7 @@ export const users = pgTable(
     registrationIp: varchar("registrationIp", { length: 45 }),
 
     /** User preferences (translation language, translation model, etc.) */
-    userPreferences: json("userPreferences")
+    userPreferences: jsonb("userPreferences")
       .$type<{
         translationLanguage?: string;
         translationModel?: string;
@@ -637,7 +629,7 @@ export const users = pgTable(
     /** Default AI persona for this user */
     defaultPersonaId: varchar("defaultPersonaId", { length: 36 }).references(
       (): AnyPgColumn => personaTemplates.id,
-      { onDelete: "restrict" }
+      { onDelete: "set null" }
     ),
 
     /** Whether this is a system/virtual user (not a human login) */
@@ -791,7 +783,7 @@ export const creditTransactions = pgTable(
     description: varchar("description", { length: 512 }),
 
     /** Additional metadata (model used, tokens, cost, etc.) */
-    metadata: json("metadata").$type<{
+    metadata: jsonb("metadata").$type<{
       model?: string;
       provider?: string;
       tokensUsed?: number;
@@ -1598,7 +1590,7 @@ export const apiAuditEvents = pgTable(
     index("api_audit_events_trace_id").on(t.traceId),
     index("api_audit_events_user_created").on(t.userId, t.createdAt),
     index("api_audit_events_type_created").on(t.eventType, t.createdAt),
-    uniqueIndex("api_audit_migration_receipt_phase_idempotency_unique")
+    uniqueIndex("api_audit_migration_receipt_attempt_phase_unique")
       .on(sql`(${t.metadata}->>'idempotencyKey')`, sql`(coalesce(${t.metadata}->>'attemptNumber', '0'))`, sql`(${t.metadata}->>'phase')`)
       .where(sql`${t.eventType} = 'migration_execution_receipt'`),
   ]
@@ -1641,12 +1633,16 @@ export type InsertRoutingRule = typeof routingRules.$inferInsert;
  * Tenants table - White Label Multi-Tenant System
  * Each tenant represents a separate branded instance with its own domain
  */
+// Shared with SQLAlchemy, which persists the uppercase enum member names.
+export const tenantStatusEnum = pgEnum("tenantstatus", ["ACTIVE", "SUSPENDED", "PENDING", "DELETED"]);
+export const tenantPlanEnum = pgEnum("tenantplan", ["FREE", "STARTER", "PROFESSIONAL", "ENTERPRISE"]);
+
 export const tenants = pgTable("tenants", {
   /** Tenant ID (e.g., "tenant-abc123") */
   id: varchar("id", { length: 36 }).primaryKey(),
 
   /** Unique slug for URL routing (e.g., "smartspec", "acme-corp") */
-  slug: varchar("slug", { length: 64 }).notNull().unique(),
+  slug: varchar("slug", { length: 100 }).notNull().unique(),
 
   /** Tenant display name */
   name: varchar("name", { length: 255 }).notNull(),
@@ -1766,10 +1762,10 @@ export const tenants = pgTable("tenants", {
   featureFlags: json("featureFlags").$type<Record<string, boolean>>(),
 
   /** Tenant status (from Python backend) */
-  status: varchar("status", { length: 20 }).notNull().default("ACTIVE"),
+  status: tenantStatusEnum("status").$type<string>().notNull().default("ACTIVE"),
 
   /** Tenant plan (from Python backend) */
-  plan: varchar("plan", { length: 20 }).notNull().default("FREE"),
+  plan: tenantPlanEnum("plan").$type<string>().notNull().default("FREE"),
 
   /** Created at (snake_case, from Python backend) */
   created_at: timestamp("created_at").defaultNow().notNull(),
@@ -2168,7 +2164,7 @@ export const mcpToolSchemaCache = pgTable(
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -4190,10 +4186,10 @@ export const financeSourceEnum = pgEnum("finance_source", [
 
 export const financeDocumentRoleEnum = pgEnum("finance_document_role", [
   "receipt",
-  "transfer_slip",
   "invoice",
   "statement",
   "supporting",
+  "transfer_slip",
 ]);
 
 export const financePaymentInstitutionKindEnum = pgEnum(
@@ -6918,12 +6914,7 @@ export const skillCategoryEnum = pgEnum("skill_category", [
   "image_prompt_generation", // Create prompts for image generation
   "character_prompt_generation", // Create prompts for characters
   "video_generation", // Generate Video
-  "video_prompt_generation", // Create prompts for video generation
-  "image_video_generation", // Generate both Image and Video
   "audio_generation", // Generate Text To Speech
-  "audio_prompt_generation", // Create prompts for audio generation
-  "article_generation", // Generate source articles / presentation drafts
-  "product_review", // Product review generation (household, beauty, fashion, etc.)
   "sound_effects", // Generate Sound Effects
   "prompt_enhancement", // Enhance prompts
   "code_assistant", // Code help
@@ -6932,9 +6923,15 @@ export const skillCategoryEnum = pgEnum("skill_category", [
   "data_analysis", // Data analysis
   "translation", // Translation
   "summarization", // Summarization
+  "audio_prompt_generation", // Create prompts for audio generation
+  "article_generation", // Generate source articles / presentation drafts
   "chat_assistant", // General chat
   "automation", // Workflow automation
   "other", // Other
+  "video_prompt_generation", // Create prompts for video generation
+  "image_video_generation", // Generate both Image and Video
+  "slide_generation", // Already introduced by migration 0121
+  "product_review", // Product review generation (household, beauty, fashion, etc.)
 ]);
 
 export const skillMaintenanceRecommendationStatusEnum = pgEnum(
@@ -8030,7 +8027,7 @@ export const systemSettings = pgTable("system_settings", {
   valueJson: json("valueJson").$type<Record<string, any>>(),
 
   /** Is this setting sensitive (should be masked in UI) */
-  isSensitive: boolean("isSensitive").default(false),
+  isSensitive: boolean("isSensitive").default(false).notNull(),
 
   /** Description of this setting */
   description: text("description"),
@@ -9725,6 +9722,8 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "follow_request",
   "alert",
   "system",
+  "direct_message",
+  "urgent_message",
 ]);
 export const reminderPriorityEnum = pgEnum("reminder_priority", [
   "low",
@@ -10234,7 +10233,7 @@ export const registrationEvents = pgTable(
     loginMethod: varchar("loginMethod", { length: 64 }),
     trustScore: integer("trustScore"),
     outcome: varchar("outcome", { length: 20 }).notNull(), // allowed, flagged, blocked
-    metadata: json("metadata").$type<Record<string, any>>(),
+    metadata: jsonb("metadata").$type<Record<string, any>>(),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -10285,7 +10284,7 @@ export const menuConfig = pgTable(
     customLabel: varchar("custom_label", { length: 100 }),
     customIcon: varchar("custom_icon", { length: 50 }),
     sortOrder: integer("sort_order"),
-    tenantId: integer("tenant_id").references(() => tenants.id, {
+    tenantId: varchar("tenant_id", { length: 36 }).references(() => tenants.id, {
       onDelete: "cascade",
     }),
     createdAt: timestamp("createdAt", { withTimezone: true })
@@ -10301,6 +10300,7 @@ export const menuConfig = pgTable(
       table.platform,
       table.tenantId
     ),
+    uniqueIndex("menu_config_global_unique").on(table.menuItemId, table.platform).where(sql`${table.tenantId} IS NULL`),
   ]
 );
 
@@ -10361,7 +10361,7 @@ export const videoEditorProjectRevisions = pgTable(
     documentHash: varchar("documentHash", { length: 64 }).notNull(),
     reason: varchar("reason", { length: 32 }).notNull().default("edit"),
     actorUserId: integer("actorUserId").references(() => users.id, {
-      onDelete: "restrict",
+      onDelete: "set null",
     }),
     clientMutationId: varchar("clientMutationId", { length: 160 }),
     createdAt: timestamp("createdAt", { withTimezone: true })
@@ -12244,7 +12244,7 @@ export const browserPolicyDecisions = pgTable(
     tenantId: varchar("tenantId", { length: 36 })
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
-    userId: integer("userId").references(() => users.id),
+    userId: integer("userId").references(() => users.id, { onDelete: "set null" }),
     workflowId: integer("workflowId"),
     executionId: varchar("executionId", { length: 128 }),
     actionType: varchar("actionType", { length: 64 }).notNull(),
@@ -12291,7 +12291,7 @@ export const liveBrowserSessions = pgTable(
     userId: integer("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    sourceType: liveBrowserSourceTypeEnum("sourceType").notNull(),
+    sourceType: varchar("sourceType", { length: 32 }).notNull(),
     sourceId: varchar("sourceId", { length: 128 }),
     status: liveBrowserSessionStatusEnum("status").default("created").notNull(),
     controlMode: liveBrowserControlModeEnum("controlMode")
@@ -15498,7 +15498,7 @@ export const backupJobs = pgTable(
   {
     id: varchar("id", { length: 36 }).primaryKey(),
     createdByUserId: integer("createdByUserId").references(() => users.id, {
-      onDelete: "restrict",
+      onDelete: "set null",
     }),
     mode: varchar("mode", { length: 16 }).notNull(),
     status: varchar("status", { length: 16 }).notNull().default("queued"),
@@ -15626,7 +15626,7 @@ export const mediaProviderAssets = pgTable(
       t.provider,
       t.capability,
       t.clientRequestId
-    ),
+    ).where(sql`${t.clientRequestId} IS NOT NULL`),
   ]
 );
 
@@ -15930,8 +15930,8 @@ export const workerRuntimeTypeEnum = pgEnum("worker_runtime_type", [
   "hermes_agent_gateway",
   "remotion_executor",
   "local_llm_worker",
-  "node_job_worker",
   "python_job_worker",
+  "node_job_worker",
   "external_runtime",
 ]);
 
@@ -15944,23 +15944,23 @@ export const workerStatusEnum = pgEnum("worker_status", [
 ]);
 
 export const workerJobStatusEnum = pgEnum("worker_job_status", [
-  "pending",
   "queued",
-  "leased",
   "claimed",
   "preparing",
   "running",
-  "waiting_external",
-  "retry_scheduled",
   "uploading",
   "publishing",
   "indexing",
   "completed",
-  "succeeded",
   "failed",
   "canceled",
-  "cancelled",
   "expired",
+  "pending",
+  "leased",
+  "waiting_external",
+  "retry_scheduled",
+  "succeeded",
+  "cancelled",
 ]);
 
 export const workerModeEnum = pgEnum("worker_mode", [
@@ -17770,7 +17770,7 @@ export const llmInferencePolicySnapshots = pgTable(
     revision: varchar("revision", { length: 256 }).notNull(),
     policyJson: jsonb("policyJson").$type<Record<string, unknown>>().notNull(),
     createdByUserId: integer("createdByUserId").references(() => users.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
@@ -17790,7 +17790,7 @@ export const llmInferencePolicySnapshots = pgTable(
     index("llm_inference_policy_snapshot_scope_created_idx").on(
       t.scopeType,
       t.scopeKey,
-      t.createdAt
+      t.createdAt.desc().nullsFirst()
     ),
     check(
       "llm_inference_policy_snapshot_scope_check",
@@ -17846,7 +17846,7 @@ export const llmInferencePolicyEvents = pgTable(
     fromRevision: varchar("fromRevision", { length: 256 }),
     toRevision: varchar("toRevision", { length: 256 }).notNull(),
     actorUserId: integer("actorUserId").references(() => users.id, {
-      onDelete: "set null",
+      onDelete: "restrict",
     }),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .defaultNow()
@@ -17886,7 +17886,7 @@ export const llmInferencePolicyEvents = pgTable(
     index("llm_inference_policy_event_scope_created_idx").on(
       t.scopeType,
       t.scopeKey,
-      t.createdAt
+      t.createdAt.desc().nullsFirst()
     ),
   ]
 );
@@ -18307,7 +18307,7 @@ export const llmInferencePlans = pgTable(
       t.tenantId,
       t.idempotencyKey
     ),
-    index("llm_inference_plans_tenant_created_idx").on(t.tenantId, t.createdAt),
+    index("llm_inference_plans_tenant_created_idx").on(t.tenantId, t.createdAt.desc().nullsFirst()),
     index("llm_inference_plans_worker_job_idx")
       .on(t.workerJobId)
       .where(sql`${t.workerJobId} IS NOT NULL`),
@@ -18412,7 +18412,7 @@ export const llmInferenceAttempts = pgTable(
     ),
     index("llm_inference_attempts_deployment_created_idx").on(
       t.deploymentId,
-      t.createdAt
+      t.createdAt.desc().nullsFirst()
     ),
     index("llm_inference_attempts_unsettled_completed_idx")
       .on(t.terminalAt, t.attemptId)
@@ -20295,7 +20295,7 @@ export const teamRooms = pgTable(
     roomType: teamRoomTypeEnum("roomType").notNull(),
     title: varchar("title", { length: 255 }),
     goalPrompt: text("goalPrompt"),
-    language: text("language").notNull().default("en"),
+    language: varchar("language", { length: 8 }).notNull().default("en"),
     /** Stable cross-domain Project identity; legacy projectId remains domain-local. */
     canonicalProjectId: varchar("canonicalProjectId", { length: 36 }),
     projectId: integer("projectId"),
@@ -24142,7 +24142,7 @@ export const marketplaceCaptureSessions = pgTable(
     pageTitle: text("pageTitle"),
     externalProductId: varchar("externalProductId", { length: 128 }),
     externalShopId: varchar("externalShopId", { length: 128 }),
-    status: varchar("status", { length: 32 }).notNull().default("captured"),
+    status: marketplaceCaptureStatusEnum("status").$type<string>().notNull().default("captured"),
     rawDomText: text("rawDomText"),
     rawPayloadJson: jsonb("rawPayloadJson").$type<Record<string, unknown>>(),
     htmlBlocksJson: jsonb("htmlBlocksJson").$type<unknown[]>(),
@@ -26340,7 +26340,7 @@ export const verticalDramaAssuranceAttempts = pgTable(
       t.state,
       t.heartbeatAt,
       t.updatedAt
-    ),
+    ).where(sql`${t.state} NOT IN ('succeeded', 'recovered', 'fatal_failed', 'cancelled', 'stale')`),
   ]
 );
 
@@ -26490,7 +26490,7 @@ export const verticalDramaSourcePacks = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     seriesId: bigint("seriesId", { mode: "number" }).references(
       () => verticalDramaSeries.id,
-      { onDelete: "cascade" }
+      { onDelete: "set null" }
     ),
     draftSessionId: varchar("draftSessionId", { length: 128 }).references(
       () => verticalDramaSourcePackSessions.draftSessionId,
@@ -31361,7 +31361,7 @@ export const emergencyReports = pgTable(
   t => [
     uniqueIndex("emergency_reports_tenant_public_ref_unique").on(t.tenantId, t.publicRef),
     uniqueIndex("emergency_reports_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKeyHash),
-    uniqueIndex("emergency_reports_worker_job_unique").on(t.workerJobId),
+    uniqueIndex("emergency_reports_worker_job_unique").on(t.workerJobId).where(sql`${t.workerJobId} IS NOT NULL`),
     index("emergency_reports_tenant_status_created_idx").on(t.tenantId, t.status, t.createdAt),
     index("emergency_reports_location_gist_idx").using("gist", t.exactLocation),
     check("emergency_reports_status_check", sql`${t.status} IN ('received', 'triage', 'linked', 'closed', 'duplicate', 'rejected')`),
@@ -31500,7 +31500,7 @@ export const emergencyCaseReviewItems = pgTable(
     updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   }, t => [
     uniqueIndex("emergency_case_review_item_tenant_id_unique").on(t.tenantId, t.id),
-    foreignKey({ name: "emergency_case_review_item_tenant_case_fk", columns: [t.tenantId, t.caseId], foreignColumns: [emergencyCases.tenantId, emergencyCases.id] }),
+    foreignKey({ name: "emergency_case_review_item_tenant_case_fk", columns: [t.tenantId, t.caseId], foreignColumns: [emergencyCases.tenantId, emergencyCases.id] }).onDelete("restrict"),
     index("emergency_case_review_item_queue_idx").on(t.tenantId, t.state, t.kind, t.dueAt, t.createdAt),
     index("emergency_case_review_item_case_idx").on(t.tenantId, t.caseId, t.createdAt),
     uniqueIndex("emergency_case_review_item_open_unique").on(t.tenantId, t.caseId, t.kind).where(sql`${t.state} = 'open'`),
@@ -31707,7 +31707,7 @@ export const emergencyContributions = pgTable(
     updatedAt: timestamp("updatedAt", { withTimezone: true }).defaultNow().notNull(),
   }, t => [
     uniqueIndex("emergency_contributions_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKeyHash),
-    uniqueIndex("emergency_contributions_payment_ref_unique").on(t.paymentIntentRef),
+    uniqueIndex("emergency_contributions_payment_ref_unique").on(t.paymentIntentRef).where(sql`${t.paymentIntentRef} IS NOT NULL`),
     index("emergency_contributions_pool_status_idx").on(t.tenantId, t.poolId, t.status, t.createdAt),
     check("emergency_contributions_status_check", sql`${t.status} IN ('pending', 'authorized', 'settled', 'failed', 'refunded', 'disputed')`),
     check("emergency_contributions_amount_check", sql`${t.amountMinorUnits} > 0 AND ${t.currency} ~ '^[A-Z]{3}$'`),
@@ -31932,7 +31932,7 @@ export const emergencyIntelCaptures = pgTable(
     uniqueIndex("emergency_intel_capture_tenant_id_unique").on(t.tenantId, t.id),
     uniqueIndex("emergency_intel_capture_source_id_unique").on(t.tenantId, t.sourceId, t.id),
     index("emergency_intel_capture_source_time_idx").on(t.tenantId, t.sourceId, t.capturedAt),
-    foreignKey({ name: "emergency_intel_capture_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }),
+    foreignKey({ name: "emergency_intel_capture_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }).onDelete("restrict"),
     check("emergency_intel_capture_hash_check", sql`${t.contentHash} ~ '^[a-f0-9]{64}$'`),
     check("emergency_intel_capture_length_check", sql`${t.byteLength} > 0 AND ${t.byteLength} <= 10485760`),
   ],
@@ -31959,7 +31959,7 @@ export const emergencyHydroStations = pgTable(
     uniqueIndex("emergency_hydro_station_tenant_id_unique").on(t.tenantId, t.id),
     uniqueIndex("emergency_hydro_station_source_id_unique").on(t.tenantId, t.sourceId, t.id),
     index("emergency_hydro_station_catchment_idx").on(t.tenantId, t.catchmentRef).where(sql`${t.catchmentRef} IS NOT NULL`),
-    foreignKey({ name: "emergency_hydro_station_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }),
+    foreignKey({ name: "emergency_hydro_station_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }).onDelete("restrict"),
     check("emergency_hydro_station_coordinates_check", sql`${t.latitude} BETWEEN -90 AND 90 AND ${t.longitude} BETWEEN -180 AND 180`),
     check("emergency_hydro_station_crs_check", sql`${t.crsCode} = 'EPSG:4326'`),
   ],
@@ -31997,15 +31997,15 @@ export const emergencyHydroObservations = pgTable(
     uniqueIndex("emergency_hydro_observation_identity_unique").on(t.tenantId, t.stationId, t.variableCode, t.observedAt, t.contentHash),
     uniqueIndex("emergency_hydro_observation_tenant_id_unique").on(t.tenantId, t.id),
     uniqueIndex("emergency_hydro_observation_revision_unique").on(t.tenantId, t.sourceId, t.stationId, t.variableCode, t.sourceObservationRef, t.sourceRevision),
-    index("emergency_hydro_observation_series_idx").on(t.tenantId, t.stationId, t.variableCode, t.observedAt.desc()),
+    index("emergency_hydro_observation_series_idx").on(t.tenantId, t.stationId, t.variableCode, t.observedAt.desc().nullsFirst()),
     index("emergency_hydro_observation_source_received_idx").on(t.tenantId, t.sourceId, t.receivedAt.desc()),
     index("emergency_hydro_observation_capture_idx").on(t.tenantId, t.captureId),
-    foreignKey({ name: "emergency_hydro_observation_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }),
-    foreignKey({ name: "emergency_hydro_observation_station_source_tenant_fk", columns: [t.tenantId, t.sourceId, t.stationId], foreignColumns: [emergencyHydroStations.tenantId, emergencyHydroStations.sourceId, emergencyHydroStations.id] }),
-    foreignKey({ name: "emergency_hydro_observation_capture_source_tenant_fk", columns: [t.tenantId, t.sourceId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.sourceId, emergencyIntelCaptures.id] }),
-    foreignKey({ name: "emergency_hydro_observation_supersedes_tenant_fk", columns: [t.tenantId, t.supersedesObservationId], foreignColumns: [t.tenantId, t.id] }),
-    foreignKey({ name: "emergency_hydro_observation_station_tenant_fk", columns: [t.tenantId, t.stationId], foreignColumns: [emergencyHydroStations.tenantId, emergencyHydroStations.id] }),
-    foreignKey({ name: "emergency_hydro_observation_capture_tenant_fk", columns: [t.tenantId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.id] }),
+    foreignKey({ name: "emergency_hydro_observation_source_tenant_fk", columns: [t.tenantId, t.sourceId], foreignColumns: [emergencyIntelSources.tenantId, emergencyIntelSources.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_hydro_observation_station_source_tenant_fk", columns: [t.tenantId, t.sourceId, t.stationId], foreignColumns: [emergencyHydroStations.tenantId, emergencyHydroStations.sourceId, emergencyHydroStations.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_hydro_observation_capture_source_tenant_fk", columns: [t.tenantId, t.sourceId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.sourceId, emergencyIntelCaptures.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_hydro_observation_supersedes_tenant_fk", columns: [t.tenantId, t.supersedesObservationId], foreignColumns: [t.tenantId, t.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_hydro_observation_station_tenant_fk", columns: [t.tenantId, t.stationId], foreignColumns: [emergencyHydroStations.tenantId, emergencyHydroStations.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_hydro_observation_capture_tenant_fk", columns: [t.tenantId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.id] }).onDelete("restrict"),
     check("emergency_hydro_observation_value_check", sql`${t.value}::text NOT IN ('NaN', 'Infinity', '-Infinity')`),
     check("emergency_hydro_observation_variable_check", sql`${t.variableCode} ~ '^[a-z][a-z0-9._-]{0,63}$'`),
     check("emergency_hydro_observation_unit_check", sql`${t.unitCode} ~ '^[A-Z][A-Z0-9._/-]{0,31}$'`),
@@ -32060,7 +32060,7 @@ export const emergencyGeoWatchTransitions = pgTable(
   }, t => [
     uniqueIndex("emergency_geo_watch_transition_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
     index("emergency_geo_watch_transition_watch_created_idx").on(t.tenantId, t.watchId, t.createdAt),
-    foreignKey({ name: "emergency_geo_watch_transition_tenant_watch_fk", columns: [t.tenantId, t.watchId], foreignColumns: [emergencyGeoWatches.tenantId, emergencyGeoWatches.id] }),
+    foreignKey({ name: "emergency_geo_watch_transition_tenant_watch_fk", columns: [t.tenantId, t.watchId], foreignColumns: [emergencyGeoWatches.tenantId, emergencyGeoWatches.id] }).onDelete("cascade"),
     check("emergency_geo_watch_transition_kind_check", sql`${t.transition} IN ('enter', 'exit', 'material-update')`),
   ],
 );
@@ -32088,8 +32088,8 @@ export const emergencyIntelClaims = pgTable(
     uniqueIndex("emergency_intel_claim_tenant_ref_unique").on(t.tenantId, t.claimRef),
     uniqueIndex("emergency_intel_claim_tenant_id_unique").on(t.tenantId, t.id),
     index("emergency_intel_claim_review_idx").on(t.tenantId, t.status, t.createdAt),
-    foreignKey({ name: "emergency_intel_claim_situation_tenant_fk", columns: [t.tenantId, t.situationId], foreignColumns: [emergencySituations.tenantId, emergencySituations.id] }),
-    foreignKey({ name: "emergency_intel_claim_correction_tenant_fk", columns: [t.tenantId, t.correctionOfClaimId], foreignColumns: [emergencyIntelClaims.tenantId, emergencyIntelClaims.id] }),
+    foreignKey({ name: "emergency_intel_claim_situation_tenant_fk", columns: [t.tenantId, t.situationId], foreignColumns: [emergencySituations.tenantId, emergencySituations.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_intel_claim_correction_tenant_fk", columns: [t.tenantId, t.correctionOfClaimId], foreignColumns: [emergencyIntelClaims.tenantId, emergencyIntelClaims.id] }).onDelete("restrict"),
     check("emergency_intel_claim_status_check", sql`${t.status} IN ('unreviewed', 'under_review', 'verified', 'disputed', 'retracted', 'superseded')`),
     check("emergency_intel_claim_confidence_check", sql`${t.confidence} IS NULL OR (${t.confidence} >= 0 AND ${t.confidence} <= 1)`),
     check("emergency_intel_claim_revision_check", sql`${t.revision} >= 0 AND ${t.independenceGroupCount} >= 0`),
@@ -32108,8 +32108,8 @@ export const emergencyIntelClaimSources = pgTable(
   }, t => [
     primaryKey({ columns: [t.tenantId, t.claimId, t.captureId] }),
     index("emergency_intel_claim_source_group_idx").on(t.tenantId, t.claimId, t.independenceGroup),
-    foreignKey({ name: "emergency_intel_claim_source_claim_tenant_fk", columns: [t.tenantId, t.claimId], foreignColumns: [emergencyIntelClaims.tenantId, emergencyIntelClaims.id] }),
-    foreignKey({ name: "emergency_intel_claim_source_capture_tenant_fk", columns: [t.tenantId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.id] }),
+    foreignKey({ name: "emergency_intel_claim_source_claim_tenant_fk", columns: [t.tenantId, t.claimId], foreignColumns: [emergencyIntelClaims.tenantId, emergencyIntelClaims.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_intel_claim_source_capture_tenant_fk", columns: [t.tenantId, t.captureId], foreignColumns: [emergencyIntelCaptures.tenantId, emergencyIntelCaptures.id] }).onDelete("restrict"),
     check("emergency_intel_claim_source_role_check", sql`${t.sourceRole} IN ('supports', 'contradicts', 'context')`),
   ],
 );
@@ -32134,7 +32134,7 @@ export const emergencyFundAllocations = pgTable(
   }, t => [
     uniqueIndex("emergency_fund_allocation_tenant_idempotency_unique").on(t.tenantId, t.idempotencyKey),
     index("emergency_fund_allocation_pool_status_idx").on(t.tenantId, t.poolId, t.status, t.createdAt),
-    foreignKey({ name: "emergency_fund_allocation_pool_tenant_fk", columns: [t.tenantId, t.poolId], foreignColumns: [emergencySupportPools.tenantId, emergencySupportPools.id] }),
+    foreignKey({ name: "emergency_fund_allocation_pool_tenant_fk", columns: [t.tenantId, t.poolId], foreignColumns: [emergencySupportPools.tenantId, emergencySupportPools.id] }).onDelete("restrict"),
     check("emergency_fund_allocation_amount_check", sql`${t.amountMinorUnits} > 0 AND ${t.currency} = 'THB'`),
     check("emergency_fund_allocation_status_check", sql`${t.status} IN ('active', 'closed', 'cancelled')`),
   ],
@@ -32160,8 +32160,8 @@ export const emergencyLegalHolds = pgTable(
     uniqueIndex("emergency_legal_hold_tenant_key_unique").on(t.tenantId, t.idempotencyKey),
     index("emergency_legal_hold_case_status_idx").on(t.tenantId, t.caseId, t.status),
     index("emergency_legal_hold_evidence_status_idx").on(t.tenantId, t.evidenceId, t.status),
-    foreignKey({ name: "emergency_legal_hold_case_tenant_fk", columns: [t.tenantId, t.caseId], foreignColumns: [emergencyCases.tenantId, emergencyCases.id] }),
-    foreignKey({ name: "emergency_legal_hold_evidence_case_fk", columns: [t.tenantId, t.caseId, t.evidenceId], foreignColumns: [emergencyEvidenceAssets.tenantId, emergencyEvidenceAssets.caseId, emergencyEvidenceAssets.id] }),
+    foreignKey({ name: "emergency_legal_hold_case_tenant_fk", columns: [t.tenantId, t.caseId], foreignColumns: [emergencyCases.tenantId, emergencyCases.id] }).onDelete("restrict"),
+    foreignKey({ name: "emergency_legal_hold_evidence_case_fk", columns: [t.tenantId, t.caseId, t.evidenceId], foreignColumns: [emergencyEvidenceAssets.tenantId, emergencyEvidenceAssets.caseId, emergencyEvidenceAssets.id] }).onDelete("restrict"),
     check("emergency_legal_hold_status_check", sql`${t.status} IN ('active', 'released')`),
     check("emergency_legal_hold_release_check", sql`(${t.status} = 'active' AND ${t.releasedAt} IS NULL AND ${t.releasedByUserId} IS NULL AND ${t.releaseReason} IS NULL) OR (${t.status} = 'released' AND ${t.releasedAt} IS NOT NULL AND ${t.releasedByUserId} IS NOT NULL AND ${t.releaseReason} IS NOT NULL)`),
   ],
@@ -32231,7 +32231,7 @@ export const intelligenceEvidenceItems = pgTable(
     createdAt: timestamp("createdAt", { withTimezone: true }).defaultNow().notNull(),
   }, t => [
     uniqueIndex("intelligence_evidence_scope_ref_revision_unique").on(t.visibility, sql`COALESCE(${t.tenantId}, '')`, t.evidenceRef, t.revision),
-    index("intelligence_evidence_source_observed_idx").on(t.sourceId, t.observedAt.desc()),
+    index("intelligence_evidence_source_observed_idx").on(t.sourceId, t.observedAt.desc().nullsFirst()),
     check("intelligence_evidence_scope_check", sql`(${t.visibility} = 'public' AND ${t.tenantId} IS NULL) OR (${t.visibility} = 'tenant' AND ${t.tenantId} IS NOT NULL)`),
     check("intelligence_evidence_revision_check", sql`${t.revision} > 0`),
     check("intelligence_evidence_hash_check", sql`${t.contentHash} ~ '^[a-f0-9]{64}$'`),
@@ -32331,7 +32331,7 @@ export const decisionAnalysisRuns = pgTable(
     check("decision_analysis_run_status_check", sql`${t.status} IN ('queued', 'running', 'completed', 'partial', 'failed', 'cancelled')`),
     check("decision_analysis_run_number_check", sql`${t.runNumber} > 0`),
     check("decision_analysis_run_json_size_check", sql`octet_length(${t.snapshotJson}::text) <= 262144`),
-    foreignKey({ name: "decision_analysis_run_project_tenant_fk", columns: [t.tenantId, t.projectId], foreignColumns: [decisionProjects.tenantId, decisionProjects.id] }),
+    foreignKey({ name: "decision_analysis_run_project_tenant_fk", columns: [t.tenantId, t.projectId], foreignColumns: [decisionProjects.tenantId, decisionProjects.id] }).onDelete("restrict"),
   ],
 );
 

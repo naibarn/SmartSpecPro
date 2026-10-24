@@ -198,3 +198,37 @@ describe("Drizzle catalog reconciliation", () => {
     });
   });
 });
+
+describe("catalog drift regression cases", () => {
+  const table = (indexes = {}, columns = {}) => ({ name: "items", columns, indexes });
+  const catalog = (overrides = {}) => ({ tables: ["items"], columns: [], indexes: [], constraints: [], enums: [], ...overrides });
+
+  it("accepts a renamed structurally identical index but detects wrong uniqueness, order, and predicate", () => {
+    const index = { name: "items_current", columns: [{ expression: "ownerId", asc: false, nulls: "first" }], isUnique: true, where: '"deletedAt" IS NULL' };
+    const expected = { tables: { "public.items": table({ items_current: index }) }, enums: {} };
+    const actual = { tableName: "items", indexName: "legacy_items", constraintBacked: false, keys: ['"ownerId" DESC NULLS FIRST'], isUnique: true, predicate: '"deletedAt" IS NULL', valid: true };
+    expect(compareDrizzleCatalog(expected, catalog({ indexes: [actual] }))).toMatchObject({ missingIndexes: [], conflictingIndexes: [], equivalentIndexes: [{ expected: "items_current", actual: "legacy_items" }] });
+    for (const change of [{ isUnique: false }, { keys: ['"ownerId" ASC NULLS LAST'] }, { predicate: '"deletedAt" IS NOT NULL' }, { valid: false }]) {
+      expect(compareDrizzleCatalog(expected, catalog({ indexes: [{ ...actual, ...change, indexName: "items_current" }] })).conflictingIndexes).toEqual(["items_current"]);
+    }
+  });
+
+  it("preserves JSON-path literals and compares equivalent PostgreSQL expression spelling", () => {
+    const index = { name: "items_key", columns: [{ expression: `(coalesce("metadata"->>'attemptNumber', '0'))`, isExpression: true }] };
+    const expected = { tables: { "public.items": table({ items_key: index }) }, enums: {} };
+    const actual = { tableName: "items", indexName: "items_key", constraintBacked: false, keys: [`COALESCE(metadata ->> 'attemptNumber'::text, '0'::text) ASC NULLS LAST`], valid: true };
+    expect(compareDrizzleCatalog(expected, catalog({ indexes: [actual] })).conflictingIndexes).toEqual([]);
+    expect(compareDrizzleCatalog(expected, catalog({ indexes: [{ ...actual, keys: [`COALESCE(metadata ->> 'otherKey'::text, '0'::text) ASC NULLS LAST`] }] })).conflictingIndexes).toEqual(["items_key"]);
+  });
+
+  it("detects enum sort-order drift even when all labels exist", () => {
+    const expected = { tables: {}, enums: { "public.state": { name: "state", values: ["queued", "done"] } } };
+    expect(compareDrizzleCatalog(expected, catalog({ enums: [{ name: "state", values: ["done", "queued"] }] })).conflictingEnums).toHaveLength(1);
+  });
+
+  it("compares JSON defaults by value rather than object-key ordering", () => {
+    const expected = { tables: { "public.items": table({}, { metadata: { name: "metadata", type: "jsonb", default: `'{"a":1,"b":2}'::jsonb` } }) }, enums: {} };
+    const actual = catalog({ columns: [{ tableName: "items", columnName: "metadata", type: "jsonb", notNull: false, defaultValue: `'{"b": 2, "a": 1}'::jsonb` }] });
+    expect(compareDrizzleCatalog(expected, actual).conflictingDefaults).toEqual([]);
+  });
+});

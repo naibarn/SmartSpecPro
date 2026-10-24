@@ -154,7 +154,7 @@ class MultimodalMemoryVector(Base):
     provider: Mapped[str] = mapped_column(String(64), nullable=False)
     model: Mapped[Optional[str]] = mapped_column(String(128))
     modality: Mapped[Optional[str]] = mapped_column(String(16))
-    embedding: Mapped[Optional[Any]] = mapped_column(_VECTOR_TYPE)
+    embedding: Mapped[Any] = mapped_column(_VECTOR_TYPE, nullable=False)
     embeddingVersion: Mapped[Optional[str]] = mapped_column("embeddingVersion", String(32))
     createdAt: Mapped[Optional[datetime]] = mapped_column(
         "createdAt", DateTime(timezone=True), server_default=func.now()

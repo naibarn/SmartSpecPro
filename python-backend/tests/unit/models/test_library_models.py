@@ -115,12 +115,14 @@ class TestLibraryModels:
         await library_db.refresh(item)
 
         first_link = LibraryLink(
+            tenant_id=item.tenant_id,
             library_item_id=item.id,
             link_type="media_task",
             link_id="task-001",
             provider_task_id="provider-task-001",
         )
         second_link = LibraryLink(
+            tenant_id=item.tenant_id,
             library_item_id=item.id,
             link_type="media_task",
             link_id="task-001",
