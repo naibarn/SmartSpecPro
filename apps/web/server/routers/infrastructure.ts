@@ -78,6 +78,8 @@ import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareSt
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
+import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
+import { findVerifiedStagingRollbackBaseline } from "../services/cloudflareStagingRollbackBaseline";
 import { cloudflareOriginIdentitySchema as originIdentitySchema, cloudflareOriginReferenceSchema as originReferenceSchema,
   cloudflareStagingActivationInputSchema } from "../../shared/cloudflareOriginIdentity";
 
@@ -414,18 +416,36 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
   const jobs = await db.select({ input: workerJobs.inputJson, output: workerJobs.outputJson, createdAt: workerJobs.createdAt })
     .from(workerJobs).where(and(eq(workerJobs.tenantId, identity.tenantId), eq(workerJobs.jobType, CLOUDFLARE_STAGING_DEPLOYMENT_JOB), eq(workerJobs.status, "succeeded")))
     .orderBy(desc(workerJobs.createdAt)).limit(100);
-  for (const row of jobs) {
-    const input = row.input ?? {};
-    const output = row.output ?? {};
-    if (input.projectId !== identity.projectId || input.environment !== "staging" || input.contractVersion !== "cloudflare-staging-origin-v2" ||
-        output.runtimeVerified !== true || output.configurationRef !== configurationRef || typeof output.deploymentId !== "string" ||
-        typeof input.artifactRef !== "string" || typeof input.sourceSha !== "string" || typeof input.buildDigest !== "string") continue;
-    const baselineArtifact = await resolveCloudflareStagingArtifact(input.artifactRef, input.sourceSha);
-    const rollbackDigest = typeof output.configurationDigest === "string" ? output.configurationDigest : configurationDigest;
-    if (!baselineArtifact?.immutable || baselineArtifact.buildDigest !== input.buildDigest || rollbackDigest !== input.configurationRef.slice("cf-origin:".length)) continue;
-    return { ready: true, reason: null, artifact: { artifactRef: artifact.artifactRef, sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest },
-      baseline: { deploymentId: output.deploymentId, artifactRef: input.artifactRef, sourceSha: input.sourceSha, buildDigest: input.buildDigest,
-        configurationRef: input.configurationRef ?? configurationRef, configurationDigest: rollbackDigest },
+  const baselineCandidates = jobs.map(row => ({ input: row.input ?? {}, output: row.output ?? {} })).filter(({ input, output }) =>
+    input.projectId === identity.projectId && input.environment === "staging" && input.contractVersion === "cloudflare-staging-origin-v2" &&
+    output.runtimeVerified === true && typeof output.deploymentId === "string" && typeof input.configurationRef === "string" &&
+    typeof input.artifactRef === "string" && typeof input.sourceSha === "string" && typeof input.buildDigest === "string");
+  if (baselineCandidates.length) {
+    const evidence = await getPersistedCloudflareWorkerDeploymentEvidence({ db, callerTenantId: identity.tenantId,
+      projectId: identity.projectId, environment: "staging" });
+    const active = evidence.status === "OBSERVED" && evidence.value && typeof evidence.value === "object"
+      ? evidence.value as { deploymentId?: unknown; versions?: unknown } : null;
+    const versions = Array.isArray(active?.versions) ? active.versions as Array<{ versionId?: unknown; percentage?: unknown }> : [];
+    const deploymentIsSingleVersion = versions.length === 1 && versions[0]?.percentage === 100 && typeof versions[0]?.versionId === "string";
+    if (typeof active?.deploymentId === "string" && deploymentIsSingleVersion) {
+      const baseline = await findVerifiedStagingRollbackBaseline({
+        candidates: baselineCandidates, projectId: identity.projectId, activeDeploymentId: active.deploymentId,
+        activeDeploymentIsSingleVersion: deploymentIsSingleVersion,
+        resolveArtifact: async (artifactRef, sourceSha) => {
+          const resolved = await resolveCloudflareStagingArtifact(artifactRef, sourceSha);
+          return resolved ? { immutable: resolved.immutable, buildDigest: resolved.buildDigest } : null;
+        },
+        isConfigurationUsable: async (candidateRef, candidateDigest) => {
+          const stored = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef: candidateRef })
+            .catch(() => null);
+          return stored?.status === "STORED" && stored.configurationRef === candidateRef && stored.configurationDigest === candidateDigest;
+        },
+      });
+      if (baseline) return { ready: true, reason: null,
+        artifact: { artifactRef: artifact.artifactRef, sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest },
+        baseline, configurationRef, configurationDigest, accountRef: target.accountRef };
+    }
+    return { ready: false, reason: "STAGING_ACTIVE_DEPLOYMENT_UNVERIFIED", artifact: null, baseline: null,
       configurationRef, configurationDigest, accountRef: target.accountRef };
   }
   // A first Staging deployment has no provider rollback deployment ID yet.
