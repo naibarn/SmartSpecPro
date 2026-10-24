@@ -5,6 +5,7 @@ import { createApplicationDatabaseTls } from "./_core/applicationDatabaseTls";
 import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages, type User } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { normalizeAuthEmail } from "./services/emailNormalization";
+import { resolveApplicationDatabaseUrl } from "./_core/devDatabaseTarget";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 let _client: ReturnType<typeof postgres> | null = null;
@@ -14,14 +15,15 @@ export type DrizzleDB = ReturnType<typeof drizzle>;
 // Lazily create the drizzle instance so local tooling can run without a DB.
 export function getDb(): DrizzleDB {
   if (!_db) {
-    if (!process.env.DATABASE_URL) {
+    const databaseUrl = resolveApplicationDatabaseUrl();
+    if (!databaseUrl) {
       throw new Error("Database not configured. Set DATABASE_URL before calling getDb().");
     }
 
     try {
       const poolSize = parseInt(process.env.DB_POOL_SIZE || "5", 10);
-      const ssl = createApplicationDatabaseTls(process.env.DATABASE_URL);
-      _client = postgres(process.env.DATABASE_URL, {
+      const ssl = createApplicationDatabaseTls(databaseUrl);
+      _client = postgres(databaseUrl, {
         ...(ssl ? { ssl } : {}),
         max: poolSize,
         idle_timeout: 20,       // Close idle connections after 20s

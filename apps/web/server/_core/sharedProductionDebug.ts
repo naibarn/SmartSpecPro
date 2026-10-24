@@ -2,7 +2,7 @@
 export function isSharedProductionDebug(env: NodeJS.ProcessEnv = process.env): boolean {
   return env.NODE_ENV === "development" &&
     env.SMARTSPEC_ENVIRONMENT === "development" &&
-    env.SMARTSPEC_DEV_DATABASE_MODE === "shared-production";
+    env.SMARTSPEC_DEV_DATABASE_MODE === "production-readonly";
 }
 
 /** Resolve the dedicated debug hostname to the existing production tenant. */

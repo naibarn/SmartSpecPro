@@ -3,11 +3,11 @@ import pytest
 from app.core.application_runtime import get_application_runtime_profile
 
 @pytest.mark.unit
-def test_standard_and_shared_production_profiles_remain_compatible():
+def test_standard_and_production_readonly_debug_profiles_remain_compatible():
     assert get_application_runtime_profile("production", {}).owns_background_work
     assert not get_application_runtime_profile("production", {}).initialize_schema
     assert get_application_runtime_profile("development", {}).initialize_schema
-    shared = get_application_runtime_profile("development", {"SMARTSPEC_DEV_DATABASE_MODE": "shared-production"})
+    shared = get_application_runtime_profile("development", {"SMARTSPEC_DEV_DATABASE_MODE": "production-readonly"})
     assert not shared.owns_background_work
     assert not shared.initialize_schema
 

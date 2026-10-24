@@ -36,6 +36,11 @@ def sanitize_db_url(url: str) -> str:
 def _create_engine():
     """Create the async engine with appropriate pool settings."""
     connect_args = application_database_connect_args(settings.ENVIRONMENT, database_url=settings.DATABASE_URL)
+    if (settings.ENVIRONMENT == "development"
+            and os.environ.get("SMARTSPEC_DEV_DATABASE_MODE") == "production-readonly"):
+        # Defense in depth. Production debug credentials must also be a database-enforced
+        # read-only role; this makes every asyncpg session default to read-only transactions.
+        connect_args = {**connect_args, "server_settings": {"default_transaction_read_only": "on"}}
     if settings.DATABASE_URL.startswith("sqlite"):
         if connect_args:
             raise ValueError("APPLICATION_DATABASE_TLS_REQUIRED")
