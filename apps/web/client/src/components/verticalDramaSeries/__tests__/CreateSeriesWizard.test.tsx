@@ -127,6 +127,11 @@ vi.mock("@/lib/trpc", () => ({
         list: { invalidate: vi.fn() },
       },
     }),
+    verticalDramaCharacters: {
+      listCharacters: {
+        useQuery: () => ({ data: { characters: [] }, isLoading: false }),
+      },
+    },
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
       getPlanningSourcePackPointer: {

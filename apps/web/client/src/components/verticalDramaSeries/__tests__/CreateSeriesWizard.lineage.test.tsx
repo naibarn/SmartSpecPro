@@ -125,6 +125,23 @@ vi.mock("@/lib/trpc", () => ({
         list: { invalidate: vi.fn() },
       },
     }),
+    verticalDramaCharacters: {
+      listCharacters: {
+        useQuery: () => ({
+          data: {
+            characters: [
+              {
+                characterId: "101",
+                characterKey: "parent-lead",
+                name: "Parent lead",
+                role: "Lead",
+              },
+            ],
+          },
+          isLoading: false,
+        }),
+      },
+    },
     verticalDramaSeries: {
       listGenrePresets: { useQuery: () => mockListGenrePresetsQuery() },
       getPlanningSourcePackPointer: {

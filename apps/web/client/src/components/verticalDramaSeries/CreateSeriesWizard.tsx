@@ -9,6 +9,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { Card as AstryxCard } from "@astryxdesign/core/Card";
+import { Badge as AstryxBadge } from "@astryxdesign/core/Badge";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Text as AstryxText } from "@astryxdesign/core/Text";
+import { VStack } from "@astryxdesign/core/VStack";
 import {
   ImageIcon,
   AlertCircle,
@@ -1288,6 +1293,21 @@ export function CreateSeriesWizard({
     { enabled: lineageEnabled && Boolean(form.parentSeriesId) }
   );
   const parentSeries = parentSeriesQuery.data?.series;
+
+  // Show the actual inherited cast as soon as a sequel parent is selected.
+  // The carry-over proposal remains an explicit AI action in the Characters
+  // step, but creators should be able to confirm that the source roster loaded
+  // before drafting the new season.
+  const parentCharactersQuery =
+    trpc.verticalDramaCharacters.listCharacters.useQuery(
+      { seriesId: form.parentSeriesId ?? "" },
+      {
+        enabled:
+          lineageEnabled &&
+          form.createMode === "sequel" &&
+          Boolean(form.parentSeriesId),
+      }
+    );
 
   // Sequel-only — parent's memory coverage (review-step thin-season warning).
   const parentMemoryQuery = trpc.verticalDramaSeries.getSeriesMemory.useQuery(
@@ -3758,6 +3778,9 @@ export function CreateSeriesWizard({
             parentSeriesOptionsLoading={seriesListQuery.isLoading}
             onSelectParentSeries={handleSelectParentSeries}
             parentSeries={parentSeries}
+            parentSeriesLoading={parentSeriesQuery.isLoading}
+            parentCharacters={parentCharactersQuery.data?.characters ?? []}
+            parentCharactersLoading={parentCharactersQuery.isLoading}
             carryOverDraft={carryOverResult?.draft}
             carryOverLoading={carryOverMutation.isPending}
             carryOverError={
@@ -4345,6 +4368,13 @@ interface ParentSeriesDetail {
   memory: unknown;
 }
 
+interface ParentCharacterPreview {
+  characterId: string;
+  name: string;
+  role?: string | null;
+  characterKey?: string | null;
+}
+
 function WizardStep({
   stepId,
   lang,
@@ -4413,6 +4443,9 @@ function WizardStep({
   parentSeriesOptionsLoading,
   onSelectParentSeries,
   parentSeries,
+  parentSeriesLoading,
+  parentCharacters,
+  parentCharactersLoading,
   carryOverDraft,
   carryOverLoading,
   carryOverError,
@@ -4524,6 +4557,9 @@ function WizardStep({
   parentSeriesOptionsLoading: boolean;
   onSelectParentSeries: (seriesId: string) => void;
   parentSeries?: ParentSeriesDetail;
+  parentSeriesLoading: boolean;
+  parentCharacters: ParentCharacterPreview[];
+  parentCharactersLoading: boolean;
   carryOverDraft?: VerticalDramaSeasonCarryOverDraft;
   carryOverLoading: boolean;
   carryOverError?: string;
@@ -4638,6 +4674,10 @@ function WizardStep({
         (form.createMode && form.parentSeriesId)
       );
       const hasSequelParent = isSequel && Boolean(form.parentSeriesId);
+      const parentMemorySummary =
+        parentSeries?.memory && typeof parentSeries.memory === "object"
+          ? (parentSeries.memory as Record<string, unknown>).compactSummary
+          : undefined;
       return (
         <div className="grid w-full min-w-0 max-w-full gap-4">
           {/* Phase 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
@@ -4815,11 +4855,128 @@ function WizardStep({
                   )}
 
                   {isSequel && form.parentSeriesId && (
-                    <p className="rounded-md border border-dashed bg-background px-2.5 py-2 text-xs text-muted-foreground">
-                      {th
-                        ? "เมื่อสร้าง draft ระบบจะอ่านสรุปเรื่อง ปมค้าง ความสัมพันธ์ และตัวละครจากซีรีส์ต้นฉบับให้เอง คุณใส่โจทย์ทิศทางภาคใหม่ได้ในช่องโจทย์ด้านล่าง หรือเว้นว่างแล้วให้ AI คิดต่อจากเรื่องเดิม"
-                        : "When building a draft, the system reads the parent story summary, open threads, relationships, and cast. Add a new-season direction in the premise field below, or leave it blank and let AI continue from canon."}
-                    </p>
+                    <AstryxCard padding={3}>
+                      <VStack gap={3}>
+                        <VStack gap={1}>
+                          <AstryxText as="p" type="label">
+                            {th
+                              ? `ข้อมูลจากเรื่องต้นฉบับ${parentSeries?.title ? `: ${parentSeries.title}` : ""}`
+                              : `Original series context${parentSeries?.title ? `: ${parentSeries.title}` : ""}`}
+                          </AstryxText>
+                          {parentSeriesLoading ? (
+                            <AstryxText as="p" type="supporting" role="status">
+                              {th
+                                ? "กำลังโหลดข้อมูลเรื่องเดิม…"
+                                : "Loading original story…"}
+                            </AstryxText>
+                          ) : typeof parentMemorySummary === "string" &&
+                            parentMemorySummary.trim() ? (
+                            <AstryxText
+                              as="p"
+                              type="supporting"
+                              textWrap="pretty"
+                            >
+                              {parentMemorySummary}
+                            </AstryxText>
+                          ) : (
+                            <AstryxText as="p" type="supporting">
+                              {th
+                                ? "ยังไม่มีสรุปความจำของตอนเดิม ระบบจะใช้ข้อมูลตัวละครและข้อมูลซีรีส์ที่มี"
+                                : "No episode-memory summary is available; the draft will use the parent series and cast data that exists."}
+                            </AstryxText>
+                          )}
+                        </VStack>
+
+                        <VStack gap={1}>
+                          <AstryxText as="p" type="label">
+                            {th
+                              ? "ตัวละครจากเรื่องเดิม"
+                              : "Returning characters"}
+                          </AstryxText>
+                          {parentCharactersLoading ? (
+                            <AstryxText as="p" type="supporting" role="status">
+                              {th ? "กำลังโหลดตัวละคร…" : "Loading characters…"}
+                            </AstryxText>
+                          ) : parentCharacters.length > 0 ? (
+                            <HStack gap={1} wrap="wrap">
+                              {parentCharacters.slice(0, 12).map(character => (
+                                <AstryxBadge
+                                  key={
+                                    character.characterKey ??
+                                    character.characterId
+                                  }
+                                  variant="neutral"
+                                  label={`${character.name}${character.role ? ` · ${character.role}` : ""}`}
+                                />
+                              ))}
+                              {parentCharacters.length > 12 && (
+                                <AstryxText type="supporting">
+                                  {th
+                                    ? `และอีก ${parentCharacters.length - 12} คน`
+                                    : `and ${parentCharacters.length - 12} more`}
+                                </AstryxText>
+                              )}
+                            </HStack>
+                          ) : (
+                            <AstryxText as="p" type="supporting">
+                              {th
+                                ? "เรื่องต้นฉบับยังไม่มีข้อมูลตัวละครที่บันทึกไว้"
+                                : "The original series has no saved character records."}
+                            </AstryxText>
+                          )}
+                        </VStack>
+
+                        {!hasUserPremise && seriesMode === "premise" && (
+                          <VStack gap={1.5}>
+                            <Button
+                              type="button"
+                              onClick={onSynthesizePreset}
+                              disabled={mixDraftLoading}
+                              className="w-fit gap-2"
+                            >
+                              {mixDraftLoading && (
+                                <Loader2
+                                  className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                                  aria-hidden="true"
+                                />
+                              )}
+                              {th
+                                ? "ให้ AI อ่านเรื่องเดิมและสร้างแนวคิดภาค 2"
+                                : "Read the original story and draft season 2"}
+                            </Button>
+                            <AstryxText as="p" type="supporting">
+                              {th
+                                ? "ระบบจะใช้เรื่องย่อ ปมค้าง ความสัมพันธ์ และตัวละครเดิม คุณเว้นโจทย์ใหม่ไว้ได้ หรือเพิ่มทิศทางในช่องด้านล่าง"
+                                : "The draft uses the original summary, open threads, relationships, and cast. Add a new direction below or leave it blank."}
+                            </AstryxText>
+                            {mixDraftLoading && (
+                              <AstryxText
+                                as="p"
+                                type="supporting"
+                                color="primary"
+                                role="status"
+                              >
+                                {th
+                                  ? "กำลังอ่านเรื่องเดิมและสร้าง draft — ผลจะอยู่ใต้ช่องโจทย์ด้านล่าง"
+                                  : "Reading the original story and creating a draft — the result will appear below the premise field."}
+                              </AstryxText>
+                            )}
+                            {!mixDraftLoading && mixDraft && (
+                              <AstryxText
+                                as="p"
+                                type="supporting"
+                                color="primary"
+                                role="status"
+                              >
+                                {th
+                                  ? "สร้าง draft แล้ว เลื่อนลงไปตรวจและแก้รายละเอียดก่อนนำไปใช้"
+                                  : "Draft created. Scroll down to review and edit it before applying."}
+                              </AstryxText>
+                            )}
+                          </VStack>
+                        )}
+                      </VStack>
+                    </AstryxCard>
                   )}
 
                   {isSpecialEdition && (
@@ -5164,8 +5321,7 @@ function WizardStep({
                 the mirrored condition on `actionSection` below — so a CTA is
                 never left stranded inside the now-collapsed premise
                 section. */}
-            {(hasUserPremise || hasSequelParent) &&
-              seriesMode !== "preset" && (
+            {(hasUserPremise || hasSequelParent) && seriesMode !== "preset" && (
               <div className="mt-4 border-t border-primary/15 pt-4">
                 <PresetSynthesisActionPanel
                   lang={lang}
@@ -5174,6 +5330,7 @@ function WizardStep({
                   selectedPresetIds={mixPresetIds}
                   hasUserPremise={hasUserPremise}
                   hasBasicSeed={hasBasicSeed}
+                  hideGenerateAction={!hasUserPremise}
                   hasLineageSeed={Boolean(
                     form.createMode && form.parentSeriesId
                   )}
@@ -5909,6 +6066,43 @@ function WizardStep({
       if (isSequel) {
         return (
           <div className="grid gap-4">
+            {form.parentSeriesId && (
+              <AstryxCard padding={3}>
+                <VStack gap={2}>
+                  <AstryxText as="p" type="label">
+                    {th
+                      ? "ตัวละครเดิมจากภาคต้นฉบับ"
+                      : "Characters from the original season"}
+                  </AstryxText>
+                  {parentCharactersLoading ? (
+                    <AstryxText as="p" type="supporting" role="status">
+                      {th ? "กำลังโหลดตัวละคร…" : "Loading characters…"}
+                    </AstryxText>
+                  ) : parentCharacters.length > 0 ? (
+                    <HStack gap={1} wrap="wrap">
+                      {parentCharacters.map(character => (
+                        <AstryxBadge
+                          key={character.characterKey ?? character.characterId}
+                          variant="neutral"
+                          label={`${character.name}${character.role ? ` · ${character.role}` : ""}`}
+                        />
+                      ))}
+                    </HStack>
+                  ) : (
+                    <AstryxText as="p" type="supporting">
+                      {th
+                        ? "ไม่พบข้อมูลตัวละครที่บันทึกไว้ในเรื่องต้นฉบับ"
+                        : "No saved characters were found in the original series."}
+                    </AstryxText>
+                  )}
+                  <AstryxText as="p" type="supporting">
+                    {th
+                      ? "เมื่อสร้างภาคใหม่ ระบบจะคัดลอกตัวละครเดิมให้อัตโนมัติ ส่วนปุ่มด้านล่างใช้ให้ AI เสนอว่าใครกลับมาและมีสถานะอย่างไร"
+                      : "The original cast is copied automatically when the sequel is created. Use the action below to ask AI who returns and in what state."}
+                  </AstryxText>
+                </VStack>
+              </AstryxCard>
+            )}
             <Field
               label={
                 th
@@ -7101,6 +7295,7 @@ function PresetSynthesisActionPanel({
   hasUserPremise,
   hasBasicSeed,
   hasLineageSeed,
+  hideGenerateAction = false,
   loading,
   draftCompositionStage,
   errorMessage,
@@ -7146,6 +7341,7 @@ function PresetSynthesisActionPanel({
   hasUserPremise: boolean;
   hasBasicSeed: boolean;
   hasLineageSeed?: boolean;
+  hideGenerateAction?: boolean;
   loading: boolean;
   draftCompositionStage?:
     | "building_foundation"
@@ -7257,32 +7453,34 @@ function PresetSynthesisActionPanel({
 
   return (
     <div className="grid gap-2">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-muted-foreground">
-          {th
-            ? `เลือก preset แล้ว ${selectionCount}/5 แบบ`
-            : `${selectionCount}/5 presets selected`}
-        </p>
-        <Button
-          type="button"
-          size={emphasize ? "lg" : "default"}
-          onClick={onGenerate}
-          disabled={!canGenerate}
-          className={cn("gap-2", emphasize && "w-full sm:w-auto")}
-        >
-          {loading && (
-            <Loader2
-              className="h-4 w-4 animate-spin motion-reduce:animate-none"
-              aria-hidden="true"
-            />
-          )}
-          {loading
-            ? th
-              ? "AI กำลังสร้าง draft ใหม่..."
-              : "AI is creating a new draft..."
-            : presetAction.label}
-        </Button>
-      </div>
+      {!hideGenerateAction && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            {th
+              ? `เลือก preset แล้ว ${selectionCount}/5 แบบ`
+              : `${selectionCount}/5 presets selected`}
+          </p>
+          <Button
+            type="button"
+            size={emphasize ? "lg" : "default"}
+            onClick={onGenerate}
+            disabled={!canGenerate}
+            className={cn("gap-2", emphasize && "w-full sm:w-auto")}
+          >
+            {loading && (
+              <Loader2
+                className="h-4 w-4 animate-spin motion-reduce:animate-none"
+                aria-hidden="true"
+              />
+            )}
+            {loading
+              ? th
+                ? "AI กำลังสร้าง draft ใหม่..."
+                : "AI is creating a new draft..."
+              : presetAction.label}
+          </Button>
+        </div>
+      )}
 
       {/* "What do I press, and what will the system do for me" — the button
           label alone used to just say "ผสม" (mix), which didn't say what
