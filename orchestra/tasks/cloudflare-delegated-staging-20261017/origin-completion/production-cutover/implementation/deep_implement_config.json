@@ -21,9 +21,9 @@
     },
     "section-03-production-runtime-composition": {
       "status": "checkpointed",
-      "next_action": "Integrate the canonical Production Queue job recovery/status UI. Then continue Production Hyperdrive/Tunnel and Worker runtime binding preparation from the authenticated production backend/provider receipts; do not switch smartaihub.app traffic without the existing canary grant.",
-      "checkpoint_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43",
-      "merged_main_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43"
+      "next_action": "On the authenticated Production Admin page, the latest canonical Queue job is now recoverable after reload with attempt and lease telemetry. Verify job eb327c3c-44f5-462f-98f2-0e40065e6caa status/receipt, then provision/verify Production Hyperdrive, Node/Python Container bindings, activation and application ingress before the existing canary-authorized route cutover.",
+      "checkpoint_sha": "679fa0af44838515228f799166d41e92bc0de316",
+      "merged_main_sha": "679fa0af44838515228f799166d41e92bc0de316"
     },
     "section-01-production-target-ui": {
       "checkpoint_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
@@ -41,11 +41,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 32,
-  "updated_at": "2026-10-24T16:56:19.836492+00:00",
+  "generation": 33,
+  "updated_at": "2026-10-24T16:58:18.351168+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Integrate the canonical Production Queue job recovery/status UI. Then continue Production Hyperdrive/Tunnel and Worker runtime binding preparation from the authenticated production backend/provider receipts; do not switch smartaihub.app traffic without the existing canary grant.",
+    "next_action": "On the authenticated Production Admin page, the latest canonical Queue job is now recoverable after reload with attempt and lease telemetry. Verify job eb327c3c-44f5-462f-98f2-0e40065e6caa status/receipt, then provision/verify Production Hyperdrive, Node/Python Container bindings, activation and application ingress before the existing canary-authorized route cutover.",
     "gaps": [
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
       "PostgreSQL accepts TLS, but the application session is non-TLS and strict CA verification fails UNABLE_TO_VERIFY_LEAF_SIGNATURE; a trusted matching certificate and actual Tunnel route remain unverified.",
@@ -60,6 +60,6 @@
       "Public runtime.smartaihub.app/readyz remains HTTP 503 activation=disabled with HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET and VECTOR_INDEX absent. Production application ingress still requires Node/Python Container bindings and retained PostgreSQL readiness.",
       "PostgreSQL remains on the existing host, but the only configured Cloudflare Tunnel database hostname is db-staging.smartaihub.app; strict TLS CA verification and a Production Hyperdrive/Tunnel route are unverified."
     ],
-    "merged_main_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43"
+    "merged_main_sha": "679fa0af44838515228f799166d41e92bc0de316"
   }
 }

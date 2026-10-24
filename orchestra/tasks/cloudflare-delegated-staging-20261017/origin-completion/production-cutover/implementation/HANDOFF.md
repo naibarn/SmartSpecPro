@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `32`
-- Updated (UTC): `2026-10-24T16:56:19.836492+00:00`
+- State generation: `33`
+- Updated (UTC): `2026-10-24T16:58:18.351168+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `db36dcbad2befa78635c2586816f9aeb6e3f1b43`
+- Latest recorded merged Main SHA: `679fa0af44838515228f799166d41e92bc0de316`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
-- Next action: Integrate the canonical Production Queue job recovery/status UI. Then continue Production Hyperdrive/Tunnel and Worker runtime binding preparation from the authenticated production backend/provider receipts; do not switch smartaihub.app traffic without the existing canary grant.
+- Next action: On the authenticated Production Admin page, the latest canonical Queue job is now recoverable after reload with attempt and lease telemetry. Verify job eb327c3c-44f5-462f-98f2-0e40065e6caa status/receipt, then provision/verify Production Hyperdrive, Node/Python Container bindings, activation and application ingress before the existing canary-authorized route cutover.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Production inventory UI is integrated and serving Linux release generation 72 at db36dcbad2befa78635c2586816f9aeb6e3f1b43; login/settings/health endpoints return 200. Continue exact production resource provisioning and runtime composition. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | User reports Production token permissions have been updated; actual Queue write still needs the canonical Admin job receipt. Keep current independent Production deployment grant/canary authority intact; do not bypass it. |
-| section-03-production-runtime-composition | checkpointed | — | — | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Integrate the canonical Production Queue job recovery/status UI. Then continue Production Hyperdrive/Tunnel and Worker runtime binding preparation from the authenticated production backend/provider receipts; do not switch smartaihub.app traffic without the existing canary grant. |
+| section-03-production-runtime-composition | checkpointed | — | — | 679fa0af44838515228f799166d41e92bc0de316 | 679fa0af44838515228f799166d41e92bc0de316 | On the authenticated Production Admin page, the latest canonical Queue job is now recoverable after reload with attempt and lease telemetry. Verify job eb327c3c-44f5-462f-98f2-0e40065e6caa status/receipt, then provision/verify Production Hyperdrive, Node/Python Container bindings, activation and application ingress before the existing canary-authorized route cutover. |
 | section-04-production-readiness-and-cutover | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)
