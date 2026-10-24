@@ -169,8 +169,9 @@ export async function withCloudflareDeploymentCredential<T>(db: DrizzleDB, input
 }, operation: (token: string) => Promise<T>): Promise<{ status: DeploymentCredentialState; value?: T }> {
   if (input.identity.provider !== "cloudflare" || input.credentialRef !== deploymentCredentialRef(input.identity))
     return { status: "PERMISSION_DENIED" };
+  let row: { status: string; encryptedSecret: string } | undefined;
   try {
-    const [row] = await db.select({ status: providerDeploymentCredentials.status, encryptedSecret: providerDeploymentCredentials.encryptedSecret })
+    [row] = await db.select({ status: providerDeploymentCredentials.status, encryptedSecret: providerDeploymentCredentials.encryptedSecret })
       .from(providerDeploymentCredentials).where(and(
         eq(providerDeploymentCredentials.tenantId, input.identity.tenantId),
         eq(providerDeploymentCredentials.projectId, input.identity.projectId),
@@ -178,16 +179,19 @@ export async function withCloudflareDeploymentCredential<T>(db: DrizzleDB, input
         eq(providerDeploymentCredentials.provider, input.identity.provider),
         eq(providerDeploymentCredentials.credentialRef, input.credentialRef),
       )).limit(1);
-    if (!row) return { status: "NOT_CONFIGURED" };
-    if (row.status === "REVOKED") return { status: "REVOKED" };
-    if (row.status !== "CONFIGURED" || !row.encryptedSecret) return { status: "UNAVAILABLE" };
-    let token: string;
-    try { token = decrypt(row.encryptedSecret); } catch { return { status: "UNAVAILABLE" }; }
-    if (!token) return { status: "UNAVAILABLE" };
-    return { status: "CONFIGURED", value: await operation(token) };
   } catch {
     return { status: "UNAVAILABLE" };
   }
+
+  if (!row) return { status: "NOT_CONFIGURED" };
+  if (row.status === "REVOKED") return { status: "REVOKED" };
+  if (row.status !== "CONFIGURED" || !row.encryptedSecret) return { status: "UNAVAILABLE" };
+  let token: string;
+  try { token = decrypt(row.encryptedSecret); } catch { return { status: "UNAVAILABLE" }; }
+  if (!token) return { status: "UNAVAILABLE" };
+  // Provider failures must reach the job classifier. Treating exceptions from
+  // the callback as credential failures hides actionable HTTP/API diagnostics.
+  return { status: "CONFIGURED", value: await operation(token) };
 }
 
 export async function saveCloudflareDeploymentCredential(db: DrizzleDB, input: {

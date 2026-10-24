@@ -37,6 +37,19 @@ describe("tenant-bound Cloudflare deployment credentials", () => {
     expect(operation).toHaveBeenCalledTimes(1);
   });
 
+  it("preserves provider errors so the job reports the real API failure", async () => {
+    process.env.LLM_ENCRYPTION_KEY = key;
+    const providerError = new Error("CLOUDFLARE_QUEUE_HTTP_403");
+    const operation = vi.fn(async () => { throw providerError; });
+
+    await expect(withCloudflareDeploymentCredential(
+      dbFor({ status: "CONFIGURED", encryptedSecret: encrypt("secret-token", key) }),
+      { identity, credentialRef: ref },
+      operation,
+    )).rejects.toBe(providerError);
+    expect(operation).toHaveBeenCalledOnce();
+  });
+
   it("distinguishes missing, revoked, and undecryptable credentials without exposing secrets", async () => {
     process.env.LLM_ENCRYPTION_KEY = key;
     await expect(getCloudflareDeploymentCredentialState(dbFor(), { identity, credentialRef: ref }))
