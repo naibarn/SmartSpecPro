@@ -18,6 +18,7 @@ import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
 const ENVIRONMENTS = ["preview", "staging", "production"] as const;
+const CLOUDFLARE_PRODUCTION_WORKER_ID = "smartspec-cloudflare-runtime";
 
 type DeploymentTarget = {
   id: string;
@@ -268,6 +269,10 @@ export default function AdminDeploymentTargets() {
     scope,
     { enabled: validScope },
   );
+  const stagingTargetsQuery = trpc.infrastructure.listProviderDeploymentTargets.useQuery(
+    { tenantId, projectId, environment: "staging" },
+    { enabled: validTenantId && Boolean(projectId) && environment === "production" },
+  );
   const stagingDeployPreflight = trpc.infrastructure.getCloudflareStagingDeployPreflight.useQuery(
     { tenantId, projectId, environment: "staging" },
     { enabled: validScope && environment === "staging" },
@@ -282,6 +287,12 @@ export default function AdminDeploymentTargets() {
   );
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
+  const stagingCloudflareTargets = ((stagingTargetsQuery.data ?? []) as DeploymentTarget[])
+    .filter(target => target.provider === "cloudflare" && target.enabled);
+  const knownProductionAccountRefs = [...new Set(stagingCloudflareTargets
+    .map(target => target.accountRef?.trim())
+    .filter((value): value is string => Boolean(value)))];
+  const inferredProductionAccountRef = knownProductionAccountRefs.length === 1 ? knownProductionAccountRefs[0] : "";
   const currentStagingConfigRef = cloudflareTargets.find(target => target.enabled)?.runtimePolicy ?? "";
   const stagingOriginConfiguration = trpc.infrastructure.getCloudflareOriginConfiguration.useQuery({
     tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: currentStagingConfigRef,
@@ -417,9 +428,49 @@ export default function AdminDeploymentTargets() {
       </VStack>
 
       {validScope && environment === "production" ? <p role="status">{text(
-        "Production target metadata only records the exact deployment destination. It does not create a deployment grant or enable a Worker, Container, DNS record, route, or production traffic. Those actions remain behind their separate production approval and rollback controls.",
-        "metadata ของ production target ใช้บันทึกปลายทาง deployment ที่แน่นอนเท่านั้น ไม่ได้สร้าง deployment grant หรือเปิด Worker, Container, DNS record, route หรือ production traffic การดำเนินการเหล่านั้นยังต้องผ่าน approval และ rollback control ของ production แยกต่างหาก",
+        "Production preparation will reuse the verified Staging account when available and the repository’s fixed Worker name. Confirming creates only the destination record; it does not deploy, change DNS/routes, or move traffic. The production credential and independent cutover approval remain separate safeguards.",
+        "ระบบจะดึง Cloudflare account จาก Staging ที่บันทึกไว้ และใช้ชื่อ Worker มาตรฐานของระบบ การยืนยันด้านล่างสร้างเฉพาะข้อมูลปลายทาง ยังไม่ deploy ไม่เปลี่ยน DNS/routes และไม่ย้าย traffic ส่วน credential สำหรับ Production และการอนุมัติ cutover ยังคงแยกต่างหาก",
       )}</p> : null}
+      {validScope && environment === "production" && !targetsQuery.isLoading && !targetsQuery.isError && cloudflareTargets.length === 0 ? (
+        <VStack as="section" gap={2}>
+          <h3>{text("Prepare the Production destination", "เตรียมปลายทาง Production")}</h3>
+          <p>{text(
+            "The system has filled the values it can verify. Review the exact destination, then confirm once to save it. No secret is copied from Staging.",
+            "ระบบเติมค่าที่ตรวจสอบได้ให้แล้ว ตรวจปลายทางด้านล่างและกดยืนยันหนึ่งครั้งเพื่อบันทึก ระบบจะไม่คัดลอก secret จาก Staging",
+          )}</p>
+          <VStack gap={1}>
+            <p>{text("Deployment target", "ปลายทาง deployment")}: <code>{CLOUDFLARE_PRODUCTION_WORKER_ID}</code></p>
+            <p>{text("Cloudflare account", "Cloudflare account")}: {stagingTargetsQuery.isLoading ? text("Reading verified Staging target…", "กำลังอ่าน target Staging…")
+              : stagingTargetsQuery.isError ? text("Could not read Staging account details", "อ่านข้อมูล account จาก Staging ไม่สำเร็จ")
+                : inferredProductionAccountRef ? <code>{inferredProductionAccountRef}</code>
+                  : text("Not available from the selected Staging target", "ไม่พบจาก Staging target ที่เลือก")}</p>
+            <p>{text("Worker", "Worker")}: <code>{CLOUDFLARE_PRODUCTION_WORKER_ID}</code></p>
+            <p>{text("Container", "Container")}: {text("Not required for this Worker target", "ไม่ต้องใช้สำหรับ Worker target นี้")}</p>
+          </VStack>
+          {!inferredProductionAccountRef && !stagingTargetsQuery.isLoading ? <p role="alert">{text(
+            "The account ID could not be verified from this project’s enabled Staging target. Select the correct tenant/project or configure its Staging target first; the system will not guess an account ID.",
+            "ยืนยัน account ID จาก Staging target ที่เปิดใช้งานของ project นี้ไม่ได้ กรุณาเลือก tenant/project ให้ถูกต้อง หรือบันทึก Staging target ก่อน ระบบจะไม่เดา account ID",
+          )}</p> : null}
+          <p>{text(
+            "After this record is saved, the next required setup is a Production-scoped Cloudflare API token. The existing credential screen will show whether it is configured. Deployment and traffic cutover still require their production grant and verified rollback/canary checks.",
+            "หลังบันทึกแล้ว ขั้นถัดไปคือ token Cloudflare ที่จำกัด scope สำหรับ Production โดยเฉพาะ หน้าจอ credential เดิมจะแสดงสถานะให้ การ deploy และย้าย traffic ยังต้องมี production grant พร้อมผ่าน rollback/canary checks",
+          )}</p>
+          <Button type="button" disabled={!canCreate || !inferredProductionAccountRef || stagingTargetsQuery.isLoading || stagingTargetsQuery.isError || createMutation.isPending}
+            onClick={() => createMutation.mutate({
+              ...scope,
+              provider: "cloudflare",
+              deploymentTargetId: CLOUDFLARE_PRODUCTION_WORKER_ID,
+              accountRef: inferredProductionAccountRef,
+              workerRef: CLOUDFLARE_PRODUCTION_WORKER_ID,
+              containerApplicationRef: null,
+              provenance: `Production destination confirmed by admin ${new Date().toISOString()}`,
+            })}>
+            {createMutation.isPending ? text("Saving Production destination…", "กำลังบันทึกปลายทาง Production…")
+              : text("Confirm and prepare Production destination", "ยืนยันและเตรียมปลายทาง Production")}
+          </Button>
+          {createMutation.error ? <p role="alert">{createMutation.error.message}</p> : null}
+        </VStack>
+      ) : null}
       {validScope && environment === "production" ? (
         <VStack as="section" gap={2}>
           <HStack gap={2} wrap="wrap">
@@ -436,15 +487,20 @@ export default function AdminDeploymentTargets() {
             const otherUnconfigured = runtime.unconfigured.filter(binding => !runtime.missing.includes(binding));
             return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare production Worker readiness", "ความพร้อมของ Cloudflare production Worker ที่กำลังทำงาน")}>
               <HStack gap={2} wrap="wrap">
-                <Badge variant={ready ? "default" : "destructive"}>{runtime.status}</Badge>
-                {runtime.activation ? <Badge variant="outline">activation: {runtime.activation}</Badge> : null}
-                {runtime.transport ? <Badge variant="outline">transport: {runtime.transport}</Badge> : null}
+                <Badge variant={ready ? "default" : "destructive"}>{ready ? text("Ready", "พร้อมใช้งาน") : text("Not ready for migration", "ยังไม่พร้อมย้ายระบบ")}</Badge>
+                {runtime.activation ? <Badge variant="outline">{text("Worker activation", "การเปิด Worker")}: {runtime.activation === "disabled" ? text("off", "ปิดอยู่") : runtime.activation}</Badge> : null}
+                {runtime.transport ? <Badge variant="outline">{text("Job transport", "ช่องทางงาน")}: {runtime.transport}</Badge> : null}
                 {runtime.jobHandlerConfigured !== undefined ? <Badge variant="outline">{text("Job handler", "ตัวจัดการงาน")}: {runtime.jobHandlerConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
                 {runtime.controlPlaneConfigured !== undefined ? <Badge variant="outline">{text("Control plane", "control plane")}: {runtime.controlPlaneConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
               </HStack>
-              {runtime.missing.length > 0 ? <p>{text("Bindings blocking the selected job transport", "binding ที่ขาดและบล็อก job transport ที่เลือก")}: <code>{runtime.missing.join(", ")}</code></p> : null}
-              {otherUnconfigured.length > 0 ? <p>{text("Other bindings are not configured and are outside the selected job transport; add them only for workloads that use those capabilities", "binding อื่นที่ยังไม่ได้ตั้งค่าอยู่นอก job transport ที่เลือก ให้เพิ่มเฉพาะ workload ที่ใช้ความสามารถเหล่านั้น")}: <code>{otherUnconfigured.join(", ")}</code></p> : null}
-              {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
+              {runtime.missing.length > 0 ? <VStack gap={1}>
+                <p>{text("Required before the Production Worker can accept jobs:", "สิ่งที่ต้องตั้งค่าก่อน Production Worker จะรับงานได้:")}</p>
+                {runtime.missing.includes("HYPERDRIVE") ? <p>• {text("Connect the existing PostgreSQL database through Cloudflare Hyperdrive.", "เชื่อม PostgreSQL เครื่องเดิมผ่าน Cloudflare Hyperdrive")}</p> : null}
+                {runtime.missing.includes("JOB_QUEUE") ? <p>• {text("Bind the production Cloudflare Queue used by background jobs.", "ผูก Cloudflare Queue สำหรับงานเบื้องหลังของ Production")}</p> : null}
+                {runtime.missing.some(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)) ? <p>{text("Additional required runtime bindings", "binding runtime ที่จำเป็นเพิ่มเติม")}: <code>{runtime.missing.filter(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)).join(", ")}</code></p> : null}
+              </VStack> : null}
+              {otherUnconfigured.length > 0 ? <details><summary>{text("Optional capabilities not enabled", "ความสามารถเสริมที่ยังไม่ได้เปิด")}</summary><p>{text("These do not block the selected job transport. Add them only if the production workload needs them:", "รายการเหล่านี้ไม่บล็อกช่องทางงานที่เลือก ให้เพิ่มเมื่อ workload ต้องใช้เท่านั้น")}: <code>{otherUnconfigured.join(", ")}</code></p></details> : null}
+              {runtime.reason ? <details><summary>{text("Technical diagnostics", "รายละเอียดสำหรับทีมเทคนิค")}</summary><code>{runtime.status} · {runtime.reason} · {runtime.missing.join(", ")}</code></details> : null}
               {runtime.transport === "all" ? <p>{text("No production job transport has been selected. Containers should be provisioned only for workloads that require isolated application execution.", "ยังไม่ได้เลือก job transport สำหรับ production ให้ provision Container เฉพาะ workload ที่ต้องแยก application runtime")}</p> : null}
               <p>{text("This checks the fixed production Worker endpoint only. A healthy response does not prove the approved artifact, retained-database access, authentication flows, rollback, or production traffic cutover.", "การตรวจนี้ดูเฉพาะ production Worker endpoint ที่กำหนดไว้ ผล healthy ไม่ได้ยืนยัน artifact ที่อนุมัติ การเข้าถึงฐานข้อมูลเดิม ระบบยืนยันตัวตน rollback หรือการย้าย production traffic")}</p>
               <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(runtime.checkedAt).toLocaleString()}</p>
@@ -457,7 +513,9 @@ export default function AdminDeploymentTargets() {
       {validScope && targetsQuery.isError ? <p role="alert">{text("Target registry could not be read. The current authority state is unknown; exact-admin access may be required.", "อ่าน target registry ไม่สำเร็จ สถานะ authority ยังไม่ทราบ และอาจต้องใช้ exact-admin")}</p> : null}
       {validScope && targetsQuery.isLoading ? <p role="status">{text("Reading target registry…", "กำลังอ่าน target registry…")}</p> : null}
       {validScope && !targetsQuery.isLoading && !targetsQuery.isError && isConflict ? <p role="alert">TARGET_AUTHORITY_CONFLICT: {text("multiple enabled Cloudflare targets exist for this scope. Resolve the conflict before deployment.", "พบ Cloudflare target ที่เปิดใช้งานหลายรายการใน scope นี้ ต้องแก้ conflict ก่อน deploy")}</p> : null}
-      {validScope && !targetsQuery.isLoading && !targetsQuery.isError && cloudflareTargets.length === 0 ? <p role="status">NOT_CONFIGURED · WAITING_TARGET_AUTHORITY: {text("No Cloudflare target is registered. An owner must explicitly approve and record a staging or preview target.", "ยังไม่มี Cloudflare target ที่ลงทะเบียน เจ้าของระบบต้องอนุมัติและบันทึก target สำหรับ staging หรือ preview อย่างชัดเจน")}</p> : null}
+      {validScope && !targetsQuery.isLoading && !targetsQuery.isError && cloudflareTargets.length === 0 ? <p role="status">NOT_CONFIGURED: {environment === "production"
+        ? text("The Production destination has not been prepared yet. Review and confirm the prepared destination above.", "ยังไม่ได้เตรียมปลายทาง Production ตรวจข้อมูลที่ระบบเตรียมไว้และกดยืนยันด้านบน")
+        : text("No Cloudflare target is registered. An owner must explicitly approve and record a staging or preview target.", "ยังไม่มี Cloudflare target ที่ลงทะเบียน เจ้าของระบบต้องอนุมัติและบันทึก target สำหรับ staging หรือ preview อย่างชัดเจน")}</p> : null}
       {validScope && !targetsQuery.isLoading && !targetsQuery.isError && cloudflareTargets.length > 0 && enabledCloudflareTargets.length === 0 ? <p role="status">WAITING_TARGET_AUTHORITY: {text("Only disabled Cloudflare targets are recorded. An exact admin must review and explicitly enable one.", "มีเฉพาะ Cloudflare target ที่ปิดอยู่ exact admin ต้องตรวจและเปิดใช้งานอย่างชัดเจน")}</p> : null}
 
       {targets.length > 0 ? (
@@ -648,7 +706,7 @@ export default function AdminDeploymentTargets() {
         </VStack>
       ) : null}
 
-      {validScope ? (
+      {validScope && environment !== "production" ? (
         <details>
           <summary>{text("Record an explicitly approved Cloudflare target", "บันทึก Cloudflare target ที่ได้รับอนุมัติแล้ว")}</summary>
           <VStack as="form" gap={2} onSubmit={event => {

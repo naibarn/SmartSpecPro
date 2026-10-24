@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   targets: [] as Array<Record<string, unknown>>,
+  stagingTargets: [] as Array<Record<string, unknown>>,
   targetsError: false,
 }));
 
@@ -51,7 +52,7 @@ vi.mock("@/lib/trpc", () => ({
     ] }) } },
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
-      listProviderDeploymentTargets: { useQuery: () => ({ data: mocks.targets, isLoading: false, isError: mocks.targetsError, isFetching: false }) },
+      listProviderDeploymentTargets: { useQuery: (input: { environment: string }) => ({ data: input.environment === "production" ? mocks.targets : (mocks.stagingTargets.length ? mocks.stagingTargets : mocks.targets), isLoading: false, isError: mocks.targetsError, isFetching: false }) },
       getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: mocks.stagingPreflight, isLoading: false, isError: false, refetch: mocks.refetchStagingPreflight }) },
       getCloudflareOriginConfiguration: { useQuery: () => ({ data: mocks.originConfiguration, isLoading: false, isError: mocks.originConfigurationError, refetch: mocks.refetchStagingOriginConfiguration }) },
       getCloudflareStagingRuntimeReadiness: { useQuery: () => ({ data: mocks.stagingRuntime, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchStagingRuntimeReadiness }) },
@@ -132,6 +133,7 @@ describe("AdminDeploymentTargets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.targets = [];
+    mocks.stagingTargets = [];
     mocks.targetsError = false;
     mocks.activationError = null;
     mocks.activationSucceeds = false;
@@ -480,25 +482,25 @@ describe("AdminDeploymentTargets", () => {
     }));
   });
 
-  it("allows exact production target metadata without exposing deploy or traffic activation", async () => {
+  it("prepares the production target from verified Staging metadata with one explicit confirmation", async () => {
     const user = userEvent.setup();
     const productionAccountRef = "a".repeat(32);
+    mocks.stagingTargets = [{ ...stagingActivationTarget, accountRef: productionAccountRef }];
     render(<AdminDeploymentTargets />);
     await chooseProductionScope(user);
 
-    expect(screen.getByText(/Production target metadata only records the exact deployment destination/i)).toBeInTheDocument();
-    expect(screen.getByText(/does not create a deployment grant or enable a Worker/i)).toBeInTheDocument();
-    expect(await screen.findByText("NOT_READY")).toBeInTheDocument();
-    expect(screen.getByText(/HYPERDRIVE, JOB_QUEUE/)).toBeInTheDocument();
+    expect(screen.getByText(/Production preparation will reuse the verified Staging account/i)).toBeInTheDocument();
+    expect(screen.getByText(/creates only the destination record/i)).toBeInTheDocument();
+    expect(await screen.findByText("Not ready for migration")).toBeInTheDocument();
+    expect(screen.getByText(/Connect the existing PostgreSQL database through Cloudflare Hyperdrive/)).toBeInTheDocument();
+    expect(screen.getByText(/Bind the production Cloudflare Queue used by background jobs/)).toBeInTheDocument();
     expect(screen.getByText(/JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX/)).toBeInTheDocument();
     expect(screen.getByText(/does not prove the approved artifact, retained-database access/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /deploy|activate|change traffic/i })).not.toBeInTheDocument();
-
-    await user.click(screen.getByText("Record an explicitly approved Cloudflare target"));
-    await user.type(screen.getByLabelText("Deployment target identity"), "smartspec-cloudflare-runtime");
-    await user.type(screen.getByLabelText("Cloudflare account ID (this target only)"), productionAccountRef);
-    await user.type(screen.getByLabelText("Approval or change provenance"), "owner-approved production target record");
-    await user.click(screen.getByRole("button", { name: "Record approved target" }));
+    expect(screen.getAllByText("smartspec-cloudflare-runtime")).toHaveLength(2);
+    expect(screen.getByText(productionAccountRef)).toBeInTheDocument();
+    expect(screen.getByText(/No secret is copied from Staging/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm and prepare Production destination" }));
 
     await waitFor(() => expect(mocks.create).toHaveBeenCalledWith({
       tenantId,
@@ -507,10 +509,20 @@ describe("AdminDeploymentTargets", () => {
       provider: "cloudflare",
       deploymentTargetId: "smartspec-cloudflare-runtime",
       accountRef: productionAccountRef,
-      workerRef: null,
+      workerRef: "smartspec-cloudflare-runtime",
       containerApplicationRef: null,
-      provenance: "owner-approved production target record",
+      provenance: expect.stringMatching(/^Production destination confirmed by admin /),
     }));
+  });
+
+  it("does not guess a production account when no enabled Staging target can establish it", async () => {
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/will not guess an account ID/i);
+    expect(screen.getByRole("button", { name: "Confirm and prepare Production destination" })).toBeDisabled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("surfaces an enabled-target conflict and blocks creation", async () => {
