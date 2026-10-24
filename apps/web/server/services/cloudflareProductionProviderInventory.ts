@@ -70,11 +70,12 @@ export async function probeCloudflareProductionProviderInventory(input: {
     ]);
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
+    const zoneId = typeof zone?.id === "string" ? zone.id : undefined;
     const [routes, queueDetails, hyperdriveDetails, zoneDns, mtlsCertificates, accessApps, serviceTokens] = await Promise.all([
-      zone?.id ? get(token, `/zones/${encodeURIComponent(zone.id)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
+      zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
       Array.isArray(queues.result) ? queues.result as Array<{ queue_name?: unknown }> : [],
       Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{ name?: unknown }> : [],
-      zone?.id ? get(token, `/zones/${encodeURIComponent(zone.id)}/dns_records?name=db-prod.smartaihub.app&per_page=100`, fetchImpl) : Promise.resolve(null),
+      zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/dns_records?name=db-prod.smartaihub.app&per_page=100`, fetchImpl) : Promise.resolve(null),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/mtls_certificates?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/apps?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/service_tokens?per_page=100`, fetchImpl),

@@ -669,6 +669,14 @@ export default function AdminDeploymentTargets() {
           {productionProviderInventory.isError ? <p role="alert">{text("Cloudflare resource inventory could not be read. No provider changes were made.", "อ่าน inventory ของ Cloudflare ไม่สำเร็จ และไม่มีการเปลี่ยนแปลง resource")}</p> : null}
           {productionProviderInventory.data ? (() => {
             const inventory = productionProviderInventory.data;
+            if (!("accessChecks" in inventory)) {
+              const reason = inventory.status === "TARGET_NOT_CONFIGURED"
+                ? text("Production deployment target is not configured.", "ยังไม่ได้ตั้งค่า deployment target ของ Production")
+                : inventory.status === "CREDENTIAL_NOT_CONFIGURED"
+                  ? text("The scoped Production Cloudflare credential is not configured.", "ยังไม่ได้ตั้งค่า credential ของ Cloudflare สำหรับ Production")
+                  : text("The Production Cloudflare credential could not be used.", "ไม่สามารถใช้ credential ของ Cloudflare สำหรับ Production ได้");
+              return <VStack gap={1} role="alert"><p>{reason}</p></VStack>;
+            }
             if (inventory.status !== "CHECKED") {
               const checkLabels: Record<string, { en: string; th: string; permission: string }> = {
                 queues: { en: "Queue inventory", th: "รายการ Queue", permission: "Account → Queues → Read" },
@@ -689,7 +697,7 @@ export default function AdminDeploymentTargets() {
               )}</p>
               <p>{text("Read-only Cloudflare API results (HTTP 200 means readable only):", "ผล API ของ Cloudflare แบบอ่านอย่างเดียว (HTTP 200 ยืนยันเฉพาะสิทธิ์อ่าน):")}</p>
               <VStack as="ul" gap={1}>
-                {Object.entries(inventory.accessChecks).map(([key, check]) => <li key={key}>
+                {(Object.entries(inventory.accessChecks) as Array<[string, { httpStatus: number | null; complete: boolean }]>).map(([key, check]) => <li key={key}>
                   <strong>{text(checkLabels[key]?.en ?? key, checkLabels[key]?.th ?? key)}</strong>: {check.httpStatus === null ? text("not checked", "ยังไม่ได้ตรวจ") : `HTTP ${check.httpStatus}`}
                   {check.complete ? text(" · readable", " · อ่านได้") : text(" · incomplete or denied", " · ตรวจไม่ครบหรือถูกปฏิเสธ")}
                   {!check.complete && checkLabels[key] ? <> · {text("required read scope", "สิทธิ์อ่านที่ต้องมี")}: <code>{checkLabels[key].permission}</code></> : null}
