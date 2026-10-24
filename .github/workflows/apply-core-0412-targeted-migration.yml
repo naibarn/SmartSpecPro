@@ -86,8 +86,8 @@ jobs:
         working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
-          DATABASE_TARGET_ID: "smartaihub:production:sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f"
-          MIGRATION_EXPECTED_DATABASE_FINGERPRINT: sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f
+          DATABASE_TARGET_ID: "smartaihub:production:sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83"
+          MIGRATION_EXPECTED_DATABASE_FINGERPRINT: sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83
           MIGRATION_EXPECTED_PENDING_TAGS: 0412_active_shared_schema_contract_repair
           MIGRATION_AUTHORIZATION_REF: ${{ inputs.authorization_reference }}
           MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:core-0412
