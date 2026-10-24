@@ -31,6 +31,7 @@ from app.models.media_task import MediaTask, MediaType, TaskStatus
 from app.models.user import User
 from app.services.image_prompt_safety import validate_image_prompt_safety
 from app.services.media_callback_service import (
+    _normalize_kie_callback_payload,
     get_latest_callback_event_by_provider_task_id,
     process_kie_callback_payload,
 )
@@ -2048,25 +2049,11 @@ async def kie_ai_callback(
                 )
 
         # Legacy fallback path (feature-flagged off durable pipeline).
-        status_str = str(body.get("status", "")).lower()
-        data = body.get("data", {}) if isinstance(body.get("data"), dict) else {}
-        output = body.get("output", {})
-        error = body.get("error")
-
-        if not status_str:
-            success_flag = data.get("successFlag")
-            if success_flag in (1, True):
-                status_str = "completed"
-            elif success_flag in (0, False):
-                status_str = "failed"
-            elif data:
-                status_str = "processing"
-
-        if (not output or not isinstance(output, dict)) and isinstance(data.get("response"), dict):
-            output = data.get("response")
-
-        if not error and isinstance(data, dict):
-            error = data.get("errorMessage") or data.get("msg")
+        normalized = _normalize_kie_callback_payload(body)
+        status_str = normalized["status_raw"]
+        output = normalized["output"]
+        error = normalized["error"]
+        task_id = task_id or normalized["provider_task_id"]
 
         if not task_id:
             logger.warning("kie_ai_callback_missing_task_id", body=body)

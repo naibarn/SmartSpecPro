@@ -211,14 +211,27 @@ def _normalize_kie_callback_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(data, dict):
         data = {}
 
-    provider_task_id = payload.get("taskId") or payload.get("task_id")
-    status_raw = str(payload.get("status", "")).strip().lower()
+    provider_task_id = (
+        payload.get("taskId")
+        or payload.get("task_id")
+        or data.get("taskId")
+        or data.get("task_id")
+    )
+    status_raw = str(payload.get("status") or data.get("state") or "").strip().lower()
 
     if not status_raw:
         success_flag = data.get("successFlag")
-        if success_flag in (1, True):
+        if success_flag in (1, True, "1"):
             status_raw = "completed"
-        elif success_flag in (0, False):
+        elif success_flag in (2, 3, "2", "3"):
+            status_raw = "failed"
+        elif success_flag in (0, False, "0") and (
+            data.get("errorCode") or data.get("errorMessage") or data.get("failMsg")
+        ):
+            status_raw = "failed"
+        elif success_flag in (0, False, "0"):
+            status_raw = "processing"
+        elif str(payload.get("code", "")).strip() == "501":
             status_raw = "failed"
         elif data:
             status_raw = "processing"
@@ -226,8 +239,24 @@ def _normalize_kie_callback_payload(payload: dict[str, Any]) -> dict[str, Any]:
     output = payload.get("output", {})
     if (not isinstance(output, dict) or not output) and isinstance(data.get("response"), dict):
         output = data.get("response")
+    if (not isinstance(output, dict) or not output) and data.get("resultJson"):
+        result_json = data["resultJson"]
+        if isinstance(result_json, str):
+            try:
+                result_json = json.loads(result_json)
+            except (TypeError, ValueError):
+                result_json = {}
+        if isinstance(result_json, dict):
+            output = result_json
 
-    error = payload.get("error") or data.get("errorMessage") or data.get("msg")
+    error = (
+        payload.get("error")
+        or data.get("errorMessage")
+        or data.get("failMsg")
+        or data.get("failCode")
+        or data.get("msg")
+        or (payload.get("msg") if status_raw in {"failed", "fail", "error"} else None)
+    )
 
     normalized_status = "processing"
     if status_raw in {"completed", "complete", "success", "done", "finished", "finish"}:
