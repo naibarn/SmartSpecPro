@@ -199,7 +199,9 @@ def canonical_tip(workspace: Path, remote: str, ref: str) -> str:
     return rows[0]
 
 
-def validate_build_result(path: Path) -> tuple[dict[str, Any], Path, Path]:
+def validate_build_result(
+    path: Path, *, verify_artifact_contents: bool = True
+) -> tuple[dict[str, Any], Path, Path]:
     try:
         record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
@@ -263,23 +265,24 @@ def validate_build_result(path: Path) -> tuple[dict[str, Any], Path, Path]:
     root = Path(artifact["artifact_path"]).resolve()
     if root != (workspace / "apps/web/dist").resolve() or not root.is_dir():
         raise ReleaseError("Canonical artifact path is outside the pinned source workspace")
-    actual = build_artifact_manifest(root)
-    if actual != {key: artifact.get(key) for key in actual}:
-        raise ReleaseError("Canonical build artifact digest does not match the ledger")
     backend = root / "backend-runtime"
     public = root / "public"
-    if not (backend / "server/_core/index.ts").is_file() or not (public / "index.html").is_file():
-        raise ReleaseError("Build artifact is missing frontend or backend runtime files")
-    metadata_path = backend / "release-build.json"
-    try:
-        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as exc:
-        raise ReleaseError("Backend artifact source metadata is missing") from exc
-    if any(metadata.get(key) != source_sha for key in ("sourceSha", "frontendSourceSha", "backendSourceSha")):
-        raise ReleaseError("Frontend and backend artifact revisions are incompatible")
-    if not (backend / "node_modules/tsx/package.json").is_file():
-        raise ReleaseError("Backend artifact does not contain its production TypeScript runtime")
-    validate_procedure_pair(public, backend)
+    if verify_artifact_contents:
+        actual = build_artifact_manifest(root)
+        if actual != {key: artifact.get(key) for key in actual}:
+            raise ReleaseError("Canonical build artifact digest does not match the ledger")
+        if not (backend / "server/_core/index.ts").is_file() or not (public / "index.html").is_file():
+            raise ReleaseError("Build artifact is missing frontend or backend runtime files")
+        metadata_path = backend / "release-build.json"
+        try:
+            metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ReleaseError("Backend artifact source metadata is missing") from exc
+        if any(metadata.get(key) != source_sha for key in ("sourceSha", "frontendSourceSha", "backendSourceSha")):
+            raise ReleaseError("Frontend and backend artifact revisions are incompatible")
+        if not (backend / "node_modules/tsx/package.json").is_file():
+            raise ReleaseError("Backend artifact does not contain its production TypeScript runtime")
+        validate_procedure_pair(public, backend)
     return record, root, workspace
 
 
@@ -363,7 +366,19 @@ def validate_published_artifact(artifact_path: Path) -> dict[str, Any]:
     expected_id = f"smartspec-web-{source_sha}-{str(manifest.get('releaseArtifactDigest', ''))[7:19]}"
     if manifest.get("releaseId") != expected_id:
         raise ReleaseError("Release artifact ID is not bound to its source revision and digest")
-    validate_procedure_pair(artifact_path / "public", artifact_path / "backend-runtime")
+    backend = artifact_path / "backend-runtime"
+    public = artifact_path / "public"
+    if not (backend / "server/_core/index.ts").is_file() or not (public / "index.html").is_file():
+        raise ReleaseError("Published artifact is missing frontend or backend runtime files")
+    try:
+        metadata = json.loads((backend / "release-build.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ReleaseError("Published backend source metadata is missing") from exc
+    if any(metadata.get(key) != source_sha for key in ("sourceSha", "frontendSourceSha", "backendSourceSha")):
+        raise ReleaseError("Published frontend and backend revisions do not match")
+    if not (backend / "node_modules/tsx/package.json").is_file():
+        raise ReleaseError("Published backend is missing its production TypeScript runtime")
+    validate_procedure_pair(public, backend)
     return manifest
 
 
@@ -855,14 +870,19 @@ def promote_artifact(
         _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
         raise ReleaseError("Stale source rejected: release SHA is not current origin/main")
     build_path = Path(manifest["canonicalBuildResult"])
-    build, _, workspace = validate_build_result(build_path)
+    build, _, workspace = validate_build_result(
+        build_path, verify_artifact_contents=False
+    )
     if build.get("source_revision") != source_sha:
         raise ReleaseError("Release manifest does not match canonical build evidence")
     if build["artifact"].get("artifact_digest") != manifest.get("canonicalBuildArtifactDigest"):
         raise ReleaseError("Release manifest does not match the canonical artifact ledger digest")
-    canonical_root = Path(build["artifact"]["artifact_path"]).resolve()
-    if artifact_manifest(canonical_root) != artifact_manifest(artifact_path, excluded={"release-manifest.json"}):
-        raise ReleaseError("Published release artifact differs from the canonical build artifact")
+    # `prepare_artifact` validated the complete canonical build tree and bound
+    # its digest into this immutable artifact's release manifest before the
+    # copy was published. The build workspace can later lose temporary pnpm
+    # virtual-store targets, so promotion verifies the published artifact's
+    # own digest plus the pinned build receipt above instead of re-reading that
+    # mutable workspace tree here.
 
     release_id = manifest["releaseId"]
     release_root.mkdir(parents=True, exist_ok=True)
