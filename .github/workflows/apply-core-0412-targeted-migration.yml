@@ -1,0 +1,97 @@
+name: Core Migration 0412 (Production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Acknowledgement only; the configured Database Owner team must approve the production environment deployment."
+        required: true
+        type: string
+      authorization_reference:
+        description: "Reference to the Database Owner decision recorded with the migration receipt."
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: core-production-migration-0412
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.confirm == 'apply-core-0412-to-confirmed-production-database' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: production
+    env:
+      DEPLOY_ENVIRONMENT: production
+
+    steps:
+      - name: Checkout canonical main source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Verify canonical source and exact migration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test -s apps/web/drizzle/0412_active_shared_schema_contract_repair.sql
+          test -s apps/web/drizzle/meta/_journal.json
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Install web migration tooling
+        run: pnpm install --frozen-lockfile --filter @smartspec/web...
+
+      - name: Verify Database Owner environment protection
+        working-directory: apps/web
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SPEC224_DATABASE_OWNER_TEAM_ID: ${{ vars.SPEC224_DATABASE_OWNER_TEAM_ID }}
+        run: |
+          set -Eeuo pipefail
+          if [[ ! "$SPEC224_DATABASE_OWNER_TEAM_ID" =~ ^[0-9]+$ ]]; then
+            echo "SPEC224_DATABASE_OWNER_TEAM_ID is not configured; refusing production migration."
+            exit 1
+          fi
+          environment_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production")"
+          branch_policies_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production/deployment-branch-policies?per_page=100")"
+          export SPEC224_GITHUB_ENVIRONMENT_JSON="$environment_json"
+          export SPEC224_GITHUB_BRANCH_POLICIES_JSON="$branch_policies_json"
+          node --import tsx scripts/verify-spec224-migration-environment.ts "$SPEC224_DATABASE_OWNER_TEAM_ID"
+
+      - name: Apply only 0412 after live target and pending-set verification
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+          DATABASE_TARGET_ID: "smartaihub:production:sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f"
+          MIGRATION_EXPECTED_DATABASE_FINGERPRINT: sha256:522c1764a431a6eb0a8f13502ca8905ee65f0783b063ca6c2ccd746205351b0f
+          MIGRATION_EXPECTED_PENDING_TAGS: 0412_active_shared_schema_contract_repair
+          MIGRATION_AUTHORIZATION_REF: ${{ inputs.authorization_reference }}
+          MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:core-0412
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/core-0412-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
+        run: pnpm --filter @smartspec/web run db:migrate
+
+      - name: Upload migration attempt receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-migration-0412-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/smartspecpro-migration-receipts/*.jsonl
+          if-no-files-found: ignore

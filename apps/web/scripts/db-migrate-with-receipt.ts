@@ -11,6 +11,12 @@ import { evaluateMigrationAttempt } from "../server/services/migrationExecutionR
 import { DRIZZLE_MIGRATION_ADVISORY_LOCK } from "../server/services/migrationExecutionLock";
 import { closeDb, getDb } from "../server/db";
 import { hasDatabaseErrorCode } from "./migrationReceiptHelpers";
+import {
+  evaluateScopedPendingMigrations,
+  fingerprintMigrationDatabase,
+  parseExpectedPendingTags,
+  type ScopedMigration,
+} from "./scopedMigrationPreflight";
 
 const { Client } = pg;
 
@@ -26,11 +32,61 @@ const databaseTargetId = process.env.DATABASE_TARGET_ID ?? (() => {
 })();
 
 async function migrationSet() {
-  const journal = JSON.parse(await readFile(path.join(appRoot, "drizzle/meta/_journal.json"), "utf8")) as { entries?: Array<{ tag?: string }> };
-  return Promise.all((journal.entries ?? []).flatMap(entry => typeof entry.tag === "string" ? [entry.tag] : []).map(async tag => {
-    const content = await readFile(path.join(appRoot, "drizzle", `${tag}.sql`));
-    return { tag, hash: createHash("sha256").update(content).digest("hex") };
+  const journal = JSON.parse(await readFile(path.join(appRoot, "drizzle/meta/_journal.json"), "utf8")) as { entries?: Array<{ tag?: string; when?: number }> };
+  if (!Array.isArray(journal.entries) || journal.entries.some(entry =>
+    typeof entry.tag !== "string" || !Number.isSafeInteger(entry.when))) {
+    throw new Error("DRIZZLE_MIGRATION_JOURNAL_INVALID");
+  }
+  return Promise.all(journal.entries.map(async entry => {
+    const content = await readFile(path.join(appRoot, "drizzle", `${entry.tag}.sql`));
+    return { tag: entry.tag as string, when: entry.when as number, hash: createHash("sha256").update(content).digest("hex") };
   }));
+}
+
+async function assertScopedMigrationRequest(lockClient: InstanceType<typeof Client>, migrations: ScopedMigration[]) {
+  const expectedTags = parseExpectedPendingTags(process.env.MIGRATION_EXPECTED_PENDING_TAGS);
+  if (!expectedTags) return null;
+  const authorizationReference = process.env.MIGRATION_AUTHORIZATION_REF?.trim() ?? "";
+  if (authorizationReference.length < 8 || authorizationReference.length > 200) {
+    throw new Error("MIGRATION_AUTHORIZATION_REFERENCE_INVALID");
+  }
+  if (process.env.DEPLOY_ENVIRONMENT !== "production" || process.env.GITHUB_REF !== "refs/heads/main") {
+    throw new Error("SCOPED_MIGRATION_NOT_CANONICAL_PRODUCTION");
+  }
+
+  const expectedFingerprint = process.env.MIGRATION_EXPECTED_DATABASE_FINGERPRINT?.trim() ?? "";
+  if (!/^sha256:[a-f0-9]{64}$/.test(expectedFingerprint)) throw new Error("MIGRATION_EXPECTED_DATABASE_FINGERPRINT_INVALID");
+  const factsResult = await lockClient.query<{
+    database: string; schema: string; role: string; server_address: string | null; server_port: number | null;
+    cluster_name: string | null; server_version: string;
+  }>(`SELECT current_database() AS database, current_schema() AS schema, current_user AS role,
+      inet_server_addr()::text AS server_address, inet_server_port() AS server_port,
+      current_setting('cluster_name', true) AS cluster_name, current_setting('server_version') AS server_version`);
+  const facts = factsResult.rows[0];
+  if (!facts) throw new Error("MIGRATION_DATABASE_IDENTITY_UNAVAILABLE");
+  const actualFingerprint = fingerprintMigrationDatabase({
+    serverAddress: facts.server_address,
+    serverPort: facts.server_port,
+    clusterName: facts.cluster_name,
+    database: facts.database,
+    schema: facts.schema,
+    role: facts.role,
+    serverVersion: facts.server_version,
+  });
+  if (actualFingerprint !== expectedFingerprint) throw new Error("MIGRATION_DATABASE_FINGERPRINT_MISMATCH");
+  const expectedTargetId = `smartaihub:production:${expectedFingerprint}`;
+  if (process.env.DATABASE_TARGET_ID !== expectedTargetId) throw new Error("MIGRATION_DATABASE_TARGET_ID_MISMATCH");
+
+  const appliedResult = await lockClient.query<{ created_at: number | string | null }>(
+    "SELECT created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC",
+  );
+  const latestCreatedAt = appliedResult.rows.at(-1)?.created_at;
+  if (appliedResult.rows.length && latestCreatedAt == null) throw new Error("MIGRATION_LEDGER_TIMESTAMP_INVALID");
+  const latestAppliedAt = appliedResult.rows.length ? Number(latestCreatedAt) : null;
+  if (latestAppliedAt !== null && !Number.isSafeInteger(latestAppliedAt)) throw new Error("MIGRATION_LEDGER_TIMESTAMP_INVALID");
+  const result = evaluateScopedPendingMigrations({ journal: migrations, latestAppliedAt, expectedTags });
+  if (result.status === "BLOCKED") throw new Error(`SCOPED_MIGRATION_PREFLIGHT_${result.reason.toUpperCase()}`);
+  return expectedTags;
 }
 
 async function readAppliedHead(db: ReturnType<typeof getDb>, tags: Array<{ tag: string; hash: string }>) {
@@ -105,6 +161,7 @@ async function main() {
   }
   const db = getDb();
   const migrations = await migrationSet();
+  const scopedExpectedTags = parseExpectedPendingTags(process.env.MIGRATION_EXPECTED_PENDING_TAGS);
   const beforeApplied = await readAppliedHead(db, migrations);
   const base = {
     schemaVersion: "migration-execution-receipt.v1",
@@ -118,7 +175,7 @@ async function main() {
     migrationProvider: "drizzle",
     expectedMigrationHead: migrations.at(-1)?.tag ?? null,
     expectedMigrationHash: migrations.at(-1)?.hash ?? null,
-    requestedMigrationSet: migrations.map(({ tag }) => tag),
+    requestedMigrationSet: scopedExpectedTags ?? migrations.map(({ tag }) => tag),
     beforeAppliedHead: beforeApplied.tag,
     beforeAppliedHash: beforeApplied.hash,
     sourceSha,
@@ -126,6 +183,7 @@ async function main() {
     executionId: process.env.GITHUB_RUN_ID ? `${process.env.GITHUB_RUN_ID}:${process.env.GITHUB_RUN_ATTEMPT ?? "1"}` : phaseKey,
     startedAt: startedAt.toISOString(),
     actor: process.env.GITHUB_ACTOR ?? "deployment-runner",
+    authorizationReference: process.env.MIGRATION_AUTHORIZATION_REF?.trim() || null,
   };
   const externalReceipts = readExternalReceipts();
   const dbReceipts = await readDbReceipts(db, phaseKey);
@@ -201,6 +259,8 @@ async function mainWithMigrationLock() {
       process.exitCode = 75;
       return;
     }
+    const migrations = await migrationSet();
+    await assertScopedMigrationRequest(lockClient, migrations);
     await main();
   } finally {
     if (lockAcquired) {
