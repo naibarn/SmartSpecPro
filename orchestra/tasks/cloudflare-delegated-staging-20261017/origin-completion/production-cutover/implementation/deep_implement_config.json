@@ -15,19 +15,21 @@
   "sections_state": {
     "section-02-production-deploy-authority": {
       "status": "checkpointed",
-      "next_action": "After the Cloudflare account member receives Connectivity Directory Admin and the retained PostgreSQL host has a trusted certificate plus a production-only Tunnel route, rerun the exact read-only credential and provider inventory probes; then implement/execute the production Queue+Hyperdrive+runtime preparation through canonical worker_jobs and continue canary gates.",
+      "next_action": "Connectivity Directory Admin is now confirmed by HTTP 200 read access. Continue a production-scoped resource preparation path using existing bounded ApprovalDBService + worker_jobs; Queue/Hyperdrive write scopes are not proven by read-only checks, and Hyperdrive stays gated on trusted PostgreSQL TLS plus a Production-only Tunnel route.",
       "checkpoint_sha": "57da33899915f7a9497e1cefcec5362c6b583d7a",
       "merged_main_sha": "ac35b9303842c63377e6ea9f38ffb5667db2ca84"
     },
     "section-03-production-runtime-composition": {
       "status": "in_progress",
-      "next_action": "Implement the first Production-only canonical preparation job for the required Queue, bound to the exact saved Production target and canonical worker_jobs receipt; inspect and reuse the existing grant, lease, retry, and audit mechanisms. Keep Hyperdrive preparation closed until a trusted matching PostgreSQL certificate and production-only Tunnel route are verified. Add focused positive/negative tests and continue the Worker runtime/binding/canary path."
+      "next_action": "Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.",
+      "checkpoint_sha": "fc04df452265c73eb3146a974f6591aef5f8128e",
+      "merged_main_sha": "fc04df452265c73eb3146a974f6591aef5f8128e"
     },
     "section-01-production-target-ui": {
-      "checkpoint_sha": "6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5",
+      "checkpoint_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
       "status": "checkpointed",
-      "merged_main_sha": "6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5",
-      "next_action": "Update the Admin target UI with real, exact Production permission requirements and direct Cloudflare API Tokens access. Production readiness remains blocked by absent Queue/Hyperdrive/config, TLS/trusted DB Tunnel, verified rollback identity, Worker app bindings, and main-domain route; do not claim cutover."
+      "merged_main_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
+      "next_action": "Release endpoint-level Production inventory diagnostics to Linux and verify runtime SHA/health. Continue implementing Production Queue preparation through existing bounded authority and canonical worker_jobs; retain the PostgreSQL TLS/Tunnel blocker."
     }
   },
   "pre_commit": {
@@ -39,11 +41,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 14,
-  "updated_at": "2026-10-24T14:16:26.182537+00:00",
+  "generation": 19,
+  "updated_at": "2026-10-24T14:59:33+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Implement the first Production-only canonical preparation job for the required Queue, bound to the exact saved Production target and canonical worker_jobs receipt; inspect and reuse the existing grant, lease, retry, and audit mechanisms. Keep Hyperdrive preparation closed until a trusted matching PostgreSQL certificate and production-only Tunnel route are verified. Add focused positive/negative tests and continue the Worker runtime/binding/canary path.",
+    "next_action": "Connectivity Directory read access now returns HTTP 200 after the Owner role change. Continue Production-only Queue/Hyperdrive provisioning through the existing canonical worker_jobs + bounded Production authority, then bind/read back runtime resources; do not reuse Staging grants. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.",
     "gaps": [
       "No production resource preparation contract/job is currently exposed; production account inventory has no Queue or Hyperdrive.",
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
@@ -53,8 +55,9 @@
       "Retained Tunnel config exposes only db-staging.smartaihub.app -> tcp://127.0.0.1:5432; no production DB hostname route. PostgreSQL accepts TLS but app sessions are plaintext and strict CA validation fails UNABLE_TO_VERIFY_LEAF_SIGNATURE.",
       "Production prep contract/job for Queue and Hyperdrive does not exist yet; current Worker /readyz is 503 with activation disabled and all seven runtime bindings absent.",
       "Live token probe after user update (2026-10-24 14:05 UTC) confirms vpcServices Connectivity Directory Read returns HTTP 200; token verification, Queue/Hyperdrive/Worker/Container reads also pass. Read access does not prove Queue/Hyperdrive/VPC write scopes.",
-      "Production still has no production Queue or Hyperdrive, no saved Production runtime config, active Worker lacks verified release identity and app bindings, and smartaihub.app/* is not attached. Production /readyz remains 503 with activation disabled and required HYPERDRIVE/JOB_QUEUE plus selected application bindings absent."
+      "Production still has no production Queue or Hyperdrive, no saved Production runtime config, active Worker lacks verified release identity and app bindings, and smartaihub.app/* is not attached. Production /readyz remains 503 with activation disabled and required HYPERDRIVE/JOB_QUEUE plus selected application bindings absent.",
+      "Fresh exact Production credential probe at 2026-10-24 14:55 UTC: Connectivity Directory Read now returns HTTP 200; Queue and Hyperdrive are still only read-verified. No provider write was attempted."
     ],
-    "merged_main_sha": "6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5"
+    "merged_main_sha": "fc04df452265c73eb3146a974f6591aef5f8128e"
   }
 }

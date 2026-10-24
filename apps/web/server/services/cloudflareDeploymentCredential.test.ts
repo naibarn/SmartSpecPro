@@ -76,6 +76,7 @@ describe("tenant-bound Cloudflare deployment credentials", () => {
       if (url.endsWith("/user/tokens/verify")) return new Response(JSON.stringify({ success: true, result: { status: "active" } }), { status: 200 });
       if (url.includes("/zones?name=smartaihub.app")) return new Response(JSON.stringify({ success: true, result: [{ id: "zone-123", name: "smartaihub.app" }] }), { status: 200 });
       if (url.endsWith(`/accounts/${accountId}/queues`)) return new Response(JSON.stringify({ success: false }), { status: 403 });
+      if (url.endsWith(`/accounts/${accountId}/connectivity/directory/services`)) return new Response(JSON.stringify({ success: true, result: [] }), { status: 200 });
       return new Response(JSON.stringify({ success: true, result: [] }), { status: 200 });
     });
 
@@ -86,6 +87,10 @@ describe("tenant-bound Cloudflare deployment credentials", () => {
     expect(result.checks.find(check => check.id === "queues")).toMatchObject({
       status: "missing_permission", permission: "Queues Read", httpStatus: 403,
     });
+    expect(result.checks.find(check => check.id === "vpcServices")).toMatchObject({
+      status: "granted", permission: "Connectivity Directory Read", httpStatus: 200,
+    });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith(`/accounts/${accountId}/connectivity/directory/services`))).toBe(true);
     expect(JSON.stringify(result)).not.toContain("target-secret-token");
     expect(fetchMock.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
   });
