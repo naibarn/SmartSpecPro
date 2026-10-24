@@ -431,10 +431,6 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
       const baseline = await findVerifiedStagingRollbackBaseline({
         candidates: baselineCandidates, projectId: identity.projectId, activeDeploymentId: active.deploymentId,
         activeDeploymentIsSingleVersion: deploymentIsSingleVersion,
-        resolveArtifact: async (artifactRef, sourceSha) => {
-          const resolved = await resolveCloudflareStagingArtifact(artifactRef, sourceSha);
-          return resolved ? { immutable: resolved.immutable, buildDigest: resolved.buildDigest } : null;
-        },
         isConfigurationUsable: async (candidateRef, candidateDigest) => {
           const stored = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef: candidateRef })
             .catch(() => null);

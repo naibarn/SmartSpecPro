@@ -592,6 +592,18 @@ describe("explicit Cloudflare origin v2 executor", () => {
     expect(JSON.stringify(result)).not.toContain(f.secrets.secret);
   });
 
+  it("deploys with a provider-verified rollback deployment even when the historical upload bundle has aged out", async () => {
+    const f = originRuntime();
+    f.dependencies.resolveArtifact = vi.fn(async ref => ref === f.originGrant.artifactRef
+      ? { ...artifact, artifactRef: f.originGrant.artifactRef } : null);
+
+    const result = await createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call);
+
+    expect(result.output).toMatchObject({ runtimeVerified: true, rollbackDeploymentId: f.originGrant.rollbackDeploymentId });
+    expect(f.dependencies.resolveArtifact).toHaveBeenCalledTimes(1);
+    expect(f.cloudflare.deploy).toHaveBeenCalledTimes(1);
+  });
+
   it("executes an origin-bound first-deployment bootstrap without inventing or resolving a rollback baseline", async () => {
     const f = originRuntime();
     Object.assign(f.originGrant, { actions: ["bootstrap"], rollbackDeploymentId: null, rollbackArtifactRef: null,

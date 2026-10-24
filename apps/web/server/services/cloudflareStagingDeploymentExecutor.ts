@@ -541,10 +541,19 @@ export function createCloudflareStagingDeploymentExecutor(
       if (!originGrant) return;
       if (!activeRuntime.withOriginConfiguration) throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ORIGIN_RUNTIME_REQUIRED");
       if (job.action !== "bootstrap") {
-        const baseline = await activeRuntime.resolveArtifact(originGrant.rollbackArtifactRef!, originGrant.rollbackSourceSha!);
-        if (!baseline?.immutable || baseline.artifactRef !== originGrant.rollbackArtifactRef ||
-            baseline.sourceSha !== originGrant.rollbackSourceSha || baseline.buildDigest !== originGrant.rollbackBuildDigest) {
-          throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ROLLBACK_ARTIFACT_INVALID");
+        // The rollback target is an already deployed immutable Worker version,
+        // selected by its canonical succeeded job receipt and active deployment
+        // ID. Keep verifying the scoped origin configuration here; the transport
+        // verifies the provider version's SHA/digest/config annotations before
+        // any rollback mutation. Its original upload bundle may have aged out of
+        // the build-results cache and is not needed to restore that version.
+        if (!originGrant.rollbackDeploymentId || !originGrant.rollbackArtifactRef ||
+            originGrant.rollbackArtifactRef !== `sha256:${originGrant.rollbackBuildDigest}` ||
+            !originGrant.rollbackSourceSha || !originGrant.rollbackBuildDigest ||
+            (originGrant.rollbackConfigurationRef === null) !== (originGrant.rollbackConfigurationDigest === null) ||
+            (originGrant.rollbackConfigurationRef !== null &&
+              originGrant.rollbackConfigurationRef !== `cf-origin:${originGrant.rollbackConfigurationDigest}`)) {
+          throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ROLLBACK_TARGET_INVALID");
         }
       }
       for (const [configurationRef, configurationDigest] of [

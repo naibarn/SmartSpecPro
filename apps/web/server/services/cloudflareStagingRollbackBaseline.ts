@@ -24,7 +24,6 @@ export async function findVerifiedStagingRollbackBaseline(input: {
   projectId: string;
   activeDeploymentId: string;
   activeDeploymentIsSingleVersion: boolean;
-  resolveArtifact: (artifactRef: string, sourceSha: string) => Promise<{ immutable: boolean; buildDigest: string } | null>;
   isConfigurationUsable: (configurationRef: string, configurationDigest: string) => Promise<boolean>;
 }): Promise<VerifiedStagingRollbackBaseline | null> {
   for (const candidate of input.candidates) {
@@ -36,12 +35,15 @@ export async function findVerifiedStagingRollbackBaseline(input: {
         output.deploymentId !== input.activeDeploymentId || output.configurationRef !== configurationRef || !input.activeDeploymentIsSingleVersion ||
         output.sourceSha !== job.sourceSha || output.buildDigest !== job.buildDigest ||
         typeof job.artifactRef !== "string" || typeof job.sourceSha !== "string" || typeof job.buildDigest !== "string" ||
+        job.artifactRef !== `sha256:${job.buildDigest}` ||
         typeof configurationRef !== "string" || typeof configurationDigest !== "string" || !/^cf-origin:[a-f0-9]{64}$/.test(configurationRef) ||
         job.configurationDigest !== configurationDigest || configurationDigest !== configurationRef.slice("cf-origin:".length)) continue;
 
     if (!await input.isConfigurationUsable(configurationRef, configurationDigest)) continue;
-    const artifact = await input.resolveArtifact(job.artifactRef, job.sourceSha);
-    if (!artifact?.immutable || artifact.buildDigest !== job.buildDigest) continue;
+    // Rollback reuses the immutable deployed Worker version by deployment ID.
+    // The executor verifies its SHA/digest/config annotations against this
+    // canonical runtime-verified receipt, so the old upload bundle need not be
+    // retained in the current build-results cache.
     return { deploymentId: input.activeDeploymentId, artifactRef: job.artifactRef, sourceSha: job.sourceSha,
       buildDigest: job.buildDigest, configurationRef, configurationDigest };
   }
