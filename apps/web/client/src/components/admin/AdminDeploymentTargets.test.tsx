@@ -572,7 +572,8 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/cannot be used as a rollback baseline/i)).toBeInTheDocument();
     expect(screen.getByText(/The exact smartaihub\.app\/\* Worker Route is not attached/i)).toBeInTheDocument();
     expect(screen.getByText(/Account → Queues → Edit and Account → Hyperdrive → Edit/)).toBeInTheDocument();
-    expect(screen.getByText(/scoped to account f3fb0b6858e186fcc36be105bfa00243.*Cloudflare Profile → API Tokens.*replace the Production target credential here/i)).toBeInTheDocument();
+    expect(screen.getByText((_content, element) => element?.tagName === "P" &&
+      element.textContent?.includes("You reported updating the token, so keep using the saved Production credential; do not re-enter it.") === true)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
   });
 
