@@ -44,6 +44,7 @@ import { clearVectorProviderConfigCache } from "../services/vectorProvider";
 import {
   getCloudflareCredentialCenterState,
   getCloudflareDeploymentCredentialState,
+  probeCloudflareDeploymentCredential,
   probeCloudflarePermissionCatalog,
   probeCloudflareCredential,
   removeCloudflareCredentialProfile,
@@ -813,6 +814,19 @@ export const infrastructureRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const identity = input;
       return getCloudflareDeploymentCredentialState(db, { identity, credentialRef: deploymentCredentialRef(identity) });
+    }),
+
+  probeCloudflareDeploymentCredential: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.string().trim().min(1).max(32), provider: z.literal("cloudflare") }).strict())
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const target = await resolveProviderDeploymentTarget(db, input);
+      if (target.status !== "CONFIGURED" || !target.target?.accountRef) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: target.status === "TARGET_AUTHORITY_CONFLICT"
+          ? "TARGET_AUTHORITY_CONFLICT" : target.status === "CONFIGURED" ? "TARGET_ACCOUNT_ID_NOT_CONFIGURED" : "ENABLED_CLOUDFLARE_TARGET_REQUIRED" });
+      }
+      return probeCloudflareDeploymentCredential(db, input, target.target.accountRef);
     }),
 
   saveDeploymentCredential: exactAdminProcedure

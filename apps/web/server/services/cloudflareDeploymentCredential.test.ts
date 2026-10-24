@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { encrypt } from "./crypto";
 import {
   getCloudflareDeploymentCredentialState,
+  probeCloudflareDeploymentCredential,
   revokeCloudflareDeploymentCredential,
   saveCloudflareDeploymentCredential,
   withCloudflareDeploymentCredential,
@@ -64,5 +65,28 @@ describe("tenant-bound Cloudflare deployment credentials", () => {
       .resolves.toEqual({ status: "REVOKED" });
     await expect(revokeCloudflareDeploymentCredential(revokeDb, { identity: { ...identity, projectId: "project-b" }, credentialRef: ref }))
       .resolves.toEqual({ status: "PERMISSION_DENIED" });
+  });
+
+  it("probes read permissions with the exact target credential and never returns its secret", async () => {
+    process.env.LLM_ENCRYPTION_KEY = key;
+    const accountId = "0123456789abcdef0123456789abcdef";
+    const db = dbFor({ status: "CONFIGURED", encryptedSecret: encrypt("target-secret-token", key) });
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/user/tokens/verify")) return new Response(JSON.stringify({ success: true, result: { status: "active" } }), { status: 200 });
+      if (url.includes("/zones?name=smartaihub.app")) return new Response(JSON.stringify({ success: true, result: [{ id: "zone-123", name: "smartaihub.app" }] }), { status: 200 });
+      if (url.endsWith(`/accounts/${accountId}/queues`)) return new Response(JSON.stringify({ success: false }), { status: 403 });
+      return new Response(JSON.stringify({ success: true, result: [] }), { status: 200 });
+    });
+
+    const result = await probeCloudflareDeploymentCredential(db, identity, accountId, fetchMock);
+
+    expect(result.accountId).toBe(accountId);
+    expect(result.zoneId).toBe("zone-123");
+    expect(result.checks.find(check => check.id === "queues")).toMatchObject({
+      status: "missing_permission", permission: "Queues Read", httpStatus: 403,
+    });
+    expect(JSON.stringify(result)).not.toContain("target-secret-token");
+    expect(fetchMock.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
   });
 });

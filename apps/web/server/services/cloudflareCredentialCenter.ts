@@ -517,6 +517,30 @@ export async function probeCloudflareCredential(
   const [accountRow] = await db.select({ value: systemSettings.value, isSensitive: systemSettings.isSensitive })
     .from(systemSettings).where(and(eq(systemSettings.category, "vectordb"), eq(systemSettings.key, "vectorizeAccountId"))).limit(1);
   const accountId = secretValue(accountRow ?? { value: null, isSensitive: false }) || process.env.CLOUDFLARE_ACCOUNT_ID || process.env.CF_ACCOUNT_ID || "";
+  return { profileId, ...await probeCloudflareTokenAccess(token, accountId, fetchImpl) };
+}
+
+/** Probe the credential bound to one exact deployment target without exposing its token. */
+export async function probeCloudflareDeploymentCredential(
+  db: DrizzleDB,
+  identity: DeploymentTargetIdentity,
+  accountId: string,
+  fetchImpl: typeof fetch = fetch,
+) {
+  if (identity.provider !== "cloudflare" || !/^[a-f0-9]{32}$/i.test(accountId)) {
+    return { checkedAt: new Date().toISOString(), error: "target_account_id_invalid", accountId: null, zoneId: null, checks: [] as ProbeResult[] };
+  }
+  const scoped = await withCloudflareDeploymentCredential(db, {
+    identity,
+    credentialRef: deploymentCredentialRef(identity),
+  }, token => probeCloudflareTokenAccess(token, accountId, fetchImpl));
+  if (scoped.status !== "CONFIGURED" || !scoped.value) {
+    return { checkedAt: new Date().toISOString(), error: `credential_${scoped.status.toLowerCase()}`, accountId, zoneId: null, checks: [] as ProbeResult[] };
+  }
+  return scoped.value;
+}
+
+async function probeCloudflareTokenAccess(token: string, accountId: string, fetchImpl: typeof fetch) {
   const checkedAt = new Date().toISOString();
   const tokenVerification = await verifyCloudflareToken(token, fetchImpl, accountId);
   const tokenCheck: ProbeResult = {
@@ -529,9 +553,9 @@ export async function probeCloudflareCredential(
     ...(tokenVerification.validityIssue ? { validityIssue: tokenVerification.validityIssue } : {}),
   };
   if (tokenVerification.status !== "granted") {
-    return { profileId, checkedAt, error: null, accountId: accountId || null, zoneId: null, checks: [tokenCheck] };
+    return { checkedAt, error: null, accountId: accountId || null, zoneId: null, checks: [tokenCheck] };
   }
-  if (!accountId) return { profileId, checkedAt, error: "account_id_not_configured", accountId: null, zoneId: null, checks: [tokenCheck] };
+  if (!accountId) return { checkedAt, error: "account_id_not_configured", accountId: null, zoneId: null, checks: [tokenCheck] };
 
   const accountChecks = await probeCloudflareServiceCatalog(token, accountId, fetchImpl);
 
@@ -546,5 +570,5 @@ export async function probeCloudflareCredential(
     zoneChecks.push({ id: "dns", label: "DNS / zone resources (smartaihub.app)", scope: "Zone", permission: "Zone Read + DNS Read", status: zones.status === "granted" ? "resource_not_found" : zones.status, httpStatus: zones.httpStatus });
   }
 
-  return { profileId, checkedAt, error: null, accountId, zoneId: zoneId ?? null, checks: [tokenCheck, ...accountChecks, ...zoneChecks] };
+  return { checkedAt, error: null, accountId, zoneId: zoneId ?? null, checks: [tokenCheck, ...accountChecks, ...zoneChecks] };
 }

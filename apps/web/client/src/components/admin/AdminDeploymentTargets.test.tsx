@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   refetchProductionRuntimeReadiness: vi.fn(),
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
+  probeCredential: vi.fn(),
   targets: [] as Array<Record<string, unknown>>,
   stagingTargets: [] as Array<Record<string, unknown>>,
   targetsError: false,
@@ -73,6 +74,13 @@ vi.mock("@/lib/trpc", () => ({
       }) },
       saveDeploymentCredential: { useMutation: () => ({ mutate: mocks.saveCredential, isPending: false, error: null }) },
       revokeDeploymentCredential: { useMutation: () => ({ mutate: mocks.revokeCredential, isPending: false, error: null }) },
+      probeCloudflareDeploymentCredential: { useMutation: (options: { onSuccess?: (result: unknown) => unknown }) => ({
+        mutate: (input: unknown) => {
+          mocks.probeCredential(input);
+          void options.onSuccess?.({ checkedAt: "2026-10-24T00:00:00.000Z", accountId: "a".repeat(32), zoneId: "b".repeat(32), error: null,
+            checks: [{ id: "queues", label: "Queues", scope: "Account", permission: "Queues Read", status: "missing_permission", httpStatus: 403 }] });
+        }, isPending: false, error: null,
+      }) },
     },
   },
 }));
@@ -278,6 +286,21 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/does not mean app traffic has moved from the Linux origin/)).toBeInTheDocument();
     expect(screen.queryByText(/JOB_CONTAINERS/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
+  });
+
+  it("probes the exact Production target credential and shows the permission to add", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime" }];
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    const check = await screen.findByRole("button", { name: "Check this target’s Cloudflare access" });
+    await user.click(check);
+
+    expect(mocks.probeCredential).toHaveBeenCalledWith({ tenantId, projectId, environment: "production", provider: "cloudflare" });
+    expect(await screen.findByText("Queues Read")).toBeInTheDocument();
+    expect(screen.getByText(/Cloudflare denied this exact read request/)).toBeInTheDocument();
+    expect(screen.getByText(/Workers Scripts Write, Queues Write, Hyperdrive Write/)).toBeInTheDocument();
   });
 
   it("offers a clearly bounded one-time bootstrap when no Staging rollback deployment exists", async () => {
@@ -493,7 +516,9 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/creates only the destination record/i)).toBeInTheDocument();
     expect(await screen.findByText("Jobs not ready")).toBeInTheDocument();
     expect(screen.getByText("Website/API ingress not ready")).toBeInTheDocument();
-    expect(screen.getByText("CLOUDFLARE_APPLICATION_HTTP_TRAFFIC, NODE_HTTP, PYTHON_HTTP")).toBeInTheDocument();
+    expect(screen.getByText("CLOUDFLARE_APPLICATION_HTTP_TRAFFIC")).toBeInTheDocument();
+    expect(screen.getByText("NODE_HTTP")).toBeInTheDocument();
+    expect(screen.getByText("PYTHON_HTTP")).toBeInTheDocument();
     expect(screen.getByText(/Connect the existing PostgreSQL database through Cloudflare Hyperdrive/)).toBeInTheDocument();
     expect(screen.getByText(/Bind the production Cloudflare Queue used by background jobs/)).toBeInTheDocument();
     expect(screen.getByText(/JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX/)).toBeInTheDocument();

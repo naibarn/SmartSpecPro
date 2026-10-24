@@ -43,6 +43,14 @@ type TargetFields = {
   provenance: string;
 };
 
+type TargetCredentialProbe = {
+  checkedAt: string;
+  error: string | null;
+  accountId: string | null;
+  zoneId: string | null;
+  checks: Array<{ id: string; label: string; scope: string; permission: string; status: string; httpStatus: number | null; productRequirement?: string }>;
+};
+
 const EMPTY_FIELDS: TargetFields = {
   deploymentTargetId: "",
   accountRef: "",
@@ -58,6 +66,22 @@ function useText() {
 }
 
 type ScopeOption = { value: string; label: string; searchValue?: string };
+
+const productionBindingHelp: Record<string, { en: string; th: string }> = {
+  HYPERDRIVE: { en: "Connect the existing PostgreSQL host through a production Hyperdrive binding.", th: "เชื่อม PostgreSQL เครื่องเดิมผ่าน Hyperdrive binding ของ production" },
+  JOB_QUEUE: { en: "Create or select the production Cloudflare Queue and bind it to the Worker.", th: "สร้างหรือเลือก Cloudflare Queue ของ production แล้วผูกกับ Worker" },
+  JOB_WORKFLOW: { en: "Bind the canonical durable job Workflow used by the production worker.", th: "ผูก Workflow งานถาวรตัวหลักที่ production worker ใช้" },
+  JOB_CONTAINERS: { en: "Bind the enabled Cloudflare Containers service for app workloads.", th: "ผูกบริการ Cloudflare Containers ที่เปิดใช้งานสำหรับ workload ของแอป" },
+  WORKER_APP: { en: "Bind the application gateway to the Node and Python HTTP containers.", th: "ผูก application gateway เข้ากับ Node และ Python HTTP containers" },
+  MEDIA_BUCKET: { en: "Bind the production media bucket used by the app.", th: "ผูก media bucket ของ production ที่แอปใช้งาน" },
+  VECTOR_INDEX: { en: "Bind the production Vectorize index used by search and retrieval.", th: "ผูก Vectorize index ของ production ที่ระบบค้นหาใช้งาน" },
+  CLOUDFLARE_APPLICATION_HTTP_TRAFFIC: { en: "Enable the application HTTP ingress profile after its bindings are configured.", th: "เปิด profile รับ HTTP ของแอปหลังตั้งค่า bindings ครบ" },
+  NODE_HTTP: { en: "Select the production Node HTTP container profile.", th: "เลือก production profile สำหรับ Node HTTP container" },
+  PYTHON_HTTP: { en: "Select the production Python HTTP container profile.", th: "เลือก production profile สำหรับ Python HTTP container" },
+  CLOUDFLARE_NODE_HTTP_PROFILE: { en: "Configure the exact Node container image and startup profile.", th: "ตั้งค่า image และ startup profile ของ Node container ให้ตรง" },
+  CLOUDFLARE_PYTHON_HTTP_PROFILE: { en: "Configure the exact Python container image and startup profile.", th: "ตั้งค่า image และ startup profile ของ Python container ให้ตรง" },
+  AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: { en: "Add the Cloudflare production origin to the authentication allowlist.", th: "เพิ่ม production origin ของ Cloudflare ใน allowlist ระบบยืนยันตัวตน" },
+};
 
 function SearchableScopeSelect({
   label,
@@ -135,6 +159,7 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
   const text = useText();
   const utils = trpc.useUtils();
   const [token, setToken] = useState("");
+  const [probe, setProbe] = useState<TargetCredentialProbe | null>(null);
   const identity = {
     tenantId: target.tenantId,
     projectId: target.projectId,
@@ -151,7 +176,10 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
     },
   });
   const revokeCredential = trpc.infrastructure.revokeDeploymentCredential.useMutation({
-    onSuccess: async () => { await utils.infrastructure.getDeploymentCredentialState.invalidate(identity); },
+    onSuccess: async () => { setProbe(null); await utils.infrastructure.getDeploymentCredentialState.invalidate(identity); },
+  });
+  const probeCredential = trpc.infrastructure.probeCloudflareDeploymentCredential.useMutation({
+    onSuccess: result => setProbe(result as TargetCredentialProbe),
   });
   const label = isLoading
     ? "Checking"
@@ -167,6 +195,7 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
         <summary>{text("Configure target account credential", "ตั้งค่า credential ของบัญชีสำหรับ target นี้")}</summary>
         <VStack as="form" gap={2} onSubmit={event => {
           event.preventDefault();
+          setProbe(null);
           saveCredential.mutate({ ...identity, token: token.trim() });
         }}>
           <p>{target.environment === "production" ? text(
@@ -201,6 +230,57 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
           {saveCredential.error || revokeCredential.error ? <p role="alert">{text("Credential update failed. No credential state was assumed.", "อัปเดต credential ไม่สำเร็จ ระบบจะไม่สมมติสถานะ credential")}</p> : null}
         </VStack>
       </details>
+      {target.environment === "production" ? <VStack as="section" gap={2}>
+        <p>{text(
+          "Check the encrypted token attached to this exact Production target against the account and smartaihub.app zone. This is read-only; it never creates resources or changes traffic.",
+          "ตรวจ token แบบเข้ารหัสที่ผูกกับ Production target นี้โดยตรงกับ account และ zone smartaihub.app การตรวจเป็นแบบอ่านอย่างเดียว ไม่สร้าง resource หรือเปลี่ยน traffic",
+        )}</p>
+        <Button type="button" variant="outline" disabled={data?.status !== "CONFIGURED" || probeCredential.isPending}
+          onClick={() => { setProbe(null); probeCredential.mutate(identity); }}>
+          {probeCredential.isPending ? text("Checking Cloudflare permissions…", "กำลังตรวจสิทธิ์ Cloudflare…") : text("Check this target’s Cloudflare access", "ตรวจสิทธิ์ Cloudflare ของ target นี้")}
+        </Button>
+        {probeCredential.error ? <p role="alert">{probeCredential.error.message}</p> : null}
+        {probe ? <VStack as="section" gap={2} role="region" aria-label={text("Production Cloudflare permission results", "ผลตรวจสิทธิ์ Cloudflare Production")}>
+          <HStack gap={2} wrap="wrap">
+            <strong>{text("Permission and resource check", "ผลตรวจ permission และ resource")}</strong>
+            <span>{new Date(probe.checkedAt).toLocaleString()}</span>
+          </HStack>
+          {probe.accountId ? <p>{text("Account ID checked", "ตรวจ Account ID")}: <code>{probe.accountId}</code></p> : null}
+          {probe.zoneId ? <p>{text("smartaihub.app zone checked", "ตรวจ Zone ID ของ smartaihub.app")}: <code>{probe.zoneId}</code></p> : null}
+          {probe.error ? <p role="alert">{probe.error === "credential_not_configured"
+            ? text("No encrypted token is saved for this Production target. Open ‘Configure target account credential’ above and save the Cloudflare account token.", "ยังไม่มี token เข้ารหัสสำหรับ Production target นี้ เปิด ‘ตั้งค่า credential ของบัญชีสำหรับ target นี้’ ด้านบน แล้วบันทึก token ของ Cloudflare account")
+            : probe.error === "target_account_id_invalid"
+              ? text("The target’s Account ID is missing or malformed. Edit the Production target and enter its 32-character Cloudflare Account ID.", "Account ID ของ target ไม่มีหรือรูปแบบไม่ถูกต้อง แก้ Production target แล้วใส่ Cloudflare Account ID 32 ตัวอักษร")
+              : text(`Credential check could not run: ${probe.error}`, `ตรวจ credential ไม่สำเร็จ: ${probe.error}`)}</p> : null}
+          {probe.checks.length > 0 ? <VStack as="ul" gap={2}>
+            {probe.checks.map(check => <VStack as="li" key={check.id} gap={1}>
+              <HStack gap={2} wrap="wrap">
+                <strong>{check.label}</strong>
+                <Badge variant={check.status === "granted" ? "default" : check.status === "product_unavailable" ? "destructive" : "secondary"}>
+                  {check.status === "granted" ? text("Read access confirmed", "ยืนยันสิทธิ์อ่านแล้ว")
+                    : check.status === "missing_permission" ? text("Permission missing", "ขาด permission")
+                      : check.status === "resource_not_found" ? text("Resource not found", "ไม่พบ resource")
+                        : check.status === "product_unavailable" ? text("Product entitlement required", "ต้องเปิดสิทธิ์ผลิตภัณฑ์") : check.status}{check.httpStatus ? ` · HTTP ${check.httpStatus}` : ""}
+                </Badge>
+              </HStack>
+              <span>{text("Scope", "ขอบเขต")}: {check.scope} · {text("permission accepted by this API", "permission ที่ API นี้ยอมรับ")}: <code>{check.permission}</code></span>
+              {check.status === "missing_permission" ? <p role="status">{text(
+                "Cloudflare denied this exact read request. Add one accepted permission above to this token, scoped to the named account or zone, then save the replacement token and run this check again.",
+                "Cloudflare ปฏิเสธคำขออ่านรายการนี้ ให้เพิ่ม permission ทางเลือกที่ระบุด้านบนใน scope ของ account หรือ zone ที่ตรงกัน แล้วบันทึก token ใหม่และกดตรวจซ้ำ",
+              )}</p> : null}
+              {check.status === "resource_not_found" ? <p role="status">{text("The request reached Cloudflare, but this resource was not found in the selected account. Create or select the resource; changing token permission will not create it.", "Cloudflare รับคำขอแล้วแต่ไม่พบ resource ใน account ที่เลือก ให้สร้างหรือเลือก resource ให้ถูกต้อง การเพิ่ม permission ไม่ได้สร้าง resource")}</p> : null}
+              {check.status === "product_unavailable" ? <p role="status">{check.productRequirement === "workers_paid"
+                ? text("Cloudflare reports Workers Paid is required for this Containers API. If Workers Paid is already enabled, refresh the probe; this response may indicate the wrong account or a billing/product propagation issue, not a token scope.", "Cloudflare แจ้งว่า Containers API ต้องใช้ Workers Paid หากเปิด Workers Paid แล้ว ให้ตรวจใหม่ ผลนี้อาจหมายถึงเลือก account ผิดหรือสถานะ billing/product ยังไม่อัปเดต ไม่ใช่ปัญหา token scope")
+                : text("Cloudflare reports Workers for Platforms is required for this endpoint. This is a product entitlement, not an API token permission.", "Cloudflare แจ้งว่า endpoint นี้ต้องใช้ Workers for Platforms เป็นสิทธิ์ผลิตภัณฑ์ ไม่ใช่ API token permission")}</p> : null}
+              {check.status === "granted" ? <p>{text("Read access verified only; this does not prove write access or deployment success.", "ยืนยันเฉพาะสิทธิ์อ่าน ยังไม่ยืนยันสิทธิ์เขียนหรือผล deploy")}</p> : null}
+            </VStack>)}
+          </VStack> : null}
+          <p>{text(
+            "For provisioning, the usual write permissions are Workers Scripts Write, Queues Write, Hyperdrive Write, and Workers Containers Write. DNS Write and Workers Routes Write are needed only if the approved cutover changes DNS or routes. This check does not test write access; existing resources may avoid needing those write scopes.",
+            "สำหรับสร้าง resource โดยทั่วไปใช้ Workers Scripts Write, Queues Write, Hyperdrive Write และ Workers Containers Write ส่วน DNS Write และ Workers Routes Write ต้องใช้เฉพาะเมื่อ cutover ที่อนุมัติเปลี่ยน DNS หรือ routes การตรวจนี้ไม่ทดสอบสิทธิ์เขียน และถ้ามี resource อยู่แล้วอาจไม่ต้องเพิ่ม write scope เหล่านั้น",
+          )}</p>
+        </VStack> : null}
+      </VStack> : null}
     </VStack>
   );
 }
@@ -499,7 +579,10 @@ export default function AdminDeploymentTargets() {
                 <p>{text("Required before the Production Worker can accept jobs:", "สิ่งที่ต้องตั้งค่าก่อน Production Worker จะรับงานได้:")}</p>
                 {runtime.missing.includes("HYPERDRIVE") ? <p>• {text("Connect the existing PostgreSQL database through Cloudflare Hyperdrive.", "เชื่อม PostgreSQL เครื่องเดิมผ่าน Cloudflare Hyperdrive")}</p> : null}
                 {runtime.missing.includes("JOB_QUEUE") ? <p>• {text("Bind the production Cloudflare Queue used by background jobs.", "ผูก Cloudflare Queue สำหรับงานเบื้องหลังของ Production")}</p> : null}
-                {runtime.missing.some(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)) ? <p>{text("Additional required runtime bindings", "binding runtime ที่จำเป็นเพิ่มเติม")}: <code>{runtime.missing.filter(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)).join(", ")}</code></p> : null}
+              {runtime.missing.some(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)) ? <p>{text("Additional required runtime bindings", "binding runtime ที่จำเป็นเพิ่มเติม")}: <code>{runtime.missing.filter(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)).join(", ")}</code></p> : null}
+              {runtime.missing.length > 0 ? <VStack as="ol" gap={1}>
+                {runtime.missing.map(binding => <li key={binding}><strong>{binding}</strong>: {text(productionBindingHelp[binding]?.en ?? "Configure this binding in the production Worker.", productionBindingHelp[binding]?.th ?? "ตั้งค่า binding นี้ใน production Worker")}</li>)}
+              </VStack> : null}
               </VStack> : null}
               <Divider />
               <strong>{text("Website and API traffic cutover readiness", "ความพร้อมย้าย traffic ของเว็บไซต์และ API")}</strong>
@@ -512,7 +595,7 @@ export default function AdminDeploymentTargets() {
                   : text("Website/API ingress not ready", "เว็บไซต์/API ingress ยังไม่พร้อม")}</Badge>
                 {ingress.missing.length > 0 ? <>
                   <p>{text("The full app path needs both on-demand Node and Python Cloudflare Containers, their exact production profiles, and the origin-auth settings below:", "เส้นทางแอปเต็มรูปแบบต้องมี Cloudflare Container แบบ on-demand ทั้ง Node และ Python, production profile ที่ตรงกัน และค่า origin-auth ตามรายการนี้")}</p>
-                  <code>{ingress.missing.join(", ")}</code>
+                  <VStack as="ul" gap={1}>{ingress.missing.map(binding => <li key={binding}><strong>{binding}</strong>: {text(productionBindingHelp[binding]?.en ?? "Configure this production app-ingress setting.", productionBindingHelp[binding]?.th ?? "ตั้งค่ารายการ app-ingress ของ production นี้")}</li>)}</VStack>
                 </> : null}
               </>}
               <p>{text("Job transport readiness and website/API cutover are separate checks. Containers stay on-demand; they are required for the current full HTTP app bridge, not for queue delivery alone.", "ความพร้อมของ job transport กับการย้ายเว็บไซต์/API เป็นคนละการตรวจ Container จะเริ่มตามต้องใช้ โดยจำเป็นต่อ full HTTP app bridge ปัจจุบัน แต่ไม่จำเป็นต่อการส่งงาน Queue อย่างเดียว")}</p>
