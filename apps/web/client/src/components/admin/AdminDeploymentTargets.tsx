@@ -84,7 +84,7 @@ const productionBindingHelp: Record<string, { en: string; th: string }> = {
 };
 
 const optionalProductionInventoryChecks = new Set([
-  "dispatchNamespaces", "kv", "workflows", "vpcServices", "loadBalancerPools", "r2", "vectorize",
+  "dispatchNamespaces", "kv", "workflows", "loadBalancerPools", "r2", "vectorize",
   "dns", "zoneLoadBalancers",
 ]);
 
@@ -272,7 +272,15 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
                 </Badge>
               </HStack>
               <span>{text("Scope", "ขอบเขต")}: {check.scope} · {text("permission accepted by this API", "permission ที่ API นี้ยอมรับ")}: <code>{check.permission}</code></span>
-              {check.status === "missing_permission" ? <p role="status">{optionalForCurrentMigration ? text(
+              {check.status === "missing_permission" ? check.id === "vpcServices" ? <VStack as="section" gap={1} role="status">
+                <p>{text(
+                  "Cloudflare denied Workers VPC access for this account (HTTP 403). This is an account-member role, not a setting on the API token: grant the current member the account-scoped Connectivity Directory Admin role under Manage Account → Members. That role can create VPC Services and connect them to a Cloudflare Tunnel. Keep using the saved token; do not replace it just for this role.",
+                  "Cloudflare ปฏิเสธสิทธิ์ Workers VPC ของ account นี้ (HTTP 403) จุดนี้เป็น role ของสมาชิก account ไม่ใช่ค่าใน API token: เพิ่ม role Connectivity Directory Admin ที่ scope ระดับ account ให้สมาชิกคนปัจจุบันใน Manage Account → Members role นี้สร้าง VPC Service และเชื่อมกับ Cloudflare Tunnel ได้ ใช้ token ที่บันทึกไว้อยู่ ไม่ต้องเปลี่ยน token เพื่อแก้ role นี้",
+                )}</p>
+                <a href="https://developers.cloudflare.com/fundamentals/manage-members/manage/" target="_blank" rel="noreferrer">
+                  {text("Cloudflare: manage account member roles", "คู่มือ Cloudflare: จัดการ role ของสมาชิก account")}
+                </a>
+              </VStack> : <p role="status">{optionalForCurrentMigration ? text(
                 "This is optional inventory for services not selected by the current Queue + Hyperdrive migration. Leave it unchanged unless the production workload is configured to use this service.",
                 "รายการนี้เป็น inventory เสริมที่ไม่ได้เลือกใช้ใน migration แบบ Queue + Hyperdrive รอบนี้ ยังไม่ต้องเพิ่ม permission เว้นแต่ production workload จะตั้งค่าให้ใช้บริการนี้",
               ) : text(
@@ -683,6 +691,12 @@ export default function AdminDeploymentTargets() {
                 `Production resource preparation needs Account → Queues → Edit and Account → Hyperdrive → Edit on account ${inventory.accountRef}. This read-only inventory can confirm access to existing resources, but Cloudflare does not expose the token's write scopes here. You reported updating the token, so keep using the saved Production credential; do not re-enter it. The Production preparation job is still being added; when available, it will report an exact permission error if either Edit scope is missing.`,
                 `การเตรียม resource ของ Production ต้องมี Account → Queues → Edit และ Account → Hyperdrive → Edit ใน account ${inventory.accountRef} หน้าตรวจแบบอ่านอย่างเดียวนี้ยืนยันได้เฉพาะการอ่าน resource ที่มีอยู่ แต่ตรวจ write scope ของ token ไม่ได้ เมื่อคุณอัปเดต token แล้ว ให้ใช้ credential Production ที่บันทึกไว้ต่อได้เลย ไม่ต้องกรอกซ้ำ ตอนนี้ระบบกำลังเพิ่ม Production preparation job เมื่อพร้อมแล้วจะแจ้ง permission ที่ขาดอย่างเจาะจงถ้า Edit scope ยังไม่ครบ`,
               )}</p>
+              {productionHyperdrives.length === 0 ? <p role="status">{text(
+                "The retained PostgreSQL database also needs TLS enabled and a Cloudflare Tunnel that can reach it before Hyperdrive can be prepared. The latest database-network audit found PostgreSQL SSL disabled; no database setting was changed. Cloudflare's private-database flow requires TLS, a reachable Tunnel, and a VPC Service.",
+                "PostgreSQL เครื่องเดิมต้องเปิด TLS และมี Cloudflare Tunnel ที่เชื่อมถึงฐานข้อมูลได้ก่อนจึงเตรียม Hyperdrive ได้ ผลตรวจ network ฐานข้อมูลล่าสุดพบว่า PostgreSQL ปิด SSL อยู่ และระบบยังไม่ได้เปลี่ยนค่าฐานข้อมูล ขั้นตอน private database ของ Cloudflare ต้องมี TLS, Tunnel ที่เชื่อมถึง และ VPC Service",
+              )} <a href="https://developers.cloudflare.com/hyperdrive/configuration/connect-to-private-database-vpc/" target="_blank" rel="noreferrer">
+                {text("Cloudflare: private PostgreSQL with Workers VPC", "คู่มือ Cloudflare: เชื่อม PostgreSQL ส่วนตัวด้วย Workers VPC")}
+              </a></p> : null}
               <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(inventory.checkedAt).toLocaleString()}</p>
             </VStack>;
           })() : null}

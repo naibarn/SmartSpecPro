@@ -314,8 +314,10 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.probeCredential).toHaveBeenCalledWith({ tenantId, projectId, environment: "production", provider: "cloudflare" });
     expect(await screen.findByText("Queues Read")).toBeInTheDocument();
     expect(screen.getByText(/Cloudflare denied this required read request/)).toBeInTheDocument();
-    expect(screen.getByText("Optional for current migration")).toBeInTheDocument();
-    expect(screen.getByText(/Leave it unchanged unless the production workload is configured/)).toBeInTheDocument();
+    expect(screen.getByText(/This is an account-member role, not a setting on the API token/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute(
+      "href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/",
+    );
     expect(screen.getByText(/Workers Scripts Write, Queues Write, Hyperdrive Write/)).toBeInTheDocument();
   });
 
@@ -574,6 +576,10 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/Account → Queues → Edit and Account → Hyperdrive → Edit/)).toBeInTheDocument();
     expect(screen.getByText((_content, element) => element?.tagName === "P" &&
       element.textContent?.includes("You reported updating the token, so keep using the saved Production credential; do not re-enter it.") === true)).toBeInTheDocument();
+    expect(screen.getByText(/The latest database-network audit found PostgreSQL SSL disabled/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Check this target’s Cloudflare access" }));
+    expect(screen.getByText(/This is an account-member role, not a setting on the API token/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute("href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/");
     expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
   });
 

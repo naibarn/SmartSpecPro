@@ -3,22 +3,22 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `2`
-- Updated (UTC): `2026-10-24T12:52:36.083070+00:00`
+- State generation: `3`
+- Updated (UTC): `2026-10-24T13:17:42.185910+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `NOT_VERIFIED`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-02-production-deploy-authority`
-- Next action: Implement production-scoped Queue and private PostgreSQL Hyperdrive preparation through the existing bounded worker_jobs and approval authority; preserve Staging contracts and require verified receipts before Worker binding.
+- Next action: Repair the focused credential UI regression, then map existing production grant/job/executor interfaces and implement a safe preparation slice without provider writes until external VPC/TLS prerequisites are met.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-production-target-ui | pending | — | — | — | — | — |
-| section-02-production-deploy-authority | in_progress | — | — | — | — | Implement production-scoped Queue and private PostgreSQL Hyperdrive preparation through the existing bounded worker_jobs and approval authority; preserve Staging contracts and require verified receipts before Worker binding. |
+| section-02-production-deploy-authority | in_progress | — | — | — | — | Repair the focused credential UI regression, then map existing production grant/job/executor interfaces and implement a safe preparation slice without provider writes until external VPC/TLS prerequisites are met. |
 | section-03-production-runtime-composition | pending | — | — | — | — | — |
 | section-04-production-readiness-and-cutover | pending | — | — | — | — | — |
 
