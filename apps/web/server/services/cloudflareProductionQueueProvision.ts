@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { getDb } from "../db";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { resolveCloudflareProductionDeploymentTarget } from "./cloudflareProductionDeploymentContract";
@@ -6,6 +5,7 @@ import type { JobExecutor } from "./jobExecutor";
 
 export const CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT = "cloudflare-production-queue-provision-v1" as const;
 export const CLOUDFLARE_PRODUCTION_QUEUE_JOB = "cloudflare.production.queue.provision" as const;
+export const CLOUDFLARE_PRODUCTION_QUEUE_NAME = "smartspec-canonical-job-queue-production" as const;
 
 export class CloudflareProductionQueueError extends Error {
   readonly class: "retryable" | "permanent" | "unknown";
@@ -18,8 +18,10 @@ export class CloudflareProductionQueueError extends Error {
 
 export function productionQueueName(tenantId: string, projectId: string) {
   if (!tenantId || !projectId) throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_SCOPE_INVALID");
-  const digest = createHash("sha256").update(`${tenantId}|${projectId}`).digest("hex").slice(0, 12);
-  return `smartspec-production-${digest}-jobs`;
+  // This single production control-plane queue is intentionally shared across
+  // application tenants. Keep its name in sync with wrangler.production.jsonc;
+  // tenant/project scope is still enforced by the canonical job and DB rows.
+  return CLOUDFLARE_PRODUCTION_QUEUE_NAME;
 }
 
 type Envelope = { success?: boolean; result?: unknown; result_info?: { total_pages?: number }; errors?: Array<{ code?: number | string }> };

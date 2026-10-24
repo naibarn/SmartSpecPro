@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createProductionQueue, productionQueueName } from "./cloudflareProductionQueueProvision";
+import { CLOUDFLARE_PRODUCTION_QUEUE_NAME, createProductionQueue, productionQueueName } from "./cloudflareProductionQueueProvision";
 
 const accountRef = "a".repeat(32);
 const scope = { tenantId: "tenant-a", projectId: "project-a", accountRef, token: "test-token", assertAuthorized: vi.fn(async () => {}) };
@@ -7,12 +7,12 @@ const response = (result: unknown, status = 200, totalPages = 1) => new Response
   result_info: { total_pages: totalPages } }), { status, headers: { "content-type": "application/json" } });
 
 describe("Cloudflare Production Queue preparation", () => {
-  it("uses a deterministic Production-only name scoped to the tenant and project", () => {
+  it("uses the exact queue name bound by the production Worker config", () => {
     const name = productionQueueName("tenant-a", "project-a");
-    expect(name).toMatch(/^smartspec-production-[a-f0-9]{12}-jobs$/);
-    expect(productionQueueName("tenant-a", "project-a")).toBe(name);
-    expect(productionQueueName("tenant-b", "project-a")).not.toBe(name);
-    expect(productionQueueName("tenant-a", "project-b")).not.toBe(name);
+    expect(name).toBe("smartspec-canonical-job-queue-production");
+    expect(name).toBe(CLOUDFLARE_PRODUCTION_QUEUE_NAME);
+    expect(productionQueueName("tenant-b", "project-a")).toBe(name);
+    expect(productionQueueName("tenant-a", "project-b")).toBe(name);
   });
 
   it("creates only the missing Production queue and verifies provider readback", async () => {
