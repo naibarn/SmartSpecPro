@@ -1,9 +1,20 @@
 /** Select dev data by default; production debugging requires a dedicated read-only role. */
 export function resolveApplicationDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string {
   const mode = env.SMARTSPEC_DEV_DATABASE_MODE ?? "development";
-  if (env.NODE_ENV !== "development" || env.SMARTSPEC_ENVIRONMENT !== "development" || mode !== "production-readonly") {
+  if (env.NODE_ENV !== "development" || env.SMARTSPEC_ENVIRONMENT !== "development") {
     return env.DATABASE_URL ?? "";
   }
+
+  if (mode === "development") {
+    const raw = env.DATABASE_URL ?? "";
+    let url: URL;
+    try { url = new URL(raw); } catch { throw new Error("DEVELOPMENT_DATABASE_URL_REQUIRED"); }
+    if (!/^(postgres|postgresql):$/.test(url.protocol) || !/(?:^|_)dev(?:_|$)/.test(url.pathname.slice(1))) {
+      throw new Error("DEVELOPMENT_MODE_REQUIRES_ISOLATED_DEV_DATABASE");
+    }
+    return raw;
+  }
+  if (mode !== "production-readonly") throw new Error("DEVELOPMENT_DATABASE_MODE_DENIED");
 
   const raw = env.SMARTSPEC_PRODUCTION_READONLY_DATABASE_URL ?? "";
   let url: URL;

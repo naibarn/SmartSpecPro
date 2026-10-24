@@ -9,6 +9,16 @@ describe("development database selection", () => {
     expect(resolveApplicationDatabaseUrl(base)).toBe(dev);
   });
 
+  it("rejects the production database in the default development mode", () => {
+    expect(() => resolveApplicationDatabaseUrl({ ...base, DATABASE_URL: "postgresql://smartspec@localhost/smartspec" }))
+      .toThrow("DEVELOPMENT_MODE_REQUIRES_ISOLATED_DEV_DATABASE");
+  });
+
+  it("rejects the legacy unguarded shared-production selector", () => {
+    expect(() => resolveApplicationDatabaseUrl({ ...base, SMARTSPEC_DEV_DATABASE_MODE: "shared-production",
+      DATABASE_URL: "postgresql://smartspec@localhost/smartspec" })).toThrow("DEVELOPMENT_DATABASE_MODE_DENIED");
+  });
+
   it("requires a separately configured production debug credential", () => {
     expect(() => resolveApplicationDatabaseUrl({ ...base, SMARTSPEC_DEV_DATABASE_MODE: "production-readonly" }))
       .toThrow("PRODUCTION_DEBUG_READONLY_DATABASE_URL_REQUIRED");
