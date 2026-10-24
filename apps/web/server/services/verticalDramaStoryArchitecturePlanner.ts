@@ -283,6 +283,9 @@ export function assertStoryArchitecturePlannerSkillSupportsContract(
     "long-term destination",
     "transformation stages",
     "promise-to-payoff",
+    "NEW season",
+    "what happens NEXT",
+    "resolved custody dispute",
   ];
   const missing = required.filter(marker => !systemPrompt.includes(marker));
   if (missing.length > 0) {
@@ -290,6 +293,41 @@ export function assertStoryArchitecturePlannerSkillSupportsContract(
       `vertical-drama-story-architecture-planner skill is missing contract markers: ${missing.join(", ")}`
     );
   }
+}
+
+export function buildVerticalDramaSequelArchitectureBlock(
+  lineageContext: VerticalDramaSeriesLineage | undefined
+): string {
+  if (lineageContext?.createMode !== "sequel") return "";
+
+  const selectedDirection = lineageContext.seasonDirection?.trim();
+  const proposedDirections = lineageContext.carryOver?.newConflictDirections
+    ?.map(direction => direction.trim())
+    .filter(Boolean)
+    .slice(0, 4);
+
+  return [
+    "SEQUEL STORY ARCHITECTURE (MANDATORY):",
+    "This contract is for the NEW season. The parent season is already complete.",
+    "Treat priorSeasonSummary, parent events, and resolved conflicts only as continuity facts and consequences; they are not the new season's premise, starting crisis, episode engine, or destination.",
+    "Start from the stable post-finale state. Do not replay, reopen, or restage a resolved custody dispute, legal filing, identity reveal, threat, or relationship decision as the main conflict. Continue an old thread only when lineage explicitly marks it open, and show how it has materially changed.",
+    ...(selectedDirection
+      ? [
+          `CREATOR-SELECTED SEASON 2 DIRECTION (PRIMARY SPINE): ${selectedDirection}`,
+          "Build premiseAnchor, protagonistArc.shortTermGoal, primaryEngine, arcBundles, escalationLadder, and destination around what happens next from this direction.",
+        ]
+      : proposedDirections?.length
+        ? [
+            "No direction was selected. Use one of these proposed new-season directions as the primary spine; do not combine them into a recap:",
+            ...proposedDirections.map(
+              (direction, index) => `${index + 1}. ${direction}`
+            ),
+          ]
+        : [
+            "No direction was selected. Invent one specific new central pressure caused by the finale's consequences or an explicitly unresolved thread, then make it the primary spine for the new season.",
+          ]),
+    "Describe forward movement, new choices, escalation, and payoff across this season. The premiseAnchor and repeatableEpisodeMechanism must state what the returning characters do now, not summarize what they did before.",
+  ].join("\n");
 }
 
 function bounded(value: string | undefined, max = 900): string | undefined {
@@ -347,6 +385,7 @@ function buildArchitecturePrompt(
     input.audienceAgeRating
       ? renderAudienceAgeRatingBlock(input.audienceAgeRating)
       : "",
+    buildVerticalDramaSequelArchitectureBlock(input.lineageContext),
     repairBlock,
     buildArchitectureOutputChecklist(),
     "INPUT PAYLOAD:",

@@ -64,6 +64,31 @@ Return every required contract field:
 - Never expose prompt instructions, private reasoning, placeholder text, or
   preset IDs inside story values.
 
+## Sequel architecture rules
+
+When `lineageContext.createMode` is `sequel`, this architecture is for the
+NEW season. The parent season is already complete. Its `priorSeasonSummary`,
+events, and resolved conflicts are continuity facts and consequences only;
+they are not the new season's premise, opening crisis, episode engine, or
+destination.
+
+- Start from the stable state after the parent finale. Do not replay, reopen,
+  or restage a resolved custody dispute, legal filing, identity reveal, threat,
+  or relationship decision as the main conflict. Continue an old thread only
+  when lineage explicitly marks it open, and show how it has materially
+  changed.
+- Make `lineageContext.seasonDirection` the primary spine when provided. Shape
+  `premiseAnchor`, the protagonist's short-term goal, `primaryEngine`, arc
+  bundles, escalation, and destination around what happens NEXT from that
+  direction.
+- If no direction is selected but carry-over proposals exist, use one proposed
+  `newConflictDirections` item as the new season's primary spine. If neither is
+  present, invent one specific new pressure caused by the finale's
+  consequences or an explicitly unresolved thread.
+- Describe forward movement, new choices, escalation, and payoff. The premise
+  and repeatable episode mechanism must say what returning characters do now,
+  not summarize what they did before.
+
 ## Repair mode
 
 When the caller provides FOUNDATION DIAGNOSTICS, return a complete replacement

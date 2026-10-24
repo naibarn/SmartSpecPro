@@ -29,6 +29,8 @@ describe("vertical-drama-story-architecture-planner skill contract", () => {
     expect(skill).toContain("season endpoint");
     expect(skill).toContain("long-term destination");
     expect(skill).toContain("real-world failure");
+    expect(skill).toContain("resolved custody dispute");
+    expect(skill).toContain("what happens NEXT");
     expect(inputSchema.type).toBe("object");
     expect(outputSchema.type).toBe("object");
     expect(outputSchema.properties?.audiencePromise).toMatchObject({

@@ -15,7 +15,10 @@ vi.mock("../verticalDramaLlmModelPolicy", () => ({
   resolveVerticalDramaRecommendedDraftModel: mocks.resolveRecommended,
 }));
 
-import { planVerticalDramaStoryArchitecture } from "../verticalDramaStoryArchitecturePlanner";
+import {
+  buildVerticalDramaSequelArchitectureBlock,
+  planVerticalDramaStoryArchitecture,
+} from "../verticalDramaStoryArchitecturePlanner";
 
 const contract = {
   contractVersion: 1,
@@ -114,6 +117,57 @@ const contract = {
 };
 
 describe("Vertical Drama story architecture runtime contract", () => {
+  it("makes the selected sequel direction the new-season architecture spine", () => {
+    const block = buildVerticalDramaSequelArchitectureBlock({
+      contractVersion: 1,
+      createMode: "sequel",
+      parentSeriesId: 53,
+      parentTitle: "คู่กัดลวงรัก",
+      seasonNumber: 2,
+      priorSeasonSummary: "Season 1 ended with the custody petition resolved.",
+      seasonDirection: "The twins investigate their birth records together.",
+    });
+
+    expect(block).toContain("The parent season is already complete");
+    expect(block).toContain(
+      "CREATOR-SELECTED SEASON 2 DIRECTION (PRIMARY SPINE)"
+    );
+    expect(block).toContain(
+      "The twins investigate their birth records together."
+    );
+    expect(block).toContain("what happens next from this direction");
+    expect(block).not.toContain(
+      "Season 1 ended with the custody petition resolved"
+    );
+  });
+
+  it("uses a proposed new conflict when no direction has been selected", () => {
+    const block = buildVerticalDramaSequelArchitectureBlock({
+      contractVersion: 1,
+      createMode: "sequel",
+      parentSeriesId: 53,
+      parentTitle: "คู่กัดลวงรัก",
+      seasonNumber: 2,
+      carryOver: {
+        contractVersion: 1,
+        characters: [],
+        newCharacterSuggestions: [],
+        newConflictDirections: [
+          "The public reconciliation creates a new family pressure.",
+        ],
+        antagonistStrategy: "A new antagonist exploits the attention.",
+        carriedRelationships: [],
+        carriedThreads: [],
+      },
+    });
+
+    expect(block).toContain("No direction was selected");
+    expect(block).toContain(
+      "The public reconciliation creates a new family pressure."
+    );
+    expect(block).toContain("primary spine");
+  });
+
   it("repairs a stale seeded contract directly without spending a fresh plan call", async () => {
     mocks.execute.mockReset();
     const repairedContract = {
