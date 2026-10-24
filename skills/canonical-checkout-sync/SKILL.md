@@ -156,6 +156,10 @@ Concurrent operations for distinct repository/revision/purpose tuples use indepe
 
 ## Source retention and disk use
 
+For a user-facing disk/worktree cleanup request, use
+[workspace-cleanup](../workspace-cleanup/SKILL.md); the controller below remains
+the authority for immutable source and artifact retention.
+
 Reuse a matching inactive source tuple; do not vary purpose/revision to evade a
 lease conflict or build after every merge. SmartSpecPro Linux builds collect old
 build sources before the next build. Inspect or apply collection explicitly:

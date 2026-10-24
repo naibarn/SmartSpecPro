@@ -23,6 +23,7 @@ Mirrored installed skills:
 
 Main usage guide:
 - `ORCHESTRA-USAGE-GUIDE.md` — Thai guide for calling `orchestra` across UI/UX, backend, security, debugging, testing, release, and skill-system work.
+- [`workspace-cleanup/SKILL.md`](workspace-cleanup/SKILL.md) — call `$workspace-cleanup` or “เก็บกวาด workspace” to inspect and perform safe worktree/build/artifact cleanup; add “ตรวจอย่างเดียว” for an audit without deletion or merge.
 
 Notes:
 - `.system` skills are intentionally not mirrored here because they are managed
