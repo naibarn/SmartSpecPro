@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CLOUDFLARE_PRODUCTION_QUEUE_NAME, createProductionQueue, productionQueueName } from "./cloudflareProductionQueueProvision";
+import { CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME, CLOUDFLARE_PRODUCTION_QUEUE_NAME, createProductionQueue, productionQueueName } from "./cloudflareProductionQueueProvision";
 
 const accountRef = "a".repeat(32);
 const scope = { tenantId: "tenant-a", projectId: "project-a", accountRef, token: "test-token", assertAuthorized: vi.fn(async () => {}) };
@@ -15,31 +15,36 @@ describe("Cloudflare Production Queue preparation", () => {
     expect(productionQueueName("tenant-a", "project-b")).toBe(name);
   });
 
-  it("creates only the missing Production queue and verifies provider readback", async () => {
-    const name = productionQueueName("tenant-a", "project-a"), queueId = "b".repeat(32);
+  it("creates the Production queue pair from the Worker config and verifies provider readback", async () => {
+    const name = productionQueueName("tenant-a", "project-a"), queueId = "b".repeat(32), dlqId = "e".repeat(32);
     const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(_url));
       if (url.pathname.endsWith("/queues") && init?.method === "GET") return response([]);
       if (url.pathname.endsWith("/queues") && init?.method === "POST") {
-        expect(JSON.parse(String(init.body))).toEqual({ queue_name: name });
-        return response({ queue_id: queueId, queue_name: name }, 200);
+        const body = JSON.parse(String(init.body)) as { queue_name: string };
+        return response({ queue_id: body.queue_name === name ? queueId : dlqId, queue_name: body.queue_name }, 200);
       }
-      if (url.pathname.endsWith(`/queues/${queueId}`)) return response({ queue_id: queueId, queue_name: name, consumers_total_count: 0 });
+      if (url.pathname.endsWith(`/queues/${queueId}`)) return response({ queue_id: queueId, queue_name: name, consumers_total_count: 1 });
+      if (url.pathname.endsWith(`/queues/${dlqId}`)) return response({ queue_id: dlqId, queue_name: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME });
       throw new Error(`Unexpected request ${init?.method} ${url.pathname}`);
     });
     const result = await createProductionQueue({ ...scope, projectId: "project-a", fetchImpl });
-    expect(result).toMatchObject({ accountRef, queueId, queueName: name, environment: "production", providerConfigurationVerified: true,
+    expect(result).toMatchObject({ accountRef, queueId, queueName: name, deadLetterQueueId: dlqId, deadLetterQueueName: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME,
+      environment: "production", providerConfigurationVerified: true,
       workerBound: false, trafficShifted: false });
-    expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? "GET")).toEqual(["GET", "POST", "GET"]);
+    expect(fetchImpl.mock.calls.map(([, init]) => init?.method ?? "GET")).toEqual(["GET", "POST", "GET", "POST", "GET"]);
     expect(scope.assertAuthorized).toHaveBeenCalled();
   });
 
   it("reuses the exact deterministic queue after an uncertain create retry without a second write", async () => {
-    const name = productionQueueName("tenant-a", "project-a"), queueId = "c".repeat(32);
+    const name = productionQueueName("tenant-a", "project-a"), queueId = "c".repeat(32), dlqId = "f".repeat(32);
     const fetchImpl = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(_url));
-      if (url.pathname.endsWith("/queues") && init?.method !== "POST") return response([{ queue_id: queueId, queue_name: name }]);
+      if (url.pathname.endsWith("/queues") && init?.method !== "POST") return response([
+        { queue_id: queueId, queue_name: name }, { queue_id: dlqId, queue_name: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME },
+      ]);
       if (url.pathname.endsWith(`/queues/${queueId}`)) return response({ queue_id: queueId, queue_name: name, consumers_total_count: 0 });
+      if (url.pathname.endsWith(`/queues/${dlqId}`)) return response({ queue_id: dlqId, queue_name: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME });
       throw new Error(`Unexpected request ${init?.method} ${url.pathname}`);
     });
     const result = await createProductionQueue({ ...scope, projectId: "project-a", fetchImpl });
@@ -47,18 +52,23 @@ describe("Cloudflare Production Queue preparation", () => {
     expect(fetchImpl.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
   });
 
-  it("fails closed when provider inventory is incomplete or readback has a consumer", async () => {
+  it("fails closed when provider inventory is incomplete", async () => {
     const incomplete = vi.fn(async () => response([], 200, 11));
     await expect(createProductionQueue({ ...scope, projectId: "project-a", fetchImpl: incomplete })).rejects.toThrow("INVENTORY_TOO_LARGE");
+  });
 
+  it("reuses queues with an existing consumer without treating that as a readback failure", async () => {
     const name = productionQueueName("tenant-a", "project-a"), queueId = "d".repeat(32);
     const consumed = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
       const url = new URL(String(_url));
-      if (url.pathname.endsWith("/queues") && init?.method === "GET") return response([]);
-      if (url.pathname.endsWith("/queues") && init?.method === "POST") return response({ queue_id: queueId, queue_name: name });
-      return response({ queue_id: queueId, queue_name: name, consumers_total_count: 1 });
+      if (url.pathname.endsWith("/queues") && init?.method !== "POST") return response([
+        { queue_id: queueId, queue_name: name }, { queue_id: "1".repeat(32), queue_name: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME },
+      ]);
+      if (url.pathname.endsWith(`/queues/${queueId}`)) return response({ queue_id: queueId, queue_name: name, consumers_total_count: 1 });
+      if (url.pathname.endsWith(`/queues/${"1".repeat(32)}`)) return response({ queue_id: "1".repeat(32), queue_name: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME });
+      throw new Error(`Unexpected request ${init?.method} ${url.pathname}`);
     });
-    await expect(createProductionQueue({ ...scope, projectId: "project-a", fetchImpl: consumed })).rejects.toThrow("READBACK_MISMATCH");
+    await expect(createProductionQueue({ ...scope, projectId: "project-a", fetchImpl: consumed })).resolves.toMatchObject({ queueId });
   });
 
   it("returns the sanitized Cloudflare error code when Queue Write permission is denied", async () => {

@@ -713,6 +713,7 @@ export const infrastructureRouter = router({
       const output = job.outputJson as Record<string, unknown> | null;
       return { jobId: input.jobId, status: job.status, errorCode: job.errorCode,
         queueName: typeof output?.queueName === "string" ? output.queueName : null,
+        deadLetterQueueName: typeof output?.deadLetterQueueName === "string" ? output.deadLetterQueueName : null,
         providerConfigurationVerified: output?.providerConfigurationVerified === true,
         workerBound: output?.workerBound === true, trafficShifted: output?.trafficShifted === true };
     }),

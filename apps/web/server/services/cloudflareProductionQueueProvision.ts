@@ -6,6 +6,7 @@ import type { JobExecutor } from "./jobExecutor";
 export const CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT = "cloudflare-production-queue-provision-v1" as const;
 export const CLOUDFLARE_PRODUCTION_QUEUE_JOB = "cloudflare.production.queue.provision" as const;
 export const CLOUDFLARE_PRODUCTION_QUEUE_NAME = "smartspec-canonical-job-queue-production" as const;
+export const CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME = "smartspec-canonical-job-queue-production-dlq" as const;
 
 export class CloudflareProductionQueueError extends Error {
   readonly class: "retryable" | "permanent" | "unknown";
@@ -26,7 +27,7 @@ export function productionQueueName(tenantId: string, projectId: string) {
 
 type Envelope = { success?: boolean; result?: unknown; result_info?: { total_pages?: number }; errors?: Array<{ code?: number | string }> };
 
-/** Creates one deterministic, isolated Production queue and verifies provider readback.
+/** Creates the deterministic Production Queue pair and verifies provider readback.
  * It cannot bind a Worker, change routes, or shift traffic. */
 export async function createProductionQueue(input: {
   tenantId: string;
@@ -84,21 +85,29 @@ export async function createProductionQueue(input: {
     if (page >= total) break;
     if (page === 10) throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_INVENTORY_INCOMPLETE");
   }
-  const matches = pages.filter(queue => queue?.queue_name === name);
-  if (matches.length > 1) throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_NAME_AMBIGUOUS");
-  let queueId = typeof matches[0]?.queue_id === "string" ? matches[0].queue_id : null;
-  if (!queueId) {
-    await input.assertAuthorized();
-    const created = await request(root, "POST", { queue_name: name });
-    queueId = typeof created.result?.queue_id === "string" ? created.result.queue_id : null;
-  }
-  if (!queueId || !/^[a-f0-9-]{16,64}$/i.test(queueId)) throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_CREATE_RESPONSE_INVALID");
-  const readback = await request(`${root}/${encodeURIComponent(queueId)}`, "GET");
-  if (readback.result?.queue_id !== queueId || readback.result?.queue_name !== name || (readback.result?.consumers_total_count ?? 0) !== 0) {
-    throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_READBACK_MISMATCH");
-  }
+  const ensureQueue = async (queueName: string) => {
+    const matches = pages.filter(queue => queue?.queue_name === queueName);
+    if (matches.length > 1) throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_NAME_AMBIGUOUS");
+    let queueId = typeof matches[0]?.queue_id === "string" ? matches[0].queue_id : null;
+    if (!queueId) {
+      await input.assertAuthorized();
+      const created = await request(root, "POST", { queue_name: queueName });
+      queueId = typeof created.result?.queue_id === "string" ? created.result.queue_id : null;
+    }
+    if (!queueId || !/^[a-f0-9-]{16,64}$/i.test(queueId)) throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_CREATE_RESPONSE_INVALID");
+    const readback = await request(`${root}/${encodeURIComponent(queueId)}`, "GET");
+    // A retry after Worker binding must accept the already attached consumer;
+    // the provisioning job owns queue identity, not consumer lifecycle.
+    if (readback.result?.queue_id !== queueId || readback.result?.queue_name !== queueName ||
+        (readback.result?.consumers_total_count !== undefined && (!Number.isSafeInteger(readback.result.consumers_total_count) || readback.result.consumers_total_count < 0))) {
+      throw new CloudflareProductionQueueError("CLOUDFLARE_PRODUCTION_QUEUE_READBACK_MISMATCH");
+    }
+    return queueId;
+  };
+  const queueId = await ensureQueue(name);
+  const deadLetterQueueId = await ensureQueue(CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME);
   await input.assertAuthorized();
-  return { accountRef: input.accountRef, queueId, queueName: name, environment: "production" as const,
+  return { accountRef: input.accountRef, queueId, queueName: name, deadLetterQueueId, deadLetterQueueName: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME, environment: "production" as const,
     providerConfigurationVerified: true as const, workerBound: false as const, trafficShifted: false as const };
 }
 

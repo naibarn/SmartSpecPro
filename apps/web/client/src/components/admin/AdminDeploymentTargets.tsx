@@ -686,6 +686,8 @@ export default function AdminDeploymentTargets() {
             }
             const productionQueues = inventory.queues.filter(item => item.environment === "production");
             const stagingQueues = inventory.queues.filter(item => item.environment === "staging");
+            const hasProductionQueue = productionQueues.some(queue => queue.name === "smartspec-canonical-job-queue-production");
+            const hasProductionDeadLetterQueue = productionQueues.some(queue => queue.name === "smartspec-canonical-job-queue-production-dlq");
             const productionHyperdrives = inventory.hyperdrives.filter(item => item.environment === "production");
             const stagingHyperdrives = inventory.hyperdrives.filter(item => item.environment === "staging");
             const activeVersions = inventory.worker.versions;
@@ -710,10 +712,10 @@ export default function AdminDeploymentTargets() {
               <p><strong>{text("Production Queue", "Production Queue")}</strong>: {productionQueues.length > 0
                 ? text(`Found ${productionQueues.length}`, `พบ ${productionQueues.length} รายการ`)
                 : text(stagingQueues.length > 0 ? `Not provisioned. Only Staging exists (${stagingQueues.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingQueues.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingQueues.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
-              {inventory.status === "CHECKED" && !productionQueues.some(queue => queue.name.startsWith("smartspec-production-")) && enabledCloudflareTargets.length === 1 ? <VStack as="section" gap={1}>
+              {inventory.status === "CHECKED" && (!hasProductionQueue || !hasProductionDeadLetterQueue) && enabledCloudflareTargets.length === 1 ? <VStack as="section" gap={1}>
                 <p>{text(
-                  "Prepare the missing Production Queue now. The server uses the encrypted credential already saved for this Production target, creates one deterministic queue, and reads it back. This does not bind or activate the Worker and cannot change traffic.",
-                  "เริ่มเตรียม Production Queue ที่ยังขาดได้เลย ระบบใช้ credential แบบเข้ารหัสที่บันทึกไว้กับ Production target นี้ สร้าง Queue ชื่อมาตรฐานเพียงรายการเดียวและอ่านกลับยืนยัน ขั้นตอนนี้ยังไม่ผูกหรือเปิด Worker และเปลี่ยน traffic ไม่ได้",
+                  "Prepare the missing Production Queue and dead-letter queue now. The server uses the encrypted credential already saved for this Production target, creates or reuses the exact queues in the Worker config, and verifies both. This does not bind or activate the Worker and cannot change traffic.",
+                  "เตรียม Production Queue และ dead-letter queue ที่ยังขาด โดยใช้ credential แบบเข้ารหัสของ Production target สร้างหรือใช้ Queue ตามชื่อใน Worker config แล้วตรวจยืนยันทั้งคู่ ขั้นตอนนี้ยังไม่ผูกหรือเปิด Worker และเปลี่ยน traffic ไม่ได้",
                 )}</p>
                 <Button type="button" disabled={productionQueueMutation.isPending || Boolean(productionQueueJobId && productionQueueJob.data?.status !== "failed")} onClick={() => productionQueueMutation.mutate({ tenantId, projectId, environment: "production" })}>
                   {productionQueueMutation.isPending ? text("Queueing Production setup…", "กำลังส่งงานเตรียม Production…") : productionQueueJobId
@@ -726,6 +728,7 @@ export default function AdminDeploymentTargets() {
                 {productionQueueJobId && productionQueueJob.data ? <p role="status">
                   {text("Preparation job", "งานเตรียมระบบ")}: <code>{productionQueueJob.data.jobId}</code> · {text("Status", "สถานะ")}: <strong>{productionQueueJob.data.status}</strong>
                   {productionQueueJob.data.queueName ? <> · Queue: <code>{productionQueueJob.data.queueName}</code></> : null}
+                  {productionQueueJob.data.deadLetterQueueName ? <> · DLQ: <code>{productionQueueJob.data.deadLetterQueueName}</code></> : null}
                   {productionQueueJob.data.errorCode ? <> · <code>{productionQueueJob.data.errorCode}</code></> : null}
                 </p> : null}
               </VStack> : null}
