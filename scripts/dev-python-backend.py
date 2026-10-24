@@ -2,10 +2,28 @@
 """Start the development Python API against dev or read-only production data."""
 import os
 import sys
+from pathlib import Path
 from urllib.parse import urlsplit
 
 
+def load_dev_environment() -> None:
+    """Load the private dev-only environment file without overriding the caller."""
+    if os.environ.get("ENVIRONMENT") and os.environ.get("DATABASE_URL"):
+        return
+    env_path = Path(os.environ.get("SMARTSPEC_DEV_ENV_FILE", Path.home() / ".config/smartspec-dev/python.env"))
+    if not env_path.is_file():
+        return
+    try:
+        from dotenv import dotenv_values
+    except ImportError as exc:
+        raise SystemExit("python-dotenv is required to load the dev environment file") from exc
+    for key, value in dotenv_values(env_path).items():
+        if value is not None:
+            os.environ.setdefault(key, value)
+
+
 def main() -> None:
+    load_dev_environment()
     if os.environ.get("ENVIRONMENT") != "development":
         raise SystemExit("Development ENVIRONMENT is required")
     mode = os.environ.get("SMARTSPEC_DEV_DATABASE_MODE", "development")
