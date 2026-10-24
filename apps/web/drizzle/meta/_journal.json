@@ -2780,6 +2780,13 @@
       "when": 1792759457921,
       "tag": "0410_mini_app_github_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 411,
+      "version": "7",
+      "when": 1792805885107,
+      "tag": "0411_active_schema_additive_reconciliation",
+      "breakpoints": true
     }
   ]
 }
