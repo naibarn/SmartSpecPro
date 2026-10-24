@@ -685,7 +685,7 @@ export const infrastructureRouter = router({
             targetId: "smartspec-cloudflare-runtime", environment: "production" },
           idempotencyKey: `cloudflare-production-queue:${operationId}`,
           activeDedupeKey: `cloudflare-production-queue:${tenantId}:${input.projectId}`,
-          retryPolicy: { maxAttempts: 3, baseDelayMs: 2_000, maxDelayMs: 5_000, jitter: "bounded", deadlineMs: 5 * 60_000, allowedErrorClasses: ["retryable"] },
+          retryPolicy: { maxAttempts: 3, baseDelayMs: 2_000, maxDelayMs: 5_000, jitter: "bounded", deadlineMs: 15 * 60_000, allowedErrorClasses: ["retryable"] },
           timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 3 * 60_000 } },
         createOptions: { runtimeType: "node_job_worker" },
       });

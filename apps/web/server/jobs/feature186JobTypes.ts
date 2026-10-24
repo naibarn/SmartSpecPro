@@ -59,6 +59,10 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   // Staging deployment authority is still enforced by the registered
   // executor's exact owner grant, target, artifact and rollback checks.
   "cloudflare.staging.deploy",
+  // Production Queue preparation is a narrowly scoped, canonical provider
+  // operation. Its executor revalidates the exact saved target and job lease;
+  // it cannot bind a Worker or change traffic.
+  "cloudflare.production.queue.provision",
   // Feature 195 is the sole durable execution authority for the
   // provider-neutral external-agent handoff. Provider selection remains in
   // the governed job manifest; it must not create a second queue or worker.

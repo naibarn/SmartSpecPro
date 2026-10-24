@@ -12,6 +12,7 @@ import { DEVELOPER_FAST_LANE_CONTRACT } from "./spec224DeveloperFastLaneContract
 import { NATIVE_PROVISION_CONTRACT } from "./cloudflareNativeProvisionContract";
 import { HTTP_IMAGE_PROVISION_CONTRACT } from "./cloudflareHttpImageProvisionContract";
 import { PRIVATE_DATABASE_CONTRACT } from "./cloudflarePrivateDatabaseContract";
+import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT } from "./cloudflareProductionQueueProvision";
 
 /**
  * Canonical transports carry the envelope unchanged. Keep every contract
@@ -35,6 +36,7 @@ const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   NATIVE_PROVISION_CONTRACT,
   PRIVATE_DATABASE_CONTRACT,
   HTTP_IMAGE_PROVISION_CONTRACT,
+  CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT,
 ]);
 
 export type TransportObservation = "unknown" | "published" | "consumed" | "failed";
