@@ -72,20 +72,23 @@ describe("Cloudflare staging API transport", () => {
       secrets: { token: "t".repeat(32), clientId: "i".repeat(24), secret: "s".repeat(32) } };
     const scopedTarget = { ...productionTarget, runtimePolicy: originConfiguration.configurationRef };
     const requests: Array<{ url: string; init: RequestInit }> = [];
+    let uploadedMetadata: any;
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
       const url = String(input);
       requests.push({ url, init });
       if (url.endsWith("/assets-upload-session")) return json({ jwt: "upload-jwt", buckets: [] });
       if (url.endsWith("/versions") && init.method === "POST") {
-        const metadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
-        expect(metadata.bindings).toEqual(expect.arrayContaining([
+        uploadedMetadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
+        expect(uploadedMetadata.bindings).toEqual(expect.arrayContaining([
           { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "production" },
           { name: "AUTH_ORIGIN", type: "plain_text", text: descriptor.origin },
+          { name: "JOB_QUEUE", type: "queue", queue_name: "smartspec-canonical-job-queue-production" },
         ]));
-        expect(metadata.annotations["workers/message"]).toBe(`SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}`);
+        expect(uploadedMetadata.annotations["workers/message"]).toBe(`SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}`);
         return json({ id: versionId });
       }
       if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
+        resources: { bindings: uploadedMetadata?.bindings },
         annotations: { "workers/message": `SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}` } });
       throw new Error(`Unexpected provider request ${url}`);
     }) as typeof fetch;

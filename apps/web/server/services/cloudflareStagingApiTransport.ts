@@ -4,6 +4,7 @@ import { assertHttpApplicationVersionMetadata } from "./cloudflareHttpApplicatio
 import { createHash } from "node:crypto";
 import { validateCloudflareOriginVersionBindings, cloudflareWorkflowVersionBindings, assertCloudflareWorkflowVersionBindings, type CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import { assertNativeWorkerBindings, nativeWorkerBindings, type CloudflareNativeBindingDescriptor } from "./cloudflareNativeBindingDescriptor";
+import { CLOUDFLARE_PRODUCTION_QUEUE_NAME } from "./cloudflareProductionQueueProvision";
 import { cloudflareStagingAssetContentType } from "./cloudflareStagingAssetMetadata";
 import type {
   CloudflareStagingApi,
@@ -12,6 +13,25 @@ import type {
 } from "./cloudflareStagingDeploymentExecutor";
 
 const API_ROOT = "https://api.cloudflare.com/client/v4";
+
+/** Production Queue is provisioned by its own canonical job. Bind the exact
+ * immutable queue name when preparing a Production version; never infer or
+ * reuse the Staging queue descriptor. */
+function productionQueueBinding(target: CloudflareStagingTarget) {
+  return target.environment === "production"
+    ? [{ name: "JOB_QUEUE", type: "queue", queue_name: CLOUDFLARE_PRODUCTION_QUEUE_NAME }]
+    : [];
+}
+
+function assertProductionQueueBinding(actual: unknown, target: CloudflareStagingTarget) {
+  if (target.environment !== "production") return;
+  const expected = productionQueueBinding(target)[0]!;
+  if (!Array.isArray(actual) || actual.filter((binding: any) => binding?.type === "queue").length !== 1 ||
+      actual.filter((binding: any) => binding?.name === expected.name).length !== 1 ||
+      !actual.some((binding: any) => binding?.name === expected.name && binding?.type === expected.type && binding?.queue_name === expected.queue_name)) {
+    throw new CloudflareStagingTransportError("CLOUDFLARE_PRODUCTION_QUEUE_BINDING_MISMATCH");
+  }
+}
 const TARGET_ID = "smartspec-cloudflare-staging";
 const SOURCE_SHA = /^[a-f0-9]{40}$/i;
 const SHA256 = /^[a-f0-9]{64}$/i;
@@ -314,6 +334,7 @@ export function createCloudflareStagingApiTransport(input: {
           ? [{ name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" }]
           : []),
         ...(origin?.descriptor.nativeResources ? nativeWorkerBindings(origin.descriptor.nativeResources) : []),
+        ...productionQueueBinding(target),
         ...(http && !origin?.descriptor.applicationHttpPhase ? http.bindings : []),
         ...(origin ? cloudflareWorkflowVersionBindings(origin) : []),
         ...(origin ? [
@@ -594,6 +615,7 @@ export function createCloudflareStagingApiTransport(input: {
           }
           if (origin?.descriptor.nativeResources) assertNativeWorkerBindings(priorVersion.resources?.bindings, origin.descriptor.nativeResources,
             Boolean(origin.descriptor.workflowExecution), origin.descriptor.jobTransport ?? "workflows");
+          assertProductionQueueBinding(priorVersion.resources?.bindings, target);
           if (origin) assertCloudflareWorkflowVersionBindings(priorVersion.resources?.bindings, origin);
           if (origin?.descriptor.applicationHttpPhase) assertHttpApplicationVersionMetadata(origin.descriptor.applicationHttp!, origin.descriptor, priorVersion, true);
           if (origin?.descriptor.applicationHttp && !origin.descriptor.applicationHttpPhase) await input.ensureHttpApplications!(origin, target, priorVersion, idempotencyKey, assertHttpAuthorized);
@@ -602,17 +624,18 @@ export function createCloudflareStagingApiTransport(input: {
         }
         if (origin?.descriptor.applicationHttp) await input.prepareHttpApplications!(origin, target, assertHttpAuthorized);
         const versionId = await uploadVersion(token, target, bundle, artifact, undefined, origin);
-        if (origin?.descriptor.nativeResources || origin?.descriptor.applicationHttp) {
+        if (origin?.descriptor.nativeResources || origin?.descriptor.applicationHttp || target.environment === "production") {
           const uploaded = await readUploadedVersion(token, target, versionId);
-          if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest))
+          if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !== versionMessage(artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest))
             throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_ARTIFACT_RECEIPT_MISMATCH");
-          if (origin.descriptor.nativeResources) assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources,
+          if (origin?.descriptor.nativeResources) assertNativeWorkerBindings(uploaded.resources?.bindings, origin.descriptor.nativeResources,
             Boolean(origin.descriptor.workflowExecution), origin.descriptor.jobTransport ?? "workflows");
-          assertCloudflareWorkflowVersionBindings(uploaded.resources?.bindings, origin);
-          if (origin.descriptor.applicationHttpPhase) assertHttpApplicationVersionMetadata(origin.descriptor.applicationHttp!, origin.descriptor, uploaded, true);
+          assertProductionQueueBinding(uploaded.resources?.bindings, target);
+          if (origin) assertCloudflareWorkflowVersionBindings(uploaded.resources?.bindings, origin);
+          if (origin?.descriptor.applicationHttpPhase) assertHttpApplicationVersionMetadata(origin.descriptor.applicationHttp!, origin.descriptor, uploaded, true);
           await assertMutationAuthorized?.();
-          if (origin.descriptor.nativeResources) await input.verifyNativeResources!(origin.descriptor.nativeResources, target);
-          if (origin.descriptor.applicationHttp && !origin.descriptor.applicationHttpPhase) await input.ensureHttpApplications!(origin, target, uploaded, idempotencyKey, assertHttpAuthorized);
+          if (origin?.descriptor.nativeResources) await input.verifyNativeResources!(origin.descriptor.nativeResources, target);
+          if (origin?.descriptor.applicationHttp && !origin.descriptor.applicationHttpPhase) await input.ensureHttpApplications!(origin, target, uploaded, idempotencyKey, assertHttpAuthorized);
         }
         const deploymentId = await createDeployment(token, target, [{ version_id: versionId, percentage: 100 }], idempotencyKey);
         const subdomain = await getWorkersDevSubdomain(token, target);
