@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   refetchStagingRuntimeReadiness: vi.fn(),
   refetchStagingOriginConfiguration: vi.fn(),
   refetchProductionRuntimeReadiness: vi.fn(),
+  refetchProductionProviderInventory: vi.fn(),
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   probeCredential: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareStagingRuntimeReadiness: { invalidate: mocks.invalidate },
       getCloudflareOriginConfiguration: { invalidate: mocks.invalidate, fetch: mocks.fetchOriginConfiguration },
       getCloudflareProductionRuntimeReadiness: { invalidate: mocks.invalidate },
+      getCloudflareProductionProviderInventory: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
       { id: "tenant-system", name: "System", selectorKind: "system" },
@@ -58,6 +60,13 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareOriginConfiguration: { useQuery: () => ({ data: mocks.originConfiguration, isLoading: false, isError: mocks.originConfigurationError, refetch: mocks.refetchStagingOriginConfiguration }) },
       getCloudflareStagingRuntimeReadiness: { useQuery: () => ({ data: mocks.stagingRuntime, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchStagingRuntimeReadiness }) },
       getCloudflareProductionRuntimeReadiness: { useQuery: () => ({ data: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", environment: "production", activation: "disabled", transport: "queues", missing: ["HYPERDRIVE", "JOB_QUEUE"], unconfigured: ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"], applicationIngress: { enabled: false, ready: false, missing: ["CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", "NODE_HTTP", "PYTHON_HTTP"] }, jobHandlerConfigured: false, reason: "CLOUDFLARE_PRODUCTION_WORKER_RUNTIME_NOT_READY" }, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionRuntimeReadiness }) },
+      getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: "CHECKED", checkedAt: "2026-10-24T00:00:00.000Z",
+        queueInventoryComplete: true, queues: [{ name: "smartspec-staging-project-jobs", environment: "staging" }],
+        hyperdriveInventoryComplete: true, hyperdrives: [{ name: "smartspec-staging-project-db", environment: "staging" }],
+        domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
+        worker: { deploymentInventoryComplete: true, deploymentCount: 1, activeVersionCount: 1,
+          versions: [{ versionId: "11111111-1111-4111-8111-111111111111", percentage: 100, bindingNames: ["CLOUDFLARE_ACTIVATION"], containerNames: [], hasVerifiedReleaseIdentity: false, checked: true }] } },
+        isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionProviderInventory }) },
       getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED" }, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
@@ -545,6 +554,21 @@ describe("AdminDeploymentTargets", () => {
       containerApplicationRef: null,
       provenance: expect.stringMatching(/^Production destination confirmed by admin /),
     }));
+  });
+
+  it("shows the real Production resource and rollback blockers instead of sending the user back to Staging", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(await screen.findByText(/Not provisioned\. Only Staging exists \(smartspec-staging-project-jobs\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Not provisioned\. Only Staging exists \(smartspec-staging-project-db\)/)).toBeInTheDocument();
+    expect(screen.getByText(/cannot be used as a rollback baseline/i)).toBeInTheDocument();
+    expect(screen.getByText(/The exact smartaihub\.app\/\* Worker Route is not attached/i)).toBeInTheDocument();
+    expect(screen.getByText(/Account → Queues → Edit and Account → Hyperdrive → Edit/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
   });
 
   it("does not guess a production account when no enabled Staging target can establish it", async () => {

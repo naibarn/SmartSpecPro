@@ -77,6 +77,7 @@ import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
 import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_RETRY_POLICY, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
+import { probeCloudflareProductionProviderInventory } from "../services/cloudflareProductionProviderInventory";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
@@ -645,6 +646,14 @@ export const infrastructureRouter = router({
   getCloudflareProductionRuntimeReadiness: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("production") }).strict())
     .query(async () => probeCloudflareProductionRuntimeReadiness()),
+
+  getCloudflareProductionProviderInventory: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("production") }).strict())
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      return probeCloudflareProductionProviderInventory({ db, tenantId: input.tenantId, projectId: input.projectId });
+    }),
 
   queueCloudflareStagingDeploy: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging") }).strict())

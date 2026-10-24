@@ -381,6 +381,10 @@ export default function AdminDeploymentTargets() {
     { tenantId, projectId, environment: "production" },
     { enabled: validScope && environment === "production" },
   );
+  const productionProviderInventory = trpc.infrastructure.getCloudflareProductionProviderInventory.useQuery(
+    { tenantId, projectId, environment: "production" },
+    { enabled: validScope && environment === "production", refetchOnWindowFocus: false },
+  );
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const stagingCloudflareTargets = ((stagingTargetsQuery.data ?? []) as DeploymentTarget[])
@@ -571,7 +575,9 @@ export default function AdminDeploymentTargets() {
         <VStack as="section" gap={2}>
           <HStack gap={2} wrap="wrap">
             <h3>{text("Live Cloudflare production Worker readiness", "ความพร้อมของ Cloudflare production Worker ที่กำลังทำงาน")}</h3>
-            <Button type="button" variant="outline" size="sm" onClick={() => void productionRuntimeReadiness.refetch()} disabled={productionRuntimeReadiness.isFetching}>
+            <Button type="button" variant="outline" size="sm" onClick={() => void Promise.all([
+              productionRuntimeReadiness.refetch(), productionProviderInventory.refetch(),
+            ])} disabled={productionRuntimeReadiness.isFetching || productionProviderInventory.isFetching}>
               {text("Check now", "ตรวจสอบตอนนี้")}
             </Button>
           </HStack>
@@ -620,6 +626,48 @@ export default function AdminDeploymentTargets() {
               {runtime.transport === "all" ? <p>{text("No production job transport has been selected. Containers should be provisioned only for workloads that require isolated application execution.", "ยังไม่ได้เลือก job transport สำหรับ production ให้ provision Container เฉพาะ workload ที่ต้องแยก application runtime")}</p> : null}
               <p>{text("This checks the fixed production Worker endpoint only. A healthy response does not prove the approved artifact, retained-database access, authentication flows, rollback, or production traffic cutover.", "การตรวจนี้ดูเฉพาะ production Worker endpoint ที่กำหนดไว้ ผล healthy ไม่ได้ยืนยัน artifact ที่อนุมัติ การเข้าถึงฐานข้อมูลเดิม ระบบยืนยันตัวตน rollback หรือการย้าย production traffic")}</p>
               <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(runtime.checkedAt).toLocaleString()}</p>
+            </VStack>;
+          })() : null}
+          <Divider />
+          <strong>{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
+          {productionProviderInventory.isLoading ? <p role="status">{text("Reading Production queues, Hyperdrive, Worker versions, and domain route…", "กำลังตรวจ Queue, Hyperdrive, Worker version และ route ของ Production…")}</p> : null}
+          {productionProviderInventory.isError ? <p role="alert">{text("Cloudflare resource inventory could not be read. No provider changes were made.", "อ่าน inventory ของ Cloudflare ไม่สำเร็จ และไม่มีการเปลี่ยนแปลง resource")}</p> : null}
+          {productionProviderInventory.data ? (() => {
+            const inventory = productionProviderInventory.data;
+            if (inventory.status !== "CHECKED") return <p role="alert">{text(
+              `Production inventory is incomplete (${inventory.status}); absence of resources cannot be confirmed. Check the saved Production target, credential, and read permissions.`,
+              `inventory ของ Production ไม่ครบ (${inventory.status}) จึงยังยืนยันไม่ได้ว่าไม่มี resource ให้ตรวจ target, credential และสิทธิ์อ่านที่บันทึกไว้`,
+            )}</p>;
+            const productionQueues = inventory.queues.filter(item => item.environment === "production");
+            const stagingQueues = inventory.queues.filter(item => item.environment === "staging");
+            const productionHyperdrives = inventory.hyperdrives.filter(item => item.environment === "production");
+            const stagingHyperdrives = inventory.hyperdrives.filter(item => item.environment === "staging");
+            const activeVersions = inventory.worker.versions;
+            const verifiedRollback = activeVersions.some(version => version.checked && version.hasVerifiedReleaseIdentity);
+            return <VStack gap={1} role="group" aria-label={text("Verified Cloudflare Production resources", "ทรัพยากร Cloudflare Production ที่ตรวจแล้ว")}>
+              <p><strong>{text("Production Queue", "Production Queue")}</strong>: {productionQueues.length > 0
+                ? text(`Found ${productionQueues.length}`, `พบ ${productionQueues.length} รายการ`)
+                : text(stagingQueues.length > 0 ? `Not provisioned. Only Staging exists (${stagingQueues.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingQueues.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingQueues.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
+              <p><strong>Production Hyperdrive</strong>: {productionHyperdrives.length > 0
+                ? text(`Found ${productionHyperdrives.length}`, `พบ ${productionHyperdrives.length} รายการ`)
+                : text(stagingHyperdrives.length > 0 ? `Not provisioned. Only Staging exists (${stagingHyperdrives.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingHyperdrives.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingHyperdrives.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
+              <p><strong>{text("Production Worker release baseline", "baseline release ของ Production Worker")}</strong>: {verifiedRollback
+                ? text("A version has the expected immutable release identity.", "พบ version ที่มี immutable release identity ตรงตามระบบ")
+                : text("No active version has a verified SmartAIHub source, artifact, and configuration identity; it cannot be used as a rollback baseline.", "version ที่ทำงานอยู่ยังไม่มี source, artifact และ configuration identity ที่ตรวจสอบได้ จึงใช้เป็น rollback baseline ไม่ได้")}</p>
+              {activeVersions.length > 0 ? <p>{text("Active Worker bindings", "binding ของ Worker ที่ทำงานอยู่")}: <code>{[...new Set(activeVersions.flatMap(version => version.bindingNames))].join(", ") || text("none", "ไม่มี")}</code></p> : null}
+              <p><strong>{text("smartaihub.app traffic route", "route ของ traffic smartaihub.app")}</strong>: {inventory.domainRoute.conflicting
+                ? text("Conflicting route found; cutover must stop for review.", "พบ route ขัดแย้ง ต้องหยุด cutover เพื่อตรวจสอบ")
+                : inventory.domainRoute.attached ? text("Attached to the Production Worker.", "ผูกกับ Production Worker แล้ว")
+                  : text("The exact smartaihub.app/* Worker Route is not attached. DNS and Custom Domain mappings are not changed by this check.", "ยังไม่มี Worker Route แบบตรง smartaihub.app/* การตรวจนี้ไม่ได้เปลี่ยน DNS หรือ Custom Domain mapping")}</p>
+              <p role="status">{text(
+                "This is the actual blocker: Production currently has no separate Queue or Hyperdrive, no verified rollback release, and no main-domain route. The current check is read-only; it has not changed Cloudflare or moved traffic.",
+                "นี่คือสาเหตุที่ติดจริง: Production ยังไม่มี Queue หรือ Hyperdrive แยก, ไม่มี release ที่ตรวจสอบเป็น rollback ได้ และยังไม่มี route ของโดเมนหลัก การตรวจนี้อ่านอย่างเดียว ไม่ได้แก้ Cloudflare หรือย้าย traffic",
+              )}</p>
+              <p>{text(
+                "To create the missing isolated resources, the saved Production token must include Account → Queues → Edit and Account → Hyperdrive → Edit. Read permission only confirms inventory access; this page does not claim write permission until a real authorized provision job verifies it.",
+                "การสร้าง resource แยกที่ขาดต้องใช้ Production token ที่มี Account → Queues → Edit และ Account → Hyperdrive → Edit สิทธิ์ Read ยืนยันได้เพียงการอ่าน inventory หน้านี้จะไม่อ้างว่าสิทธิ์เขียนผ่านจนกว่าจะตรวจจาก provision job ที่ได้รับอนุญาตจริง",
+              )}</p>
+              <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(inventory.checkedAt).toLocaleString()}</p>
             </VStack>;
           })() : null}
           <Divider />
