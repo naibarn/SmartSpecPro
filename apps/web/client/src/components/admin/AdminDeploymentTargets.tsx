@@ -251,6 +251,7 @@ export default function AdminDeploymentTargets() {
   const [controlPlaneToken, setControlPlaneToken] = useState("");
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
+  const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery();
   const tenantInventory = tenantsQuery.data ?? [];
   const operationalTenants = tenantInventory.filter(tenant => !tenant.selectorKind || tenant.selectorKind === "operational");
@@ -309,6 +310,7 @@ export default function AdminDeploymentTargets() {
   });
   const activateStagingProfile = trpc.infrastructure.activateCloudflareStagingQueueProfile.useMutation({
     onSuccess: async result => {
+      setSavedStagingScope({ tenantId, projectId });
       setWorkflowRuntimeToken("");
       setControlPlaneToken("");
       await refreshTargets();
@@ -510,6 +512,10 @@ export default function AdminDeploymentTargets() {
 
       {validScope && environment === "staging" ? (
         <VStack as="section" gap={2}>
+          {savedStagingScope?.tenantId === tenantId && savedStagingScope.projectId === projectId ? <p role="status">{text(
+            "Staging settings saved. Continue with “Authorize and deploy to staging” below. Worker readiness changes after deployment.",
+            "บันทึกการตั้งค่า Staging สำเร็จแล้ว ให้ดำเนินการ “อนุมัติและ deploy ไป staging” ด้านล่าง สถานะ Worker จะเปลี่ยนหลัง deploy",
+          )}</p> : null}
           <HStack gap={2} wrap="wrap">
             <h3>{text("Live Cloudflare Worker readiness", "ความพร้อมของ Cloudflare Worker ที่กำลังทำงาน")}</h3>
             <Button type="button" variant="outline" size="sm" onClick={() => void stagingRuntimeReadiness.refetch()} disabled={stagingRuntimeReadiness.isFetching}>
@@ -593,7 +599,7 @@ export default function AdminDeploymentTargets() {
                   <Button type="button" disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
                     (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}
-                    onClick={() => activateStagingProfile.mutate({ tenantId, projectId, environment: "staging", configurationRef: configRef,
+                    onClick={() => activateStagingProfile.mutate({ tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: configRef,
                       ...(secretsMissing && suppliedRuntimeSecrets ? { workflowRuntimeToken, controlPlaneToken } : {}) })}>
                     {activateStagingProfile.isPending ? text("Preparing Staging…", "กำลังเตรียม Staging…") : secretsMissing
                       ? suppliedRuntimeSecrets ? text("Use supplied secrets and prepare Staging", "ใช้ secret ที่ระบุและเตรียม Staging")

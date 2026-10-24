@@ -78,6 +78,8 @@ import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareSt
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
+import { cloudflareOriginIdentitySchema as originIdentitySchema, cloudflareOriginReferenceSchema as originReferenceSchema,
+  cloudflareStagingActivationInputSchema } from "../../shared/cloudflareOriginIdentity";
 
 const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   if (ctx.user?.role !== "admin") {
@@ -374,9 +376,6 @@ async function provisionMcpOAuthSigningKey(
 // ============================================================
 
 const deploymentTenantIdSchema = z.string().trim().min(1).max(36);
-const originIdentitySchema = z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100),
-  environment: z.enum(["staging", "production"]), provider: z.literal("cloudflare") }).strict();
-const originReferenceSchema = originIdentitySchema.extend({ configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/) });
 
 type CloudflareStagingPreflight = {
   ready: boolean;
@@ -531,11 +530,7 @@ export const infrastructureRouter = router({
   }),
 
   activateCloudflareStagingQueueProfile: exactAdminProcedure
-    .input(originIdentitySchema.extend({ environment: z.literal("staging"), configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/),
-      workflowRuntimeToken: z.string().min(32).max(4096).optional(), controlPlaneToken: z.string().min(32).max(4096).optional() }).strict()
-      .superRefine((value, ctx) => {
-        if (Boolean(value.workflowRuntimeToken) !== Boolean(value.controlPlaneToken)) ctx.addIssue({ code: "custom", message: "Both runtime secrets must be supplied together" });
-      }))
+    .input(cloudflareStagingActivationInputSchema)
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
       if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match staging target" });

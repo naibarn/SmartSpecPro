@@ -14,6 +14,28 @@ describe("infrastructure deployment target project selector", () => {
   beforeEach(() => getDbMock.mockReset());
   afterEach(() => vi.restoreAllMocks());
 
+  it("accepts the complete automatic activation request through the serving API parser", async () => {
+    getDbMock.mockResolvedValue(null);
+    const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },
+      tenantId: "tenant-ZCSKEM9s" } as any);
+    await expect(caller.activateCloudflareStagingQueueProfile({ tenantId: "tenant-ZCSKEM9s", projectId,
+      environment: "staging", provider: "cloudflare", configurationRef: `cf-origin:${"a".repeat(64)}` }))
+      .rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+    expect(getDbMock).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { provider: undefined }, { provider: "other" }, { environment: "production" },
+    { workflowRuntimeToken: "w".repeat(32) }, { revokedAt: null },
+  ])("rejects malformed activation contracts before database access: %j", async changes => {
+    const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },
+      tenantId: "tenant-ZCSKEM9s" } as any);
+    await expect(caller.activateCloudflareStagingQueueProfile({ tenantId: "tenant-ZCSKEM9s", projectId,
+      environment: "staging", provider: "cloudflare", configurationRef: `cf-origin:${"a".repeat(64)}`, ...changes } as any))
+      .rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it("requires the authenticated owner session before creating a staging policy or job", async () => {
     const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },
       tenantId: "tenant-ZCSKEM9s", userToken: null } as any);

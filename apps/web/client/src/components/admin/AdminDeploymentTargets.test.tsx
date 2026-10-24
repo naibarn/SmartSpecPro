@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminDeploymentTargets from "./AdminDeploymentTargets";
+import { cloudflareStagingActivationInputSchema } from "@shared/cloudflareOriginIdentity";
 
 const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),
@@ -63,6 +64,7 @@ vi.mock("@/lib/trpc", () => ({
       activateCloudflareStagingQueueProfile: { useMutation: (options: { onSuccess?: (result: { configurationRef: string }) => unknown }) => ({
         mutate: (input: unknown) => {
           mocks.activateStagingProfile(input);
+          if (!cloudflareStagingActivationInputSchema.safeParse(input).success) return;
           if (mocks.activationSucceeds) void options.onSuccess?.({ configurationRef: "cf-origin:new-reference" });
         },
         isPending: false,
@@ -300,6 +302,7 @@ describe("AdminDeploymentTargets", () => {
       tenantId,
       projectId,
       environment: "staging",
+      provider: "cloudflare",
       configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     });
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
@@ -325,8 +328,9 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/You do not need to find or copy any tokens/)).toBeInTheDocument();
     expect(screen.getByLabelText("Staging workflow runtime token")).not.toBeVisible();
     await user.click(activate);
-    expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging",
+    expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", provider: "cloudflare",
       configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
+    expect(cloudflareStagingActivationInputSchema.safeParse(mocks.activateStagingProfile.mock.lastCall?.[0]).success).toBe(true);
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
 
     mocks.activateStagingProfile.mockClear();
@@ -342,6 +346,7 @@ describe("AdminDeploymentTargets", () => {
     expect(manual).toBeEnabled();
     await user.click(manual);
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith(expect.objectContaining({
+      provider: "cloudflare",
       workflowRuntimeToken: "w".repeat(32),
       controlPlaneToken: "c".repeat(32),
     }));
@@ -405,6 +410,7 @@ describe("AdminDeploymentTargets", () => {
     await user.click(screen.getByRole("button", { name: "Prepare Staging with saved secrets" }));
 
     await waitFor(() => expect(mocks.fetchTargets).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging" }));
+    expect(screen.getByText(/Staging settings saved\. Continue with/)).toBeInTheDocument();
     expect(mocks.fetchOriginConfiguration).toHaveBeenCalledWith({
       tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: "cf-origin:new-reference",
     });
