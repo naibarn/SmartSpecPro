@@ -485,9 +485,11 @@ export default function AdminDeploymentTargets() {
             const runtime = productionRuntimeReadiness.data;
             const ready = runtime.status === "READY";
             const otherUnconfigured = runtime.unconfigured.filter(binding => !runtime.missing.includes(binding));
+            const ingress = runtime.applicationIngress;
             return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare production Worker readiness", "ความพร้อมของ Cloudflare production Worker ที่กำลังทำงาน")}>
+              <strong>{text("Background-job Worker readiness", "ความพร้อมของ Worker สำหรับงานเบื้องหลัง")}</strong>
               <HStack gap={2} wrap="wrap">
-                <Badge variant={ready ? "default" : "destructive"}>{ready ? text("Ready", "พร้อมใช้งาน") : text("Not ready for migration", "ยังไม่พร้อมย้ายระบบ")}</Badge>
+                <Badge variant={ready ? "default" : "destructive"}>{ready ? text("Jobs ready", "ระบบงานเบื้องหลังพร้อม") : text("Jobs not ready", "ระบบงานเบื้องหลังยังไม่พร้อม")}</Badge>
                 {runtime.activation ? <Badge variant="outline">{text("Worker activation", "การเปิด Worker")}: {runtime.activation === "disabled" ? text("off", "ปิดอยู่") : runtime.activation}</Badge> : null}
                 {runtime.transport ? <Badge variant="outline">{text("Job transport", "ช่องทางงาน")}: {runtime.transport}</Badge> : null}
                 {runtime.jobHandlerConfigured !== undefined ? <Badge variant="outline">{text("Job handler", "ตัวจัดการงาน")}: {runtime.jobHandlerConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
@@ -499,6 +501,21 @@ export default function AdminDeploymentTargets() {
                 {runtime.missing.includes("JOB_QUEUE") ? <p>• {text("Bind the production Cloudflare Queue used by background jobs.", "ผูก Cloudflare Queue สำหรับงานเบื้องหลังของ Production")}</p> : null}
                 {runtime.missing.some(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)) ? <p>{text("Additional required runtime bindings", "binding runtime ที่จำเป็นเพิ่มเติม")}: <code>{runtime.missing.filter(binding => !["HYPERDRIVE", "JOB_QUEUE"].includes(binding)).join(", ")}</code></p> : null}
               </VStack> : null}
+              <Divider />
+              <strong>{text("Website and API traffic cutover readiness", "ความพร้อมย้าย traffic ของเว็บไซต์และ API")}</strong>
+              {!ingress ? <p role="status">{text(
+                "The serving Worker does not report full application-ingress readiness yet. A ready queue does not mean website/API traffic can move from Linux.",
+                "Worker ที่ให้บริการยังไม่รายงานความพร้อมของ full application ingress การที่ Queue พร้อมไม่ได้แปลว่าย้ายเว็บไซต์/API ออกจาก Linux ได้แล้ว",
+              )}</p> : <>
+                <Badge variant={ingress.ready ? "default" : "destructive"}>{ingress.ready
+                  ? text("Website/API ingress ready", "เว็บไซต์/API ingress พร้อม")
+                  : text("Website/API ingress not ready", "เว็บไซต์/API ingress ยังไม่พร้อม")}</Badge>
+                {ingress.missing.length > 0 ? <>
+                  <p>{text("The full app path needs both on-demand Node and Python Cloudflare Containers, their exact production profiles, and the origin-auth settings below:", "เส้นทางแอปเต็มรูปแบบต้องมี Cloudflare Container แบบ on-demand ทั้ง Node และ Python, production profile ที่ตรงกัน และค่า origin-auth ตามรายการนี้")}</p>
+                  <code>{ingress.missing.join(", ")}</code>
+                </> : null}
+              </>}
+              <p>{text("Job transport readiness and website/API cutover are separate checks. Containers stay on-demand; they are required for the current full HTTP app bridge, not for queue delivery alone.", "ความพร้อมของ job transport กับการย้ายเว็บไซต์/API เป็นคนละการตรวจ Container จะเริ่มตามต้องใช้ โดยจำเป็นต่อ full HTTP app bridge ปัจจุบัน แต่ไม่จำเป็นต่อการส่งงาน Queue อย่างเดียว")}</p>
               {otherUnconfigured.length > 0 ? <details><summary>{text("Optional capabilities not enabled", "ความสามารถเสริมที่ยังไม่ได้เปิด")}</summary><p>{text("These do not block the selected job transport. Add them only if the production workload needs them:", "รายการเหล่านี้ไม่บล็อกช่องทางงานที่เลือก ให้เพิ่มเมื่อ workload ต้องใช้เท่านั้น")}: <code>{otherUnconfigured.join(", ")}</code></p></details> : null}
               {runtime.reason ? <details><summary>{text("Technical diagnostics", "รายละเอียดสำหรับทีมเทคนิค")}</summary><code>{runtime.status} · {runtime.reason} · {runtime.missing.join(", ")}</code></details> : null}
               {runtime.transport === "all" ? <p>{text("No production job transport has been selected. Containers should be provisioned only for workloads that require isolated application execution.", "ยังไม่ได้เลือก job transport สำหรับ production ให้ provision Container เฉพาะ workload ที่ต้องแยก application runtime")}</p> : null}

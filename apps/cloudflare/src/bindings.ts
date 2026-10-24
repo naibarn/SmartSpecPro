@@ -1,5 +1,18 @@
 import { CLOUDFLARE_CONTAINER_ON_DEMAND, isCloudflareMediaProbeImage } from "../../../packages/shared/src/cloudflareMediaProbe";
+import { parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloudflareOrigin";
+import { validateApplicationHttpProfilePair, type ApplicationHttpProfile } from "./applicationHttpContainer";
 import { REQUIRED_BINDING_NAMES, type CloudflareEnvironment, type RequiredBindingName } from "./contracts";
+
+const APPLICATION_HTTP_ORIGINS = {
+  staging: "https://staging.smartaihub.app",
+  production: "https://smartaihub.app",
+} as const;
+
+export type ApplicationIngressReadiness = {
+  enabled: boolean;
+  ready: boolean;
+  missing: string[];
+};
 
 export type BindingReadiness = {
   activation: "disabled" | "enabled" | "invalid";
@@ -9,6 +22,8 @@ export type BindingReadiness = {
   ready: boolean;
   transport: "all" | "workflows" | "queues" | "retention" | "invalid";
   selectedMissing: RequiredBindingName[];
+  /** Full application traffic is a separate gate from background-job transport readiness. */
+  applicationIngress: ApplicationIngressReadiness;
 };
 
 function hasFunction(value: unknown, method: string): boolean {
@@ -36,6 +51,39 @@ function isUsableBinding(env: CloudflareEnvironment, name: RequiredBindingName):
   }
 }
 
+function inspectApplicationIngressReadiness(env: CloudflareEnvironment): ApplicationIngressReadiness {
+  const environment = env.CLOUDFLARE_ENVIRONMENT?.trim();
+  const expectedTraffic = environment === "staging" ? "staging-full-http-v1" :
+    environment === "production" ? "production-full-http-v1" : null;
+  const missing: string[] = [];
+  if (!expectedTraffic || env.CLOUDFLARE_APPLICATION_HTTP_TRAFFIC !== expectedTraffic) {
+    missing.push("CLOUDFLARE_APPLICATION_HTTP_TRAFFIC");
+  }
+  if (env.CLOUDFLARE_CONTAINER_POLICY !== CLOUDFLARE_CONTAINER_ON_DEMAND) missing.push("CLOUDFLARE_CONTAINER_POLICY");
+  for (const binding of ["NODE_HTTP", "PYTHON_HTTP"] as const) {
+    const namespace = env[binding];
+    if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") missing.push(binding);
+  }
+  let profilesValid = false;
+  try {
+    const node = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null") as ApplicationHttpProfile;
+    const python = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null") as ApplicationHttpProfile;
+    validateApplicationHttpProfilePair(node, python);
+    const expectedTarget = environment === "staging" ? "smartspec-cloudflare-staging" : "smartspec-cloudflare-runtime";
+    profilesValid = node.targetId === expectedTarget && python.targetId === expectedTarget;
+  } catch { /* report the field names only; never include profile or secret values */ }
+  if (!profilesValid) missing.push("CLOUDFLARE_NODE_HTTP_PROFILE", "CLOUDFLARE_PYTHON_HTTP_PROFILE");
+  const token = env.AUTH_ORIGIN_TOKEN?.trim() ?? "";
+  if (token.length < 32 || token.length > 4096 || !/^[\x21-\x7e]+$/.test(token)) missing.push("AUTH_ORIGIN_TOKEN");
+  const allowedOrigins = parseCloudflarePublicOrigins(env.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS);
+  const expectedOrigin = environment === "staging" || environment === "production"
+    ? APPLICATION_HTTP_ORIGINS[environment] : null;
+  if (!expectedOrigin || !allowedOrigins?.includes(expectedOrigin)) missing.push("AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS");
+  const uniqueMissing = [...new Set(missing)];
+  return { enabled: env.CLOUDFLARE_APPLICATION_HTTP_TRAFFIC === expectedTraffic && expectedTraffic !== null,
+    ready: uniqueMissing.length === 0, missing: uniqueMissing };
+}
+
 export function inspectBindingReadiness(env: CloudflareEnvironment): BindingReadiness {
   const rawActivation = env.CLOUDFLARE_ACTIVATION?.trim().toLowerCase() || "disabled";
   const activation = rawActivation === "enabled" || rawActivation === "disabled" ? rawActivation : "invalid";
@@ -55,6 +103,7 @@ export function inspectBindingReadiness(env: CloudflareEnvironment): BindingRead
     missing,
     transport,
     selectedMissing,
+    applicationIngress: inspectApplicationIngressReadiness(env),
     ready: (!env.CLOUDFLARE_MEDIA_PROBE || (env.CLOUDFLARE_MEDIA_PROBE === "container-media-probe-v1" && env.CLOUDFLARE_CONTAINER_POLICY === CLOUDFLARE_CONTAINER_ON_DEMAND)) && activation === "enabled" && transport !== "invalid" && selectedMissing.length === 0,
   };
 }

@@ -43,6 +43,30 @@ describe("probeCloudflareProductionRuntimeReadiness", () => {
     })).resolves.toMatchObject({ status: "READY", environment: "production", missing: [] });
   });
 
+  it("reports full application ingress separately from background job readiness", async () => {
+    await expect(probeCloudflareProductionRuntimeReadiness({
+      fetchImpl: vi.fn(async () => response(200, { ok: true, readiness: {
+        activation: "enabled", environment: "production", transport: "queues", selectedMissing: [], missing: [], ready: true,
+        applicationIngress: { enabled: false, ready: false, missing: ["NODE_HTTP", "PYTHON_HTTP", "AUTH_ORIGIN_TOKEN"] },
+      } })) as unknown as typeof fetch,
+    })).resolves.toMatchObject({
+      status: "READY", missing: [], applicationIngress: {
+        enabled: false, ready: false, missing: ["NODE_HTTP", "PYTHON_HTTP", "AUTH_ORIGIN_TOKEN"],
+      },
+    });
+  });
+
+  it("drops malformed application ingress diagnostics instead of trusting arbitrary fields", async () => {
+    const result = await probeCloudflareProductionRuntimeReadiness({
+      fetchImpl: vi.fn(async () => response(503, { ok: false, readiness: {
+        activation: "disabled", environment: "production", transport: "queues", selectedMissing: ["HYPERDRIVE"], missing: ["HYPERDRIVE"], ready: false,
+        applicationIngress: { enabled: false, ready: false, missing: ["Bearer secret-value"] },
+      } })) as unknown as typeof fetch,
+    });
+    expect(result.status).toBe("NOT_READY");
+    expect(result).not.toHaveProperty("applicationIngress");
+  });
+
   it("rejects a response for another environment or a malformed response", async () => {
     await expect(probeCloudflareProductionRuntimeReadiness({
       fetchImpl: vi.fn(async () => response(200, { ok: true, environment: "staging", missing: [] })) as unknown as typeof fetch,

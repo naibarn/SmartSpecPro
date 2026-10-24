@@ -22,6 +22,7 @@ export type CloudflareProductionRuntimeReadiness = Readonly<{
   unconfigured: string[];
   jobHandlerConfigured?: boolean;
   controlPlaneConfigured?: boolean;
+  applicationIngress?: { enabled: boolean; ready: boolean; missing: string[] };
   httpStatus?: number;
   reason?: string;
 }>;
@@ -84,6 +85,14 @@ export async function probeCloudflareProductionRuntimeReadiness(input: {
       typeof value === "string" && REQUIRED_BINDINGS.has(value)))];
     const unconfigured = [...new Set((rawUnconfigured ?? rawMissing).filter((value): value is string =>
       typeof value === "string" && REQUIRED_BINDINGS.has(value)))];
+    const rawIngress = readiness.applicationIngress && typeof readiness.applicationIngress === "object" && !Array.isArray(readiness.applicationIngress)
+      ? readiness.applicationIngress as Record<string, unknown>
+      : null;
+    const applicationIngress = rawIngress && typeof rawIngress.enabled === "boolean" &&
+      typeof rawIngress.ready === "boolean" && Array.isArray(rawIngress.missing) &&
+      rawIngress.missing.every((value): value is string => typeof value === "string" && /^[A-Z0-9_]{1,80}$/.test(value))
+      ? { enabled: rawIngress.enabled, ready: rawIngress.ready, missing: [...new Set(rawIngress.missing)] }
+      : undefined;
     const ready = response.status === 200 && record.ok === true && missing.length === 0;
     return {
       status: ready ? "READY" : "NOT_READY",
@@ -95,6 +104,7 @@ export async function probeCloudflareProductionRuntimeReadiness(input: {
       unconfigured,
       jobHandlerConfigured: typeof readiness.jobHandlerConfigured === "boolean" ? readiness.jobHandlerConfigured : undefined,
       controlPlaneConfigured: typeof readiness.controlPlaneConfigured === "boolean" ? readiness.controlPlaneConfigured : undefined,
+      ...(applicationIngress ? { applicationIngress } : {}),
       httpStatus: response.status,
       ...(!ready ? { reason: "CLOUDFLARE_PRODUCTION_WORKER_RUNTIME_NOT_READY" } : {}),
     };
