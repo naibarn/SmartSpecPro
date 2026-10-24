@@ -3,7 +3,7 @@ import request from "supertest";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SignJWT } from "jose";
 
-const TEST_JWT_SIGNING_KEY = "test-jwt-key.local";
+const TEST_JWT_SIGNING_KEY = "test-jwt-secret-32-chars-minimum-1234567890";
 
 const mocks = vi.hoisted(() => ({
   revokeJti: vi.fn().mockResolvedValue(undefined),
@@ -47,14 +47,14 @@ async function mintSessionLikeToken() {
     .setIssuedAt(now)
     .setExpirationTime(now + 3600)
     .setJti("session-jti")
-    .sign(new TextEncoder().encode(TEST_JWT_SECRET));
+    .sign(new TextEncoder().encode(TEST_JWT_SIGNING_KEY));
 }
 
 describe("registerDeviceAuthRoutes /auth/device/revoke", () => {
   let registerDeviceAuthRoutes: typeof import("./deviceAuthRoutes").registerDeviceAuthRoutes;
 
   beforeAll(async () => {
-    process.env.JWT_SECRET = TEST_JWT_SECRET;
+    process.env.JWT_SECRET = TEST_JWT_SIGNING_KEY;
     const setIntervalSpy = vi.spyOn(globalThis, "setInterval").mockImplementation((() => 0) as any);
 
     vi.resetModules();

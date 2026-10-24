@@ -234,14 +234,14 @@ export async function issueUatSession(role: UatRole): Promise<UatSession> {
   const jti = randomUUID();
   const expiresAt = now + UAT_SESSION_TTL_MS;
   const token = await sdk.signSession({
-    openId: user.openId,
+    openId: identity.openId,
     appId: ENV.appId,
     name: user.name ?? identity.name,
     jti,
   }, { expiresInMs: UAT_SESSION_TTL_MS });
 
   const verified = await sdk.verifySession(token);
-  if (!verified || verified.openId !== user.openId || verified.jti !== jti) {
+  if (!verified || verified.openId !== identity.openId || verified.jti !== jti) {
     throw new Error("UAT_BROKER_SESSION_VALIDATION_FAILED");
   }
 

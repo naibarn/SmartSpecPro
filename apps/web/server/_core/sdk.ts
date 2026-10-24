@@ -331,7 +331,7 @@ class SDKServer {
         throw ForbiddenError("Session revoked");
       }
       // Update last signed-in timestamp (non-blocking, uses dedicated update function)
-      await db.updateLastSignedIn(user.openId);
+      await db.updateLastSignedIn(user.openId ?? sessionUserId);
       return this.enforceActiveUser(user);
     }
 
@@ -403,7 +403,7 @@ class SDKServer {
       throw ForbiddenError("Token revoked");
     }
 
-    await db.updateLastSignedIn(user.openId);
+    if (user.openId) await db.updateLastSignedIn(user.openId);
     return this.enforceActiveUser(user);
   }
 

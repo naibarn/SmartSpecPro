@@ -21,6 +21,7 @@ import {
 } from "../services/deviceAuthorizationStore";
 import { getUserByOpenId, getDb } from "../db";
 import { getCreditBalance } from "../services/creditService";
+import { ensureUserOpenId } from "../services/userIdentity";
 import { normalizeAuthEmail } from "../services/emailNormalization";
 import {
   clearFailedLoginCounter,
@@ -248,6 +249,8 @@ export function registerDeviceAuthRoutes(app: Express) {
         return;
       }
 
+      const openId = await ensureUserOpenId(user);
+
       // Check if email is verified
       if (user.isDisabled && user.loginMethod === "email") {
         res.status(403).json({ error: { message: "Please verify your email before logging in" } });
@@ -276,13 +279,13 @@ export function registerDeviceAuthRoutes(app: Express) {
 
       const accessToken = await mintAccessToken({
         userId: user.id,
-        openId: user.openId,
+        openId,
         scopes,
       });
 
       const refreshToken = await mintRefreshToken({
         userId: user.id,
-        openId: user.openId,
+        openId,
         scopes,
       });
 
@@ -293,7 +296,7 @@ export function registerDeviceAuthRoutes(app: Express) {
         expires_in: ACCESS_TOKEN_EXPIRY,
         user: {
           id: user.id,
-          openId: user.openId,
+          openId,
           name: user.name,
           email: user.email,
           role: user.role,
@@ -462,6 +465,8 @@ export function registerDeviceAuthRoutes(app: Express) {
       return;
     }
 
+    const openId = await ensureUserOpenId(auth.user);
+
     const userCode = String(req.body?.user_code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 
     if (!userCode || userCode.length !== 8) {
@@ -474,7 +479,7 @@ export function registerDeviceAuthRoutes(app: Express) {
     const authorizationStatus = await authorizeDeviceByUserCode({
       userCode: formattedCode,
       userId: auth.user.id,
-      openId: auth.user.openId,
+      openId,
     });
 
     if (authorizationStatus === "not_found") {
@@ -551,19 +556,21 @@ export function registerDeviceAuthRoutes(app: Express) {
         return;
       }
 
+      const openId = await ensureUserOpenId(user);
+
       // Get credit balance
       const balance = await getCreditBalance(user.id);
 
       // Issue new tokens (rotation: new refresh token replaces old)
       const accessToken = await mintAccessToken({
         userId: user.id,
-        openId: user.openId,
+        openId,
         scopes: tokenData.scopes,
       });
 
       const newRefreshToken = await mintRefreshToken({
         userId: user.id,
-        openId: user.openId,
+        openId,
         scopes: tokenData.scopes,
       });
 
@@ -574,7 +581,7 @@ export function registerDeviceAuthRoutes(app: Express) {
         expires_in: ACCESS_TOKEN_EXPIRY,
         user: {
           id: user.id,
-          openId: user.openId,
+          openId,
           name: user.name,
           email: user.email,
           credits: balance?.credits ?? 0,
@@ -654,19 +661,21 @@ export function registerDeviceAuthRoutes(app: Express) {
       return;
     }
 
+    const openId = await ensureUserOpenId(user);
+
     // Get credit balance
     const balance = await getCreditBalance(user.id);
 
     // Issue tokens
     const accessToken = await mintAccessToken({
       userId: user.id,
-      openId: user.openId,
+      openId,
       scopes: entry.scopes,
     });
 
     const refreshToken = await mintRefreshToken({
       userId: user.id,
-      openId: user.openId,
+      openId,
       scopes: entry.scopes,
     });
 
@@ -688,7 +697,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       expires_in: ACCESS_TOKEN_EXPIRY,
       user: {
         id: user.id,
-        openId: user.openId,
+        openId,
         name: user.name,
         email: user.email,
         credits: balance?.credits ?? 0,

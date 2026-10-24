@@ -12,6 +12,7 @@ import {
   requiresOAuthOnboarding,
 } from "./services/oauthRegistration";
 import { throwRegistrationDenied } from "./services/authRegistrationPolicy";
+import { ensureUserOpenId } from "./services/userIdentity";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
 import {
@@ -1040,7 +1041,7 @@ const authRouter = router({
         await tx.insert(accountGoogleLinkTransactions).values({
           userId: ctx.user.id,
           stateHash: hashOpaqueToken(state),
-          sessionHash: hashOpaqueToken(ctx.userToken ?? ctx.user.openId),
+          sessionHash: hashOpaqueToken(ctx.userToken ?? String(ctx.user.id)),
           status: "pending",
           expiresAt: new Date(Date.now() + 10 * 60 * 1000),
           provider: "google",
@@ -1074,7 +1075,7 @@ const authRouter = router({
         });
       }
       const stateHash = hashOpaqueToken(input.state);
-      const sessionHash = hashOpaqueToken(ctx.userToken ?? ctx.user.openId);
+      const sessionHash = hashOpaqueToken(ctx.userToken ?? String(ctx.user.id));
 
       const [transaction] = await db
         .update(accountGoogleLinkTransactions)
@@ -1403,11 +1404,13 @@ const authRouter = router({
         await updateUserRole(user.id, "admin");
       }
 
+      const sessionOpenId = await ensureUserOpenId(user);
+
       // If 2FA is enabled, don't create session yet — return challenge
       if (user.twoFactorEnabled) {
         await setPendingTwoFactorCookie(ctx.req, ctx.res, {
           email: user.email || input.email,
-          openId: user.openId,
+          openId: sessionOpenId,
           name: user.name || user.email || "",
           provider: "password",
         });
@@ -1435,7 +1438,7 @@ const authRouter = router({
       }
 
       // Create session token
-      const token = await sdk.createSessionToken(user.openId, {
+      const token = await sdk.createSessionToken(sessionOpenId, {
         name: user.name || user.email || "",
       });
 
@@ -1706,6 +1709,7 @@ const authRouter = router({
 
       const user = await getUserByEmail(input.email);
       if (!user) throw new Error("User not found");
+      const sessionOpenId = await ensureUserOpenId(user);
 
       const { enforceFreeCreditPolicyForUser } =
         await import("./services/freeCreditInactivityService");
@@ -1721,7 +1725,7 @@ const authRouter = router({
       }
 
       // Create session
-      const sessionToken = await sdk.createSessionToken(user.openId, {
+      const sessionToken = await sdk.createSessionToken(sessionOpenId, {
         name: user.name || user.email || "",
       });
 
@@ -2539,12 +2543,14 @@ const authRouter = router({
 
       if (!valid) throw new Error("Invalid verification code");
 
+      const sessionOpenId = await ensureUserOpenId(user);
+
       const { enforceFreeCreditPolicyForUser } = await import("./services/freeCreditInactivityService");
       const lifecycle = await enforceFreeCreditPolicyForUser({ userId: user.id, claimNotice: true });
       if (lifecycle.disabled) throw new Error("Account disabled due to free-credit inactivity");
 
       // Create session
-      const token = await sdk.createSessionToken(user.openId, {
+      const token = await sdk.createSessionToken(sessionOpenId, {
         name: user.name || user.email || "",
       });
 
@@ -2711,8 +2717,10 @@ const authRouter = router({
         })
         .where(eq(users.id, user.id));
 
+      const sessionOpenId = await ensureUserOpenId(user);
+
       // Create session
-      const sessionToken = await sdk.createSessionToken(user.openId, {
+      const sessionToken = await sdk.createSessionToken(sessionOpenId, {
         name: user.name || user.email || "",
       });
       const { getSessionCookieOptions } = await import("./_core/cookies");
@@ -3042,11 +3050,19 @@ const authRouter = router({
           }
         }
 
+        let sessionOpenId = existing.openId;
+        if (!sessionOpenId) {
+          sessionOpenId = `oauth_${input.provider}_${pythonUser.id}`;
+          await db
+            .update(users)
+            .set({ openId: sessionOpenId, loginMethod: input.provider })
+            .where(eq(users.id, existing.id));
+        }
         if (existing.twoFactorEnabled) {
           clearOAuthInviteCookie(ctx.res);
           await setPendingTwoFactorCookie(ctx.req, ctx.res, {
             email: existing.email || normalizedEmail,
-            openId: existing.openId,
+            openId: sessionOpenId,
             name: existing.name || existing.email || "",
             provider: input.provider,
           });
@@ -3064,17 +3080,6 @@ const authRouter = router({
         // Python OAuth creates the shared user row before this Node session
         // exchange. Repair legacy rows that were created without openId so
         // the session payload always has the identifier required by the SDK.
-        let sessionOpenId = existing.openId;
-        if (!sessionOpenId) {
-          sessionOpenId = `oauth_${input.provider}_${pythonUser.id}`;
-          await db
-            .update(users)
-            .set({
-              openId: sessionOpenId,
-              loginMethod: input.provider,
-            })
-            .where(eq(users.id, existing.id));
-        }
         if (!sessionOpenId) throw new Error("OAuth user is missing an openId");
 
         // Create session for existing user
