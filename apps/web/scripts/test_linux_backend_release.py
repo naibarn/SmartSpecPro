@@ -417,6 +417,35 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertEqual(third["generation"], 3)
         self.assertEqual(third["fencing_generation"], 3)
 
+    def test_removed_build_ledger_keeps_installed_release_generation(self):
+        first = self.promote(self.prepare())
+        shutil.rmtree(self.receipt_root / "production-deployments")
+        (self.public / "index.html").write_text("<html>release after storage relocation</html>")
+        self.build_record["artifact"] = {
+            **release.build_artifact_manifest(self.dist), "artifact_path": str(self.dist)
+        }
+        self.build_result_path.write_text(json.dumps(self.build_record))
+
+        second = self.promote(self.prepare())
+
+        self.assertEqual(second["generation"], first["generation"] + 1)
+        self.assertEqual(second["fencing_generation"], 2)
+        self.assertTrue(Path(first["release_path"]).exists())
+
+    def test_generation_ignores_mismatched_installed_manifest(self):
+        decoy = self.release_root / "smartspec-web-decoy-g999"
+        decoy.mkdir(parents=True)
+        (decoy / "release-manifest.json").write_text(json.dumps({
+            "release_mode": "linux_systemd_fullstack",
+            "release_id": "smartspec-web-different-release",
+            "generation": 999,
+        }))
+
+        result = self.promote(self.prepare())
+
+        self.assertEqual(result["generation"], 1)
+        self.assertTrue(decoy.exists())
+
     def test_unconfigured_fallback_source_is_rejected(self):
         evidence, _, _ = self.fallback_build(self.root / "unapproved-sources")
         with self.assertRaisesRegex(release.ReleaseError, "outside the configured canonical source/artifact authority"):

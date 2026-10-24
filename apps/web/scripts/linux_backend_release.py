@@ -651,7 +651,13 @@ def _restore_link(link: Path, prior_target: str | None) -> None:
         atomic_symlink(Path(prior_target), link)
 
 
-def _next_generation(receipt_root: Path, service: str, additional_roots: tuple[Path, ...] = ()) -> int:
+def _next_generation(
+    receipt_root: Path,
+    service: str,
+    additional_roots: tuple[Path, ...] = (),
+    *,
+    release_root: Path | None = None,
+) -> int:
     values = []
     for root in {receipt_root, *additional_roots}:
         for path in (root / "production-deployments").glob("*.json"):
@@ -660,6 +666,27 @@ def _next_generation(receipt_root: Path, service: str, additional_roots: tuple[P
                 if item.get("service") == service:
                     values.append(int(item.get("generation", 0)))
             except (OSError, ValueError, TypeError):
+                continue
+    # Installed releases survive removal or relocation of the build ledgers.
+    # Keep their verified directory/manifest generations as a durable floor.
+    if service == SERVICE and release_root is not None:
+        for path in release_root.iterdir():
+            if path.is_symlink() or not path.is_dir() or os.path.ismount(path):
+                continue
+            match = re.fullmatch(r"(?P<release_id>smartspec-web-.+)-g(?P<generation>\d+)", path.name)
+            manifest_path = path / "release-manifest.json"
+            if match is None or manifest_path.is_symlink():
+                continue
+            try:
+                item = json.loads(manifest_path.read_text(encoding="utf-8"))
+                generation = int(item["generation"])
+                if (
+                    item.get("release_mode") == "linux_systemd_fullstack"
+                    and item.get("release_id") == match.group("release_id")
+                    and generation == int(match.group("generation"))
+                ):
+                    values.append(generation)
+            except (OSError, ValueError, KeyError, TypeError):
                 continue
     return max(values, default=0) + 1
 
@@ -873,7 +900,7 @@ def promote_artifact(
             Path(root).expanduser().resolve() / ".development-build-results" / repository_key
             for root in [policy["source_root"], *policy.get("source_fallback_roots", [])]
         )
-        generation = _next_generation(receipt_root, SERVICE, approved_ledgers)
+        generation = _next_generation(receipt_root, SERVICE, approved_ledgers, release_root=release_root)
         target = release_root / f"{release_id}-g{generation}"
         if not target.exists():
             staging = release_root / f".{release_id}-g{generation}.{uuid.uuid4().hex}.tmp"
