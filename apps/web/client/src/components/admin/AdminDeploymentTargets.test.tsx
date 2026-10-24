@@ -576,7 +576,8 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/Account → Queues → Edit and Account → Hyperdrive → Edit/)).toBeInTheDocument();
     expect(screen.getByText((_content, element) => element?.tagName === "P" &&
       element.textContent?.includes("You reported updating the token, so keep using the saved Production credential; do not re-enter it.") === true)).toBeInTheDocument();
-    expect(screen.getByText(/The latest database-network audit found PostgreSQL SSL disabled/i)).toBeInTheDocument();
+    expect(screen.getByText(/strict certificate verification fails \(UNABLE_TO_VERIFY_LEAF_SIGNATURE\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/configure a CA-trusted server certificate whose hostname matches/i)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Check this target’s Cloudflare access" }));
     expect(screen.getByText(/This is an account-member role, not a setting on the API token/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute("href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/");

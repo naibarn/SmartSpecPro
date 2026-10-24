@@ -15,9 +15,9 @@
   "sections_state": {
     "section-02-production-deploy-authority": {
       "status": "checkpointed",
-      "next_action": "Implement and test production-specific Queue and private PostgreSQL preparation through existing bounded worker_jobs and ApprovalDBService; preserve staging contract and do not use provider writes until VPC account role plus database TLS/Tunnel plan are verified.",
+      "next_action": "Integrate and release the corrected live PostgreSQL TLS blocker guidance, then continue the production-only Queue/private-DB job and authority implementation; verify Cloudflare VPC account role and certificate hostname through the actual Tunnel before any Hyperdrive binding.",
       "checkpoint_sha": "57da33899915f7a9497e1cefcec5362c6b583d7a",
-      "merged_main_sha": "57da33899915f7a9497e1cefcec5362c6b583d7a"
+      "merged_main_sha": "2811e9400cdfb2829a1685071a9a92debd51e171"
     }
   },
   "pre_commit": {
@@ -29,17 +29,19 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 6,
-  "updated_at": "2026-10-24T13:29:01.966487+00:00",
+  "generation": 8,
+  "updated_at": "2026-10-24T13:35:21.582387+00:00",
   "progress": {
     "active_section": "section-02-production-deploy-authority",
-    "next_action": "Implement and test production-specific Queue and private PostgreSQL preparation through existing bounded worker_jobs and ApprovalDBService; preserve staging contract and do not use provider writes until VPC account role plus database TLS/Tunnel plan are verified.",
+    "next_action": "Integrate and release the corrected live PostgreSQL TLS blocker guidance, then continue the production-only Queue/private-DB job and authority implementation; verify Cloudflare VPC account role and certificate hostname through the actual Tunnel before any Hyperdrive binding.",
     "gaps": [
       "No production resource preparation contract/job is currently exposed; production account inventory has no Queue or Hyperdrive.",
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
       "Production origin configuration and private-database job contracts are staging-only; no production Queue/Hyperdrive preparation authority/job exists.",
-      "Cloudflare Workers VPC account role is denied and the retained PostgreSQL host was last audited with SSL disabled; private Hyperdrive cannot be prepared until the VPC/Tunnel/TLS route is real."
+      "Cloudflare Workers VPC account role is denied and the retained PostgreSQL host was last audited with SSL disabled; private Hyperdrive cannot be prepared until the VPC/Tunnel/TLS route is real.",
+      "The Production token probe returns HTTP 403 for account-scoped Workers VPC access; the API token update did not grant the required account-member role.",
+      "PostgreSQL accepts TLS, but the application session is non-TLS and strict CA verification fails UNABLE_TO_VERIFY_LEAF_SIGNATURE; a trusted matching certificate and actual Tunnel route remain unverified."
     ],
-    "merged_main_sha": "57da33899915f7a9497e1cefcec5362c6b583d7a"
+    "merged_main_sha": "2811e9400cdfb2829a1685071a9a92debd51e171"
   }
 }
