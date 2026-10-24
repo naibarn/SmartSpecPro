@@ -3006,10 +3006,10 @@
       "spec_id": "223"
     },
     {
-      "authority": "UNRESOLVED",
+      "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 4,
-      "next_action": "Keep overall SPEC-224 acceptance PARTIAL. Continue PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E from canonical main; the current code/worker slices are tested, while the hosted test target, actual Gateway receipt, owner browser trial and deployed revision remain unverified. Existing protected Runner/tenant/workspace authority blockers remain separate.",
+      "next_action": "Continue the existing Mini-App runtime/Gateway verification work with fresh environment evidence; no additional local owner approval or new task worktree is required.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -4941,6 +4941,15 @@
       "rationale": "Bounded all-flow never-resolving-provider submit/refresh acceptance and billing-attempt identity inventory",
       "record_key": "canonical:specs/feature/161-vertical-drama-async-skill-jobs",
       "spec_id": "161"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
+      "priority": "P1",
+      "rationale": "Continue the existing Mini-App runtime/Gateway verification work with fresh environment evidence; no additional local owner approval or new task worktree is required.",
+      "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
+      "spec_id": "224"
     },
     {
       "confidence": "LOW",

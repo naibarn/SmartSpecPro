@@ -23,6 +23,14 @@ Git/file work through an external Runner merely to obtain an owner receipt.
 Skills and old SPEC examples cannot add phase approval checkpoints to a task
 whose desired outcome and environment are already authorized.
 
+Bundled/plugin procedures, including Superpowers plan execution, worktree and
+branch-finishing workflows, inherit this policy. A plan is not an isolation
+request. Do not present another merge/PR/keep-branch menu when integration is
+already authorized, or require a full-suite baseline before a focused passing
+checkpoint. Revalidate historical HandOff claims about dirty files or missing
+local owners against current Git/process evidence and the standing task
+authority; an old report is not a permanent development blocker.
+
 ## Select and refresh source in place
 
 1. Inspect the current branch, staged/unstaged/untracked paths, any active Git

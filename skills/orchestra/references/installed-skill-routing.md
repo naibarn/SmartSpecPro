@@ -12,6 +12,7 @@ or any task that is better handled by a specialized installed skill.
 - For end-to-end work, let Orchestra own the workflow and use the specialized skill as one stage.
 - For generator skills, write outputs only inside the user's target project or a temp directory and report paths.
 - Reuse the authority already granted by the task for normal dev work, Git push/integration and configured dev DB migrations. Do not ask for phase-by-phase confirmation or another local owner. Production deploy, package publication and external privileged actions require their actual target-specific authority; an already explicit authorization is not requested twice.
+- Bundled/plugin workflows, including Superpowers worktree and branch-finishing skills, follow the shared `development-lifecycle/workspace-policy.md`. An implementation plan does not request isolation; already authorized integration does not need a merge-choice menu or a full-suite baseline. Preserve host-managed plugin packages and enforce the repository/user policy through this shared routing contract.
 - For security/pentest/cybersecurity tasks, stay defensive and authorization-bound.
 - For OpenAI/API usage questions, use `openai-docs` from system skills when available and prefer official docs.
 - For image generation, route through `gpt-image-2` first. In Codex, `gpt-image-2` should render the final prompt and then use the host-native image tool/auth path rather than local API scripts.

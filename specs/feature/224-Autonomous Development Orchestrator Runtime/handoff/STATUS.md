@@ -1,12 +1,12 @@
 <!-- GENERATED FROM manifest.json AND requirement-ledger.json; DO NOT EDIT -->
 # 224 — Spec 224 — SmartAIHub Autonomous Development Orchestrator Runtime
 
-- Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
-- Lifecycle: `WAITING_APPROVAL`
-- Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
+- Disposition: `ACTIVE_CANONICAL` (HIGH)
+- Lifecycle: `CONTINUATION_REQUIRED`
+- Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1281 unresolved of 1284
-- Next action: Keep overall SPEC-224 acceptance PARTIAL. Continue PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E from canonical main; the current code/worker slices are tested, while the hosted test target, actual Gateway receipt, owner browser trial and deployed revision remain unverified. Existing protected Runner/tenant/workspace authority blockers remain separate.
-- Manifest generation: 159
+- Next action: Continue the existing Mini-App runtime/Gateway verification work with fresh environment evidence; no additional local owner approval or new task worktree is required.
+- Manifest generation: 161
 
 ## Source-declared status and relationship claims
 

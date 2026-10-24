@@ -1,0 +1,138 @@
+{
+  "schema": "development-policy-repair-evidence.v1",
+  "observedAt": "2026-10-24T01:43:27.231045Z",
+  "sourceSha": "8898a8cd7f6fa0f6b3581ff258bb1a153593568b",
+  "profile": "package",
+  "authority": {
+    "source": "explicit user instructions in this task",
+    "directive": "พัฒนาบน code ชุดเดียวกันเป็นหลัก; เริ่มต้นงานคือการอนุมัติตลอดเส้นทาง; merge โดยเร็ว; migrate dev DB ให้เป็นปัจจุบัน",
+    "scope": "single-developer local development, non-force Git integration, configured local development database; no invented provider/IAM grants"
+  },
+  "resourceEvidence": {
+    "availableMemoryMiB": 26001,
+    "availableDiskBytes": 695775703040
+  },
+  "policy": {
+    "integratedSha": "67c1377af34b2c31ab95fed3cbbb4df8feff8fd0",
+    "default": "primary checkout; serialize overlapping writers; immediate main/origin-main convergence; dev migration authority inherited from task",
+    "historicalRequirementDecisionsPreserved": 12,
+    "overallSpecCompletionClaimed": false,
+    "bundledWorkflowConflictsAudited": [
+      "superpowers:using-git-worktrees (full baseline and isolation examples)",
+      "superpowers:finishing-a-development-branch (full-suite gate, merge-choice menu and retained PR worktree)"
+    ],
+    "bundledWorkflowResolution": "Repository/user standing task authority and shared workspace policy override those defaults; immutable host-managed plugin packages are preserved.",
+    "staleLocalWorkspaceBlockerRemoved": "R11_CANONICAL_WORKSPACE_CONVERGENCE",
+    "remainingRemoteBlockerHandling": "Historical remote authority/capability reports require fresh revalidation and apply only to the affected operation; they do not require another local human approver."
+  },
+  "verification": [
+    {
+      "command": "python3 -B -m unittest discover -s skills/orchestra/tests",
+      "outcome": "PASS",
+      "tests": 33
+    },
+    {
+      "command": "python3 -B -m unittest discover -s scripts/development-lifecycle -p test_progressive_integration.py",
+      "outcome": "PASS",
+      "tests": 9
+    },
+    {
+      "command": "python3 -B -m unittest discover -s scripts/development-lifecycle -p test_deep_workflow_alignment.py",
+      "outcome": "PASS",
+      "tests": 7
+    },
+    {
+      "command": "bash skills/publish-to-installed-skills.sh && bash skills/verify-installed-skills-sync.sh",
+      "outcome": "PASS",
+      "packages": 47
+    },
+    {
+      "command": "DEPLOY_ENVIRONMENT=development NODE_OPTIONS=--require=dotenv/config pnpm run db:migrate",
+      "scope": "apps/web; configured local dev DB",
+      "outcome": "PASS",
+      "head": "0411_active_schema_additive_reconciliation"
+    },
+    {
+      "command": "node --import tsx scripts/verify-core-runtime-migrations.ts",
+      "outcome": "READY",
+      "missing": {
+        "tables": [],
+        "columns": [],
+        "constraints": [],
+        "indexes": [],
+        "enumLabels": []
+      }
+    }
+  ],
+  "database": {
+    "targetFingerprint": "ecf9dc471c705d645d3e",
+    "backup": "/home/dev/.local/state/smartspecpro/dev-migration-recovery/2026-10-24T012451375Z",
+    "backupBytes": 280724293,
+    "backupVerifiedWith": "pg_restore --list",
+    "reconciledMigrationRange": "0389–0410",
+    "reconciledMigrationCount": 22,
+    "method": "Original SQL evaluated in a rolled-back verification schema; exact PostgreSQL catalog postconditions compared before transactionally reconciling the applied ledger under the existing advisory lock. Migration 0389 intermediate audit index is superseded by 0390. One identical STARTED receipt duplicate was archived before deduplication. Normal runner then passed.",
+    "newMigration": "0411_active_schema_additive_reconciliation",
+    "newMigrationPurpose": "Restore menu_config and nine active missing columns already declared by the existing schema/snapshot, without rewriting historical SQL hashes.",
+    "recoveryReceipt": "/home/dev/.local/state/smartspecpro/dev-migration-recovery/2026-10-24T012451375Z/reconciliation-receipt.json",
+    "ledgerRows": 372,
+    "remainingMissingTables": [
+      "agency_subgraphs",
+      "webhook_calls",
+      "workflow_audit_events",
+      "workflow_cache_metadata",
+      "workflow_policy_rules",
+      "workflow_secrets"
+    ],
+    "remainingMissingColumns": [
+      "agency_agent_memories.embedding",
+      "sandbox_jobs.activeDedupeKey",
+      "workflow_dead_letter_queue.createdAt",
+      "workflow_dead_letter_queue.executionId",
+      "workflow_dead_letter_queue.inputData",
+      "workflow_dead_letter_queue.nodeId",
+      "workflow_dead_letter_queue.nodeType",
+      "workflow_dead_letter_queue.reprocessedAt",
+      "workflow_dead_letter_queue.retryCount",
+      "workflow_dead_letter_queue.stackTrace",
+      "workflow_dead_letter_queue.tenantId",
+      "workflow_dead_letter_queue.workflowId",
+      "workflow_executions.completedAt",
+      "workflow_executions.createdAt",
+      "workflow_executions.creditsUsed",
+      "workflow_executions.inputData",
+      "workflow_executions.nodeCount",
+      "workflow_executions.outputData",
+      "workflow_executions.startedAt",
+      "workflow_executions.tenantId",
+      "workflow_executions.threadId",
+      "workflow_executions.triggerType",
+      "workflow_executions.updatedAt",
+      "workflow_executions.userId",
+      "workflow_executions.workflowId"
+    ],
+    "remainingMissingTableColumnScope": "retired Agency, legacy workflow engine and OpenSandbox only; not recreated",
+    "historicalDrift": "The full historical catalog/ledger audit still records older type/default/index/constraint and hash/timestamp differences. Those are not silently represented as a completely identical database.",
+    "retiredSystemsReplayed": false,
+    "auditReports": {
+      "catalog-final": "/home/dev/.local/state/smartspecpro/dev-migration-recovery/2026-10-24T012451375Z/catalog-final.json",
+      "ledger-final": "/home/dev/.local/state/smartspecpro/dev-migration-recovery/2026-10-24T012451375Z/ledger-final.json",
+      "core-schema-final": "/home/dev/.local/state/smartspecpro/dev-migration-recovery/2026-10-24T012451375Z/core-schema-final.json"
+    },
+    "normalRunnerRepeatedNoOp": "PASS"
+  },
+  "worktreeRetirement": {
+    "status": "RETIRED",
+    "path": "/mnt/SmartSpecDev/.cache/codex/canonical-sources/f29801373bfd4154c0d8/39ac46d6a1c2bd36ca5e9fbe44467ee44bb44ed4-build",
+    "sourceSha": "39ac46d6a1c2bd36ca5e9fbe44467ee44bb44ed4",
+    "lastLeaseActivityMinutes": 68.4,
+    "canonicalHistoryVerified": true,
+    "liveConsumers": [],
+    "uniqueTrackedOrUntrackedWork": false,
+    "discardedContent": "reproducible dependencies/build output only",
+    "independentRollbackRelease": "/home/dev/production-releases/smartspec-web-39ac46d6a1c2bd36ca5e9fbe44467ee44bb44ed4-e4a9ad33f36c-g44",
+    "retiredAt": "2026-10-24T01:40:45Z"
+  },
+  "remainingWorktrees": "Primary source plus three recently used immutable build sources; no task branch/worktree created. Current serving and independent rollback releases retained.",
+  "verificationObservedAt": "2026-10-24T01:46:54.900017Z"
+}
