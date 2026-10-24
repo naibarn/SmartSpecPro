@@ -22,8 +22,8 @@
     "section-03-production-runtime-composition": {
       "status": "in_progress",
       "next_action": "Production Queue preparation now has a scoped canonical worker_jobs contract, exact saved-target credential resolution, bounded retry/reconciliation, provider readback, status query, and an Admin UI action; focused tests pass 25/25. This source is not yet integrated or deployed, and the Queue action has not run. Integrate and release the UI/API, run the authorized Queue job, then implement and verify Production Worker resource binding/configuration. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.",
-      "checkpoint_sha": "977f709c72cc37c40ece095662bb0f4fca552553",
-      "merged_main_sha": "5cee0f9edf55ddfd15e69da73a73fb03332d7dc3"
+      "checkpoint_sha": "15f4068b2929a563a6a9b9be56f64bf9b7f91489",
+      "merged_main_sha": "15f4068b2929a563a6a9b9be56f64bf9b7f91489"
     },
     "section-01-production-target-ui": {
       "checkpoint_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
@@ -41,8 +41,8 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 23,
-  "updated_at": "2026-10-24T15:36:39+00:00",
+  "generation": 24,
+  "updated_at": "2026-10-24T15:43:49+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
     "next_action": "Production Queue preparation now has a scoped canonical worker_jobs contract, exact saved-target credential resolution, bounded retry/reconciliation, provider readback, status query, and an Admin UI action; focused tests pass 25/25. This source is not yet integrated or deployed, and the Queue action has not run. Integrate and release the UI/API, run the authorized Queue job, then implement and verify Production Worker resource binding/configuration. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.",
@@ -57,6 +57,6 @@
       "Production still has no saved Production runtime config, verified rollback release identity, selected Worker workload bindings, or smartaihub.app/* route. Production cutover remains unverified.",
       "Last exact provider inventory at 2026-10-24 15:03 UTC: only Staging Queue/Hyperdrive existed, no production config or main-domain route, and active 100% Worker lacked verified SmartAIHub identity or workload bindings."
     ],
-    "merged_main_sha": "5cee0f9edf55ddfd15e69da73a73fb03332d7dc3"
+    "merged_main_sha": "15f4068b2929a563a6a9b9be56f64bf9b7f91489"
   }
 }

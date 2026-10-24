@@ -3,12 +3,12 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `23`
-- Updated (UTC): `2026-10-24T15:36:39+00:00`
+- State generation: `24`
+- Updated (UTC): `2026-10-24T15:43:49+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `5cee0f9edf55ddfd15e69da73a73fb03332d7dc3`
+- Latest recorded merged Main SHA: `15f4068b2929a563a6a9b9be56f64bf9b7f91489`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
 - Next action: Production Queue preparation now has a scoped canonical worker_jobs contract, exact saved-target credential resolution, bounded retry/reconciliation, provider readback, status query, and an Admin UI action; focused tests pass 25/25. This source is not yet integrated or deployed, and the Queue action has not run. Integrate and release the UI/API, run the authorized Queue job, then implement and verify Production Worker resource binding/configuration. Keep the trusted PostgreSQL certificate/Production Tunnel route as a hard gate before Hyperdrive; proceed to verified rollback baseline, canary, and route promotion only after readiness passes.
@@ -34,7 +34,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Production still has no production Queue or Hyperdrive, no saved Production runtime config, active Worker lacks verified release identity and app bindings, and smartaihub.app/* is not attached. Production /readyz remains 503 with activation disabled and required HYPERDRIVE/JOB_QUEUE plus selected application bindings absent.
 - Fresh exact Production provider inventory at 2026-10-24 15:03 UTC: complete HTTP 200 readbacks; only Staging Queue/Hyperdrive exist, no Production runtime config or main-domain route, and the active 100% Worker has no verified SmartAIHub identity or workload bindings.
 
-- Current focused verification (2026-10-24 15:40 UTC): AdminDeploymentTargets and Production Queue provisioning tests passed 25/25; `git diff --check` passed. Changes are still unintegrated and un-deployed.
+- Current focused verification (2026-10-24 15:40 UTC): AdminDeploymentTargets and Production Queue provisioning tests passed 25/25; `git diff --check` passed. Queue preparation source is integrated at `15f4068b2929a563a6a9b9be56f64bf9b7f91489` but not deployed; the Queue action has not run.
 
 ## Resume
 
