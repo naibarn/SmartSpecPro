@@ -47,8 +47,7 @@ Maintain scenario coverage for:
   the user explicitly asked for sub-agents, delegation, or parallel agent work
 - primary-checkout default: one developer works directly on the configured canonical
   branch; useful authorized parallel work prefers disjoint ownership in that checkout
-- inline/direct execution is forbidden for non-trivial tasks only when an authorized
-  Task/sub-agent tool is available and light mode does not apply
+- direct execution remains valid when delegation adds no useful independent boundary
 - normal conductor and non-planning sub-agent work defaults to `gpt-5.6-terra` when model
   overrides are available; planning-only roles use `gpt-5.6-sol`, and explicit user
   overrides take precedence
@@ -112,16 +111,16 @@ Level 2 behavioral validation:
   component state and browser evidence gates
 - scenarios with 2+ independent expected agents declare `expected_dispatch_mode` or a
   `sequential_reason`
-- scenarios marked with `forbidden_execution` are checked so direct/inline regressions do
-  not become the default again
-- review convergence scenarios require `Review Convergence Gate`, stale-gate reruns, and
-  no `single-review-only` completion path
+- scenario-specific `forbidden_execution` describes that requested flow; it cannot
+  override direct single-developer execution or introduce an optional merge gate
+- review scenarios repair actual findings and rerun affected evidence; they impose no
+  fixed clean-round quota or full acceptance prerequisite on development integration
 - bug/debug scenarios require an Evidence Ledger from `data-first-debug.md` and forbid
   `ui-only-root-cause` fixes unless the issue is purely presentational
 - loop-policy scenarios require `agent-loop-policy.md`, compact progress ledgers,
   sub-agent fanout limits, and final stop reasons
-- lifecycle scenarios require `completion-loop.md`, a durable gap ledger, stale-gate
-  invalidation, earliest-stage backtracking, and a typed resume pointer
+- lifecycle scenarios reuse the existing HandOff and invalidate only affected evidence;
+  no extra ledger or seven-stage checklist is required for an ordinary checkpoint
 - all 41 autonomous completion scenarios pass the deterministic lifecycle decision kernel,
   including required merge controls, classified unrelated baseline failures, and open-SPEC
   WorkUnit continuation

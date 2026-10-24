@@ -2,6 +2,12 @@
 
 The user delegates **technical execution**, not repeated requests to authorize progress. A normal error should trigger LLM diagnosis and repair, not stop the whole task.
 
+The [shared development policy](../../development-lifecycle/workspace-policy.md)
+defines task-start authority, single-developer primary-checkout use, immediate
+commit/push synchronization and dev DB freshness. Reuse it rather than adding
+another approval/owner engine. Local metadata does not create another human
+owner. Preserve actual concurrent writes and serialize the affected operation.
+
 ## Development progression
 
 - Implement the next ready useful slice in the primary checkout, run focused checks, commit/integrate through protected Git, test/debug and repeat. Build on the authorized development runtime when requested or needed for the change; do not create an isolated build after every checkpoint. Follow the shared workspace policy for exceptional isolation, reuse and cleanup.

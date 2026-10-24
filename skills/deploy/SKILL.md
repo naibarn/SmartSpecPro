@@ -23,6 +23,13 @@ bypass real security, data-retention, or irreversible-operation controls.
 
 Full pre-flight validation → deploy pipeline. Closes the audit-to-production loop.
 
+Production-specific gates in this document apply to actual production release,
+not ordinary dev integration or configured dev DB migration. The shared
+development lifecycle workspace policy governs those operations: reuse the
+task's authority, primary checkout and focused fast gate, keep canonical Git
+in sync, migrate dev promptly and debug forward. Do not reinterpret a dev
+checkpoint as a production rollout merely because it pushes to `main`.
+
 ## Process
 
 ### Step 1: Detect Deploy Target

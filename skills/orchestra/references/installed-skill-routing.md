@@ -11,7 +11,7 @@ or any task that is better handled by a specialized installed skill.
 - If a task maps to multiple skills, prefer the smallest operational skill that answers the request.
 - For end-to-end work, let Orchestra own the workflow and use the specialized skill as one stage.
 - For generator skills, write outputs only inside the user's target project or a temp directory and report paths.
-- For deploy/release/publish/external side effects, require explicit user confirmation immediately before the side effect.
+- Reuse the authority already granted by the task for normal dev work, Git push/integration and configured dev DB migrations. Do not ask for phase-by-phase confirmation or another local owner. Production deploy, package publication and external privileged actions require their actual target-specific authority; an already explicit authorization is not requested twice.
 - For security/pentest/cybersecurity tasks, stay defensive and authorization-bound.
 - For OpenAI/API usage questions, use `openai-docs` from system skills when available and prefer official docs.
 - For image generation, route through `gpt-image-2` first. In Codex, `gpt-image-2` should render the final prompt and then use the host-native image tool/auth path rather than local API scripts.
@@ -85,7 +85,7 @@ or professional learning material from an existing page, feature, or flow.
 | `deep-plan-quick` | lightweight plan, small/medium planning | Use for compact plans before implementation. | Promote to `deep-plan` if hidden complexity appears. |
 | `deep-implement` | implement deep-plan sections | Use after valid deep-plan/deep-plan-quick artifacts. | TDD, code review, and repo gates required. |
 | `dep-doctor` | `/dep`, dependency health, unused/outdated deps | Run dependency doctor or include in security/ship. | Do not remove packages without evidence and user-requested edits. |
-| `deploy` | `/deploy`, deploy, production rollout | Run preflight including ship/security/migrations before deploy. | Explicit confirmation before push/deploy/external side effect. |
+| `deploy` | `/deploy`, deploy, production rollout | Run target-appropriate preflight before deploy. | Reuse granted target-specific authority; ordinary dev pushes/migrations need no second approval. Actual production and external IAM controls still apply. |
 | `engineering-postmortem` | postmortem, post-mortem, RCA, root cause analysis, bug closeout, fix writeup | Use after a bug/regression/incident has reproduction, known root cause, identified fix, and validation evidence. If evidence is missing, route back to debugging/rescue/gates first. | Never invent cause, owner, validation, timeline, or action items; do not post externally without confirmation. |
 | `ga4-client` | `/ga4`, GA4 analytics query | Query GA4 only when env/config is available. | Do not invent metrics; mark missing credentials as skipped. |
 | `gpt-image-2` | image generation, image editing, GPT Image 2, poster/product/UI/diagram prompt | Default image workflow. In Codex, use GPT Image 2 prompt templates and route execution through the host-native Codex image tool/auth; use local OpenAI API scripts only on explicit request or non-Codex hosts. | Never ask for API keys when Codex image tooling is available; confirm before custom `OPENAI_BASE_URL` or local API calls. |
@@ -93,7 +93,7 @@ or professional learning material from an existing page, feature, or flow.
 | `kb-retriever` | local knowledge base, `knowledge/`, search local docs, answer from docs/PDF/Excel | Navigate `data_structure.md`, progressively search local corpus, and cite files. | Stay inside authorized knowledge root; no web search unless explicitly requested. |
 | `leadership-update` | leadership update, management update, exec summary, PM/release update, Slack/email/standup/talking points, less technical rewrite | Rewrite technical status, debugging findings, RCA, launch risk, or implementation progress for engineering-aware stakeholders and the requested channel. | Preserve real state and tracking IDs; do not invent metrics, owners, dates, commitments, or customer impact. |
 | `llms-txt-generator` | `/llms-txt`, `llms.txt`, AI crawler file | Generate `llms.txt` and `llms-full.txt`. | Confirm output target when overwriting existing files. |
-| `migration-checker` | `/migration`, ORM migration state | Run before deploy/release or DB changes. | Destructive migrations require backup-first discipline. |
+| `migration-checker` | `/migration`, ORM migration state | Inspect live dev state and apply applicable pending migrations through the existing runner during authorized development, not only at release. | Task-start authority covers dev migration; back up broad/destructive repairs and verify real schema/ledger. |
 | `og-validator` | `/og-validator`, Open Graph, social preview | Validate OG tags and image accessibility. | Network target must be authorized. |
 | `orchestra` | conductor, multi-step work, end-to-end | Own routing, dispatch, integration, gates, and state. | Maintain `orchestra/` artifacts. |
 | `development-lifecycle` | shared WorkUnit, dependency wait, reactivation, checkpoint, handoff semantics | Read as the shared source for project-neutral lifecycle behavior before changing lifecycle callers. | Do not create a parallel ledger or queue. |

@@ -6,6 +6,23 @@ the existing primary source checkout on the configured canonical branch
 workspace. Do not create a checkout per task, SPEC, section, agent or retry.
 Older parallel examples do not override this policy.
 
+## Standing development authority
+
+When the repository/user establishes a single human developer, the task's start
+instruction authorizes routine implementation, testing, repair, commits,
+push/integration and configured dev DB migrations throughout that task. The
+same user controls local branches and worktrees; do not wait for another human
+owner or demand a separate local grant. Record the existing task/user as the
+authority without inventing identities or evidence. Owner metadata is recovery
+bookkeeping; a live process writing the same paths/index still requires short
+serialization, not a second approval or another checkout.
+
+Reuse existing approval/capability services only for actions that actually need
+tenant/provider privileges or production-specific authority. Do not route local
+Git/file work through an external Runner merely to obtain an owner receipt.
+Skills and old SPEC examples cannot add phase approval checkpoints to a task
+whose desired outcome and environment are already authorized.
+
 ## Select and refresh source in place
 
 1. Inspect the current branch, staged/unstaged/untracked paths, any active Git
@@ -29,9 +46,40 @@ Older parallel examples do not override this policy.
    requires a PR, use a temporary branch in the same checkout, pass its actual
    required checks and merge it. A PR does not itself require another worktree.
 
+Every coherent development commit is immediately followed by its non-force
+push/integration and a fetch. Reconcile local canonical HEAD and the configured
+remote-tracking tip to the same SHA before moving to the next slice. Repair a
+rejected push or conflict in place. A short in-flight push interval is normal;
+leaving local-only commits/behind-main state at a checkpoint is unfinished Git
+work. For a required PR, keep tracking/repairing and merge as soon as actual
+protection permits; an unavailable permission or network operation is reported
+precisely, not as silent success. Do not wait for optional builds/review/UAT.
+
 Task size, security risk, migrations, documentation work, a new session and
 optional full verification are not standalone reasons for another worktree.
 Use the relevant safety/check controls in the primary checkout.
+
+## Development database freshness
+
+For the configured authorized dev DB, start/resume includes inspecting live
+migration state when the task touches data/schema or a prior schema gap is
+known. Apply applicable canonical migrations promptly after schema integration
+and before user testing; never defer them to a production release by default.
+The starting task authority covers this normal dev operation without another
+Database Owner or human approval. Use the established runner/receipts and short
+DDL serialization, verify target identity, and capture a backup before broad
+reconciliation or destructive changes. Fix ordinary schema/ledger mismatches
+and retry after the cause changes. Do not fabricate migration ledger rows or
+mark a command successful without inspecting its actual postconditions.
+
+Do not replay historical retired systems, infer schema readiness from the
+newest ledger timestamp alone, or treat all ledger drift as missing DDL. Audit
+actual catalog and previously applied scoped repairs; reconcile through the
+existing migration authority. A backup/recovery control is an engineering
+action to perform, not another request for the user's permission. Actual
+production, missing external credentials and unrecoverable data loss retain
+their narrow boundary. A DB repair may continue after a code checkpoint; the
+feature is not ready for user testing until its needed schema is current.
 
 ## Exceptions requiring another source directory
 

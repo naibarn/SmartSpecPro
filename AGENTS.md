@@ -92,19 +92,20 @@ the policy's explicit-path fallback.
 
 ### Autonomous non-production approval across SPECs
 
-- Development, test, and non-production work across every SPEC uses
-  Autonomous Approval by Policy as the default when an existing authority
-  evaluates and authorizes the exact tenant, project, environment, profile,
-  actor, operation, resource scope, budget, and expiry.
-- Do not add a second approval engine or stop for a human checkpoint when an
-  applicable policy authority can issue the durable decision. Use the existing
-  authority and audit record for the action.
-- This default does not grant Cloud/provider IAM, Tenant Owner, Platform or
-  Security Owner permissions. It does not authorize production changes,
-  unbounded costs, trust exceptions, or invented identities, credentials,
-  evidence, approvals, certifications, or grants. If the existing authority
-  cannot authorize the exact action, continue independent engineering and stop
-  only that action at the missing external authority boundary.
+The user's instruction to start or continue a development task authorizes its
+normal end-to-end implementation, focused verification, repair, Git commit,
+push/integration and migration of the configured development database. This
+repository has one human developer: that user is the authority across its local
+branches and worktrees. Do not search for another human owner, invent grants,
+or request the same approval at each phase. Local owner/lease records describe
+process coordination and recovery; they are not an additional human permission.
+Preserve actual in-flight writes and serialize conflicting Git/DB mutations.
+
+Apply the shared policy in `skills/development-lifecycle/workspace-policy.md`
+across all skills and SPECs, including SPEC 224. Existing tenant/provider IAM,
+credential scope, real GitHub branch protection, unrecoverable data-loss and
+genuinely production-specific controls remain scoped to those operations;
+they do not turn ordinary dev work into a production approval workflow.
 
 Use `skills/orchestra/references/autonomous-completion-contract.md` for recovery and closure. Debug and retry fixable technical failures automatically; continue independent work and keep non-blocking gaps in the existing WorkUnit/Spec HandOff. Stop only the affected path for a real external authority/product decision, critical security or data-safety issue, unauthorized irreversible action, or a required repository check that has not passed. Claim completion only from the required evidence.
 
@@ -187,15 +188,16 @@ Use `skills/development-lifecycle/SKILL.md`, `$integration-controller`, and `$se
 
 ### Default development flow
 
-`sync latest main → implement → focused check → commit and push/integrate → continue`
+`refresh main → implement → focused check → commit + push/integrate → verify main == origin/main → apply pending dev migrations → continue debugging`
 
-The default is one developer using the existing primary source checkout on local `main`, tracking `origin/main`. `origin/main` is a remote-tracking ref, not another source directory. Follow `skills/development-lifecycle/workspace-policy.md` across Orchestra and all related skills; this policy overrides older parallel/worktree examples.
-
-Fetch `origin/main` and inspect the current branch, index and diff. Fast-forward a clean, behind `main` with `git merge --ff-only origin/main`. Resume task-owned unfinished work in place. Unrelated dirty files, task size, risk level, a new SPEC/section/session, or a PR requirement alone do not justify another worktree. Preserve unrelated edits and work only within owned paths. For actual overlapping writers, serialize the edits first. If updating a dirty checkout is unsafe, reconcile/checkpoint the owned work in place; do not automatically create a replacement checkout or stash/reset unknown work. A genuinely ambiguous overlapping edit blocks only that edit.
-
-Use a temporary branch in the same checkout when repository protection requires a PR. An additional worktree is an exception for an explicit user request, demonstrated concurrent incompatible source needs, or an immutable build/release controller. Reuse a suitable existing owned workspace first. Before creating a task worktree, record the concrete reason, owner, integration target and cleanup condition in the existing task HandOff. For single-developer work, keep at most one temporary task worktree; finish/reuse it instead of opening another for each task or retry.
-
-For a coherent safe change, commit and integrate promptly, including when a subtask ends or the user switches tasks. Push directly to `main` when repository rules permit. Use a PR only when branch protection or an explicit repository rule requires it; do not create extra review steps. Never bypass actual required checks or force-push. A check blocks only the PR/action to which repository protection applies; continue independent work.
+The authoritative detailed policy is
+`skills/development-lifecycle/workspace-policy.md`. Use the primary checkout
+on local `main` tracking `origin/main`; no branch/worktree per task or section.
+Each development commit is followed immediately by non-force push/integration
+and fetched local/remote SHA reconciliation before the next slice. Do not leave
+branches open while waiting for optional full tests, UAT, complete SPEC evidence
+or historical workspace cleanup. Main is an integrated development baseline;
+debugging and forward fixes continue there after the focused fast gate.
 
 Run a focused check appropriate to the changed files. Do not wait for full tests, UAT, task completion, unrelated work, or a build to checkpoint safe code. When only an artifact is needed, use `pnpm run build:canonical` from the repository root or `apps/web`; both invoke the same latest-main isolated builder. This does not activate production. To publish and restart the Linux web service from that exact artifact, use `pnpm run release:web:linux` or its compatibility alias `npm run build:deploy`; both enter the existing sudo-gated release workflow and verify runtime health. Do not automatically build or deploy after every merge. If a build fails, diagnose and repair the relevant issue; unrelated development can continue. Record only useful remaining work in the existing HandOff; do not create extra ledgers or status gates.
 
@@ -203,11 +205,25 @@ Run a focused check appropriate to the changed files. Do not wait for full tests
 
 - Preserve dirty or separately owned work. Keep the primary source checkout current in place when safe. Historical workspace housekeeping must not delay integration of the current safe change.
 - Keep integration, build, publication, and serving claims distinct. Claim a user-visible or runtime fix only after checking the actual target environment. A build alone does not prove deployment.
-- Production release, database mutation, external publication, or other irreversible operations use their existing authorization and safety controls. Those controls do not block ordinary development or code integration.
+- Production release, production database mutation, external publication, or other irreversible operations use their existing authorization and safety controls. The configured dev database is covered by the standing development authority below.
 
 At a checkpoint, stage only task-owned paths, run the fast gate (valid patch, no conflict, no accidental secret), commit, and push/integrate through the path repository rules allow. If branch protection requires a PR, open it without delaying unrelated work and merge when its required conditions pass. Never stage or overwrite another owner's changes, force-push, bypass protection, or perform production actions without their existing authorization.
 
 Before reporting an integrated task finished, fetch and verify the resulting integrated commit is reachable from `origin/main`; for squash merges verify the actual merge SHA and owned diff. A local commit, pushed feature branch, or open PR is not integration. For any temporary task branch/worktree created by this task, return to the primary checkout, safely sync `main`, and complete ownership-safe retirement after integration. If cleanup is blocked, report the exact path, retained content, reason and next action; do not silently abandon it or create another copy to avoid the blocker. Build/release workspaces and artifacts retain their existing lease, retention and rollback controls; never delete a serving or rollback source as ordinary task cleanup.
+
+### Development database freshness
+
+Keep the configured development database current as part of ordinary work,
+especially immediately after integrating schema/migration changes and before
+asking test users to exercise them. The start instruction already authorizes
+this: do not leave applicable migrations unapplied waiting for a Database Owner,
+release approval, another user confirmation or full UAT. Use the existing
+migration runner, serialize DDL, back up before destructive or broad recovery,
+repair normal technical failures and verify schema plus applied evidence.
+Historical ledger drift is a repair task, not permission to fabricate applied
+rows. Do not replay retired-system migrations to modernize active features.
+Production targets, missing credentials and an actually unrecoverable destructive
+operation retain their exact boundary; continue all other dev work.
 
 <!-- ASTRYX:START -->
 Astryx v0.6.3 · 164 components

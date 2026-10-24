@@ -9,6 +9,8 @@ Follow the shared [development lifecycle contract](../development-lifecycle/SKIL
 
 Follow the [workspace policy](../development-lifecycle/workspace-policy.md): finish in the primary source checkout by default. A dirty status or a checkpoint trigger is not a reason to create another worktree. Integrate and clean up any task-created isolation exception in the same lifecycle.
 
+Use its standing task-start authority, immediate commit/push/fetch reconciliation and dev migration rules. A single developer needs no additional local owner approval. At a checkpoint, verify local canonical HEAD equals the fetched remote tip; merely being an ancestor is partial Git integration. Do not leave applicable dev migrations waiting for another approval before user testing.
+
 Use this skill whenever a session reaches a safe checkpoint, is about to pause/stop/handoff, approaches quota or context exhaustion, or completes implementation. Task completion is **not** required. Safe valuable progress must not remain only on a session branch, local worktree, sandbox, or chat context.
 
 **A user instruction to stop, switch subtasks, or handle something else triggers a checkpoint immediately.** Treat safe changes from the current subtask as ready to checkpoint. Do not wait for the parent task, unrelated work, full verification, UAT, preview or production checks. After the FAST INTEGRATION GATE, commit only task-owned paths and push to `origin/main` when allowed. Use a PR only when branch protection requires it. Merge through the protected path when its required conditions pass; meanwhile continue independent work. Never bypass protection.

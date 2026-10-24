@@ -9,13 +9,13 @@ The existing WorkUnit/HandOff is the durable record; do not create another job s
 
 ## Normal development
 
-Follow [primary checkout and worktree policy](workspace-policy.md) for source selection, dirty edits, exceptional isolation and cleanup. Reuse the primary checkout by default; a task, SPEC, PR or verification step does not require another source directory.
+Follow [primary checkout and worktree policy](workspace-policy.md) as the shared authority for task-start authorization, source selection, immediate commit/push synchronization, dev DB freshness and exceptional isolation/cleanup. Reuse the primary checkout by default; a task, SPEC, PR or verification step does not require another source directory. Do not add local owner/human approval gates to that contract.
 
 1. Start the next independent, useful slice in the primary checkout, safely refreshed against the configured canonical ref. Resume owned in-flight work in place; preserve its ownership and base SHA without forcibly resetting stale or dirty files.
 2. Implement and run focused checks appropriate to the changed scope.
 3. Whenever the user stops, pauses, hands off, or switches to another subtask, immediately checkpoint all coherent safe work already done for the current slice. Run only the FAST INTEGRATION GATE before committing owned paths; do not wait for the parent task, unrelated work, full verification, UAT or deployment. Push the commit to the configured canonical branch directly when current repository rules allow it; use a PR only when branch protection or an explicit repository rule requires one. Honor actual required checks and reviews, and never bypass protection.
-4. Confirm the integrated canonical SHA, write a short HandOff (done, missing, checks, owner, next action) and continue. Refresh the base for the next slice; do not pause unrelated sessions for global workspace convergence.
-5. Build on the intended development runtime, debug, review and integrate fixes progressively. Keep final UAT and production release evidence separate.
+4. Immediately push/integrate each commit and fetch/reconcile local canonical HEAD with the remote-tracking tip to the same SHA. Write the short existing HandOff and continue; do not strand commits waiting for optional acceptance or historical workspace cleanup.
+5. Apply pending applicable dev migrations under the standing task authority and verify the actual schema before user testing. Build only when needed for the change, debug and integrate fixes progressively on canonical source. Keep final UAT and production release evidence separate.
 
 ## Durable continuation (existing records only)
 

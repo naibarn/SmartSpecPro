@@ -260,7 +260,6 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
             "slice_independently_mergeable": True,
             "merge_authority_confirmed": True,
             "merge_critical_section_serialized": True,
-            "main_buildable": True,
         }
         self.assertEqual(
             "INTEGRATE_NORMAL_PATH",
@@ -297,6 +296,29 @@ class AutonomousCompletionPolicyTests(unittest.TestCase):
             "REPAIR_OR_RECONCILE",
             decide_closure({"event": "safe_pr_integration", "facts": unrelated_baseline_failure}),
         )
+
+    def test_dirty_primary_and_writer_collision_never_automatically_spawn_worktrees(self):
+        for available in (True, False):
+            with self.subTest(isolated_workspace_available=available):
+                self.assertEqual("SERIALIZE_OWNED_PATH", decide_closure({
+                    "event": "concurrent_writer_collision",
+                    "facts": {"isolated_workspace_available": available},
+                }))
+                self.assertEqual("PRESERVE_AND_RECONCILE_IN_PLACE", decide_closure({
+                    "event": "dirty_canonical_checkout",
+                    "facts": {"exact_sha_workspace_available": available},
+                }))
+
+    def test_development_checkpoint_does_not_wait_for_whole_main_build_or_uat(self):
+        facts = dict.fromkeys([
+            "fast_gate_passed", "required_checks_passed", "base_reconciled",
+            "non_force_path", "slice_independently_mergeable",
+            "merge_authority_confirmed", "merge_critical_section_serialized",
+        ], True)
+        for extra in ({}, {"main_buildable": False}, {"main_buildable": None, "uat_passed": False}):
+            self.assertEqual("INTEGRATE_NORMAL_PATH", decide_closure({
+                "event": "safe_pr_integration", "facts": dict(facts, **extra),
+            }))
 
     def test_open_spec_slice_integrates_then_resumes_next_ready_workunit(self):
         integration_facts = {

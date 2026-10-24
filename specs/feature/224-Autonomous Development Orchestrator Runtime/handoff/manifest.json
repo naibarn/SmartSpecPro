@@ -931,10 +931,10 @@
   ],
   "concurrency": {
     "expected_canonical_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
-    "expected_spec_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68"
+    "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Continue PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E. The private renderer, hosted factory code path, artifact binding and durable worker/outbox behavior have focused implementation evidence. The exact non-production Gateway/runtime, real provider receipt, app-owner repository write connection, real browser journey and guarded deployed SHA are still missing. Keep USER_TRIAL_READY, Release Verified and overall SPEC completion unclaimed until their own evidence exists. Protected Windows Runner acceptance remains separate.",
+    "next_action": "Complete single-developer policy/skill convergence and verified development migration reconciliation under the user task authority. Preserve existing Mini-App Gateway/preview acceptance work after this repair; no overall SPEC acceptance is claimed.",
     "next_ready_workunit": "PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E",
     "reactivation_predicate": "Resume live Mini-App execution when an authorized hosted non-production SmartAIHub worker/runtime and Skill Execution/Gateway endpoint, disposable/test PostgreSQL, test tenant identity, and bounded model budget are available. Bind the actual model-generated source and artifact to the same owner/appId; then complete the owner and unauthorized browser journey. Production serving still requires the existing sudo-gated release path and exact deployed SHA. Remote/protected Windows Runner acceptance and overall normative SPEC completion remain separately evidenced.",
     "resume_point": "Canonical main is c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f. Mini-App route/auth/control/factory focused suites passed 37/37; the dedicated disposable PostgreSQL worker/outbox cross-process retry lane passed at the same SHA with an explicitly synthetic stage. See handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md. No real model-generated app or browser acceptance exists.",
@@ -1178,13 +1178,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 156,
+  "generation": 159,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-    "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
+    "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-23T08:21:16.454832Z",
+      "last_evidence_at": "2026-10-24T01:29:42.296550Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -2499,6 +2499,62 @@
       "updated_at": "2026-10-08T02:06:09.264229Z"
     },
     "requirements": {
+      "REQ-065D2AA57334": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17388"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17388",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/appIdentityRepository.ts",
+          "apps/web/server/services/personalMiniAppPreview.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Verify cross-user, cross-tenant and anonymous denial against the real hosted preview target before returning any private bytes.",
+        "requirement_digest": "b799bac14e42c976c40fe53560b09ef4a1f213645b531299a0a190bbd8479c07",
+        "requirement_id": "REQ-065D2AA57334",
+        "requirement_text": "- [ ] Cross-user, cross-tenant, and anonymous access to a private preview are denied before artifact bytes/data are returned.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "Owner scoping tests deny non-owner access before private artifact bytes are read; no live second-identity browser check exists."
+      },
+      "REQ-0D09F4343644": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17375"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17375",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/miniAppFactoryDurableState.ts",
+          "apps/web/server/services/miniAppFactoryRunExecutor.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Wire the trusted independent browser verifier to the internal receipt recorder and record only an actual PASS for the bound artifact.",
+        "requirement_digest": "53a2b595427ae52211ffca91ffb1fa51fa5fe3bc0849f43e26e9e8f1d2637ebc",
+        "requirement_id": "REQ-0D09F4343644",
+        "requirement_text": "4. `USER_TRIAL_READY`, `USER_FEEDBACK_REQUIRED`, `USER_ACCEPTED`, `RELEASE_VERIFIED`, and `PLATFORM_CERTIFIED` are separate durable milestones. Trial readiness MUST NOT imply full regression, release verification, or platform certification. Optional QA and release work can continue after the preview is usable.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "Milestone transition tests; independent receipt validator has no production caller, and no real browser receipt exists."
+      },
       "REQ-1703565316F7": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -2594,6 +2650,35 @@
         "verification_evidence": [],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
       },
+      "REQ-76F291D4743E": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17373"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17373",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/routers/spec226DevelopmentControl.ts",
+          "apps/web/server/services/miniAppFactoryStageWorker.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Run Start and same-app continuation using the authorized non-production tenant, including the real model request and audit/settlement records.",
+        "requirement_digest": "496e076ead8916b81ec290b257cbc8829017427574fdebc17ee032b06e999cd4",
+        "requirement_id": "REQ-76F291D4743E",
+        "requirement_text": "2. The authenticated Start action authorizes bounded development of that user's app under existing tenant, actor, policy, budget, worker, and audit authority. The durable DevelopmentRun MUST reuse that authorization for ordinary planning, isolated edits, policy-compliant dependencies, build/repair, tests, disposable data, private preview, browser verification, and continuation. It MUST NOT prompt again for an action already inside the grant. Production mutation, unrelated-user data, secret exposure, destructive operations, and spending beyond the grant remain protected.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+          "Disposable PostgreSQL mini-app worker_jobs/outbox integration lane passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f; synthetic stage fixture, not model execution."
+        ],
+        "verification_method": "Authenticated Start/continuation route tests and disposable worker_jobs/outbox lane. The live private-browser acceptance on an authorized non-production target is still required."
+      },
       "REQ-7FFA6D016F01": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -2650,6 +2735,34 @@
           "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
         ],
         "verification_method": "The handoff distinguishes functional delivery, normative SPEC completion, and protected Runner acceptance; only implementation/worker evidence exists."
+      },
+      "REQ-930330255BBA": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17385"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17385",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/personalMiniAppPreview.ts",
+          "apps/web/server/services/miniAppFactoryDurableState.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Exercise a real same-app failure/retry and prove the old artifact remains usable while the retry resumes.",
+        "requirement_digest": "f487242f79c02961603bd5fa3afb45dc439bdcb358428d0de0a3755463d96651",
+        "requirement_id": "REQ-930330255BBA",
+        "requirement_text": "- [ ] Build failure causes a bounded automatic repair, and optional test failure does not prevent an otherwise valid private preview from reaching trial readiness.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "Focused tests verify a usable last-known-good preview stays available after a later stage failure; no real retry/failure journey has been run."
       },
       "REQ-93AB0C1D412F": {
         "applicability": "APPLICABLE",
@@ -2735,6 +2848,45 @@
         ],
         "verification_method": "Private artifact serving, route and owner authorization focused tests. The live private-browser acceptance on an authorized non-production target is still required."
       },
+      "REQ-99636C68BAEA": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17335"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17335",
+        "blocker": {
+          "class": "EXTERNAL_AUTHORITY",
+          "code": "NONPROD_GATEWAY_TARGET_NOT_CONFIGURED",
+          "reactivation_predicate": "A real authenticated Personal Mini-App job reaches the non-production Gateway, settles through worker_jobs/outbox, and records the provider/model, usage, budget and trace receipt.",
+          "required_owner_action": "Provision or identify the authorized hosted non-production SmartAIHub Skill Execution/Gateway endpoint, test-tenant policy and bounded budget, plus its worker runtime."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "BLOCKED_TRUE_EXTERNAL",
+        "implementation_evidence": [
+          "apps/web/server/services/personalMiniAppPreview.ts",
+          "apps/web/server/services/miniAppFactoryRuntime.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Resume after the non-production Gateway endpoint, test-tenant policy and bounded budget are available; prove actual call receipts and blocked fallback paths.",
+        "requirement_digest": "409bc6bbbcb80f2fcd6fe49fb6d73443cfaf02d163e1f7866f0b2aaa655bed85",
+        "requirement_id": "REQ-99636C68BAEA",
+        "requirement_text": "- [ ] Every model call in the Mini-App workflow has a Skill Execution → SmartAIHub Gateway usage/credit/budget/trace receipt; tests prove the Codex Subscription, direct-provider, and API-key fallback paths are not invoked.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+          {
+            "class": "EXTERNAL_AUTHORITY",
+            "code": "NONPROD_GATEWAY_TARGET_NOT_CONFIGURED",
+            "reactivation_predicate": "A real authenticated Personal Mini-App job reaches the non-production Gateway, settles through worker_jobs/outbox, and records the provider/model, usage, budget and trace receipt.",
+            "required_owner_action": "Provision or identify the authorized hosted non-production SmartAIHub Skill Execution/Gateway endpoint, test-tenant policy and bounded budget, plus its worker runtime."
+          }
+        ],
+        "verification_method": "Repository worker lane is synthetic; actual model/Gateway request and provider receipt are absent."
+      },
       "REQ-A30D460A0255": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -2774,6 +2926,73 @@
         ],
         "verification_method": "Static artifact path and private owner binding have unit evidence; the required isolated hosted target has not been exercised."
       },
+      "REQ-AA925E33A229": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17336"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17336",
+        "blocker": {
+          "class": "EXTERNAL_AUTHORITY",
+          "code": "NONPROD_PREVIEW_TARGET_NOT_REGISTERED",
+          "reactivation_predicate": "An exact app artifact is owner-bound on the non-production target and the browser can access the canonical HTTPS route as owner while a second identity is denied.",
+          "required_owner_action": "Provide the authorized hosted non-production SmartAIHub app/preview target with disposable database and owner/second-test identities."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "BLOCKED_TRUE_EXTERNAL",
+        "implementation_evidence": [
+          "apps/web/server/services/personalMiniAppPreview.ts",
+          "apps/web/server/services/miniAppFactoryRuntime.ts"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Verify automatic artifact binding and that preview code/data cannot reach production resources on the authorized non-production target.",
+        "requirement_digest": "61a0ffc98f3d1ad1ef425c6225f8c23829a380a3c3f5485a863895be8df4e1d4",
+        "requirement_id": "REQ-AA925E33A229",
+        "requirement_text": "- [ ] A static or dynamic artifact is automatically deployed only to the authorized isolated target; Preview code and data cannot address Production resources.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+          {
+            "class": "EXTERNAL_AUTHORITY",
+            "code": "NONPROD_PREVIEW_TARGET_NOT_REGISTERED",
+            "reactivation_predicate": "An exact app artifact is owner-bound on the non-production target and the browser can access the canonical HTTPS route as owner while a second identity is denied.",
+            "required_owner_action": "Provide the authorized hosted non-production SmartAIHub app/preview target with disposable database and owner/second-test identities."
+          }
+        ],
+        "verification_method": "Static artifact path and private owner binding have unit evidence; the required isolated hosted target has not been exercised."
+      },
+      "REQ-B92C79FEA294": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17333"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17333",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/appIdentityRepository.ts",
+          "apps/web/server/services/personalMiniAppPreview.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete the real browser authorization matrix on the non-production target.",
+        "requirement_digest": "0abcede85de1df372242e86b1cc3755da8be4ac73fe4c58fad76579874b4224f",
+        "requirement_id": "REQ-B92C79FEA294",
+        "requirement_text": "- [ ] Private owner access passes; same-tenant other-user, cross-tenant, and anonymous access are denied before any private app bytes or data are returned.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "App identity/private artifact tests cover owner authorization; real same-tenant, cross-tenant and anonymous browser identities are not yet exercised."
+      },
       "REQ-B95023F859E5": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -2802,6 +3021,62 @@
           "Disposable PostgreSQL mini-app worker_jobs/outbox integration lane passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f; synthetic stage fixture, not model execution."
         ],
         "verification_method": "Personal/platform pipeline profile and milestone focused tests; disposable worker/outbox lane. The live private-browser acceptance on an authorized non-production target is still required."
+      },
+      "REQ-C633ECF83758": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17378"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17378",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/personalMiniAppPreview.ts",
+          "apps/web/client/src/pages/MiniAppRoute.tsx"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Verify the private canonical URL and isolated preview on the real non-production target, including the storage bridge and no production access.",
+        "requirement_digest": "77e81e7c8b8fae06c5aef246744d480a09090c842583f0eb5f25bbace54c04c1",
+        "requirement_id": "REQ-C633ECF83758",
+        "requirement_text": "7. Static personal apps SHOULD use the smallest existing authorized private artifact-serving runtime. Dynamic code MUST run only in an approved isolated non-production runtime without SmartAIHub production privileges. Canonical app identity/URL remains stable and private by default; tenant and owner checks run before any private artifact bytes or data are returned. All model calls remain on Skill Execution → SmartAIHub Gateway.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "Private artifact serving, route and owner authorization focused tests. The live private-browser acceptance on an authorized non-production target is still required."
+      },
+      "REQ-C6D6E905D967": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17387"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17387",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/routers/spec226DevelopmentControl.ts",
+          "apps/web/server/services/miniAppFactoryDurableState.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Verify the same appId, owner, repository/source revision, artifact history and URL survive a real worker restart.",
+        "requirement_digest": "10abbfb1c0cb9261ce7fb6b6fcdbd45e5fc467501705fee58eee373ef687573e",
+        "requirement_id": "REQ-C6D6E905D967",
+        "requirement_text": "- [ ] The run resumes after worker/process interruption and retains the same app identity, owner, URL, scope, checkpoint, and preview.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "Continuation route tests preserve app identity, repository and source snapshot; no process-interruption browser run exists."
       },
       "REQ-D09BD13A7892": {
         "applicability": "APPLICABLE",
@@ -2906,6 +3181,35 @@
         ],
         "verification_method": "Real browser journey cannot run without the non-production preview target and a real generated app."
       },
+      "REQ-E9812C6AE06C": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17372"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17372",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/miniAppFactoryPipeline.ts",
+          "apps/web/server/services/miniAppFactoryDurableState.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Finish the real Personal Mini-App run and confirm the platform profile still retains its distinct protected stages.",
+        "requirement_digest": "3923bc450c7916b1a16d0dfbec86c500ff33f727a6d1b886964183fee2bccf8b",
+        "requirement_id": "REQ-E9812C6AE06C",
+        "requirement_text": "1. `PERSONAL_MINIAPP` is the default Factory profile for an authenticated user creating a private app for their own use. `PLATFORM_SELF_DEVELOPMENT` remains a distinct higher-risk profile and retains its full tests, migration, UAT, evidence, and certification obligations. A personal app MUST NOT inherit platform certification gates unless a requested operation actually enters that protected scope.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+          "Disposable PostgreSQL mini-app worker_jobs/outbox integration lane passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f; synthetic stage fixture, not model execution."
+        ],
+        "verification_method": "Personal/platform pipeline profile and milestone focused tests; disposable worker/outbox lane. The live private-browser acceptance on an authorized non-production target is still required."
+      },
       "REQ-EDFA71F1EBC2": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -2933,6 +3237,67 @@
           "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
         ],
         "verification_method": "Continuation route tests preserve app identity, repository and source snapshot; no process-interruption browser run exists."
+      },
+      "REQ-F0AB2671B85D": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17386"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17386",
+        "blocker": {
+          "class": "EXTERNAL_AUTHORITY",
+          "code": "NONPROD_PREVIEW_TARGET_NOT_REGISTERED",
+          "reactivation_predicate": "An exact app artifact is owner-bound on the non-production target and the browser can access the canonical HTTPS route as owner while a second identity is denied.",
+          "required_owner_action": "Provide the authorized hosted non-production SmartAIHub app/preview target with disposable database and owner/second-test identities."
+        },
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "BLOCKED_TRUE_EXTERNAL",
+        "implementation_evidence": [
+          "apps/web/server/services/personalMiniAppPreview.ts",
+          "apps/web/client/src/pages/MiniAppRoute.tsx"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Resume when the authorized non-production preview target is reachable and a real model-generated artifact is bound.",
+        "requirement_digest": "90fe5ce6795474da862dced52029baac6c34a2d8dda49f56ee5bb24acf9dc4cd",
+        "requirement_id": "REQ-F0AB2671B85D",
+        "requirement_text": "- [ ] A real private app URL renders the app and its primary journey works; shell-only HTTP responses and mock-only tests do not qualify.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "Real browser journey cannot run without the non-production preview target and a real generated app."
+      },
+      "REQ-F12D04357ED8": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17341"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17341",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "STALE",
+        "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md"
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Keep functional delivery, overall SPEC completion and Protected Runner acceptance separate until each has its own evidence.",
+        "requirement_digest": "34ae08fd4c6d747014931a5c9d2682d1f9172396f65d871d6db3c34e2ea83b8c",
+        "requirement_id": "REQ-F12D04357ED8",
+        "requirement_text": "- [ ] Functional Mini-App Delivery, SPEC-224 normative completion, and Protected Runner acceptance are reported and evidenced independently.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
+          "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        ],
+        "verification_method": "The handoff distinguishes functional delivery, normative SPEC completion, and protected Runner acceptance; only implementation/worker evidence exists."
       },
       "REQ-FBC84B09B937": {
         "applicability": "APPLICABLE",
@@ -2972,10 +3337,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-23T08:21:16.454832Z",
+    "reconciled_at": "2026-10-24T01:29:42.296550Z",
     "sources": [
       {
-        "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
+        "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -3079,7 +3444,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
+        "source_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
@@ -3149,14 +3514,14 @@
         "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
+        "source_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "d3fa92ef646b36e6c64984ba5ff094190b9ae7e0281304947f4baa7748413d68",
+        "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -3222,11 +3587,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1280,
-    "unresolved": 1277
+    "total": 1284,
+    "unresolved": 1281
   },
   "schema_version": 1,
-  "updated_at": "2026-10-23T12:20:10.032015Z",
+  "updated_at": "2026-10-24T01:32:17.346246Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

@@ -11,9 +11,62 @@
 **Capability-gated / companion dependencies:** Specs 206, 208/213, 209, 214 Revision 6+, 215 Revision 4+, 219, 221 Revision 6+, 223 Revision 5+, 225 Revision 7+, 226 Revision 9+, 228 Revision 7+ and future provider-specific integrations. Absence or incomplete certification of an optional capability SHALL gate only the affected path unless a requirement explicitly needs it.  
 **Companion runtimes:** Codex, Claude Code, Antigravity, Hermes, ZCode, Kimi Code and future harnesses via Spec 200 / provider adapters  
 **Canonical durable execution truth:** existing `worker_jobs` / `worker_job_events`  
-**Default self-development source-control model:** protected upstream + Automation Fork + per-run branch/worktree + isolated execution environment + PR-only promotion
+**Default self-development source-control model:** single-developer primary canonical checkout + immediate non-force integration and local/remote convergence; protected fork/PR isolation only when the actual target policy requires it (see the controlling amendment below).
 
 ---
+
+## 0.0 Controlling development execution amendment — 2026-10-24
+
+This user-authorized amendment controls ordinary development on this repository,
+including `PLATFORM_SELF_DEVELOPMENT`. It takes precedence over older examples
+below requiring per-run forks/branches/worktrees, PR-only promotion, a separate
+local owner, universal full tests/review before merge, or production approvals
+for the configured development database. The shared operational source is
+`skills/development-lifecycle/workspace-policy.md`; skills SHALL consume that
+policy rather than recreate a conflicting approval or workspace-selection rule.
+
+1. A task's Start/continue instruction authorizes normal implementation,
+   focused checks, technical repair, commits, push/integration and applicable
+   configured dev DB migrations throughout that task. With one human developer,
+   the requesting user is the authority across local branches/worktrees; owner
+   metadata is process/recovery bookkeeping, not another human approval gate.
+   Preserve actual in-flight writes and serialize short conflicting operations.
+2. Reuse the primary checkout on local canonical `main` tracking `origin/main`.
+   A new goal, run, section, skill, reviewer, dirty file set or PR requirement
+   SHALL NOT create another checkout by default. Serialize overlapping writers.
+   Forks/worktrees remain exceptions only for an explicit request, demonstrated
+   incompatible concurrent source needs, or an existing immutable artifact
+   controller. Reuse a suitable exception and close it after integration.
+3. Integrate each coherent changed-scope fast-gate-passing slice immediately;
+   direct canonical pushes are preferred when actual repository protection
+   allows them. Use a branch/PR only where that protection requires it and merge
+   as soon as required conditions pass. Each commit SHALL be followed by
+   non-force push/integration, fetch and reconciliation so local canonical HEAD
+   and the remote tip match at that checkpoint. Do not strand a branch waiting
+   for whole-SPEC completion, optional full builds, review quotas or hosted UAT.
+4. Main is an integrated development baseline. Continue broad verification and
+   forward debugging there after the focused gate; code integration and final
+   acceptance remain separate claims. Never claim an unrun check passed, bypass
+   actual GitHub protection, force-push or merge a demonstrated critical data
+   safety/security defect merely to produce a receipt.
+5. Keep the authorized development database current. Inspect pending applicable
+   migrations and apply them promptly through the existing runner/receipts after
+   schema integration and before user testing. Do not wait for Database Owner,
+   production release approval or another confirmation. Back up broad/destructive
+   repairs, serialize DDL, repair technical failures, and verify actual catalog
+   and applied evidence; do not fabricate ledger rows or replay retired systems.
+6. Tenant/provider IAM, real credential limits, production-only changes,
+   unbounded external costs and unrecoverable data-loss boundaries remain scoped
+   to those exact operations. Disposable destructive tests still use their
+   isolated DB controls; their test fixture requirements do not prohibit keeping
+   the authorized shared dev server DB up to date. No acceptance/certification is
+   inferred from this amendment or a local integration/migration pass.
+
+Required development regression cases: a dirty primary checkout reconciles in
+place; overlapping writers serialize; a ready slice integrates without whole
+Main build/UAT evidence; each checkpoint reconciles local/remote canonical SHA;
+dev migrations use the existing task authority without another local owner;
+retired-system replay and falsely passing evidence remain prohibited.
 
 ## 0.1 Codebase alignment snapshot — 2026-09-22
 

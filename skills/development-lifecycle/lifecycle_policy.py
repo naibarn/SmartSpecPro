@@ -312,15 +312,10 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
     if event == "unauthorized_action":
         return "DENY_AND_CONTINUE_SAFE_WORK" if facts.get("independent_work") else "DENY_AND_WAIT_AUTHORITY"
     if event == "concurrent_writer_collision":
-        return "ISOLATE_WORKTREE" if facts.get("isolated_workspace_available") else "SERIALIZE_OWNED_PATH"
+        return "SERIALIZE_OWNED_PATH"
     if event == "dirty_canonical_checkout":
-        return "PRESERVE_AND_VERIFY_ISOLATED" if facts.get("exact_sha_workspace_available") else "PRESERVE_AND_WAIT"
+        return "PRESERVE_AND_RECONCILE_IN_PLACE"
     if event == "safe_pr_integration":
-        baseline_health_assessed = facts.get("main_buildable") is True or (
-            facts.get("baseline_failure_classified") is True
-            and facts.get("task_regression") is False
-            and facts.get("impact_analysis_disjoint") is True
-        )
         required_controls = (
             "fast_gate_passed",
             "required_checks_passed",
@@ -330,7 +325,11 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
             "merge_authority_confirmed",
             "merge_critical_section_serialized",
         )
-        ready = baseline_health_assessed and all(facts.get(key) is True for key in required_controls)
+        # A full Main build and final acceptance are not development checkpoint
+        # gates. The scoped fast gate and real repository protection govern it.
+        ready = facts.get("task_regression") is not True and all(
+            facts.get(key) is True for key in required_controls
+        )
         return "INTEGRATE_NORMAL_PATH" if ready else "REPAIR_OR_RECONCILE"
     if event == "pr_checks_pending":
         return "TRACK_PR_AND_CONTINUE" if facts.get("independent_work") else "TRACK_PR"
@@ -367,8 +366,6 @@ def decide_closure(scenario: Mapping[str, Any]) -> str:
         return "PRESERVE_AND_CONTINUE" if not facts.get("ownership_overlap") else "RECONCILE_OWNERSHIP"
     if event == "unrelated_baseline_failure":
         return "ISOLATE_AND_CONTINUE" if not facts.get("task_regression") and facts.get("independent_work") else "DEBUG_FIX_AND_RETEST"
-    if event == "unrelated_dirty_session_worktree":
-        return "PRESERVE_AND_CONTINUE" if not facts.get("ownership_overlap") else "ISOLATE_OWNERSHIP"
     if event == "internal_approval_gate":
         return "REPAIR_POLICY" if not facts.get("safety_basis") else "APPLY_RISK_CONTROL"
 

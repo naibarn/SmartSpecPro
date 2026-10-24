@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `WAITING_APPROVAL`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 1277 unresolved of 1280
+- Requirements: 0 pass / 1281 unresolved of 1284
 - Next action: Keep overall SPEC-224 acceptance PARTIAL. Continue PERSONAL_MINIAPP_REAL_GATEWAY_AND_PREVIEW_E2E from canonical main; the current code/worker slices are tested, while the hosted test target, actual Gateway receipt, owner browser trial and deployed revision remain unverified. Existing protected Runner/tenant/workspace authority blockers remain separate.
-- Manifest generation: 156
+- Manifest generation: 159
 
 ## Source-declared status and relationship claims
 

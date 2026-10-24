@@ -11,6 +11,15 @@ connect to a database and must not infer applied or pending migrations from file
 counts; use the repository's read-only database ledger / migration receipt path
 for live applied state.
 
+When the task includes development/schema work, this static checker is a
+diagnostic, not a stopping point. Follow the shared development lifecycle
+workspace policy: use the existing migration runner to apply applicable
+pending changes to the authorized dev DB promptly, repair technical failures,
+and verify the live catalog/ledger. The task's start already authorizes normal
+dev migration; do not wait for another human/Database Owner or production
+release. Back up before broad/destructive repair, preserve real data, and keep
+production/provider credential boundaries specific to those targets.
+
 ## Source
 
 - Source: Local portable skill pack

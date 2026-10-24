@@ -201,7 +201,7 @@
       "facts": {
         "isolated_workspace_available": true
       },
-      "expected": "ISOLATE_WORKTREE"
+      "expected": "SERIALIZE_OWNED_PATH"
     },
     {
       "id": "AC-22",
@@ -209,7 +209,7 @@
       "facts": {
         "exact_sha_workspace_available": true
       },
-      "expected": "PRESERVE_AND_VERIFY_ISOLATED"
+      "expected": "PRESERVE_AND_RECONCILE_IN_PLACE"
     },
     {
       "id": "AC-23",
