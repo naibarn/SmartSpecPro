@@ -61,6 +61,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareStagingRuntimeReadiness: { useQuery: () => ({ data: mocks.stagingRuntime, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchStagingRuntimeReadiness }) },
       getCloudflareProductionRuntimeReadiness: { useQuery: () => ({ data: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", environment: "production", activation: "disabled", transport: "queues", missing: ["HYPERDRIVE", "JOB_QUEUE"], unconfigured: ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"], applicationIngress: { enabled: false, ready: false, missing: ["CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", "NODE_HTTP", "PYTHON_HTTP"] }, jobHandlerConfigured: false, reason: "CLOUDFLARE_PRODUCTION_WORKER_RUNTIME_NOT_READY" }, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionRuntimeReadiness }) },
       getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: "CHECKED", checkedAt: "2026-10-24T00:00:00.000Z",
+        originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false },
         queueInventoryComplete: true, queues: [{ name: "smartspec-staging-project-jobs", environment: "staging" }],
         hyperdriveInventoryComplete: true, hyperdrives: [{ name: "smartspec-staging-project-db", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
@@ -565,6 +566,8 @@ describe("AdminDeploymentTargets", () => {
 
     expect(await screen.findByText(/Not provisioned\. Only Staging exists \(smartspec-staging-project-jobs\)/)).toBeInTheDocument();
     expect(screen.getByText(/Not provisioned\. Only Staging exists \(smartspec-staging-project-db\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Production currently has no origin\/runtime configuration/)).toBeInTheDocument();
+    expect(screen.getByText(/Not configured or bound in the active Worker version/)).toBeInTheDocument();
     expect(screen.getByText(/cannot be used as a rollback baseline/i)).toBeInTheDocument();
     expect(screen.getByText(/The exact smartaihub\.app\/\* Worker Route is not attached/i)).toBeInTheDocument();
     expect(screen.getByText(/Account → Queues → Edit and Account → Hyperdrive → Edit/)).toBeInTheDocument();

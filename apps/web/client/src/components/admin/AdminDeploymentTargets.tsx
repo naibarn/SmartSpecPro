@@ -644,7 +644,23 @@ export default function AdminDeploymentTargets() {
             const stagingHyperdrives = inventory.hyperdrives.filter(item => item.environment === "staging");
             const activeVersions = inventory.worker.versions;
             const verifiedRollback = activeVersions.some(version => version.checked && version.hasVerifiedReleaseIdentity);
+            const nodeAndPythonIngressBound = activeVersions.some(version => version.checked &&
+              version.bindingNames.includes("NODE_HTTP") && version.bindingNames.includes("PYTHON_HTTP"));
             return <VStack gap={1} role="group" aria-label={text("Verified Cloudflare Production resources", "ทรัพยากร Cloudflare Production ที่ตรวจแล้ว")}>
+              <p><strong>{text("Production runtime configuration", "config runtime ของ Production")}</strong>: {inventory.originConfiguration.status === "NOT_CONFIGURED"
+                ? text("Not saved. Production currently has no origin/runtime configuration.", "ยังไม่ได้บันทึก Production ไม่มี origin/runtime configuration")
+                : inventory.originConfiguration.status === "INVALID" ? text("Stored configuration cannot be verified.", "ตรวจ config ที่บันทึกไว้ไม่ผ่าน")
+                  : text(`Saved (${inventory.originConfiguration.status}).`, `บันทึกแล้ว (${inventory.originConfiguration.status})`)}</p>
+              <p><strong>{text("Node and Python request ingress", "ช่องทางรับ request ของ Node และ Python")}</strong>: {nodeAndPythonIngressBound
+                ? text("Both production container bindings are active.", "ผูก container ทั้งสองกับ Production แล้ว")
+                : inventory.originConfiguration.applicationHttpConfigured
+                  ? text(inventory.originConfiguration.applicationHttpReadyForRequests
+                    ? "Configuration exists, but the current Worker version does not bind both containers."
+                    : "Container image metadata exists, but request bindings are disabled (namespace-only).",
+                    inventory.originConfiguration.applicationHttpReadyForRequests
+                      ? "มี config แต่ Worker version ปัจจุบันยังไม่ได้ผูก container ทั้งสอง"
+                      : "มี metadata ของ image แต่ยังปิด binding รับ request (namespace-only)")
+                  : text("Not configured or bound in the active Worker version.", "ยังไม่ได้ตั้งค่าและผูกใน Worker version ที่ทำงานอยู่")}</p>
               <p><strong>{text("Production Queue", "Production Queue")}</strong>: {productionQueues.length > 0
                 ? text(`Found ${productionQueues.length}`, `พบ ${productionQueues.length} รายการ`)
                 : text(stagingQueues.length > 0 ? `Not provisioned. Only Staging exists (${stagingQueues.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingQueues.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingQueues.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>

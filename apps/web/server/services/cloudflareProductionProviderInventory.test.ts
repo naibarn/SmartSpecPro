@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { resolveTarget, withCredential } = vi.hoisted(() => ({ resolveTarget: vi.fn(), withCredential: vi.fn() }));
 vi.mock("./cloudflareProductionDeploymentContract", () => ({ resolveCloudflareProductionDeploymentTarget: resolveTarget }));
+const { getOriginConfiguration } = vi.hoisted(() => ({ getOriginConfiguration: vi.fn() }));
+vi.mock("./cloudflareOriginConfiguration", () => ({ getCloudflareOriginConfiguration: getOriginConfiguration }));
 vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: withCredential }));
 
 import { probeCloudflareProductionProviderInventory } from "./cloudflareProductionProviderInventory";
@@ -22,6 +24,7 @@ describe("Cloudflare production provider inventory", () => {
     resolveTarget.mockResolvedValue({ targetId: workerRef, tenantId: "tenant-a", projectId: "project-a", environment: "production",
       accountRef, workerRef, credentialRef: "cloudflare:production", enabled: true });
     withCredential.mockImplementation(async (_db, _scope, operation) => ({ status: "CONFIGURED", value: await operation("test-token") }));
+    getOriginConfiguration.mockRejectedValue(new Error("no saved production config"));
   });
 
   it("distinguishes Staging resources, unverified baseline, and unattached domain route", async () => {
@@ -39,12 +42,33 @@ describe("Cloudflare production provider inventory", () => {
     const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
     expect(result).toMatchObject({
       status: "CHECKED",
+      originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false },
       queues: [{ name: "smartspec-staging-abc-jobs", environment: "staging" }],
       hyperdrives: [{ name: "smartspec-staging-abc-database", environment: "staging" }],
       domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
       worker: { deploymentCount: 1, activeVersionCount: 1, versions: [{ bindingNames: ["CLOUDFLARE_ACTIVATION"], hasVerifiedReleaseIdentity: false }] },
     });
     expect(fetchImpl.mock.calls.every(([request, init]) => (init?.method ?? "GET") === "GET")).toBe(true);
+  });
+
+  it("reports saved Production origin and ingress state without returning its configuration or secrets", async () => {
+    resolveTarget.mockResolvedValue({ targetId: workerRef, tenantId: "tenant-a", projectId: "project-a", environment: "production",
+      accountRef, workerRef, credentialRef: "cloudflare:production", runtimePolicy: "cf-origin:" + "c".repeat(64), enabled: true });
+    getOriginConfiguration.mockResolvedValue({ status: "STORED", descriptor: {
+      applicationHttp: { namespace: "smartspec-production", node: {}, python: {} },
+      applicationHttpPhase: "namespace-only", jobTransport: "queues",
+    } });
+    const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
+      const url = new URL(String(request));
+      if (url.pathname.endsWith("/queues") || url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes")) return response([]);
+      if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
+      throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
+    });
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result).toMatchObject({ originConfiguration: { status: "STORED", applicationHttpConfigured: true,
+      applicationHttpReadyForRequests: false, queueProfileConfigured: true } });
+    expect(JSON.stringify(result)).not.toContain("smartspec-production");
   });
 
   it("does not claim a complete inventory when an endpoint is inaccessible or paginated", async () => {

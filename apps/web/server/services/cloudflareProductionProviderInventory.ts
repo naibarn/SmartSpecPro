@@ -1,5 +1,6 @@
 import type { DrizzleDB } from "../db";
 import { resolveCloudflareProductionDeploymentTarget } from "./cloudflareProductionDeploymentContract";
+import { getCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 
 const API_ROOT = "https://api.cloudflare.com/client/v4";
@@ -36,6 +37,26 @@ export async function probeCloudflareProductionProviderInventory(input: {
 }) {
   const target = await resolveCloudflareProductionDeploymentTarget(input);
   if (!target) return { status: "TARGET_NOT_CONFIGURED" as const, checkedAt: new Date().toISOString() };
+  let originConfiguration: { status: "NOT_CONFIGURED" | "STORED" | "EXPIRED" | "REVOKED" | "INVALID";
+    applicationHttpConfigured: boolean; applicationHttpReadyForRequests: boolean; queueProfileConfigured: boolean } = {
+    status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false,
+  };
+  if (target.runtimePolicy) {
+    try {
+      const config = await getCloudflareOriginConfiguration(input.db, {
+        identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare" },
+        configurationRef: target.runtimePolicy,
+      });
+      originConfiguration = {
+        status: config.status,
+        applicationHttpConfigured: Boolean(config.descriptor.applicationHttp),
+        applicationHttpReadyForRequests: Boolean(config.descriptor.applicationHttp && !config.descriptor.applicationHttpPhase),
+        queueProfileConfigured: config.descriptor.jobTransport === "queues",
+      };
+    } catch {
+      originConfiguration = { status: "INVALID", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false };
+    }
+  }
   const fetched = await withCloudflareDeploymentCredential(input.db, {
     identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare" },
     credentialRef: target.credentialRef,
@@ -81,6 +102,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
     return {
       status: inventoryComplete ? "CHECKED" as const : "PARTIAL" as const,
       checkedAt: new Date().toISOString(),
+      originConfiguration,
       queueInventoryComplete: queues.complete,
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
       hyperdriveInventoryComplete: hyperdrive.complete,
