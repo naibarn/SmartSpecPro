@@ -605,17 +605,36 @@ describe("AdminDeploymentTargets", () => {
     const user = userEvent.setup();
     mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
       workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
-    mocks.latestProductionQueueJob = { jobId: "eb327c3c-44f5-462f-98f2-0e40065e6caa", status: "queued",
+    mocks.latestProductionQueueJob = { jobId: "eb327c34-44f5-462f-98f2-0e40065ce6aa", status: "queued",
       attempt: 1, maxAttempts: 3, createdAt: "2026-10-24T16:30:00.000Z", startedAt: null,
       finishedAt: null, scheduledAt: null, nextRetryAt: null, leaseExpiresAt: null, heartbeatAt: null,
       errorCode: null, queueName: null, deadLetterQueueName: null };
     render(<AdminDeploymentTargets />);
     await chooseProductionScope(user);
 
-    expect(await screen.findByText("eb327c3c-44f5-462f-98f2-0e40065e6caa")).toBeInTheDocument();
+    expect(await screen.findByText("eb327c34-44f5-462f-98f2-0e40065ce6aa")).toBeInTheDocument();
     expect(screen.getByText(/Attempt: 1\/3/)).toBeInTheDocument();
     expect(screen.getByText(/waiting for a worker claim/i)).toBeInTheDocument();
     expect(mocks.prepareProductionQueue).not.toHaveBeenCalled();
+  });
+
+  it("allows exactly one fresh Production Queue job after the previous job expires", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.latestProductionQueueJob = { jobId: "eb327c34-44f5-462f-98f2-0e40065ce6aa", status: "expired",
+      attempt: 1, maxAttempts: 3, createdAt: "2026-10-24T16:43:26.688Z", startedAt: null,
+      finishedAt: "2026-10-24T16:50:25.015Z", scheduledAt: null, nextRetryAt: null, leaseExpiresAt: null, heartbeatAt: null,
+      errorCode: "JOB_DEADLINE_EXPIRED", queueName: null, deadLetterQueueName: null };
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(await screen.findByText("eb327c34-44f5-462f-98f2-0e40065ce6aa")).toBeInTheDocument();
+    const retry = await screen.findByRole("button", { name: "Retry Production Queue setup" });
+    expect(retry).toBeEnabled();
+    await user.click(retry);
+    await waitFor(() => expect(mocks.prepareProductionQueue).toHaveBeenCalledTimes(1));
+    expect(mocks.prepareProductionQueue).toHaveBeenCalledWith({ tenantId, projectId, environment: "production" });
   });
 
   it("does not guess a production account when no enabled Staging target can establish it", async () => {

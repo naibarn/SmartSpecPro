@@ -704,6 +704,7 @@ export default function AdminDeploymentTargets() {
             const verifiedRollback = activeVersions.some(version => version.checked && version.hasVerifiedReleaseIdentity);
             const nodeAndPythonIngressBound = activeVersions.some(version => version.checked &&
               version.bindingNames.includes("NODE_HTTP") && version.bindingNames.includes("PYTHON_HTTP"));
+            const canRetryProductionQueueJob = ["failed", "cancelled", "expired"].includes(productionQueueJobData?.status ?? "");
             return <VStack gap={1} role="group" aria-label={text("Verified Cloudflare Production resources", "ทรัพยากร Cloudflare Production ที่ตรวจแล้ว")}>
               <p><strong>{text("Production runtime configuration", "config runtime ของ Production")}</strong>: {inventory.originConfiguration.status === "NOT_CONFIGURED"
                 ? text("Not saved. Production currently has no origin/runtime configuration.", "ยังไม่ได้บันทึก Production ไม่มี origin/runtime configuration")
@@ -727,9 +728,9 @@ export default function AdminDeploymentTargets() {
                   "Prepare the missing Production Queue and dead-letter queue now. The server uses the encrypted credential already saved for this Production target, creates or reuses the exact queues in the Worker config, and verifies both. This does not bind or activate the Worker and cannot change traffic.",
                   "เตรียม Production Queue และ dead-letter queue ที่ยังขาด โดยใช้ credential แบบเข้ารหัสของ Production target สร้างหรือใช้ Queue ตามชื่อใน Worker config แล้วตรวจยืนยันทั้งคู่ ขั้นตอนนี้ยังไม่ผูกหรือเปิด Worker และเปลี่ยน traffic ไม่ได้",
                 )}</p>
-                <Button type="button" disabled={productionQueueMutation.isPending || Boolean((productionQueueJobId || productionQueueJobData) && (!productionQueueJobData || !["failed", "cancelled"].includes(productionQueueJobData.status)))} onClick={() => productionQueueMutation.mutate({ tenantId, projectId, environment: "production" })}>
+                <Button type="button" disabled={productionQueueMutation.isPending || Boolean((productionQueueJobId || productionQueueJobData) && (!productionQueueJobData || !canRetryProductionQueueJob))} onClick={() => productionQueueMutation.mutate({ tenantId, projectId, environment: "production" })}>
                   {productionQueueMutation.isPending ? text("Queueing Production setup…", "กำลังส่งงานเตรียม Production…") : productionQueueJobId
-                    ? productionQueueJobData?.status === "failed"
+                    ? canRetryProductionQueueJob
                       ? text("Retry Production Queue setup", "ลองเตรียม Production Queue อีกครั้ง")
                       : text("Production Queue setup submitted", "ส่งงานเตรียม Production Queue แล้ว")
                     : text("Prepare Production Queue", "เตรียม Production Queue")}
