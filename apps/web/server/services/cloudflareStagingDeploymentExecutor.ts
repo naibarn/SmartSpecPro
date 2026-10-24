@@ -378,8 +378,8 @@ function assertValidGrant(input: {
     const parsed = cloudflareStagingOriginGrantSchema.safeParse(document);
     if (!parsed.success || grant.schemaVersion !== CLOUDFLARE_STAGING_ORIGIN_GRANT ||
         grant.jobId !== input.jobId || grant.accountRef !== input.accountRef ||
-        job.configurationRef !== (job.action === "deploy" ? grant.configurationRef : grant.rollbackConfigurationRef) ||
-        job.configurationDigest !== (job.action === "deploy" ? grant.configurationDigest : grant.rollbackConfigurationDigest)) {
+      job.configurationRef !== (job.action === "rollback" ? grant.rollbackConfigurationRef : grant.configurationRef) ||
+      job.configurationDigest !== (job.action === "rollback" ? grant.rollbackConfigurationDigest : grant.configurationDigest)) {
       throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ORIGIN_GRANT_REQUIRED");
     }
   } else if (grant.schemaVersion === CLOUDFLARE_STAGING_ORIGIN_GRANT) {
@@ -540,10 +540,12 @@ export function createCloudflareStagingDeploymentExecutor(
     const validateOriginTransition = async () => {
       if (!originGrant) return;
       if (!activeRuntime.withOriginConfiguration) throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ORIGIN_RUNTIME_REQUIRED");
-      const baseline = await activeRuntime.resolveArtifact(originGrant.rollbackArtifactRef, originGrant.rollbackSourceSha);
-      if (!baseline?.immutable || baseline.artifactRef !== originGrant.rollbackArtifactRef ||
-          baseline.sourceSha !== originGrant.rollbackSourceSha || baseline.buildDigest !== originGrant.rollbackBuildDigest) {
-        throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ROLLBACK_ARTIFACT_INVALID");
+      if (job.action !== "bootstrap") {
+        const baseline = await activeRuntime.resolveArtifact(originGrant.rollbackArtifactRef!, originGrant.rollbackSourceSha!);
+        if (!baseline?.immutable || baseline.artifactRef !== originGrant.rollbackArtifactRef ||
+            baseline.sourceSha !== originGrant.rollbackSourceSha || baseline.buildDigest !== originGrant.rollbackBuildDigest) {
+          throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ROLLBACK_ARTIFACT_INVALID");
+        }
       }
       for (const [configurationRef, configurationDigest] of [
         [originGrant.configurationRef, originGrant.configurationDigest],
@@ -652,7 +654,7 @@ export function createCloudflareStagingDeploymentExecutor(
                   : "CLOUDFLARE_STAGING_DEPLOYMENT_RECEIPT_MISMATCH"
               );
             }
-            const selectedConfigurationDigest = originGrant ? (job.action === "deploy" ? originGrant.configurationDigest : originGrant.rollbackConfigurationDigest) : undefined;
+            const selectedConfigurationDigest = originGrant ? (job.action === "rollback" ? originGrant.rollbackConfigurationDigest : originGrant.configurationDigest) : undefined;
             if ((request.configurationDigest ?? null) !== (selectedConfigurationDigest ?? null)) {
               throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ORIGIN_RECEIPT_MISMATCH");
             }
@@ -742,7 +744,7 @@ export function createCloudflareStagingDeploymentExecutor(
                   );
                 }
               }
-              if (job.action === "deploy" && verification.verificationFailure) {
+              if (job.action !== "rollback" && verification.verificationFailure) {
                 if (verification.verificationFailure === "health") {
                   const status = Number.isInteger(verification.healthStatus) ? `_HTTP_${verification.healthStatus}` : "_TRANSPORT";
                   throw new CloudflareStagingDeploymentError(`CLOUDFLARE_STAGING_HEALTH${status}_FAILED`);
@@ -753,7 +755,7 @@ export function createCloudflareStagingDeploymentExecutor(
                 } as const;
                 throw new CloudflareStagingDeploymentError(failureCodes[verification.verificationFailure]);
               }
-              if (job.action === "deploy" && verification.diagnosticCode) {
+              if (job.action !== "rollback" && verification.diagnosticCode) {
                 throw new CloudflareStagingDeploymentError(verification.diagnosticCode, verification.failureClass);
               }
               throw new CloudflareStagingDeploymentError(
@@ -772,7 +774,7 @@ export function createCloudflareStagingDeploymentExecutor(
                 rollbackDeploymentId: grant.rollbackDeploymentId,
                 ...(originGrant ? {
                   grantRef: originGrant.grantRef, accountRef: originGrant.accountRef,
-                  configurationRef: job.action === "deploy" ? originGrant.configurationRef : originGrant.rollbackConfigurationRef,
+                  configurationRef: job.action === "rollback" ? originGrant.rollbackConfigurationRef : originGrant.configurationRef,
                   configurationDigest: selectedConfigurationDigest ?? null,
                   verificationScope: selectedConfigurationDigest ? "origin-auth" : "assets-only",
                   rollbackConfigurationRef: originGrant.rollbackConfigurationRef,
@@ -793,7 +795,7 @@ export function createCloudflareStagingDeploymentExecutor(
             };
           }
         };
-        if (originGrant && job.action === "deploy") {
+        if (originGrant && job.action !== "rollback") {
           if (!activeRuntime.withOriginConfiguration) throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ORIGIN_RUNTIME_REQUIRED");
           return activeRuntime.withOriginConfiguration({ target, configurationRef: originGrant.configurationRef,
             configurationDigest: originGrant.configurationDigest, activeConfigurationRef: originGrant.configurationRef, operation: execute });

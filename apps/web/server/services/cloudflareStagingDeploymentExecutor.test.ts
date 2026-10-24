@@ -592,6 +592,23 @@ describe("explicit Cloudflare origin v2 executor", () => {
     expect(JSON.stringify(result)).not.toContain(f.secrets.secret);
   });
 
+  it("executes an origin-bound first-deployment bootstrap without inventing or resolving a rollback baseline", async () => {
+    const f = originRuntime();
+    Object.assign(f.originGrant, { actions: ["bootstrap"], rollbackDeploymentId: null, rollbackArtifactRef: null,
+      rollbackSourceSha: null, rollbackBuildDigest: null });
+    Object.assign(f.call.context.input, { action: "bootstrap" });
+    f.dependencies.resolveArtifact = vi.fn(async ref => ref === f.originGrant.artifactRef ? { ...artifact, artifactRef: f.originGrant.artifactRef } : null);
+
+    const result = await createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call);
+
+    expect(result.output).toMatchObject({ action: "bootstrap", configurationRef, configurationDigest,
+      rollbackDeploymentId: null, rollbackConfigurationRef: null, runtimeVerified: true });
+    expect(f.dependencies.resolveArtifact).toHaveBeenCalledTimes(1);
+    expect(f.cloudflare.deploy).toHaveBeenCalledWith(expect.objectContaining({ bootstrap: true,
+      originConfiguration: expect.objectContaining({ configurationDigest }) }));
+    expect(f.cloudflare.rollback).not.toHaveBeenCalled();
+  });
+
   it.each(["jobId", "projectId", "configurationDigest", "contractVersion"])("rejects %s substitution before credentials/provider writes", async field => {
     const f = originRuntime();
     if (field === "jobId") f.call.context[field] = "foreign";

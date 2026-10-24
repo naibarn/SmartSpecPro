@@ -119,6 +119,7 @@ describe("Cloudflare staging executor identity", () => {
 
   it("binds the complete origin transition and rejects downgrade or config/rollback/project drift", async () => {
     const originAuthority = {
+      action: "deploy" as const,
       projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111", accountRef: "a".repeat(32),
       configurationRef: `cf-origin:${"b".repeat(64)}`, configurationDigest: "b".repeat(64),
       rollbackConfigurationRef: null, rollbackConfigurationDigest: null,
@@ -136,6 +137,21 @@ describe("Cloudflare staging executor identity", () => {
     await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: attempt })).resolves.toMatchObject({ registered: true });
     const legacy = await signedProof();
     await expect(verifyCloudflareStagingExecutorProof(legacy, { now, expectedBinding: attempt })).rejects.toThrow("executor_proof_invalid");
+  });
+
+  it("binds first-deployment bootstrap as a distinct action with no rollback baseline", async () => {
+    const originAuthority = {
+      action: "bootstrap" as const,
+      projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111", accountRef: "a".repeat(32),
+      configurationRef: `cf-origin:${"b".repeat(64)}`, configurationDigest: "b".repeat(64),
+      rollbackConfigurationRef: null, rollbackConfigurationDigest: null,
+      rollbackDeploymentId: null, rollbackArtifactRef: null, rollbackSourceSha: null, rollbackBuildDigest: null,
+    };
+    const attempt = { ...binding, action: "bootstrap" as const, originAuthority };
+    const proof = await signedProof(attempt);
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: attempt })).resolves.toMatchObject({ registered: true });
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: { ...attempt,
+      originAuthority: { ...originAuthority, action: "deploy" } } })).rejects.toThrow("executor_attempt_binding_invalid");
   });
 
   it("registers only a bounded, valid Ed25519 identity", () => {

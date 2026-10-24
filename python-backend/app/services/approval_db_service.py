@@ -177,9 +177,12 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
         required |= {"configurationRef", "configurationDigest", "rollbackConfigurationRef", "rollbackConfigurationDigest", "accountRef", "jobId"}
         validate_origin_configuration_pair(value.get("configurationRef"), value.get("configurationDigest"))
         validate_origin_configuration_pair(value.get("rollbackConfigurationRef"), value.get("rollbackConfigurationDigest"), allow_none=True)
-        if value.get("actions") not in (["deploy"], ["rollback"]):
+        if value.get("actions") not in (["deploy"], ["rollback"], ["bootstrap"]):
             raise ValueError("CLOUDFLARE_STAGING_GRANT_ACTIONS_INVALID")
-        if not isinstance(value.get("rollbackDeploymentId"), str) or not _SPEC224_CANONICAL_UUID.fullmatch(value["rollbackDeploymentId"]):
+        if value.get("actions") == ["bootstrap"]:
+            if any(value.get(field) is not None for field in ("rollbackDeploymentId", "rollbackArtifactRef", "rollbackSourceSha", "rollbackBuildDigest", "rollbackConfigurationRef", "rollbackConfigurationDigest")):
+                raise ValueError("CLOUDFLARE_STAGING_GRANT_BOOTSTRAP_ROLLBACK_INVALID")
+        elif not isinstance(value.get("rollbackDeploymentId"), str) or not _SPEC224_CANONICAL_UUID.fullmatch(value["rollbackDeploymentId"]):
             raise ValueError("CLOUDFLARE_STAGING_GRANT_ROLLBACK_INVALID")
     policy_fields = {"accountRef", "jobId"}
     if set(value) not in (required, required | policy_fields):

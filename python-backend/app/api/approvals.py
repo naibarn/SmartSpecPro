@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
@@ -362,11 +362,25 @@ class CloudflareStagingPolicyGrantIssue(CloudflareStagingGrantIssue):
 
 class CloudflareStagingOriginPolicyGrantIssue(CloudflareStagingPolicyGrantIssue):
     schema_version: Literal["cloudflare.staging-origin-grant.v2"] = Field(..., alias="schemaVersion")
-    actions: list[Literal["deploy", "rollback"]] = Field(..., min_length=1, max_length=1)
+    actions: list[Literal["deploy", "rollback", "bootstrap"]] = Field(..., min_length=1, max_length=1)
     configuration_ref: StrictStr = Field(..., alias="configurationRef", pattern=r"^cf-origin:[a-f0-9]{64}$")
     configuration_digest: StrictStr = Field(..., alias="configurationDigest", pattern=r"^[a-f0-9]{64}$")
+    rollback_deployment_id: StrictStr | None = Field(..., alias="rollbackDeploymentId", pattern=r"^[a-f0-9-]{36}$")
+    rollback_artifact_ref: StrictStr | None = Field(..., alias="rollbackArtifactRef", pattern=r"^sha256:[a-f0-9]{64}$")
+    rollback_source_sha: StrictStr | None = Field(..., alias="rollbackSourceSha", pattern=r"^[a-f0-9]{40}$")
+    rollback_build_digest: StrictStr | None = Field(..., alias="rollbackBuildDigest", pattern=r"^[a-f0-9]{64}$")
     rollback_configuration_ref: StrictStr | None = Field(..., alias="rollbackConfigurationRef", pattern=r"^cf-origin:[a-f0-9]{64}$")
     rollback_configuration_digest: StrictStr | None = Field(..., alias="rollbackConfigurationDigest", pattern=r"^[a-f0-9]{64}$")
+
+    @model_validator(mode="after")
+    def validate_origin_rollback_binding(self):
+        rollback_values = (self.rollback_deployment_id, self.rollback_artifact_ref, self.rollback_source_sha, self.rollback_build_digest)
+        if self.actions == ["bootstrap"]:
+            if any(value is not None for value in rollback_values) or self.rollback_configuration_ref is not None or self.rollback_configuration_digest is not None:
+                raise ValueError("CLOUDFLARE_STAGING_BOOTSTRAP_ROLLBACK_INVALID")
+        elif any(value is None for value in rollback_values):
+            raise ValueError("CLOUDFLARE_STAGING_ROLLBACK_REQUIRED")
+        return self
 
 
 class CloudflareOriginProvisionGrantIssue(BaseModel):

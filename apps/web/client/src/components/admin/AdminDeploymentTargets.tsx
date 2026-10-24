@@ -618,7 +618,7 @@ export default function AdminDeploymentTargets() {
           })() : null}
           <Divider />
           <h3>{text("2. Authorize and deploy to Staging", "2. อนุมัติและ deploy ไป Staging")}</h3>
-          {stagingDeployPreflight.isLoading ? <p role="status">{text("Checking published artifact and rollback baseline…", "กำลังตรวจ artifact และ rollback baseline…")}</p> : null}
+          {stagingDeployPreflight.isLoading ? <p role="status">{text("Checking published artifact, saved configuration, and rollback state…", "กำลังตรวจ artifact, config ที่บันทึกไว้ และสถานะ rollback…")}</p> : null}
           {stagingDeployPreflight.isError ? <p role="alert">{text("Staging deploy readiness could not be verified.", "ตรวจความพร้อม deploy staging ไม่สำเร็จ")}</p> : null}
           {stagingDeployPreflight.data ? <>
             {stagingDeployPreflight.data.ready && stagingDeployPreflight.data.artifact && stagingDeployPreflight.data.baseline ? <>
@@ -630,6 +630,13 @@ export default function AdminDeploymentTargets() {
               )}</p>
               <Button type="button" disabled={stagingDeployMutation.isPending} onClick={() => stagingDeployMutation.mutate({ tenantId, projectId, environment: "staging" })}>
                 {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize and deploy to staging", "อนุมัติและ deploy ไป staging")}
+              </Button>
+            </> : stagingDeployPreflight.data.reason === "STAGING_BOOTSTRAP_REQUIRED" && stagingDeployPreflight.data.artifact ? <>
+              <p>{text("This is the first Staging deployment, so Cloudflare has no verified Staging deployment to use as a rollback baseline yet.", "นี่คือการ deploy Staging ครั้งแรก จึงยังไม่มี deployment ที่ตรวจสอบแล้วสำหรับใช้ rollback")}</p>
+              <p>{text("The one-time bootstrap below is limited to this published artifact, saved origin configuration, Staging Worker, Cloudflare account, and registered executor. It allows one job, creates no production DNS or route changes, and fails closed if the Worker is already owned by a different deployment.", "bootstrap ครั้งเดียวนี้จำกัดเฉพาะ artifact, origin config ที่บันทึกไว้, Staging Worker, บัญชี Cloudflare และ executor ที่ลงทะเบียน อนุญาตเพียงหนึ่ง job ไม่เปลี่ยน DNS หรือ route ของ production และจะหยุดทันทีหาก Worker มี deployment ที่ไม่ตรงกับงานนี้")}</p>
+              <p>{text("Candidate", "รุ่นที่จะ deploy")}: <code>{stagingDeployPreflight.data.artifact.sourceSha}</code> · <code>{stagingDeployPreflight.data.artifact.artifactRef}</code></p>
+              <Button type="button" disabled={stagingDeployMutation.isPending} onClick={() => stagingDeployMutation.mutate({ tenantId, projectId, environment: "staging" })}>
+                {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize one-time first Staging deployment", "อนุมัติ deploy Staging ครั้งแรก (ครั้งเดียว)")}
               </Button>
             </> : stagingDeployPreflight.data.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED" ? <>
               <p role="status">{text("Complete the Staging setup above first. The deployment button becomes available after the settings are saved and verified.", "กดปุ่มเตรียม Staging ด้านบนก่อน เมื่อบันทึกและตรวจสอบการตั้งค่าผ่านแล้ว ปุ่มอนุมัติ deploy จะแสดงที่นี่")}</p>

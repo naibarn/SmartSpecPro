@@ -278,6 +278,22 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
   });
 
+  it("offers a clearly bounded one-time bootstrap when no Staging rollback deployment exists", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_BOOTSTRAP_REQUIRED",
+      artifact: { artifactRef: `sha256:${"b".repeat(64)}`, sourceSha: "c".repeat(40), buildDigest: "b".repeat(64) }, baseline: null };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText(/This is the first Staging deployment/)).toBeInTheDocument();
+    expect(screen.getByText(/allows one job, creates no production DNS or route changes/)).toBeInTheDocument();
+    const bootstrap = screen.getByRole("button", { name: "Authorize one-time first Staging deployment" });
+    expect(bootstrap).toBeEnabled();
+    await user.click(bootstrap);
+    expect(mocks.queueStagingDeploy).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging" });
+  });
+
   it("shows the staging activation action when the runtime probe is unavailable and preflight requires activation", async () => {
     const user = userEvent.setup();
     mocks.targets = [stagingActivationTarget];

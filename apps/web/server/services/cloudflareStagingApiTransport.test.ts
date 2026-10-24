@@ -353,6 +353,18 @@ describe("Cloudflare staging API transport", () => {
     let accountSubdomain = false;
     let versionTag = "";
     let putCount = 0;
+    const descriptor: CloudflareOriginDescriptor = {
+      schemaVersion: "cloudflare.origin-configuration.v1", versionId: "33333333-3333-4333-8333-333333333333",
+      tenantId: target.tenantId, projectId: target.projectId, environment: "staging", provider: "cloudflare",
+      accountRef: accountId, targetId: target.targetId, origin: "https://staging-origin.example.com",
+      allowedPublicOrigins: [`https://${target.workerRef}.smartaihub-${accountId.slice(0, 8)}.workers.dev`],
+      accessApplicationId: "44444444-4444-4444-8444-444444444444", accessTeamName: "staging-team", accessAudience: "staging-audience",
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+    };
+    const configurationDigest = cloudflareOriginDescriptorDigest(descriptor);
+    const originConfiguration = { descriptor, configurationDigest, configurationRef: `cf-origin:${configurationDigest}`,
+      secrets: { token: "origin-token-12345678901234567890", clientId: "origin-client-id-123456", secret: "origin-client-secret-1234567890" } };
+    const originTarget = { ...target, runtimePolicy: originConfiguration.configurationRef };
     const fetchImpl = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
       const url = String(input);
       if (url.endsWith("/deployments")) return created
@@ -362,7 +374,7 @@ describe("Cloudflare staging API transport", () => {
       if (url.endsWith(`/scripts/${target.workerRef}/settings`)) return new Response(JSON.stringify({ success: false, errors: [{ code: 10222 }] }), { status: 404 });
       if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
       if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: {
-        "workers/tag": versionTag, "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}`,
+        "workers/tag": versionTag, "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest} origin ${configurationDigest}`,
       } });
       if (url.endsWith("/workers/scripts")) return json([{ id: "existing-disabled-worker" }]);
       if (url.endsWith("/scripts/existing-disabled-worker/subdomain")) return json({ enabled: false, previews_enabled: false });
@@ -375,8 +387,8 @@ describe("Cloudflare staging API transport", () => {
       if (url.endsWith(`/scripts/${target.workerRef}`) && init.method === "PUT") {
         const metadata = JSON.parse(await ((init.body as FormData).get("metadata") as File).text());
         expect(Object.keys(metadata.annotations).sort()).toEqual(["workers/message", "workers/tag"]);
-        expect(metadata.bindings).toHaveLength(4);
-        expect(metadata.bindings).toContainEqual({ name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" });
+        expect(metadata.bindings).toContainEqual({ name: "AUTH_ORIGIN", type: "plain_text", text: descriptor.origin });
+        expect(metadata.bindings).toContainEqual({ name: "AUTH_ORIGIN_TOKEN", type: "secret_text", text: originConfiguration.secrets.token });
         expect(JSON.stringify(metadata)).not.toMatch(/hyperdrive|database|route|cron|container/i);
         expect(metadata.bindings.filter((binding: { type?: string }) => binding.type === "queue")).toHaveLength(0);
         versionTag = metadata.annotations["workers/tag"]; putCount++; created = true;
@@ -389,8 +401,9 @@ describe("Cloudflare staging API transport", () => {
       throw Error("UNEXPECTED_BOOTSTRAP_ENDPOINT");
     }) as typeof fetch;
     const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
-    const request = { token: "private", target, artifact, idempotencyKey: "cloudflare-staging:bootstrap-job", bootstrap: true };
-    expect(await transport.deploy(request)).toMatchObject({ deploymentId, sourceSha, buildDigest });
+    const request = { token: "private", target: originTarget, artifact, idempotencyKey: "cloudflare-staging:bootstrap-job", bootstrap: true,
+      originConfiguration, assertMutationAuthorized: async () => {} };
+    expect(await transport.deploy(request)).toMatchObject({ deploymentId, sourceSha, buildDigest, configurationDigest });
     expect(await transport.deploy(request)).toMatchObject({ deploymentId });
     expect(putCount).toBe(1);
     versionTag = "foreign-job";
@@ -647,9 +660,9 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect(f.fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("rejects unbound origins, missing mutation guards and origin bootstrap before fetch", async () => {
+  it("rejects unbound origins and missing mutation guards before fetch", async () => {
     const f = fixture();
-    for (const overrides of [{ target }, { assertMutationAuthorized: undefined }, { bootstrap: true }]) {
+    for (const overrides of [{ target }, { assertMutationAuthorized: undefined }]) {
       await expect(f.api.deploy({ token: "provider-token", target: f.originTarget, artifact,
         idempotencyKey: "origin-job", originConfiguration: f.config, assertMutationAuthorized: async () => {}, ...overrides })).rejects.toThrow("CLOUDFLARE_STAGING_ORIGIN_GRANT_REQUIRED");
     }

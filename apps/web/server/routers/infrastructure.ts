@@ -428,7 +428,11 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
         configurationRef: input.configurationRef ?? configurationRef, configurationDigest: rollbackDigest },
       configurationRef, configurationDigest, accountRef: target.accountRef };
   }
-  return unavailable("VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE");
+  // A first Staging deployment has no provider rollback deployment ID yet.
+  // Return an explicit one-time bootstrap candidate; never invent a baseline.
+  return { ready: false, reason: "STAGING_BOOTSTRAP_REQUIRED",
+    artifact: { artifactRef: artifact.artifactRef, sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest },
+    baseline: null, configurationRef, configurationDigest, accountRef: target.accountRef };
 }
 
 export const infrastructureRouter = router({
@@ -634,7 +638,8 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const preflight = await getCloudflareStagingPreflight(db, input);
-      if (!preflight.ready || !preflight.artifact || !preflight.baseline || !preflight.accountRef || !preflight.configurationRef || !preflight.configurationDigest) {
+      const bootstrap = preflight.reason === "STAGING_BOOTSTRAP_REQUIRED";
+      if ((!preflight.ready && !bootstrap) || !preflight.artifact || (!bootstrap && !preflight.baseline) || !preflight.accountRef || !preflight.configurationRef || !preflight.configurationDigest) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: preflight.reason ?? "STAGING_DEPLOY_PREFLIGHT_FAILED" });
       }
       const executorId = process.env.CLOUDFLARE_STAGING_EXECUTOR_ID?.trim();
@@ -656,12 +661,12 @@ export const infrastructureRouter = router({
         return value;
       };
       const operationId = randomUUID();
-      const policyExpiresAt = new Date(Date.now() + 3 * 60 * 60_000 + 45 * 60_000).toISOString();
+      const policyExpiresAt = new Date(Date.now() + (bootstrap ? 45 : 3 * 60 + 45) * 60_000).toISOString();
       const grantExpiresAt = new Date(Date.now() + 45 * 60_000).toISOString();
       const candidateRelease = { ...preflight.artifact, configurationRef: preflight.configurationRef, configurationDigest: preflight.configurationDigest };
-      const baselineRelease = { artifactRef: preflight.baseline.artifactRef, sourceSha: preflight.baseline.sourceSha, buildDigest: preflight.baseline.buildDigest,
-        configurationRef: preflight.baseline.configurationRef, configurationDigest: preflight.baseline.configurationDigest };
-      const releases = candidateRelease.artifactRef === baselineRelease.artifactRef && candidateRelease.configurationRef === baselineRelease.configurationRef
+      const baselineRelease = preflight.baseline ? { artifactRef: preflight.baseline.artifactRef, sourceSha: preflight.baseline.sourceSha, buildDigest: preflight.baseline.buildDigest,
+        configurationRef: preflight.baseline.configurationRef, configurationDigest: preflight.baseline.configurationDigest } : null;
+      const releases = !baselineRelease || (candidateRelease.artifactRef === baselineRelease.artifactRef && candidateRelease.configurationRef === baselineRelease.configurationRef)
         ? [candidateRelease] : [candidateRelease, baselineRelease];
       let policyId: string | null = null;
       let grantRef: string | null = null;
@@ -669,7 +674,8 @@ export const infrastructureRouter = router({
       let canonicalJobCreationStarted = false;
       try {
         const campaign = { contractVersion: "cloudflare-staging-origin-v2", accountRef: preflight.accountRef, executorId, actorUserId: ctx.user.id,
-          targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging", releases, maxOperations: 4, expiresAt: policyExpiresAt };
+          targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging", releases, maxOperations: bootstrap ? 1 : 4,
+          ...(bootstrap ? { allowBootstrap: true } : {}), expiresAt: policyExpiresAt };
         const reusable = await postApproval("/api/v1/approvals/cloudflare-staging-policies/lookup", {
           projectId: input.projectId, definition: campaign,
         }, "POLICY_LOOKUP");
@@ -686,11 +692,11 @@ export const infrastructureRouter = router({
           idempotencyKey: `cf-staging:${operationId}`, policyId, jobId: operationId, projectId: input.projectId, executorId,
           accountRef: preflight.accountRef, schemaVersion: "cloudflare.staging-origin-grant.v2", targetId: CLOUDFLARE_STAGING_TARGET_ID,
           environment: "staging", artifactRef: preflight.artifact.artifactRef, sourceSha: preflight.artifact.sourceSha,
-          buildDigest: preflight.artifact.buildDigest, actions: ["deploy"], rollbackDeploymentId: preflight.baseline.deploymentId,
-          rollbackArtifactRef: preflight.baseline.artifactRef, rollbackSourceSha: preflight.baseline.sourceSha,
-          rollbackBuildDigest: preflight.baseline.buildDigest, configurationRef: preflight.configurationRef,
-          configurationDigest: preflight.configurationDigest, rollbackConfigurationRef: preflight.baseline.configurationRef,
-          rollbackConfigurationDigest: preflight.baseline.configurationDigest, expiresAt: grantExpiresAt,
+          buildDigest: preflight.artifact.buildDigest, actions: [bootstrap ? "bootstrap" : "deploy"], rollbackDeploymentId: preflight.baseline?.deploymentId ?? null,
+          rollbackArtifactRef: preflight.baseline?.artifactRef ?? null, rollbackSourceSha: preflight.baseline?.sourceSha ?? null,
+          rollbackBuildDigest: preflight.baseline?.buildDigest ?? null, configurationRef: preflight.configurationRef,
+          configurationDigest: preflight.configurationDigest, rollbackConfigurationRef: preflight.baseline?.configurationRef ?? null,
+          rollbackConfigurationDigest: preflight.baseline?.configurationDigest ?? null, expiresAt: grantExpiresAt,
         }, "GRANT_CREATE");
         grantRef = typeof grant.id === "string" ? grant.id : null;
         if (!grantRef || grant.status !== "approved") throw new Error("STAGING_GRANT_NOT_APPROVED");
@@ -699,7 +705,7 @@ export const infrastructureRouter = router({
           context: { tenantId, actorType: "user", actorId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_staging_deploy",
             correlationId: ctx.req.requestId ?? operationId, idempotencyKey: `cloudflare-staging-deploy:${operationId}` },
           definition: { contractVersion: "cloudflare-staging-origin-v2", jobType: CLOUDFLARE_STAGING_DEPLOYMENT_JOB, executionClass: "long", priority: 50,
-            input: { contractVersion: "cloudflare-staging-origin-v2", action: "deploy", targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging",
+            input: { contractVersion: "cloudflare-staging-origin-v2", action: bootstrap ? "bootstrap" : "deploy", targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging",
               grantRef, projectId: input.projectId, artifactRef: preflight.artifact.artifactRef, sourceSha: preflight.artifact.sourceSha,
               buildDigest: preflight.artifact.buildDigest, configurationRef: preflight.configurationRef, configurationDigest: preflight.configurationDigest },
             idempotencyKey: `cloudflare-staging-deploy:${operationId}`, activeDedupeKey: `cloudflare-staging-deploy:${preflight.artifact.buildDigest}`,
@@ -708,7 +714,7 @@ export const infrastructureRouter = router({
           createOptions: { runtimeType: "node_job_worker" },
         });
         try {
-          auditLogger.log({ eventType: "cloudflare_staging_deploy_queued", userId: ctx.user.id, requestType: "cloudflare_staging_deploy",
+          auditLogger.log({ eventType: "cloudflare_staging_deploy_queued", userId: ctx.user.id, requestType: bootstrap ? "cloudflare_staging_bootstrap" : "cloudflare_staging_deploy",
             responsePayload: { tenantId, projectId: input.projectId, jobId: job.jobId, grantRef, sourceSha: preflight.artifact.sourceSha,
               buildDigest: preflight.artifact.buildDigest, configurationDigest: preflight.configurationDigest }, statusCode: 202 });
         } catch { /* The canonical job and its outbox remain authoritative if audit projection is temporarily unavailable. */ }

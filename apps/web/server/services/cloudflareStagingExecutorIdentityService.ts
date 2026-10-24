@@ -99,7 +99,7 @@ function attemptBody(binding: CloudflareStagingExecutorAttemptBinding) {
   let originAuthority: CloudflareStagingOriginAuthority | undefined;
   if (binding.originAuthority !== undefined) {
     const parsed = cloudflareStagingOriginAuthoritySchema.safeParse(binding.originAuthority);
-    if (!parsed.success || binding.action === "bootstrap") {
+    if (!parsed.success || (parsed.data.action !== undefined && parsed.data.action !== binding.action)) {
       throw new CloudflareStagingExecutorIdentityError("executor_attempt_binding_invalid");
     }
     originAuthority = parsed.data;

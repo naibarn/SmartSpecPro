@@ -433,7 +433,7 @@ export function createCloudflareStagingApiTransport(input: {
     return createHash("sha256").update(`smartaihub-staging:${key}`).digest("hex").slice(0, 32);
   }
 
-  async function bootstrapDeployment(token: string, target: CloudflareStagingTarget, artifact: CloudflareStagingArtifact, bundle: CloudflareStagingBundle, key: string) {
+  async function bootstrapDeployment(token: string, target: CloudflareStagingTarget, artifact: CloudflareStagingArtifact, bundle: CloudflareStagingBundle, key: string, origin?: CloudflareOriginVersionBindings) {
     const scriptUrl = `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}`;
     async function currentOwnedDeployment(allowAbsent: boolean): Promise<Deployment | null> {
       let listing: { deployments?: Deployment[] };
@@ -463,7 +463,7 @@ export function createCloudflareStagingApiTransport(input: {
       if (version.annotations?.["workers/tag"] !== bootstrapTag(key)) {
         throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_EXISTING_WORKER_DENIED");
       }
-      await verifyVersion(token, target, current.id, artifact.sourceSha, artifact.buildDigest);
+      await verifyVersion(token, target, current.id, artifact.sourceSha, artifact.buildDigest, origin?.configurationDigest);
       return current;
     }
     let current = await currentOwnedDeployment(true);
@@ -488,10 +488,13 @@ export function createCloudflareStagingApiTransport(input: {
       if (created.subdomain !== `smartaihub-${target.accountRef.slice(0, 8)}`) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_SUBDOMAIN_INVALID");
       subdomain = created.subdomain;
     }
+    if (origin && !origin.descriptor.allowedPublicOrigins.includes(safeWorkersDevUrl(target.workerRef, subdomain))) {
+      throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_PUBLIC_ORIGIN_DENIED");
+    }
     if (!current) {
       // Recheck immediately before creation; a discovered foreign Worker is never overwritten.
       if (await currentOwnedDeployment(true)) throw new CloudflareStagingTransportError("CLOUDFLARE_BOOTSTRAP_CONCURRENT_CREATION");
-      await uploadVersion(token, target, bundle, artifact, key);
+      await uploadVersion(token, target, bundle, artifact, key, origin);
       current = await currentOwnedDeployment(false);
     }
     if (!current?.id) throw new CloudflareStagingTransportError("CLOUDFLARE_DEPLOYMENT_RECEIPT_INVALID");
@@ -499,7 +502,8 @@ export function createCloudflareStagingApiTransport(input: {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: true, previews_enabled: false }),
     });
-    return { deploymentId: current.id, url: safeWorkersDevUrl(target.workerRef, subdomain), sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest };
+    return { deploymentId: current.id, url: safeWorkersDevUrl(target.workerRef, subdomain), sourceSha: artifact.sourceSha,
+      buildDigest: artifact.buildDigest, ...(origin ? { configurationDigest: origin.configurationDigest } : {}) };
   }
 
   return {
@@ -546,7 +550,7 @@ export function createCloudflareStagingApiTransport(input: {
       assertTarget(target);
       if (!/^[A-Za-z0-9._:-]{1,200}$/.test(idempotencyKey)) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_IDEMPOTENCY_INVALID");
       if (Boolean(target.runtimePolicy) !== Boolean(originConfiguration) ||
-          (originConfiguration && (!assertMutationAuthorized || bootstrap))) {
+          (originConfiguration && !assertMutationAuthorized)) {
         throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ORIGIN_GRANT_REQUIRED");
       }
       const origin = originConfiguration ? validateCloudflareOriginVersionBindings(originConfiguration, target) : undefined;
@@ -569,13 +573,13 @@ export function createCloudflareStagingApiTransport(input: {
           await assertMutationAuthorized?.();
           await input.verifyNativeResources!(origin.descriptor.nativeResources, target);
         }
-        if (origin) {
+        if (origin && !bootstrap) {
           const publicUrl = safeWorkersDevUrl(target.workerRef, await getWorkersDevSubdomain(token, target));
           if (!origin.descriptor.allowedPublicOrigins.includes(publicUrl)) {
             throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_PUBLIC_ORIGIN_DENIED");
           }
         }
-        if (bootstrap) return bootstrapDeployment(token, target, artifact, bundle, idempotencyKey);
+        if (bootstrap) return bootstrapDeployment(token, target, artifact, bundle, idempotencyKey, origin);
         const prior = await findDeploymentByIdempotencyKey(token, target, idempotencyKey);
         if (prior?.id) {
           const deployment = await getDeployment(token, target, prior.id);

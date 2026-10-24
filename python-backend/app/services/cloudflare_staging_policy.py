@@ -51,9 +51,11 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
     fields = {"accountRef", "executorId", "actorUserId", "targetId", "environment", "artifacts", "maxOperations", "expiresAt", "allowBootstrap"}
     if origin:
         fields = (fields - {"artifacts", "allowBootstrap"}) | {"contractVersion", "releases"}
+        optional_origin_fields = {"allowBootstrap"}
     if provision:
         fields = (fields - {"artifacts", "allowBootstrap"}) | {"contractVersion", "plan", "planDigest"}
-    if not isinstance(value, dict) or set(value) != fields:
+    allowed_fields = (fields, fields | optional_origin_fields) if origin else (fields,)
+    if not isinstance(value, dict) or set(value) not in allowed_fields:
         raise ValueError("CLOUDFLARE_STAGING_POLICY_FIELDS_INVALID")
     if value["targetId"] != TARGET or value["environment"] != "staging" or (not origin and not provision and type(value["allowBootstrap"]) is not bool):
         raise ValueError("CLOUDFLARE_STAGING_POLICY_TARGET_INVALID")
@@ -83,6 +85,11 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
             validate_origin_configuration_pair(artifact["configurationRef"], artifact["configurationDigest"], allow_none=True)
     if origin and not any(a["configurationRef"] is not None for a in artifacts):
         raise ValueError("CLOUDFLARE_STAGING_ORIGIN_BINDING_INVALID")
+    if origin and value.get("allowBootstrap", False) and (
+        type(value.get("allowBootstrap")) is not bool or value["maxOperations"] != 1 or len(artifacts) != 1
+        or artifacts[0]["configurationRef"] is None
+    ):
+        raise ValueError("CLOUDFLARE_STAGING_BOOTSTRAP_POLICY_INVALID")
     try:
         expiry = datetime.fromisoformat(value["expiresAt"].replace("Z", "+00:00"))
     except (AttributeError, TypeError, ValueError) as exc:
@@ -186,7 +193,8 @@ class CloudflareStagingPolicyAuthority:
             except ValueError:
                 continue
             if (conditions.get("version") != _version(existing) or existing.get("contractVersion") != ORIGIN_CONTRACT
-                or any(existing[key] != requested[key] for key in ("accountRef", "executorId", "actorUserId", "targetId", "environment", "releases"))):
+                or any(existing[key] != requested[key] for key in ("accountRef", "executorId", "actorUserId", "targetId", "environment", "releases", "maxOperations"))
+                or existing.get("allowBootstrap", False) != requested.get("allowBootstrap", False)):
                 continue
             active_ref = next((release["configurationRef"] for release in requested["releases"] if release["configurationRef"]), None)
             try:
@@ -239,7 +247,9 @@ class CloudflareStagingPolicyAuthority:
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_VERSION_DENIED")
         if (grant.get("accountRef") != policy["accountRef"] or grant["executorId"] != policy["executorId"]
             or grant["requesterUserId"] != policy["actorUserId"] or not grant.get("jobId") or len(grant["actions"]) != 1
-            or (origin and grant["actions"][0] not in ("deploy", "rollback"))
+            or (origin and grant["actions"][0] not in ("deploy", "rollback", "bootstrap"))
+            or (origin and grant["actions"] == ["bootstrap"] and not policy.get("allowBootstrap", False))
+            or (origin and policy.get("allowBootstrap", False) and grant["actions"] != ["bootstrap"])
             or (grant["actions"] == ["bootstrap"] and not policy["allowBootstrap"])):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
         if provision and (grant["actions"] != ["provision"] or grant["plan"] != policy["plan"] or grant["planDigest"] != policy["planDigest"]):

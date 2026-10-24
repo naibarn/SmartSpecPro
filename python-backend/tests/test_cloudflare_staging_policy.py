@@ -110,6 +110,25 @@ async def test_reusable_origin_campaign_does_not_admit_changed_artifact_or_exhau
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_one_time_bootstrap_policy_is_not_reused_for_a_normal_deploy_campaign():
+    requested = origin_campaign()
+    bootstrap = {**requested, "allowBootstrap": True, "maxOperations": 1}
+    rule = ApprovalRule(id=str(uuid4()), tenant_id="tenant-1", project_id="project-1", trigger_type=ApprovalType.DEPLOYMENT,
+        conditions={"schemaVersion": ORIGIN_SCHEMA, "ownerUserId": 17, "definition": bootstrap, "version": _version(bootstrap)}, is_active=True)
+    service = ApprovalDBService(AsyncMock())
+    service._require_cloudflare_policy_owner = AsyncMock()
+    service._check_cloudflare_policy_bindings = AsyncMock()
+    service.db.execute.side_effect = [
+        SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [rule])),
+        SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [])),
+    ]
+
+    assert await service.find_reusable_cloudflare_staging_policy(
+        tenant_id="tenant-1", project_id="project-1", actor_id=17, definition=requested) is None
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 async def test_owner_runtime_rechecks_budget_and_revocation():
     service, rule, prior, grant = service_fixture()
     result = await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
@@ -227,6 +246,37 @@ async def test_origin_policy_binds_exact_release_pairs_and_current_target():
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+async def test_origin_bootstrap_is_owner_authorized_for_one_exact_release_and_one_operation():
+    service, rule, prior, grant = origin_fixture()
+    policy = rule.conditions["definition"]
+    policy.update({"allowBootstrap": True, "maxOperations": 1, "releases": [policy["releases"][0]]})
+    rule.conditions["version"] = _version(policy)
+    grant.update({"actions": ["bootstrap"], "rollbackDeploymentId": None, "rollbackArtifactRef": None,
+        "rollbackSourceSha": None, "rollbackBuildDigest": None})
+
+    assert normalize_cloudflare_staging_grant_payload(grant) == grant
+    decision = await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+    assert decision["policyVersion"] == _version(policy)
+    prior.append(SimpleNamespace(id=str(uuid4()), payload=grant,
+        extra_data={"cloudflareStagingPolicyDecisionV1": decision}))
+    with pytest.raises(PermissionError, match="BUDGET_EXHAUSTED"):
+        await service.authorize_cloudflare_staging_policy_grant(rule.id, grant)
+
+
+@pytest.mark.unit
+def test_origin_bootstrap_policy_rejects_more_than_one_operation_or_release():
+    policy = origin_campaign()
+    policy.update({"allowBootstrap": True, "maxOperations": 2})
+    with pytest.raises(ValueError, match="BOOTSTRAP_POLICY_INVALID"):
+        validate_staging_policy(policy, datetime.now(timezone.utc))
+    policy = origin_campaign()
+    policy.update({"allowBootstrap": True, "releases": [*policy["releases"], {**policy["releases"][0]}]})
+    with pytest.raises(ValueError, match="BOOTSTRAP_POLICY_INVALID"):
+        validate_staging_policy(policy, datetime.now(timezone.utc))
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
 @pytest.mark.parametrize("changes", [
     {"configurationRef": "cf-origin:" + "a" * 64, "configurationDigest": "a" * 64},
     {"rollbackConfigurationRef": "cf-origin:" + "d" * 64, "rollbackConfigurationDigest": "d" * 64},
@@ -295,6 +345,13 @@ async def test_api_preserves_explicit_origin_contract_and_pairs():
         adapter.validate_python({**api_fields, "revokedAt": None})
     with pytest.raises(ValidationError):
         adapter.validate_python({**api_fields, "configurationDigest": None})
+    bootstrap_fields = {**api_fields, "actions": ["bootstrap"], "rollbackDeploymentId": None,
+        "rollbackArtifactRef": None, "rollbackSourceSha": None, "rollbackBuildDigest": None,
+        "rollbackConfigurationRef": None, "rollbackConfigurationDigest": None}
+    parsed_bootstrap = adapter.validate_python(bootstrap_fields)
+    assert parsed_bootstrap.actions == ["bootstrap"]
+    with pytest.raises(ValidationError):
+        adapter.validate_python({**bootstrap_fields, "rollbackDeploymentId": str(uuid4())})
 
 
 def provision_fixture():
