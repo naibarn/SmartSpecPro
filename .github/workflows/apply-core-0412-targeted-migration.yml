@@ -76,6 +76,12 @@ jobs:
           export SPEC224_GITHUB_BRANCH_POLICIES_JSON="$branch_policies_json"
           node --import tsx scripts/verify-spec224-migration-environment.ts "$SPEC224_DATABASE_OWNER_TEAM_ID"
 
+      - name: Capture read-only schema drift before migration
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+        run: pnpm run db:audit-catalog
+
       - name: Apply only 0412 after live target and pending-set verification
         working-directory: apps/web
         env:
@@ -87,6 +93,18 @@ jobs:
           MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:core-0412
           MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/core-0412-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
         run: pnpm --filter @smartspec/web run db:migrate
+
+      - name: Require the active schema catalog to be drift-free
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+        run: pnpm exec tsx scripts/audit-drizzle-catalog.ts --strict
+
+      - name: Verify required runtime schema postconditions
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+        run: pnpm run db:verify-runtime-migrations
 
       - name: Upload migration attempt receipt
         if: always()
