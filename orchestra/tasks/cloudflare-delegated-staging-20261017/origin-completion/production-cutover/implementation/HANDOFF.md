@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `38`
-- Updated (UTC): `2026-10-24T17:23:20.910994+00:00`
+- State generation: `41`
+- Updated (UTC): `2026-10-24T17:32:20.044474+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f`
+- Latest recorded merged Main SHA: `c881f756d0e84d9459bf0dc57db1ea0820dd1bd9`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
-- Next action: Linux release generation 74 verified source 2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f (artifact sha256:0a5ee38dff454ae632065b2057607b15bcb7ea8fc170828b08cf7a5c47028ff4; receipt smartspec-web-2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f-0f019890ac84-74.json; public healthz 200). In authenticated Production Admin, retry Queue setup once to create a fresh canonical job under the updated executor; verify provider receipt, then continue exact production Hyperdrive/Worker app binding preparation and keep activation/routes disabled until canary authority.
+- Next action: Linux release generation 75 verified source c881f756d0e84d9459bf0dc57db1ea0820dd1bd9 (artifact sha256:b6de835743c7d9092ee10d364871c4da1d5bffbe9863ea8b4b47413a05996d59; receipt smartspec-web-c881f756d0e84d9459bf0dc57db1ea0820dd1bd9-43da32d6fca7-75.json; Node and web services healthy). In the authenticated Production Admin page, press Retry Production Queue setup once for expired job eb327c34-44f5-462f-98f2-0e40065ce6aa; the page now allows this and auto-tracks the new canonical job. Resume resource preparation from its provider receipt; keep Worker activation and routes disabled pending real readiness and existing canary authority.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Production inventory UI is integrated and serving Linux release generation 72 at db36dcbad2befa78635c2586816f9aeb6e3f1b43; login/settings/health endpoints return 200. Continue exact production resource provisioning and runtime composition. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | User reports Production token permissions have been updated; actual Queue write still needs the canonical Admin job receipt. Keep current independent Production deployment grant/canary authority intact; do not bypass it. |
-| section-03-production-runtime-composition | checkpointed | — | — | 2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f | 2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f | Linux release generation 74 verified source 2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f (artifact sha256:0a5ee38dff454ae632065b2057607b15bcb7ea8fc170828b08cf7a5c47028ff4; receipt smartspec-web-2f4abcd8c158ef9474d6b7cf11a381da5c0ec40f-0f019890ac84-74.json; public healthz 200). In authenticated Production Admin, retry Queue setup once to create a fresh canonical job under the updated executor; verify provider receipt, then continue exact production Hyperdrive/Worker app binding preparation and keep activation/routes disabled until canary authority. |
+| section-03-production-runtime-composition | checkpointed | — | — | c881f756d0e84d9459bf0dc57db1ea0820dd1bd9 | c881f756d0e84d9459bf0dc57db1ea0820dd1bd9 | Linux release generation 75 verified source c881f756d0e84d9459bf0dc57db1ea0820dd1bd9 (artifact sha256:b6de835743c7d9092ee10d364871c4da1d5bffbe9863ea8b4b47413a05996d59; receipt smartspec-web-c881f756d0e84d9459bf0dc57db1ea0820dd1bd9-43da32d6fca7-75.json; Node and web services healthy). In the authenticated Production Admin page, press Retry Production Queue setup once for expired job eb327c34-44f5-462f-98f2-0e40065ce6aa; the page now allows this and auto-tracks the new canonical job. Resume resource preparation from its provider receipt; keep Worker activation and routes disabled pending real readiness and existing canary authority. |
 | section-04-production-readiness-and-cutover | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)
