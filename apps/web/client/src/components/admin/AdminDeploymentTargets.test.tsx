@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   refetchProductionProviderInventory: vi.fn(),
   refetchLatestProductionQueueJob: vi.fn(),
   latestProductionQueueJob: null as Record<string, unknown> | null,
+  productionQueues: [] as Array<Record<string, unknown>>,
+  productionHyperdrives: [] as Array<Record<string, unknown>>,
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   probeCredential: vi.fn(),
@@ -68,8 +70,8 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: "CHECKED", checkedAt: "2026-10-24T00:00:00.000Z",
         accountRef: "f3fb0b6858e186fcc36be105bfa00243",
         originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false },
-        queueInventoryComplete: true, queues: [{ name: "smartspec-staging-project-jobs", environment: "staging" }],
-        hyperdriveInventoryComplete: true, hyperdrives: [{ name: "smartspec-staging-project-db", environment: "staging" }],
+        queueInventoryComplete: true, queues: [...mocks.productionQueues, { name: "smartspec-staging-project-jobs", environment: "staging" }],
+        hyperdriveInventoryComplete: true, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
         worker: { deploymentInventoryComplete: true, deploymentCount: 1, activeVersionCount: 1,
           versions: [{ versionId: "11111111-1111-4111-8111-111111111111", percentage: 100, bindingNames: ["CLOUDFLARE_ACTIVATION"], containerNames: [], hasVerifiedReleaseIdentity: false, checked: true }] } },
@@ -169,6 +171,8 @@ describe("AdminDeploymentTargets", () => {
     mocks.stagingTargets = [];
     mocks.targetsError = false;
     mocks.latestProductionQueueJob = null;
+    mocks.productionQueues = [];
+    mocks.productionHyperdrives = [];
     mocks.activationError = null;
     mocks.activationSucceeds = false;
     mocks.stagingPreflight = { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null };
@@ -599,6 +603,27 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/Connectivity Directory Admin/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute("href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/");
     expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
+  });
+
+  it("does not tell the admin to repeat Queue setup after Production Queue and DLQ are verified", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.productionQueues = [
+      { name: "smartspec-canonical-job-queue-production", environment: "production" },
+      { name: "smartspec-canonical-job-queue-production-dlq", environment: "production" },
+    ];
+    mocks.latestProductionQueueJob = { jobId: "b2b989d0-3476-4e04-afa6-f55a31add909", status: "succeeded",
+      attempt: 1, maxAttempts: 3, createdAt: "2026-10-24T18:43:44.497Z", startedAt: "2026-10-24T18:43:45.826Z",
+      finishedAt: "2026-10-24T18:43:46.971Z", scheduledAt: null, nextRetryAt: null, leaseExpiresAt: null, heartbeatAt: null,
+      errorCode: null, queueName: "smartspec-canonical-job-queue-production", deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq" };
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(await screen.findByText(/Production Queue and dead-letter queue are verified\. Do not run Queue preparation again/i)).toBeInTheDocument();
+    expect(screen.getByText(/Remaining Production setup: Production Hyperdrive for the retained PostgreSQL host/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Remaining Production setup:.*Production Queue and dead-letter queue/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Production Queue/ })).not.toBeInTheDocument();
   });
 
   it("recovers and follows the latest canonical Production Queue job after a page reload", async () => {

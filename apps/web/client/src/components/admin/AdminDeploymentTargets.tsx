@@ -705,6 +705,12 @@ export default function AdminDeploymentTargets() {
             const nodeAndPythonIngressBound = activeVersions.some(version => version.checked &&
               version.bindingNames.includes("NODE_HTTP") && version.bindingNames.includes("PYTHON_HTTP"));
             const canRetryProductionQueueJob = ["failed", "cancelled", "expired"].includes(productionQueueJobData?.status ?? "");
+            const productionResourceGaps = [
+              ...(!hasProductionQueue || !hasProductionDeadLetterQueue ? [text("Production Queue and dead-letter queue", "Production Queue และ dead-letter queue")] : []),
+              ...(productionHyperdrives.length === 0 ? [text("Production Hyperdrive for the retained PostgreSQL host", "Production Hyperdrive สำหรับ PostgreSQL เครื่องเดิม")] : []),
+              ...(!verifiedRollback ? [text("a verified Worker rollback release", "Worker release สำหรับ rollback ที่ตรวจสอบแล้ว")] : []),
+              ...(!inventory.domainRoute.attached ? [text("the smartaihub.app/* Worker Route", "Worker Route smartaihub.app/*")] : []),
+            ];
             return <VStack gap={1} role="group" aria-label={text("Verified Cloudflare Production resources", "ทรัพยากร Cloudflare Production ที่ตรวจแล้ว")}>
               <p><strong>{text("Production runtime configuration", "config runtime ของ Production")}</strong>: {inventory.originConfiguration.status === "NOT_CONFIGURED"
                 ? text("Not saved. Production currently has no origin/runtime configuration.", "ยังไม่ได้บันทึก Production ไม่มี origin/runtime configuration")
@@ -761,10 +767,14 @@ export default function AdminDeploymentTargets() {
                 ? text("Conflicting route found; cutover must stop for review.", "พบ route ขัดแย้ง ต้องหยุด cutover เพื่อตรวจสอบ")
                 : inventory.domainRoute.attached ? text("Attached to the Production Worker.", "ผูกกับ Production Worker แล้ว")
                   : text("The exact smartaihub.app/* Worker Route is not attached. DNS and Custom Domain mappings are not changed by this check.", "ยังไม่มี Worker Route แบบตรง smartaihub.app/* การตรวจนี้ไม่ได้เปลี่ยน DNS หรือ Custom Domain mapping")}</p>
-              <p role="status">{text(
-                "This is the actual blocker: Production currently has no separate Queue or Hyperdrive, no verified rollback release, and no main-domain route. The current check is read-only; it has not changed Cloudflare or moved traffic.",
-                "นี่คือสาเหตุที่ติดจริง: Production ยังไม่มี Queue หรือ Hyperdrive แยก, ไม่มี release ที่ตรวจสอบเป็น rollback ได้ และยังไม่มี route ของโดเมนหลัก การตรวจนี้อ่านอย่างเดียว ไม่ได้แก้ Cloudflare หรือย้าย traffic",
-              )}</p>
+              {hasProductionQueue && hasProductionDeadLetterQueue ? <p role="status">{text(
+                "Production Queue and dead-letter queue are verified. Do not run Queue preparation again; they are not yet bound to the Worker.",
+                "ตรวจ Production Queue และ dead-letter queue ผ่านแล้ว ไม่ต้องกดเตรียม Queue ซ้ำ ตอนนี้ยังไม่ได้ bind เข้ากับ Worker",
+              )}</p> : null}
+              {productionResourceGaps.length > 0 ? <p role="status">{text(
+                `Remaining Production setup: ${productionResourceGaps.join(", ")}. This inventory check is read-only and has not changed traffic.`,
+                `งาน Production ที่ยังเหลือ: ${productionResourceGaps.join(", ")} การตรวจ inventory นี้อ่านอย่างเดียวและยังไม่ได้เปลี่ยน traffic`,
+              )}</p> : null}
               <p>{text(
                 `The saved Production token can read account ${inventory.accountRef}. Read-only checks cannot prove write access; the Queue action above tests Queue Edit through the canonical job and reports the exact Cloudflare error if denied. The token scopes and Connectivity Directory member role you updated are reused; do not paste the token again. Hyperdrive preparation is currently blocked by the PostgreSQL certificate and Production Tunnel route, not by the read probe.`,
                 `Token Production ที่บันทึกไว้อ่าน account ${inventory.accountRef} ได้ การตรวจแบบอ่านอย่างเดียวพิสูจน์สิทธิ์เขียนไม่ได้ ปุ่มเตรียม Queue ด้านบนจะทดสอบ Queues Edit ผ่าน canonical job และรายงาน error จาก Cloudflare ตรง ๆ ระบบจะใช้ token และ Connectivity Directory role ที่คุณเพิ่มไว้ ไม่ต้องใส่ token ซ้ำ ส่วน Hyperdrive ยังติด certificate ของ PostgreSQL และ Tunnel route สำหรับ Production ไม่ใช่ผล read probe`,
