@@ -78,7 +78,10 @@ vi.mock("@/lib/trpc", () => ({
         mutate: (input: unknown) => {
           mocks.probeCredential(input);
           void options.onSuccess?.({ checkedAt: "2026-10-24T00:00:00.000Z", accountId: "a".repeat(32), zoneId: "b".repeat(32), error: null,
-            checks: [{ id: "queues", label: "Queues", scope: "Account", permission: "Queues Read", status: "missing_permission", httpStatus: 403 }] });
+            checks: [
+              { id: "queues", label: "Queues", scope: "Account", permission: "Queues Read", status: "missing_permission", httpStatus: 403 },
+              { id: "vpcServices", label: "Workers VPC services", scope: "Account", permission: "Connectivity Directory Read", status: "missing_permission", httpStatus: 403 },
+            ] });
         }, isPending: false, error: null,
       }) },
     },
@@ -299,7 +302,9 @@ describe("AdminDeploymentTargets", () => {
 
     expect(mocks.probeCredential).toHaveBeenCalledWith({ tenantId, projectId, environment: "production", provider: "cloudflare" });
     expect(await screen.findByText("Queues Read")).toBeInTheDocument();
-    expect(screen.getByText(/Cloudflare denied this exact read request/)).toBeInTheDocument();
+    expect(screen.getByText(/Cloudflare denied this required read request/)).toBeInTheDocument();
+    expect(screen.getByText("Optional for current migration")).toBeInTheDocument();
+    expect(screen.getByText(/Leave it unchanged unless the production workload is configured/)).toBeInTheDocument();
     expect(screen.getByText(/Workers Scripts Write, Queues Write, Hyperdrive Write/)).toBeInTheDocument();
   });
 

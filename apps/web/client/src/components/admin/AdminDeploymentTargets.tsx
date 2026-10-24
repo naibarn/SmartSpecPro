@@ -83,6 +83,11 @@ const productionBindingHelp: Record<string, { en: string; th: string }> = {
   AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: { en: "Add the Cloudflare production origin to the authentication allowlist.", th: "เพิ่ม production origin ของ Cloudflare ใน allowlist ระบบยืนยันตัวตน" },
 };
 
+const optionalProductionInventoryChecks = new Set([
+  "dispatchNamespaces", "kv", "workflows", "vpcServices", "loadBalancerPools", "r2", "vectorize",
+  "dns", "zoneLoadBalancers",
+]);
+
 function SearchableScopeSelect({
   label,
   placeholder,
@@ -253,9 +258,12 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
               ? text("The target’s Account ID is missing or malformed. Edit the Production target and enter its 32-character Cloudflare Account ID.", "Account ID ของ target ไม่มีหรือรูปแบบไม่ถูกต้อง แก้ Production target แล้วใส่ Cloudflare Account ID 32 ตัวอักษร")
               : text(`Credential check could not run: ${probe.error}`, `ตรวจ credential ไม่สำเร็จ: ${probe.error}`)}</p> : null}
           {probe.checks.length > 0 ? <VStack as="ul" gap={2}>
-            {probe.checks.map(check => <VStack as="li" key={check.id} gap={1}>
+            {probe.checks.map(check => {
+              const optionalForCurrentMigration = optionalProductionInventoryChecks.has(check.id);
+              return <VStack as="li" key={check.id} gap={1}>
               <HStack gap={2} wrap="wrap">
                 <strong>{check.label}</strong>
+                {optionalForCurrentMigration ? <Badge variant="outline">{text("Optional for current migration", "ไม่จำเป็นต่อการย้ายรอบนี้")}</Badge> : null}
                 <Badge variant={check.status === "granted" ? "default" : check.status === "product_unavailable" ? "destructive" : "secondary"}>
                   {check.status === "granted" ? text("Read access confirmed", "ยืนยันสิทธิ์อ่านแล้ว")
                     : check.status === "missing_permission" ? text("Permission missing", "ขาด permission")
@@ -264,16 +272,24 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
                 </Badge>
               </HStack>
               <span>{text("Scope", "ขอบเขต")}: {check.scope} · {text("permission accepted by this API", "permission ที่ API นี้ยอมรับ")}: <code>{check.permission}</code></span>
-              {check.status === "missing_permission" ? <p role="status">{text(
-                "Cloudflare denied this exact read request. Add one accepted permission above to this token, scoped to the named account or zone, then save the replacement token and run this check again.",
-                "Cloudflare ปฏิเสธคำขออ่านรายการนี้ ให้เพิ่ม permission ทางเลือกที่ระบุด้านบนใน scope ของ account หรือ zone ที่ตรงกัน แล้วบันทึก token ใหม่และกดตรวจซ้ำ",
+              {check.status === "missing_permission" ? <p role="status">{optionalForCurrentMigration ? text(
+                "This is optional inventory for services not selected by the current Queue + Hyperdrive migration. Leave it unchanged unless the production workload is configured to use this service.",
+                "รายการนี้เป็น inventory เสริมที่ไม่ได้เลือกใช้ใน migration แบบ Queue + Hyperdrive รอบนี้ ยังไม่ต้องเพิ่ม permission เว้นแต่ production workload จะตั้งค่าให้ใช้บริการนี้",
+              ) : text(
+                "Cloudflare denied this required read request. Add the listed permission to this token at the named account or zone scope, save the token, then run this check again.",
+                "Cloudflare ปฏิเสธคำขออ่านที่จำเป็น ให้เพิ่ม permission ที่ระบุใน scope ของ account หรือ zone นี้ บันทึก token แล้วกดตรวจซ้ำ",
+              )}</p> : null}
+              {optionalForCurrentMigration && check.status === "invalid_token" ? <p role="status">{text(
+                "This optional inventory endpoint did not accept the request. It is not required for the current Queue + Hyperdrive profile; do not broaden token access for it unless the workload needs this service.",
+                "endpoint inventory เสริมนี้ไม่รับคำขอ แต่ไม่จำเป็นต่อ Queue + Hyperdrive profile รอบนี้ ยังไม่ต้องเพิ่มสิทธิ์ token เว้นแต่ workload ต้องใช้บริการนี้",
               )}</p> : null}
               {check.status === "resource_not_found" ? <p role="status">{text("The request reached Cloudflare, but this resource was not found in the selected account. Create or select the resource; changing token permission will not create it.", "Cloudflare รับคำขอแล้วแต่ไม่พบ resource ใน account ที่เลือก ให้สร้างหรือเลือก resource ให้ถูกต้อง การเพิ่ม permission ไม่ได้สร้าง resource")}</p> : null}
               {check.status === "product_unavailable" ? <p role="status">{check.productRequirement === "workers_paid"
                 ? text("Cloudflare reports Workers Paid is required for this Containers API. If Workers Paid is already enabled, refresh the probe; this response may indicate the wrong account or a billing/product propagation issue, not a token scope.", "Cloudflare แจ้งว่า Containers API ต้องใช้ Workers Paid หากเปิด Workers Paid แล้ว ให้ตรวจใหม่ ผลนี้อาจหมายถึงเลือก account ผิดหรือสถานะ billing/product ยังไม่อัปเดต ไม่ใช่ปัญหา token scope")
                 : text("Cloudflare reports Workers for Platforms is required for this endpoint. This is a product entitlement, not an API token permission.", "Cloudflare แจ้งว่า endpoint นี้ต้องใช้ Workers for Platforms เป็นสิทธิ์ผลิตภัณฑ์ ไม่ใช่ API token permission")}</p> : null}
               {check.status === "granted" ? <p>{text("Read access verified only; this does not prove write access or deployment success.", "ยืนยันเฉพาะสิทธิ์อ่าน ยังไม่ยืนยันสิทธิ์เขียนหรือผล deploy")}</p> : null}
-            </VStack>)}
+            </VStack>;
+            })}
           </VStack> : null}
           <p>{text(
             "For provisioning, the usual write permissions are Workers Scripts Write, Queues Write, Hyperdrive Write, and Workers Containers Write. DNS Write and Workers Routes Write are needed only if the approved cutover changes DNS or routes. This check does not test write access; existing resources may avoid needing those write scopes.",
