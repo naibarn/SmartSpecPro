@@ -4804,6 +4804,14 @@ function WizardStep({
                     </Field>
                   )}
 
+                  {isSequel && form.parentSeriesId && (
+                    <p className="rounded-md border border-dashed bg-background px-2.5 py-2 text-xs text-muted-foreground">
+                      {th
+                        ? "เมื่อสร้าง draft ระบบจะอ่านสรุปเรื่อง ปมค้าง ความสัมพันธ์ และตัวละครจากซีรีส์ต้นฉบับให้เอง คุณใส่โจทย์ทิศทางภาคใหม่ได้ในช่องโจทย์ด้านล่าง หรือเว้นว่างแล้วให้ AI คิดต่อจากเรื่องเดิม"
+                        : "When building a draft, the system reads the parent story summary, open threads, relationships, and cast. Add a new-season direction in the premise field below, or leave it blank and let AI continue from canon."}
+                    </p>
+                  )}
+
                   {isSpecialEdition && (
                     <p className="rounded-md border border-dashed bg-background px-2.5 py-1.5 text-xs text-muted-foreground">
                       {pickCopy(lang, specialEditionEpisodeCountLockedHintCopy)}

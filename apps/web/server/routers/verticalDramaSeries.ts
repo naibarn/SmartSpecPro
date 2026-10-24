@@ -7466,6 +7466,77 @@ export async function runSpecialEditionBriefInteractiveJob(
   };
 }
 
+/**
+ * Build sequel synthesis context from the owned parent on the server. The
+ * wizard sends a small lineage snapshot for create-time persistence, but the
+ * first draft also needs the parent's current bounded memory and cast roster
+ * so a new-season premise can build on the actual story.
+ */
+async function resolveSequelSynthesisLineage(params: {
+  lineage?: VerticalDramaSeriesLineage;
+  tenantId: string;
+  userId: number;
+  lineageEnabled: boolean;
+  presetMixEnabled: boolean;
+  lookLockEnabled: boolean;
+}): Promise<VerticalDramaSeriesLineage | undefined> {
+  const snapshot = params.lineage;
+  if (
+    !params.lineageEnabled ||
+    snapshot?.createMode !== "sequel" ||
+    !Number.isInteger(snapshot.parentSeriesId) ||
+    snapshot.parentSeriesId <= 0
+  ) {
+    return snapshot;
+  }
+
+  const parent = await loadOwnedSeries(
+    params.tenantId,
+    params.userId,
+    snapshot.parentSeriesId
+  );
+  const context = await loadLineageContext(
+    parent,
+    { tenantId: params.tenantId, userId: params.userId },
+    {
+      presetMixEnabled: params.presetMixEnabled,
+      lookLockEnabled: params.lookLockEnabled,
+    }
+  );
+  const memoryDetails = [
+    context.compactSummary.trim(),
+    `Current relationships and open story threads: ${JSON.stringify({
+      relationships: context.currentState.relationships,
+      openThreads: context.currentState.openThreads,
+      characterKnowledge: context.currentState.characterKnowledge,
+    })}`,
+    `Returning cast: ${JSON.stringify(
+      context.roster.slice(0, 40).map(character => ({
+        name: character.name,
+        role: character.role,
+        currentState:
+          character.data && typeof character.data === "object"
+            ? (character.data as Record<string, unknown>).currentState
+            : undefined,
+      }))
+    )}`,
+    `Established locations: ${context.locations
+      .slice(0, 20)
+      .map(location => location.name)
+      .join(", ")}`,
+  ]
+    .filter(Boolean)
+    .join("\n\n")
+    .slice(0, 12_000);
+
+  return {
+    ...snapshot,
+    parentTitle: context.parentTitle,
+    parentEpisodeCount: context.parentEpisodeCount,
+    priorSeasonSummary: memoryDetails || snapshot.priorSeasonSummary,
+  };
+}
+
 /** Worker-only legacy preset synthesis executor. */
 export async function runPresetSynthesisInteractiveJob(
   payload: VerticalDramaInteractiveJobPayload,
@@ -7474,6 +7545,18 @@ export async function runPresetSynthesisInteractiveJob(
   const input = synthesizeGenrePresetInput.parse(payload.input);
   const locale = input.locale ?? "th";
   const flags = await getTenantFeatureFlags(payload.tenantId);
+  const resolvedLineageContext = await resolveSequelSynthesisLineage({
+    lineage: input.lineageContext as VerticalDramaSeriesLineage | undefined,
+    tenantId: payload.tenantId,
+    userId: payload.userId,
+    lineageEnabled: flags.verticalDramaSeriesLineage === true,
+    presetMixEnabled: flags.verticalDramaSeriesPresetMixV2 === true,
+    lookLockEnabled: flags.verticalDramaSeriesLookLock === true,
+  });
+  const userPremiseEnabled =
+    flags.verticalDramaUserPremise === true ||
+    (flags.verticalDramaSeriesLineage === true &&
+      input.lineageContext?.createMode === "sequel");
   const selectedPresetIds = Array.from(new Set(input.selectedPresetIds ?? []));
   const selectedCategories = Array.from(
     new Set(
@@ -7495,15 +7578,15 @@ export async function runPresetSynthesisInteractiveJob(
   const basicsOnlyContext =
     selectedPresetIds.length === 0 &&
     (input.selections?.length ?? 0) === 0 &&
-    !input.userPremise?.trim()
+    !(userPremiseEnabled && input.userPremise?.trim())
       ? {
           seriesTitleHint: input.seriesTitleHint,
           genreHint: input.genreHint,
           audienceAgeRating: input.audienceAgeRating,
         }
       : {};
-  const lineageContext = input.lineageContext
-    ? { lineageContext: input.lineageContext as VerticalDramaSeriesLineage }
+  const lineageContext = resolvedLineageContext
+    ? { lineageContext: resolvedLineageContext }
     : {};
   const selectionIds = Array.from(
     new Set((input.selections ?? []).map(selection => selection.presetId))
@@ -7555,8 +7638,7 @@ export async function runPresetSynthesisInteractiveJob(
     toneHint: input.toneHint,
     ...basicsOnlyContext,
     ...lineageContext,
-    userPremise:
-      flags.verticalDramaUserPremise === true ? input.userPremise : undefined,
+    userPremise: userPremiseEnabled ? input.userPremise : undefined,
     dialogueLanguageProfile: input.spokenLocale
       ? buildVerticalDramaSpokenLanguageProfile(input.spokenLocale)
       : undefined,
@@ -13800,12 +13882,13 @@ export const verticalDramaSeriesRouter = router({
           ? getSeriesLookLockGenreIdentity(input.lookLockGenreKey!)
           : undefined;
       // Feature 132 §4 (F132A, user-premise-preset-mix) — independent of
-      // Preset Mix v2; gates whether `input.userPremise` is honored by
-      // EITHER the v1 or v2 synthesis call below. Flag-off forces
-      // `undefined` regardless of what the client sent, guaranteeing
-      // byte-identical prompts (mirrors `verticalDramaSeriesPresetMixV2`'s
-      // proven server-decides pattern).
-      const userPremiseEnabled = flags?.verticalDramaUserPremise === true;
+      // Preset Mix v2. Sequel premise input is also enabled by the lineage
+      // flag: a visible sequel wizard must honor the new-season direction it
+      // collects, even when the general user-premise rollout is off.
+      const userPremiseEnabled =
+        flags?.verticalDramaUserPremise === true ||
+        (flags?.verticalDramaSeriesLineage === true &&
+          input.lineageContext?.createMode === "sequel");
       const hasExplicitPresetOrPremise =
         selectedPresetIds.length > 0 ||
         (input.selections?.length ?? 0) > 0 ||
@@ -13820,9 +13903,19 @@ export const verticalDramaSeriesRouter = router({
             audienceAgeRating: input.audienceAgeRating,
           }
         : {};
-      const lineageContext = input.lineageContext
+      const resolvedLineage = await resolveSequelSynthesisLineage({
+        lineage: input.lineageContext as
+          | VerticalDramaSeriesLineage
+          | undefined,
+        tenantId,
+        userId,
+        lineageEnabled: flags?.verticalDramaSeriesLineage === true,
+        presetMixEnabled: presetMixV2Enabled,
+        lookLockEnabled,
+      });
+      const lineageContext = resolvedLineage
         ? {
-            lineageContext: input.lineageContext as VerticalDramaSeriesLineage,
+            lineageContext: resolvedLineage,
           }
         : {};
 
