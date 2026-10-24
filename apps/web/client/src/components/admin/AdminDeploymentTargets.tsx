@@ -680,8 +680,8 @@ export default function AdminDeploymentTargets() {
                 "นี่คือสาเหตุที่ติดจริง: Production ยังไม่มี Queue หรือ Hyperdrive แยก, ไม่มี release ที่ตรวจสอบเป็น rollback ได้ และยังไม่มี route ของโดเมนหลัก การตรวจนี้อ่านอย่างเดียว ไม่ได้แก้ Cloudflare หรือย้าย traffic",
               )}</p>
               <p>{text(
-                "To create the missing isolated resources, the saved Production token must include Account → Queues → Edit and Account → Hyperdrive → Edit. Read permission only confirms inventory access; this page does not claim write permission until a real authorized provision job verifies it.",
-                "การสร้าง resource แยกที่ขาดต้องใช้ Production token ที่มี Account → Queues → Edit และ Account → Hyperdrive → Edit สิทธิ์ Read ยืนยันได้เพียงการอ่าน inventory หน้านี้จะไม่อ้างว่าสิทธิ์เขียนผ่านจนกว่าจะตรวจจาก provision job ที่ได้รับอนุญาตจริง",
+                `To create the missing isolated resources, the saved Production token must include Account → Queues → Edit and Account → Hyperdrive → Edit scoped to account ${inventory.accountRef}. Read permission only confirms inventory access. Update the token under Cloudflare Profile → API Tokens, replace the Production target credential here, then run Check again.`,
+                `การสร้าง resource แยกที่ขาดต้องใช้ Production token ที่มี Account → Queues → Edit และ Account → Hyperdrive → Edit โดยจำกัด scope ที่ account ${inventory.accountRef} สิทธิ์ Read ยืนยันได้เพียงการอ่าน inventory ให้แก้ token ใน Cloudflare Profile → API Tokens แล้วแทน credential ของ Production target ที่นี่ จากนั้นกดตรวจอีกครั้ง`,
               )}</p>
               <p className="text-xs text-muted-foreground">{text("Checked", "ตรวจเมื่อ")}: {new Date(inventory.checkedAt).toLocaleString()}</p>
             </VStack>;
