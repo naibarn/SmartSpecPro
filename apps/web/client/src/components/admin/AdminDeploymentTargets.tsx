@@ -677,6 +677,10 @@ export default function AdminDeploymentTargets() {
                 routes: { en: "Worker routes", th: "Worker routes", permission: "Zone → Workers Routes → Read" },
                 workerDeployments: { en: "Worker deployments", th: "Worker deployments", permission: "Account → Workers Scripts → Read" },
                 workerVersions: { en: "Worker versions", th: "Worker versions", permission: "Account → Workers Scripts → Read" },
+                productionDatabaseDns: { en: "Production database DNS inventory", th: "รายการ DNS ของฐานข้อมูล Production", permission: "Zone → DNS → Read" },
+                mtlsCertificates: { en: "Origin CA certificate inventory", th: "รายการใบรับรอง CA ของฐานข้อมูล", permission: "Account → SSL and Certificates → Read" },
+                accessApplications: { en: "Access application inventory", th: "รายการ Access application", permission: "Account → Access: Apps and Policies → Read" },
+                accessServiceTokens: { en: "Access service-token inventory", th: "รายการ Access service token", permission: "Account → Access: Service Tokens → Read" },
               };
               return <VStack gap={1} role="alert">
               <p>{text(
@@ -759,6 +763,25 @@ export default function AdminDeploymentTargets() {
               <p><strong>Production Hyperdrive</strong>: {productionHyperdrives.length > 0
                 ? text(`Found ${productionHyperdrives.length}`, `พบ ${productionHyperdrives.length} รายการ`)
                 : text(stagingHyperdrives.length > 0 ? `Not provisioned. Only Staging exists (${stagingHyperdrives.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingHyperdrives.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingHyperdrives.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
+              {inventory.productionDatabaseProvisioning ? <VStack as="section" gap={1} role="group" aria-label={text("Production database provisioning access", "สิทธิ์สำหรับเตรียมฐานข้อมูล Production")}>
+                <p><strong>{text("Production PostgreSQL connection setup", "การเตรียมการเชื่อมต่อ PostgreSQL ของ Production")}</strong></p>
+                <p>{text("Read-only permission checks for the private PostgreSQL path (HTTP 200 proves read access only):", "ผลตรวจสิทธิ์อ่านสำหรับ PostgreSQL ส่วนตัว (HTTP 200 ยืนยันเฉพาะการอ่าน):")}</p>
+                <VStack as="ul" gap={1}>
+                  {Object.entries(inventory.productionDatabaseProvisioning.checks).map(([key, check]) => {
+                    const info = ({
+                      dns: { en: "Production database DNS", th: "DNS ฐานข้อมูล Production", read: "Zone → DNS → Read" },
+                      mtlsCertificates: { en: "Origin CA certificate", th: "ใบรับรอง CA ของฐานข้อมูล", read: "Account → SSL and Certificates → Read" },
+                      accessApplications: { en: "Access policy", th: "Access policy", read: "Account → Access: Apps and Policies → Read" },
+                      serviceTokens: { en: "Access service token", th: "Access service token", read: "Account → Access: Service Tokens → Read" },
+                      hyperdrive: { en: "Hyperdrive", th: "Hyperdrive", read: "Account → Hyperdrive → Read" },
+                    } as const)[key as "dns" | "mtlsCertificates" | "accessApplications" | "serviceTokens" | "hyperdrive"];
+                    return <li key={key}><strong>{text(info.en, info.th)}</strong>: HTTP {check.httpStatus ?? text("not checked", "ยังไม่ได้ตรวจ")} · {check.readable ? text("readable", "อ่านได้") : text("read denied/incomplete", "สิทธิ์อ่านถูกปฏิเสธหรือตรวจไม่ครบ")} {!check.readable ? <>· {text("read scope", "สิทธิ์อ่าน")}: <code>{info.read}</code></> : null}</li>;
+                  })}
+                </VStack>
+                <p>{text("To let the existing one-step Production database setup create only missing resources, the saved Production API token needs these account/zone write scopes:", "เพื่อให้ขั้นตอนเตรียมฐานข้อมูล Production สร้างเฉพาะ resource ที่ยังขาด token ที่บันทึกสำหรับ Production ต้องมีสิทธิ์เขียนตาม account/zone ดังนี้:")}</p>
+                <ul>{inventory.productionDatabaseProvisioning.requiredWritePermissions.map(permission => <li key={permission}><code>{permission}</code></li>)}</ul>
+                <p>{text("These write scopes are not tested by this read-only inventory. The next setup action will report the exact Cloudflare API error if any scope is still missing.", "inventory แบบอ่านอย่างเดียวนี้ไม่ได้ทดสอบสิทธิ์เขียน เมื่อเริ่มเตรียมระบบ หากยังขาด scope ระบบจะแสดง Cloudflare API error ที่ตรงกับขั้นตอน")}</p>
+              </VStack> : null}
               <p><strong>{text("Production Worker release baseline", "baseline release ของ Production Worker")}</strong>: {verifiedRollback
                 ? text("A version has the expected immutable release identity.", "พบ version ที่มี immutable release identity ตรงตามระบบ")
                 : text("No active version has a verified SmartAIHub source, artifact, and configuration identity; it cannot be used as a rollback baseline.", "version ที่ทำงานอยู่ยังไม่มี source, artifact และ configuration identity ที่ตรวจสอบได้ จึงใช้เป็น rollback baseline ไม่ได้")}</p>

@@ -70,6 +70,12 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: "CHECKED", checkedAt: "2026-10-24T00:00:00.000Z",
         accountRef: "f3fb0b6858e186fcc36be105bfa00243",
         originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false },
+        productionDatabaseProvisioning: { checks: {
+          dns: { httpStatus: 403, readable: false }, mtlsCertificates: { httpStatus: 403, readable: false },
+          accessApplications: { httpStatus: 200, readable: true }, serviceTokens: { httpStatus: 200, readable: true },
+          hyperdrive: { httpStatus: 200, readable: true },
+        }, requiredWritePermissions: ["Zone → DNS → Write", "Account → SSL and Certificates → Write",
+          "Account → Access: Apps and Policies → Write", "Account → Access: Service Tokens → Write", "Account → Hyperdrive → Write"] },
         queueInventoryComplete: true, queues: [...mocks.productionQueues, { name: "smartspec-staging-project-jobs", environment: "staging" }],
         hyperdriveInventoryComplete: true, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
@@ -624,6 +630,21 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/Remaining Production setup: Production Hyperdrive for the retained PostgreSQL host/i)).toBeInTheDocument();
     expect(screen.queryByText(/Remaining Production setup:.*Production Queue and dead-letter queue/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Production Queue/ })).not.toBeInTheDocument();
+  });
+
+  it("shows exact missing Production database read scopes and required provisioning write scopes", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(await screen.findByText(/Production PostgreSQL connection setup/i)).toBeInTheDocument();
+    expect(screen.getByText(/Zone → DNS → Read/)).toBeInTheDocument();
+    expect(screen.getByText(/Account → SSL and Certificates → Read/)).toBeInTheDocument();
+    expect(screen.getByText(/Zone → DNS → Write/)).toBeInTheDocument();
+    expect(screen.getByText(/Account → Access: Apps and Policies → Write/)).toBeInTheDocument();
+    expect(screen.getByText(/Account → Hyperdrive → Write/)).toBeInTheDocument();
   });
 
   it("recovers and follows the latest canonical Production Queue job after a page reload", async () => {

@@ -33,6 +33,8 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/queues")) return response([{ queue_name: "smartspec-staging-abc-jobs" }]);
       if (url.pathname.endsWith("/hyperdrive/configs")) return response([{ name: "smartspec-staging-abc-database" }]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/dns_records")) return response([]);
+      if (url.pathname.endsWith("/mtls_certificates") || url.pathname.endsWith("/access/apps") || url.pathname.endsWith("/access/service_tokens")) return response([]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "deployment-a", versions: [{ version_id: versionId, percentage: 100 }] }] });
       if (url.pathname.endsWith(`/versions/${versionId}`)) return response({ annotations: {}, resources: { bindings: [{ name: "CLOUDFLARE_ACTIVATION" }], script_runtime: { containers: [] } } });
@@ -63,6 +65,8 @@ describe("Cloudflare production provider inventory", () => {
       const url = new URL(String(request));
       if (url.pathname.endsWith("/queues") || url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/dns_records")) return response([]);
+      if (url.pathname.endsWith("/mtls_certificates") || url.pathname.endsWith("/access/apps") || url.pathname.endsWith("/access/service_tokens")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
     });
@@ -78,6 +82,8 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/queues")) return response([], 200, false);
       if (url.pathname.endsWith("/hyperdrive/configs")) return response([]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/dns_records")) return response([]);
+      if (url.pathname.endsWith("/mtls_certificates") || url.pathname.endsWith("/access/apps") || url.pathname.endsWith("/access/service_tokens")) return response([]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
@@ -93,6 +99,9 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/queues")) return response(null, 403);
       if (url.pathname.endsWith("/hyperdrive/configs")) return response([]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/dns_records")) return response([], 403);
+      if (url.pathname.endsWith("/mtls_certificates")) return response([], 403);
+      if (url.pathname.endsWith("/access/apps") || url.pathname.endsWith("/access/service_tokens")) return response([]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
@@ -100,7 +109,9 @@ describe("Cloudflare production provider inventory", () => {
 
     const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
     expect(result).toMatchObject({ status: "PARTIAL", queueInventoryComplete: false,
-      accessChecks: { queues: { httpStatus: 403, complete: false }, hyperdrive: { httpStatus: 200, complete: true } } });
+      accessChecks: { queues: { httpStatus: 403, complete: false }, hyperdrive: { httpStatus: 200, complete: true } },
+      productionDatabaseProvisioning: { checks: { dns: { httpStatus: 403, readable: false }, mtlsCertificates: { httpStatus: 403, readable: false } },
+        requiredWritePermissions: expect.arrayContaining(["Zone → DNS → Write", "Account → Hyperdrive → Write"]) } });
     expect(JSON.stringify(result)).not.toContain("test-token");
   });
 

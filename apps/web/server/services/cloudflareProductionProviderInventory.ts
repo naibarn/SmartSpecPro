@@ -70,10 +70,14 @@ export async function probeCloudflareProductionProviderInventory(input: {
     ]);
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
-    const [routes, queueDetails, hyperdriveDetails] = await Promise.all([
+    const [routes, queueDetails, hyperdriveDetails, zoneDns, mtlsCertificates, accessApps, serviceTokens] = await Promise.all([
       zone?.id ? get(token, `/zones/${encodeURIComponent(zone.id)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
       Array.isArray(queues.result) ? queues.result as Array<{ queue_name?: unknown }> : [],
       Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{ name?: unknown }> : [],
+      zone?.id ? get(token, `/zones/${encodeURIComponent(zone.id)}/dns_records?name=db-prod.smartaihub.app&per_page=100`, fetchImpl) : Promise.resolve(null),
+      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/mtls_certificates?per_page=100`, fetchImpl),
+      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/apps?per_page=100`, fetchImpl),
+      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/service_tokens?per_page=100`, fetchImpl),
     ]);
     const routeRows = Array.isArray(routes?.result) ? routes.result as Array<{ id?: unknown; pattern?: unknown; script?: unknown }> : [];
     const matchingRoutes = routeRows.filter(row => row.pattern === "smartaihub.app/*");
@@ -112,6 +116,29 @@ export async function probeCloudflareProductionProviderInventory(input: {
         routes: { httpStatus: routes?.status ?? null, complete: routes?.complete ?? false },
         workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows) },
         workerVersions: versionDetails.map(version => ({ httpStatus: version.checked ? 200 : null, complete: version.checked })),
+        productionDatabaseDns: { httpStatus: zoneDns?.status ?? null, complete: zoneDns?.complete ?? false },
+        mtlsCertificates: { httpStatus: mtlsCertificates.status, complete: mtlsCertificates.complete },
+        accessApplications: { httpStatus: accessApps.status, complete: accessApps.complete },
+        accessServiceTokens: { httpStatus: serviceTokens.status, complete: serviceTokens.complete },
+      },
+      productionDatabaseProvisioning: {
+        checks: {
+          dns: { httpStatus: zoneDns?.status ?? null, readable: zoneDns?.complete ?? false },
+          mtlsCertificates: { httpStatus: mtlsCertificates.status, readable: mtlsCertificates.complete },
+          accessApplications: { httpStatus: accessApps.status, readable: accessApps.complete },
+          serviceTokens: { httpStatus: serviceTokens.status, readable: serviceTokens.complete },
+          hyperdrive: { httpStatus: hyperdrive.status, readable: hyperdrive.complete },
+        },
+        // These are the exact Cloudflare permission groups used by the
+        // production-only database provisioning flow. Read checks above do
+        // not claim that write access has been tested.
+        requiredWritePermissions: [
+          "Zone → DNS → Write",
+          "Account → SSL and Certificates → Write",
+          "Account → Access: Apps and Policies → Write",
+          "Account → Access: Service Tokens → Write",
+          "Account → Hyperdrive → Write",
+        ],
       },
       originConfiguration,
       queueInventoryComplete: queues.complete,
