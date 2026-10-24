@@ -103,6 +103,16 @@ export async function probeCloudflareProductionProviderInventory(input: {
       status: inventoryComplete ? "CHECKED" as const : "PARTIAL" as const,
       checkedAt: new Date().toISOString(),
       accountRef: target.accountRef,
+      // Keep read failures distinct from an empty inventory. These are safe,
+      // provider-free diagnostics; a 200 still proves read access only.
+      accessChecks: {
+        queues: { httpStatus: queues.status, complete: queues.complete },
+        hyperdrive: { httpStatus: hyperdrive.status, complete: hyperdrive.complete },
+        zone: { httpStatus: zones.status, complete: zones.complete },
+        routes: { httpStatus: routes?.status ?? null, complete: routes?.complete ?? false },
+        workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows) },
+        workerVersions: versionDetails.map(version => ({ httpStatus: version.checked ? 200 : null, complete: version.checked })),
+      },
       originConfiguration,
       queueInventoryComplete: queues.complete,
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),

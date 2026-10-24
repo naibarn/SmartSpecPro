@@ -83,7 +83,25 @@ describe("Cloudflare production provider inventory", () => {
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
     });
     const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
-    expect(result).toMatchObject({ status: "PARTIAL", queueInventoryComplete: false });
+    expect(result).toMatchObject({ status: "PARTIAL", queueInventoryComplete: false,
+      accessChecks: { queues: { httpStatus: 200, complete: false } } });
+  });
+
+  it("reports denied reads separately from an empty Production inventory", async () => {
+    const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
+      const url = new URL(String(request));
+      if (url.pathname.endsWith("/queues")) return response(null, 403);
+      if (url.pathname.endsWith("/hyperdrive/configs")) return response([]);
+      if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/workers/routes")) return response([]);
+      if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
+      throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
+    });
+
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result).toMatchObject({ status: "PARTIAL", queueInventoryComplete: false,
+      accessChecks: { queues: { httpStatus: 403, complete: false }, hyperdrive: { httpStatus: 200, complete: true } } });
+    expect(JSON.stringify(result)).not.toContain("test-token");
   });
 
   it("does not call Cloudflare when target or scoped credential is unavailable", async () => {

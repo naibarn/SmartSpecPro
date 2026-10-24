@@ -3,23 +3,23 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `12`
-- Updated (UTC): `2026-10-24T14:10:24.889937+00:00`
+- State generation: `14`
+- Updated (UTC): `2026-10-24T14:16:26.182537+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `ac35b9303842c63377e6ea9f38ffb5667db2ca84`
+- Latest recorded merged Main SHA: `6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
-- Next action: Implement production-scoped preparation for the selected Queue transport and retained PostgreSQL Hyperdrive through canonical worker_jobs, reusing the existing control-plane/approval service without staging scope reuse; add exact-target, permission, rollback and readiness tests. Live evidence at 2026-10-24 14:05 UTC now shows Connectivity Directory Read granted, but no Production Queue/Hyperdrive/runtime config or main route; first define the smallest safe production resource step and preserve write grants, database TLS, and Tunnel prerequisites as explicit blockers.
+- Next action: Implement the first Production-only canonical preparation job for the required Queue, bound to the exact saved Production target and canonical worker_jobs receipt; inspect and reuse the existing grant, lease, retry, and audit mechanisms. Keep Hyperdrive preparation closed until a trusted matching PostgreSQL certificate and production-only Tunnel route are verified. Add focused positive/negative tests and continue the Worker runtime/binding/canary path.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-production-target-ui | pending | — | — | — | — | — |
+| section-01-production-target-ui | checkpointed | — | — | 6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5 | 6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5 | Update the Admin target UI with real, exact Production permission requirements and direct Cloudflare API Tokens access. Production readiness remains blocked by absent Queue/Hyperdrive/config, TLS/trusted DB Tunnel, verified rollback identity, Worker app bindings, and main-domain route; do not claim cutover. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | ac35b9303842c63377e6ea9f38ffb5667db2ca84 | After the Cloudflare account member receives Connectivity Directory Admin and the retained PostgreSQL host has a trusted certificate plus a production-only Tunnel route, rerun the exact read-only credential and provider inventory probes; then implement/execute the production Queue+Hyperdrive+runtime preparation through canonical worker_jobs and continue canary gates. |
-| section-03-production-runtime-composition | in_progress | — | — | — | — | Implement production-scoped preparation for the selected Queue transport and retained PostgreSQL Hyperdrive through canonical worker_jobs, reusing the existing control-plane/approval service without staging scope reuse; add exact-target, permission, rollback and readiness tests. Live evidence at 2026-10-24 14:05 UTC now shows Connectivity Directory Read granted, but no Production Queue/Hyperdrive/runtime config or main route; first define the smallest safe production resource step and preserve write grants, database TLS, and Tunnel prerequisites as explicit blockers. |
+| section-03-production-runtime-composition | in_progress | — | — | — | — | Implement the first Production-only canonical preparation job for the required Queue, bound to the exact saved Production target and canonical worker_jobs receipt; inspect and reuse the existing grant, lease, retry, and audit mechanisms. Keep Hyperdrive preparation closed until a trusted matching PostgreSQL certificate and production-only Tunnel route are verified. Add focused positive/negative tests and continue the Worker runtime/binding/canary path. |
 | section-04-production-readiness-and-cutover | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)

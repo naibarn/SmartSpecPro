@@ -642,10 +642,31 @@ export default function AdminDeploymentTargets() {
           {productionProviderInventory.isError ? <p role="alert">{text("Cloudflare resource inventory could not be read. No provider changes were made.", "อ่าน inventory ของ Cloudflare ไม่สำเร็จ และไม่มีการเปลี่ยนแปลง resource")}</p> : null}
           {productionProviderInventory.data ? (() => {
             const inventory = productionProviderInventory.data;
-            if (inventory.status !== "CHECKED") return <p role="alert">{text(
-              `Production inventory is incomplete (${inventory.status}); absence of resources cannot be confirmed. Check the saved Production target, credential, and read permissions.`,
-              `inventory ของ Production ไม่ครบ (${inventory.status}) จึงยังยืนยันไม่ได้ว่าไม่มี resource ให้ตรวจ target, credential และสิทธิ์อ่านที่บันทึกไว้`,
-            )}</p>;
+            if (inventory.status !== "CHECKED") {
+              const checkLabels: Record<string, { en: string; th: string; permission: string }> = {
+                queues: { en: "Queue inventory", th: "รายการ Queue", permission: "Account → Queues → Read" },
+                hyperdrive: { en: "Hyperdrive inventory", th: "รายการ Hyperdrive", permission: "Account → Hyperdrive → Read" },
+                zone: { en: "smartaihub.app zone", th: "Zone smartaihub.app", permission: "Zone → Zone → Read" },
+                routes: { en: "Worker routes", th: "Worker routes", permission: "Zone → Workers Routes → Read" },
+                workerDeployments: { en: "Worker deployments", th: "Worker deployments", permission: "Account → Workers Scripts → Read" },
+                workerVersions: { en: "Worker versions", th: "Worker versions", permission: "Account → Workers Scripts → Read" },
+              };
+              return <VStack gap={1} role="alert">
+              <p>{text(
+                `Production inventory is incomplete (${inventory.status}); an empty result does not prove that a resource is absent.`,
+                `inventory ของ Production ไม่ครบ (${inventory.status}) ผลว่างจึงยังยืนยันไม่ได้ว่าไม่มี resource`,
+              )}</p>
+              <p>{text("Read-only Cloudflare API results (HTTP 200 means readable only):", "ผล API ของ Cloudflare แบบอ่านอย่างเดียว (HTTP 200 ยืนยันเฉพาะสิทธิ์อ่าน):")}</p>
+              <VStack as="ul" gap={1}>
+                {Object.entries(inventory.accessChecks).map(([key, check]) => <li key={key}>
+                  <strong>{text(checkLabels[key]?.en ?? key, checkLabels[key]?.th ?? key)}</strong>: {check.httpStatus === null ? text("not checked", "ยังไม่ได้ตรวจ") : `HTTP ${check.httpStatus}`}
+                  {check.complete ? text(" · readable", " · อ่านได้") : text(" · incomplete or denied", " · ตรวจไม่ครบหรือถูกปฏิเสธ")}
+                  {!check.complete && checkLabels[key] ? <> · {text("required read scope", "สิทธิ์อ่านที่ต้องมี")}: <code>{checkLabels[key].permission}</code></> : null}
+                </li>)}
+              </VStack>
+              <p>{text("Add only the read scope shown for an HTTP 403, then press Check now. No provider changes were made by this check.", "ถ้าได้ HTTP 403 ให้เพิ่มเฉพาะสิทธิ์อ่านที่แสดง แล้วกดตรวจสอบตอนนี้ การตรวจนี้ไม่ได้เปลี่ยน resource บน Cloudflare")}</p>
+              </VStack>;
+            }
             const productionQueues = inventory.queues.filter(item => item.environment === "production");
             const stagingQueues = inventory.queues.filter(item => item.environment === "staging");
             const productionHyperdrives = inventory.hyperdrives.filter(item => item.environment === "production");

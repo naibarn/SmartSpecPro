@@ -21,7 +21,13 @@
     },
     "section-03-production-runtime-composition": {
       "status": "in_progress",
-      "next_action": "Implement production-scoped preparation for the selected Queue transport and retained PostgreSQL Hyperdrive through canonical worker_jobs, reusing the existing control-plane/approval service without staging scope reuse; add exact-target, permission, rollback and readiness tests. Live evidence at 2026-10-24 14:05 UTC now shows Connectivity Directory Read granted, but no Production Queue/Hyperdrive/runtime config or main route; first define the smallest safe production resource step and preserve write grants, database TLS, and Tunnel prerequisites as explicit blockers."
+      "next_action": "Implement the first Production-only canonical preparation job for the required Queue, bound to the exact saved Production target and canonical worker_jobs receipt; inspect and reuse the existing grant, lease, retry, and audit mechanisms. Keep Hyperdrive preparation closed until a trusted matching PostgreSQL certificate and production-only Tunnel route are verified. Add focused positive/negative tests and continue the Worker runtime/binding/canary path."
+    },
+    "section-01-production-target-ui": {
+      "checkpoint_sha": "6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5",
+      "status": "checkpointed",
+      "merged_main_sha": "6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5",
+      "next_action": "Update the Admin target UI with real, exact Production permission requirements and direct Cloudflare API Tokens access. Production readiness remains blocked by absent Queue/Hyperdrive/config, TLS/trusted DB Tunnel, verified rollback identity, Worker app bindings, and main-domain route; do not claim cutover."
     }
   },
   "pre_commit": {
@@ -33,11 +39,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 12,
-  "updated_at": "2026-10-24T14:10:24.889937+00:00",
+  "generation": 14,
+  "updated_at": "2026-10-24T14:16:26.182537+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Implement production-scoped preparation for the selected Queue transport and retained PostgreSQL Hyperdrive through canonical worker_jobs, reusing the existing control-plane/approval service without staging scope reuse; add exact-target, permission, rollback and readiness tests. Live evidence at 2026-10-24 14:05 UTC now shows Connectivity Directory Read granted, but no Production Queue/Hyperdrive/runtime config or main route; first define the smallest safe production resource step and preserve write grants, database TLS, and Tunnel prerequisites as explicit blockers.",
+    "next_action": "Implement the first Production-only canonical preparation job for the required Queue, bound to the exact saved Production target and canonical worker_jobs receipt; inspect and reuse the existing grant, lease, retry, and audit mechanisms. Keep Hyperdrive preparation closed until a trusted matching PostgreSQL certificate and production-only Tunnel route are verified. Add focused positive/negative tests and continue the Worker runtime/binding/canary path.",
     "gaps": [
       "No production resource preparation contract/job is currently exposed; production account inventory has no Queue or Hyperdrive.",
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
@@ -49,6 +55,6 @@
       "Live token probe after user update (2026-10-24 14:05 UTC) confirms vpcServices Connectivity Directory Read returns HTTP 200; token verification, Queue/Hyperdrive/Worker/Container reads also pass. Read access does not prove Queue/Hyperdrive/VPC write scopes.",
       "Production still has no production Queue or Hyperdrive, no saved Production runtime config, active Worker lacks verified release identity and app bindings, and smartaihub.app/* is not attached. Production /readyz remains 503 with activation disabled and required HYPERDRIVE/JOB_QUEUE plus selected application bindings absent."
     ],
-    "merged_main_sha": "ac35b9303842c63377e6ea9f38ffb5667db2ca84"
+    "merged_main_sha": "6b7fb9b996b68c1f05e9c2a2d0fecb17309f62f5"
   }
 }
