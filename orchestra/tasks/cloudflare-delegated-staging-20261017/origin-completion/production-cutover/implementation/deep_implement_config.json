@@ -15,21 +15,21 @@
   "sections_state": {
     "section-02-production-deploy-authority": {
       "status": "checkpointed",
-      "next_action": "Connectivity Directory Admin is now confirmed by HTTP 200 read access. Continue a production-scoped resource preparation path using existing bounded ApprovalDBService + worker_jobs; Queue/Hyperdrive write scopes are not proven by read-only checks, and Hyperdrive stays gated on trusted PostgreSQL TLS plus a Production-only Tunnel route.",
+      "next_action": "User reports Production token permissions have been updated; actual Queue write still needs the canonical Admin job receipt. Keep current independent Production deployment grant/canary authority intact; do not bypass it.",
       "checkpoint_sha": "57da33899915f7a9497e1cefcec5362c6b583d7a",
-      "merged_main_sha": "ac35b9303842c63377e6ea9f38ffb5667db2ca84"
+      "merged_main_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43"
     },
     "section-03-production-runtime-composition": {
-      "status": "in_progress",
-      "next_action": "Queue setup now provisions and verifies both production queue names from wrangler.production.jsonc, inventory/UI detect the canonical names, and retries tolerate existing consumers; focused tests pass 26/26. Commit and integrate this fix, release the integrated Admin UI/API, then use the authenticated Production target flow to execute the canonical queue setup job and capture its provider receipt. Continue with Production worker bindings/configuration and TLS-trusted Postgres Hyperdrive preparation; no traffic cutover without current independent Production authority and verified rollback/canary.",
-      "checkpoint_sha": "15f4068b2929a563a6a9b9be56f64bf9b7f91489",
-      "merged_main_sha": "15f4068b2929a563a6a9b9be56f64bf9b7f91489"
+      "status": "checkpointed",
+      "next_action": "Queue code is integrated and serving Linux release generation 72 at SHA db36dcbad2befa78635c2586816f9aeb6e3f1b43. Production runtime.smartaihub.app/readyz currently returns 503 activation=disabled and all seven bindings absent. Continue by executing the canonical Queue preparation job from the authenticated Admin UI, then implement/verify Production workload bindings and trusted PostgreSQL TLS/Tunnel/Hyperdrive. Only proceed to canary/cutover through the existing independent Production grant and rollback controls.",
+      "checkpoint_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43",
+      "merged_main_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43"
     },
     "section-01-production-target-ui": {
       "checkpoint_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
       "status": "checkpointed",
-      "merged_main_sha": "a96a1d2307a77fea47b929a71122fec229b844ac",
-      "next_action": "Release endpoint-level Production inventory diagnostics to Linux and verify runtime SHA/health. Continue implementing Production Queue preparation through existing bounded authority and canonical worker_jobs; retain the PostgreSQL TLS/Tunnel blocker."
+      "merged_main_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43",
+      "next_action": "Production inventory UI is integrated and serving Linux release generation 72 at db36dcbad2befa78635c2586816f9aeb6e3f1b43; login/settings/health endpoints return 200. Continue exact production resource provisioning and runtime composition."
     }
   },
   "pre_commit": {
@@ -41,24 +41,22 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 25,
-  "updated_at": "2026-10-24T16:19:40.263485+00:00",
+  "generation": 30,
+  "updated_at": "2026-10-24T16:30:14.748083+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Queue setup now provisions and verifies both production queue names from wrangler.production.jsonc, inventory/UI detect the canonical names, and retries tolerate existing consumers; focused tests pass 26/26. Commit and integrate this fix, release the integrated Admin UI/API, then use the authenticated Production target flow to execute the canonical queue setup job and capture its provider receipt. Continue with Production worker bindings/configuration and TLS-trusted Postgres Hyperdrive preparation; no traffic cutover without current independent Production authority and verified rollback/canary.",
+    "next_action": "Queue code is integrated and serving Linux release generation 72 at SHA db36dcbad2befa78635c2586816f9aeb6e3f1b43. Production runtime.smartaihub.app/readyz currently returns 503 activation=disabled and all seven bindings absent. Continue by executing the canonical Queue preparation job from the authenticated Admin UI, then implement/verify Production workload bindings and trusted PostgreSQL TLS/Tunnel/Hyperdrive. Only proceed to canary/cutover through the existing independent Production grant and rollback controls.",
     "gaps": [
-      "Production Queue preparation contract/job and Admin UI action exist in the current unintegrated worktree; they are not deployed and no Production Queue creation receipt is available yet. Production account inventory has no verified Production Queue or Hyperdrive.",
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
-      "Production origin configuration and private-database job contracts are staging-only; Production Queue provisioning now exists in code, but runtime binding/configuration is still missing.",
       "PostgreSQL accepts TLS, but the application session is non-TLS and strict CA verification fails UNABLE_TO_VERIFY_LEAF_SIGNATURE; a trusted matching certificate and actual Tunnel route remain unverified.",
       "Retained Tunnel config exposes only db-staging.smartaihub.app -> tcp://127.0.0.1:5432; no production DB hostname route. PostgreSQL accepts TLS but app sessions are plaintext and strict CA validation fails UNABLE_TO_VERIFY_LEAF_SIGNATURE.",
       "Production /readyz is 503 with activation disabled and required HYPERDRIVE/JOB_QUEUE plus selected application bindings absent.",
-      "Live token probe after user update confirms Connectivity Directory reads pass; user reports the needed Cloudflare permissions have now been added. Queue write permission is not yet proven against the saved Production credential; the new canonical Queue job will report the provider HTTP and sanitized API code.",
       "Production still has no saved Production runtime config, verified rollback release identity, selected Worker workload bindings, or smartaihub.app/* route. Production cutover remains unverified.",
       "Last exact provider inventory at 2026-10-24 15:03 UTC: only Staging Queue/Hyperdrive existed, no production config or main-domain route, and active 100% Worker lacked verified SmartAIHub identity or workload bindings.",
-      "Production Queue provider write job has not run from the authenticated Admin session; no actual provider receipt exists yet.",
-      "Production Worker source/version bindings, trusted PostgreSQL TLS plus Production Tunnel route, Hyperdrive binding, runtime acceptance, rollback baseline and canary/route promotion remain unverified."
+      "Production Queue write job has not run from the authenticated Admin session, so no Cloudflare resource receipt exists yet.",
+      "Public runtime.smartaihub.app/readyz is HTTP 503 activation=disabled; all seven bindings are absent (HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX). This current runtime result is the direct blocker to staging/runtime acceptance.",
+      "Production Worker workload configuration, trusted PostgreSQL certificate/Production Tunnel route/Hyperdrive binding, application/auth/database acceptance, rollback baseline, canary and cutover remain unverified."
     ],
-    "merged_main_sha": "15f4068b2929a563a6a9b9be56f64bf9b7f91489"
+    "merged_main_sha": "db36dcbad2befa78635c2586816f9aeb6e3f1b43"
   }
 }
