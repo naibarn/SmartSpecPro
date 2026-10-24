@@ -42,18 +42,18 @@ SKILLS_ROOT = REPO_ROOT / "skills"
 INSTALLED_ROOT = Path(os.environ.get("SKILLS_HOME", Path.home() / ".codex")).expanduser() / "skills"
 MANIFEST_PATH = SKILLS_ROOT / "mirrored-skills.txt"
 PACKAGE_RUNTIME_DIRS = (".claude-plugin", "agents", "hooks", "prompts", "scripts")
-IGNORE_PARTS = {"__pycache__", ".pytest_cache", ".venv", "tests"}
+IGNORE_PARTS = {"__pycache__", ".pytest_cache", ".venv", ".git", "tests"}
 IGNORE_FILENAMES = {".DS_Store", ".gitkeep"}
 IGNORE_SUFFIXES = {".pyc", ".pyo"}
 BACKUP_PLAYBOOK = "BACKUP-PLAYBOOK.md"
 
 
 def read_manifest() -> list[str]:
-    return [
+    return list(dict.fromkeys(
         line.strip()
         for line in MANIFEST_PATH.read_text(encoding="utf-8").splitlines()
         if line.strip()
-    ]
+    ))
 
 
 def is_package_skill(skill: str) -> bool:
@@ -92,7 +92,9 @@ def copy_path(src: Path, dest: Path) -> None:
 
 
 def clear_path(path: Path) -> None:
-    if path.is_dir():
+    if path.is_symlink():
+        path.unlink()
+    elif path.is_dir():
         shutil.rmtree(path)
     elif path.exists():
         path.unlink()
@@ -144,6 +146,21 @@ def temp_dir() -> tempfile.TemporaryDirectory[str]:
     return tempfile.TemporaryDirectory(prefix="skill-sync-")
 
 
+def replace_runtime_directory(source: Path, target: Path) -> None:
+    """Replace mirrored files without deleting excluded tests or local state."""
+    if target.is_symlink():
+        raise ValueError(f"refusing to replace a symlinked skill directory: {target}")
+    for path in target.rglob("*"):
+        if not should_ignore(path) and path.is_symlink():
+            raise ValueError(f"refusing to replace a symlinked runtime path: {path}")
+    incoming = set(list_files(source))
+    target.mkdir(parents=True, exist_ok=True)
+    for relative in list_files(target):
+        if relative not in incoming:
+            (target / relative).unlink()
+    copy_path(source, target)
+
+
 def deploy_installed_to_repo(skill: str, installed_stage: Path) -> None:
     target = SKILLS_ROOT / skill
     if is_package_skill(skill):
@@ -154,25 +171,17 @@ def deploy_installed_to_repo(skill: str, installed_stage: Path) -> None:
         if (installed_stage / "SKILL.md").exists():
             copy_path(installed_stage / "SKILL.md", runtime_root / "SKILL.md")
 
-        clear_path(runtime_root / "references")
-        if (installed_stage / "references").exists():
-            copy_path(installed_stage / "references", runtime_root / "references")
+        replace_runtime_directory(installed_stage / "references", runtime_root / "references")
 
         for name in PACKAGE_RUNTIME_DIRS:
-            clear_path(target / name)
-            if (installed_stage / name).exists():
-                copy_path(installed_stage / name, target / name)
+            replace_runtime_directory(installed_stage / name, target / name)
     else:
-        clear_path(target)
-        target.mkdir(parents=True, exist_ok=True)
-        copy_path(installed_stage, target)
+        replace_runtime_directory(installed_stage, target)
 
 
 def deploy_repo_to_installed(skill: str, repo_stage: Path) -> None:
     target = INSTALLED_ROOT / skill
-    clear_path(target)
-    target.mkdir(parents=True, exist_ok=True)
-    copy_path(repo_stage, target)
+    replace_runtime_directory(repo_stage, target)
 
 
 def verify() -> int:
@@ -180,31 +189,37 @@ def verify() -> int:
         print(f"installed skill sync verification failed: missing installed skill directory: {INSTALLED_ROOT}", file=sys.stderr)
         return 1
 
+    failed = False
     if not (INSTALLED_ROOT / BACKUP_PLAYBOOK).exists():
         print(
             f"installed skill sync verification failed: missing installed {BACKUP_PLAYBOOK}",
             file=sys.stderr,
         )
-        return 1
+        failed = True
 
     repo_backup = SKILLS_ROOT / BACKUP_PLAYBOOK
     installed_backup = INSTALLED_ROOT / BACKUP_PLAYBOOK
-    if not filecmp.cmp(repo_backup, installed_backup, shallow=False):
+    if not repo_backup.exists():
+        print(f"installed skill sync verification failed: missing repo {BACKUP_PLAYBOOK}", file=sys.stderr)
+        failed = True
+    elif installed_backup.exists() and not filecmp.cmp(repo_backup, installed_backup, shallow=False):
         print(
             f"installed skill sync verification failed: drift detected for {BACKUP_PLAYBOOK}",
             file=sys.stderr,
         )
-        return 1
+        failed = True
 
     for skill in read_manifest():
         repo_skill = SKILLS_ROOT / skill
         installed_skill = INSTALLED_ROOT / skill
         if not repo_skill.exists():
             print(f"installed skill sync verification failed: missing repo mirror skill: {repo_skill}", file=sys.stderr)
-            return 1
+            failed = True
+            continue
         if not installed_skill.exists():
             print(f"installed skill sync verification failed: missing installed skill: {installed_skill}", file=sys.stderr)
-            return 1
+            failed = True
+            continue
 
         with temp_dir() as repo_tmp, temp_dir() as installed_tmp:
             repo_stage = Path(repo_tmp)
@@ -216,19 +231,27 @@ def verify() -> int:
                 print(f"installed skill sync verification failed: drift detected for {skill}", file=sys.stderr)
                 for diff in diffs:
                     print(f"  - {diff}", file=sys.stderr)
-                return 1
+                failed = True
 
+    if failed:
+        return 1
     print("installed skill sync verified")
     return 0
 
 
 def sync_from_installed() -> int:
-    for skill in read_manifest():
+    skills = read_manifest()
+    for skill in skills:
         installed_skill = INSTALLED_ROOT / skill
         if not installed_skill.exists():
             print(f"missing source skill: {installed_skill}", file=sys.stderr)
             return 1
 
+    if not (INSTALLED_ROOT / BACKUP_PLAYBOOK).is_file():
+        print(f"missing source {BACKUP_PLAYBOOK}", file=sys.stderr)
+        return 1
+
+    for skill in skills:
         with temp_dir() as installed_tmp:
             installed_stage = Path(installed_tmp)
             materialize_installed_runtime(skill, installed_stage)
@@ -241,15 +264,21 @@ def sync_from_installed() -> int:
 
 
 def publish_to_installed() -> int:
-    INSTALLED_ROOT.mkdir(parents=True, exist_ok=True)
-    copy_path(SKILLS_ROOT / BACKUP_PLAYBOOK, INSTALLED_ROOT / BACKUP_PLAYBOOK)
-
-    for skill in read_manifest():
+    skills = read_manifest()
+    for skill in skills:
         repo_skill = SKILLS_ROOT / skill
         if not repo_skill.exists():
             print(f"missing repo skill: {repo_skill}", file=sys.stderr)
             return 1
 
+    if not (SKILLS_ROOT / BACKUP_PLAYBOOK).is_file():
+        print(f"missing repo {BACKUP_PLAYBOOK}", file=sys.stderr)
+        return 1
+
+    INSTALLED_ROOT.mkdir(parents=True, exist_ok=True)
+    copy_path(SKILLS_ROOT / BACKUP_PLAYBOOK, INSTALLED_ROOT / BACKUP_PLAYBOOK)
+
+    for skill in skills:
         with temp_dir() as repo_tmp:
             repo_stage = Path(repo_tmp)
             materialize_repo_runtime(skill, repo_stage)

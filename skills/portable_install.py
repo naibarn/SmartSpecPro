@@ -25,11 +25,11 @@ IGNORE_SUFFIXES = {".pyc", ".pyo"}
 
 
 def read_manifest() -> list[str]:
-    return [
+    return list(dict.fromkeys(
         line.strip()
         for line in MANIFEST_PATH.read_text(encoding="utf-8").splitlines()
         if line.strip()
-    ]
+    ))
 
 
 def should_ignore(path: Path) -> bool:

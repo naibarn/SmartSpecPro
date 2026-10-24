@@ -89,16 +89,28 @@ bash skills/sync-installed-skills.sh
 ```
 
 Run the sync script whenever any mirrored skill is changed under
-`~/.codex/skills`.
+`~/.codex/skills`, after reviewing those edits against the repository. This
+imports installed runtime files into the repo; it is not the command to run
+after editing the repo first. Excluded repository tests, Git metadata and local
+runtime caches are preserved during import.
 
 If you update the mirrored copies inside this repo first, sync them back to the
 installed skill pack as part of the same change so runtime behavior and repo
 backup do not drift.
 
+For this project's normal development, edit `skills/` on canonical `main`,
+then publish and verify in the same task. Review and preserve any installed-only
+changes before choosing that direction. Do not copy older installed files over
+newer canonical changes just to make verification green. Package-style deep-*
+skills are compared through their flattened runtime mapping, rather than by
+comparing their outer repository folders literally. `.system` remains managed
+separately and is outside this mirror.
+
 Publish back to installed runtime:
 
 ```bash
 bash skills/publish-to-installed-skills.sh
+bash skills/verify-installed-skills-sync.sh
 ```
 
 Validation command:
@@ -118,3 +130,10 @@ Verify repo mirror vs installed runtime:
 ```bash
 bash skills/verify-installed-skills-sync.sh
 ```
+
+Verification reports every differing skill in one run. Publishing/importing
+preflights all manifest sources before writing, processes each skill once and
+preserves excluded local state; it still replaces mirrored runtime files in the
+chosen direction, so review the full diff and keep a recovery copy of divergent
+files before synchronizing. A passed sync check proves runtime file equality,
+not functional test or release acceptance.
