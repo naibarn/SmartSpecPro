@@ -835,7 +835,16 @@ export function resolveCreateSeriesPresetAction(params: {
   if (hasBasicSeed) {
     return {
       kind: "synthesize_from_basics",
-      label: pickCopy(lang, createSeriesNoSeedActionCopy.label),
+      label: hasLineageSeed
+        ? th
+          ? "ให้ AI อ่านเรื่องเดิมแล้วสร้างดราฟต์ภาคใหม่"
+          : "Let AI read the original story and draft the new installment"
+        : pickCopy(lang, createSeriesNoSeedActionCopy.label),
+      outcomeHint: hasLineageSeed
+        ? th
+          ? "AI จะใช้เรื่องย่อ ตัวละคร ความสัมพันธ์ และปมค้างจากเรื่องต้นฉบับเป็นฐาน แล้วสร้างโครงภาคใหม่ให้ตรวจและแก้ไขก่อนยืนยัน"
+          : "AI will use the original summary, cast, relationships, and open threads to draft the new installment for your review and edits."
+        : undefined,
     };
   }
 
@@ -4628,6 +4637,7 @@ function WizardStep({
         form.audienceAgeRating ||
         (form.createMode && form.parentSeriesId)
       );
+      const hasSequelParent = isSequel && Boolean(form.parentSeriesId);
       return (
         <div className="grid w-full min-w-0 max-w-full gap-4">
           {/* Phase 2 (`planning/fix-create-series-premise-blend/plan-phase2-mode-first.md`)
@@ -5142,25 +5152,20 @@ function WizardStep({
               }}
             />
 
-            {/* Discoverability fix (2026-07-17 follow-up to
-                vd-premise-first-wizard) — the user reported that after typing
-                a premise, there was no visible action: the single button that
-                acts on it lived at the bottom of the (now-optional) preset
-                rail, a panel the copy itself tells you to ignore. The primary
-                CTA now renders directly under the textarea the moment a
-                premise is present, so pressing it (and seeing what it did)
-                never requires looking anywhere else. When there is no
-                premise yet, this renders nothing — the CTA stays in the
-                preset rail below, unchanged (see `MixAndMatchPresetPanel`'s
-                `actionSection` prop), since that is legacy behavior nobody
-                reported an issue with. Exactly one CTA renders at a time.
+            {/* The primary CTA lives directly under the premise field when a
+                premise is present. A selected sequel parent also gets this
+                action with an empty premise, so the user can ask AI to read
+                the original canon and draft the next installment. Other
+                no-premise flows keep the existing CTA in the preset rail.
+                Exactly one CTA renders at a time.
                 Phase 2 — also gated on `seriesMode !== "preset"`: when the
                 preset library is the chosen primary section, the CTA always
                 renders in the (now-primary, always-open) rail instead — see
                 the mirrored condition on `actionSection` below — so a CTA is
                 never left stranded inside the now-collapsed premise
                 section. */}
-            {hasUserPremise && seriesMode !== "preset" && (
+            {(hasUserPremise || hasSequelParent) &&
+              seriesMode !== "preset" && (
               <div className="mt-4 border-t border-primary/15 pt-4">
                 <PresetSynthesisActionPanel
                   lang={lang}
@@ -5622,18 +5627,18 @@ function WizardStep({
                 // `resolveCreateSeriesPresetAction`), not just the badge.
                 hasUserPremise={hasUserPremise}
                 weightsSectionRef={weightsSectionRef}
-                // Discoverability fix — with a premise present the primary
-                // CTA (+ its loading/error/draft result) already rendered in
-                // the hero above (see `PresetSynthesisActionPanel` usage
-                // there); rendering it again here would be a second,
-                // competing button firing the same mutation. Only render it
-                // in the rail for the unchanged no-premise legacy flow.
+                // With a premise present, or a selected sequel parent, the
+                // primary CTA (+ its loading/error/draft result) already
+                // renders in the hero above. Rendering it again here would
+                // create a second button firing the same mutation. Keep the
+                // rail CTA for the other no-premise flows.
                 // Phase 2 — also renders here whenever `seriesMode ===
                 // "preset"` (mirrors the hero's own gate above), so the CTA
                 // always lives in whichever section is currently primary and
                 // open, never inside the collapsed one.
                 actionSection={
-                  hasUserPremise && seriesMode !== "preset" ? null : (
+                  (hasUserPremise || hasSequelParent) &&
+                  seriesMode !== "preset" ? null : (
                     <PresetSynthesisActionPanel
                       lang={lang}
                       spokenLocale={form.spokenLocale}
