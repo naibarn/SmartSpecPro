@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import type { DrizzleDB } from "../db";
@@ -122,7 +122,8 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
 
 /**
  * Activate the minimum staging intake profile from the exact currently bound
- * immutable configuration. Secrets remain server-side and are copied only
+ * immutable configuration. Missing internal secrets are generated on the
+ * server; existing secrets are reused without rotation. Secrets are copied only
  * after the target row is locked and its binding is rechecked. This stores and
  * binds a new version; deployment still requires a separate staging grant/job.
  */
@@ -152,10 +153,11 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
     if (!previous.nativeResources?.privateDatabase) throw new Error("STAGING_PRIVATE_DATABASE_BINDING_REQUIRED");
     const needsRuntimeSecrets = !stored.secrets.workflowRuntimeToken || !stored.secrets.controlPlaneToken;
     const suppliedAnyRuntimeSecret = Boolean(input.workflowRuntimeToken || input.controlPlaneToken);
-    if (needsRuntimeSecrets && (!input.workflowRuntimeToken || !input.controlPlaneToken)) throw new Error("STAGING_WORKFLOW_RUNTIME_SECRETS_REQUIRED");
+    if (suppliedAnyRuntimeSecret && (!input.workflowRuntimeToken || !input.controlPlaneToken)) throw new Error("STAGING_WORKFLOW_RUNTIME_SECRETS_REQUIRED");
     if (!needsRuntimeSecrets && suppliedAnyRuntimeSecret) throw new Error("STAGING_WORKFLOW_RUNTIME_SECRETS_ALREADY_CONFIGURED");
     const secrets = needsRuntimeSecrets ? cloudflareOriginSecretsSchema.parse({ ...stored.secrets,
-      workflowRuntimeToken: input.workflowRuntimeToken, controlPlaneToken: input.controlPlaneToken }) : stored.secrets;
+      workflowRuntimeToken: input.workflowRuntimeToken ?? randomBytes(32).toString("hex"),
+      controlPlaneToken: input.controlPlaneToken ?? randomBytes(32).toString("hex") }) : stored.secrets;
     if (previous.workflowExecution === "emergency-intake" && previous.jobTransport === "queues") {
       return { status: "ALREADY_CONFIGURED" as const, configurationRef: input.configurationRef,
         configurationDigest: digest(previous), descriptor: previous, deploymentAuthorized: false as const };

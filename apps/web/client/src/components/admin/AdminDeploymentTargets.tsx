@@ -382,7 +382,7 @@ export default function AdminDeploymentTargets() {
         </VStack>
         <VStack gap={1} style={{ flex: "0 0 14rem", minWidth: "min(100%, 14rem)" }}>
           <Label htmlFor="deployment-environment">{text("Environment", "Environment")}</Label>
-          <Select value={environment} onValueChange={setEnvironment}>
+          <Select value={environment} onValueChange={value => { setEnvironment(value); setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}>
             <SelectTrigger id="deployment-environment"><SelectValue placeholder={text("Select environment", "เลือก environment")} /></SelectTrigger>
             <SelectContent>{ENVIRONMENTS.map(value => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent>
           </Select>
@@ -513,6 +513,9 @@ export default function AdminDeploymentTargets() {
                 const configRef = currentStagingConfigRef;
                 const config = stagingOriginConfiguration.data;
                 const secretsMissing = config?.workflowRuntimeTokenConfigured === false || config?.controlPlaneTokenConfigured === false;
+                const suppliedRuntimeSecrets = Boolean(workflowRuntimeToken || controlPlaneToken);
+                const suppliedRuntimeSecretsValid = workflowRuntimeToken.length >= 32 && controlPlaneToken.length >= 32 &&
+                  workflowRuntimeToken !== controlPlaneToken && /^[\x21-\x7e]+$/.test(workflowRuntimeToken) && /^[\x21-\x7e]+$/.test(controlPlaneToken);
                 const target = enabledCloudflareTargets[0];
                 const activationRequired = stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED";
                 const targetAllowsActivation = enabledCloudflareTargets.length === 1 &&
@@ -521,31 +524,58 @@ export default function AdminDeploymentTargets() {
                 const configurationVerified = config?.status === "STORED" &&
                   Boolean(config.descriptor.nativeResources?.privateDatabase);
                 const activationBlocker = stagingDeployPreflight.data?.reason;
-                return <VStack gap={1}>
+                return <VStack gap={2}>
+                  <h4>{text("1. Prepare Staging", "1. เตรียม Staging")}</h4>
                   <p>{text(
-                    "Staging configuration recovery is separate from the live Worker probe. A failed or unavailable /readyz response does not prevent this panel from checking the authorized target and stored configuration. Activation only binds the minimum queue profile; it does not deploy code or change production traffic.",
-                    "การกู้คืน config ของ Staging แยกจากการตรวจ Worker ที่กำลังทำงาน หาก /readyz ล้มเหลวหรือเข้าไม่ถึง แผงนี้ยังตรวจ target ที่ได้รับอนุญาตและ config ที่บันทึกไว้ได้ การ activate จะผูกเฉพาะ queue profile ขั้นต่ำ ไม่ได้ deploy code หรือเปลี่ยน production traffic",
+                    "Prepare the internal connection for this Staging target. After saving, continue with “Authorize and deploy to staging” below. The live Worker readiness updates after deployment.",
+                    "เตรียมการเชื่อมต่อภายในสำหรับ Staging นี้ เมื่อบันทึกสำเร็จ ให้กด “อนุมัติและ deploy ไป staging” ด้านล่าง สถานะ Worker ที่กำลังทำงานจะอัปเดตหลัง deploy",
                   )}</p>
                   {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
                     <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
                   {stagingOriginConfiguration.data?.status === "EXPIRED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_EXPIRED</code> · {text("Replace the expired immutable configuration through the authorized origin-configuration workflow.", "ให้บันทึก immutable configuration ชุดใหม่ผ่านขั้นตอน origin-configuration ที่ได้รับอนุญาต")}</p> : null}
                   {stagingOriginConfiguration.data?.status === "REVOKED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_REVOKED</code> · {text("Save a new authorized immutable configuration before activation.", "บันทึก immutable configuration ชุดใหม่ที่ได้รับอนุญาตก่อน activate")}</p> : null}
                   {stagingOriginConfiguration.data && !stagingOriginConfiguration.data.descriptor.nativeResources?.privateDatabase ? <p role="alert"><code>STAGING_PRIVATE_DATABASE_BINDING_REQUIRED</code> · {text("The stored configuration has no verified private database receipt. Complete the authorized database binding workflow before activation.", "config ไม่มี receipt ของ private database ที่ตรวจสอบแล้ว ให้ทำขั้นตอนผูก database ที่ได้รับอนุญาตก่อน activate")}</p> : null}
-                  {secretsMissing ? <VStack gap={1}>
-                    <p>{text("This stored profile is missing runtime credentials. Enter both values once; the server stores them encrypted and never returns them.", "config เดิมยังไม่มี runtime credentials กรุณากรอกทั้งสองค่า ระบบจะเก็บแบบเข้ารหัสและไม่ส่งค่ากลับมาอีก")}</p>
-                    <Label htmlFor="staging-workflow-runtime-token">{text("Staging workflow runtime token", "Staging workflow runtime token")}</Label>
-                    <Input id="staging-workflow-runtime-token" type="password" autoComplete="new-password" value={workflowRuntimeToken} onChange={event => setWorkflowRuntimeToken(event.target.value)} />
-                    <Label htmlFor="staging-control-plane-token">{text("Staging control-plane token", "Staging control-plane token")}</Label>
-                    <Input id="staging-control-plane-token" type="password" autoComplete="new-password" value={controlPlaneToken} onChange={event => setControlPlaneToken(event.target.value)} />
-                  </VStack> : null}
+                  {secretsMissing ? <VStack gap={2}>
+                    <p>{text(
+                      "You do not need to find or copy any tokens. The server generates two separate, secure internal secrets for Staging and stores them encrypted when you click the button below.",
+                      "ไม่ต้องค้นหาหรือคัดลอก token ระบบจะสร้าง secret ภายในสองค่าที่ปลอดภัยและแยกกันสำหรับ Staging พร้อมเก็บแบบเข้ารหัสเมื่อกดปุ่มด้านล่าง",
+                    )}</p>
+                    <details>
+                      <summary>{text("Advanced: use existing internal secrets", "ขั้นสูง: ใช้ secret ภายในที่มีอยู่แล้ว")}</summary>
+                      <VStack gap={2}>
+                        <p id="staging-secrets-help">{text(
+                          "Optional: enter two different secrets of at least 32 characters, without spaces. These secure internal runtime requests and job-control requests; they are separate from Cloudflare API tokens and R2 access keys. Leave both fields empty for automatic setup.",
+                          "กรอกเฉพาะเมื่อต้องใช้ secret เดิม: ต้องเป็นคนละค่า ยาวอย่างน้อย 32 ตัวอักษรและไม่มีช่องว่าง ใช้ยืนยันคำขอภายในของ runtime และระบบควบคุมงาน แยกจาก Cloudflare API token และ R2 access key หากต้องการให้ระบบสร้างให้ ให้เว้นว่างทั้งสองช่อง",
+                        )}</p>
+                        <Label htmlFor="staging-workflow-runtime-token">{text("Staging workflow runtime token", "Runtime secret สำหรับ Staging")}</Label>
+                        <Input id="staging-workflow-runtime-token" type="password" autoComplete="new-password" maxLength={4096} aria-describedby="staging-secrets-help" value={workflowRuntimeToken} onChange={event => setWorkflowRuntimeToken(event.target.value)} />
+                        <Label htmlFor="staging-control-plane-token">{text("Staging control-plane token", "Control-plane secret สำหรับ Staging")}</Label>
+                        <Input id="staging-control-plane-token" type="password" autoComplete="new-password" maxLength={4096} aria-describedby="staging-secrets-help" value={controlPlaneToken} onChange={event => setControlPlaneToken(event.target.value)} />
+                        {suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid ? <p role="alert">{text(
+                          "Enter two different secrets of at least 32 characters without spaces, or clear both fields to use automatic setup.",
+                          "กรอก secret ให้ครบสองค่า ต้องเป็นคนละค่า ยาวอย่างน้อย 32 ตัวอักษรและไม่มีช่องว่าง หรือล้างทั้งสองช่องเพื่อให้ระบบสร้างให้อัตโนมัติ",
+                        )}</p> : null}
+                        {suppliedRuntimeSecrets ? <Button type="button" variant="outline" onClick={() => { setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}>
+                          {text("Use automatic setup instead", "ให้ระบบตั้งค่าอัตโนมัติแทน")}
+                        </Button> : null}
+                      </VStack>
+                    </details>
+                  </VStack> : <p>{text(
+                    "The internal secrets are already saved securely. The server will reuse them without generating replacements.",
+                    "มี secret ภายในที่บันทึกไว้อย่างปลอดภัยแล้ว ระบบจะใช้ค่าเดิมโดยไม่สร้างใหม่",
+                  )}</p>}
                   {stagingOriginConfiguration.isError ? <p role="alert"><code>{activationBlocker && activationBlocker.startsWith("STAGING_") ? activationBlocker : "STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE"}</code> · {text("Stored configuration or its resource receipts could not be verified. Use the authorized origin-configuration repair path, then refresh this registry.", "ตรวจสอบ config หรือ resource receipt ที่บันทึกไว้ไม่สำเร็จ ให้ใช้ขั้นตอนซ่อม origin-configuration ที่ได้รับอนุญาต แล้วรีเฟรช registry")}</p> : null}
-                  <Button type="button" variant="outline" disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
+                  <Button type="button" disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
-                    (secretsMissing && (workflowRuntimeToken.length < 32 || controlPlaneToken.length < 32))}
+                    (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}
                     onClick={() => activateStagingProfile.mutate({ tenantId, projectId, environment: "staging", configurationRef: configRef,
-                      ...(secretsMissing ? { workflowRuntimeToken, controlPlaneToken } : {}) })}>
-                    {activateStagingProfile.isPending ? text("Saving staging profile…", "กำลังบันทึก staging profile…") : text("Enable minimum Staging Queue profile", "เปิด Staging Queue profile ขั้นต่ำ")}
+                      ...(secretsMissing && suppliedRuntimeSecrets ? { workflowRuntimeToken, controlPlaneToken } : {}) })}>
+                    {activateStagingProfile.isPending ? text("Preparing Staging…", "กำลังเตรียม Staging…") : secretsMissing
+                      ? suppliedRuntimeSecrets ? text("Use supplied secrets and prepare Staging", "ใช้ secret ที่ระบุและเตรียม Staging")
+                        : text("Generate secrets and prepare Staging", "สร้าง secret และเตรียม Staging อัตโนมัติ")
+                      : text("Prepare Staging with saved secrets", "เตรียม Staging ด้วย secret ที่บันทึกไว้")}
                   </Button>
+                  <p>{text("This step saves Staging settings only. Deployment and production traffic retain their separate approval steps.", "ขั้นตอนนี้บันทึกการตั้งค่า Staging เท่านั้น การ deploy และเปิด traffic production ยังใช้การอนุมัติแยกตามเดิม")}</p>
                   {!activationRequired && configurationVerified ? <p role="status">{text("The stored configuration is verified. The server preflight has not identified profile activation as the current blocker.", "ตรวจ config ที่บันทึกไว้แล้ว แต่ server preflight ยังไม่ได้ระบุว่าการ activate profile เป็น blocker ปัจจุบัน")}</p> : null}
                   {activateStagingProfile.error ? <p role="alert"><code>{activateStagingProfile.error.message}</code></p> : null}
                 </VStack>;
@@ -556,7 +586,7 @@ export default function AdminDeploymentTargets() {
             </VStack>;
           })() : null}
           <Divider />
-          <h3>{text("Deploy the latest verified staging artifact", "Deploy artifact ล่าสุดที่ตรวจสอบแล้วไป staging")}</h3>
+          <h3>{text("2. Authorize and deploy to Staging", "2. อนุมัติและ deploy ไป Staging")}</h3>
           {stagingDeployPreflight.isLoading ? <p role="status">{text("Checking published artifact and rollback baseline…", "กำลังตรวจ artifact และ rollback baseline…")}</p> : null}
           {stagingDeployPreflight.isError ? <p role="alert">{text("Staging deploy readiness could not be verified.", "ตรวจความพร้อม deploy staging ไม่สำเร็จ")}</p> : null}
           {stagingDeployPreflight.data ? <>
@@ -570,6 +600,9 @@ export default function AdminDeploymentTargets() {
               <Button type="button" disabled={stagingDeployMutation.isPending} onClick={() => stagingDeployMutation.mutate({ tenantId, projectId, environment: "staging" })}>
                 {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize and deploy to staging", "อนุมัติและ deploy ไป staging")}
               </Button>
+            </> : stagingDeployPreflight.data.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED" ? <>
+              <p role="status">{text("Complete the Staging setup above first. The deployment button becomes available after the settings are saved and verified.", "กดปุ่มเตรียม Staging ด้านบนก่อน เมื่อบันทึกและตรวจสอบการตั้งค่าผ่านแล้ว ปุ่มอนุมัติ deploy จะแสดงที่นี่")}</p>
+              <details><summary>{text("Technical details", "รายละเอียดทางเทคนิค")}</summary><code>{stagingDeployPreflight.data.reason}</code></details>
             </> : <p role="status">{stagingDeployPreflight.data.reason ?? text("Staging deploy is not ready.", "staging ยังไม่พร้อม deploy")}</p>}
           </> : null}
           {stagingDeployMutation.data ? <p role="status">{text("Staging deployment queued", "ส่งงาน deploy staging แล้ว")}: <code>{stagingDeployMutation.data.jobId}</code></p> : null}

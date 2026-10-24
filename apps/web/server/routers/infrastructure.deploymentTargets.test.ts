@@ -29,6 +29,7 @@ describe("infrastructure deployment target project selector", () => {
       const caller = infrastructureRouter.createCaller({ user } as any);
       await expect(caller.getCloudflareOriginConfiguration(reference)).rejects.toMatchObject({ code: "FORBIDDEN" });
       await expect(caller.revokeCloudflareOriginConfiguration(reference)).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(caller.activateCloudflareStagingQueueProfile(reference)).rejects.toMatchObject({ code: "FORBIDDEN" });
       await expect(caller.saveCloudflareOriginConfiguration({ ...identity,
         settings: { origin: "https://origin-staging.smartaihub.app", allowedPublicOrigins: ["https://staging.account.workers.dev"],
           accessApplicationId: "11111111-1111-4111-8111-111111111111", accessTeamName: "fixture-team", accessAudience: "fixture",

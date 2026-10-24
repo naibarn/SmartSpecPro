@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { nativeProvisionNamespace, nativeProvisionPlanDigest, nativeResourceNames } from "./cloudflareNativeProvisionContract";
 import { saveCloudflareOriginConfiguration, getCloudflareOriginConfiguration,
-  withCloudflareOriginConfiguration, withCloudflareOriginConfigurationForTransition, revokeCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
+  withCloudflareOriginConfiguration, withCloudflareOriginConfigurationForTransition, revokeCloudflareOriginConfiguration,
+  activateCloudflareStagingQueueProfile } from "./cloudflareOriginConfiguration";
 
 const identity = { tenantId: "origin-test", projectId: "origin-project", environment: "staging", provider: "cloudflare" };
 const settings = () => ({ origin: "https://origin-staging.smartaihub.app", allowedPublicOrigins: ["https://staging.account.workers.dev"],
@@ -12,6 +13,19 @@ const settings = () => ({ origin: "https://origin-staging.smartaihub.app", allow
 const secrets = { token: "fixture-origin-token-not-a-real-secret", clientId: "fixture-client-id.access", secret: "fixture-client-secret" };
 
 describe("origin configuration validation before storage", () => {
+  it("keeps automatic staging secrets outside production and invalid-actor scopes", async () => {
+    const db = { transaction: vi.fn() };
+    for (const input of [
+      { identity: { ...identity, environment: "production" }, actorUserId: 1 },
+      { identity, actorUserId: 0 },
+    ]) {
+      await expect(activateCloudflareStagingQueueProfile(db as never, {
+        ...input, configurationRef: `cf-origin:${"a".repeat(64)}`,
+      })).rejects.toThrow("DENIED");
+    }
+    expect(db.transaction).not.toHaveBeenCalled();
+  });
+
   it.each([
     { origin: "https://localhost" }, { origin: "https://origin-staging.smartaihub.app/path" },
     { allowedPublicOrigins: ["https://*.smartaihub.app"] },
@@ -140,6 +154,41 @@ const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";
         serviceToken: { id: privateDatabase.serviceTokenId, clientId: "disposable-client-id", secret: "disposable-client-secret", expiresAt: privatePlan.configurationExpiresAt } })) });
     const privateSaved = await saveCloudflareOriginConfiguration(db, privateInput);
     await expect(getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef })).resolves.toMatchObject({ status: "STORED" });
+    await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: privateSaved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
+    const activation = { identity, configurationRef: privateSaved.configurationRef, actorUserId };
+    await expect(activateCloudflareStagingQueueProfile(db, { ...activation, workflowRuntimeToken: "w".repeat(64) }))
+      .rejects.toThrow("STAGING_WORKFLOW_RUNTIME_SECRETS_REQUIRED");
+    const activated = await activateCloudflareStagingQueueProfile(db, activation);
+    expect(activated.status).toBe("STORED_AND_BOUND");
+    expect(activated.deploymentAuthorized).toBe(false);
+    const generated = await withCloudflareOriginConfiguration(db, { identity, configurationRef: activated.configurationRef,
+      configurationDigest: activated.configurationDigest }, async value => value.secrets);
+    expect(generated.workflowRuntimeToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(generated.controlPlaneToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(generated.workflowRuntimeToken).not.toBe(generated.controlPlaneToken);
+    const [encryptedActivation] = await db.select().from(schema.systemSettings).where(eq(schema.systemSettings.key, activated.configurationRef));
+    expect(encryptedActivation.isSensitive).toBe(true);
+    expect(encryptedActivation.valueJson).toBeNull();
+    for (const token of [generated.workflowRuntimeToken!, generated.controlPlaneToken!]) {
+      expect(encryptedActivation.value).not.toContain(token);
+      expect(JSON.stringify(activated)).not.toContain(token);
+    }
+    const original = await getCloudflareOriginConfiguration(db, { identity, configurationRef: privateSaved.configurationRef });
+    expect(original.workflowRuntimeTokenConfigured).toBe(false);
+    expect(original.controlPlaneTokenConfigured).toBe(false);
+    const repeated = await activateCloudflareStagingQueueProfile(db, { ...activation, configurationRef: activated.configurationRef });
+    expect(repeated.status).toBe("ALREADY_CONFIGURED");
+    expect(repeated.configurationRef).toBe(activated.configurationRef);
+    await expect(activateCloudflareStagingQueueProfile(db, { ...activation, configurationRef: activated.configurationRef,
+      workflowRuntimeToken: "w".repeat(64), controlPlaneToken: "c".repeat(64) }))
+      .rejects.toThrow("STAGING_WORKFLOW_RUNTIME_SECRETS_ALREADY_CONFIGURED");
+    const customSaved = await saveCloudflareOriginConfiguration(db, privateInput);
+    await db.update(schema.providerDeploymentTargets).set({ runtimePolicy: customSaved.configurationRef }).where(eq(schema.providerDeploymentTargets.id, targetRowId));
+    const custom = await activateCloudflareStagingQueueProfile(db, { ...activation, configurationRef: customSaved.configurationRef,
+      workflowRuntimeToken: "w".repeat(64), controlPlaneToken: "c".repeat(64) });
+    await expect(withCloudflareOriginConfiguration(db, { identity, configurationRef: custom.configurationRef,
+      configurationDigest: custom.configurationDigest }, async value => ({ runtime: value.secrets.workflowRuntimeToken, control: value.secrets.controlPlaneToken })))
+      .resolves.toEqual({ runtime: "w".repeat(64), control: "c".repeat(64) });
     await expect(saveCloudflareOriginConfiguration(db, { ...privateInput,
       settings: { ...privateInput.settings, runnerReleaseCatalog: "hyperdrive" } })).rejects.toThrow("DENIED");
     const publicPlan = { ...privatePlan, publicRunnerCatalogSourceJobId: privateDatabase.provisionJobId };

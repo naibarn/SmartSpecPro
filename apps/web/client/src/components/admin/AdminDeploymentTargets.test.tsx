@@ -268,7 +268,7 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
 
     expect(await screen.findByText("STAGING_READINESS_PROBE_UNAVAILABLE")).toBeInTheDocument();
-    const activate = screen.getByRole("button", { name: "Enable minimum Staging Queue profile" });
+    const activate = screen.getByRole("button", { name: "Prepare Staging with saved secrets" });
     expect(activate).toBeEnabled();
     await user.click(activate);
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith({
@@ -280,7 +280,7 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
   });
 
-  it("requires missing workflow secrets and never submits until both are supplied", async () => {
+  it("offers automatic internal secret setup without asking the owner to supply tokens", async () => {
     const user = userEvent.setup();
     mocks.targets = [stagingActivationTarget];
     mocks.stagingRuntime = { status: "UNAVAILABLE", checkedAt: "2026-10-22T00:00:00.000Z", missing: [], reason: "STAGING_READINESS_PROBE_UNAVAILABLE" };
@@ -295,17 +295,35 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
 
-    const activate = screen.getByRole("button", { name: "Enable minimum Staging Queue profile" });
-    expect(activate).toBeDisabled();
-    await user.type(screen.getByLabelText("Staging workflow runtime token"), "w".repeat(32));
-    expect(activate).toBeDisabled();
-    await user.type(screen.getByLabelText("Staging control-plane token"), "c".repeat(32));
+    const activate = screen.getByRole("button", { name: "Generate secrets and prepare Staging" });
     expect(activate).toBeEnabled();
+    expect(screen.getByText(/You do not need to find or copy any tokens/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Staging workflow runtime token")).not.toBeVisible();
     await user.click(activate);
+    expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging",
+      configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
+    expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
+
+    mocks.activateStagingProfile.mockClear();
+    await user.click(screen.getByText("Advanced: use existing internal secrets"));
+    await user.type(screen.getByLabelText("Staging workflow runtime token"), "w".repeat(32));
+    expect(screen.getByRole("button", { name: "Use supplied secrets and prepare Staging" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(/two different secrets/);
+    await user.type(screen.getByLabelText("Staging control-plane token"), "w".repeat(32));
+    expect(screen.getByRole("button", { name: "Use supplied secrets and prepare Staging" })).toBeDisabled();
+    await user.clear(screen.getByLabelText("Staging control-plane token"));
+    await user.type(screen.getByLabelText("Staging control-plane token"), "c".repeat(32));
+    const manual = screen.getByRole("button", { name: "Use supplied secrets and prepare Staging" });
+    expect(manual).toBeEnabled();
+    await user.click(manual);
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith(expect.objectContaining({
       workflowRuntimeToken: "w".repeat(32),
       controlPlaneToken: "c".repeat(32),
     }));
+    await user.click(screen.getByRole("button", { name: "Use automatic setup instead" }));
+    expect(screen.getByRole("button", { name: "Generate secrets and prepare Staging" })).toBeEnabled();
+    expect(screen.getByLabelText("Staging workflow runtime token")).toHaveValue("");
+    expect(screen.getByLabelText("Staging control-plane token")).toHaveValue("");
   });
 
   it("does not activate expired configuration or configuration without a verified private database binding", async () => {
@@ -323,7 +341,7 @@ describe("AdminDeploymentTargets", () => {
     const { rerender } = render(<AdminDeploymentTargets />);
     await chooseScope(user);
     expect(await screen.findByText("STAGING_ORIGIN_CONFIGURATION_EXPIRED")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Enable minimum Staging Queue profile" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
 
     mocks.originConfiguration = {
       status: "STORED",
@@ -334,13 +352,13 @@ describe("AdminDeploymentTargets", () => {
     };
     rerender(<AdminDeploymentTargets />);
     expect(await screen.findByText("STAGING_PRIVATE_DATABASE_BINDING_REQUIRED")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Enable minimum Staging Queue profile" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
 
     mocks.originConfigurationError = true;
     mocks.stagingPreflight = { ready: false, reason: "STAGING_PRIVATE_DATABASE_RECEIPT_INVALID", artifact: null, baseline: null };
     rerender(<AdminDeploymentTargets />);
     expect(screen.getAllByText("STAGING_PRIVATE_DATABASE_RECEIPT_INVALID").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Enable minimum Staging Queue profile" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
   });
 
@@ -359,7 +377,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.activationSucceeds = true;
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
-    await user.click(screen.getByRole("button", { name: "Enable minimum Staging Queue profile" }));
+    await user.click(screen.getByRole("button", { name: "Prepare Staging with saved secrets" }));
 
     await waitFor(() => expect(mocks.fetchTargets).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging" }));
     expect(mocks.fetchOriginConfiguration).toHaveBeenCalledWith({
@@ -385,7 +403,7 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
 
-    await user.click(screen.getByRole("button", { name: "Enable minimum Staging Queue profile" }));
+    await user.click(screen.getByRole("button", { name: "Prepare Staging with saved secrets" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("CLOUDFLARE_STAGING_ACTIVE_TENANT_OWNER_REQUIRED");
     expect(mocks.activateStagingProfile).toHaveBeenCalledTimes(1);
