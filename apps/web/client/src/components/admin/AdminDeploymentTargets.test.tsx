@@ -77,9 +77,15 @@ vi.mock("@/lib/trpc", () => ({
         productionDatabaseProvisioning: { checks: {
           dns: { httpStatus: 403, readable: false }, mtlsCertificates: { httpStatus: 403, readable: false },
           accessApplications: { httpStatus: 200, readable: true }, serviceTokens: { httpStatus: 200, readable: true },
-          hyperdrive: { httpStatus: 200, readable: true },
-        }, requiredWritePermissions: ["Zone → DNS → Write", "Account → SSL and Certificates → Write",
-          "Account → Access: Apps and Policies → Write", "Account → Access: Service Tokens → Write", "Account → Hyperdrive → Write"] },
+          hyperdrive: { httpStatus: 200, readable: true }, tunnel: { httpStatus: 403, readable: false },
+          containers: { httpStatus: 200, readable: true },
+        }, permissionPacket: [
+          { scope: "Zone", permission: "DNS Write", operations: ["POST /zones/{zone_id}/dns_records"] },
+          { scope: "Account", permission: "Access: Apps and Policies Edit", operations: ["POST /accounts/{account_id}/access/apps"] },
+          { scope: "Account", permission: "Hyperdrive Edit", operations: ["POST /accounts/{account_id}/hyperdrive/configs"] },
+          { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes"] },
+        ],
+        conditionalPermissions: [{ scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if Cloudflare-managed Tunnel configuration is used" }] },
         queueInventoryComplete: true, queues: [...mocks.productionQueues, { name: "smartspec-staging-project-jobs", environment: "staging" }],
         hyperdriveInventoryComplete: true, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
@@ -344,7 +350,7 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute(
       "href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/",
     );
-    expect(screen.getByText(/Workers Scripts Write, Queues Write, Hyperdrive Write/)).toBeInTheDocument();
+    expect(screen.getByText(/Use the exact account\/zone scopes in the consolidated Production permission packet below/)).toBeInTheDocument();
   });
 
   it("offers a clearly bounded one-time bootstrap when no Staging rollback deployment exists", async () => {
@@ -636,7 +642,7 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.queryByRole("button", { name: /Production Queue/ })).not.toBeInTheDocument();
   });
 
-  it("shows exact missing Production database read scopes and required provisioning write scopes", async () => {
+  it("shows exact missing Production database read scopes and consolidated provisioning permissions", async () => {
     const user = userEvent.setup();
     mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
       workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
@@ -645,10 +651,11 @@ describe("AdminDeploymentTargets", () => {
 
     expect(await screen.findByText(/Production PostgreSQL connection setup/i)).toBeInTheDocument();
     expect(screen.getByText(/Zone → DNS → Read/)).toBeInTheDocument();
-    expect(screen.getByText(/Account → SSL and Certificates → Read/)).toBeInTheDocument();
-    expect(screen.getByText(/Zone → DNS → Write/)).toBeInTheDocument();
-    expect(screen.getByText(/Account → Access: Apps and Policies → Write/)).toBeInTheDocument();
-    expect(screen.getByText(/Account → Hyperdrive → Write/)).toBeInTheDocument();
+    expect(screen.getByText(/Account: SSL and Certificates Read/)).toBeInTheDocument();
+    expect(screen.getByText(/DNS Write/)).toBeInTheDocument();
+    expect(screen.getByText(/Access: Apps and Policies Edit/)).toBeInTheDocument();
+    expect(screen.getByText(/Hyperdrive Edit/)).toBeInTheDocument();
+    expect(screen.getByText(/Workers Routes Edit/)).toBeInTheDocument();
   });
 
   it("recovers and follows the latest canonical Production Queue job after a page reload", async () => {

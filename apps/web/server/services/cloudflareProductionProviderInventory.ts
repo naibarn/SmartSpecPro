@@ -71,7 +71,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
     const zoneId = typeof zone?.id === "string" ? zone.id : undefined;
-    const [routes, queueDetails, hyperdriveDetails, zoneDns, mtlsCertificates, accessApps, serviceTokens] = await Promise.all([
+    const [routes, queueDetails, hyperdriveDetails, zoneDns, mtlsCertificates, accessApps, serviceTokens, tunnels, containers] = await Promise.all([
       zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
       Array.isArray(queues.result) ? queues.result as Array<{ queue_name?: unknown }> : [],
       Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{ name?: unknown }> : [],
@@ -79,6 +79,8 @@ export async function probeCloudflareProductionProviderInventory(input: {
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/mtls_certificates?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/apps?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/service_tokens?per_page=100`, fetchImpl),
+      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/cfd_tunnel?is_deleted=false&per_page=100`, fetchImpl),
+      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/containers/applications?per_page=100`, fetchImpl),
     ]);
     const routeRows = Array.isArray(routes?.result) ? routes.result as Array<{ id?: unknown; pattern?: unknown; script?: unknown }> : [];
     const matchingRoutes = routeRows.filter(row => row.pattern === "smartaihub.app/*");
@@ -129,16 +131,39 @@ export async function probeCloudflareProductionProviderInventory(input: {
           accessApplications: { httpStatus: accessApps.status, readable: accessApps.complete },
           serviceTokens: { httpStatus: serviceTokens.status, readable: serviceTokens.complete },
           hyperdrive: { httpStatus: hyperdrive.status, readable: hyperdrive.complete },
+          tunnel: { httpStatus: tunnels.status, readable: tunnels.complete },
+          containers: { httpStatus: containers.status, readable: containers.complete },
         },
-        // These are the exact Cloudflare permission groups used by the
-        // production-only database provisioning flow. Read checks above do
-        // not claim that write access has been tested.
-        requiredWritePermissions: [
-          "Zone → DNS → Write",
-          "Account → SSL and Certificates → Write",
-          "Account → Access: Apps and Policies → Write",
-          "Account → Access: Service Tokens → Write",
-          "Account → Hyperdrive → Write",
+        // One consolidated packet from the concrete production APIs used by
+        // inventory, DB provisioning, Worker version publishing and cutover.
+        // Read probes prove only read access; edit scopes are required only for
+        // a resource the corresponding step must create or change.
+        permissionPacket: [
+          { scope: "Account", permission: "Workers Scripts Read", operations: ["GET /accounts/{account_id}/workers/scripts/{script_name}/deployments", "GET /accounts/{account_id}/workers/scripts/{script_name}/versions/{version_id}"] },
+          { scope: "Account", permission: "Workers Scripts Edit", operations: ["upload immutable Worker version", "create bounded version deployment / rollback"] },
+          { scope: "Account", permission: "Queues Read", operations: ["GET /accounts/{account_id}/queues"] },
+          { scope: "Account", permission: "Hyperdrive Read", operations: ["GET /accounts/{account_id}/hyperdrive/configs", "GET /accounts/{account_id}/hyperdrive/configs/{hyperdrive_id}"] },
+          { scope: "Account", permission: "Hyperdrive Edit", operations: ["POST /accounts/{account_id}/hyperdrive/configs for the dedicated Production origin"] },
+          { scope: "Account", permission: "Account: SSL and Certificates Read", operations: ["GET /accounts/{account_id}/mtls_certificates", "GET /accounts/{account_id}/mtls_certificates/{certificate_id}"] },
+          { scope: "Account", permission: "Account: SSL and Certificates Edit", operations: ["POST /accounts/{account_id}/mtls_certificates for the dedicated PostgreSQL CA"] },
+          { scope: "Account", permission: "Access: Apps and Policies Read", operations: ["GET /accounts/{account_id}/access/apps", "GET /accounts/{account_id}/access/apps/{app_id}/policies"] },
+          { scope: "Account", permission: "Access: Apps and Policies Edit", operations: ["POST /accounts/{account_id}/access/apps", "POST /accounts/{account_id}/access/apps/{app_id}/policies"] },
+          { scope: "Account", permission: "Access: Service Tokens Read", operations: ["GET /accounts/{account_id}/access/service_tokens"] },
+          { scope: "Account", permission: "Access: Service Tokens Edit", operations: ["POST /accounts/{account_id}/access/service_tokens"] },
+          { scope: "Account", permission: "Cloudflare Tunnel Read", operations: ["GET /accounts/{account_id}/cfd_tunnel?is_deleted=false"] },
+          { scope: "Account", permission: "Containers Read", operations: ["GET /accounts/{account_id}/containers/applications"] },
+          { scope: "Account", permission: "Containers Edit", operations: ["POST/PATCH /accounts/{account_id}/containers/applications for selected Node/Python production apps"] },
+          { scope: "Zone", permission: "Zone Read", operations: ["GET /zones?name=smartaihub.app"] },
+          { scope: "Zone", permission: "DNS Read", operations: ["GET /zones/{zone_id}/dns_records?name=db-prod.smartaihub.app"] },
+          { scope: "Zone", permission: "DNS Write", operations: ["POST /zones/{zone_id}/dns_records only for the dedicated private Tunnel hostname"] },
+          { scope: "Zone", permission: "Workers Routes Read", operations: ["GET /zones/{zone_id}/workers/routes"] },
+          { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes for the exact smartaihub.app/* route during the authorized canary"] },
+        ],
+        conditionalPermissions: [
+          { scope: "Account", permission: "Queues Edit", condition: "only if a fresh complete inventory proves the already-provisioned Production Queue or DLQ is absent" },
+          { scope: "Account", permission: "Workers R2 Storage Read/Edit", condition: "only if production provisions or changes an R2 bucket; existing object access uses the separately configured R2 S3 credentials" },
+          { scope: "Account", permission: "Connectivity Directory Read/Edit", condition: "only if the chosen PostgreSQL path uses Workers VPC; the current implementation uses the retained Cloudflare Tunnel path" },
+          { scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if Tunnel ingress is changed through the Cloudflare-managed API; the retained tunnel is locally configured" },
         ],
       },
       originConfiguration,

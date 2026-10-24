@@ -300,8 +300,8 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
             })}
           </VStack> : null}
           <p>{text(
-            "For provisioning, the usual write permissions are Workers Scripts Write, Queues Write, Hyperdrive Write, and Workers Containers Write. DNS Write and Workers Routes Write are needed only if the approved cutover changes DNS or routes. This check does not test write access; existing resources may avoid needing those write scopes.",
-            "สำหรับสร้าง resource โดยทั่วไปใช้ Workers Scripts Write, Queues Write, Hyperdrive Write และ Workers Containers Write ส่วน DNS Write และ Workers Routes Write ต้องใช้เฉพาะเมื่อ cutover ที่อนุมัติเปลี่ยน DNS หรือ routes การตรวจนี้ไม่ทดสอบสิทธิ์เขียน และถ้ามี resource อยู่แล้วอาจไม่ต้องเพิ่ม write scope เหล่านั้น",
+            "Use the exact account/zone scopes in the consolidated Production permission packet below. Cloudflare’s token editor labels write access as Edit for account products, while DNS uses Write. Read checks do not prove edit access; existing resources may avoid a create scope.",
+            "ใช้ scope ของ account/zone ตามรายการ permission รวมด้านล่าง ใน Cloudflare token editor สิทธิ์เขียนของ product ระดับ account ใช้ชื่อ Edit ส่วน DNS ใช้ Write ผลตรวจ Read ไม่ยืนยันสิทธิ์แก้ไข และ resource ที่มีอยู่แล้วอาจไม่ต้องใช้ scope สำหรับสร้าง",
           )}</p>
         </VStack> : null}
       </VStack> : null}
@@ -689,6 +689,8 @@ export default function AdminDeploymentTargets() {
                 mtlsCertificates: { en: "Origin CA certificate inventory", th: "รายการใบรับรอง CA ของฐานข้อมูล", permission: "Account → SSL and Certificates → Read" },
                 accessApplications: { en: "Access application inventory", th: "รายการ Access application", permission: "Account → Access: Apps and Policies → Read" },
                 accessServiceTokens: { en: "Access service-token inventory", th: "รายการ Access service token", permission: "Account → Access: Service Tokens → Read" },
+                tunnels: { en: "Cloudflare Tunnel inventory", th: "รายการ Cloudflare Tunnel", permission: "Account → Cloudflare Tunnel → Read" },
+                containers: { en: "Cloudflare Containers inventory", th: "รายการ Cloudflare Containers", permission: "Account → Containers → Read" },
               };
               return <VStack gap={1} role="alert">
               <p>{text(
@@ -778,17 +780,28 @@ export default function AdminDeploymentTargets() {
                   {Object.entries(inventory.productionDatabaseProvisioning.checks).map(([key, check]) => {
                     const info = ({
                       dns: { en: "Production database DNS", th: "DNS ฐานข้อมูล Production", read: "Zone → DNS → Read" },
-                      mtlsCertificates: { en: "Origin CA certificate", th: "ใบรับรอง CA ของฐานข้อมูล", read: "Account → SSL and Certificates → Read" },
+                      mtlsCertificates: { en: "Origin CA certificate", th: "ใบรับรอง CA ของฐานข้อมูล", read: "Account: SSL and Certificates Read" },
                       accessApplications: { en: "Access policy", th: "Access policy", read: "Account → Access: Apps and Policies → Read" },
                       serviceTokens: { en: "Access service token", th: "Access service token", read: "Account → Access: Service Tokens → Read" },
                       hyperdrive: { en: "Hyperdrive", th: "Hyperdrive", read: "Account → Hyperdrive → Read" },
-                    } as const)[key as "dns" | "mtlsCertificates" | "accessApplications" | "serviceTokens" | "hyperdrive"];
+                      tunnel: { en: "Cloudflare Tunnel", th: "Cloudflare Tunnel", read: "Account → Cloudflare Tunnel → Read" },
+                      containers: { en: "Cloudflare Containers", th: "Cloudflare Containers", read: "Account → Containers → Read" },
+                    } as const)[key as "dns" | "mtlsCertificates" | "accessApplications" | "serviceTokens" | "hyperdrive" | "tunnel" | "containers"];
                     return <li key={key}><strong>{text(info.en, info.th)}</strong>: HTTP {check.httpStatus ?? text("not checked", "ยังไม่ได้ตรวจ")} · {check.readable ? text("readable", "อ่านได้") : text("read denied/incomplete", "สิทธิ์อ่านถูกปฏิเสธหรือตรวจไม่ครบ")} {!check.readable ? <>· {text("read scope", "สิทธิ์อ่าน")}: <code>{info.read}</code></> : null}</li>;
                   })}
                 </VStack>
-                <p>{text("To let the existing one-step Production database setup create only missing resources, the saved Production API token needs these account/zone write scopes:", "เพื่อให้ขั้นตอนเตรียมฐานข้อมูล Production สร้างเฉพาะ resource ที่ยังขาด token ที่บันทึกสำหรับ Production ต้องมีสิทธิ์เขียนตาม account/zone ดังนี้:")}</p>
-                <ul>{inventory.productionDatabaseProvisioning.requiredWritePermissions.map(permission => <li key={permission}><code>{permission}</code></li>)}</ul>
-                <p>{text("These write scopes are not tested by this read-only inventory. The next setup action will report the exact Cloudflare API error if any scope is still missing.", "inventory แบบอ่านอย่างเดียวนี้ไม่ได้ทดสอบสิทธิ์เขียน เมื่อเริ่มเตรียมระบบ หากยังขาด scope ระบบจะแสดง Cloudflare API error ที่ตรงกับขั้นตอน")}</p>
+                <p>{text("Complete permission packet for the remaining Production setup. Select the listed account or smartaihub.app zone scope in Cloudflare API Tokens. Edit scopes apply only to the named create/change operation; verified resources are reused.", "รายการ permission รวมสำหรับขั้นตอน Production ที่เหลือ ให้เลือก scope ตาม account หรือ zone smartaihub.app ใน Cloudflare API Tokens สิทธิ์ Edit ใช้เฉพาะการสร้าง/แก้ไขตาม operation ที่ระบุ และระบบจะใช้ resource ที่ตรวจผ่านแล้วซ้ำ")}</p>
+                <VStack as="ul" gap={1}>{inventory.productionDatabaseProvisioning.permissionPacket.map(item => <li key={`${item.scope}:${item.permission}`}>
+                  <strong>{item.scope} · <code>{item.permission}</code></strong>
+                  <details><summary>{text("Exact API operations", "API operation ที่ใช้จริง")}</summary>
+                    <VStack as="ul" gap={1}>{item.operations.map(operation => <li key={operation}><code>{operation}</code></li>)}</VStack>
+                  </details>
+                </li>)}</VStack>
+                <p>{text("Conditional only; do not add unless that exact transport/resource is selected:", "เพิ่มเฉพาะกรณีที่เลือกใช้ transport/resource ตามเงื่อนไขนี้:")}</p>
+                <VStack as="ul" gap={1}>{inventory.productionDatabaseProvisioning.conditionalPermissions.map(item => <li key={`${item.scope}:${item.permission}`}>
+                  <strong>{item.scope} · <code>{item.permission}</code></strong>: {item.condition}
+                </li>)}</VStack>
+                <p>{text("Read probes do not prove Edit access. Queue/DLQ are already verified, so no Queue Edit is needed unless inventory later proves one absent. Production Route Edit is only used by the independently authorized canary/cutover step.", "ผลตรวจ Read ไม่ยืนยันสิทธิ์ Edit โดย Queue/DLQ ผ่านการตรวจแล้ว จึงไม่ต้องใช้ Queue Edit เว้นแต่ inventory ภายหลังพบว่าขาด ส่วน Production Route Edit ใช้เฉพาะช่วง canary/cutover ที่มี authorization แยก")}</p>
               </VStack> : null}
               <p><strong>{text("Production Worker release baseline", "baseline release ของ Production Worker")}</strong>: {verifiedRollback
                 ? text("A version has the expected immutable release identity.", "พบ version ที่มี immutable release identity ตรงตามระบบ")

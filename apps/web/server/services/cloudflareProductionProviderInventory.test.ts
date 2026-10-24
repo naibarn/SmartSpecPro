@@ -35,6 +35,7 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
       if (url.pathname.endsWith("/dns_records")) return response([]);
       if (url.pathname.endsWith("/mtls_certificates") || url.pathname.endsWith("/access/apps") || url.pathname.endsWith("/access/service_tokens")) return response([]);
+      if (url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications")) return response([]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "deployment-a", versions: [{ version_id: versionId, percentage: 100 }] }] });
       if (url.pathname.endsWith(`/versions/${versionId}`)) return response({ annotations: {}, resources: { bindings: [{ name: "CLOUDFLARE_ACTIVATION" }], script_runtime: { containers: [] } } });
@@ -67,6 +68,7 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
       if (url.pathname.endsWith("/dns_records")) return response([]);
       if (url.pathname.endsWith("/mtls_certificates") || url.pathname.endsWith("/access/apps") || url.pathname.endsWith("/access/service_tokens")) return response([]);
+      if (url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
     });
@@ -111,7 +113,12 @@ describe("Cloudflare production provider inventory", () => {
     expect(result).toMatchObject({ status: "PARTIAL", queueInventoryComplete: false,
       accessChecks: { queues: { httpStatus: 403, complete: false }, hyperdrive: { httpStatus: 200, complete: true } },
       productionDatabaseProvisioning: { checks: { dns: { httpStatus: 403, readable: false }, mtlsCertificates: { httpStatus: 403, readable: false } },
-        requiredWritePermissions: expect.arrayContaining(["Zone → DNS → Write", "Account → Hyperdrive → Write"]) } });
+        permissionPacket: expect.arrayContaining([
+          expect.objectContaining({ scope: "Zone", permission: "DNS Write" }),
+          expect.objectContaining({ scope: "Account", permission: "Hyperdrive Edit" }),
+          expect.objectContaining({ scope: "Account", permission: "Containers Edit" }),
+          expect.objectContaining({ scope: "Zone", permission: "Workers Routes Edit" }),
+        ]) } });
     expect(JSON.stringify(result)).not.toContain("test-token");
   });
 
