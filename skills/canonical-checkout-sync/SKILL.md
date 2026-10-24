@@ -169,8 +169,10 @@ Collection uses the existing build/release and tuple lease locks. It retires
 integrated detached build sources idle for at least one hour, retaining two
 recent builds and all sources referenced by retained releases. Live process
 references, unknown/dirty content and non-build workspaces are preserved. Only
-recognized generated output is disposable; build receipts and fencing history
-remain. Task worktrees still use workspace authority retirement. Report any
+recognized generated output is disposable. Prepared artifact copies use the
+same one-hour rule, retain the two newest artifacts and all retained-release
+references, and serialize with artifact publication. Build/deployment receipts
+and fencing history remain. Task worktrees still use workspace authority retirement. Report any
 retained path and its reason; an expired lease alone is not deletion evidence.
 
 ## Boundaries

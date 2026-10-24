@@ -654,6 +654,68 @@ def _source_release_lock(path: Path):
         stream.close()
 
 
+def _collect_build_artifacts(repo: Path, policy: dict[str, Any], protected: set[str], *, apply: bool) -> dict[str, Any]:
+    """Collect reproducible prepared artifacts, preserving all release receipts."""
+    key = _hash(policy['repository_id'])[:20]
+    report: dict[str, Any] = {'artifact_eligible': [], 'artifact_removed': [], 'artifact_retained': []}
+    canonical = git(repo, 'rev-parse', f"{policy['remote']}/{policy['canonical_ref'].removeprefix('refs/heads/')}^{{commit}}")
+    for root in _workspace_roots(policy):
+        results = root / '.development-build-results' / key
+        store = results / 'artifacts'
+        if not store.is_dir() or store.is_symlink():
+            continue
+        with _source_release_lock(store / '.artifact-publish.lock'):
+            candidates = []
+            for directory in store.iterdir():
+                if directory.is_symlink() or not directory.is_dir() or os.path.ismount(directory):
+                    continue
+                try:
+                    manifest = json.loads((directory / 'release-manifest.json').read_text(encoding='utf-8'))
+                    revision = manifest['sourceSha']
+                    receipt_path = Path(manifest['canonicalBuildResult'])
+                    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                    if (manifest.get('schemaVersion') != 1 or manifest.get('releaseId') != directory.name
+                        or not re.fullmatch(r'smartspec-web-' + re.escape(revision) + r'-[0-9a-f]{12}', directory.name)
+                        or receipt_path.resolve().parent != results.resolve()
+                        or receipt.get('source_revision') != revision or receipt.get('status') != 'BUILD_PASSED'
+                        or manifest.get('frontendSourceSha') != revision or manifest.get('backendSourceSha') != revision
+                        or not re.fullmatch(r'sha256:[0-9a-f]{64}', manifest.get('releaseArtifactDigest', ''))):
+                        raise ValueError('artifact identity/receipt mismatch')
+                    candidates.append(((directory / 'release-manifest.json').stat().st_mtime, directory, revision))
+                except (OSError, ValueError, TypeError, KeyError):
+                    report['artifact_retained'].append({'path': str(directory), 'reason': 'UNKNOWN_ARTIFACT'})
+            recent = {item[1] for item in sorted(candidates, reverse=True)[:2]}
+            for last_use, directory, revision in candidates:
+                reason = None
+                if revision in protected:
+                    reason = 'SERVING_OR_RETAINED_SOURCE'
+                elif directory in recent or time.time() - last_use < 3600:
+                    reason = 'RECENT_ARTIFACT'
+                elif subprocess.run(['git', '-C', str(repo), 'merge-base', '--is-ancestor', revision, canonical], capture_output=True).returncode:
+                    reason = 'ARTIFACT_SOURCE_NOT_INTEGRATED'
+                elif _source_consumers(directory):
+                    reason = 'ARTIFACT_PROCESS_ACTIVE'
+                if reason:
+                    report['artifact_retained'].append({'path': str(directory), 'reason': reason})
+                    continue
+                report['artifact_eligible'].append(str(directory))
+                if apply:
+                    try:
+                        # Prepared artifacts freeze directory modes. Make only
+                        # this verified disposable tree writable, without
+                        # following symlinks or chmodding shared file inodes.
+                        for current, directories, _files in os.walk(directory, followlinks=False):
+                            if os.path.ismount(current):
+                                raise OSError('nested artifact mount preserved')
+                            os.chmod(current, Path(current).stat().st_mode | 0o700)
+                            directories[:] = [name for name in directories if not (Path(current) / name).is_symlink()]
+                        shutil.rmtree(directory)
+                        report['artifact_removed'].append(str(directory))
+                    except OSError as exc:
+                        report['artifact_retained'].append({'path': str(directory), 'reason': f'ARTIFACT_REMOVE_FAILED: {exc}'})
+    return report
+
+
 def collect_build_sources(
     repo: Path, policy_path: Path | None = None, *, apply: bool = False,
     min_idle_seconds: int = 3600, keep_recent: int = 2,
@@ -760,6 +822,12 @@ def collect_build_sources(
                             report['removed'].append(str(workspace))
             except (LifecycleError, OSError, ValueError) as exc:
                 report['retained'].append({'path': str(workspace), 'reason': str(exc)})
+        try:
+            report.update(_collect_build_artifacts(repo, policy, protected_revisions | {item[3]['source_revision'] for item in entries if item[1] in recent}, apply=apply))
+        except (LifecycleError, OSError) as exc:
+            report.update({'artifact_status': 'DEFERRED', 'artifact_error': str(exc)})
+            if apply:
+                report['status'] = 'PARTIAL'
         return report
 
 

@@ -115,6 +115,49 @@ class SourceRetentionTests(unittest.TestCase):
         lock.touch(); lock.chmod(0o444)
         self.assertEqual(self.collect(True)['removed'], [str(workspace)])
 
+    def test_frozen_artifacts_are_collected_without_removing_receipts_or_symlink_targets(self):
+        workspace, state, lease = self.old_source()
+        self.two_new_sources()
+        results = workspace.parents[1] / '.development-build-results' / workspace.parent.name
+        store = results / 'artifacts'
+        store.mkdir(parents=True)
+        outside = self.root / 'user-content'; outside.mkdir()
+        (outside / 'keep.txt').write_text('keep this')
+        artifacts = []
+        for number in range(3):
+            revision = lease['source_revision']
+            release_id = f"smartspec-web-{revision}-{number:012x}"
+            artifact = store / release_id; artifact.mkdir()
+            (artifact / 'public').mkdir()
+            (artifact / 'public/index.html').write_text('generated')
+            (artifact / 'external').symlink_to(outside, target_is_directory=True)
+            receipt = results / f"{revision}-{number}.json"
+            receipt.write_text(json.dumps({'status': 'BUILD_PASSED', 'source_revision': revision}))
+            manifest = artifact / 'release-manifest.json'
+            manifest.write_text(json.dumps({
+                'schemaVersion': 1, 'releaseId': release_id, 'sourceSha': revision,
+                'frontendSourceSha': revision, 'backendSourceSha': revision,
+                'canonicalBuildResult': str(receipt), 'releaseArtifactDigest': 'sha256:' + 'a' * 64,
+            }))
+            os.utime(manifest, (time.time() - (7200 if number == 0 else 10),) * 2)
+            (artifact / 'public').chmod(0o555); artifact.chmod(0o555)
+            artifacts.append(artifact)
+        unknown = store / 'unknown-user-copy'; unknown.mkdir()
+        (unknown / 'keep').write_text('unknown content')
+        release = self.root / 'releases/rollback-g1'; release.mkdir(parents=True)
+        (release / 'release-manifest.json').write_text(json.dumps({'source_revision': lease['source_revision']}))
+        self.assertEqual(self.collect()['artifact_eligible'], [])
+        (release / 'release-manifest.json').unlink()
+        with FileLock(store / '.artifact-publish.lock'):
+            deferred = self.collect()
+            self.assertEqual(deferred['artifact_status'], 'DEFERRED')
+        report = self.collect(apply=True)
+        self.assertEqual(report['artifact_removed'], [str(artifacts[0])])
+        self.assertTrue(all(path.exists() for path in artifacts[1:]))
+        self.assertEqual((outside / 'keep.txt').read_text(), 'keep this')
+        self.assertTrue((unknown / 'keep').exists())
+        self.assertTrue((results / f"{lease['source_revision']}-0.json").exists())
+
 
 if __name__ == '__main__':
     unittest.main()
