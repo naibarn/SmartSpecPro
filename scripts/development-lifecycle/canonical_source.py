@@ -352,15 +352,13 @@ def inspect_workspace_baseline(
         capture_output=True,
     ).returncode == 0
     on_canonical_branch = branch == canonical_branch
-    ready = (allow_dirty or not dirty_paths) and not in_progress and ancestor and not on_canonical_branch
+    ready = (allow_dirty or not dirty_paths) and not in_progress and ancestor
     if in_progress:
         next_action = "RESOLVE_OR_HANDOFF_GIT_OPERATION"
     elif not ancestor:
         next_action = "RECONCILE_WITH_FETCHED_CANONICAL_SHA"
-    elif on_canonical_branch:
-        next_action = "CREATE_ISOLATED_WORKTREE_FROM_FETCHED_CANONICAL_SHA"
     elif dirty_paths and not allow_dirty:
-        next_action = "PRESERVE_DIRTY_WORK_AND_PREPARE_FRESH_WORKTREE"
+        next_action = "RECONCILE_OWNED_WORK_IN_PRIMARY_CHECKOUT"
     else:
         next_action = "CONTINUE_ON_CURRENT_BASELINE"
     return {
@@ -599,6 +597,170 @@ def _sync_published_build_receipt(repo: Path, policy: dict[str, Any], result_pat
         if temporary is not None:
             os.unlink(temporary)
     return destination
+
+
+def _source_consumers(workspace: Path) -> list[int]:
+    """Check visible process references in addition to the authoritative leases."""
+    if not Path('/proc').is_dir():
+        raise LifecycleError('SOURCE_RETENTION_PROCESS_INSPECTION_UNAVAILABLE')
+    consumers = []
+    prefix = str(workspace) + os.sep
+    for proc in Path('/proc').glob('[0-9]*'):
+        references = []
+        for item in (proc / 'cwd', proc / 'exe'):
+            try:
+                references.append(os.readlink(item))
+            except OSError:
+                pass
+        try:
+            for item in (proc / 'fd').iterdir():
+                try:
+                    references.append(os.readlink(item))
+                except OSError:
+                    pass
+        except OSError:
+            pass  # Privileged login/system helpers hide their descriptors.
+        try:
+            command = (proc / 'cmdline').read_bytes().decode('utf-8', errors='replace')
+        except OSError:
+            command = ''
+        if any(item == str(workspace) or item.startswith(prefix) for item in references) or prefix in command:
+            consumers.append(int(proc.name))
+    return consumers
+
+
+def _generated_build_path(value: str) -> bool:
+    return bool(re.fullmatch(
+        r'(?:node_modules/|(?:apps|packages)/[^/]+/node_modules/|'
+        r'apps/web/(?:dist/|dist-prev-[0-9]+-[0-9]+/|\.build-atomic\.lock)|'
+        r'apps/cloudflare/(?:\.staging-artifact/|\.wrangler/tmp/)|'
+        r'packages/[^/]+/(?:dist/|tsconfig\.tsbuildinfo))', value
+    ))
+
+
+@contextlib.contextmanager
+def _source_release_lock(path: Path):
+    # Promotion creates this lock as root. flock can coordinate on an existing
+    # read-only descriptor without changing its owner or permissions.
+    import fcntl
+    stream = path.open('rb') if path.exists() else path.open('a+b')
+    try:
+        try:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise LifecycleError('RELEASE_IN_PROGRESS') from exc
+        yield
+    finally:
+        stream.close()
+
+
+def collect_build_sources(
+    repo: Path, policy_path: Path | None = None, *, apply: bool = False,
+    min_idle_seconds: int = 3600, keep_recent: int = 2,
+    release_root: Path = Path('/home/dev/production-releases'),
+    build_lock_held: bool = False,
+) -> dict[str, Any]:
+    """Retire only integrated, inactive, generated build sources; retain receipts.
+
+    Takes the builder/release locks and the exact tuple's lease locks. Unknown
+    workspaces, user content, serving/rollback releases and fresh artifacts stay.
+    No branch deletion, reset, forced worktree removal or global Git pruning.
+    """
+    if min_idle_seconds < 3600 or keep_recent < 2:
+        raise LifecycleError('SOURCE_RETENTION_MINIMUM: one hour and two recent builds')
+    repo = Path(git(repo, 'rev-parse', '--show-toplevel')).resolve()
+    policy = load_policy(repo, policy_path)
+    key = _hash(policy['repository_id'])[:20]
+    lease_dir = Path(policy['lease_root']) / key
+    lease_dir.mkdir(parents=True, exist_ok=True)
+    locks = contextlib.ExitStack()
+    with locks:
+        if not build_lock_held:
+            locks.enter_context(_nonblocking_file_lock(lease_dir / 'canonical-build.lock'))
+        locks.enter_context(_source_release_lock(lease_dir / 'production-release.lock'))
+        protected_revisions: set[str] = set()
+        # Release directories are independently materialized, but retain their
+        # source tuples too, including rollback and a concurrently prepared one.
+        if release_root.exists():
+            for directory in release_root.iterdir():
+                if directory.is_symlink() or not directory.is_dir():
+                    continue
+                manifest = directory / 'release-manifest.json'
+                if not manifest.exists():
+                    continue
+                try:
+                    release = json.loads(manifest.read_text(encoding='utf-8'))
+                    protected_revisions.add(str(release['source_revision']))
+                except (OSError, ValueError, KeyError) as exc:
+                    raise LifecycleError('SOURCE_RETENTION_RELEASE_MANIFEST_INVALID') from exc
+            for link in release_root.iterdir():
+                if link.is_symlink():
+                    for workspace in _registered_worktrees(repo):
+                        if _inside(link.resolve(), workspace):
+                            protected_revisions.add(workspace.name.split('-')[0])
+        entries = []
+        for state_path in lease_dir.glob('*-build.json'):
+            try:
+                lease = json.loads(state_path.read_text(encoding='utf-8'))
+                revision = lease['source_revision']
+                workspace = Path(lease['isolated_workspace'])
+                if (lease.get('repository_id') != policy['repository_id'] or lease.get('purpose') != 'build'
+                    or state_path.stem != f'{revision}-build' or not re.fullmatch(r'[0-9a-f]{40,64}', revision)
+                    or workspace.is_symlink() or workspace.resolve() not in {
+                        root / key / f'{revision}-build' for root in _workspace_roots(policy)
+                    } or not workspace.exists()):
+                    continue
+                last_use = max(float(lease.get('created_at', 0)), state_path.stat().st_mtime)
+                results = workspace.parents[1] / '.development-build-results' / key
+                for receipt_path in results.glob(f'{revision}-*.json'):
+                    receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                    if receipt.get('isolated_workspace') == str(workspace):
+                        last_use = max(last_use, float(receipt.get('completed_at', 0)), receipt_path.stat().st_mtime)
+                entries.append((last_use, workspace, state_path, lease))
+            except (OSError, ValueError, KeyError, TypeError):
+                continue  # Never infer ownership from corrupt/unknown metadata.
+        recent = {item[1] for item in sorted(entries, key=lambda item: item[0], reverse=True)[:keep_recent]}
+        canonical = git(repo, 'rev-parse', f"{policy['remote']}/{policy['canonical_ref'].removeprefix('refs/heads/')}^{{commit}}")
+        report: dict[str, Any] = {'status': 'APPLIED' if apply else 'DRY_RUN', 'min_idle_seconds': min_idle_seconds,
+                                 'keep_recent': keep_recent, 'eligible': [], 'removed': [], 'retained': []}
+        for last_use, workspace, state_path, observed in entries:
+            reason = None
+            if workspace in recent:
+                reason = 'RECENT_BUILD'
+            elif observed['source_revision'] in protected_revisions:
+                reason = 'SERVING_OR_RETAINED_RELEASE'
+            elif time.time() - last_use < min_idle_seconds:
+                reason = 'RECENT_ACTIVITY'
+            if reason:
+                report['retained'].append({'path': str(workspace), 'reason': reason})
+                continue
+            try:
+                with _nonblocking_file_lock(state_path.with_suffix('.lock')):
+                    with _nonblocking_file_lock(state_path.with_suffix('.active')):
+                        current = json.loads(state_path.read_text(encoding='utf-8'))
+                        if current != observed or current.get('expires_at', 0) > time.time():
+                            raise LifecycleError('SOURCE_LEASE_CHANGED_OR_ACTIVE')
+                        if workspace.resolve() not in _registered_worktrees(repo):
+                            raise LifecycleError('WORKSPACE_NOT_REGISTERED')
+                        if git(workspace, 'branch', '--show-current') or git(workspace, 'rev-parse', 'HEAD') != current['source_revision']:
+                            raise LifecycleError('SOURCE_REVISION_OR_BRANCH_CHANGED')
+                        if subprocess.run(['git', '-C', str(repo), 'merge-base', '--is-ancestor', current['source_revision'], canonical], capture_output=True).returncode:
+                            raise LifecycleError('SOURCE_NOT_INTEGRATED')
+                        changes = git(workspace, 'status', '--porcelain=v1', '-z', '--ignored=matching', '--untracked-files=normal')
+                        for entry in changes.split('\0'):
+                            if entry and (not entry.startswith('!! ') or not _generated_build_path(entry[3:])):
+                                raise LifecycleError('SOURCE_HAS_USER_OR_UNKNOWN_CONTENT')
+                        if _source_consumers(workspace):
+                            raise LifecycleError('SOURCE_PROCESS_ACTIVE')
+                        report['eligible'].append(str(workspace))
+                        if apply:
+                            git(repo, 'worktree', 'remove', str(workspace))
+                            # Keep lease/fence and build receipts as historical
+                            # evidence; future preparation increments the fence.
+                            report['removed'].append(str(workspace))
+            except (LifecycleError, OSError, ValueError) as exc:
+                report['retained'].append({'path': str(workspace), 'reason': str(exc)})
+        return report
 
 
 def prepare_source(
@@ -991,6 +1153,12 @@ def build_canonical(
             if check.returncode != 0:
                 raise LifecycleError(f"REQUIRED_REVISION_NOT_INCLUDED: {revision}")
 
+        if policy['repository_id'] == 'smartspecpro' and sys.platform == 'linux':
+            try:
+                retention = collect_build_sources(repo, policy_path, apply=True, build_lock_held=True)
+                print(f"[canonical-build] source retention: removed={len(retention['removed'])} retained={len(retention['retained'])}", file=sys.stderr, flush=True)
+            except (LifecycleError, OSError) as exc:
+                print(f"[canonical-build] source retention deferred: {exc}", file=sys.stderr, flush=True)
         started_at = time.time()
         lease = prepare_source(
             repo,
@@ -1211,6 +1379,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     build.add_argument("--lease-seconds", type=int, default=900)
     build.add_argument("--max-stale-rebuilds", type=int, default=0)
     build.add_argument("command", nargs=argparse.REMAINDER)
+    collect = commands.add_parser("collect")
+    collect.add_argument("--repository", required=True, type=Path)
+    collect.add_argument("--policy", type=Path)
+    collect.add_argument("--apply", action="store_true")
+    collect.add_argument("--release-root", type=Path, default=Path("/home/dev/production-releases"))
     args = parser.parse_args(argv)
     try:
         if args.action == "policy":
@@ -1225,6 +1398,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(json.dumps(result, sort_keys=True))
             return 0 if result["ready"] else 21
+        if args.action == "collect":
+            result = collect_build_sources(args.repository, args.policy, apply=args.apply, release_root=args.release_root)
+            print(json.dumps(result, sort_keys=True))
+            return 0
         if args.action == "prepare":
             result = prepare_source(
                 args.repository,

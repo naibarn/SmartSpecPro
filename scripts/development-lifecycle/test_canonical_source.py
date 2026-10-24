@@ -221,15 +221,15 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(result["canonical_ref"], "refs/heads/trunk")
         self.assertEqual(result["canonical_sha"], result["local_sha"])
 
-    def test_preflight_rejects_direct_implementation_on_canonical_branch(self) -> None:
+    def test_preflight_accepts_primary_canonical_branch(self) -> None:
         from canonical_source import inspect_workspace_baseline
 
         canonical = self.root / "canonical"
         command("git", "clone", "--branch", "trunk", str(self.remote), str(canonical))
         result = inspect_workspace_baseline(canonical, self.policy)
-        self.assertFalse(result["ready"])
+        self.assertTrue(result["ready"])
         self.assertTrue(result["on_canonical_branch"])
-        self.assertEqual(result["next_action"], "CREATE_ISOLATED_WORKTREE_FROM_FETCHED_CANONICAL_SHA")
+        self.assertEqual(result["next_action"], "CONTINUE_ON_CURRENT_BASELINE")
 
     def test_preflight_blocks_stale_clean_checkout_after_remote_advances(self) -> None:
         from canonical_source import inspect_workspace_baseline
@@ -253,7 +253,7 @@ class CanonicalSourceTests(unittest.TestCase):
         before = command("git", "-C", str(self.shared), "status", "--porcelain=v1", "--untracked-files=all")
         result = inspect_workspace_baseline(self.shared, self.policy)
         self.assertFalse(result["ready"])
-        self.assertEqual(result["next_action"], "PRESERVE_DIRTY_WORK_AND_PREPARE_FRESH_WORKTREE")
+        self.assertEqual(result["next_action"], "RECONCILE_OWNED_WORK_IN_PRIMARY_CHECKOUT")
         self.assertEqual(command("git", "-C", str(self.shared), "status", "--porcelain=v1", "--untracked-files=all"), before)
         self.assertTrue((self.shared / "local-only.txt").exists())
 

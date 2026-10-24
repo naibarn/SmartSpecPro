@@ -150,10 +150,12 @@ owners and unique local commits retain their existing protection.
 
 Existing immutable build/release directories have separate lease, artifact
 retention and rollback ownership. Lease expiry does not mean disk cleanup.
-Do not delete a serving generation, required artifact or rollback source, and
-do not apply the task-worktree retirement command to an unsupported source
-role. Use the controller's supported retention path; a missing cleanup path is
-an explicit engineering gap, not permission for `rm -rf` or forced pruning.
+Do not delete a serving generation, required artifact or rollback source. For
+immutable build sources use `canonical_source.py collect` (dry run, then
+`--apply`); SmartSpecPro Linux builds also run this collector before building.
+It retains recent/leased sources and release references, preserves unknown
+content and uses non-forced Git worktree removal. Task-worktree retirement is
+not a substitute for this source-role retention path.
 
 ## Decision examples
 

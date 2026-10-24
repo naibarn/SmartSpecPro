@@ -156,16 +156,22 @@ Concurrent operations for distinct repository/revision/purpose tuples use indepe
 
 ## Source retention and disk use
 
-Reuse a matching inactive source tuple when the controller allows it; do not
-request new purposes or revisions merely to evade a lease/builder conflict.
-Do not launch a build after every merge when focused checks suffice. The
-current source manager expires execution leases but does not thereby remove
-source directories or build artifacts. Treat those retained bytes explicitly:
-check ownership, active consumers, artifact locations and rollback needs before
-using any supported cleanup path. If no supported retention/cleanup path is
-available, report the retained paths and engineering gap. Never blindly prune,
-delete serving/rollback sources, or claim that changing task policy reclaimed
-existing build disk space.
+Reuse a matching inactive source tuple; do not vary purpose/revision to evade a
+lease conflict or build after every merge. SmartSpecPro Linux builds collect old
+build sources before the next build. Inspect or apply collection explicitly:
+
+```bash
+python3 scripts/development-lifecycle/canonical_source.py collect --repository .
+python3 scripts/development-lifecycle/canonical_source.py collect --repository . --apply
+```
+
+Collection uses the existing build/release and tuple lease locks. It retires
+integrated detached build sources idle for at least one hour, retaining two
+recent builds and all sources referenced by retained releases. Live process
+references, unknown/dirty content and non-build workspaces are preserved. Only
+recognized generated output is disposable; build receipts and fencing history
+remain. Task worktrees still use workspace authority retirement. Report any
+retained path and its reason; an expired lease alone is not deletion evidence.
 
 ## Boundaries
 
