@@ -551,6 +551,13 @@ export default function AdminDeploymentTargets() {
       void latestProductionDatabaseJob.refetch();
     },
   });
+  const resumeProductionDatabaseMutation = trpc.infrastructure.resumeExpiredCloudflareProductionDatabaseJob.useMutation({
+    onSuccess: async result => {
+      setProductionDatabaseSubmissions(current => ({ ...current, [productionScopeKey]: result.jobId }));
+      await latestProductionDatabaseJob.refetch();
+      await productionProviderInventory.refetch();
+    },
+  });
   useEffect(() => {
     const latestJobId = latestProductionQueueJob.data?.jobId;
     if (latestJobId && latestJobId !== productionQueueJobId) setProductionQueueJobId(latestJobId);
@@ -874,7 +881,7 @@ export default function AdminDeploymentTargets() {
             const databaseAdmission = productionDatabaseAdmissions[productionScopeKey] ?? readStoredProductionDatabaseAdmission(productionScopeKey);
             const databaseJobAlreadySubmitted = Boolean(
               ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing", "pending", "leased",
-                "waiting_external", "retry_scheduled", "succeeded", "completed"].includes(productionDatabaseJobData?.status ?? "") ||
+                "waiting_external", "retry_scheduled", "succeeded", "completed", "expired"].includes(productionDatabaseJobData?.status ?? "") ||
               ["JOB_ACCEPTED", "RUNNING", "SUCCEEDED"].includes(databaseAdmission?.status ?? ""),
             );
             const databaseAdmissionJob = productionDatabaseJobData && (!databaseAdmission ||
@@ -997,6 +1004,25 @@ export default function AdminDeploymentTargets() {
                         ? text("Submit a new Production database attempt", "ส่งคำขอเตรียมฐานข้อมูล Production ใหม่")
                         : text("Prepare Production database connection", "เตรียมการเชื่อมต่อฐานข้อมูล Production")}
                 </Button>
+                {productionDatabaseJobData?.status === "expired" &&
+                  productionDatabaseJobData.errorCode === "JOB_DEADLINE_EXPIRED" &&
+                  productionDatabaseJobData.operatorReviewRequired &&
+                  productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported" ? <VStack gap={1} role="group" aria-label={text("Resume the same Production database job", "กู้งานเตรียมฐานข้อมูล Production เดิม") }>
+                    <p role="alert">{text(
+                      "This job expired before a worker claimed it because its adapter contract was not admitted. No Cloudflare resource was created. The original grant has expired, so an authenticated Admin must renew authorization; the same Job ID and resource plan will be reused.",
+                      "งานหมดอายุก่อน worker รับไปทำ เพราะระบบไม่ยอมรับ contract ของ adapter จึงยังไม่ได้สร้าง Cloudflare resource และ grant เดิมหมดอายุแล้ว Admin ที่ยืนยันตัวตนต้องต่ออายุสิทธิ์ โดยระบบจะใช้ Job ID และแผน resource เดิม",
+                    )}</p>
+                    <Button type="button" disabled={resumeProductionDatabaseMutation.isPending ||
+                      !databaseTunnelInventoryComplete || !productionDatabaseJobData.tunnelId ||
+                      selectedDatabaseTunnelId !== productionDatabaseJobData.tunnelId}
+                      onClick={() => resumeProductionDatabaseMutation.mutate({ tenantId, projectId,
+                        jobId: productionDatabaseJobData.jobId, tunnelId: productionDatabaseJobData.tunnelId!, environment: "production" })}>
+                      {resumeProductionDatabaseMutation.isPending
+                        ? text("Renewing and resuming the same job…", "กำลังต่ออายุสิทธิ์และกู้งานเดิม…")
+                        : text("Renew authorization and resume this same job", "ต่ออายุสิทธิ์และทำงานเดิมต่อ")}
+                    </Button>
+                    {resumeProductionDatabaseMutation.error ? <p role="alert"><code>{resumeProductionDatabaseMutation.error.message}</code></p> : null}
+                  </VStack> : null}
                 {databaseAdmissionStatus || databaseAdmission?.errorCode ? <VStack gap={1} role="status" aria-label={text("Production database admission status", "ผลการรับคำขอฐานข้อมูล Production")}>
                   <p>{text("Admission status", "สถานะการรับคำขอ")}: <strong>{databaseAdmissionStatus ?? "ADMISSION_REJECTED"}</strong></p>
                   {databaseAdmission?.errorCode ? <p role="alert">{text("Stage result", "ผลขั้นตอน")}: <code>{databaseAdmission.errorCode}</code>{databaseAdmission.traceId ? <> · {text("Request ID", "Request ID")}: <code>{databaseAdmission.traceId}</code></> : null}</p> : null}

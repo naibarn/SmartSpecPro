@@ -4715,7 +4715,8 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine";
+        replacementGrantRef?: string;
       },
       actorId?: number,
       scope?: JobMutationScope
@@ -4739,7 +4740,9 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "cloudflare_staging_compile" &&
           evidence.knownRuntime !== "cloudflare_staging_bootstrap_receipt" &&
           evidence.knownRuntime !== "cloudflare_staging_native_readback" &&
-          evidence.knownRuntime !== "cloudflare_staging_private_database_rejection")
+          evidence.knownRuntime !== "cloudflare_staging_private_database_rejection" &&
+          evidence.knownRuntime !== "cloudflare_production_database_dispatch_quarantine") ||
+        (evidence.replacementGrantRef !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence.replacementGrantRef))
       ) {
         throw new JobControlPlaneError(
           "JOB_RECOVERY_EVIDENCE_INVALID",
@@ -4751,7 +4754,7 @@ export function createJobControlPlane(
         500,
         "operator_review_recovery"
       );
-      const actionReason = `${safeReason}:${evidence.disposition}${evidence.knownRuntime ? `:${evidence.knownRuntime}` : ""}`;
+      const actionReason = `${safeReason}:${evidence.disposition}${evidence.knownRuntime ? `:${evidence.knownRuntime}` : ""}${evidence.replacementGrantRef ? `:${evidence.replacementGrantRef}` : ""}`;
       return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         const existingAction = await repo.findAction(actionId);
@@ -4838,8 +4841,22 @@ export function createJobControlPlane(
           job.status === "failed" && job.errorCode === "PRIVATE_DATABASE_HTTP_400" &&
           typeof job.inputJson?.planDigest === "string" && /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
           evidence.operationKey === `private-database:${job.id}:${job.inputJson.planDigest}`;
+        const knownProductionDatabaseDispatchQuarantine =
+          evidence.knownRuntime === "cloudflare_production_database_dispatch_quarantine" &&
+          evidence.disposition === "pre_submission_failure" &&
+          scope?.authorizationScope === "infrastructure.cloudflare_production_database_recover" &&
+          job?.jobType === "cloudflare.production.database.provision" &&
+          job.contractVersion === "cloudflare-prod-db-provision-v1" &&
+          job.status === "expired" && job.errorCode === "JOB_DEADLINE_EXPIRED" &&
+          job.operatorReviewRequired && job.operatorReviewReason === "adapter_contract_unsupported" &&
+          job.attempt < job.maxAttempts && job.startedAt == null && job.heartbeatAt == null &&
+          job.fencingVersion === 0 && typeof job.inputJson?.planDigest === "string" &&
+          /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
+          typeof evidence.replacementGrantRef === "string" &&
+          evidence.operationKey === `production-database-dispatch:${job.id}:${job.inputJson.planDigest}`;
         if (
           !job ||
+          (job.jobType === "cloudflare.production.database.provision" && !knownProductionDatabaseDispatchQuarantine) ||
           !["failed", "expired"].includes(job.status) ||
           (!job.operatorReviewRequired &&
             !knownRemotionRevisionFailure &&
@@ -4847,7 +4864,8 @@ export function createJobControlPlane(
             !knownCloudflareCompileRejection &&
             !knownCloudflareBootstrapReceipt &&
             !knownNativeReadbackFailure &&
-            !knownPrivateDatabaseRejection) ||
+            !knownPrivateDatabaseRejection &&
+            !knownProductionDatabaseDispatchQuarantine) ||
           (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure)
         )
           return false;
@@ -4883,6 +4901,9 @@ export function createJobControlPlane(
             attempt: nextAttempt,
             nextRetryAt: null,
             statusReason: "operator_review_recovery",
+            ...(knownProductionDatabaseDispatchQuarantine
+              ? { inputJson: { ...job.inputJson, grantRef: evidence.replacementGrantRef } }
+              : {}),
             ...(knownNativeReadbackFailure ? { maxAttempts: nextAttempt } : {}),
             errorCode: null,
             errorMessage: null,

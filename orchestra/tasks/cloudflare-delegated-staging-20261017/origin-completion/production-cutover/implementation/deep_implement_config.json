@@ -35,7 +35,7 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Admission root cause fixed and source de13bd02865897459e7583686c01e20594490b5e is serving Linux release g111; Web and Node worker health passed and public AdminSettings assets match. The Owner submission request 650d248f-a8b8-4517-a3cf-5f4c47c9740f definitively failed at control_plane_job_admission with JOB_DEFINITION_INVALID because the v1 contract string was 43 chars against a 40-char canonical limit. Its scoped grant for submission/job 0c0ccdea-3927-45d2-ae97-b2a30482f1de persisted, but no canonical job was written; grant expires 2026-10-25T13:00:52Z. Next: Owner must use the authenticated Admin action once on the deployed UI (ADMISSION_REJECTED path creates a fresh bounded attempt); then correlate the canonical job automatically and continue VPC/Hyperdrive, live DB acceptance, Worker runtime/rollback. Keep Linux serving; production traffic remains under independent canary authority.",
+      "next_action": "Integrate and deploy the same-job recovery UI/backend. Then the authenticated job requester must click Renew authorization and resume this same job once; monitor attempt 2 automatically and verify VPC, Hyperdrive, SQL connectivity and least privilege. Continue Worker/runtime/rollback readiness; keep Linux serving and use separate canary authority for traffic changes.",
       "checkpoint_sha": "de13bd02865897459e7583686c01e20594490b5e",
       "merged_main_sha": "de13bd02865897459e7583686c01e20594490b5e"
     }
@@ -49,19 +49,19 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 80,
-  "updated_at": "2026-10-25T13:00:51.715729+00:00",
+  "generation": 82,
+  "updated_at": "2026-10-25T13:51:50.111243+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Admission root cause fixed and source de13bd02865897459e7583686c01e20594490b5e is serving Linux release g111; Web and Node worker health passed and public AdminSettings assets match. The Owner submission request 650d248f-a8b8-4517-a3cf-5f4c47c9740f definitively failed at control_plane_job_admission with JOB_DEFINITION_INVALID because the v1 contract string was 43 chars against a 40-char canonical limit. Its scoped grant for submission/job 0c0ccdea-3927-45d2-ae97-b2a30482f1de persisted, but no canonical job was written; grant expires 2026-10-25T13:00:52Z. Next: Owner must use the authenticated Admin action once on the deployed UI (ADMISSION_REJECTED path creates a fresh bounded attempt); then correlate the canonical job automatically and continue VPC/Hyperdrive, live DB acceptance, Worker runtime/rollback. Keep Linux serving; production traffic remains under independent canary authority.",
+    "next_action": "Integrate and deploy the same-job recovery UI/backend. Then the authenticated job requester must click Renew authorization and resume this same job once; monitor attempt 2 automatically and verify VPC, Hyperdrive, SQL connectivity and least privilege. Continue Worker/runtime/rollback readiness; keep Linux serving and use separate canary authority for traffic changes.",
     "gaps": [
       "The existing Cloudflare Tunnel exposes db-staging.smartaihub.app only; the production database hostname route db.smartaihub.app has not been configured or verified.",
       "Production Worker runtime configuration, application/auth/database verification and verified rollback release identity remain incomplete.",
       "smartaihub.app/* is not routed to the Cloudflare Worker. Production route/traffic change must follow the existing independent canary authority; no such cutover was performed.",
       "Production Worker bindings/readiness, Node/Python/API/PostgreSQL tenant-isolation acceptance, executable rollback baseline, and canary authority checks remain pending after database provisioning.",
       "The current public smartaihub.app/readyz HTTP 200 is served by the Linux origin and is not evidence of Cloudflare Worker readiness; Worker readiness must be checked against the Worker endpoint after production bindings and deployment.",
-      "No canonical Production DB job exists yet. The g109 Owner request was rejected at control_plane_job_admission with JOB_DEFINITION_INVALID; fixed contract version is deployed in g111. One new authenticated Admin attempt is still required because the rejected attempt was a definite failure; do not insert jobs directly.",
-      "Production VPC/Hyperdrive provisioning, Cloudflare-to-PostgreSQL SQL and tenant-isolation acceptance, Worker runtime verification, rollback, canary and traffic cutover remain incomplete."
+      "Production VPC/Hyperdrive provisioning, Cloudflare-to-PostgreSQL SQL and tenant-isolation acceptance, Worker runtime verification, rollback, canary and traffic cutover remain incomplete.",
+      "Production DB job b9ca8316-1604-4764-a769-d92f46e4c823 was accepted and quarantined before worker claim because the production DB adapter contract was unsupported; it then expired and its grant is no longer valid. The adapter fix is integrated, but safe continuation requires authenticated same-job grant renewal and attempt-2 recovery; no VPC/Hyperdrive provider writes have been verified."
     ],
     "merged_main_sha": "de13bd02865897459e7583686c01e20594490b5e",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"

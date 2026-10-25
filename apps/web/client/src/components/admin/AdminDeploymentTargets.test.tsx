@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   queueStagingDeploy: vi.fn(),
   prepareProductionQueue: vi.fn(),
   prepareProductionDatabase: vi.fn(),
+  resumeProductionDatabase: vi.fn(),
   databaseAdmissionUnknownOnce: false,
   activateStagingProfile: vi.fn(),
   activationError: null as string | null,
@@ -124,6 +125,10 @@ vi.mock("@/lib/trpc", () => ({
           }
           void options.onSuccess?.({ jobId: "44444444-4444-4444-8444-444444444444" }, input);
         },
+        isPending: false, error: null,
+      }) },
+      resumeExpiredCloudflareProductionDatabaseJob: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
+        mutate: (input: unknown) => { mocks.resumeProductionDatabase(input); void options.onSuccess?.({ jobId: "b9ca8316-1604-4764-a769-d92f46e4c823" }); },
         isPending: false, error: null,
       }) },
       activateCloudflareStagingQueueProfile: { useMutation: (options: { onSuccess?: (result: { configurationRef: string }) => unknown }) => ({
@@ -711,6 +716,30 @@ describe("AdminDeploymentTargets", () => {
     expect(retrySubmission).toEqual(firstSubmission);
     expect(await screen.findByText("JOB_ACCEPTED")).toBeInTheDocument();
     expect(screen.getByText("44444444-4444-4444-8444-444444444444")).toBeInTheDocument();
+  });
+
+  it("offers an Owner-authenticated same-job recovery after the adapter quarantine expired the grant", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.productionTunnels = [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartspec", status: "healthy" }];
+    mocks.latestProductionDatabaseJob = {
+      jobId: "b9ca8316-1604-4764-a769-d92f46e4c823", status: "expired", errorCode: "JOB_DEADLINE_EXPIRED",
+      attempt: 1, maxAttempts: 2, operatorReviewRequired: true,
+      operatorReviewReason: "adapter_contract_unsupported", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6",
+    };
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(await screen.findByText(/expired before a worker claimed it/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Renew authorization and resume this same job" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Production database job already exists" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Renew authorization and resume this same job" }));
+    await waitFor(() => expect(mocks.resumeProductionDatabase).toHaveBeenCalledWith({
+      tenantId, projectId, jobId: "b9ca8316-1604-4764-a769-d92f46e4c823",
+      tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", environment: "production",
+    }));
+    expect(mocks.prepareProductionDatabase).not.toHaveBeenCalled();
   });
 
   it("allows keyboard selection among multiple verified production Tunnels and keeps the choice on inventory refresh", async () => {

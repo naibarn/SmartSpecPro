@@ -2053,6 +2053,71 @@ describe("job control plane", () => {
     expect(state.jobs.get(created.jobId).maxAttempts).toBe(maxAttempts);
   });
 
+  it("recovers only a quarantined Production DB dispatch on the same job with a replacement grant", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const planDigest = "c".repeat(64);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "cloudflare.production.database.provision",
+      contractVersion: "cloudflare-prod-db-provision-v1",
+      executionClass: "long",
+      input: { projectId: "project-a", targetId: "smartspec-cloudflare-runtime", environment: "production",
+        planDigest, grantRef: "00000000-0000-4000-8000-000000000101" },
+      idempotencyKey: undefined,
+    });
+    const job = state.jobs.get(created.jobId);
+    Object.assign(job, { status: "expired", errorCode: "JOB_DEADLINE_EXPIRED", operatorReviewRequired: true,
+      operatorReviewReason: "adapter_contract_unsupported", startedAt: null, heartbeatAt: null, fencingVersion: 0 });
+    Object.assign(state.outbox[0], { quarantinedAt: new Date(), failedReason: "adapter_contract_unsupported" });
+
+    const replacementGrantRef = "00000000-0000-4000-8000-000000000102";
+    const evidence = { disposition: "pre_submission_failure" as const,
+      knownRuntime: "cloudflare_production_database_dispatch_quarantine" as const,
+      operationKey: `production-database-dispatch:${created.jobId}:${planDigest}`, replacementGrantRef };
+    const scope = { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId,
+      authorizationScope: "infrastructure.cloudflare_production_database_recover" };
+
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, created.jobId, "same_job_grant_renewed",
+      evidence, definition.requestedByUserId, scope)).resolves.toBe(true);
+    expect(state.jobs.get(created.jobId)).toMatchObject({ status: "queued", attempt: 2,
+      inputJson: { grantRef: replacementGrantRef, planDigest } });
+    expect(state.outbox).toHaveLength(2);
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, created.jobId, "same_job_grant_renewed",
+      evidence, definition.requestedByUserId, scope)).resolves.toBe(true);
+    expect(state.jobs.get(created.jobId).attempt).toBe(2);
+    expect(state.outbox).toHaveLength(2);
+  });
+
+  it.each([
+    ["wrong authorization scope", "worker_jobs.admin_requeue", "00000000-0000-4000-8000-000000000103", true, false],
+    ["wrong plan digest", "infrastructure.cloudflare_production_database_recover", "00000000-0000-4000-8000-000000000104", false, false],
+  ])("rejects Production DB dispatch recovery with %s", async (_label, authorizationScope, replacementGrantRef, correctDigest, allowed) => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const planDigest = "d".repeat(64);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "cloudflare.production.database.provision",
+      contractVersion: "cloudflare-prod-db-provision-v1",
+      executionClass: "long",
+      input: { projectId: "project-a", targetId: "smartspec-cloudflare-runtime", environment: "production", planDigest },
+      idempotencyKey: undefined,
+    });
+    Object.assign(state.jobs.get(created.jobId), { status: "expired", errorCode: "JOB_DEADLINE_EXPIRED",
+      operatorReviewRequired: true, operatorReviewReason: "adapter_contract_unsupported", startedAt: null,
+      heartbeatAt: null, fencingVersion: 0 });
+    const evidence = { disposition: "pre_submission_failure" as const,
+      knownRuntime: "cloudflare_production_database_dispatch_quarantine" as const,
+      operationKey: `production-database-dispatch:${created.jobId}:${correctDigest ? planDigest : "e".repeat(64)}`,
+      replacementGrantRef: replacementGrantRef as string };
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000105", "same_job_grant_renewed",
+      evidence, definition.requestedByUserId, { tenantId: definition.tenantId,
+        requestedByUserId: definition.requestedByUserId, authorizationScope: authorizationScope as string })).resolves.toBe(allowed);
+    expect(state.jobs.get(created.jobId).status).toBe("expired");
+    expect(state.outbox).toHaveLength(1);
+  });
+
   it.each(["bootstrap", "deploy"])("bounds bootstrap receipt recovery to the bootstrap action: %s", async action => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

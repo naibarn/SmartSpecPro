@@ -211,6 +211,58 @@ export async function readCloudflareProductionDatabaseGrant(
   }
 }
 
+/** Renew the same job-scoped grant only after an authenticated Owner action.
+ * The replacement keeps the original target, tenant, project, tunnel and DB
+ * credential, but receives a new grant reference and expiry so the executor's
+ * normal expiry check remains authoritative.
+ */
+export async function renewCloudflareProductionDatabaseGrant(input: {
+  db: DrizzleDB;
+  jobId: string;
+  requesterUserId: number;
+  expectedGrantRef: string;
+  replacementGrantRef: string;
+  expiresAt: string;
+}): Promise<CloudflareProductionDatabaseGrant> {
+  const { db } = input;
+  const expiresAt = Date.parse(input.expiresAt);
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) {
+    throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_GRANT_RENEWAL_INVALID");
+  }
+  return db.transaction(async tx => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.jobId}))`);
+    const rows = await tx.select().from(systemSettings).where(and(
+      eq(systemSettings.category, GRANT_CATEGORY), eq(systemSettings.key, grantKey(input.jobId)),
+    )).limit(2);
+    if (rows.length !== 1 || !rows[0].isSensitive || !rows[0].value || rows[0].updatedBy !== input.requesterUserId) {
+      throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_GRANT_SCOPE_MISMATCH");
+    }
+    let secure: SecretGrant;
+    try {
+      const parsed = secretGrantSchema.safeParse(JSON.parse(decrypt(rows[0].value)));
+      if (!parsed.success) throw new Error("invalid");
+      secure = parsed.data;
+    } catch {
+      throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_GRANT_INVALID");
+    }
+    const previous = secure.grant;
+    if (previous.jobId !== input.jobId || previous.requesterUserId !== input.requesterUserId ||
+        previous.grantRef !== input.expectedGrantRef || previous.revokedAt !== null ||
+        Date.parse(previous.expiresAt) > Date.now()) {
+      if (previous.grantRef === input.replacementGrantRef && previous.jobId === input.jobId &&
+          previous.requesterUserId === input.requesterUserId && previous.revokedAt === null &&
+          Date.parse(previous.expiresAt) === expiresAt) return previous;
+      throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_GRANT_NOT_RENEWABLE");
+    }
+    const renewed = { ...previous, grantRef: input.replacementGrantRef, expiresAt: input.expiresAt };
+    await tx.update(systemSettings).set({
+      value: encrypt(JSON.stringify({ grant: renewed, databasePassword: secure.databasePassword } satisfies SecretGrant)),
+      description: "Renewed encrypted job-scoped Production database provisioning authority",
+    }).where(and(eq(systemSettings.id, rows[0].id), eq(systemSettings.updatedBy, input.requesterUserId)));
+    return renewed;
+  });
+}
+
 export async function revokeCloudflareProductionDatabaseGrant(
   db: DrizzleDB,
   jobId: string,

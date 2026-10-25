@@ -12,7 +12,7 @@ import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
-import { canonicalProjects, systemSettings, tenants, users, workerJobs } from "../../drizzle/schema";
+import { canonicalProjects, systemSettings, tenants, users, workerJobs, workerJobOutbox, workerJobDispatches } from "../../drizzle/schema";
 import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
 import { getFeatureFlag, setFeatureFlag } from "../services/featureFlags";
 import {
@@ -74,6 +74,7 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { projectWikiProvisioningIntentMatchesTenant, projectWikiStagingProvisioningRequestSchema } from "../services/projectWikiStagingProvisioning";
 import { resolveCloudflareStagingArtifact, resolveLatestPublishedCloudflareStagingArtifact } from "../services/cloudflareStagingArtifactAuthority";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
+import { createJobControlPlane } from "../services/jobControlPlane";
 import { CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT, CLOUDFLARE_STAGING_DEPLOYMENT_JOB, CLOUDFLARE_STAGING_RETRY_POLICY, CLOUDFLARE_STAGING_TARGET_ID } from "../services/cloudflareStagingDeploymentExecutor";
 import { probeCloudflareStagingRuntimeReadiness } from "../services/cloudflareStagingRuntimeReadiness";
 import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflareProductionRuntimeReadiness";
@@ -82,7 +83,7 @@ import { resolveCloudflareProductionDeploymentTarget } from "../services/cloudfl
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB } from "../services/cloudflareProductionQueueProvision";
 import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE_JOB,
   createProductionDatabaseGrant, newProductionDatabaseJobId, readCloudflareProductionDatabaseGrant, revokeCloudflareProductionDatabaseGrant,
-  saveCloudflareProductionDatabaseGrant } from "../services/cloudflareProductionDatabaseExecutor";
+  renewCloudflareProductionDatabaseGrant, saveCloudflareProductionDatabaseGrant } from "../services/cloudflareProductionDatabaseExecutor";
 import { productionDatabaseResourcePlanDigest, productionDatabaseResourcePlanSchema } from "../services/cloudflareProductionDatabaseProvision";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
@@ -986,6 +987,105 @@ export const infrastructureRouter = router({
       }
     }),
 
+  resumeExpiredCloudflareProductionDatabaseJob: exactAdminProcedure
+    .input(z.object({
+      tenantId: deploymentTenantIdSchema,
+      projectId: z.string().trim().min(1).max(100),
+      jobId: z.string().uuid(),
+      tunnelId: z.string().uuid(),
+      environment: z.literal("production"),
+    }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [job] = await db.select().from(workerJobs).where(and(
+        eq(workerJobs.id, input.jobId), eq(workerJobs.tenantId, tenantId),
+        eq(workerJobs.jobType, CLOUDFLARE_PRODUCTION_DATABASE_JOB),
+        eq(workerJobs.contractVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT),
+      )).limit(1);
+      const jobInput = job?.inputJson as Record<string, unknown> | null;
+      if (!job || job.requestedByUserId !== ctx.user.id || job.status !== "expired" ||
+          job.errorCode !== "JOB_DEADLINE_EXPIRED" || !job.operatorReviewRequired ||
+          job.operatorReviewReason !== "adapter_contract_unsupported" || job.attempt !== 1 || job.maxAttempts < 2 ||
+          job.startedAt || job.heartbeatAt || job.fencingVersion !== 0 ||
+          jobInput?.projectId !== input.projectId || jobInput.targetId !== "smartspec-cloudflare-runtime" ||
+          jobInput.environment !== "production" || typeof jobInput.planDigest !== "string" || typeof jobInput.grantRef !== "string") {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_NOT_RECOVERABLE" });
+      }
+      const concurrentJobs = await db.select({ id: workerJobs.id }).from(workerJobs).where(and(
+        eq(workerJobs.tenantId, tenantId), eq(workerJobs.jobType, CLOUDFLARE_PRODUCTION_DATABASE_JOB),
+        eq(workerJobs.contractVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT),
+        inArray(workerJobs.status, ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing",
+          "pending", "leased", "waiting_external", "retry_scheduled"]),
+        sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`,
+        sql`${workerJobs.inputJson}->>'targetId' = 'smartspec-cloudflare-runtime'`,
+        sql`${workerJobs.inputJson}->>'environment' = 'production'`,
+      ));
+      if (concurrentJobs.some(candidate => candidate.id !== job.id))
+        throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_ACTIVE_JOB_ALREADY_EXISTS" });
+      const outboxes = await db.select().from(workerJobOutbox).where(and(
+        eq(workerJobOutbox.workerJobId, job.id), eq(workerJobOutbox.envelopeVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT),
+      ));
+      const [outbox] = outboxes;
+      const dispatches = await db.select({ id: workerJobDispatches.id }).from(workerJobDispatches)
+        .where(eq(workerJobDispatches.workerJobId, job.id)).limit(1);
+      const checkpoints = await db.select({ id: systemSettings.id }).from(systemSettings).where(and(
+        eq(systemSettings.category, "cloudflare_production_database_runs"), eq(systemSettings.key, job.id),
+      )).limit(1);
+      if (outboxes.length !== 1 || !outbox || outbox.publishedAt || !outbox.quarantinedAt ||
+          outbox.failedReason !== "adapter_contract_unsupported" || dispatches.length || checkpoints.length) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_EXECUTION_OUTCOME_UNCERTAIN" });
+      }
+      const previousGrant = await readCloudflareProductionDatabaseGrant(db, job.id);
+      if (!previousGrant || previousGrant.grantRef !== jobInput.grantRef || previousGrant.tenantId !== tenantId ||
+          previousGrant.projectId !== input.projectId || previousGrant.requesterUserId !== ctx.user.id ||
+          previousGrant.targetId !== "smartspec-cloudflare-runtime" || previousGrant.environment !== "production" ||
+          previousGrant.plan.tunnelId !== input.tunnelId || previousGrant.planDigest !== jobInput.planDigest ||
+          previousGrant.revokedAt || (Date.parse(previousGrant.expiresAt) > Date.now() && previousGrant.grantRef !== job.id)) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_NOT_RENEWABLE" });
+      }
+      const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId, projectId: input.projectId });
+      if (!target || target.targetId !== previousGrant.targetId || target.accountRef !== previousGrant.accountRef)
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_TARGET_SCOPE_CHANGED" });
+      const credential = await getCloudflareDeploymentCredentialState(db, {
+        identity: { tenantId, projectId: input.projectId, environment: "production", provider: "cloudflare" },
+        credentialRef: target.credentialRef,
+      });
+      if (credential.status !== "CONFIGURED")
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
+
+      // The stable same-job action ID makes a lost response safely replayable.
+      const actionId = job.id;
+      const replacementGrantRef = job.id;
+      const renewedGrant = await renewCloudflareProductionDatabaseGrant({
+        db, jobId: job.id, requesterUserId: ctx.user.id, expectedGrantRef: previousGrant.grantRef,
+        replacementGrantRef,
+        expiresAt: previousGrant.grantRef === replacementGrantRef
+          ? previousGrant.expiresAt
+          : new Date(Date.now() + 15 * 60_000).toISOString(),
+      });
+      const recovered = await createJobControlPlane().recoverReviewGatedJob(
+        job.id,
+        actionId,
+        "Owner reauthorized the same Production database job after the deployed adapter admission repair",
+        { disposition: "pre_submission_failure", knownRuntime: "cloudflare_production_database_dispatch_quarantine",
+          operationKey: `production-database-dispatch:${job.id}:${jobInput.planDigest}`, replacementGrantRef: renewedGrant.grantRef },
+        ctx.user.id,
+        { tenantId, requestedByUserId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_production_database_recover" },
+      );
+      if (!recovered) throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_RECOVERY_REJECTED" });
+      try {
+        auditLogger.log({ eventType: "cloudflare_production_database_job_reauthorized", userId: ctx.user.id,
+          requestType: "cloudflare_production_database_job_recovery", responsePayload: { tenantId, projectId: input.projectId,
+            jobId: job.id, targetId: target.targetId, environment: "production", planDigest: renewedGrant.planDigest }, statusCode: 202 });
+      } catch { /* The canonical operator action is the durable audit record. */ }
+      return { jobId: job.id, status: "queued" as const, attempt: job.attempt + 1,
+        grantExpiresAt: renewedGrant.expiresAt, planDigest: renewedGrant.planDigest };
+    }),
+
   getLatestCloudflareProductionDatabaseJob: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("production") }).strict())
     .query(async ({ input, ctx }) => {
@@ -995,6 +1095,7 @@ export const infrastructureRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const [job] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, jobType: workerJobs.jobType,
         contractVersion: workerJobs.contractVersion, status: workerJobs.status, errorCode: workerJobs.errorCode,
+        operatorReviewRequired: workerJobs.operatorReviewRequired, operatorReviewReason: workerJobs.operatorReviewReason,
         inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson, attempt: workerJobs.attempt,
         maxAttempts: workerJobs.maxAttempts, createdAt: workerJobs.createdAt, startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt, nextRetryAt: workerJobs.nextRetryAt, leaseExpiresAt: workerJobs.leaseExpiresAt,
@@ -1008,7 +1109,10 @@ export const infrastructureRouter = router({
       if (!job) return null;
       const jobInput = job.inputJson as Record<string, unknown> | null;
       const output = job.outputJson as Record<string, unknown> | null;
+      const grant = await readCloudflareProductionDatabaseGrant(db, job.id);
       return { jobId: job.id, status: job.status, errorCode: job.errorCode, attempt: job.attempt, maxAttempts: job.maxAttempts,
+        operatorReviewRequired: job.operatorReviewRequired, operatorReviewReason: job.operatorReviewReason,
+        tunnelId: grant?.plan.tunnelId ?? null,
         createdAt: job.createdAt?.toISOString() ?? null, startedAt: job.startedAt?.toISOString() ?? null,
         finishedAt: job.finishedAt?.toISOString() ?? null, nextRetryAt: job.nextRetryAt?.toISOString() ?? null,
         leaseExpiresAt: job.leaseExpiresAt?.toISOString() ?? null, heartbeatAt: job.heartbeatAt?.toISOString() ?? null,

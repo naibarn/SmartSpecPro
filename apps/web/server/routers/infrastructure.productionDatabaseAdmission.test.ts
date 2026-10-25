@@ -6,7 +6,9 @@ const mocks = vi.hoisted(() => ({
   getCredentialState: vi.fn(),
   readGrant: vi.fn(),
   saveGrant: vi.fn(),
+  renewGrant: vi.fn(),
   createJob: vi.fn(),
+  recoverJob: vi.fn(),
 }));
 
 vi.mock("../db", () => ({ getDb: mocks.getDb }));
@@ -22,6 +24,11 @@ vi.mock("../services/cloudflareProductionDatabaseExecutor", async importOriginal
   ...(await importOriginal<typeof import("../services/cloudflareProductionDatabaseExecutor")>()),
   readCloudflareProductionDatabaseGrant: mocks.readGrant,
   saveCloudflareProductionDatabaseGrant: mocks.saveGrant,
+  renewCloudflareProductionDatabaseGrant: mocks.renewGrant,
+}));
+vi.mock("../services/jobControlPlane", async importOriginal => ({
+  ...(await importOriginal<typeof import("../services/jobControlPlane")>()),
+  createJobControlPlane: () => ({ recoverReviewGatedJob: mocks.recoverJob }),
 }));
 vi.mock("../services/jobControlPlaneGateway", async importOriginal => ({
   ...(await importOriginal<typeof import("../services/jobControlPlaneGateway")>()),
@@ -30,6 +37,7 @@ vi.mock("../services/jobControlPlaneGateway", async importOriginal => ({
 
 import { infrastructureRouter } from "./infrastructure";
 import { validateJobDefinition } from "../services/jobCanonicalization";
+import { systemSettings, workerJobDispatches, workerJobOutbox, workerJobs } from "../../drizzle/schema";
 
 const tenantId = "tenant-ZCSKEM9s";
 const projectId = "2fe8a309-8be6-4370-9813-8fb9cc4645a0";
@@ -40,7 +48,10 @@ const target = { targetId: "smartspec-cloudflare-runtime", credentialRef: "crede
 function setup() {
   const jobs = new Map<string, Record<string, unknown>>();
   const grants = new Map<string, Record<string, unknown>>();
-  const rowsForWhere = (condition: any) => {
+  const rowsForWhere = (table: unknown, condition: any) => {
+    if (table === workerJobOutbox) return Array.from(outboxes.values());
+    if (table === workerJobDispatches) return [];
+    if (table === systemSettings) return [];
     const values: unknown[] = [];
     let filtersByJobId = false;
     const visit = (chunk: any) => {
@@ -58,11 +69,15 @@ function setup() {
     }
     return Array.from(jobs.values());
   };
+  const outboxes = new Map<string, Record<string, unknown>>();
   const db = {
-    select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn((condition: any) => ({
-      limit: vi.fn(async () => rowsForWhere(condition)),
-      orderBy: vi.fn(() => ({ limit: vi.fn(async () => rowsForWhere(condition)) })),
-    })) })) })),
+    select: vi.fn(() => ({ from: vi.fn((table: unknown) => ({ where: vi.fn((condition: any) => {
+      const rows = rowsForWhere(table, condition);
+      return Object.assign(Promise.resolve(rows), {
+        limit: async () => rows,
+        orderBy: () => Object.assign(Promise.resolve(rows), { limit: async () => rows }),
+      });
+    }) })) })),
   };
   mocks.getDb.mockResolvedValue(db);
   mocks.resolveTarget.mockResolvedValue(target);
@@ -71,6 +86,10 @@ function setup() {
   mocks.saveGrant.mockImplementation(async (_db, grant: Record<string, unknown>) => {
     grants.set(grant.jobId as string, grant);
   });
+  mocks.renewGrant.mockImplementation(async input => ({
+    ...grants.get(input.jobId), grantRef: input.replacementGrantRef, expiresAt: input.expiresAt,
+  }));
+  mocks.recoverJob.mockResolvedValue(true);
   mocks.createJob.mockImplementation(async (input: any) => {
     const jobId = input.createOptions.canonicalJobId as string;
     jobs.set(jobId, { id: jobId, jobType: input.definition.jobType,
@@ -86,7 +105,7 @@ function setup() {
   const submit = (requestId = submissionId) => caller.prepareCloudflareProductionDatabase({
     tenantId, projectId, environment: "production", tunnelId, submissionId: requestId,
   });
-  return { db, jobs, grants, caller, submit };
+  return { db, jobs, grants, outboxes, caller, submit };
 }
 
 describe("Production database canonical admission", () => {
@@ -201,6 +220,33 @@ describe("Production database canonical admission", () => {
     mocks.getCredentialState.mockResolvedValueOnce({ status: "MISSING" });
     await expect(f.submit()).rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
     expect(mocks.saveGrant).not.toHaveBeenCalled();
+    expect(mocks.createJob).not.toHaveBeenCalled();
+  });
+
+  it("renews authority and resumes the exact quarantined job only after proving no provider write began", async () => {
+    const f = setup();
+    const jobId = "77777777-7777-4777-8777-777777777777";
+    const planDigest = "a".repeat(64);
+    const originalGrantRef = "88888888-8888-4888-8888-888888888888";
+    f.jobs.set(jobId, { id: jobId, tenantId, projectId, jobType: "cloudflare.production.database.provision",
+      contractVersion: "cloudflare-prod-db-provision-v1", requestedByUserId: 91, status: "expired",
+      errorCode: "JOB_DEADLINE_EXPIRED", operatorReviewRequired: true, operatorReviewReason: "adapter_contract_unsupported",
+      attempt: 1, maxAttempts: 2, startedAt: null, heartbeatAt: null, fencingVersion: 0,
+      inputJson: { projectId, targetId: "smartspec-cloudflare-runtime", environment: "production", planDigest, grantRef: originalGrantRef } });
+    f.grants.set(jobId, { jobId, grantRef: originalGrantRef, tenantId, projectId, requesterUserId: 91,
+      targetId: "smartspec-cloudflare-runtime", environment: "production", accountRef: target.accountRef,
+      plan: { tunnelId }, planDigest, expiresAt: new Date(Date.now() - 60_000).toISOString(), revokedAt: null });
+    f.outboxes.set("outbox-1", { workerJobId: jobId, envelopeVersion: "cloudflare-prod-db-provision-v1",
+      publishedAt: null, quarantinedAt: new Date(), failedReason: "adapter_contract_unsupported" });
+
+    await expect(f.caller.resumeExpiredCloudflareProductionDatabaseJob({ tenantId, projectId, jobId, tunnelId, environment: "production" }))
+      .resolves.toMatchObject({ jobId, status: "queued", attempt: 2, planDigest });
+    expect(mocks.renewGrant).toHaveBeenCalledWith(expect.objectContaining({
+      db: expect.anything(), jobId, requesterUserId: 91, expectedGrantRef: originalGrantRef, replacementGrantRef: jobId,
+    }));
+    expect(mocks.recoverJob).toHaveBeenCalledWith(jobId, jobId, expect.any(String), expect.objectContaining({
+      knownRuntime: "cloudflare_production_database_dispatch_quarantine", replacementGrantRef: jobId,
+    }), 91, expect.objectContaining({ authorizationScope: "infrastructure.cloudflare_production_database_recover" }));
     expect(mocks.createJob).not.toHaveBeenCalled();
   });
 });
