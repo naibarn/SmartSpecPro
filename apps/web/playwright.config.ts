@@ -5,7 +5,13 @@ import { defineConfig, devices } from "@playwright/test";
 
 const isAuthenticatedUat = process.env.SMARTSPEC_BROWSER_UAT === "1";
 const uatRunId = process.env.SMARTSPEC_UAT_RUN_ID || randomUUID();
-const uatBrowser = process.env.SMARTSPEC_UAT_BROWSER || "moli";
+const uatBrowser = process.env.SMARTSPEC_UAT_BROWSER || "chromium";
+if (
+  isAuthenticatedUat &&
+  !["chromium", "moli", "cloudflare"].includes(uatBrowser)
+) {
+  throw new Error("SMARTSPEC_UAT_BROWSER_UNSUPPORTED");
+}
 const isMoliUat = isAuthenticatedUat && uatBrowser === "moli";
 if (isAuthenticatedUat) {
   const envFile =
@@ -81,6 +87,12 @@ export default defineConfig({
           name: "moli",
           use: { browserName: "chromium", ...devices["Desktop Chrome"] },
         }
-      : { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+      : {
+          name:
+            isAuthenticatedUat && uatBrowser === "cloudflare"
+              ? "cloudflare"
+              : "chromium",
+          use: { ...devices["Desktop Chrome"] },
+        },
   ],
 });

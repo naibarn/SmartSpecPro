@@ -52,17 +52,39 @@ type Evidence = {
     method: string;
     resourceType: string;
   }>;
-  responses: Array<{ origin: string; path: string; status: number }>;
+  responses: Array<{
+    origin: string;
+    path: string;
+    method: string;
+    status: number;
+    errorCode?: string;
+    errorMessage?: string;
+  }>;
   failures: Array<{ origin: string; path: string; error: string }>;
   consoleErrors: string[];
   directProviderAttempts: string[];
   screenshotErrors: string[];
 };
 
+function redactDiagnostic(value: string): string {
+  return value
+    .replace(
+      /\b(?:sk-[A-Za-z0-9_-]{12,}|(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{12,})\b/g,
+      "[redacted]"
+    )
+    .replace(
+      /\b(authorization|api[_-]?key|access[_-]?token)\s*[:=]\s*[^\s,;]+/gi,
+      "$1=[redacted]"
+    )
+    .replace(/\bBearer\s+[A-Za-z0-9._~+/-]+=*/gi, "Bearer [redacted]")
+    .slice(0, 300);
+}
+
 export const test = baseTest.extend<{ uatRole: UatRole }>({
   uatRole: ["member", { option: true }],
   page: async ({ uatRole }, use, testInfo) => {
     const isMoli = process.env.SMARTSPEC_UAT_BROWSER === "moli";
+    const isCloudflare = process.env.SMARTSPEC_UAT_BROWSER === "cloudflare";
     const session = await issueUatSession(uatRole);
     const egressProxy = isMoli ? await createMoliUatEgressProxy() : null;
     let moliProcess: Awaited<ReturnType<typeof startMoliUatProcess>> | null =
@@ -83,11 +105,21 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
     }
     let browser: Browser;
     try {
-      browser = moliProcess
-        ? await chromium.connectOverCDP(moliProcess.endpoint, {
-            timeout: 15_000,
-          })
-        : await chromium.launch({ headless: true });
+      if (moliProcess) {
+        browser = await chromium.connectOverCDP(moliProcess.endpoint, {
+          timeout: 15_000,
+        });
+      } else if (isCloudflare) {
+        const { cloudflareBrowserRunConnection } =
+          await import("./cloudflareBrowserRun");
+        const connection = cloudflareBrowserRunConnection();
+        browser = await chromium.connectOverCDP(connection.endpoint, {
+          headers: connection.headers,
+          timeout: 30_000,
+        });
+      } else {
+        browser = await chromium.launch({ headless: true });
+      }
     } catch (error) {
       try {
         moliProcess?.stop();
@@ -123,6 +155,7 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
       directProviderAttempts: [],
       screenshotErrors: [],
     };
+    const pendingApiDiagnostics: Promise<void>[] = [];
     if (!isMoli)
       await page.route("**/*", async route => {
         const requestUrl = new URL(route.request().url());
@@ -150,23 +183,43 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
     });
     page.on("response", response => {
       const url = new URL(response.url());
-      evidence.responses.push({
+      const diagnostic: Evidence["responses"][number] = {
         origin: url.origin,
         path: url.pathname,
+        method: response.request().method(),
         status: response.status(),
-      });
+      };
+      evidence.responses.push(diagnostic);
+      if (url.pathname.includes("/trpc/") && response.status() >= 400) {
+        pendingApiDiagnostics.push(
+          response
+            .json()
+            .then(body => {
+              const error = body?.error;
+              const code = error?.data?.code ?? error?.shape?.data?.code;
+              if (typeof code === "string")
+                diagnostic.errorCode = code.slice(0, 80);
+              if (typeof error?.message === "string") {
+                diagnostic.errorMessage = redactDiagnostic(error.message);
+              }
+            })
+            .catch(() => {})
+        );
+      }
     });
     page.on("requestfailed", request => {
       const url = new URL(request.url());
       evidence.failures.push({
         origin: url.origin,
         path: url.pathname,
-        error: request.failure()?.errorText?.slice(0, 160) ?? "request failed",
+        error: redactDiagnostic(
+          request.failure()?.errorText ?? "request failed"
+        ),
       });
     });
     page.on("console", message => {
       if (message.type() === "error")
-        evidence.consoleErrors.push(message.text().slice(0, 300));
+        evidence.consoleErrors.push(redactDiagnostic(message.text()));
     });
 
     const tracePath = testInfo.outputPath("trace.zip");
@@ -183,6 +236,7 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
     try {
       await use(page);
     } finally {
+      await Promise.allSettled(pendingApiDiagnostics);
       try {
         try {
           await page.screenshot({
@@ -245,7 +299,11 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
                 revoked: !revocationFailed,
                 expiresAt: session.expiresAt,
               },
-              browser: isMoli ? "moli" : "chromium",
+              browser: isMoli
+                ? "moli"
+                : isCloudflare
+                  ? "cloudflare-browser-run"
+                  : "chromium",
               egress: egressAudit,
               ...evidence,
             },
@@ -291,7 +349,7 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
           cleanupErrors.push(error);
         }
         if (cleanupErrors.length > 0)
-          throw new Error("MOLI_UAT_SESSION_CLEANUP_FAILED");
+          throw new Error("UAT_BROWSER_SESSION_CLEANUP_FAILED");
       }
     }
   },

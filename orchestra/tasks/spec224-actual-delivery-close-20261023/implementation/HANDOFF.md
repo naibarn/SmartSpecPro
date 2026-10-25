@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `18`
-- Updated (UTC): `2026-10-25T01:18:07.828111+00:00`
+- State generation: `20`
+- Updated (UTC): `2026-10-25T01:49:33.912916+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `9c9d77adc4a23eda9cb884d3b5789c2c15967439`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-real-browser-acceptance`
-- Next action: Target App Identity and run are absent from the live service database. After the correct owner-bound app record is available through the supported product flow, use Retry / Repair and finish the owner/unauthorized browser journey.
+- Next action: Use the existing owner session for user 23 to open https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff with Playwright Chromium, inspect current run and invoke Retry / Repair on the same App ID. Runtime generation 83 includes the missing-title recovery. No authorized owner browser session is available to this execution context; never use the synthetic UAT broker identity for this private app.
 
 ## Sections
 
@@ -19,8 +19,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-contract-continuation | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | Continue through section 02: run real hosted Gateway generation using an authorized non-production tenant and bind its app source/artifact; retain preview-state projection fix. |
 | section-02-live-hosted-execution | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | d0dd405c435f1dba90f78b388b394d43868f24a8 | d0dd405c435f1dba90f78b388b394d43868f24a8 | Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks. |
-| section-03-real-browser-acceptance | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Target App Identity and run are absent from the live service database. After the correct owner-bound app record is available through the supported product flow, use Retry / Repair and finish the owner/unauthorized browser journey. |
-| section-04-release-final-verify | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Release generation 83 is deployed and healthy at runtime revision 9c9d77adc4a23eda9cb884d3b5789c2c15967439; public App Home shell and hashed JS/CSS are served. Final owner trial remains blocked because the target App Identity/run are absent in the live service and no authenticated browser is accessible here. |
+| section-03-real-browser-acceptance | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Use the existing owner session for user 23 to open https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff with Playwright Chromium, inspect current run and invoke Retry / Repair on the same App ID. Runtime generation 83 includes the missing-title recovery. No authorized owner browser session is available to this execution context; never use the synthetic UAT broker identity for this private app. |
+| section-04-release-final-verify | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Runtime generation 83 serves revision 9c9d77adc4a23eda9cb884d3b5789c2c15967439. The existing target App Identity (owner user 23, tenant tenant-ZCSKEM9s) and expired run anchor are present in the runtime database; the old absence conclusion came from querying a different database endpoint. Owner browser acceptance remains pending a legitimately authenticated owner session. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -38,7 +38,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - The exact hosted non-production target is missing; production Gateway configuration and production DB are not authorized substitutes.
 - Hosted personal Mini-App generation and artifact/browser proof still require an exact non-production Gateway target, test tenant/identity, and one-time GitHub OAuth app callback configuration.
 - The shared dev web process is serving stale checkout 4539aee (282 commits behind main) with unrelated dirty work; dev tunnel DNS currently fails for dev.aimarkethubs.com. Do not overwrite that checkout; real browser verification requires a clean preview built from the merged SHA and restored test hostname.
-- Target app_e6f0be051fd22e09bc4c5dff is absent from the live service app_identities table and has no matching worker run anchor; do not create a replacement or write database rows directly.
+- The app owner user 23 must be authenticated in the browser to perform private App Home and same-run Retry / Repair acceptance; the existing synthetic UAT broker identities are not authorized for this app.
 
 ## Resume
 

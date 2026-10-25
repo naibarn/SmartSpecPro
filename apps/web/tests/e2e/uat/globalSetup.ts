@@ -154,7 +154,9 @@ function assertTunnelRoute(
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
   if (process.env.SMARTSPEC_BROWSER_UAT !== "1") return;
-  assertMoliUatRuntimeIsolation();
+  if (process.env.SMARTSPEC_UAT_BROWSER === "moli") {
+    assertMoliUatRuntimeIsolation();
+  }
 
   const outputDir = path.resolve(
     config.outputDir ??
