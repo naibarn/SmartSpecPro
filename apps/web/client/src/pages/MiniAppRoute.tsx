@@ -59,7 +59,7 @@ export default function MiniAppRoute() {
     {
       enabled: isMiniAppRoute,
       retry: false,
-      refetchInterval: query => query.state.data?.factory?.milestone === "BUILDING" || !query.state.data?.app?.lastKnownGoodArtifactRef ? 2_000 : false,
+      refetchInterval: query => query.state.data?.factory?.isInProgress || (!query.state.data?.app?.lastKnownGoodArtifactRef && !query.state.data?.factory?.error) ? 2_000 : false,
     },
   );
   const legacyQuery = trpc.appIdentity.resolvePublicApp.useQuery({ publicAppId }, { enabled: !isMiniAppRoute && Boolean(publicAppId), retry: false });
@@ -116,8 +116,11 @@ export default function MiniAppRoute() {
             <h2>{factory?.milestone ?? "PREVIEW_AVAILABLE"}</h2>
             {factory ? <p>Job: {factory.jobState ?? "unknown"}{factory.currentStage ? ` · Stage: ${factory.currentStage}` : ""}</p> : null}
             {factory?.repository?.url ? <p>Source repository: <a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></p> : factory ? <p>Source repository: {factory.repositoryState ?? "PROVISIONING_PENDING"}</p> : null}
+            {factory?.repositoryState === "AUTH_REQUIRED" ? <p role="status">Source snapshot and preview stay available. Connect GitHub in Settings → Integrations, or configure SMARTAIHUB_MINIAPP_GITHUB_TOKEN once for managed repositories.</p> : null}
             {factory?.sourceSnapshotRef ? <p>Source snapshot: {factory.appSourceDigest ?? "saved"}</p> : null}
-            {factory?.error ? <p role="alert">Build failed: {factory.error.message || factory.error.code}</p> : null}
+            {miniAppData.artifactDigest ? <p>Preview artifact SHA-256: {miniAppData.artifactDigest}</p> : null}
+            {factory?.remainingStages?.length ? <p>Remaining stages: {factory.remainingStages.join(", ")}</p> : null}
+            {factory?.error ? <p role="alert">Latest build attempt failed: {factory.error.message || factory.error.code}</p> : null}
             {factory?.completedStages?.length ? (
               <section aria-label="Build history">
                 <h3>Build history</h3>
@@ -144,11 +147,13 @@ export default function MiniAppRoute() {
           <h2>{factory?.milestone ?? (app?.lastKnownGoodArtifactRef ? "PREVIEW_UNAVAILABLE" : "BUILDING")}</h2>
           <p>{factory ? `Job: ${factory.jobState ?? "unknown"}${factory.currentStage ? ` · Stage: ${factory.currentStage}` : ""}` : "Your private Mini App project is being prepared."}</p>
           {factory?.repository?.url ? <p>Source repository: <a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></p> : factory ? <p>Source repository: {factory.repositoryState ?? "PROVISIONING_PENDING"}</p> : null}
-          {factory?.error ? <p role="alert">Build failed: {factory.error.message || factory.error.code}</p> : null}
+          {factory?.repositoryState === "AUTH_REQUIRED" ? <p role="status">Source snapshot stays available. Connect GitHub in Settings → Integrations, or configure SMARTAIHUB_MINIAPP_GITHUB_TOKEN once for managed repositories.</p> : null}
+          {factory?.error ? <p role="alert">Latest build attempt failed: {factory.error.message || factory.error.code}</p> : null}
           {factory?.completedStages?.length ? (
             <section aria-label="Build history"><h3>Build history</h3><ol>{factory.completedStages.map((stage: string) => <li key={stage}>{stage}</li>)}</ol></section>
           ) : null}
           {factory?.sourceSnapshotRef ? <p>Source snapshot saved.</p> : null}
+          {factory?.remainingStages?.length ? <p>Remaining stages: {factory.remainingStages.join(", ")}</p> : null}
           {factory?.conversationId ? <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={() => { void miniAppQuery.refetch(); }} /> : null}
         </section>
       </AppPage>

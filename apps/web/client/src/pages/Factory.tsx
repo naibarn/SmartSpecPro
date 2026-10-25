@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DashboardCard } from "@/components/dashboard";
+import { CreatePersonalMiniAppPanel } from "@/components/miniApps/CreatePersonalMiniAppPanel";
 import {
   Factory as FactoryIcon,
   Play,
@@ -73,6 +74,9 @@ export default function Factory() {
       </div>
 
       <div className="max-w-4xl space-y-6">
+        <section id="personal-mini-app" aria-label="Create Personal Mini-App">
+          <CreatePersonalMiniAppPanel />
+        </section>
         <DashboardCard
           className="glass-card"
           title={

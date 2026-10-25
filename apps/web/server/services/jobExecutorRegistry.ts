@@ -40,6 +40,7 @@ import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT } from "./cloudflareProductio
 import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB, createCloudflareProductionDeploymentExecutor } from "./cloudflareProductionDeploymentExecutor";
 import { createCloudflareProductionDeploymentRuntime } from "./cloudflareProductionDeploymentRuntime";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB, createCloudflareProductionQueueExecutor } from "./cloudflareProductionQueueProvision";
+import { MINI_APP_FACTORY_RUN_ANCHOR_CONTRACT, MINI_APP_FACTORY_RUN_ANCHOR_JOB_TYPE, executeMiniAppFactoryRunAnchor } from "./miniAppFactoryRunAnchor";
 
 export type JobExecutorRegistration = {
   jobType: string;
@@ -449,6 +450,13 @@ defaultJobExecutorRegistry.register({
       factory.getConfiguredMiniAppFactoryStageWorkerRuntime,
     )(input);
   },
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: MINI_APP_FACTORY_RUN_ANCHOR_JOB_TYPE,
+  executionClass: "short",
+  contractVersions: new Set([MINI_APP_FACTORY_RUN_ANCHOR_CONTRACT]),
+  executor: executeMiniAppFactoryRunAnchor,
 });
 
 defaultJobExecutorRegistry.register({

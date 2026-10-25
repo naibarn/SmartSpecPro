@@ -40,7 +40,7 @@ const GENERATED_APP_SCHEMA = z
 export type GeneratedPersonalMiniApp = z.infer<typeof GENERATED_APP_SCHEMA>;
 
 export type PersonalMiniAppRepository = {
-  mode: "SMARTAIHUB_MANAGED";
+  mode: "SMARTAIHUB_MANAGED" | "USER_OWNED";
   owner: string;
   name: string;
   url: string;
@@ -292,8 +292,10 @@ export async function provisionMiniAppRepositoryFromSnapshot(input: {
   const sourceJson = bytes.toString("utf8");
   const source = GENERATED_APP_SCHEMA.parse(JSON.parse(sourceJson));
   const normalizedSource = JSON.stringify(source);
+  const managedRepository = await provisionManagedMiniAppRepository({ appId: input.appId, sourceJson: normalizedSource });
+  if (managedRepository) return managedRepository;
   const userToken = await getUserGitHubToken(input.userId);
-  if (!userToken) return provisionManagedMiniAppRepository({ appId: input.appId, sourceJson: normalizedSource });
+  if (!userToken) return null;
 
   const githubLogin = await validateGitHubToken(userToken);
   const headers = {
@@ -462,31 +464,79 @@ export async function resolvePersonalMiniAppFactoryHome(
     : null;
   if (!factory) return null;
   const artifacts = Array.isArray(factory.artifacts) ? factory.artifacts : [];
-  const sourceSnapshot = artifacts.find(value => typeof value === "string" && value.startsWith("app-source:r2://"));
-  const repositoryState = artifacts.find(value => typeof value === "string" && value.startsWith("app-repository-state:"));
+  const sourceSnapshot = [...artifacts].reverse().find(value => typeof value === "string" && value.startsWith("app-source:r2://"));
+  const repositoryState = [...artifacts].reverse().find(value => typeof value === "string" && value.startsWith("app-repository-state:"));
+  const workUnit = run?.workUnit && typeof run.workUnit === "object" && !Array.isArray(run.workUnit)
+    ? run.workUnit as Record<string, unknown>
+    : null;
+  const workProgress = workUnit?.progress && typeof workUnit.progress === "object" && !Array.isArray(workUnit.progress)
+    ? workUnit.progress as Record<string, unknown>
+    : null;
+  const remainingStages = workProgress && Array.isArray(workProgress.remainingScope)
+    ? workProgress.remainingScope.filter((stage): stage is string => typeof stage === "string")
+    : [];
+  let latestStage: { status: string; errorCode: string | null; errorMessage: string | null; inputJson: Record<string, unknown> } | null = null;
+  if (run?.runId) {
+    try {
+      const [stage] = await getDb().select({
+        status: workerJobs.status,
+        errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
+        inputJson: workerJobs.inputJson,
+      }).from(workerJobs).where(and(
+        eq(workerJobs.tenantId, input.tenantId),
+        eq(workerJobs.requestedByUserId, input.userId),
+        eq(workerJobs.jobType, "mini_app_factory.stage"),
+        sql`${workerJobs.inputJson}->>'runId' = ${run.runId}`,
+      )).orderBy(sql`${workerJobs.createdAt} DESC`).limit(1);
+      latestStage = stage ?? null;
+    } catch {
+      // Keep the persisted DevelopmentRun progress readable if stage telemetry is unavailable.
+    }
+  }
   const failureCode = factory.blockerState && typeof factory.blockerState === "object"
     ? (factory.blockerState as Record<string, unknown>).code
     : null;
-  const failed = root?.status === "failed" || (typeof failureCode === "string" && Boolean(failureCode));
+  const activeStage = Boolean(latestStage && ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled"].includes(latestStage.status));
+  const failureRecorded = root?.status === "failed" || latestStage?.status === "failed" || (typeof failureCode === "string" && Boolean(failureCode));
+  const failed = failureRecorded && !activeStage;
+  const isInProgress = !failed && (activeStage || remainingStages.length > 0);
+  const latestStageInput = latestStage?.inputJson && typeof latestStage.inputJson === "object" ? latestStage.inputJson : {};
+  const currentStage = typeof latestStageInput.stageId === "string" && activeStage
+    ? latestStageInput.stageId
+    : typeof factory.currentStage === "string" ? factory.currentStage : null;
+  const rawErrorMessage = latestStage?.errorMessage ?? root?.errorMessage ?? null;
+  const errorMessage = rawErrorMessage
+    ? rawErrorMessage
+        .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{12,})\b/g, "[redacted]")
+        .replace(/\b(authorization|api[_-]?key|access[_-]?token)\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]")
+        .slice(0, 600)
+    : null;
+  const jobState = latestStage?.status ?? root?.status ?? "unknown";
+  const milestone = activeStage
+    ? hasUsableArtifact ? "PREVIEW_AVAILABLE" : "BUILDING"
+    : resolvePersonalMiniAppHomeMilestone({
+        failed,
+        hasUsableArtifact,
+        storedMilestone: factory.deliveryMilestone,
+      });
   return {
     runId: run?.runId ?? null,
     goal: typeof run?.goal === "string" ? run.goal : "",
     conversationId: Number.isSafeInteger(run?.metadata && typeof run.metadata === "object" ? (run.metadata as Record<string, unknown>).conversationId : null)
       ? Number((run!.metadata as Record<string, unknown>).conversationId)
       : null,
-    jobState: root?.status ?? "unknown",
-    milestone: resolvePersonalMiniAppHomeMilestone({
-      failed,
-      hasUsableArtifact,
-      storedMilestone: factory.deliveryMilestone,
-    }),
-    currentStage: typeof factory.currentStage === "string" ? factory.currentStage : null,
+    jobState,
+    isInProgress,
+    remainingStages,
+    milestone,
+    currentStage,
     completedStages: Array.isArray(factory.completedStages) ? factory.completedStages : [],
     artifacts,
     appSourceDigest: typeof factory.appSourceDigest === "string" ? factory.appSourceDigest : null,
     repository: factory.repository && typeof factory.repository === "object" ? factory.repository : null,
     repositoryState: typeof repositoryState === "string" ? repositoryState.slice("app-repository-state:".length) : factory.repository ? "BOUND" : "PROVISIONING_PENDING",
     sourceSnapshotRef: typeof factory.sourceSnapshotRef === "string" ? factory.sourceSnapshotRef : typeof sourceSnapshot === "string" ? sourceSnapshot.slice("app-source:".length) : null,
-    error: failed ? { code: typeof failureCode === "string" ? failureCode : root?.errorCode, message: root?.errorMessage } : null,
+    error: failureRecorded ? { code: typeof failureCode === "string" ? failureCode : latestStage?.errorCode ?? root?.errorCode, message: errorMessage } : null,
   };
 }

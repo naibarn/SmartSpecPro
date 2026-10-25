@@ -32,13 +32,18 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           prompt: run.goal,
           previousSourceRef,
         });
+        const repositoryState = artifact.repository
+          ? "BOUND"
+          : context.artifacts.includes("app-repository-state:AUTH_REQUIRED")
+            ? "AUTH_REQUIRED"
+            : artifact.repositoryState;
         return { artifacts: [
           `app-artifact:${artifact.artifactRef}`,
           `app-artifact-digest:${artifact.artifactDigest}`,
           `app-artifact-bytes:${artifact.bytes}`,
           `app-source:${artifact.sourceRef}`,
           `app-source-digest:${artifact.sourceDigest}`,
-          `app-repository-state:${artifact.repositoryState}`,
+          `app-repository-state:${repositoryState}`,
           ...(artifact.repository ? [`app-repository:${artifact.repository.mode === "USER_OWNED" ? "user" : "managed"}:${artifact.repository.owner}/${artifact.repository.name}@${artifact.repository.revision}`] : []),
         ] };
       }

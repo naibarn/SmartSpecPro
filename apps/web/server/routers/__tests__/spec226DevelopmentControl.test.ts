@@ -25,7 +25,10 @@ const mocks = vi.hoisted(() => ({
   resolveOwnedMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.appId, tenantId: input.tenantId, ownerUserId: input.ownerUserId, visibility: "private" })),
   resolveMiniAppFactoryHome: vi.fn(),
   getUserGitHubConnection: vi.fn(async () => ({ configured: false, githubLogin: null })),
-  developmentRunService: { initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })) },
+  developmentRunService: {
+    initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })),
+    recordVerificationEvent: vi.fn(async () => ({ accepted: true })),
+  },
   enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
   VisionUnavailableError: class MiniAppVisionCapabilityUnavailableError extends Error {},
   workspaceSafeActions: { enqueue: vi.fn(), status: vi.fn() },
@@ -54,6 +57,7 @@ vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
     mocks.createRun(...args),
   createDevelopmentRunService: () => ({
     initialize: (...args: unknown[]) => mocks.developmentRunService.initialize(...args),
+    recordVerificationEvent: (...args: unknown[]) => mocks.developmentRunService.recordVerificationEvent(...args),
     requestFullVerification: (...args: unknown[]) => mocks.requestFullVerification(...args),
   }),
   defaultDevelopmentRunPersistenceAdapter: {},
@@ -264,7 +268,9 @@ describe("spec226DevelopmentControlRouter", () => {
           progress: expect.objectContaining({ remainingScope: ["ui_implementation", "package", "deploy", "smoke"] }),
         }),
       }),
+      rootJobDefinition: expect.objectContaining({ jobType: "mini_app_factory.run_anchor", executionClass: "short" }),
     }));
+    expect(mocks.developmentRunService.initialize.mock.calls[0]?.[0].run.workUnit.artifacts).toContain("app-repository-state:AUTH_REQUIRED");
     expect(mocks.developmentRunService.initialize).toHaveBeenCalledWith(expect.objectContaining({
       run: expect.objectContaining({ metadata: expect.objectContaining({ conversationId: 8 }) }),
     }));
@@ -337,6 +343,52 @@ describe("spec226DevelopmentControlRouter", () => {
         }),
       }),
     }));
+  });
+
+  it("returns the permanent App Home when stage enqueue fails so the same run can be retried", async () => {
+    mocks.enqueueMiniAppStage.mockRejectedValueOnce(new Error("temporary queue outage"));
+    mocks.enqueueMiniAppStage.mockRejectedValueOnce(new Error("temporary queue outage"));
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8,
+        mode: "prompt",
+        factoryMode: true,
+        prompt: "Create a personal expense tracker",
+        idempotencyKey: "spec224-factory-retry-key-0001",
+      },
+    });
+    expect(result).toMatchObject({
+      miniAppId: expect.stringMatching(/^app_/),
+      previewUrl: `https://smartaihub.app/miniapp/${result.miniAppId}`,
+      dispatchStatus: "RETRY_REQUIRED",
+      jobId: null,
+    });
+    expect(mocks.developmentRunService.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
+      idempotencyKey: `miniapp-factory-enqueue-failed:${result.runId}`,
+      payload: expect.objectContaining({ outcome: "START_RETRY_REQUIRED" }),
+    }));
+    expect(mocks.enqueueMiniAppStage).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a transient enqueue failure on the same durable DevelopmentRun", async () => {
+    mocks.enqueueMiniAppStage.mockRejectedValueOnce(new Error("temporary queue outage"));
+    mocks.enqueueMiniAppStage.mockResolvedValueOnce({ stageId: "ui_implementation", jobId: "hosted-factory-retry", created: true, state: "ENQUEUED" });
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8,
+        mode: "prompt",
+        factoryMode: true,
+        prompt: "Create a personal expense tracker",
+        idempotencyKey: "spec224-factory-retry-key-0002",
+      },
+    });
+
+    expect(result).toMatchObject({ dispatchStatus: "ENQUEUED", jobId: "hosted-factory-retry" });
+    expect(mocks.developmentRunService.initialize).toHaveBeenCalledTimes(1);
+    expect(mocks.enqueueMiniAppStage).toHaveBeenCalledTimes(2);
+    expect(mocks.developmentRunService.recordVerificationEvent).not.toHaveBeenCalled();
   });
 
   it("starts a prompt run from server-derived workspace facts and stages bytes before canonical admission", async () => {

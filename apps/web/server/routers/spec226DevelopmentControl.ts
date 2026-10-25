@@ -17,6 +17,7 @@ import { createDevelopmentWorkUnit } from "../services/developmentLifecycleContr
 import { loadMiniAppFactoryPipeline, selectReadyMiniAppFactoryStages } from "../services/miniAppFactoryPipeline";
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../services/miniAppFactoryDurableState";
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
+import { buildMiniAppFactoryRunAnchorDefinition } from "../services/miniAppFactoryRunAnchor";
 import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
 import { resolvePersonalMiniAppFactoryHome } from "../services/personalMiniAppPreview";
 import { getUserGitHubConnection } from "../services/userGithubConnectionService";
@@ -523,13 +524,21 @@ export const spec226DevelopmentControlRouter = router({
               });
           if (!miniAppIdentity) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
           const priorArtifacts = previousFactory?.artifacts.filter(value => typeof value === "string" && /^(app-source:|app-source-digest:|app-repository:|app-repository-state:)/.test(value)) ?? [];
-          const repository = previousFactory?.repository as { mode: "SMARTAIHUB_MANAGED"; owner: string; name: string; url: string; revision: string } | null ?? null;
+          const repository = previousFactory?.repository as { mode: "SMARTAIHUB_MANAGED" | "USER_OWNED"; owner: string; name: string; url: string; revision: string } | null ?? null;
+          let repositoryProvisioningAvailable = Boolean(process.env.SMARTAIHUB_MINIAPP_GITHUB_TOKEN);
+          try {
+            repositoryProvisioningAvailable ||= (await getUserGitHubConnection(scope.actorId)).configured;
+          } catch {
+            // GitHub is optional for private preview; keep the app runnable and retain setup state.
+          }
+          const repositoryState = repositoryProvisioningAvailable ? [] : ["app-repository-state:AUTH_REQUIRED"];
+          const initialArtifacts = [...new Set([...priorArtifacts, ...repositoryState])];
           const sourceRevision = repository?.revision ?? previousFactory?.appSourceDigest ?? createHash("sha256").update(input.prompt.trim()).digest("hex");
           const factoryState = createMiniAppFactoryDurableState({
             programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
             miniAppId,
             profile: "PERSONAL_MINIAPP",
-            initialArtifacts: priorArtifacts,
+            initialArtifacts,
             repository,
           });
           const repositoryRef = repository ? `repo:${repository.owner}/${repository.name}` : `miniapp:${miniAppId}`;
@@ -543,10 +552,7 @@ export const spec226DevelopmentControlRouter = router({
             canonicalTarget: { kind: "artifact-revision", locator: `miniapp:${miniAppId}` },
             baseRevision: repository ? `git:${repository.revision}` : `source-snapshot:${sourceRevision}`,
           });
-          workUnit.artifacts = [...priorArtifacts];
-          const repositoryProvisioningAvailable = Boolean(
-            process.env.SMARTAIHUB_MINIAPP_GITHUB_TOKEN || (await getUserGitHubConnection(scope.actorId)).configured,
-          );
+          workUnit.artifacts = [...initialArtifacts];
           const profileStages = (factoryPipeline.profiles?.PERSONAL_MINIAPP?.stages ?? factoryPipeline.stages.map(stage => stage.id))
             .filter(stageId => stageId !== "source_repository" || repositoryProvisioningAvailable);
           workUnit.progress.state = "WORKING";
@@ -571,18 +577,51 @@ export const spec226DevelopmentControlRouter = router({
             run,
             eventIdempotencyKey: `personal-miniapp:${runId}`,
             scope,
+            rootJobDefinition: buildMiniAppFactoryRunAnchorDefinition({ runId }),
           });
-          const firstStage = await enqueueNextMiniAppFactoryStage({
-            pipeline: factoryPipeline,
-            service: developmentRunService,
-            run: { runId, tenantId: scope.tenantId, actorId: scope.actorId },
-          });
+          let firstStage: Awaited<ReturnType<typeof enqueueNextMiniAppFactoryStage>> | null = null;
+          let stageEnqueueError: unknown;
+          let stageEnqueueFailureCode: string | null = null;
+          for (let attempt = 0; attempt < 2 && !firstStage; attempt += 1) {
+            try {
+              firstStage = await enqueueNextMiniAppFactoryStage({
+                pipeline: factoryPipeline,
+                service: developmentRunService,
+                run: { runId, tenantId: scope.tenantId, actorId: scope.actorId },
+              });
+            } catch (error) {
+              stageEnqueueError = error;
+            }
+          }
+          if (!firstStage) {
+            stageEnqueueFailureCode = errorCode(stageEnqueueError) || "FACTORY_STAGE_ENQUEUE_FAILED";
+            try {
+              await developmentRunService.recordVerificationEvent({
+                runId,
+                tenantId: scope.tenantId,
+                actorId: scope.actorId,
+                type: "VERIFICATION_OUTCOME",
+                idempotencyKey: `miniapp-factory-enqueue-failed:${runId}`,
+                payload: { profile: "PERSONAL_MINIAPP", outcome: "START_RETRY_REQUIRED", code: stageEnqueueFailureCode },
+                runMetadata: {
+                  [MINI_APP_FACTORY_STATE_KEY]: {
+                    ...factoryState,
+                    deliveryMilestone: "BUILD_FAILED",
+                    blockerState: { status: "WAITING_EXTERNAL_RETRYABLE", code: stageEnqueueFailureCode },
+                  },
+                },
+              });
+            } catch {
+              // The App Identity and initial run are already durable; preserve the App Home response.
+            }
+            firstStage = { stageId: workUnit.progress.immediatelyRunnableScope[0] ?? null, jobId: null, created: false, state: "WAITING_DEPENDENCY" };
+          }
           auditLogger.log({
             eventType: "spec226_development_control" as AuditEventType,
             traceId,
             tenantId: scope.tenantId,
             userId: scope.actorId,
-            metadata: { runId, jobId: firstStage.jobId, status: firstStage.state, profile: "PERSONAL_MINIAPP", appId: miniAppIdentity.appId },
+            metadata: { runId, jobId: firstStage.jobId, status: firstStage.state, profile: "PERSONAL_MINIAPP", appId: miniAppIdentity.appId, ...(stageEnqueueFailureCode ? { stageEnqueueFailureCode } : {}) },
           });
           return {
             runId,
@@ -592,7 +631,7 @@ export const spec226DevelopmentControlRouter = router({
             miniAppId: miniAppIdentity.appId,
             previewUrl: `https://smartaihub.app/miniapp/${encodeURIComponent(miniAppIdentity.appId)}`,
             state: "DISCOVERY" as const,
-            dispatchStatus: "ENQUEUED" as const,
+            dispatchStatus: firstStage.jobId ? "ENQUEUED" as const : "RETRY_REQUIRED" as const,
             inputDigest: createHash("sha256").update(input.prompt.trim()).digest("hex"),
             specSetRevision: null,
             workPackageId: "personal-miniapp",

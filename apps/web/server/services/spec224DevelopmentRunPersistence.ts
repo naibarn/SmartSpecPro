@@ -529,12 +529,22 @@ export function createDevelopmentRunService(
       run: DevelopmentRun;
       eventIdempotencyKey: string;
       scope: DevelopmentRunScope;
+      rootJobDefinition?: Omit<JobDefinition, "tenantId" | "requestedByUserId">;
     }): Promise<DevelopmentRunStoreRecord> {
       const scope = scopeFor(input.scope);
       return adapter.transaction(async tx => {
         const existing = await tx.load(input.run.runId, scope);
         if (existing) return existing;
-        const created = recordDevelopmentEvent(input.run, {
+        const rootJob = input.rootJobDefinition
+          ? await tx.createCanonicalJob?.({
+              ...input.rootJobDefinition,
+              tenantId: scope.tenantId,
+              requestedByUserId: scope.actorId,
+            })
+          : null;
+        if (input.rootJobDefinition && !rootJob) throw new Error("RUN_ANCHOR_JOB_UNAVAILABLE");
+        const initialRun = rootJob ? bindWorkerJob(input.run, rootJob.jobId) : input.run;
+        const created = recordDevelopmentEvent(initialRun, {
           eventId: eventIdFor(input.run.runId, input.eventIdempotencyKey),
           idempotencyKey: input.eventIdempotencyKey,
           type: "RUN_CREATED",

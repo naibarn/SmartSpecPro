@@ -317,6 +317,9 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
         Chat section นี้เลือก workspace เดิมเพื่อทำงานต่อได้ การแนบ spec จะเพิ่ม revision; ยังไม่เริ่มแก้โค้ดหรือ build/run
       </p>
+      <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+        ต้องการเริ่มจาก prompt อย่างเดียว? <a className="underline" href="/factory#personal-mini-app">Create a Personal Mini-App</a>
+      </p>
       {!conversationId ? (
         <p className="mt-3 text-xs text-amber-700">สร้างหรือเลือก conversation ก่อนจึงจะผูก workspace ได้</p>
       ) : (

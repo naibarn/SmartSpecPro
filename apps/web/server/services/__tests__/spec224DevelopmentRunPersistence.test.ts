@@ -34,7 +34,8 @@ function memoryAdapter(
   canonicalJob: CanonicalDevelopmentJobSnapshot = {
     status: "succeeded",
     output: { evidenceRefs: ["evidence:phase-pass"] },
-  }
+  },
+  createJob: (definition: any) => Promise<{ jobId: string; created: boolean }> = async () => ({ jobId: "verification-worker-job", created: true }),
 ): DevelopmentRunPersistenceAdapter {
   let record = initial ?? null;
   return {
@@ -91,8 +92,8 @@ function memoryAdapter(
         async getCanonicalJob() {
           return canonicalJob;
         },
-        async createCanonicalJob() {
-          return { jobId: "verification-worker-job", created: true };
+        async createCanonicalJob(definition) {
+          return createJob(definition);
         },
       });
     },
@@ -106,6 +107,41 @@ function memoryAdapter(
 }
 
 describe("Spec 224 durable DevelopmentRun persistence", () => {
+  it("creates and binds the durable run anchor inside initialization", async () => {
+    const definitions: any[] = [];
+    const adapter = memoryAdapter(undefined, undefined, async definition => {
+      definitions.push(definition);
+      return { jobId: "mini-app-run-anchor", created: true };
+    });
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      runId: "run-224-mini-app-anchor",
+      workspaceId: "workspace:mini-app-anchor",
+    });
+
+    const initialized = await createDevelopmentRunService(adapter).initialize({
+      run,
+      eventIdempotencyKey: "mini-app-anchor:create",
+      scope: { tenantId: run.tenantId, actorId: run.actorId },
+      rootJobDefinition: {
+        contractVersion: "mini-app-factory-run-anchor-v1",
+        jobType: "mini_app_factory.run_anchor",
+        executionClass: "short",
+        input: { spec224Run: { runId: run.runId } },
+        idempotencyKey: `mini-app-anchor:${run.runId}`,
+        activeDedupeKey: `mini-app-anchor:${run.runId}`,
+        retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "bounded", deadlineMs: 60_000, allowedErrorClasses: [] },
+        timeoutPolicy: { softTimeoutMs: 5_000, hardTimeoutMs: 10_000 },
+        requiredCapabilities: {},
+      },
+    });
+
+    expect(definitions).toHaveLength(1);
+    expect(definitions[0]).toMatchObject({ tenantId: run.tenantId, requestedByUserId: run.actorId });
+    expect(initialized.run.workerJobId).toBe("mini-app-run-anchor");
+    expect((await adapter.read())?.run.workerJobId).toBe("mini-app-run-anchor");
+  });
+
   it("continues a successfully repaired run into TEST", async () => {
     const run = {
       ...baseRun,

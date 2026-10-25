@@ -122,4 +122,32 @@ describe("MiniAppRoute", () => {
     expect(frame).toHaveAttribute("srcdoc", "<!doctype html><main>Expense tracker</main>");
     expect(screen.queryByText("BUILDING")).not.toBeInTheDocument();
   });
+
+  it("keeps refreshing progress and displays repository setup while a preview is already usable", async () => {
+    mocks.miniAppParams = { appId: "app_private_progress" };
+    mocks.appQuery.data = {
+      app: {
+        appId: "app_private_progress",
+        visibility: "private",
+        deploymentVersion: 1,
+        lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_private_progress/sha256/" + "b".repeat(64),
+      },
+      html: "<!doctype html><main>Expense tracker</main>",
+      artifactDigest: "b".repeat(64),
+      factory: {
+        milestone: "BUILDING",
+        isInProgress: true,
+        repositoryState: "AUTH_REQUIRED",
+        remainingStages: ["package", "deploy"],
+      },
+    };
+
+    render(<MiniAppRoute />);
+
+    expect(await screen.findByTestId("miniapp-preview-frame")).toBeInTheDocument();
+    expect(screen.getByText(/Connect GitHub in Settings → Integrations/)).toBeInTheDocument();
+    expect(screen.getByText("Remaining stages: package, deploy")).toBeInTheDocument();
+    const options = mocks.resolveMiniApp.mock.calls[0]?.[1] as { refetchInterval?: (query: any) => number | false };
+    expect(options.refetchInterval?.({ state: { data: mocks.appQuery.data } })).toBe(2_000);
+  });
 });
