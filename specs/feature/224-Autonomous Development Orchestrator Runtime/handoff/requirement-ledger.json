@@ -1,5 +1,5 @@
 {
-  "generation": 24,
+  "generation": 26,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -2844,70 +2844,82 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2550"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2550",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Start one small isolated Core DevelopmentRun with the authorized non-production tenant owner and retain run/job/source identifiers.",
       "requirement_digest": "bb693dedd5f5ebc678e4880f1547afbe79b5eef11326926cd1f83ed326332e2d",
       "requirement_id": "REQ-26611F40B8B9",
       "requirement_text": "- [ ] User can start a run from one goal/spec.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Disposable PostgreSQL integration persists a synthetic run/job lifecycle, but no authenticated live Core Start run or retained run/job identifiers were produced."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2551"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2551",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete real dispatch across planning, implementation, build, test, review, regression and independent Final Verify with durable receipts.",
       "requirement_digest": "9be1a520c5a883f0cdbfd294e9cd23dca6b411218d2afac7dbc9fc5e97dfbd7e",
       "requirement_id": "REQ-0691BAE3D6B0",
       "requirement_text": "- [ ] Runtime automatically traverses Plan → Implement → Test → Review → Verify.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Synthetic disposable-PostgreSQL lifecycle exercises persisted phase progression; it is not a real dispatch through the complete live lifecycle."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2552"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2552",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Force one recoverable failure in a real authorized Core run and verify automatic repair/resume with the same run identity.",
       "requirement_digest": "d30cc1427440be4173048fc0976dffd744f45f252286f79bbd0649349c0843ee",
       "requirement_id": "REQ-031FFA9F7FB9",
       "requirement_text": "- [ ] Normal failures trigger automatic debug/repair.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Bounded deterministic repair is verified in disposable PostgreSQL; no actual live Core run was repaired and continued."
     },
     {
       "applicability": "UNASSESSED",
@@ -2932,70 +2944,82 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2554"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2554",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Exercise a real Core run interrupted by server restart and verify durable resume from checkpoint.",
       "requirement_digest": "cbf667a986e4861c5416f58456c5ab0f1d2b6218099ad52a2e852f168413fdb2",
       "requirement_id": "REQ-F75D55112EB8",
       "requirement_text": "- [ ] Run survives server restart.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "No live server-restart recovery receipt was recorded in this audit."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2555"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2555",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "After fresh Windows Runner readiness and scoped admission, interrupt/reconnect the Runner and retain fencing/resume receipts.",
       "requirement_digest": "ac3ef86ee2f7ae51672db0cff69787b056edd3968499b5c09894b729b2ed1314",
       "requirement_id": "REQ-FE4631D495C9",
       "requirement_text": "- [ ] Run survives Runner reconnect.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "No live Windows Runner reconnect/recovery receipt was recorded in this audit."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2556"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2556",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete independent Final Verify against actual workspace/source/test receipts and retain its signed or durable certificate.",
       "requirement_digest": "25498fe15421909be8821d8cc04d44e4950705075b43d0540beaede5e12319da",
       "requirement_id": "REQ-69164877E868",
       "requirement_text": "- [ ] Final completion requires evidence-based Final Verify.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Current integration test rejects missing evidence; no positive independent Final Verify certificate exists for a live Core run."
     },
     {
       "applicability": "UNASSESSED",
@@ -3130,26 +3154,30 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2573"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2573",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
       "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify protected Runner disconnect recovery and independent Final Verify using the existing scoped grant path.",
       "requirement_digest": "cb98483d7ad80ac47ea1d910f9733e80bedef4416f5bff1f0859a5f7bdd55715",
       "requirement_id": "REQ-828640C20102",
       "requirement_text": "- [ ] Runner disconnect recovers automatically within policy.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "No protected live Windows Runner disconnect/reconnect evidence exists for this audit."
     },
     {
       "applicability": "UNASSESSED",
@@ -3416,26 +3444,30 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2596"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2596",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Retain evidence-gated Final Verify rule; successful live Final Verify remains a separate requirement.",
       "requirement_digest": "21039b9da2c423f3a78a2894843c093b5f9769436ff4035417e37e2d2791df00",
       "requirement_id": "REQ-3917D7A777B0",
       "requirement_text": "- [ ] Missing evidence is not PASS.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Focused disposable-PostgreSQL integration asserts Final Verify is refused when required workspace receipts are absent."
     },
     {
       "applicability": "UNASSESSED",
@@ -27576,26 +27608,31 @@
       "verification_method": "Determine from current implementation and applicable lifecycle obligations."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17332"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17332",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/routers/appIdentity.ts",
+        "apps/web/server/services/appIdentityRepository.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Capture one authorized non-production Start flow with App ID, Run ID, creation timestamp, canonical URL and first implementation dispatch receipts.",
       "requirement_digest": "3db008e364b0d15c06bf6accd98064be145b76ae811eef832117b1509fccdcee",
       "requirement_id": "REQ-09D54E098C5F",
       "requirement_text": "- [ ] Creation from SmartAIHub persists an app identity and displays its canonical HTTPS URL before implementation begins; interruption and resume preserve the same app ID, URL, owner, and run binding.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Existing pilot records prove persisted App Identity and linked run history, but this audit did not retain a fresh authenticated Start chronology proving canonical URL availability before implementation."
     },
     {
       "applicability": "APPLICABLE",
@@ -27605,47 +27642,52 @@
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17333",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "apps/web/server/services/appIdentityRepository.ts",
-        "apps/web/server/services/personalMiniAppPreview.ts"
+        "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
+        "apps/web/server/routers/appIdentity.test.ts",
+        "apps/web/server/routes/miniAppRuntime.test.ts"
       ],
-      "implementation_status": "IMPLEMENTED",
-      "next_action": "Complete the real browser authorization matrix on the non-production target.",
+      "implementation_status": "PARTIAL",
+      "next_action": "Run the deployed owner/same-tenant/cross-tenant/anonymous matrix against an authorized isolated app and retain identity-bound denial receipts.",
       "requirement_digest": "0abcede85de1df372242e86b1cc3755da8be4ac73fe4c58fad76579874b4224f",
       "requirement_id": "REQ-B92C79FEA294",
       "requirement_text": "- [ ] Private owner access passes; same-tenant other-user, cross-tenant, and anonymous access are denied before any private app bytes or data are returned.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
-        "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
       ],
-      "verification_method": "App identity/private artifact tests cover owner authorization; real same-tenant, cross-tenant and anonymous browser identities are not yet exercised."
+      "verification_method": "Current-SHA resolver/router tests cover owner access and same-tenant, cross-tenant, and anonymous denial before bytes; no deployed runtime principal-matrix receipt is retained."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17334"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17334",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/routers/appIdentity.test.ts",
+        "apps/web/server/routes/miniAppRuntime.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Run publish, anonymous read, owner unpublish and immediate anonymous denial with disposable tenant-bound identities on an isolated target.",
       "requirement_digest": "0e20fb1e77641366e6d0e720ff7a39ae2c4fd4cbd0bafa5a365c45005ae613a3",
       "requirement_id": "REQ-6B95E2497188",
       "requirement_text": "- [ ] Anonymous access to an explicitly published app passes, and owner unpublish immediately denies anonymous access.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Current-SHA unit/router tests cover access policy and owner-only publish/unpublish controls; no durable anonymous read → owner unpublish → immediate denial sequence was run."
     },
     {
       "applicability": "APPLICABLE",
@@ -27653,38 +27695,25 @@
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17335"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17335",
-      "blocker": {
-        "class": "EXTERNAL_AUTHORITY",
-        "code": "NONPROD_GATEWAY_TARGET_NOT_CONFIGURED",
-        "reactivation_predicate": "A real authenticated Personal Mini-App job reaches the non-production Gateway, settles through worker_jobs/outbox, and records the provider/model, usage, budget and trace receipt.",
-        "required_owner_action": "Provision or identify the authorized hosted non-production SmartAIHub Skill Execution/Gateway endpoint, test-tenant policy and bounded budget, plus its worker runtime."
-      },
+      "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
-      "final_state": "BLOCKED_TRUE_EXTERNAL",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "OPEN",
       "implementation_evidence": [
-        "apps/web/server/services/personalMiniAppPreview.ts",
         "apps/web/server/services/miniAppFactoryRuntime.ts"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Resume after the non-production Gateway endpoint, test-tenant policy and bounded budget are available; prove actual call receipts and blocked fallback paths.",
+      "next_action": "Exercise an authorized Gateway-only model call and retain complete run-bound usage/credit/budget/trace receipts plus fallback-exclusion evidence.",
       "requirement_digest": "409bc6bbbcb80f2fcd6fe49fb6d73443cfaf02d163e1f7866f0b2aaa655bed85",
       "requirement_id": "REQ-99636C68BAEA",
       "requirement_text": "- [ ] Every model call in the Mini-App workflow has a Skill Execution → SmartAIHub Gateway usage/credit/budget/trace receipt; tests prove the Codex Subscription, direct-provider, and API-key fallback paths are not invoked.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
-        "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
-        {
-          "class": "EXTERNAL_AUTHORITY",
-          "code": "NONPROD_GATEWAY_TARGET_NOT_CONFIGURED",
-          "reactivation_predicate": "A real authenticated Personal Mini-App job reaches the non-production Gateway, settles through worker_jobs/outbox, and records the provider/model, usage, budget and trace receipt.",
-          "required_owner_action": "Provision or identify the authorized hosted non-production SmartAIHub Skill Execution/Gateway endpoint, test-tenant policy and bounded budget, plus its worker runtime."
-        }
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
       ],
-      "verification_method": "Repository worker lane is synthetic; actual model/Gateway request and provider receipt are absent."
+      "verification_method": "No live model/Gateway call or run-bound usage, credit, budget and trace receipt was produced in this audit."
     },
     {
       "applicability": "APPLICABLE",
@@ -27692,126 +27721,134 @@
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17336"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17336",
-      "blocker": {
-        "class": "EXTERNAL_AUTHORITY",
-        "code": "NONPROD_PREVIEW_TARGET_NOT_REGISTERED",
-        "reactivation_predicate": "An exact app artifact is owner-bound on the non-production target and the browser can access the canonical HTTPS route as owner while a second identity is denied.",
-        "required_owner_action": "Provide the authorized hosted non-production SmartAIHub app/preview target with disposable database and owner/second-test identities."
-      },
+      "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
-      "final_state": "BLOCKED_TRUE_EXTERNAL",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
       "implementation_evidence": [
         "apps/web/server/services/personalMiniAppPreview.ts",
-        "apps/web/server/services/miniAppFactoryRuntime.ts"
+        "apps/web/server/services/cloudflareStagingArtifactAuthority.ts"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Verify automatic artifact binding and that preview code/data cannot reach production resources on the authorized non-production target.",
+      "next_action": "Run a non-production app against isolated Preview resources and prove Production resources cannot be addressed.",
       "requirement_digest": "61a0ffc98f3d1ad1ef425c6225f8c23829a380a3c3f5485a863895be8df4e1d4",
       "requirement_id": "REQ-AA925E33A229",
       "requirement_text": "- [ ] A static or dynamic artifact is automatically deployed only to the authorized isolated target; Preview code and data cannot address Production resources.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
-        "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
-        {
-          "class": "EXTERNAL_AUTHORITY",
-          "code": "NONPROD_PREVIEW_TARGET_NOT_REGISTERED",
-          "reactivation_predicate": "An exact app artifact is owner-bound on the non-production target and the browser can access the canonical HTTPS route as owner while a second identity is denied.",
-          "required_owner_action": "Provide the authorized hosted non-production SmartAIHub app/preview target with disposable database and owner/second-test identities."
-        }
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
       ],
-      "verification_method": "Static artifact path and private owner binding have unit evidence; the required isolated hosted target has not been exercised."
+      "verification_method": "Static private artifact and LKG binding are covered; no current Preview-vs-Production resource-isolation run was performed."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17337"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17337",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PASS",
+      "implementation_evidence": [
+        "apps/web/server/services/personalMiniAppPreview.ts",
+        "apps/web/server/services/miniAppFactoryRuntime.ts"
+      ],
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Retain closed V1/V2 LKG behavior; reopen only on regression evidence.",
       "requirement_digest": "dc1734f6a01adaa6863085747d1386e24d60e54ea0dd817fbdcf282f25e3b03d",
       "requirement_id": "REQ-28DAED30E097",
       "requirement_text": "- [ ] A partial development state or retained last-known-good build remains addressable at the canonical app URL, and a failed candidate does not replace the last-known-good version.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Existing pilot receipts and pre-promotion failure regression evidence; relevant delivery/runtime files are unchanged from verified source SHA f80ca9721e7631c0d257e2bda87c08bd71a8fc85 to audited source SHA."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17338"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17338",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts",
+        "apps/web/server/services/miniAppFactoryStageWorker.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Complete a real run with durable repair checkpoints and independent Final Verify receipt.",
       "requirement_digest": "0cc364b64d481afe96502dcc572087a7f2dc312a7476614b894c7562eb89a2e4",
       "requirement_id": "REQ-24575B1B523F",
       "requirement_text": "- [ ] Automatic defect repair is bounded, durable, and followed by independent verification.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Disposable PostgreSQL test covers bounded repair and evidence-gated Final Verify; no actual Core run completed independent Final Verify."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17339"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17339",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/client/src/pages/MiniAppRoute.tsx",
+        "apps/web/server/routes/miniAppRuntime.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Capture authorized Playwright/browser acceptance receipt with all required app/run/source/tenant/principal/target identities.",
       "requirement_digest": "6c17e850504f07fc6e8fad16b94bf35ed9ce27c0f2eb7af8960ff00c5a07203e",
       "requirement_id": "REQ-23C689C1ACC7",
       "requirement_text": "- [ ] A real internet HTTPS Browser passes functional acceptance on the deployed artifact and records app/run/source/tenant/principal/target binding. Local Browser PASS is explicitly excluded.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Owner reported a real V2 browser trial, but no fresh receipt binds app/run/source/tenant/principal/target for this audited evidence."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
       "authority_refs": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17340"
       ],
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17340",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
+        "apps/web/server/routes/miniAppRuntime.test.ts"
+      ],
+      "implementation_status": "PARTIAL",
+      "next_action": "Run the mobile owner/public/unpublish/same-tenant/cross-tenant matrix using authorized disposable principals on an isolated target.",
       "requirement_digest": "a0d1efc9ffa47b8be5aaec0427b977522a55ece9bcb4c54128eb9ccd2e7ed78c",
       "requirement_id": "REQ-410EE0357FDC",
       "requirement_text": "- [ ] Mobile internet access, authenticated owner access, public publish/unpublish, and tenant/user isolation pass against authorized synthetic test principals.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+      ],
+      "verification_method": "Private owner and isolation policy contract tests pass; complete deployed mobile, public and tenant matrix was not run."
     },
     {
       "applicability": "APPLICABLE",
@@ -27821,25 +27858,24 @@
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17341",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
-      "final_state": "PARTIAL",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "final_state": "PASS",
       "implementation_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Keep functional delivery, overall SPEC completion and Protected Runner acceptance separate until each has its own evidence.",
+      "implementation_status": "IMPLEMENTED",
+      "next_action": "Keep milestone reporting separate; do not treat Mini-App acceptance as Core/Runner evidence.",
       "requirement_digest": "34ae08fd4c6d747014931a5c9d2682d1f9172396f65d871d6db3c34e2ea83b8c",
       "requirement_id": "REQ-F12D04357ED8",
       "requirement_text": "- [ ] Functional Mini-App Delivery, SPEC-224 normative completion, and Protected Runner acceptance are reported and evidenced independently.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
-        "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
       ],
-      "verification_method": "The handoff distinguishes functional delivery, normative SPEC completion, and protected Runner acceptance; only implementation/worker evidence exists."
+      "verification_method": "Evidence review keeps Functional Mini-App, normative SPEC and protected Runner acceptance distinct."
     },
     {
       "applicability": "UNASSESSED",
@@ -28294,25 +28330,25 @@
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17388",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
       "final_state": "PARTIAL",
       "implementation_evidence": [
-        "apps/web/server/services/appIdentityRepository.ts",
-        "apps/web/server/services/personalMiniAppPreview.ts"
+        "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
+        "apps/web/server/routers/appIdentity.test.ts",
+        "apps/web/server/routes/miniAppRuntime.test.ts"
       ],
-      "implementation_status": "IMPLEMENTED",
-      "next_action": "Verify cross-user, cross-tenant and anonymous denial against the real hosted preview target before returning any private bytes.",
+      "implementation_status": "PARTIAL",
+      "next_action": "Verify deployed private preview denies unauthorized requests before any artifact bytes using authorized disposable principals.",
       "requirement_digest": "b799bac14e42c976c40fe53560b09ef4a1f213645b531299a0a190bbd8479c07",
       "requirement_id": "REQ-065D2AA57334",
       "requirement_text": "- [ ] Cross-user, cross-tenant, and anonymous access to a private preview are denied before artifact bytes/data are returned.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-personal-miniapp-closure-checkpoint-c81ce6f-20261023.md",
-        "Vitest focused Mini-App/Auth/App Home suites: 5 files, 37 tests passed at c81ce6f88f687e3347fc3f866c4fcb66fd86fc7f"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
       ],
-      "verification_method": "Owner scoping tests deny non-owner access before private artifact bytes are read; no live second-identity browser check exists."
+      "verification_method": "Current-SHA service/API tests cover private-preview denial; no live deployed unauthorized-byte denial receipt is retained."
     },
     {
       "applicability": "UNASSESSED",

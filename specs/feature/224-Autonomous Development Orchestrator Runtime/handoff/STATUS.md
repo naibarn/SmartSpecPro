@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 0 pass / 1281 unresolved of 1284
-- Next action: Continue the existing Mini-App runtime/Gateway verification work with fresh environment evidence; no additional local owner approval or new task worktree is required.
-- Manifest generation: 161
+- Requirements: 3 pass / 1280 unresolved of 1284
+- Next action: Run the original Core DevelopmentRun lifecycle and protected Windows Runner E2E after fresh Runner/workspace and authenticated non-production tenant context are available; separately exercise the uncovered Revision-24 public publish/unpublish and Gateway receipt cases. Do not repeat Personal Mini-App V1/V2 acceptance.
+- Manifest generation: 166
 
 ## Source-declared status and relationship claims
 
