@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createContext: vi.fn(),
   resolvePreview: vi.fn(),
+  resolveVersion: vi.fn(),
   resolveViewer: vi.fn(),
   readValue: vi.fn(),
   writeValue: vi.fn(),
@@ -13,7 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("../_core/context", () => ({ createContext: mocks.createContext }));
 vi.mock("../_core/env", () => ({ ENV: { cookieSecret: "mini-app-runtime-route-test-secret-32-chars" } }));
-vi.mock("../services/personalMiniAppPreview", () => ({ resolvePersonalMiniAppPreview: mocks.resolvePreview }));
+vi.mock("../services/personalMiniAppPreview", () => ({ resolvePersonalMiniAppPreview: mocks.resolvePreview, resolveMiniAppDeploymentVersion: mocks.resolveVersion }));
 vi.mock("../services/appIdentityRepository", () => ({ resolveMiniAppForViewer: mocks.resolveViewer }));
 vi.mock("../services/miniAppRuntime", async importOriginal => {
   const actual = await importOriginal<typeof import("../services/miniAppRuntime")>();
@@ -54,6 +55,7 @@ describe("Mini-App isolated runtime routes", () => {
       html: artifact,
       artifactDigest: "a".repeat(64),
     });
+    mocks.resolveVersion.mockResolvedValue(null);
     mocks.resolveViewer.mockResolvedValue({ ...scope, ownerUserId: scope.userId, visibility: "private" });
   });
 
@@ -95,6 +97,24 @@ describe("Mini-App isolated runtime routes", () => {
       .set("Cookie", `miniapp_runtime_ready=${createMiniAppRuntimeReadyMarker(scope)}`);
     expect(response.status).toBe(404);
     expect(response.text).not.toContain("expense app");
+  });
+
+  it("loads the exact immutable historical version when its source/artifact binding exists", async () => {
+    const selected = {
+      app: { ...scope, ownerUserId: scope.userId, visibility: "private", deploymentVersion: 1, lastKnownGoodArtifactRef: "r2://version-1" },
+      html: artifact,
+      artifactDigest: "a".repeat(64),
+      sourceRef: "r2://source-version-1",
+      sourceDigest: "b".repeat(64),
+      developmentRunId: "run-" + "c".repeat(40),
+    };
+    mocks.resolveVersion.mockResolvedValueOnce(selected);
+    const response = await request(makeApp())
+      .get(`/miniapp/${scope.appId}/preview/1`)
+      .set("Cookie", `miniapp_runtime_ready=${createMiniAppRuntimeReadyMarker(scope)}`);
+    expect(response.status).toBe(200);
+    expect(response.text).toContain("<main>expense app</main>");
+    expect(mocks.resolveVersion).toHaveBeenCalledWith({ ...scope, deploymentVersion: 1 });
   });
 
   it("accepts opaque-origin storage only with the scoped bearer token", async () => {

@@ -23,7 +23,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
       if (state.profile !== "PERSONAL_MINIAPP") throw new Error("FACTORY_HOSTED_PROFILE_FORBIDDEN");
       const baseRef = `miniapp:${state.miniAppId}`;
       if (stageId === "ui_implementation") {
-        const previousSourceRef = context.artifacts.find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
+        const previousSourceRef = [...context.artifacts].reverse().find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
         const previousCandidateRef = state.artifacts.find(value => value.startsWith("app-candidate:r2://"))?.slice("app-candidate:".length);
         const artifact = await buildAndStorePersonalMiniApp({
           userId: context.actorId,
@@ -61,8 +61,19 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
       if (stageId === "deploy") {
         const artifactRef = context.artifacts.find(value => value.startsWith("app-artifact:r2://"))?.slice("app-artifact:".length);
         const artifactDigest = context.artifacts.find(value => value.startsWith("app-artifact-digest:"))?.slice("app-artifact-digest:".length);
-        if (!artifactRef || !artifactDigest) throw new Error("MINI_APP_ARTIFACT_BINDING_MISSING");
-        const bound = await bindPersonalMiniAppArtifact({ tenantId: context.tenantId, ownerUserId: context.actorId, appId: state.miniAppId, artifactRef, artifactDigest });
+        const sourceRef = [...context.artifacts].reverse().find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
+        const sourceDigest = [...context.artifacts].reverse().find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
+        if (!artifactRef || !artifactDigest || !sourceRef || !sourceDigest) throw new Error("MINI_APP_ARTIFACT_BINDING_MISSING");
+        const bound = await bindPersonalMiniAppArtifact({
+          tenantId: context.tenantId,
+          ownerUserId: context.actorId,
+          appId: state.miniAppId,
+          developmentRunId: context.runId,
+          sourceRef,
+          sourceDigest,
+          artifactRef,
+          artifactDigest,
+        });
         return { artifacts: [`deployment:${baseRef}:v${bound.deploymentVersion}`, `deployment-artifact:${artifactRef}`] };
       }
       if (stageId === "smoke") {
@@ -73,8 +84,8 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
         return { artifacts: [`private-preview-smoke:${preview.artifactDigest}`, `private-preview-owner-access:${state.miniAppId}`, `private-preview-unauthorized-denied:${state.miniAppId}`] };
       }
       if (stageId === "source_repository") {
-        const sourceRef = context.artifacts.find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
-        const sourceDigest = context.artifacts.find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
+        const sourceRef = [...context.artifacts].reverse().find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
+        const sourceDigest = [...context.artifacts].reverse().find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
         if (!sourceRef || !sourceDigest) throw new Error("MINI_APP_SOURCE_SNAPSHOT_MISSING");
         const repository = await provisionMiniAppRepositoryFromSnapshot({ userId: context.actorId, appId: state.miniAppId, sourceRef, sourceDigest });
         if (!repository) throw new Error("MINI_APP_GITHUB_AUTHORITY_NOT_CONFIGURED");

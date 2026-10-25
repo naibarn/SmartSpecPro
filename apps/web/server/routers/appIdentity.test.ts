@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   scheduleRetry: vi.fn(async () => ({ jobId: "recovery-job", created: true, attempt: 1, stageId: "ui_implementation" })),
-  migrateRuntimeValues: vi.fn(async () => ({ imported: 1, preserved: 0 })),
+  migrateRuntimeValues: vi.fn(async () => ({ imported: 1, preserved: 0, verified: 1 })),
+  getRun: vi.fn(async () => ({ run: { metadata: {} } })),
+  recordRunEvent: vi.fn(async () => ({ accepted: true })),
 }));
 vi.mock("../services/miniAppRuntime", () => ({
   createMiniAppRuntimeReadyMarker: () => "signed-ready-marker",
@@ -9,18 +11,23 @@ vi.mock("../services/miniAppRuntime", () => ({
   migrateMiniAppRuntimeValues: (...args: unknown[]) => mocks.migrateRuntimeValues(...args),
   parseMiniAppRuntimeEntries: (value: unknown) => value,
 }));
-vi.mock("../services/personalMiniAppPreview", () => ({ resolvePersonalMiniAppPreview: vi.fn() }));
+vi.mock("../services/personalMiniAppPreview", () => ({
+  resolvePersonalMiniAppPreview: vi.fn(),
+  resolvePersonalMiniAppFactoryHome: vi.fn(),
+  provisionMiniAppRepositoryFromSnapshot: vi.fn(),
+}));
 vi.mock("../services/miniAppFactoryStageWorker", () => ({
   isAutoRecoverableMiniAppFactoryError: (code: unknown) => code === "LLMStructuredOutputError",
   scheduleMiniAppFactoryStageRetry: (...args: unknown[]) => mocks.scheduleRetry(...args),
 }));
 vi.mock("../services/miniAppFactoryPipeline", () => ({ loadMiniAppFactoryPipeline: () => ({ pipelineId: "test" }) }));
 vi.mock("../services/spec224DevelopmentRunPersistence", () => ({
-  createDevelopmentRunService: () => ({ get: vi.fn(), recordVerificationEvent: vi.fn() }),
+  createDevelopmentRunService: () => ({ get: (...args: unknown[]) => mocks.getRun(...args), recordVerificationEvent: (...args: unknown[]) => mocks.recordRunEvent(...args) }),
   defaultDevelopmentRunPersistenceAdapter: {},
 }));
 import { createAppIdentityRouter } from "./appIdentity";
 import * as appIdentityRepository from "../services/appIdentityRepository";
+import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../services/miniAppFactoryDurableState";
 
 function setup(user: any = { id: 1, currentTenantId: "tenant-account" }) {
   const response = { cookie: vi.fn() };
@@ -56,6 +63,11 @@ function setup(user: any = { id: 1, currentTenantId: "tenant-account" }) {
       lifecycle: "draft",
     })),
     setMiniAppVisibility: vi.fn(async (input: any) => ({ appId: input.appId, visibility: input.visibility, lifecycle: "active" })),
+    recordMiniAppRuntimeMigrationVerification: vi.fn(async () => ({ appId: "app_created", runtimeDataMigrationStatus: "VERIFIED" })),
+    confirmMiniAppRuntimeMigration: vi.fn(async () => ({ appId: "app_created" })),
+    resolveOwnedPrivateMiniAppIdentity: vi.fn(async () => null),
+    resolvePersonalMiniAppFactoryHome: vi.fn(async () => null),
+    provisionMiniAppRepositoryFromSnapshot: vi.fn(async () => null),
   };
   const caller = createAppIdentityRouter(service).createCaller({
     user,
@@ -168,7 +180,7 @@ describe("appIdentity runtime router", () => {
     await expect(caller.prepareMiniAppRuntime({
       appId: "app_created",
       legacyEntries: [{ key: "expenses", value: [{ amount: 20 }] }],
-    })).resolves.toMatchObject({ appId: "app_created", deploymentVersion: 1, imported: 1 });
+    })).resolves.toMatchObject({ appId: "app_created", deploymentVersion: 1, migrationStatus: "VERIFIED", imported: 1, verified: 1 });
     expect(mocks.migrateRuntimeValues).toHaveBeenCalledWith(
       { appId: "app_created", tenantId: "tenant-owner", userId: 23 },
       [{ key: "expenses", value: [{ amount: 20 }] }],
@@ -177,6 +189,77 @@ describe("appIdentity runtime router", () => {
       httpOnly: true,
       path: "/miniapp/app_created",
     }));
+    expect(service.recordMiniAppRuntimeMigrationVerification).toHaveBeenCalledWith({
+      appId: "app_created", tenantId: "tenant-owner", ownerUserId: 23, imported: 1, preserved: 0,
+    });
+  });
+
+  it("confirms runtime data migration for the authenticated owner", async () => {
+    const { caller, service } = setup({ id: 23, currentTenantId: "tenant-owner" });
+    await expect(caller.confirmRuntimeDataMigration({ appId: "app_created" })).resolves.toEqual({
+      appId: "app_created", migrationStatus: "OWNER_CONFIRMED",
+    });
+    expect(service.confirmMiniAppRuntimeMigration).toHaveBeenCalledWith({
+      appId: "app_created", tenantId: "tenant-owner", ownerUserId: 23,
+    });
+  });
+
+  it("provisions the dedicated private repo from retained source and records it on the same run", async () => {
+    const { caller, service } = setup({ id: 23, currentTenantId: "tenant-owner" });
+    const sourceDigest = "a".repeat(64);
+    const revision = "b".repeat(40);
+    const repository = { mode: "USER_OWNED" as const, owner: "owner", name: "smartaihub-app-created", url: "https://github.com/owner/smartaihub-app-created", revision };
+    service.resolveOwnedPrivateMiniAppIdentity.mockResolvedValueOnce({
+      appId: "app_created", tenantId: "tenant-owner", ownerUserId: 23, visibility: "private",
+      lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_created/sha256/" + "c".repeat(64),
+    } as any);
+    service.resolvePersonalMiniAppFactoryHome.mockResolvedValueOnce({
+      runId: "run-" + "d".repeat(40),
+      sourceSnapshotRef: `r2://mini-app-sources/tenant-owner/app_created/sha256/${sourceDigest}`,
+      appSourceDigest: sourceDigest,
+      repository: null,
+    } as any);
+    service.provisionMiniAppRepositoryFromSnapshot.mockResolvedValueOnce(repository);
+    const state = createMiniAppFactoryDurableState({ programId: "test-miniapp", miniAppId: "app_created" });
+    mocks.getRun.mockResolvedValueOnce({ run: { metadata: { [MINI_APP_FACTORY_STATE_KEY]: state } } });
+
+    await expect(caller.provisionMiniAppRepository({ appId: "app_created" })).resolves.toEqual({
+      appId: "app_created", repository, alreadyProvisioned: false,
+    });
+    expect(service.provisionMiniAppRepositoryFromSnapshot).toHaveBeenCalledWith({
+      userId: 23,
+      appId: "app_created",
+      sourceRef: `r2://mini-app-sources/tenant-owner/app_created/sha256/${sourceDigest}`,
+      sourceDigest,
+    });
+    expect(mocks.recordRunEvent).toHaveBeenCalledWith(expect.objectContaining({
+      runId: "run-" + "d".repeat(40),
+      idempotencyKey: `miniapp-repository:app_created:${revision}`,
+      runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: expect.objectContaining({
+        repository,
+        artifacts: expect.arrayContaining([`app-repository:user:owner/${repository.name}@${revision}`]),
+      }) },
+    }));
+  });
+
+  it("returns the precise one-time GitHub connection requirement without starting a run", async () => {
+    mocks.getRun.mockClear();
+    const { caller, service } = setup({ id: 23, currentTenantId: "tenant-owner" });
+    service.resolveOwnedPrivateMiniAppIdentity.mockResolvedValueOnce({
+      appId: "app_created", tenantId: "tenant-owner", ownerUserId: 23, visibility: "private",
+      lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_created/sha256/" + "c".repeat(64),
+    } as any);
+    service.resolvePersonalMiniAppFactoryHome.mockResolvedValueOnce({
+      runId: "run-" + "d".repeat(40),
+      sourceSnapshotRef: "r2://mini-app-sources/tenant-owner/app_created/sha256/" + "a".repeat(64),
+      appSourceDigest: "a".repeat(64),
+      repository: null,
+    } as any);
+    await expect(caller.provisionMiniAppRepository({ appId: "app_created" })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+      message: expect.stringContaining("Connect GitHub in Settings → Integrations"),
+    });
+    expect(mocks.getRun).not.toHaveBeenCalled();
   });
 
   it("automatically resumes a recoverable failed stage for the authenticated private owner", async () => {
@@ -200,7 +283,10 @@ describe("appIdentity runtime router", () => {
       });
     const service = {
       resolveAppRouteForTenant: vi.fn(), resolveActiveAppByPublicId: vi.fn(), createPrivateMiniAppIdentity: vi.fn(),
-      resolveMiniAppForViewer: vi.fn(), setMiniAppVisibility: vi.fn(), resolvePersonalMiniAppPreview: resolved,
+      resolveMiniAppForViewer: vi.fn(), setMiniAppVisibility: vi.fn(),
+      recordMiniAppRuntimeMigrationVerification: vi.fn(), confirmMiniAppRuntimeMigration: vi.fn(),
+      resolveOwnedPrivateMiniAppIdentity: vi.fn(), resolvePersonalMiniAppFactoryHome: vi.fn(), provisionMiniAppRepositoryFromSnapshot: vi.fn(),
+      resolvePersonalMiniAppPreview: resolved,
     };
     const owner = createAppIdentityRouter(service).createCaller({ user: { id: 91, currentTenantId: "tenant-owner" }, tenantId: "tenant-owner" } as any);
 
@@ -219,7 +305,10 @@ describe("appIdentity runtime router", () => {
       : null);
     const service = {
       resolveAppRouteForTenant: vi.fn(), resolveActiveAppByPublicId: vi.fn(), createPrivateMiniAppIdentity: vi.fn(),
-      resolveMiniAppForViewer: vi.fn(), setMiniAppVisibility: vi.fn(), resolvePersonalMiniAppPreview,
+      resolveMiniAppForViewer: vi.fn(), setMiniAppVisibility: vi.fn(),
+      recordMiniAppRuntimeMigrationVerification: vi.fn(), confirmMiniAppRuntimeMigration: vi.fn(),
+      resolveOwnedPrivateMiniAppIdentity: vi.fn(), resolvePersonalMiniAppFactoryHome: vi.fn(), provisionMiniAppRepositoryFromSnapshot: vi.fn(),
+      resolvePersonalMiniAppPreview,
     };
     const owner = createAppIdentityRouter(service).createCaller({ user: { id: 91, currentTenantId: "tenant-owner" }, tenantId: "tenant-owner" } as any);
     const other = createAppIdentityRouter(service).createCaller({ user: { id: 92, currentTenantId: "tenant-owner" }, tenantId: "tenant-owner" } as any);
@@ -244,6 +333,12 @@ describe("appIdentity runtime router", () => {
         lastKnownGoodArtifactRef: "r2://preview/app_public/v1/index.html",
         lifecycle: "active",
       } : null),
+      setMiniAppVisibility: vi.fn(),
+      recordMiniAppRuntimeMigrationVerification: vi.fn(),
+      confirmMiniAppRuntimeMigration: vi.fn(),
+      resolveOwnedPrivateMiniAppIdentity: vi.fn(),
+      resolvePersonalMiniAppFactoryHome: vi.fn(),
+      provisionMiniAppRepositoryFromSnapshot: vi.fn(),
     };
     const caller = createAppIdentityRouter(service).createCaller({ user: null, tenantId: null } as any);
     await expect(caller.resolveMiniApp({ appId: "app_public" })).resolves.toMatchObject({ visibility: "public" });

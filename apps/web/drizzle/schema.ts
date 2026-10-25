@@ -2669,6 +2669,13 @@ export const appIdentities = pgTable(
     visibility: varchar("visibility", { length: 16 }).notNull().default("private"),
     deploymentVersion: integer("deployment_version").notNull().default(0),
     lastKnownGoodArtifactRef: varchar("last_known_good_artifact_ref", { length: 512 }),
+    runtimeDataMigrationStatus: varchar("runtime_data_migration_status", { length: 24 }).notNull().default("NOT_STARTED"),
+    runtimeDataMigrationVerifiedAt: timestamp("runtime_data_migration_verified_at", { withTimezone: true }),
+    runtimeDataMigrationVerifiedByUserId: integer("runtime_data_migration_verified_by_user_id").references(() => users.id, { onDelete: "set null" }),
+    runtimeDataMigrationImportedCount: integer("runtime_data_migration_imported_count").notNull().default(0),
+    runtimeDataMigrationPreservedCount: integer("runtime_data_migration_preserved_count").notNull().default(0),
+    runtimeDataMigrationConfirmedAt: timestamp("runtime_data_migration_confirmed_at", { withTimezone: true }),
+    runtimeDataMigrationConfirmedByUserId: integer("runtime_data_migration_confirmed_by_user_id").references(() => users.id, { onDelete: "set null" }),
     creationIdempotencyKey: varchar("creation_idempotency_key", { length: 160 }),
     publisherRef: varchar("publisher_ref", { length: 128 }).notNull(),
     canonicalProductId: varchar("canonical_product_id", { length: 128 }).notNull(),
@@ -2685,11 +2692,38 @@ export const appIdentities = pgTable(
     check("app_identities_lifecycle_check", sql`${t.lifecycle} IN ('draft', 'active', 'suspended', 'archived')`),
     check("app_identities_visibility_check", sql`${t.visibility} IN ('private', 'public')`),
     check("app_identities_deployment_version_check", sql`${t.deploymentVersion} >= 0`),
+    check("app_identities_runtime_data_migration_status_check", sql`${t.runtimeDataMigrationStatus} IN ('NOT_STARTED', 'VERIFIED', 'OWNER_CONFIRMED')`),
+    check("app_identities_runtime_data_migration_counts_check", sql`${t.runtimeDataMigrationImportedCount} >= 0 AND ${t.runtimeDataMigrationPreservedCount} >= 0`),
     check("app_identities_parent_not_self_check", sql`${t.parentAppId} IS NULL OR ${t.parentAppId} <> ${t.appId}`),
   ],
 );
 export type AppIdentityRow = typeof appIdentities.$inferSelect;
 export type InsertAppIdentityRow = typeof appIdentities.$inferInsert;
+
+/** Immutable source/artifact binding for each Mini-App deployment version. */
+export const appDeploymentVersions = pgTable(
+  "app_deployment_versions",
+  {
+    appId: varchar("app_id", { length: 128 }).notNull().references(() => appIdentities.appId, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull().references(() => tenants.id, { onDelete: "cascade" }),
+    deploymentVersion: integer("deployment_version").notNull(),
+    developmentRunId: varchar("development_run_id", { length: 128 }).notNull(),
+    sourceRef: varchar("source_ref", { length: 512 }).notNull(),
+    sourceDigest: varchar("source_digest", { length: 64 }).notNull(),
+    artifactRef: varchar("artifact_ref", { length: 512 }).notNull(),
+    artifactDigest: varchar("artifact_digest", { length: 64 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  t => [
+    primaryKey({ columns: [t.appId, t.deploymentVersion], name: "app_deployment_versions_pk" }),
+    uniqueIndex("app_deployment_versions_source_artifact_unique").on(t.appId, t.developmentRunId, t.sourceDigest, t.artifactDigest),
+    index("app_deployment_versions_tenant_created_idx").on(t.tenantId, t.appId, t.createdAt),
+    check("app_deployment_versions_version_check", sql`${t.deploymentVersion} > 0`),
+    check("app_deployment_versions_source_digest_check", sql`${t.sourceDigest} ~ '^[a-f0-9]{64}$'`),
+    check("app_deployment_versions_artifact_digest_check", sql`${t.artifactDigest} ~ '^[a-f0-9]{64}$'`),
+  ],
+);
+export type AppDeploymentVersionRow = typeof appDeploymentVersions.$inferSelect;
 
 /** Route aliases are tenant-bound and never serve as canonical App identity. */
 export const appRouteAliases = pgTable(

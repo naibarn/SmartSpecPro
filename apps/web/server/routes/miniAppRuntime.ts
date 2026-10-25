@@ -1,6 +1,6 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createContext } from "../_core/context";
-import { resolvePersonalMiniAppPreview } from "../services/personalMiniAppPreview";
+import { resolveMiniAppDeploymentVersion, resolvePersonalMiniAppPreview } from "../services/personalMiniAppPreview";
 import { resolveMiniAppForViewer } from "../services/appIdentityRepository";
 import {
   buildMiniAppRuntimeDocument,
@@ -59,7 +59,25 @@ async function serveRuntimeDocument(req: Request, res: Response, appId: string, 
       return;
     }
 
-    const preview = await resolvePersonalMiniAppPreview(scope);
+    let preview;
+    if (requestedVersion) {
+      if (!/^\d{1,10}$/.test(requestedVersion)) {
+        sendUnavailable(res);
+        return;
+      }
+      preview = await resolveMiniAppDeploymentVersion({
+        ...scope,
+        deploymentVersion: Number(requestedVersion),
+      });
+      // A legacy app's current LKG is backfilled into the immutable version
+      // ledger on its first owner-authorized preview preparation.
+      if (!preview) {
+        const current = await resolvePersonalMiniAppPreview(scope);
+        if (current?.app.deploymentVersion === Number(requestedVersion)) preview = current;
+      }
+    } else {
+      preview = await resolvePersonalMiniAppPreview(scope);
+    }
     if (!preview?.app || preview.app.visibility !== "private" || preview.app.ownerUserId !== userId) {
       sendUnavailable(res);
       return;
@@ -68,7 +86,7 @@ async function serveRuntimeDocument(req: Request, res: Response, appId: string, 
       res.redirect(302, `/miniapp/${appId}/status`);
       return;
     }
-    if (requestedVersion && (!/^\d{1,10}$/.test(requestedVersion) || Number(requestedVersion) !== preview.app.deploymentVersion)) {
+    if (requestedVersion && Number(requestedVersion) !== preview.app.deploymentVersion) {
       sendUnavailable(res);
       return;
     }

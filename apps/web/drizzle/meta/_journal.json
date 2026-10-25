@@ -2794,6 +2794,20 @@
       "when": 1792809946401,
       "tag": "0412_active_shared_schema_contract_repair",
       "breakpoints": true
+    },
+    {
+      "idx": 413,
+      "version": "7",
+      "when": 1792909880000,
+      "tag": "0413_spec224_mini_app_deployment_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 414,
+      "version": "7",
+      "when": 1792909880001,
+      "tag": "0414_spec224_mini_app_deployment_idempotency",
+      "breakpoints": true
     }
   ]
 }

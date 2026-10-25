@@ -352,6 +352,11 @@ describe("spec226DevelopmentControlRouter", () => {
   it("continues a private Mini-App on the same identity, repository and saved source snapshot", async () => {
     const sourceDigest = "c".repeat(64);
     const revision = "d".repeat(40);
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({
+      appId: "app_existing", tenantId: CTX.tenantId, ownerUserId: 42, visibility: "private",
+      lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-acme/app_existing/sha256/" + "a".repeat(64),
+      runtimeDataMigrationStatus: "OWNER_CONFIRMED",
+    });
     mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({
       runId: "run-previous-miniapp",
       conversationId: 8,
@@ -389,6 +394,31 @@ describe("spec226DevelopmentControlRouter", () => {
         }),
       }),
     }));
+  });
+
+  it("blocks a new version until the existing artifact data migration is owner-confirmed", async () => {
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({
+      runId: "run-existing", conversationId: 8, goal: "Existing app", artifacts: [],
+      sourceSnapshotRef: null, appSourceDigest: null, repository: null,
+    });
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({
+      appId: "app_existing", tenantId: CTX.tenantId, ownerUserId: 42, visibility: "private",
+      lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-acme/app_existing/sha256/" + "a".repeat(64),
+      runtimeDataMigrationStatus: "VERIFIED",
+    });
+    await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({
+      ctx: CTX,
+      input: {
+        conversationId: 8,
+        mode: "prompt",
+        factoryMode: true,
+        appId: "app_existing",
+        prompt: "Add a category filter.",
+        idempotencyKey: "spec224-factory-feedback-unconfirmed-0001",
+      },
+    })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    expect(mocks.developmentRunService.initialize).not.toHaveBeenCalled();
+    expect(mocks.enqueueMiniAppStage).not.toHaveBeenCalled();
   });
 
   it("returns the permanent App Home when stage enqueue fails so the same run can be retried", async () => {

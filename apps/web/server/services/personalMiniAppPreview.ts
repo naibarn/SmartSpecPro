@@ -3,7 +3,7 @@ import { Script } from "node:vm";
 import { jsonrepair } from "jsonrepair";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
-import { appIdentities, workerJobs } from "../../drizzle/schema";
+import { appDeploymentVersions, appIdentities, workerJobs } from "../../drizzle/schema";
 import { getDb } from "../db";
 import {
   storagePutContentAddressedIfAbsent,
@@ -689,44 +689,180 @@ export async function bindPersonalMiniAppArtifact(input: {
   tenantId: string;
   ownerUserId: number;
   appId: string;
+  developmentRunId: string;
+  sourceRef: string;
+  sourceDigest: string;
   artifactRef: string;
   artifactDigest: string;
 }) {
-  const expectedRef =
-    "r2://mini-app-previews/" +
-    input.tenantId +
-    "/" +
-    input.appId +
-    "/sha256/" +
-    input.artifactDigest;
-  if (
-    input.artifactRef !== expectedRef ||
-    !/^[a-f0-9]{64}$/.test(input.artifactDigest)
-  ) {
-    throw new Error("MINI_APP_ARTIFACT_BINDING_INVALID");
+  const deploymentVersion = await bindMiniAppDeploymentVersion(input);
+  return { appId: input.appId, deploymentVersion };
+}
+
+export type MiniAppDeploymentVersion = {
+  appId: string;
+  deploymentVersion: number;
+  developmentRunId: string;
+  sourceRef: string;
+  sourceDigest: string;
+  artifactRef: string;
+  artifactDigest: string;
+  createdAt: Date;
+};
+
+function validateMiniAppDeploymentVersion(input: Omit<MiniAppDeploymentVersion, "createdAt"> & { tenantId: string }): void {
+  if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.appId) || !/^[A-Za-z0-9_-]{1,64}$/.test(input.tenantId) ||
+      !Number.isSafeInteger(input.deploymentVersion) || input.deploymentVersion <= 0 ||
+      !/^run-[a-f0-9]{40}$/i.test(input.developmentRunId) ||
+      !/^[a-f0-9]{64}$/.test(input.sourceDigest) || !/^[a-f0-9]{64}$/.test(input.artifactDigest) ||
+      input.sourceRef !== `r2://mini-app-sources/${input.tenantId}/${input.appId}/sha256/${input.sourceDigest}` ||
+      input.artifactRef !== `r2://mini-app-previews/${input.tenantId}/${input.appId}/sha256/${input.artifactDigest}`) {
+    throw new Error("MINI_APP_DEPLOYMENT_VERSION_BINDING_INVALID");
   }
-  const [updated] = await getDb()
-    .update(appIdentities)
-    .set({
-      lastKnownGoodArtifactRef: input.artifactRef,
-      deploymentVersion: sql`${appIdentities.deploymentVersion} + 1`,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
+}
+
+async function verifyMiniAppDeploymentVersionContent(input: Omit<MiniAppDeploymentVersion, "createdAt"> & { tenantId: string }): Promise<void> {
+  validateMiniAppDeploymentVersion(input);
+  const [source, artifact] = await Promise.all([
+    storageReadBuffer(input.sourceRef.slice("r2://".length)),
+    storageReadBuffer(input.artifactRef.slice("r2://".length)),
+  ]);
+  if (!source || !artifact) throw new Error("MINI_APP_DEPLOYMENT_VERSION_CONTENT_MISSING");
+  if (createHash("sha256").update(source).digest("hex") !== input.sourceDigest) throw new Error("MINI_APP_SOURCE_DIGEST_MISMATCH");
+  if (createHash("sha256").update(artifact).digest("hex") !== input.artifactDigest) throw new Error("MINI_APP_ARTIFACT_DIGEST_MISMATCH");
+}
+
+async function persistMiniAppDeploymentVersion(tx: any, input: Omit<MiniAppDeploymentVersion, "createdAt"> & { tenantId: string }): Promise<void> {
+  const [existing] = await tx.select().from(appDeploymentVersions).where(and(
+    eq(appDeploymentVersions.appId, input.appId),
+    eq(appDeploymentVersions.deploymentVersion, input.deploymentVersion),
+  )).limit(1);
+  if (existing) {
+    if (existing.tenantId !== input.tenantId || existing.developmentRunId !== input.developmentRunId ||
+        existing.sourceRef !== input.sourceRef || existing.sourceDigest !== input.sourceDigest ||
+        existing.artifactRef !== input.artifactRef || existing.artifactDigest !== input.artifactDigest) {
+      throw new Error("MINI_APP_DEPLOYMENT_VERSION_CONFLICT");
+    }
+    return;
+  }
+  await tx.insert(appDeploymentVersions).values({
+    appId: input.appId,
+    tenantId: input.tenantId,
+    deploymentVersion: input.deploymentVersion,
+    developmentRunId: input.developmentRunId,
+    sourceRef: input.sourceRef,
+    sourceDigest: input.sourceDigest,
+    artifactRef: input.artifactRef,
+    artifactDigest: input.artifactDigest,
+  });
+}
+
+/** Record the already-serving version when a legacy app first enters the verified runtime flow. */
+export async function ensureCurrentMiniAppDeploymentVersion(input: {
+  appId: string;
+  tenantId: string;
+  ownerUserId: number;
+  deploymentVersion: number;
+  developmentRunId: string;
+  sourceRef: string;
+  sourceDigest: string;
+  artifactRef: string;
+  artifactDigest: string;
+}) {
+  if (!Number.isSafeInteger(input.deploymentVersion) || input.deploymentVersion <= 0) throw new Error("MINI_APP_DEPLOYMENT_VERSION_MISSING");
+  await verifyMiniAppDeploymentVersionContent(input);
+  await getDb().transaction(async (tx: any) => {
+    const [owned] = await tx.select({ appId: appIdentities.appId }).from(appIdentities).where(and(
+      eq(appIdentities.appId, input.appId),
+      eq(appIdentities.tenantId, input.tenantId),
+      eq(appIdentities.ownerUserId, input.ownerUserId),
+      eq(appIdentities.visibility, "private"),
+      eq(appIdentities.deploymentVersion, input.deploymentVersion),
+      eq(appIdentities.lastKnownGoodArtifactRef, input.artifactRef),
+    )).limit(1);
+    if (!owned) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+    await persistMiniAppDeploymentVersion(tx, input);
+  });
+}
+
+async function bindMiniAppDeploymentVersion(input: {
+  tenantId: string;
+  ownerUserId: number;
+  appId: string;
+  developmentRunId: string;
+  sourceRef: string;
+  sourceDigest: string;
+  artifactRef: string;
+  artifactDigest: string;
+}): Promise<number> {
+  const candidate = { ...input, deploymentVersion: 1 };
+  validateMiniAppDeploymentVersion(candidate);
+  await verifyMiniAppDeploymentVersionContent(candidate);
+  return getDb().transaction(async (tx: any) => {
+    const [priorBinding] = await tx.select().from(appDeploymentVersions).where(and(
+      eq(appDeploymentVersions.appId, input.appId),
+      eq(appDeploymentVersions.tenantId, input.tenantId),
+      eq(appDeploymentVersions.developmentRunId, input.developmentRunId),
+      eq(appDeploymentVersions.sourceDigest, input.sourceDigest),
+      eq(appDeploymentVersions.artifactDigest, input.artifactDigest),
+    )).limit(1);
+    if (priorBinding) {
+      if (priorBinding.sourceRef !== input.sourceRef || priorBinding.artifactRef !== input.artifactRef) {
+        throw new Error("MINI_APP_DEPLOYMENT_VERSION_CONFLICT");
+      }
+      return priorBinding.deploymentVersion as number;
+    }
+    const [updated] = await tx.update(appIdentities)
+      .set({
+        lastKnownGoodArtifactRef: input.artifactRef,
+        deploymentVersion: sql`${appIdentities.deploymentVersion} + 1`,
+        updatedAt: new Date(),
+      })
+      .where(and(
         eq(appIdentities.appId, input.appId),
         eq(appIdentities.tenantId, input.tenantId),
         eq(appIdentities.ownerUserId, input.ownerUserId),
         eq(appIdentities.visibility, "private"),
-        sql`${appIdentities.lifecycle} IN ('draft', 'active')`
-      )
-    )
-    .returning({
-      appId: appIdentities.appId,
-      deploymentVersion: appIdentities.deploymentVersion,
-    });
-  if (!updated) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
-  return updated;
+        sql`${appIdentities.lifecycle} IN ('draft', 'active')`,
+      ))
+      .returning({ appId: appIdentities.appId, deploymentVersion: appIdentities.deploymentVersion });
+    if (!updated) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+    await persistMiniAppDeploymentVersion(tx, { ...input, deploymentVersion: updated.deploymentVersion });
+    return updated.deploymentVersion as number;
+  });
+}
+
+export async function resolveMiniAppDeploymentVersion(input: {
+  appId: string;
+  tenantId: string;
+  userId: number;
+  deploymentVersion: number;
+}) {
+  const [app, [version]] = await Promise.all([
+    resolveMiniAppForViewer({ appId: input.appId, tenantId: input.tenantId, userId: input.userId }),
+    getDb().select().from(appDeploymentVersions).where(and(
+      eq(appDeploymentVersions.appId, input.appId),
+      eq(appDeploymentVersions.tenantId, input.tenantId),
+      eq(appDeploymentVersions.deploymentVersion, input.deploymentVersion),
+    )).limit(1),
+  ]);
+  if (!app || app.visibility !== "private" || app.ownerUserId !== input.userId || !version) return null;
+  const versionInput = { ...version, tenantId: input.tenantId };
+  try {
+    await verifyMiniAppDeploymentVersionContent(versionInput);
+  } catch {
+    return null;
+  }
+  const htmlBytes = await storageReadBuffer(version.artifactRef.slice("r2://".length));
+  if (!htmlBytes) return null;
+  return {
+    app: { ...app, deploymentVersion: version.deploymentVersion, lastKnownGoodArtifactRef: version.artifactRef },
+    html: htmlBytes.toString("utf8"),
+    artifactDigest: version.artifactDigest,
+    sourceRef: version.sourceRef,
+    sourceDigest: version.sourceDigest,
+    developmentRunId: version.developmentRunId,
+  };
 }
 
 export async function resolvePersonalMiniAppPreview(input: {
@@ -751,7 +887,58 @@ export async function resolvePersonalMiniAppPreview(input: {
   const bytes = await storageReadBuffer(match[1]!);
   const digest = createHash("sha256").update(bytes).digest("hex");
   if (digest !== match[4]) return null;
-  return { app, html: bytes.toString("utf8"), artifactDigest: digest, factory: await resolvePersonalMiniAppFactoryHome(input, app.appId, true) };
+  const factory = await resolvePersonalMiniAppFactoryHome(input, app.appId, true);
+  const currentSourceRef = factory?.sourceSnapshotRef;
+  const currentSourceDigest = factory?.appSourceDigest;
+  const artifactBoundInRun = Boolean(
+    factory?.artifacts.includes(`app-artifact:${app.lastKnownGoodArtifactRef}`) &&
+    factory?.artifacts.includes(`app-artifact-digest:${digest}`) &&
+    factory?.artifacts.includes(`deployment-artifact:${app.lastKnownGoodArtifactRef}`)
+  );
+  const sourceBoundInRun = Boolean(
+    currentSourceRef && currentSourceDigest &&
+    factory?.artifacts.includes(`app-source:${currentSourceRef}`) &&
+    factory?.artifacts.includes(`app-source-digest:${currentSourceDigest}`)
+  );
+  if (app.visibility === "private" && app.ownerUserId === input.userId && app.deploymentVersion > 0 &&
+      factory?.runId && currentSourceRef && currentSourceDigest && artifactBoundInRun && sourceBoundInRun) {
+    try {
+      await ensureCurrentMiniAppDeploymentVersion({
+        appId: app.appId,
+        tenantId: app.tenantId,
+        ownerUserId: app.ownerUserId,
+        deploymentVersion: app.deploymentVersion,
+        developmentRunId: factory.runId,
+        sourceRef: currentSourceRef,
+        sourceDigest: currentSourceDigest,
+        artifactRef: app.lastKnownGoodArtifactRef,
+        artifactDigest: digest,
+      });
+    } catch (error) {
+      // A version-history repair must never make the already verified LKG app unavailable.
+      console.warn("[MiniAppFactory] deployment history backfill deferred", {
+        appId: app.appId,
+        deploymentVersion: app.deploymentVersion,
+        code: error instanceof Error ? error.message.slice(0, 100) : "MINI_APP_VERSION_HISTORY_BACKFILL_FAILED",
+      });
+    }
+  }
+  let deploymentVersions: MiniAppDeploymentVersion[] = [];
+  if (app.visibility === "private" && app.ownerUserId === input.userId && input.tenantId) {
+    try {
+      deploymentVersions = await getDb().select().from(appDeploymentVersions).where(and(
+        eq(appDeploymentVersions.appId, app.appId),
+        eq(appDeploymentVersions.tenantId, input.tenantId),
+      )).orderBy(appDeploymentVersions.deploymentVersion) as MiniAppDeploymentVersion[];
+    } catch (error) {
+      // A missing/unavailable history ledger must not take down the current LKG preview.
+      console.warn("[MiniAppFactory] deployment history listing deferred", {
+        appId: app.appId,
+        code: error instanceof Error ? error.message.slice(0, 100) : "MINI_APP_VERSION_HISTORY_UNAVAILABLE",
+      });
+    }
+  }
+  return { app, html: bytes.toString("utf8"), artifactDigest: digest, factory, deploymentVersions };
 }
 
 export function resolvePersonalMiniAppHomeMilestone(input: {

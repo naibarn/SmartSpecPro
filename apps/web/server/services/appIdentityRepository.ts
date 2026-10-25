@@ -111,6 +111,11 @@ export async function createPrivateMiniAppIdentity(input: {
     visibility: appIdentities.visibility,
     deploymentVersion: appIdentities.deploymentVersion,
     lastKnownGoodArtifactRef: appIdentities.lastKnownGoodArtifactRef,
+    runtimeDataMigrationStatus: appIdentities.runtimeDataMigrationStatus,
+    runtimeDataMigrationVerifiedAt: appIdentities.runtimeDataMigrationVerifiedAt,
+    runtimeDataMigrationImportedCount: appIdentities.runtimeDataMigrationImportedCount,
+    runtimeDataMigrationPreservedCount: appIdentities.runtimeDataMigrationPreservedCount,
+    runtimeDataMigrationConfirmedAt: appIdentities.runtimeDataMigrationConfirmedAt,
     lifecycle: appIdentities.lifecycle,
   }).from(appIdentities).where(and(
     eq(appIdentities.tenantId, input.tenantId),
@@ -162,6 +167,11 @@ export async function resolveOwnedPrivateMiniAppIdentity(input: {
     visibility: appIdentities.visibility,
     deploymentVersion: appIdentities.deploymentVersion,
     lastKnownGoodArtifactRef: appIdentities.lastKnownGoodArtifactRef,
+    runtimeDataMigrationStatus: appIdentities.runtimeDataMigrationStatus,
+    runtimeDataMigrationVerifiedAt: appIdentities.runtimeDataMigrationVerifiedAt,
+    runtimeDataMigrationImportedCount: appIdentities.runtimeDataMigrationImportedCount,
+    runtimeDataMigrationPreservedCount: appIdentities.runtimeDataMigrationPreservedCount,
+    runtimeDataMigrationConfirmedAt: appIdentities.runtimeDataMigrationConfirmedAt,
     lifecycle: appIdentities.lifecycle,
   }).from(appIdentities).where(and(
     eq(appIdentities.appId, input.appId),
@@ -170,6 +180,51 @@ export async function resolveOwnedPrivateMiniAppIdentity(input: {
     eq(appIdentities.visibility, "private"),
     sql`${appIdentities.lifecycle} IN ('draft', 'active')`,
   )).limit(1);
+  return app ?? null;
+}
+
+export async function recordMiniAppRuntimeMigrationVerification(input: {
+  appId: string;
+  tenantId: string;
+  ownerUserId: number;
+  imported: number;
+  preserved: number;
+}) {
+  const [app] = await getDb().update(appIdentities).set({
+    runtimeDataMigrationStatus: sql`CASE WHEN ${appIdentities.runtimeDataMigrationStatus} = 'OWNER_CONFIRMED' THEN 'OWNER_CONFIRMED' ELSE 'VERIFIED' END`,
+    runtimeDataMigrationVerifiedAt: new Date(),
+    runtimeDataMigrationVerifiedByUserId: input.ownerUserId,
+    runtimeDataMigrationImportedCount: sql`CASE WHEN ${appIdentities.runtimeDataMigrationStatus} = 'NOT_STARTED' THEN ${input.imported} ELSE ${appIdentities.runtimeDataMigrationImportedCount} END`,
+    runtimeDataMigrationPreservedCount: sql`CASE WHEN ${appIdentities.runtimeDataMigrationStatus} = 'NOT_STARTED' THEN ${input.preserved} ELSE ${appIdentities.runtimeDataMigrationPreservedCount} END`,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(appIdentities.appId, input.appId),
+    eq(appIdentities.tenantId, input.tenantId),
+    eq(appIdentities.ownerUserId, input.ownerUserId),
+    eq(appIdentities.visibility, "private"),
+    sql`${appIdentities.lifecycle} IN ('draft', 'active')`,
+  )).returning({ appId: appIdentities.appId, runtimeDataMigrationStatus: appIdentities.runtimeDataMigrationStatus });
+  return app ?? null;
+}
+
+export async function confirmMiniAppRuntimeMigration(input: {
+  appId: string;
+  tenantId: string;
+  ownerUserId: number;
+}) {
+  const [app] = await getDb().update(appIdentities).set({
+    runtimeDataMigrationStatus: "OWNER_CONFIRMED",
+    runtimeDataMigrationConfirmedAt: new Date(),
+    runtimeDataMigrationConfirmedByUserId: input.ownerUserId,
+    updatedAt: new Date(),
+  }).where(and(
+    eq(appIdentities.appId, input.appId),
+    eq(appIdentities.tenantId, input.tenantId),
+    eq(appIdentities.ownerUserId, input.ownerUserId),
+    eq(appIdentities.visibility, "private"),
+    eq(appIdentities.runtimeDataMigrationStatus, "VERIFIED"),
+    sql`${appIdentities.lastKnownGoodArtifactRef} IS NOT NULL`,
+  )).returning({ appId: appIdentities.appId });
   return app ?? null;
 }
 
@@ -203,9 +258,24 @@ export async function resolveMiniAppForViewer(input: {
     visibility: appIdentities.visibility,
     deploymentVersion: appIdentities.deploymentVersion,
     lastKnownGoodArtifactRef: appIdentities.lastKnownGoodArtifactRef,
+    runtimeDataMigrationStatus: appIdentities.runtimeDataMigrationStatus,
+    runtimeDataMigrationVerifiedAt: appIdentities.runtimeDataMigrationVerifiedAt,
+    runtimeDataMigrationImportedCount: appIdentities.runtimeDataMigrationImportedCount,
+    runtimeDataMigrationPreservedCount: appIdentities.runtimeDataMigrationPreservedCount,
+    runtimeDataMigrationConfirmedAt: appIdentities.runtimeDataMigrationConfirmedAt,
     lifecycle: appIdentities.lifecycle,
   }).from(appIdentities).where(and(...predicates)).limit(1);
   if (!app || !canViewMiniApp(app, input)) return null;
+  if (app.visibility !== "private" || app.ownerUserId !== input.userId) {
+    return {
+      ...app,
+      runtimeDataMigrationStatus: null,
+      runtimeDataMigrationVerifiedAt: null,
+      runtimeDataMigrationImportedCount: null,
+      runtimeDataMigrationPreservedCount: null,
+      runtimeDataMigrationConfirmedAt: null,
+    };
+  }
   return app;
 }
 

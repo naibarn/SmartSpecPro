@@ -111,6 +111,14 @@ export async function readMiniAppRuntimeValue(scope: MiniAppRuntimeScope, key: s
   return record.value;
 }
 
+function readStoredValue(bytes: Buffer, expectedKey: string): unknown {
+  if (bytes.byteLength > MAX_STORAGE_VALUE_BYTES + 512) throw new Error("MINI_APP_RUNTIME_VALUE_INVALID");
+  const record = JSON.parse(bytes.toString("utf8")) as { key?: unknown; value?: unknown };
+  if (record.key !== expectedKey || !Object.prototype.hasOwnProperty.call(record, "value")) throw new Error("MINI_APP_RUNTIME_VALUE_INVALID");
+  parseMiniAppRuntimeEntries([{ key: expectedKey, value: record.value }]);
+  return record.value;
+}
+
 export async function writeMiniAppRuntimeValue(scope: MiniAppRuntimeScope, entry: MiniAppRuntimeEntry): Promise<void> {
   const [validated] = parseMiniAppRuntimeEntries([entry]);
   const bytes = Buffer.from(JSON.stringify({ key: validated!.key, value: validated!.value }), "utf8");
@@ -118,30 +126,46 @@ export async function writeMiniAppRuntimeValue(scope: MiniAppRuntimeScope, entry
 }
 
 /** Import legacy host-localStorage values without deleting them or overwriting values already saved by the runtime. */
-export async function migrateMiniAppRuntimeValues(scope: MiniAppRuntimeScope, entries: MiniAppRuntimeEntry[]): Promise<{ imported: number; preserved: number }> {
+export async function migrateMiniAppRuntimeValues(scope: MiniAppRuntimeScope, entries: MiniAppRuntimeEntry[]): Promise<{ imported: number; preserved: number; verified: number }> {
   const validated = parseMiniAppRuntimeEntries(entries);
   let imported = 0;
   let preserved = 0;
+  let verified = 0;
   for (const entry of validated) {
     const key = storageObjectKey(scope, entry.key);
-    if (await storageReadBuffer(key)) {
+    const prior = await storageReadBuffer(key);
+    if (prior) {
+      readStoredValue(prior, entry.key);
       preserved += 1;
+      verified += 1;
       continue;
     }
     const bytes = Buffer.from(JSON.stringify(entry), "utf8");
+    let created = false;
     try {
       const result = await storagePutIfAbsent(key, bytes, "application/json; charset=utf-8");
-      if (result.created) imported += 1;
-      else preserved += 1;
+      created = result.created;
     } catch (error) {
       // A concurrent runtime write wins over the legacy import. The browser
       // keeps its old localStorage copy, so a failed conditional write is safe
       // only when the runtime value now exists.
-      if (await storageReadBuffer(key)) preserved += 1;
+      if (await storageReadBuffer(key)) created = false;
       else throw error;
     }
+    const after = await storageReadBuffer(key);
+    if (!after) throw new Error("MINI_APP_RUNTIME_MIGRATION_VERIFY_FAILED");
+    const storedValue = readStoredValue(after, entry.key);
+    if (created) {
+      if (JSON.stringify(storedValue) !== JSON.stringify(entry.value)) throw new Error("MINI_APP_RUNTIME_MIGRATION_VERIFY_FAILED");
+      imported += 1;
+    } else {
+      // A concurrent write is authoritative. It must be a readable value;
+      // keep the browser copy so the owner can still recover a mismatch.
+      preserved += 1;
+    }
+    verified += 1;
   }
-  return { imported, preserved };
+  return { imported, preserved, verified };
 }
 
 function escapeHtml(value: string): string {

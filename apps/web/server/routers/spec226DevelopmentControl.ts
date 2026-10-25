@@ -101,6 +101,9 @@ function asTrpcError(error: unknown): never {
       message: "Development run not found",
     });
   }
+  if (code === "MINI_APP_DATA_MIGRATION_CONFIRMATION_REQUIRED") {
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Open the existing Mini-App, verify its migrated data, and confirm before starting another version" });
+  }
   if (
     code === "RUN_PROJECTION_STALE" ||
     code === "RUN_FENCE_STALE" ||
@@ -597,6 +600,9 @@ export const spec226DevelopmentControlRouter = router({
                 preferredAppId: miniAppId,
               });
           if (!miniAppIdentity) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+          if (input.appId && miniAppIdentity.lastKnownGoodArtifactRef && miniAppIdentity.runtimeDataMigrationStatus !== "OWNER_CONFIRMED") {
+            throw new Error("MINI_APP_DATA_MIGRATION_CONFIRMATION_REQUIRED");
+          }
           const priorArtifacts = previousFactory?.artifacts.filter(value => typeof value === "string" && /^(app-source:|app-source-digest:|app-repository:|app-repository-state:)/.test(value)) ?? [];
           const repository = previousFactory?.repository as { mode: "SMARTAIHUB_MANAGED" | "USER_OWNED"; owner: string; name: string; url: string; revision: string } | null ?? null;
           let repositoryProvisioningAvailable = Boolean(process.env.SMARTAIHUB_MINIAPP_GITHUB_TOKEN);

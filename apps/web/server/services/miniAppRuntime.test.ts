@@ -61,8 +61,24 @@ describe("Mini-App full-page runtime isolation and storage", () => {
     mocks.storageReadBuffer.mockResolvedValue(Buffer.from('{"key":"expenses","value":[{"amount":99}]}'));
     mocks.storagePutIfAbsent.mockResolvedValue({ key: "ignored", url: "ignored", created: false });
     await expect(migrateMiniAppRuntimeValues(scope, [{ key: "expenses", value: [{ amount: 25 }] }]))
-      .resolves.toEqual({ imported: 0, preserved: 1 });
+      .resolves.toEqual({ imported: 0, preserved: 1, verified: 1 });
     expect(mocks.storagePutIfAbsent).not.toHaveBeenCalled();
+  });
+
+  it("reads back a newly imported legacy value before reporting it verified", async () => {
+    mocks.storageReadBuffer
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(Buffer.from('{"key":"expenses","value":[{"amount":25}]}'));
+    mocks.storagePutIfAbsent.mockResolvedValue({ key: "stored", url: "stored", created: true });
+    await expect(migrateMiniAppRuntimeValues(scope, [{ key: "expenses", value: [{ amount: 25 }] }]))
+      .resolves.toEqual({ imported: 1, preserved: 0, verified: 1 });
+  });
+
+  it("rejects a write that cannot be read back and verified", async () => {
+    mocks.storageReadBuffer.mockResolvedValue(null);
+    mocks.storagePutIfAbsent.mockResolvedValue({ key: "stored", url: "stored", created: true });
+    await expect(migrateMiniAppRuntimeValues(scope, [{ key: "expenses", value: [] }]))
+      .rejects.toThrow("MINI_APP_RUNTIME_MIGRATION_VERIFY_FAILED");
   });
 
   it("reads and writes one app-scoped JSON value", async () => {

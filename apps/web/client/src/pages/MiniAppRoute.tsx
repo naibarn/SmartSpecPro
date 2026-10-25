@@ -39,9 +39,10 @@ function readableStatus(status?: string | null): string {
   return status ? (labels[status] ?? status.replace(/[_-]+/g, " ")) : "Preparing your private app";
 }
 
-function ContinueMiniApp({ input, onStarted }: {
+function ContinueMiniApp({ input, onStarted, canContinue }: {
   input: { appId: string; conversationId: number };
   onStarted: () => void;
+  canContinue: boolean;
 }) {
   const [prompt, setPrompt] = useState("");
   const continuation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation({
@@ -71,12 +72,13 @@ function ContinueMiniApp({ input, onStarted }: {
           value={prompt}
           maxLength={4_000}
           onChange={value => setPrompt(value)}
-          isDisabled={continuation.isPending}
+          isDisabled={continuation.isPending || !canContinue}
         />
+        {!canContinue ? <Text type="body" color="secondary">Confirm that the existing app data is correct before starting a new version.</Text> : null}
         {continuation.error ? <Text type="body" color="secondary" role="alert">{continuation.error.message}</Text> : null}
         {continuation.isSuccess ? <Text type="body" color="secondary" role="status">Continuation started for this App Home.</Text> : null}
         <HStack>
-          <AppButton type="submit" label={continuation.isPending ? "Starting…" : "Continue Development"} variant="primary" isDisabled={!prompt.trim() || continuation.isPending} />
+          <AppButton type="submit" label={continuation.isPending ? "Starting…" : "Continue Development"} variant="primary" isDisabled={!prompt.trim() || continuation.isPending || !canContinue} />
         </HStack>
       </VStack>
     </form>
@@ -111,11 +113,15 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
   const [tab, setTab] = useState<ProjectTab>(mode === "downloads" ? "files" : data.html ? "preview" : "progress");
   const factory = data.factory;
   const runtimePreparation = trpc.appIdentity.prepareMiniAppRuntime.useMutation();
+  const confirmMigration = trpc.appIdentity.confirmRuntimeDataMigration.useMutation();
+  const provisionRepository = trpc.appIdentity.provisionMiniAppRepository.useMutation({ onSuccess: onChanged });
+  const [migrationStatus, setMigrationStatus] = useState(app.runtimeDataMigrationStatus ?? "NOT_STARTED");
   const [storageToken, setStorageToken] = useState<string | null>(null);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
   const [openingApp, setOpeningApp] = useState(false);
   const storagePreparationStarted = useRef(false);
   const retry = trpc.spec226DevelopmentControl.retryMiniAppFactoryStage.useMutation({ onSuccess: onChanged });
+  const deploymentVersions = "deploymentVersions" in data ? data.deploymentVersions ?? [] : [];
   const stages = [...new Set([...(factory?.completedStages ?? []), ...(factory?.currentStage ? [factory.currentStage] : []), ...(factory?.remainingStages ?? [])])];
   const progress = stages.length ? Math.round(((factory?.completedStages?.length ?? 0) / stages.length) * 100) : 0;
   const title = factory?.goal
@@ -135,7 +141,11 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
     if (!previewAvailable || storageToken || storagePreparationStarted.current || runtimePreparation.isPending) return;
     storagePreparationStarted.current = true;
     void runtimePreparation.mutateAsync({ appId, legacyEntries: readLegacyMiniAppStorage(appId) })
-      .then(result => setStorageToken(result.storageToken))
+      .then(result => {
+        setStorageToken(result.storageToken);
+        setMigrationStatus(result.migrationStatus);
+        onChanged();
+      })
       .catch(error => setRuntimeError(error instanceof Error ? error.message : "App data migration is unavailable. Existing browser data remains intact."));
   }, [appId, previewAvailable, runtimePreparation.isPending, runtimePreparation.mutateAsync, storageToken]);
 
@@ -146,6 +156,8 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
       if (!storageToken) {
         const result = await runtimePreparation.mutateAsync({ appId, legacyEntries: readLegacyMiniAppStorage(appId) });
         setStorageToken(result.storageToken);
+        setMigrationStatus(result.migrationStatus);
+        onChanged();
         storagePreparationStarted.current = true;
       }
       await onOpenApp(version);
@@ -187,7 +199,8 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
           if (message.action === "GET") {
             if (result.value !== null && result.value !== undefined) {
               value = result.value;
-              window.localStorage.setItem(storageKey, JSON.stringify(value));
+              // Keep the legacy browser copy untouched; the app-scoped value
+              // is returned to the runtime without rewriting localStorage.
             } else if (value !== null) {
               // Preserve an older local value if it was not part of a valid
               // migration and seed the app-scoped store without deleting it.
@@ -212,7 +225,9 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [appId, storageToken]);
+  }, [appId, storageToken, onChanged]);
+
+  useEffect(() => setMigrationStatus(app.runtimeDataMigrationStatus ?? "NOT_STARTED"), [app.runtimeDataMigrationStatus]);
 
   return (
     <AppPage
@@ -341,6 +356,26 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
               {factory?.currentStage && (factory?.jobState === "failed" || factory?.jobState === "expired") ? <Text type="body" color="secondary">Stopped at {humanizeStage(factory.currentStage)}. {factory.retryable ? "Retry / Repair will resume this stage on the same run." : "This stage is not currently retryable."}</Text> : null}
               {factory?.repository?.url ? <Text type="body">Repository: <a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></Text> : <Text type="body" color="secondary">Repository: {factory?.repositoryState ?? "Not provisioned yet"}</Text>}
               {factory?.repositoryState === "AUTH_REQUIRED" ? <Text type="body" color="secondary">Source and preview remain in this private App Home. Connect GitHub in Settings → Integrations to provision a dedicated repository.</Text> : null}
+              {factory?.repositoryState === "AUTH_REQUIRED" ? <>
+                <AppButton label={provisionRepository.isPending ? "Provisioning repository…" : "Provision private repository from saved source"} variant="secondary" isDisabled={provisionRepository.isPending} onClick={() => provisionRepository.mutate({ appId })} />
+                {provisionRepository.error ? <Text type="body" color="secondary" role="alert">{provisionRepository.error.message}</Text> : null}
+              </> : null}
+              <Section>
+                <VStack gap={2}>
+                  <Text type="label">Existing app data</Text>
+                  {migrationStatus === "OWNER_CONFIRMED" ? (
+                    <Text type="body" color="secondary">Migration verified and confirmed. {app.runtimeDataMigrationImportedCount ?? 0} values imported; {app.runtimeDataMigrationPreservedCount ?? 0} existing values preserved.</Text>
+                  ) : migrationStatus === "VERIFIED" ? (
+                    <>
+                      <Text type="body" color="secondary">Migration read-back verified. {app.runtimeDataMigrationImportedCount ?? 0} values imported; {app.runtimeDataMigrationPreservedCount ?? 0} existing app-scoped values preserved. Legacy browser values remain stored.</Text>
+                      <AppButton label={confirmMigration.isPending ? "Confirming…" : "I verified my app data"} variant="primary" isDisabled={confirmMigration.isPending} onClick={() => confirmMigration.mutate({ appId }, { onSuccess: () => { setMigrationStatus("OWNER_CONFIRMED"); onChanged(); } })} />
+                    </>
+                  ) : (
+                    <Text type="body" color="secondary">Open the app once to copy legacy data without overwriting existing app data. Legacy browser values are retained until you verify the result.</Text>
+                  )}
+                  {confirmMigration.error ? <Text type="body" color="secondary" role="alert">{confirmMigration.error.message}</Text> : null}
+                </VStack>
+              </Section>
             </VStack>
           </Section>
         ) : null}
@@ -363,6 +398,13 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
               {factory?.currentStage ? <Text type="body">Latest attempt: {humanizeStage(factory.currentStage)} · {readableStatus(factory.jobState)}</Text> : null}
               {factory?.latestStageJobId ? <Text type="body" color="secondary">Job ID: {factory.latestStageJobId}</Text> : null}
               {factory?.error ? <Text type="body" color="secondary">Error: {factory.error.code}</Text> : null}
+              {deploymentVersions.length ? <VStack gap={1}>
+                <Text type="label">Immutable deployed versions</Text>
+                {deploymentVersions.map(version => <HStack key={version.deploymentVersion} align="center" gap={2} wrap="wrap">
+                  <Text type="body">Version {version.deploymentVersion} · {version.artifactDigest.slice(0, 12)} · run {version.developmentRunId}</Text>
+                  <AppButton label="Open version" variant="secondary" onClick={() => { void openApp(version.deploymentVersion); }} />
+                </HStack>)}
+              </VStack> : <Text type="body" color="secondary">Version history will appear after the current artifact is bound to its retained source snapshot.</Text>}
             </VStack>
           </Section>
         ) : null}
@@ -383,6 +425,10 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
             <Text type="body" color="secondary">Repository: {factory?.repositoryState ?? "Not provisioned yet"}</Text>
             {factory?.repository?.url ? <Text type="body"><a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></Text> : null}
             {factory?.repositoryState === "AUTH_REQUIRED" ? <Text type="body" color="secondary">Connect GitHub in Settings → Integrations to provision a dedicated App repository. The Core repository is never used as a fallback.</Text> : null}
+            {factory?.repositoryState === "AUTH_REQUIRED" ? <>
+              <AppButton label={provisionRepository.isPending ? "Provisioning repository…" : "Provision private repository from saved source"} variant="secondary" isDisabled={provisionRepository.isPending} onClick={() => provisionRepository.mutate({ appId })} />
+              {provisionRepository.error ? <Text type="body" color="secondary" role="alert">{provisionRepository.error.message}</Text> : null}
+            </> : null}
             <AppButton label="Back to Development" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/status`); }} />
           </VStack>
         </Section> : null}
@@ -390,7 +436,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
         {factory?.conversationId ? <Section>
           <VStack gap={3}>
             <Heading level={2}>Continue development</Heading>
-            <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} />
+            <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} canContinue={migrationStatus === "OWNER_CONFIRMED"} />
           </VStack>
         </Section> : null}
       </VStack>

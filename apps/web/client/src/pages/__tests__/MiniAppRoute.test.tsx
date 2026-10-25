@@ -21,7 +21,9 @@ const mocks = vi.hoisted(() => ({
   resolveMiniApp: vi.fn(),
   retryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
   continuationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
-  runtimeMutation: { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0 })), isPending: false },
+  runtimeMutation: { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0, verified: 0, migrationStatus: "VERIFIED" })), isPending: false },
+  confirmMigrationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
+  provisionRepositoryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
 }));
 
 vi.mock("wouter", () => ({
@@ -48,6 +50,12 @@ vi.mock("@/lib/trpc", () => ({
       },
       prepareMiniAppRuntime: {
         useMutation: () => mocks.runtimeMutation,
+      },
+      confirmRuntimeDataMigration: {
+        useMutation: () => mocks.confirmMigrationMutation,
+      },
+      provisionMiniAppRepository: {
+        useMutation: () => mocks.provisionRepositoryMutation,
       },
     },
     spec226DevelopmentControl: {
@@ -82,7 +90,9 @@ describe("MiniAppRoute", () => {
     mocks.resolveMiniApp.mockImplementation(() => mocks.appQuery);
     mocks.retryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
     mocks.continuationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
-    mocks.runtimeMutation = { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0 })), isPending: false };
+    mocks.runtimeMutation = { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0, verified: 0, migrationStatus: "VERIFIED" })), isPending: false };
+    mocks.confirmMigrationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
+    mocks.provisionRepositoryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
   });
 
   it("renders Research Notes only for its canonical App identity", async () => {
@@ -206,6 +216,8 @@ describe("MiniAppRoute", () => {
     expect(await screen.findByTestId("miniapp-preview-frame")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Progress" }));
     expect(screen.getByText(/Connect GitHub in Settings → Integrations/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Provision private repository from saved source" }));
+    expect(mocks.provisionRepositoryMutation.mutate).toHaveBeenCalledWith({ appId: "app_private_progress" });
     expect(screen.getByText("Package app files")).toBeInTheDocument();
     expect(screen.getByText("Publish private preview")).toBeInTheDocument();
     const options = mocks.resolveMiniApp.mock.calls[0]?.[1] as { refetchInterval?: (query: any) => number | false };
@@ -268,7 +280,7 @@ describe("MiniAppRoute", () => {
   it("submits feedback as a continuation of the same App Workspace", async () => {
     mocks.miniAppParams = { appId: "app_existing" };
     mocks.appQuery.data = {
-      app: { appId: "app_existing", visibility: "private", deploymentVersion: 1, lastKnownGoodArtifactRef: "r2://preview" },
+      app: { appId: "app_existing", visibility: "private", deploymentVersion: 1, lastKnownGoodArtifactRef: "r2://preview", runtimeDataMigrationStatus: "OWNER_CONFIRMED" },
       html: "<main>existing</main>",
       factory: { milestone: "PREVIEW_AVAILABLE", conversationId: 73, isInProgress: false, remainingStages: [] },
     };
