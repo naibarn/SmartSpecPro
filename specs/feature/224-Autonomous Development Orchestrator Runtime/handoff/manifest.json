@@ -935,11 +935,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.",
+    "next_action": "On the already-enrolled Windows local-runner, install unsigned review artifact 0.2.39 from workflow 40226692138 while preserving enrollment/workspace; run the real Codex task probe, then start one authenticated reversible non-production Core DevelopmentRun from SmartAIHub Chat against the existing workspace. Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE from the real run-bound grant and fresh workspace fingerprint. Keep closed Mini-App work closed.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "Resume protected execution when the existing Windows local-runner reconnects with a fresh Codex-ready capability snapshot and actual owned workspace, and an authenticated non-production tenant owner starts a real DevelopmentRun so the existing admission service can bind a scoped grant to actual run/job/attempt/lease/fence/source/budget identities. For Revision-24 public access tests, use authorized disposable tenant-bound owner and second-user identities on an isolated target.",
-    "resume_point": "Canonical source bc2950f0a84404e8b8074523251fb5abc373c6cf; heartbeat token-rotation fix at f670365a72afbc2acdb1b522ce04103bc0b2c697. Focused Rust tests passed (rotation transport 6/6, heartbeat freshness 1/1), JavaScript syntax and diff checks passed. Windows workflow 40215438638 passed and produced unsigned-review Runner 0.2.38, installer SHA-256 cc84313a2fb2373b2d31de7c12ca1ed573a27a6bfe9817639c2c6fe81f4528f3. Interactive Windows UI, production heartbeat observation, configured Codex task, and live DevelopmentRun remain unverified. Continue on the existing enrolled local-runner identity/workspace; do not reopen Mini-App work.",
-    "waiting_predicate": "Only protected Windows dispatch waits for the exact fresh Runner capability/workspace, authenticated tenant owner and run-bound scoped grant described in blocker R11. The Revision-24 public visibility path requires disposable authenticated owner/second-user identities. Independent local code and focused verification may continue under existing task authority."
+    "reactivation_predicate": "Resume live protected execution when the existing Windows local-runner has installed 0.2.39, published a fresh authenticated Codex task-probe result and current-source workspace fingerprint, and an authenticated non-production owner starts the DevelopmentRun so existing admission can bind actual run/job/attempt/lease/fence/source/budget identities. Continue Rev24 public lifecycle only with legitimate disposable owner and second-user identities.",
+    "resume_point": "Current integrated source 6e0942a4d644247ab2b9d5649682e0a0eca967ab fixes large clean Git workspaces receiving no content fingerprint. Rust workspace module tests passed 10/10; Mini-App access/runtime focused tests passed 29/29. Windows review workflow 40226692138 succeeded at exact SHA and installer 0.2.39 SHA-256 dad002cfbe1b55a3596f3f0581f1f29f2f53967731ba2a4953e21b59744566a8 verified. Read-only Windows registration is online and fresh; Codex authenticated but taskProbeState=not_run, all 11 capabilities pending, no runner execution session or live run. Full checkpoint: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-runner-review-build-checkpoint-20261026.md.",
+    "waiting_predicate": "Only the existing Windows UI action (install 0.2.39 and run the authenticated Codex real-task probe), followed by an authenticated owner Start in SmartAIHub Chat, is needed to create fresh task authority and a real run for protected dispatch. Do not synthesize capability grants. Rev24 public publish/read/unpublish and same-/cross-tenant browser verification still require an isolated disposable application and legitimate owner/second-user sessions. Independent code fixes and focused tests may continue without reopening Mini-App pilot work."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -958,8 +958,8 @@
         "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
       }
     ],
-    "next_action": "Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.",
-    "rationale": "Responsiveness/readiness implementation is integrated at canonical SHA 2656a487f0c4b576833be3338a98095703c6ebc4. Focused Linux/Web checks and hosted Windows Runner boundary, workspace-binding, and installer build checks passed. The Windows GUI, actual Codex harness task, live capability acknowledgement, authenticated Core lifecycle, settlement receipt, live Gateway receipt, and full Revision-24 public/tenant browser matrix remain unverified. Keep overall SPEC-224 acceptance partial.",
+    "next_action": "On the already-enrolled Windows local-runner, install unsigned review artifact 0.2.39 from workflow 40226692138 while preserving enrollment/workspace; run the authenticated Codex real-task probe, then start one reversible non-production Core DevelopmentRun in SmartAIHub Chat against the existing workspace. Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE from the real run-bound grant and fresh workspace fingerprint. Keep closed Mini-App work closed.",
+    "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1009,7 +1009,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 171,
+  "generation": 173,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2117,8 +2117,8 @@
           "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
         }
       ],
-      "next_action": "Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.",
-      "rationale": "Responsiveness/readiness implementation is integrated at canonical SHA 2656a487f0c4b576833be3338a98095703c6ebc4. Focused Linux/Web checks and hosted Windows Runner boundary, workspace-binding, and installer build checks passed. The Windows GUI, actual Codex harness task, live capability acknowledgement, authenticated Core lifecycle, settlement receipt, live Gateway receipt, and full Revision-24 public/tenant browser matrix remain unverified. Keep overall SPEC-224 acceptance partial.",
+      "next_action": "On the already-enrolled Windows local-runner, install unsigned review artifact 0.2.39 from workflow 40226692138 while preserving enrollment/workspace; run the authenticated Codex real-task probe, then start one reversible non-production Core DevelopmentRun in SmartAIHub Chat against the existing workspace. Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE from the real run-bound grant and fresh workspace fingerprint. Keep closed Mini-App work closed.",
+      "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3594,7 +3594,7 @@
     "unresolved": 1280
   },
   "schema_version": 1,
-  "updated_at": "2026-10-25T17:33:47.752689Z",
+  "updated_at": "2026-10-25T19:50:57.770188Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3917,6 +3917,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-heartbeat-rotation-fix-20261026.md",
         "scope": "Exact canonical source bc2950f0a84404e8b8074523251fb5abc373c6cf: Linux WSS token-rotation loopback suite 6/6; Desktop heartbeat-freshness test 1/1; JavaScript syntax and diff checks passed. Windows review workflow 40215438638 passed Runner release UI/API, native Windows boundary, workspace-binding, and unsigned NSIS installer checks. Version 0.2.38 artifact SHA-256 cc84313a2fb2373b2d31de7c12ca1ed573a27a6bfe9817639c2c6fe81f4528f3; downloaded artifact checksum verified. Actual user Windows UI, current production heartbeat, configured Codex task, and live SPEC-224 DevelopmentRun remain unverified.",
         "source_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_LIVE_RUNNER_RESTORATION_CHECKPOINT",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-runner-review-build-checkpoint-20261026.md",
+        "scope": "Current main 6e0942a4d644247ab2b9d5649682e0a0eca967ab: large clean Windows workspace fingerprint fix integrated; Runner 0.2.39 unsigned review installer built and checksum-verified. Current registered Windows runner is online with authenticated Codex but taskProbeState=not_run, all capability policies pending, no execution session or DevelopmentRun. Focused workspace tests 10/10 and Mini-App access/runtime tests 29/29 pass; no live Runner dispatch/settlement/Final Verify or Rev24 public browser run is claimed.",
+        "source_sha": "6e0942a4d644247ab2b9d5649682e0a0eca967ab",
         "status": "PARTIAL"
       }
     ],
