@@ -40,5 +40,5 @@ export const executeMiniAppFactoryRecoverySweep: JobExecutor = async ({
   const factory = await import("../services/miniAppFactoryStageWorker");
   const result = await factory.reconcileMiniAppFactoryStageRuns({ limit: 100 });
   await reporter.assertActive(lease);
-  return { output: { ...result, sweepContract: MINI_APP_FACTORY_RECOVERY_CONTRACT } };
+  return { output: { ...result, sweepContract: MINI_APP_FACTORY_RECOVERY_SWEEP_CONTRACT } };
 };
