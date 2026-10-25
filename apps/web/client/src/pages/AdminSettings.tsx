@@ -100,6 +100,8 @@ import TelegramConnectionsPanel from "@/components/admin/TelegramConnectionsPane
 import { TenantAutomationPolicyPanel } from "@/components/settings/TenantAutomationPolicyPanel";
 import { DashboardCard, DashboardKpiCard } from "@/components/dashboard";
 import { WorkerRuntimeReleasePanel } from "@/features/desktop-releases/WorkerRuntimeReleasePanel";
+import { Collapsible } from "@astryxdesign/core/Collapsible";
+import { Link as AstryxLink } from "@astryxdesign/core/Link";
 
 interface StripeSettings {
   secretKey?: string;
@@ -4922,6 +4924,62 @@ export default function AdminSettings() {
                       <Key className="w-5 h-5" />
                       GitHub OAuth
                     </h3>
+                    <Collapsible
+                      defaultIsOpen
+                      trigger={<strong>คู่มือสร้าง GitHub OAuth App และนำ Client ID / Secret มาใส่</strong>}
+                    >
+                      <section aria-label="GitHub OAuth setup guide">
+                        <p>
+                          ตั้งค่านี้ครั้งเดียวโดยผู้ดูแลระบบ เพื่อให้ผู้ใช้เชื่อมบัญชี GitHub
+                          สำหรับ Mini-App ได้ ต้องสร้าง <strong>OAuth App</strong> (ไม่ใช่ GitHub App)
+                          แล้วจึงให้ผู้ใช้กดเชื่อมต่อและอนุญาตสิทธิ์จากบัญชีของตนเอง
+                        </p>
+                        <ol>
+                          <li>
+                            เปิด{" "}
+                            <AstryxLink href="https://github.com/settings/developers" isExternalLink>
+                              GitHub Developer settings
+                            </AstryxLink>
+                            , เลือก <strong>OAuth Apps</strong> แล้วกด <strong>New OAuth App</strong>.
+                          </li>
+                          <li>
+                            กรอกชื่อแอป เช่น <code>SmartAIHub</code> และ Homepage URL เป็น{" "}
+                            <code>https://smartaihub.app</code>.
+                          </li>
+                          <li>
+                            เพิ่ม callback URL ทั้งสองรายการให้ตรงทุกตัวอักษร:
+                            <ol>
+                              <li><code>https://smartaihub.app/auth/callback/github</code> สำหรับ GitHub sign-in</li>
+                              <li><code>https://smartaihub.app/api/oauth/github/miniapp/callback</code> สำหรับเชื่อม repository ของ Mini-App</li>
+                            </ol>
+                          </li>
+                          <li>
+                            กดสร้าง OAuth App แล้วคัดลอก <strong>Client ID</strong> จากหน้ารายละเอียดแอป
+                            จากนั้นกด <strong>Generate a new client secret</strong> และคัดลอก Secret ที่แสดง
+                            (GitHub จะแสดง Secret ให้คัดลอกตอนสร้าง)
+                          </li>
+                          <li>
+                            นำ Client ID และ Secret มาใส่ในช่องด้านล่าง ตรวจสอบ Redirect URI ทั้งสองช่อง
+                            แล้วกด <strong>Save all OAuth settings</strong> ท้ายหน้า
+                            Secret จะถูกจัดเก็บแบบเข้ารหัสและจะไม่แสดงซ้ำหลังบันทึก
+                          </li>
+                          <li>
+                            หลังบันทึกแล้ว ไปที่ Settings → Integrations และกดเชื่อม GitHub
+                            ผู้ใช้แต่ละคนต้องอนุญาตสิทธิ์ repo ด้วยบัญชี GitHub ของตนเอง
+                          </li>
+                        </ol>
+                        <p>
+                          หากกลับมาที่ <code>settings?github=error</code> ทันที ให้ตรวจว่า Client ID/Secret
+                          ถูกบันทึกแล้วและยังเป็นคู่ล่าสุด; หาก GitHub แจ้ง redirect URI ไม่ตรง
+                          ให้เทียบ callback URL ในหน้านี้กับรายการที่ลงทะเบียนไว้
+                        </p>
+                        <p>
+                          <AstryxLink href="https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app" isExternalLink>
+                            คู่มือทางการของ GitHub: สร้าง OAuth App
+                          </AstryxLink>
+                        </p>
+                      </section>
+                    </Collapsible>
                     <div>
                       <Label htmlFor="githubClientId">Client ID</Label>
                       <Input
