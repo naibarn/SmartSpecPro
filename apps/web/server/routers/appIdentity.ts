@@ -9,20 +9,18 @@ import {
   setMiniAppVisibility,
   recordMiniAppRuntimeMigrationVerification,
   confirmMiniAppRuntimeMigration,
-  resolveOwnedPrivateMiniAppIdentity,
 } from "../services/appIdentityRepository";
-import { provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppFactoryHome, resolvePersonalMiniAppPreview } from "../services/personalMiniAppPreview";
+import { resolvePersonalMiniAppPreview } from "../services/personalMiniAppPreview";
+import { provisionOwnedMiniAppRepository } from "../services/miniAppRepositoryReconciliation";
 import { loadMiniAppFactoryPipeline } from "../services/miniAppFactoryPipeline";
-import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "../services/miniAppFactoryDurableState";
 import { isAutoRecoverableMiniAppFactoryError, scheduleMiniAppFactoryStageRetry } from "../services/miniAppFactoryStageWorker";
 import { createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter } from "../services/spec224DevelopmentRunPersistence";
 import { createMiniAppRuntimeReadyMarker, createMiniAppRuntimeStorageToken, migrateMiniAppRuntimeValues, parseMiniAppRuntimeEntries } from "../services/miniAppRuntime";
 
 const developmentRunService = createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter);
 
-type AppIdentityService = Pick<typeof import("../services/appIdentityRepository"), "resolveAppRouteForTenant" | "resolveActiveAppByPublicId" | "createPrivateMiniAppIdentity" | "resolveMiniAppForViewer" | "setMiniAppVisibility" | "recordMiniAppRuntimeMigrationVerification" | "confirmMiniAppRuntimeMigration" | "resolveOwnedPrivateMiniAppIdentity"> & {
-  resolvePersonalMiniAppFactoryHome: typeof resolvePersonalMiniAppFactoryHome;
-  provisionMiniAppRepositoryFromSnapshot: typeof provisionMiniAppRepositoryFromSnapshot;
+type AppIdentityService = Pick<typeof import("../services/appIdentityRepository"), "resolveAppRouteForTenant" | "resolveActiveAppByPublicId" | "createPrivateMiniAppIdentity" | "resolveMiniAppForViewer" | "setMiniAppVisibility" | "recordMiniAppRuntimeMigrationVerification" | "confirmMiniAppRuntimeMigration"> & {
+  provisionOwnedMiniAppRepository: typeof provisionOwnedMiniAppRepository;
   resolvePersonalMiniAppPreview?: typeof resolvePersonalMiniAppPreview;
 };
 
@@ -40,9 +38,7 @@ export function createAppIdentityRouter(service: AppIdentityService = {
   setMiniAppVisibility,
   recordMiniAppRuntimeMigrationVerification,
   confirmMiniAppRuntimeMigration,
-  resolveOwnedPrivateMiniAppIdentity,
-  resolvePersonalMiniAppFactoryHome,
-  provisionMiniAppRepositoryFromSnapshot,
+  provisionOwnedMiniAppRepository,
   resolvePersonalMiniAppPreview,
 }) {
   return router({
@@ -143,52 +139,13 @@ export function createAppIdentityRouter(service: AppIdentityService = {
         if (!Number.isSafeInteger(userId) || userId <= 0) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated owner required" });
         }
-        const app = await service.resolveOwnedPrivateMiniAppIdentity({ appId: input.appId, tenantId, ownerUserId: userId });
-        if (!app || !app.lastKnownGoodArtifactRef) throw new TRPCError({ code: "NOT_FOUND", message: "Mini App unavailable" });
-        const factory = await service.resolvePersonalMiniAppFactoryHome({ tenantId, userId }, input.appId, true);
-        if (!factory?.runId || !factory.sourceSnapshotRef || !factory.appSourceDigest) {
-          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No retained Mini-App source snapshot is available to provision" });
+        try {
+          return await service.provisionOwnedMiniAppRepository({ appId: input.appId, tenantId, ownerUserId: userId });
+        } catch (error) {
+          const code = error instanceof Error ? error.message : "MINI_APP_REPOSITORY_PROVISIONING_FAILED";
+          const trpcCode = code === "MINI_APP_UNAVAILABLE" ? "NOT_FOUND" : "PRECONDITION_FAILED";
+          throw new TRPCError({ code: trpcCode, message: code });
         }
-        if (factory.isInProgress) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Wait for the current Mini-App stage to finish before provisioning its repository" });
-        if (factory.repository) return { appId: input.appId, repository: factory.repository, alreadyProvisioned: true };
-        const repository = await service.provisionMiniAppRepositoryFromSnapshot({
-          userId,
-          appId: input.appId,
-          sourceRef: factory.sourceSnapshotRef,
-          sourceDigest: factory.appSourceDigest,
-        });
-        if (!repository) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Connect GitHub in Settings → Integrations, then provision this saved source again" });
-
-        const record = await developmentRunService.get({ runId: factory.runId, tenantId, actorId: userId });
-        const metadata = record.run.metadata as Record<string, unknown>;
-        const currentState = parseMiniAppFactoryDurableState(metadata[MINI_APP_FACTORY_STATE_KEY]);
-        if (currentState.miniAppId !== input.appId) throw new TRPCError({ code: "CONFLICT", message: "Mini-App run binding changed; refresh and retry" });
-        if (currentState.repository) return { appId: input.appId, repository: currentState.repository, alreadyProvisioned: true };
-        const repoKind = repository.mode === "SMARTAIHUB_MANAGED" ? "managed" : "user";
-        const repositoryArtifact = `app-repository:${repoKind}:${repository.owner}/${repository.name}@${repository.revision}`;
-        const nextState = {
-          ...currentState,
-          repository,
-          artifacts: [...new Set([
-            ...currentState.artifacts.filter(value => value !== "app-repository-state:AUTH_REQUIRED"),
-            repositoryArtifact,
-            "app-repository-state:BOUND",
-          ])],
-          nextEligibleStages: currentState.nextEligibleStages.filter(stage => stage !== "source_repository"),
-          blockerState: currentState.blockerState.code === "MINI_APP_GITHUB_AUTHORITY_NOT_CONFIGURED"
-            ? { status: "NONE" as const, code: null }
-            : currentState.blockerState,
-        };
-        await developmentRunService.recordVerificationEvent({
-          runId: factory.runId,
-          tenantId,
-          actorId: userId,
-          idempotencyKey: `miniapp-repository:${input.appId}:${repository.revision}`,
-          type: "VERIFICATION_OUTCOME",
-          payload: { profile: "PERSONAL_MINIAPP", outcome: "REPOSITORY_PROVISIONED", repository: `${repository.owner}/${repository.name}` },
-          runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: nextState },
-        });
-        return { appId: input.appId, repository, alreadyProvisioned: false };
       }),
     resolveMiniApp: publicProcedure
       .input(z.object({ appId: z.string().trim().min(1).max(128) }).strict())

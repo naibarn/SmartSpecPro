@@ -87,7 +87,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
         const sourceRef = [...context.artifacts].reverse().find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
         const sourceDigest = [...context.artifacts].reverse().find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
         if (!sourceRef || !sourceDigest) throw new Error("MINI_APP_SOURCE_SNAPSHOT_MISSING");
-        const repository = await provisionMiniAppRepositoryFromSnapshot({ userId: context.actorId, appId: state.miniAppId, sourceRef, sourceDigest });
+        const repository = await provisionMiniAppRepositoryFromSnapshot({ userId: context.actorId, tenantId: context.tenantId, appId: state.miniAppId, sourceRef, sourceDigest });
         if (!repository) throw new Error("MINI_APP_GITHUB_AUTHORITY_NOT_CONFIGURED");
         return { artifacts: [
           "app-repository-state:BOUND",

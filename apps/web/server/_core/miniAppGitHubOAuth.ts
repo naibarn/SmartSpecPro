@@ -3,6 +3,7 @@ import type { Express, Request, Response } from "express";
 import { sdk } from "./sdk";
 import { signBearerToken, verifyBearerToken } from "./tokens";
 import { connectUserGitHub, getGitHubMiniAppOAuthConfig } from "../services/userGithubConnectionService";
+import { reconcilePendingMiniAppRepositoriesForOwner } from "../services/miniAppRepositoryReconciliation";
 
 const STATE_COOKIE = "miniapp_github_oauth_state";
 const CALLBACK_PATH = "/api/oauth/github/miniapp/callback";
@@ -74,6 +75,25 @@ export function registerMiniAppGitHubOAuthRoutes(app: Express) {
         tenantId: typeof claims.tenantId === "string" ? claims.tenantId : null,
         token: tokenPayload.access_token,
       });
+      if (typeof claims.tenantId === "string") {
+        try {
+          const result = await reconcilePendingMiniAppRepositoriesForOwner({
+            tenantId: claims.tenantId,
+            ownerUserId: claims.userId,
+          });
+          if (result.failed) {
+            console.warn("[MiniAppGitHub] OAuth completed with pending repository reconciliation", {
+              userId: claims.userId,
+              failed: result.failed,
+            });
+          }
+        } catch (error) {
+          console.warn("[MiniAppGitHub] OAuth completed; repository reconciliation will be retried separately", {
+            userId: claims.userId,
+            code: error instanceof Error ? error.message.slice(0, 120) : "MINI_APP_REPOSITORY_RECONCILIATION_FAILED",
+          });
+        }
+      }
       res.redirect(302, settingsRedirect("connected"));
     } catch {
       res.redirect(302, settingsRedirect("error"));

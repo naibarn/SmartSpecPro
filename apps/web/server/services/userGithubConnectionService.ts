@@ -81,9 +81,9 @@ export async function connectUserGitHub(input: {
 export async function getUserGitHubConnection(userId: number) {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_NOT_INITIALIZED");
-  const [row] = await db.select({ githubLogin: userGithubConnections.githubLogin })
+  const [row] = await db.select({ githubLogin: userGithubConnections.githubLogin, tenantId: userGithubConnections.tenantId })
     .from(userGithubConnections).where(eq(userGithubConnections.userId, userId)).limit(1);
-  return row ? { ...row, configured: true as const } : { githubLogin: null, configured: false as const };
+  return row ? { ...row, configured: true as const } : { githubLogin: null, tenantId: null, configured: false as const };
 }
 
 export async function deleteUserGitHubConnection(userId: number): Promise<void> {

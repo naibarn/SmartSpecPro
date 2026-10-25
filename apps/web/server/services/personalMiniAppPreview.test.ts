@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
+const githubMocks = vi.hoisted(() => ({
+  getConnection: vi.fn(),
+  getToken: vi.fn(),
+  validateToken: vi.fn(),
+}));
 vi.mock("../storage", () => ({
   storagePutContentAddressedIfAbsent: vi.fn(),
   storageReadBuffer: vi.fn(),
@@ -9,6 +14,11 @@ vi.mock("./appIdentityRepository", () => ({
   resolveMiniAppForViewer: vi.fn(),
 }));
 vi.mock("../db", () => ({ getDb: vi.fn() }));
+vi.mock("./userGithubConnectionService", () => ({
+  getUserGitHubConnection: (...args: unknown[]) => githubMocks.getConnection(...args),
+  getUserGitHubToken: (...args: unknown[]) => githubMocks.getToken(...args),
+  validateGitHubToken: (...args: unknown[]) => githubMocks.validateToken(...args),
+}));
 import {
   storagePutContentAddressedIfAbsent,
   storageReadBuffer,
@@ -21,6 +31,7 @@ import {
   derivePersonalMiniAppTitle,
   generatePersonalMiniApp,
   provisionManagedMiniAppRepository,
+  provisionMiniAppRepositoryFromSnapshot,
   repairPersonalMiniAppJsonCandidate,
   resolvePersonalMiniAppHomeMilestone,
   resolvePersonalMiniAppPreview,
@@ -38,6 +49,9 @@ beforeEach(() => {
   vi.mocked(callLLMStructured).mockReset();
   vi.mocked(storagePutContentAddressedIfAbsent).mockReset();
   vi.mocked(storageReadBuffer).mockReset();
+  githubMocks.getConnection.mockReset();
+  githubMocks.getToken.mockReset();
+  githubMocks.validateToken.mockReset();
 });
 
 describe("personal Mini-App artifact assembly", () => {
@@ -74,6 +88,12 @@ describe("personal Mini-App artifact assembly", () => {
         html_url: "https://github.com/smartaihub/smartaihub-app-test",
         default_branch: "main",
       }), { status: 201 });
+      if (target.includes("/commits/" + "a".repeat(40))) return new Response(JSON.stringify({ sha: "a".repeat(40) }), { status: 200 });
+      if (target.includes(`/contents/app-source.json?ref=${"a".repeat(40)}`)) return new Response(JSON.stringify({
+        path: "app-source.json",
+        encoding: "base64",
+        content: Buffer.from(JSON.stringify(generated)).toString("base64"),
+      }), { status: 200 });
       if (target.includes("/contents/app-source.json?")) return new Response("not found", { status: 404 });
       if (target.endsWith("/contents/app-source.json")) return new Response(JSON.stringify({ commit: { sha: "a".repeat(40) } }), { status: 201 });
       return new Response("unexpected request", { status: 500 });
@@ -92,6 +112,59 @@ describe("personal Mini-App artifact assembly", () => {
       content: Buffer.from(JSON.stringify(generated)).toString("base64"),
     });
     expect(new Headers(contentWrite?.init?.headers).get("Authorization")).toBe("Bearer test-github-token");
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("uses the explicitly connected personal GitHub account and avoids duplicate source commits", async () => {
+    const sourceBytes = Buffer.from(JSON.stringify(generated));
+    const sourceDigest = createHash("sha256").update(sourceBytes).digest("hex");
+    const sourceRef = `r2://mini-app-sources/tenant-test/app_test/sha256/${sourceDigest}`;
+    const revision = "b".repeat(40);
+    vi.mocked(storageReadBuffer).mockResolvedValue(sourceBytes);
+    githubMocks.getConnection.mockResolvedValue({ githubLogin: "personal-owner", tenantId: "tenant-test", configured: true });
+    githubMocks.getToken.mockResolvedValue("user-owned-token");
+    githubMocks.validateToken.mockResolvedValue("personal-owner");
+    vi.stubEnv("SMARTAIHUB_MINIAPP_GITHUB_TOKEN", "managed-token-must-not-be-used");
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
+    vi.stubGlobal("fetch", vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const target = String(url);
+      calls.push({ url: target, init });
+      if (target.endsWith("/repos/personal-owner/smartaihub-app-test") && init?.method !== "POST") {
+        return response({ private: true, owner: { login: "personal-owner" }, html_url: "https://github.com/personal-owner/smartaihub-app-test", default_branch: "main" });
+      }
+      if (target.endsWith("/repos/personal-owner/smartaihub-app-test") && init?.method === "POST") {
+        return response({ private: true, owner: { login: "personal-owner" }, html_url: "https://github.com/personal-owner/smartaihub-app-test", default_branch: "main" }, 201);
+      }
+      if (target.endsWith("/repos/personal-owner/smartaihub-app-test/contents/app-source.json?ref=main")) {
+        const putAlreadyHappened = calls.some(call => call.init?.method === "PUT");
+        return putAlreadyHappened
+          ? response({ path: "app-source.json", encoding: "base64", sha: "file-blob", content: sourceBytes.toString("base64") })
+          : response("not found", 404);
+      }
+      if (target.endsWith("/repos/personal-owner/smartaihub-app-test/contents/app-source.json") && init?.method === "PUT") {
+        return response({ commit: { sha: revision } }, 201);
+      }
+      if (target.endsWith(`/repos/personal-owner/smartaihub-app-test/commits?path=app-source.json&per_page=1`)) {
+        return response([{ sha: revision }]);
+      }
+      if (target.endsWith(`/repos/personal-owner/smartaihub-app-test/commits/${revision}`)) return response({ sha: revision });
+      if (target.endsWith(`/repos/personal-owner/smartaihub-app-test/contents/app-source.json?ref=${revision}`)) {
+        return response({ path: "app-source.json", encoding: "base64", content: sourceBytes.toString("base64") });
+      }
+      return response({ message: "unexpected request" }, 500);
+    }));
+
+    const input = { userId: 23, tenantId: "tenant-test", appId: "app_test", sourceRef, sourceDigest };
+    const first = await provisionMiniAppRepositoryFromSnapshot(input);
+    const second = await provisionMiniAppRepositoryFromSnapshot(input);
+
+    expect(first).toMatchObject({ mode: "USER_OWNED", owner: "personal-owner", revision });
+    expect(second).toEqual(first);
+    expect(calls.filter(call => call.init?.method === "PUT")).toHaveLength(1);
+    expect(calls.some(call => new Headers(call.init?.headers).get("Authorization") === "Bearer managed-token-must-not-be-used")).toBe(false);
+    expect(githubMocks.getConnection).toHaveBeenCalledWith(23);
     vi.unstubAllGlobals();
     vi.unstubAllEnvs();
   });

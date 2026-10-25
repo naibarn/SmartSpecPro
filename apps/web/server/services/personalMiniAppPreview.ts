@@ -11,7 +11,7 @@ import {
 } from "../storage";
 import { callLLMStructured, type CallLLMStructuredRuntimeOptions } from "./callLLMStructured";
 import { resolveMiniAppForViewer } from "./appIdentityRepository";
-import { getUserGitHubToken, validateGitHubToken } from "./userGithubConnectionService";
+import { getUserGitHubConnection, getUserGitHubToken, validateGitHubToken } from "./userGithubConnectionService";
 
 const ASSET_MIME = new Set([
   "image/png",
@@ -249,6 +249,47 @@ export type PersonalMiniAppRepository = {
   revision: string;
 };
 
+function decodeGitHubFileContent(file: Record<string, unknown> | null | undefined): string | null {
+  if (!file || file.encoding !== "base64" || typeof file.content !== "string") return null;
+  try {
+    return Buffer.from(file.content.replace(/\n/g, ""), "base64").toString("utf8");
+  } catch {
+    return null;
+  }
+}
+
+async function findExistingSourceRevision(input: {
+  api: (path: string, init?: RequestInit) => Promise<Record<string, any>>;
+  owner: string;
+  name: string;
+  sourceJson: string;
+  existingFile: Record<string, unknown> | null;
+}): Promise<string | null> {
+  if (decodeGitHubFileContent(input.existingFile) !== input.sourceJson) return null;
+  const commits = await input.api(
+    `/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.name)}/commits?path=app-source.json&per_page=1`,
+  );
+  const first = Array.isArray(commits) ? commits[0] as Record<string, any> | undefined : undefined;
+  const revision = typeof first?.sha === "string" ? first.sha : "";
+  return /^[a-f0-9]{40}$/i.test(revision) ? revision : null;
+}
+
+async function verifySourceRevision(input: {
+  api: (path: string, init?: RequestInit) => Promise<Record<string, any>>;
+  owner: string;
+  name: string;
+  revision: string;
+  sourceJson: string;
+}): Promise<void> {
+  const [commit, file] = await Promise.all([
+    input.api(`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.name)}/commits/${encodeURIComponent(input.revision)}`),
+    input.api(`/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.name)}/contents/app-source.json?ref=${encodeURIComponent(input.revision)}`),
+  ]);
+  if (commit.sha?.toLowerCase() !== input.revision.toLowerCase() || file.path !== "app-source.json" || decodeGitHubFileContent(file) !== input.sourceJson) {
+    throw new Error("GITHUB_SOURCE_COMMIT_VERIFICATION_FAILED");
+  }
+}
+
 export async function provisionManagedMiniAppRepository(input: {
   appId: string;
   sourceJson: string;
@@ -286,24 +327,27 @@ export async function provisionManagedMiniAppRepository(input: {
   }
   if (repo.private !== true || repo.owner?.login?.toLowerCase() !== owner.toLowerCase()) throw new Error("GITHUB_REPOSITORY_SCOPE_INVALID");
   const branch = String(repo.default_branch || "main");
-  let existingFileSha: string | undefined;
+  let existingFile: Record<string, unknown> | null = null;
   try {
-    const existingFile = await api(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/app-source.json?ref=${encodeURIComponent(branch)}`);
-    if (typeof existingFile.sha === "string") existingFileSha = existingFile.sha;
+    existingFile = await api(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/app-source.json?ref=${encodeURIComponent(branch)}`);
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "GITHUB_HTTP_404") throw error;
   }
-  const committed = await api(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/app-source.json`, {
-    method: "PUT",
-    body: JSON.stringify({
-      message: `Build SmartAIHub Mini-App ${input.appId}`,
-      branch,
-      ...(existingFileSha ? { sha: existingFileSha } : {}),
-      content: Buffer.from(input.sourceJson, "utf8").toString("base64"),
-    }),
-  });
-  const revision = String(committed.commit?.sha || "");
+  let revision = await findExistingSourceRevision({ api, owner, name, sourceJson: input.sourceJson, existingFile });
+  if (!revision) {
+    const committed = await api(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/contents/app-source.json`, {
+      method: "PUT",
+      body: JSON.stringify({
+        message: `Build SmartAIHub Mini-App ${input.appId}`,
+        branch,
+        ...(typeof existingFile?.sha === "string" ? { sha: existingFile.sha } : {}),
+        content: Buffer.from(input.sourceJson, "utf8").toString("base64"),
+      }),
+    });
+    revision = String(committed.commit?.sha || "");
+  }
   if (!/^[a-f0-9]{40}$/i.test(revision)) throw new Error("GITHUB_SOURCE_COMMIT_MISSING");
+  await verifySourceRevision({ api, owner, name, revision, sourceJson: input.sourceJson });
   return { mode: "SMARTAIHUB_MANAGED", owner, name, url: String(repo.html_url), revision };
 }
 
@@ -614,6 +658,7 @@ export async function buildAndStorePersonalMiniApp(input: {
 
 export async function provisionMiniAppRepositoryFromSnapshot(input: {
   userId: number;
+  tenantId: string;
   appId: string;
   sourceRef: string;
   sourceDigest: string;
@@ -628,12 +673,22 @@ export async function provisionMiniAppRepositoryFromSnapshot(input: {
   const sourceJson = bytes.toString("utf8");
   const source = GENERATED_APP_SCHEMA.parse(JSON.parse(sourceJson));
   const normalizedSource = JSON.stringify(source);
-  const managedRepository = await provisionManagedMiniAppRepository({ appId: input.appId, sourceJson: normalizedSource });
-  if (managedRepository) return managedRepository;
+  const personalConnection = await getUserGitHubConnection(input.userId);
+  if (personalConnection.configured) {
+    if (personalConnection.tenantId && personalConnection.tenantId !== input.tenantId) {
+      throw new Error("GITHUB_CONNECTION_TENANT_MISMATCH");
+    }
+  } else {
+    const managedRepository = await provisionManagedMiniAppRepository({ appId: input.appId, sourceJson: normalizedSource });
+    if (managedRepository) return managedRepository;
+  }
   const userToken = await getUserGitHubToken(input.userId);
   if (!userToken) return null;
 
   const githubLogin = await validateGitHubToken(userToken);
+  if (personalConnection.configured && githubLogin.toLowerCase() !== personalConnection.githubLogin.toLowerCase()) {
+    throw new Error("GITHUB_CONNECTION_IDENTITY_MISMATCH");
+  }
   const headers = {
     Accept: "application/vnd.github+json",
     Authorization: `Bearer ${userToken}`,
@@ -664,24 +719,27 @@ export async function provisionMiniAppRepositoryFromSnapshot(input: {
     throw new Error("GITHUB_REPOSITORY_SCOPE_INVALID");
   }
   const branch = String(repo.default_branch || "main");
-  let existingFileSha: string | undefined;
+  let existingFile: Record<string, unknown> | null = null;
   try {
-    const existingFile = await api(`/repos/${encodeURIComponent(githubLogin)}/${encodeURIComponent(name)}/contents/app-source.json?ref=${encodeURIComponent(branch)}`);
-    if (typeof existingFile.sha === "string") existingFileSha = existingFile.sha;
+    existingFile = await api(`/repos/${encodeURIComponent(githubLogin)}/${encodeURIComponent(name)}/contents/app-source.json?ref=${encodeURIComponent(branch)}`);
   } catch (error) {
     if (!(error instanceof Error) || error.message !== "GITHUB_HTTP_404") throw error;
   }
-  const committed = await api(`/repos/${encodeURIComponent(githubLogin)}/${encodeURIComponent(name)}/contents/app-source.json`, {
-    method: "PUT",
-    body: JSON.stringify({
-      message: `Build SmartAIHub Mini-App ${input.appId}`,
-      branch,
-      ...(existingFileSha ? { sha: existingFileSha } : {}),
-      content: Buffer.from(normalizedSource, "utf8").toString("base64"),
-    }),
-  });
-  const revision = String(committed.commit?.sha || "");
+  let revision = await findExistingSourceRevision({ api, owner: githubLogin, name, sourceJson: normalizedSource, existingFile });
+  if (!revision) {
+    const committed = await api(`/repos/${encodeURIComponent(githubLogin)}/${encodeURIComponent(name)}/contents/app-source.json`, {
+      method: "PUT",
+      body: JSON.stringify({
+        message: `Build SmartAIHub Mini-App ${input.appId}`,
+        branch,
+        ...(typeof existingFile?.sha === "string" ? { sha: existingFile.sha } : {}),
+        content: Buffer.from(normalizedSource, "utf8").toString("base64"),
+      }),
+    });
+    revision = String(committed.commit?.sha || "");
+  }
   if (!/^[a-f0-9]{40}$/i.test(revision)) throw new Error("GITHUB_SOURCE_COMMIT_MISSING");
+  await verifySourceRevision({ api, owner: githubLogin, name, revision, sourceJson: normalizedSource });
   return { mode: "USER_OWNED" as const, owner: githubLogin, name, url: String(repo.html_url), revision };
 }
 
