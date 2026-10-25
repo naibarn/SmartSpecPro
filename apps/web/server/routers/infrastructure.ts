@@ -81,9 +81,9 @@ import { probeCloudflareProductionProviderInventory } from "../services/cloudfla
 import { resolveCloudflareProductionDeploymentTarget } from "../services/cloudflareProductionDeploymentContract";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB } from "../services/cloudflareProductionQueueProvision";
 import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE_JOB,
-  createProductionDatabaseGrant, newProductionDatabaseJobId, revokeCloudflareProductionDatabaseGrant,
+  createProductionDatabaseGrant, newProductionDatabaseJobId, readCloudflareProductionDatabaseGrant, revokeCloudflareProductionDatabaseGrant,
   saveCloudflareProductionDatabaseGrant } from "../services/cloudflareProductionDatabaseExecutor";
-import { productionDatabaseResourcePlanSchema } from "../services/cloudflareProductionDatabaseProvision";
+import { productionDatabaseResourcePlanDigest, productionDatabaseResourcePlanSchema } from "../services/cloudflareProductionDatabaseProvision";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
@@ -97,6 +97,46 @@ const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+function logCloudflareProductionDatabaseAdmission(input: {
+  stage: string;
+  outcome: "started" | "completed" | "failed" | "unknown";
+  requestId: string;
+  tenantId: string;
+  projectId: string;
+  jobId?: string;
+  errorCode?: string;
+}) {
+  // These records intentionally contain identifiers and stage codes only.
+  // Never log the Cloudflare token, grant payload, or generated DB password.
+  const record = { ...input, at: new Date().toISOString() };
+  const serialized = JSON.stringify(record);
+  if (input.outcome === "failed" || input.outcome === "unknown") {
+    console.error("[CloudflareProductionDatabaseAdmission]", serialized);
+  } else {
+    console.info("[CloudflareProductionDatabaseAdmission]", serialized);
+  }
+}
+
+function cloudflareAdmissionErrorCode(error: unknown): string {
+  if (error instanceof TRPCError) {
+    const message = error.message.trim();
+    return /^[A-Z0-9_:-]{1,120}$/.test(message) ? message : error.code;
+  }
+  if (error && typeof error === "object" && "diagnosticCode" in error) {
+    const diagnosticCode = (error as { diagnosticCode?: unknown }).diagnosticCode;
+    if (typeof diagnosticCode === "string" && /^[A-Z0-9_:-]{1,120}$/.test(diagnosticCode)) return diagnosticCode;
+  }
+  if (error && typeof error === "object" && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === "string" && /^[A-Z0-9_:-]{1,120}$/.test(code)) return code;
+  }
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && /^[A-Z0-9_:-]{1,120}$/.test(message.trim())) return message.trim();
+  }
+  return "INTERNAL_SERVER_ERROR";
+}
 
 async function fetchProjectWikiApprovalRequest(requestId: string, userToken: string): Promise<ProjectWikiApprovalEvidence | null> {
   const runtime = await getAppRuntimeConfig();
@@ -706,35 +746,147 @@ export const infrastructureRouter = router({
       projectId: z.string().trim().min(1).max(100),
       environment: z.literal("production"),
       tunnelId: z.string().uuid(),
+      submissionId: z.string().uuid().optional(),
     }).strict())
     .mutation(async ({ input, ctx }) => {
+      const jobId = input.submissionId ?? newProductionDatabaseJobId();
+      const requestId = ctx.req.requestId ?? jobId;
+      let stage = "authenticated_request_received";
+      logCloudflareProductionDatabaseAdmission({ stage, outcome: "started", requestId,
+        tenantId: input.tenantId, projectId: input.projectId, jobId });
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
       if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id) {
+        logCloudflareProductionDatabaseAdmission({ stage: "tenant_scope_verification", outcome: "failed", requestId,
+          tenantId: input.tenantId, projectId: input.projectId, jobId, errorCode: "PRODUCTION_TENANT_SCOPE_MISMATCH" });
         throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
       }
+      logCloudflareProductionDatabaseAdmission({ stage: "tenant_scope_verified", outcome: "completed", requestId,
+        tenantId, projectId: input.projectId, jobId });
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      if (!db) {
+        logCloudflareProductionDatabaseAdmission({ stage: "authoritative_database_resolved", outcome: "failed", requestId,
+          tenantId, projectId: input.projectId, jobId, errorCode: "DATABASE_NOT_AVAILABLE" });
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      }
+      logCloudflareProductionDatabaseAdmission({ stage: "authoritative_database_resolved", outcome: "completed", requestId,
+        tenantId, projectId: input.projectId, jobId });
+      const readCanonicalJob = async (candidateId: string) => {
+        const [candidate] = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType,
+          contractVersion: workerJobs.contractVersion, requestedByUserId: workerJobs.requestedByUserId,
+          status: workerJobs.status, inputJson: workerJobs.inputJson })
+          .from(workerJobs).where(and(eq(workerJobs.id, candidateId), eq(workerJobs.tenantId, tenantId))).limit(1);
+        return candidate ?? null;
+      };
+      const validateExistingJob = (candidate: NonNullable<Awaited<ReturnType<typeof readCanonicalJob>>>) => {
+        const candidateInput = candidate.inputJson as Record<string, unknown> | null;
+        if (candidate.jobType !== CLOUDFLARE_PRODUCTION_DATABASE_JOB ||
+            candidate.contractVersion !== CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT ||
+            candidate.requestedByUserId !== ctx.user?.id || candidateInput?.projectId !== input.projectId ||
+            candidateInput?.targetId !== "smartspec-cloudflare-runtime" || candidateInput?.environment !== "production" || !candidateInput) {
+          throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_ACTIVE_JOB_SCOPE_MISMATCH" });
+        }
+        return candidateInput;
+      };
+      const responseForJob = (candidate: NonNullable<Awaited<ReturnType<typeof readCanonicalJob>>>, candidateInput: Record<string, unknown>) => ({
+        jobId: candidate.id,
+        grantRef: typeof candidateInput.grantRef === "string" ? candidateInput.grantRef : "",
+        planDigest: typeof candidateInput.planDigest === "string" ? candidateInput.planDigest : "",
+        status: candidate.status === "queued" ? "queued" as const : "existing" as const,
+        targetId: "smartspec-cloudflare-runtime" as const,
+        environment: "production" as const,
+      });
+      stage = "canonical_job_reconciliation";
+      logCloudflareProductionDatabaseAdmission({ stage, outcome: "started", requestId, tenantId,
+        projectId: input.projectId, jobId });
+      const existingBySubmission = await readCanonicalJob(jobId);
+      if (existingBySubmission) {
+        const existingInput = validateExistingJob(existingBySubmission);
+        const grant = await readCloudflareProductionDatabaseGrant(db, existingBySubmission.id);
+        if (!grant || grant.grantRef !== existingInput.grantRef || grant.planDigest !== existingInput.planDigest ||
+            grant.tenantId !== tenantId || grant.projectId !== input.projectId || grant.requesterUserId !== ctx.user.id ||
+            grant.plan.tunnelId !== input.tunnelId) {
+          logCloudflareProductionDatabaseAdmission({ stage, outcome: "unknown", requestId, tenantId,
+            projectId: input.projectId, jobId, errorCode: "CANONICAL_JOB_GRANT_READBACK_MISMATCH" });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN" });
+        }
+        logCloudflareProductionDatabaseAdmission({ stage, outcome: "completed", requestId, tenantId,
+          projectId: input.projectId, jobId: existingBySubmission.id });
+        return responseForJob(existingBySubmission, existingInput);
+      }
       const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId, projectId: input.projectId });
-      if (!target) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_TARGET_NOT_CONFIGURED" });
+      if (!target) {
+        logCloudflareProductionDatabaseAdmission({ stage: "production_target_resolution", outcome: "failed", requestId,
+          tenantId, projectId: input.projectId, jobId, errorCode: "CLOUDFLARE_PRODUCTION_TARGET_NOT_CONFIGURED" });
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_TARGET_NOT_CONFIGURED" });
+      }
+      logCloudflareProductionDatabaseAdmission({ stage: "production_target_resolved", outcome: "completed", requestId,
+        tenantId, projectId: input.projectId, jobId });
       const credential = await getCloudflareDeploymentCredentialState(db, {
         identity: { tenantId, projectId: input.projectId, environment: "production", provider: "cloudflare" }, credentialRef: target.credentialRef,
       });
-      if (credential.status !== "CONFIGURED") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
+      if (credential.status !== "CONFIGURED") {
+        logCloudflareProductionDatabaseAdmission({ stage: "production_credential_verification", outcome: "failed", requestId,
+          tenantId, projectId: input.projectId, jobId, errorCode: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
+      }
+      logCloudflareProductionDatabaseAdmission({ stage: "production_credential_verified", outcome: "completed", requestId,
+        tenantId, projectId: input.projectId, jobId });
 
-      const jobId = newProductionDatabaseJobId();
       const databaseName = "smartspec";
       const databaseUser = `sah_cf_prod_${createHash("sha256").update(`${input.tunnelId}:${databaseName}`).digest("hex").slice(0, 12)}`;
-      const plan = productionDatabaseResourcePlanSchema.parse({ tunnelId: input.tunnelId, databaseHostname: "db.smartaihub.app",
-        databaseName, databaseUser,
-        vpcTcpPort: 5433,
-        connectionLimit: 5, tlsVerification: "verify_full" });
-      const { grant, databasePassword } = createProductionDatabaseGrant({ jobId, tenantId, projectId: input.projectId,
-        requesterUserId: ctx.user.id, accountRef: target.accountRef, plan });
-      await saveCloudflareProductionDatabaseGrant(db, grant, databasePassword);
+      let plan: ReturnType<typeof productionDatabaseResourcePlanSchema.parse>;
       try {
+        plan = productionDatabaseResourcePlanSchema.parse({ tunnelId: input.tunnelId, databaseHostname: "db.smartaihub.app",
+          databaseName, databaseUser,
+          vpcTcpPort: 5433,
+          connectionLimit: 5, tlsVerification: "verify_full" });
+      } catch {
+        logCloudflareProductionDatabaseAdmission({ stage: "resource_plan_validation", outcome: "failed", requestId,
+          tenantId, projectId: input.projectId, jobId, errorCode: "CLOUDFLARE_PRODUCTION_DATABASE_RESOURCE_PLAN_INVALID" });
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_RESOURCE_PLAN_INVALID" });
+      }
+      logCloudflareProductionDatabaseAdmission({ stage: "resource_plan_validation", outcome: "completed", requestId,
+        tenantId, projectId: input.projectId, jobId });
+      const expectedPlanDigest = productionDatabaseResourcePlanDigest(plan);
+      stage = "encrypted_grant_reconciliation";
+      let grant = await readCloudflareProductionDatabaseGrant(db, jobId);
+      if (grant) {
+        if (grant.tenantId !== tenantId || grant.projectId !== input.projectId || grant.requesterUserId !== ctx.user.id ||
+            grant.targetId !== target.targetId || grant.environment !== "production" || grant.accountRef !== target.accountRef ||
+            grant.plan.tunnelId !== input.tunnelId || grant.planDigest !== expectedPlanDigest || grant.revokedAt !== null) {
+          logCloudflareProductionDatabaseAdmission({ stage, outcome: "failed", requestId, tenantId,
+            projectId: input.projectId, jobId, errorCode: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_SCOPE_MISMATCH" });
+          throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_SCOPE_MISMATCH" });
+        }
+        if (Date.parse(grant.expiresAt) <= Date.now()) {
+          logCloudflareProductionDatabaseAdmission({ stage, outcome: "failed", requestId, tenantId,
+            projectId: input.projectId, jobId, errorCode: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_EXPIRED" });
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_EXPIRED" });
+        }
+      } else {
+        const created = createProductionDatabaseGrant({ jobId, tenantId, projectId: input.projectId,
+          requesterUserId: ctx.user.id, accountRef: target.accountRef, plan });
+        try {
+          await saveCloudflareProductionDatabaseGrant(db, created.grant, created.databasePassword);
+          grant = created.grant;
+          logCloudflareProductionDatabaseAdmission({ stage: "encrypted_grant_persisted", outcome: "completed", requestId,
+            tenantId, projectId: input.projectId, jobId });
+        } catch (error) {
+          // A transaction timeout may be reported after its INSERT committed.
+          // Retain the stable ID; a retry reads and reuses the encrypted grant.
+          logCloudflareProductionDatabaseAdmission({ stage, outcome: "unknown", requestId, tenantId,
+            projectId: input.projectId, jobId, errorCode: cloudflareAdmissionErrorCode(error) });
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN" });
+        }
+      }
+      if (!grant) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_UNAVAILABLE" });
+      try {
+        stage = "control_plane_job_admission";
+        logCloudflareProductionDatabaseAdmission({ stage, outcome: "started", requestId, tenantId,
+          projectId: input.projectId, jobId });
         const job = await createControlPlaneJob({
           context: { tenantId, actorType: "user", actorId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_production_database_provision",
-            correlationId: ctx.req.requestId ?? jobId, idempotencyKey: `cloudflare-production-database:${jobId}` },
+            correlationId: requestId, idempotencyKey: `cloudflare-production-database:${jobId}` },
           definition: { contractVersion: CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, jobType: CLOUDFLARE_PRODUCTION_DATABASE_JOB,
             executionClass: "long", priority: 48,
             input: { contractVersion: CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, projectId: input.projectId, targetId: "smartspec-cloudflare-runtime",
@@ -746,33 +898,65 @@ export const infrastructureRouter = router({
           createOptions: { canonicalJobId: jobId, runtimeType: "node_job_worker" },
         });
         if (!job.created) {
-          await db.delete(systemSettings).where(and(
-            eq(systemSettings.category, "cloudflare_production_database_grants"),
-            eq(systemSettings.key, jobId),
-          ));
-          const [existing] = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType,
-            contractVersion: workerJobs.contractVersion, tenantId: workerJobs.tenantId, inputJson: workerJobs.inputJson })
-            .from(workerJobs).where(and(eq(workerJobs.id, job.jobId), eq(workerJobs.tenantId, tenantId))).limit(1);
-          const existingInput = existing?.inputJson as Record<string, unknown> | null;
-          if (!existing || existing.jobType !== CLOUDFLARE_PRODUCTION_DATABASE_JOB ||
-              existing.contractVersion !== CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT ||
-              existingInput?.projectId !== input.projectId || existingInput?.targetId !== "smartspec-cloudflare-runtime" ||
-              existingInput?.environment !== "production") {
+          const existing = await readCanonicalJob(job.jobId);
+          const existingInput = existing ? validateExistingJob(existing) : null;
+          if (!existing || !existingInput) {
             throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_ACTIVE_JOB_SCOPE_MISMATCH" });
           }
-          return { jobId: existing.id, status: "existing" as const, targetId: "smartspec-cloudflare-runtime" as const,
-            environment: "production" as const };
+          const existingGrant = await readCloudflareProductionDatabaseGrant(db, existing.id);
+          if (!existingGrant || existingGrant.grantRef !== existingInput.grantRef || existingGrant.planDigest !== existingInput.planDigest ||
+              existingGrant.tenantId !== tenantId || existingGrant.projectId !== input.projectId ||
+              existingGrant.requesterUserId !== ctx.user.id || existingGrant.plan.tunnelId !== input.tunnelId) {
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN" });
+          }
+          return responseForJob(existing, existingInput);
+        }
+        const canonicalJob = await readCanonicalJob(job.jobId);
+        if (!canonicalJob) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN" });
+        const canonicalInput = validateExistingJob(canonicalJob);
+        const canonicalGrant = await readCloudflareProductionDatabaseGrant(db, canonicalJob.id);
+        if (!canonicalGrant || canonicalGrant.grantRef !== canonicalInput.grantRef || canonicalGrant.planDigest !== canonicalInput.planDigest) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN" });
         }
         try {
           auditLogger.log({ eventType: "cloudflare_production_database_provision_queued", userId: ctx.user.id,
-            requestType: "cloudflare_production_database_provision", responsePayload: { tenantId, projectId: input.projectId, jobId,
-              targetId: target.targetId, environment: "production", planDigest: grant.planDigest }, statusCode: 202 });
+            requestType: "cloudflare_production_database_provision", responsePayload: { tenantId, projectId: input.projectId, jobId: canonicalJob.id,
+              targetId: target.targetId, environment: "production", planDigest: canonicalGrant.planDigest }, statusCode: 202 });
         } catch { /* The canonical job and outbox remain authoritative if audit projection is unavailable. */ }
-        return { jobId: job.jobId, grantRef: grant.grantRef, planDigest: grant.planDigest, status: "queued" as const,
-          targetId: target.targetId, environment: "production" as const, expiresAt: grant.expiresAt };
+        logCloudflareProductionDatabaseAdmission({ stage: "canonical_job_and_grant_verified", outcome: "completed", requestId,
+          tenantId, projectId: input.projectId, jobId: canonicalJob.id });
+        return responseForJob(canonicalJob, canonicalInput);
       } catch (error) {
-        await db.delete(systemSettings).where(and(eq(systemSettings.category, "cloudflare_production_database_grants"), eq(systemSettings.key, jobId)));
-        throw error;
+        // Never delete a valid grant after an admission error: Control Plane
+        // may have committed the canonical job before the response was lost.
+        const reconciled = await readCanonicalJob(jobId).catch(() => null);
+        if (reconciled) {
+          try {
+            const reconciledInput = validateExistingJob(reconciled);
+            const reconciledGrant = await readCloudflareProductionDatabaseGrant(db, reconciled.id);
+            if (reconciledGrant && reconciledGrant.grantRef === reconciledInput.grantRef &&
+                reconciledGrant.planDigest === reconciledInput.planDigest && reconciledGrant.tenantId === tenantId &&
+                reconciledGrant.projectId === input.projectId && reconciledGrant.requesterUserId === ctx.user.id &&
+                reconciledGrant.plan.tunnelId === input.tunnelId) {
+              logCloudflareProductionDatabaseAdmission({ stage: "canonical_job_reconciled_after_error", outcome: "completed", requestId,
+                tenantId, projectId: input.projectId, jobId: reconciled.id });
+              return responseForJob(reconciled, reconciledInput);
+            }
+          } catch { /* Keep the admission result unknown if scope/readback cannot be verified. */ }
+        }
+        if (error instanceof TRPCError && error.message === "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN") throw error;
+        const errorCode = cloudflareAdmissionErrorCode(error);
+        const controlPlaneValidationError = Boolean(error && typeof error === "object" &&
+          (error as { name?: unknown }).name === "JobControlPlaneError");
+        const definiteRejection = controlPlaneValidationError || (error instanceof TRPCError &&
+          !["INTERNAL_SERVER_ERROR", "TIMEOUT", "BAD_GATEWAY"].includes(error.code));
+        logCloudflareProductionDatabaseAdmission({ stage, outcome: definiteRejection ? "failed" : "unknown", requestId, tenantId,
+          projectId: input.projectId, jobId, errorCode });
+        if (controlPlaneValidationError) {
+          throw new TRPCError({ code: "PRECONDITION_FAILED", message: errorCode });
+        }
+        if (definiteRejection) throw error;
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN" });
       }
     }),
 

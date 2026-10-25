@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   queueStagingDeploy: vi.fn(),
   prepareProductionQueue: vi.fn(),
   prepareProductionDatabase: vi.fn(),
+  databaseAdmissionUnknownOnce: false,
   activateStagingProfile: vi.fn(),
   activationError: null as string | null,
   activationSucceeds: false,
@@ -109,8 +110,20 @@ vi.mock("@/lib/trpc", () => ({
         mutate: (input: unknown) => { mocks.prepareProductionQueue(input); void options.onSuccess?.({ jobId: "33333333-3333-4333-8333-333333333333" }); },
         isPending: false, error: null,
       }) },
-      prepareCloudflareProductionDatabase: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
-        mutate: (input: unknown) => { mocks.prepareProductionDatabase(input); void options.onSuccess?.({ jobId: "44444444-4444-4444-8444-444444444444" }); },
+      prepareCloudflareProductionDatabase: { useMutation: (options: {
+        onSuccess?: (result: { jobId: string }, variables: { submissionId: string; tunnelId: string }) => unknown;
+        onError?: (error: { message: string; data: { code: string; traceId: string } }, variables: { submissionId: string; tunnelId: string }) => unknown;
+      }) => ({
+        mutate: (input: { submissionId: string; tunnelId: string }) => {
+          mocks.prepareProductionDatabase(input);
+          if (mocks.databaseAdmissionUnknownOnce) {
+            mocks.databaseAdmissionUnknownOnce = false;
+            void options.onError?.({ message: "CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN",
+              data: { code: "INTERNAL_SERVER_ERROR", traceId: "request-trace-1" } }, input);
+            return;
+          }
+          void options.onSuccess?.({ jobId: "44444444-4444-4444-8444-444444444444" }, input);
+        },
         isPending: false, error: null,
       }) },
       activateCloudflareStagingQueueProfile: { useMutation: (options: { onSuccess?: (result: { configurationRef: string }) => unknown }) => ({
@@ -193,6 +206,7 @@ async function chooseProductionScope(user: ReturnType<typeof userEvent.setup>) {
 describe("AdminDeploymentTargets", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     mocks.targets = [];
     mocks.stagingTargets = [];
     mocks.targetsError = false;
@@ -202,6 +216,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.productionHyperdrives = [];
     mocks.productionTunnels = [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }];
     mocks.tunnelInventoryComplete = true;
+    mocks.databaseAdmissionUnknownOnce = false;
     mocks.activationError = null;
     mocks.activationSucceeds = false;
     mocks.stagingPreflight = { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null };
@@ -639,7 +654,7 @@ describe("AdminDeploymentTargets", () => {
     const prepareDatabase = screen.getByRole("button", { name: "Prepare Production database connection" });
     expect(prepareDatabase).toBeEnabled();
     await user.click(prepareDatabase);
-    await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({ tenantId, projectId, environment: "production", tunnelId: "87654321-4321-4321-8321-cba987654321" }));
+    await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({ tenantId, projectId, environment: "production", tunnelId: "87654321-4321-4321-8321-cba987654321", submissionId: expect.any(String) }));
     expect(prepareDatabase).toBeDisabled();
     const prepareQueue = screen.getByRole("button", { name: "Prepare Production Queue" });
     expect(prepareQueue).toBeEnabled();
@@ -672,8 +687,30 @@ describe("AdminDeploymentTargets", () => {
     expect(prepare).toBeEnabled();
     await user.click(prepare);
     await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({
-      tenantId, projectId, environment: "production", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6",
+      tenantId, projectId, environment: "production", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", submissionId: expect.any(String),
     }));
+  });
+
+  it("reconciles an unknown admission with the same ID and only reports accepted after canonical success", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.databaseAdmissionUnknownOnce = true;
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    await user.click(screen.getByRole("button", { name: "Prepare Production database connection" }));
+    expect(await screen.findByText("ADMISSION_UNKNOWN")).toBeInTheDocument();
+    expect(screen.getByText("CLOUDFLARE_PRODUCTION_DATABASE_ADMISSION_UNKNOWN")).toBeInTheDocument();
+    expect(screen.getByText("request-trace-1")).toBeInTheDocument();
+    const firstSubmission = mocks.prepareProductionDatabase.mock.calls[0][0] as { submissionId: string; tunnelId: string };
+
+    await user.click(screen.getByRole("button", { name: "Reconcile the same submission" }));
+    await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledTimes(2));
+    const retrySubmission = mocks.prepareProductionDatabase.mock.calls[1][0] as { submissionId: string; tunnelId: string };
+    expect(retrySubmission).toEqual(firstSubmission);
+    expect(await screen.findByText("JOB_ACCEPTED")).toBeInTheDocument();
+    expect(screen.getByText("44444444-4444-4444-8444-444444444444")).toBeInTheDocument();
   });
 
   it("allows keyboard selection among multiple verified production Tunnels and keeps the choice on inventory refresh", async () => {
@@ -699,7 +736,7 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByRole("combobox", { name: "Existing PostgreSQL Tunnel" })).toHaveTextContent("smartspec-secondary");
     await user.click(prepare);
     await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({
-      tenantId, projectId, environment: "production", tunnelId: "288efe2d-034b-4532-811a-ee3e974d802b",
+      tenantId, projectId, environment: "production", tunnelId: "288efe2d-034b-4532-811a-ee3e974d802b", submissionId: expect.any(String),
     }));
   });
 

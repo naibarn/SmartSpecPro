@@ -173,6 +173,44 @@ export async function saveCloudflareProductionDatabaseGrant(
   });
 }
 
+/** Read an existing job grant without exposing its encrypted password. This is
+ * used to reconcile an uncertain admission retry using the same canonical
+ * job ID; callers must still verify the grant's exact owner and resource scope.
+ */
+export async function readCloudflareProductionDatabaseGrant(
+  db: DrizzleDB,
+  jobId: string,
+): Promise<CloudflareProductionDatabaseGrant | null> {
+  const rows = await db
+    .select()
+    .from(systemSettings)
+    .where(
+      and(
+        eq(systemSettings.category, GRANT_CATEGORY),
+        eq(systemSettings.key, grantKey(jobId)),
+      ),
+    )
+    .limit(2);
+  if (!rows.length) return null;
+  if (rows.length !== 1 || !rows[0].isSensitive || !rows[0].value || !rows[0].updatedBy) {
+    throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_GRANT_INVALID");
+  }
+  try {
+    const parsed = secretGrantSchema.safeParse(JSON.parse(decrypt(rows[0].value)));
+    if (
+      !parsed.success ||
+      parsed.data.grant.jobId !== jobId ||
+      parsed.data.grant.requesterUserId !== rows[0].updatedBy
+    ) {
+      throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_GRANT_INVALID");
+    }
+    return parsed.data.grant;
+  } catch (error) {
+    if (error instanceof Error && error.message === "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_INVALID") throw error;
+    throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_GRANT_INVALID");
+  }
+}
+
 export async function revokeCloudflareProductionDatabaseGrant(
   db: DrizzleDB,
   jobId: string,

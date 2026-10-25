@@ -52,6 +52,54 @@ type TargetCredentialProbe = {
   checks: Array<{ id: string; label: string; scope: string; permission: string; status: string; httpStatus: number | null; productRequirement?: string }>;
 };
 
+type ProductionDatabaseAdmissionStatus = "SUBMITTING" | "ADMISSION_REJECTED" | "ADMISSION_UNKNOWN" | "JOB_ACCEPTED" | "RUNNING" | "SUCCEEDED" | "FAILED";
+type ProductionDatabaseAdmission = {
+  submissionId: string;
+  tunnelId: string;
+  status: ProductionDatabaseAdmissionStatus;
+  jobId?: string;
+  errorCode?: string;
+  traceId?: string;
+};
+
+function productionDatabaseAdmissionStorageKey(scopeKey: string) {
+  return `smartspec:cloudflare-production-database:${scopeKey}`;
+}
+
+function readStoredProductionDatabaseAdmission(scopeKey: string): ProductionDatabaseAdmission | null {
+  try {
+    const raw = sessionStorage.getItem(productionDatabaseAdmissionStorageKey(scopeKey));
+    if (!raw) return null;
+    const value = JSON.parse(raw) as Partial<ProductionDatabaseAdmission>;
+    if (typeof value.submissionId !== "string" || typeof value.tunnelId !== "string" ||
+        !["SUBMITTING", "ADMISSION_REJECTED", "ADMISSION_UNKNOWN", "JOB_ACCEPTED", "RUNNING", "SUCCEEDED", "FAILED"].includes(value.status ?? "")) return null;
+    return value as ProductionDatabaseAdmission;
+  } catch {
+    return null;
+  }
+}
+
+function storeProductionDatabaseAdmission(scopeKey: string, value: ProductionDatabaseAdmission) {
+  try { sessionStorage.setItem(productionDatabaseAdmissionStorageKey(scopeKey), JSON.stringify(value)); }
+  catch { /* The canonical registry remains authoritative when storage is unavailable. */ }
+}
+
+function canonicalDatabaseAdmissionStatus(status: string): ProductionDatabaseAdmissionStatus {
+  if (status === "succeeded") return "SUCCEEDED";
+  if (["failed", "cancelled", "expired"].includes(status)) return "FAILED";
+  if (["queued", "pending"].includes(status)) return "JOB_ACCEPTED";
+  return "RUNNING";
+}
+
+function productionDatabaseAdmissionError(error: { message?: string; data?: { code?: string; traceId?: string | null } } | null | undefined) {
+  const message = error?.message?.trim() ?? "";
+  const errorCode = /^[A-Z0-9_:-]{1,120}$/.test(message) ? message : (error?.data?.code ?? "REQUEST_FAILED");
+  const rejectedCodes = new Set(["BAD_REQUEST", "FORBIDDEN", "PRECONDITION_FAILED", "CONFLICT", "NOT_FOUND", "TOO_MANY_REQUESTS"]);
+  const unknown = !error?.data || !rejectedCodes.has(error.data.code ?? "");
+  return { status: unknown ? "ADMISSION_UNKNOWN" as const : "ADMISSION_REJECTED" as const,
+    errorCode, traceId: error?.data?.traceId ?? undefined };
+}
+
 const EMPTY_FIELDS: TargetFields = {
   deploymentTargetId: "",
   accountRef: "",
@@ -386,6 +434,7 @@ export default function AdminDeploymentTargets() {
   const [controlPlaneToken, setControlPlaneToken] = useState("");
   const [productionQueueJobId, setProductionQueueJobId] = useState("");
   const [productionDatabaseSubmissions, setProductionDatabaseSubmissions] = useState<Record<string, string>>({});
+  const [productionDatabaseAdmissions, setProductionDatabaseAdmissions] = useState<Record<string, ProductionDatabaseAdmission>>({});
   const [productionTunnelSelections, setProductionTunnelSelections] = useState<Record<string, string>>({});
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
@@ -485,9 +534,21 @@ export default function AdminDeploymentTargets() {
     },
   });
   const productionDatabaseMutation = trpc.infrastructure.prepareCloudflareProductionDatabase.useMutation({
-    onSuccess: async result => {
+    onSuccess: async (result, variables) => {
       setProductionDatabaseSubmissions(current => ({ ...current, [productionScopeKey]: result.jobId }));
+      const accepted: ProductionDatabaseAdmission = { submissionId: variables.submissionId ?? result.jobId, tunnelId: variables.tunnelId,
+        status: "JOB_ACCEPTED", jobId: result.jobId };
+      setProductionDatabaseAdmissions(current => ({ ...current, [productionScopeKey]: accepted }));
+      storeProductionDatabaseAdmission(productionScopeKey, accepted);
       await latestProductionDatabaseJob.refetch();
+    },
+    onError: (error, variables) => {
+      const failure = productionDatabaseAdmissionError(error);
+      const admission: ProductionDatabaseAdmission = { submissionId: variables.submissionId ?? crypto.randomUUID(), tunnelId: variables.tunnelId,
+        ...failure, traceId: failure.traceId ?? variables.submissionId };
+      setProductionDatabaseAdmissions(current => ({ ...current, [productionScopeKey]: admission }));
+      storeProductionDatabaseAdmission(productionScopeKey, admission);
+      void latestProductionDatabaseJob.refetch();
     },
   });
   useEffect(() => {
@@ -505,6 +566,23 @@ export default function AdminDeploymentTargets() {
       setProductionDatabaseSubmissions(current => ({ ...current, [productionScopeKey]: latestJobId }));
     }
   }, [latestProductionDatabaseJob.data?.jobId, productionScopeKey, productionDatabaseSubmissions]);
+  useEffect(() => {
+    const stored = readStoredProductionDatabaseAdmission(productionScopeKey);
+    if (stored) {
+      const matchingJob = productionDatabaseJobData &&
+        (productionDatabaseJobData.jobId === stored.jobId || productionDatabaseJobData.jobId === stored.submissionId)
+        ? productionDatabaseJobData : null;
+      const reconciledStatus: ProductionDatabaseAdmissionStatus = matchingJob
+        ? canonicalDatabaseAdmissionStatus(matchingJob.status)
+        : stored.status === "SUBMITTING" ? "ADMISSION_UNKNOWN" : stored.status;
+      const reconciled = { ...stored, status: reconciledStatus, jobId: matchingJob?.jobId ?? stored.jobId };
+      setProductionDatabaseAdmissions(current => ({ ...current, [productionScopeKey]: reconciled }));
+      storeProductionDatabaseAdmission(productionScopeKey, reconciled);
+      if (matchingJob?.jobId) {
+        setProductionDatabaseSubmissions(current => ({ ...current, [productionScopeKey]: matchingJob.jobId }));
+      }
+    }
+  }, [productionScopeKey, productionDatabaseJobData?.jobId, productionDatabaseJobData?.status]);
   useEffect(() => {
     if (productionDatabaseJobData?.status === "succeeded") {
       void Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
@@ -793,7 +871,17 @@ export default function AdminDeploymentTargets() {
             const selectedSavedTunnel = databaseTunnels.find(tunnel => tunnel.id === savedTunnelId);
             const selectedDatabaseTunnelId = selectedSavedTunnel?.id ?? (databaseTunnels.length === 1 ? databaseTunnels[0].id : "");
             const submittedDatabaseJobId = productionDatabaseSubmissions[productionScopeKey] ?? "";
-            const databaseJobAlreadySubmitted = Boolean(productionDatabaseJobData || submittedDatabaseJobId);
+            const databaseAdmission = productionDatabaseAdmissions[productionScopeKey] ?? readStoredProductionDatabaseAdmission(productionScopeKey);
+            const databaseJobAlreadySubmitted = Boolean(
+              ["queued", "running", "retry_wait", "scheduled", "succeeded"].includes(productionDatabaseJobData?.status ?? "") ||
+              ["JOB_ACCEPTED", "RUNNING", "SUCCEEDED"].includes(databaseAdmission?.status ?? ""),
+            );
+            const databaseAdmissionJob = productionDatabaseJobData && (!databaseAdmission ||
+              productionDatabaseJobData.jobId === databaseAdmission.jobId || productionDatabaseJobData.jobId === databaseAdmission.submissionId)
+              ? productionDatabaseJobData : null;
+            const databaseAdmissionStatus: ProductionDatabaseAdmissionStatus | null = databaseAdmissionJob
+              ? canonicalDatabaseAdmissionStatus(databaseAdmissionJob.status)
+              : databaseAdmission?.status ?? null;
             const activeVersions = inventory.worker.versions;
             const verifiedRollback = activeVersions.some(version => version.checked && version.hasVerifiedReleaseIdentity);
             const nodeAndPythonIngressBound = activeVersions.some(version => version.checked &&
@@ -891,12 +979,29 @@ export default function AdminDeploymentTargets() {
                   </li>)}
                 </VStack> : null}
                 <Button type="button" disabled={!databaseTunnelInventoryComplete || !selectedDatabaseTunnelId || productionDatabaseMutation.isPending || databaseJobAlreadySubmitted}
-                  onClick={() => productionDatabaseMutation.mutate({ tenantId, projectId, environment: "production", tunnelId: selectedDatabaseTunnelId })}>
-                  {productionDatabaseMutation.isPending ? text("Queueing database setup…", "กำลังส่งงานเตรียมฐานข้อมูล…") : databaseJobAlreadySubmitted
+                  onClick={() => {
+                    const retrySameSubmission = databaseAdmission?.status === "ADMISSION_UNKNOWN" || databaseAdmission?.status === "SUBMITTING";
+                    const submissionId = retrySameSubmission ? databaseAdmission.submissionId : crypto.randomUUID();
+                    const tunnelId = retrySameSubmission ? databaseAdmission.tunnelId : selectedDatabaseTunnelId;
+                    const submitting: ProductionDatabaseAdmission = { submissionId, tunnelId, status: "SUBMITTING" };
+                    setProductionDatabaseAdmissions(current => ({ ...current, [productionScopeKey]: submitting }));
+                    storeProductionDatabaseAdmission(productionScopeKey, submitting);
+                    productionDatabaseMutation.mutate({ tenantId, projectId, environment: "production", tunnelId, submissionId });
+                  }}>
+                  {productionDatabaseMutation.isPending ? text("Submitting…", "กำลังส่งคำขอ…") : databaseJobAlreadySubmitted
                     ? text("Production database job already exists", "มีงานเตรียมฐานข้อมูล Production แล้ว")
-                      : text("Prepare Production database connection", "เตรียมการเชื่อมต่อฐานข้อมูล Production")}
+                    : databaseAdmission?.status === "ADMISSION_UNKNOWN"
+                      ? text("Reconcile the same submission", "ตรวจสอบคำขอเดิมอีกครั้ง")
+                      : databaseAdmission?.status === "ADMISSION_REJECTED" || databaseAdmission?.status === "FAILED"
+                        ? text("Submit a new Production database attempt", "ส่งคำขอเตรียมฐานข้อมูล Production ใหม่")
+                        : text("Prepare Production database connection", "เตรียมการเชื่อมต่อฐานข้อมูล Production")}
                 </Button>
-                {productionDatabaseMutation.error ? <p role="alert"><code>{productionDatabaseMutation.error.message}</code></p> : null}
+                {databaseAdmissionStatus || databaseAdmission?.errorCode ? <VStack gap={1} role="status" aria-label={text("Production database admission status", "ผลการรับคำขอฐานข้อมูล Production")}>
+                  <p>{text("Admission status", "สถานะการรับคำขอ")}: <strong>{databaseAdmissionStatus ?? "ADMISSION_REJECTED"}</strong></p>
+                  {databaseAdmission?.errorCode ? <p role="alert">{text("Stage result", "ผลขั้นตอน")}: <code>{databaseAdmission.errorCode}</code>{databaseAdmission.traceId ? <> · {text("Request ID", "Request ID")}: <code>{databaseAdmission.traceId}</code></> : null}</p> : null}
+                  {databaseAdmissionStatus === "ADMISSION_UNKNOWN" ? <p>{text("The response did not prove whether the registry accepted this request. Use the button to reconcile or retry the same submission; it reuses the same ID and will not create a duplicate.", "ผลตอบกลับยังยืนยันไม่ได้ว่า registry รับคำขอแล้วหรือไม่ ให้กดตรวจสอบหรือส่งคำขอเดิมซ้ำ ระบบจะใช้ ID เดิมและไม่สร้างงานซ้ำ")}</p> : null}
+                  {databaseAdmissionStatus === "JOB_ACCEPTED" || databaseAdmissionStatus === "RUNNING" ? <p>{text("Canonical registry confirmed this job. This page follows the same job and does not create duplicates.", "ยืนยัน job จาก canonical registry แล้ว หน้านี้ติดตามงานเดิมและไม่สร้างซ้ำ")}</p> : null}
+                </VStack> : null}
                 {productionDatabaseJobData || submittedDatabaseJobId ? <VStack gap={1} role="status" aria-label={text("Production database provisioning job", "สถานะงานเตรียมฐานข้อมูล Production")}>
                   <p>{text("Job", "งาน")}: <code>{productionDatabaseJobData?.jobId ?? submittedDatabaseJobId}</code> · {text("Status", "สถานะ")}: <strong>{productionDatabaseJobData?.status ?? "queued"}</strong>
                     {productionDatabaseJobData?.attempt ? <> · {text("Attempt", "ครั้งที่")}: {productionDatabaseJobData.attempt}/{productionDatabaseJobData.maxAttempts}</> : null}</p>
