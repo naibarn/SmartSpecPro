@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 
 const scope = vi.hoisted(() => ({ target: null as any }));
@@ -17,12 +17,13 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
   let client: import("postgres").Sql;
   let original: Record<string, string | undefined>;
   let closeDb: typeof import("../db").closeDb;
-  beforeAll(async () => {
+  beforeEach(async () => {
     original = { DATABASE_URL: process.env.DATABASE_URL, NODE_ENV: process.env.NODE_ENV, LLM_ENCRYPTION_KEY: process.env.LLM_ENCRYPTION_KEY };
     disposable = await (await import("./__tests__/support/spec277DisposablePostgres")).createSpec277DisposablePostgres();
     process.env.DATABASE_URL = disposable.databaseUrl;
     process.env.NODE_ENV = "test";
     process.env.LLM_ENCRYPTION_KEY = "production-db-disposable-fixture-only";
+    (await import("prom-client")).register.clear();
     vi.resetModules();
     client = (await import("postgres")).default(disposable.databaseUrl, { max: 2 });
     const schema = await import("../../drizzle/schema");
@@ -39,7 +40,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     await client`INSERT INTO users(id,"openId",role) VALUES (17,'production-db-isolated-owner','admin')`;
     ({ closeDb } = await import("../db"));
   }, 30_000);
-  afterAll(async () => {
+  afterEach(async () => {
     if (closeDb) await closeDb();
     if (client) await client.end({ timeout: 5 });
     if (disposable) await disposable.close();
@@ -48,7 +49,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     }
   }, 20_000);
 
-  it("renews the old quarantined job, publishes attempt 2, claims/fences it and executes real role SQL with fixture provider receipts", async () => {
+  it.each([false, true])("executes real recovery, credentials and role SQL; recover corrected guard failure: %s", async recoverGuardFailure => {
     const { getDb } = await import("../db");
     const db = getDb();
     const executorModule = await import("./cloudflareProductionDatabaseExecutor");
@@ -62,7 +63,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     const { encrypt } = await import("./crypto");
     const jobId = randomUUID(), tunnelId = randomUUID(), tenantId = "tenant-production-db-fixture", projectId = randomUUID();
     const plan = { tunnelId, databaseHostname: "db.smartaihub.app" as const, databaseName: disposable.database,
-      databaseUser: "sah_cf_prod_0123456789ab", vpcTcpPort: 5433 as const, connectionLimit: 5 as const, tlsVerification: "verify_full" as const };
+      databaseUser: `sah_cf_prod_${jobId.replaceAll("-", "").slice(0, 12)}`, vpcTcpPort: 5433 as const, connectionLimit: 5 as const, tlsVerification: "verify_full" as const };
     const identity = { tenantId, projectId, provider: "cloudflare", environment: "production" } as const;
     const { deploymentCredentialRef } = await import("./providerDeploymentTargetAuthority");
     scope.target = { tenantId, projectId, targetId: "smartspec-cloudflare-runtime", workerRef: "smartspec-cloudflare-runtime",
@@ -100,7 +101,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     await expect(controlPlane.expireDeadline(jobId, new Date())).resolves.toBe("ignored");
     const renewed = await executorModule.readCloudflareProductionDatabaseGrant(db, jobId);
     expect(renewed).toMatchObject({ jobId, grantRef: jobId, planDigest: grant.planDigest });
-    const [outbox] = await client`SELECT * FROM worker_job_outbox WHERE "workerJobId"=${jobId} AND id<>${originalOutbox.id}`;
+    let [outbox] = await client`SELECT * FROM worker_job_outbox WHERE "workerJobId"=${jobId} AND id<>${originalOutbox.id}`;
     await expect(publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter())).resolves.toMatchObject({ state: "published" });
     let service: any, hyperdrive: any;
     const providerWrites: string[] = [];
@@ -124,10 +125,30 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     const registry = new JobExecutorRegistry();
     registry.register({ jobType, executionClass: "long", contractVersions: new Set([contractVersion]),
       executor: executorModule.createCloudflareProductionDatabaseExecutor(runtime) });
+    if (recoverGuardFailure) {
+      const fixedCredential = runtime.withCredential.bind(runtime);
+      runtime.withCredential = async (...args) => {
+        const result = await fixedCredential(...args);
+        if (result === undefined) throw new executorModule.CloudflareProductionDatabaseJobError("CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE");
+        return result;
+      };
+      await expect(executeCanonicalJobEnvelope(outbox.envelopeJson, { controlPlane, executorRegistry: registry,
+        runnerId: "old-guard-fixture", adapter: "postgres-pull" })).rejects.toThrow("CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE");
+      expect(providerWrites).toHaveLength(0);
+      expect((await client`SELECT id FROM system_settings WHERE category='cloudflare_production_database_runs' AND key=${jobId}`).length).toBe(0);
+      await expect(caller.resumeExpiredCloudflareProductionDatabaseJob({ tenantId, projectId, environment: "production", jobId, tunnelId }))
+        .rejects.toMatchObject({ message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_NOT_RECOVERABLE" });
+      await expect(caller.resumeExpiredCloudflareProductionDatabaseJob({ tenantId, projectId, environment: "production", jobId, tunnelId,
+        authorizeAdditionalAttempt: true })).resolves.toMatchObject({ jobId, attempt: 3, status: "queued" });
+      await expect(controlPlane.expireDeadline(jobId, new Date())).resolves.toBe("ignored");
+      [outbox] = await client`SELECT * FROM worker_job_outbox WHERE "workerJobId"=${jobId} AND "publishedAt" IS NULL AND "cancelledAt" IS NULL`;
+      await publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter());
+      runtime.withCredential = fixedCredential;
+    }
     await expect(executeCanonicalJobEnvelope(outbox.envelopeJson, { controlPlane, executorRegistry: registry,
       runnerId: "production-db-isolated-worker", adapter: "postgres-pull" })).resolves.toMatchObject({ state: "succeeded", jobId });
     const [completed] = await client`SELECT status,attempt,"fencingVersion","outputJson","createdAt" FROM worker_jobs WHERE id=${jobId}`;
-    expect(completed).toMatchObject({ status: "succeeded", attempt: 2, fencingVersion: 1,
+    expect(completed).toMatchObject({ status: "succeeded", attempt: recoverGuardFailure ? 3 : 2, fencingVersion: recoverGuardFailure ? 2 : 1,
       outputJson: { providerConfigurationVerified: true, runtimeRolePrepared: true, databaseConnectionVerified: false } });
     expect(new Date(completed.createdAt).getTime()).toBeLessThan(Date.now() - 4 * 86400_000);
     expect(providerWrites).toHaveLength(2);

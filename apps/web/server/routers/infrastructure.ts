@@ -994,6 +994,7 @@ export const infrastructureRouter = router({
       jobId: z.string().uuid(),
       tunnelId: z.string().uuid(),
       environment: z.literal("production"),
+      authorizeAdditionalAttempt: z.literal(true).optional(),
     }).strict())
     .mutation(async ({ input, ctx }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
@@ -1007,10 +1008,13 @@ export const infrastructureRouter = router({
         eq(workerJobs.contractVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT),
       )).limit(1);
       const jobInput = job?.inputJson as Record<string, unknown> | null;
-      if (!job || job.requestedByUserId !== ctx.user.id || job.status !== "expired" ||
-          job.errorCode !== "JOB_DEADLINE_EXPIRED" || !job.operatorReviewRequired ||
-          job.operatorReviewReason !== "adapter_contract_unsupported" || job.attempt !== 1 || job.maxAttempts < 2 ||
-          job.startedAt || job.heartbeatAt || job.fencingVersion !== 0 ||
+      const dispatchRecovery = job?.status === "expired" && job.errorCode === "JOB_DEADLINE_EXPIRED" &&
+        job.operatorReviewRequired && job.operatorReviewReason === "adapter_contract_unsupported" &&
+        job.attempt === 1 && job.maxAttempts >= 2 && !job.startedAt && !job.heartbeatAt && job.fencingVersion === 0;
+      const credentialGuardRecovery = input.authorizeAdditionalAttempt === true && job?.status === "failed" &&
+        job.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE" && job.attempt === 2 && job.maxAttempts === 2 &&
+        job.fencingVersion === 1 && !job.leaseOwnerToken && !job.leaseExpiresAt && Boolean(job.finishedAt);
+      if (!job || job.requestedByUserId !== ctx.user.id || (!dispatchRecovery && !credentialGuardRecovery) ||
           jobInput?.projectId !== input.projectId || jobInput.targetId !== "smartspec-cloudflare-runtime" ||
           jobInput.environment !== "production" || typeof jobInput.planDigest !== "string" || typeof jobInput.grantRef !== "string") {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_NOT_RECOVERABLE" });
@@ -1030,15 +1034,19 @@ export const infrastructureRouter = router({
         eq(workerJobOutbox.workerJobId, job.id), eq(workerJobOutbox.envelopeVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT),
       ));
       const [outbox] = outboxes;
-      const dispatches = await db.select({ id: workerJobDispatches.id }).from(workerJobDispatches)
-        .where(eq(workerJobDispatches.workerJobId, job.id)).limit(1);
+      const dispatches = await db.select({ id: workerJobDispatches.id, consumedAt: workerJobDispatches.consumedAt, failedAt: workerJobDispatches.failedAt }).from(workerJobDispatches)
+        .where(eq(workerJobDispatches.workerJobId, job.id)).limit(3);
       const checkpoints = await db.select({ id: systemSettings.id }).from(systemSettings).where(and(
         eq(systemSettings.category, "cloudflare_production_database_runs"), eq(systemSettings.key, job.id),
       )).limit(1);
-      if (outboxes.length !== 1 || !outbox || outbox.publishedAt || !outbox.quarantinedAt ||
-          !((outbox.failedReason === "adapter_contract_unsupported") ||
-            (outbox.failedReason === "expired:job_deadline" && outbox.cancelledAt &&
-              outbox.cancelledAt.getTime() >= outbox.quarantinedAt.getTime())) || dispatches.length || checkpoints.length) {
+      const consumedOutbox = outboxes.find(row => row.publishedAt && row.attemptId && !row.cancelledAt && !row.quarantinedAt);
+      const unclaimedOutboxSafe = outboxes.length === 1 && outbox && !outbox.publishedAt && outbox.quarantinedAt &&
+        (outbox.failedReason === "adapter_contract_unsupported" || (outbox.failedReason === "expired:job_deadline" &&
+          outbox.cancelledAt && outbox.cancelledAt.getTime() >= outbox.quarantinedAt.getTime()));
+      const credentialGuardSafe = outboxes.length === 2 && consumedOutbox && dispatches.length === 1 &&
+        dispatches[0].id === consumedOutbox.id && dispatches[0].consumedAt && !dispatches[0].failedAt;
+      if (checkpoints.length || (dispatchRecovery && (!unclaimedOutboxSafe || dispatches.length)) ||
+          (credentialGuardRecovery && !credentialGuardSafe)) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_EXECUTION_OUTCOME_UNCERTAIN" });
       }
       const previousGrant = await readCloudflareProductionDatabaseGrant(db, job.id);
@@ -1046,7 +1054,7 @@ export const infrastructureRouter = router({
           previousGrant.projectId !== input.projectId || previousGrant.requesterUserId !== ctx.user.id ||
           previousGrant.targetId !== "smartspec-cloudflare-runtime" || previousGrant.environment !== "production" ||
           previousGrant.plan.tunnelId !== input.tunnelId || previousGrant.planDigest !== jobInput.planDigest ||
-          previousGrant.revokedAt || (Date.parse(previousGrant.expiresAt) > Date.now() && previousGrant.grantRef !== job.id)) {
+          previousGrant.revokedAt || (Date.parse(previousGrant.expiresAt) > Date.now() && previousGrant.grantRef !== job.id && !credentialGuardRecovery)) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_NOT_RENEWABLE" });
       }
       const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId, projectId: input.projectId });
@@ -1060,11 +1068,12 @@ export const infrastructureRouter = router({
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
 
       // The stable same-job action ID makes a lost response safely replayable.
-      const actionId = job.id;
-      const replacementGrantRef = job.id;
+      const actionId = credentialGuardRecovery ? consumedOutbox!.attemptId! : job.id;
+      const replacementGrantRef = actionId;
       const renewedGrant = await renewCloudflareProductionDatabaseGrant({
         db, jobId: job.id, requesterUserId: ctx.user.id, expectedGrantRef: previousGrant.grantRef,
         replacementGrantRef,
+        reauthorizeTerminalFailure: credentialGuardRecovery,
         expiresAt: previousGrant.grantRef === replacementGrantRef
           ? previousGrant.expiresAt
           : new Date(Date.now() + 15 * 60_000).toISOString(),
@@ -1072,12 +1081,13 @@ export const infrastructureRouter = router({
       const recovered = await createJobControlPlane().recoverReviewGatedJob(
         job.id,
         actionId,
-        "Owner reauthorized the same Production database job after the deployed adapter admission repair",
-        { disposition: "pre_submission_failure", knownRuntime: "cloudflare_production_database_dispatch_quarantine",
-          operationKey: `production-database-dispatch:${job.id}:${jobInput.planDigest}`, replacementGrantRef: renewedGrant.grantRef,
+        credentialGuardRecovery ? "Owner explicitly authorized one additional attempt after the corrected pre-provider credential guard failure"
+          : "Owner reauthorized the same Production database job after the deployed adapter admission repair",
+        { disposition: "pre_submission_failure", knownRuntime: credentialGuardRecovery ? "cloudflare_production_database_credential_guard" : "cloudflare_production_database_dispatch_quarantine",
+          operationKey: `${credentialGuardRecovery ? "production-database-credential-guard" : "production-database-dispatch"}:${job.id}:${jobInput.planDigest}`, replacementGrantRef: renewedGrant.grantRef,
           replacementGrantExpiresAt: renewedGrant.expiresAt },
         ctx.user.id,
-        { tenantId, requestedByUserId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_production_database_recover" },
+        { tenantId, requestedByUserId: ctx.user.id, authorizationScope: credentialGuardRecovery ? "infrastructure.cloudflare_production_database_guard_reauthorize" : "infrastructure.cloudflare_production_database_recover" },
       );
       if (!recovered) throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_RECOVERY_REJECTED" });
       try {

@@ -410,7 +410,7 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
   const recovery = input.retryPolicy.productionDatabaseRecovery;
   if (recovery && input.jobType === "cloudflare.production.database.provision" &&
       input.contractVersion === "cloudflare-prod-db-provision-v1" && input.runtimeType === "node_job_worker" &&
-      input.executionClass === "long" && input.attempt === 2 && recovery.attempt === input.attempt &&
+      input.executionClass === "long" && (input.attempt === 2 || input.attempt === 3) && recovery.attempt === input.attempt &&
       input.input.targetId === "smartspec-cloudflare-runtime" && input.input.environment === "production" &&
       input.input.grantRef === recovery.grantRef) {
     const created = input.createdAt instanceof Date ? input.createdAt.getTime() : Date.parse(input.createdAt ?? "");

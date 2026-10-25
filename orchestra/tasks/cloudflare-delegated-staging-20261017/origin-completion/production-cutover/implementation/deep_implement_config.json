@@ -35,7 +35,7 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Mission reset M1: isolated real PostgreSQL same-job recovery/publication/claim/executor and restricted-role fence passed after fixing stale deadline, canceled-outbox predicate, and STARTED clearing attempt lease expiry. Finish focused tests, integrate/release exact SHA, verify live registration and all recovery predicates before one Owner renewal of b9ca8316-1604-4764-a769-d92f46e4c823. M2: integrate tested HTTP-only production-origin-bridge-v1 mode, then extend existing deployment authority/transport with exact origin-route detach rollback; no apex traffic mutation before independent canary authority.",
+      "next_action": "M1: g114 serving96613b32ff. Owner renewal was observed; same job b9ca8316-1604-4764-a769-d92f46e4c823 attempt2 claimed17:00:14Z and failed before provider operations. Root: runtime.withCredential wrongly rejected undefined from successful authorization-only callbacks. 9d9cb1d71 fixes it; real encrypted-credential PostgreSQL integration now reproduces that exact old defect and passes authenticated same-job additional-attempt recovery. Finish UI/CP focused tests, integrate/release and verify before one narrowly scoped Owner action. Original2/2 is exhausted; no automatic budget increase. M2 ingress extension uses existing production approval API and worker_jobs;37 Node and9 Python checks pass, operator/config readiness remains.",
       "checkpoint_sha": "6f1aeacefe2638007cb585cf6402e63bf1c306e3",
       "merged_main_sha": "6f1aeacefe2638007cb585cf6402e63bf1c306e3"
     }
@@ -49,11 +49,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 85,
-  "updated_at": "2026-10-25T14:47:46.637500+00:00",
+  "generation": 86,
+  "updated_at": "2026-10-25T17:10:17.397206+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Mission reset M1: isolated real PostgreSQL same-job recovery/publication/claim/executor and restricted-role fence passed after fixing stale deadline, canceled-outbox predicate, and STARTED clearing attempt lease expiry. Finish focused tests, integrate/release exact SHA, verify live registration and all recovery predicates before one Owner renewal of b9ca8316-1604-4764-a769-d92f46e4c823. M2: integrate tested HTTP-only production-origin-bridge-v1 mode, then extend existing deployment authority/transport with exact origin-route detach rollback; no apex traffic mutation before independent canary authority.",
+    "next_action": "M1: g114 serving96613b32ff. Owner renewal was observed; same job b9ca8316-1604-4764-a769-d92f46e4c823 attempt2 claimed17:00:14Z and failed before provider operations. Root: runtime.withCredential wrongly rejected undefined from successful authorization-only callbacks. 9d9cb1d71 fixes it; real encrypted-credential PostgreSQL integration now reproduces that exact old defect and passes authenticated same-job additional-attempt recovery. Finish UI/CP focused tests, integrate/release and verify before one narrowly scoped Owner action. Original2/2 is exhausted; no automatic budget increase. M2 ingress extension uses existing production approval API and worker_jobs;37 Node and9 Python checks pass, operator/config readiness remains.",
     "gaps": [
       "The existing Cloudflare Tunnel exposes db-staging.smartaihub.app only; the production database hostname route db.smartaihub.app has not been configured or verified.",
       "Production Worker runtime configuration, application/auth/database verification and verified rollback release identity remain incomplete.",
@@ -64,7 +64,9 @@
       "Production DB job b9ca8316-1604-4764-a769-d92f46e4c823 was accepted and quarantined before worker claim because the production DB adapter contract was unsupported; it then expired and its grant is no longer valid. The adapter fix is integrated, but safe continuation requires authenticated same-job grant renewal and attempt-2 recovery; no VPC/Hyperdrive provider writes have been verified.",
       "Production DB attempt-2 execution requires the authenticated requester to click Renew authorization and resume this same job once; no CLI/service authority may impersonate that Owner action or reuse the expired grant.",
       "Live 2026-10-25: M1 original job expired attempt1/2, grant expired, zero dispatch/checkpoint, canceled outbox failedReason expired:job_deadline; VPC services empty, Production Hyperdrive absent. Existing healthy smartspec tunnel now QUIC (4 persistent connections), no new tunnel; host verify_full TLS SQL:5433 and rollback pass. Probe connector ended, Linux health200. Cloudflare-side SQL remains unverified.",
-      "M2 live apex Worker route absent, Worker active81e64be8-af01-4efb-ad82-94e78da2510b100%; runtime-native bindings absent. HTTP hybrid fixture tests pass; origin config, route-specific canary/rollback authority and real acceptance remain. Current grant v2 supports Worker-version rollback only, not restoring absent apex route. M3 Node/Python remain Linux. Profile integration, available RAM26GiB/disk646GiB; no local typecheck."
+      "M2 live apex Worker route absent, Worker active81e64be8-af01-4efb-ad82-94e78da2510b100%; runtime-native bindings absent. HTTP hybrid fixture tests pass; origin config, route-specific canary/rollback authority and real acceptance remain. Current grant v2 supports Worker-version rollback only, not restoring absent apex route. M3 Node/Python remain Linux. Profile integration, available RAM26GiB/disk646GiB; no local typecheck.",
+      "M1 actual26Oct00:00+07: failed2/2 withCLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE. Dispatch268322cc-b7fc-4cf6-915c-892d813344b5 consumed; attemptef69940e-19f5-452b-9124-bc0a45aaf0ea. No provisioning checkpoint/provider writes. Role sah_cf_prod_15fa73448c56 exists with exactplan marker, no admin capabilities/NOINHERIT/limit5; SECURITYDEFINER fence marker exact. Prior isolated preflight missed real credential wrapper; updated integration uses encrypted credential table and reproduces error before fixing. Separate new Owner authority required for one additional attempt; do not replay exhausted grant.",
+      "M2 actual apex route remains absent; Linux AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS is staging-only and production executor identity unset. Prepare exact origin trust/config and executor identity, complete operator admission before independent ingress authority. HTTP origin bridge grant+transport+executor and route detach rollback are tested but not live. M3 Node/Python remain Linux. Profile integration, no local typecheck."
     ],
     "merged_main_sha": "6f1aeacefe2638007cb585cf6402e63bf1c306e3",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"

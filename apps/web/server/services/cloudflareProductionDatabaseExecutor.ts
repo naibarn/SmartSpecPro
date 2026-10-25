@@ -223,6 +223,7 @@ export async function renewCloudflareProductionDatabaseGrant(input: {
   expectedGrantRef: string;
   replacementGrantRef: string;
   expiresAt: string;
+  reauthorizeTerminalFailure?: boolean;
 }): Promise<CloudflareProductionDatabaseGrant> {
   const { db } = input;
   const expiresAt = Date.parse(input.expiresAt);
@@ -248,7 +249,7 @@ export async function renewCloudflareProductionDatabaseGrant(input: {
     const previous = secure.grant;
     if (previous.jobId !== input.jobId || previous.requesterUserId !== input.requesterUserId ||
         previous.grantRef !== input.expectedGrantRef || previous.revokedAt !== null ||
-        Date.parse(previous.expiresAt) > Date.now()) {
+        (Date.parse(previous.expiresAt) > Date.now() && !input.reauthorizeTerminalFailure)) {
       if (previous.grantRef === input.replacementGrantRef && previous.jobId === input.jobId &&
           previous.requesterUserId === input.requesterUserId && previous.revokedAt === null &&
           Date.parse(previous.expiresAt) === expiresAt) return previous;

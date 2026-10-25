@@ -492,6 +492,10 @@ export default function AdminDeploymentTargets() {
       !query.state.data || ["succeeded", "failed", "cancelled", "expired"].includes(query.state.data.status) ? false : 2_000 },
   );
   const productionDatabaseJobData = latestProductionDatabaseJob.data;
+  const productionDatabaseGuardRecovery = productionDatabaseJobData?.status === "failed" &&
+    productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE" &&
+    productionDatabaseJobData.attempt === 2 && productionDatabaseJobData.maxAttempts === 2;
+
   const productionScopeKey = `${tenantId}:${projectId}:production`;
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
@@ -880,6 +884,7 @@ export default function AdminDeploymentTargets() {
             const submittedDatabaseJobId = productionDatabaseSubmissions[productionScopeKey] ?? "";
             const databaseAdmission = productionDatabaseAdmissions[productionScopeKey] ?? readStoredProductionDatabaseAdmission(productionScopeKey);
             const databaseJobAlreadySubmitted = Boolean(
+              productionDatabaseGuardRecovery ||
               ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing", "pending", "leased",
                 "waiting_external", "retry_scheduled", "succeeded", "completed", "expired"].includes(productionDatabaseJobData?.status ?? "") ||
               ["JOB_ACCEPTED", "RUNNING", "SUCCEEDED"].includes(databaseAdmission?.status ?? ""),
@@ -1004,22 +1009,28 @@ export default function AdminDeploymentTargets() {
                         ? text("Submit a new Production database attempt", "ส่งคำขอเตรียมฐานข้อมูล Production ใหม่")
                         : text("Prepare Production database connection", "เตรียมการเชื่อมต่อฐานข้อมูล Production")}
                 </Button>
-                {productionDatabaseJobData?.status === "expired" &&
+                {((productionDatabaseJobData?.status === "expired" &&
                   productionDatabaseJobData.errorCode === "JOB_DEADLINE_EXPIRED" &&
                   productionDatabaseJobData.operatorReviewRequired &&
-                  productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported" ? <VStack gap={1} role="group" aria-label={text("Resume the same Production database job", "กู้งานเตรียมฐานข้อมูล Production เดิม") }>
-                    <p role="alert">{text(
+                  productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported") || productionDatabaseGuardRecovery) ? <VStack gap={1} role="group" aria-label={text("Resume the same Production database job", "กู้งานเตรียมฐานข้อมูล Production เดิม") }>
+                    <p role="alert">{productionDatabaseGuardRecovery ? text(
+                      "The credential guard incorrectly rejected a successful authorization check. The two-attempt budget is exhausted. This action explicitly authorizes one additional attempt on the same job and resource plan after the fix. It does not authorize production traffic.",
+                      "ระบบตรวจ credential ตีความผลตรวจสิทธิ์สำเร็จผิดพลาด และใช้สิทธิ์เดิมครบ 2 ครั้งแล้ว ปุ่มนี้อนุมัติเพิ่มเพียง 1 ครั้งให้งานและแผนเดิมหลังแก้ไข ไม่อนุมัติการเปลี่ยน traffic",
+                    ) : text(
                       "This job expired before a worker claimed it because its adapter contract was not admitted. No Cloudflare resource was created. The original grant has expired, so an authenticated Admin must renew authorization; the same Job ID and resource plan will be reused.",
                       "งานหมดอายุก่อน worker รับไปทำ เพราะระบบไม่ยอมรับ contract ของ adapter จึงยังไม่ได้สร้าง Cloudflare resource และ grant เดิมหมดอายุแล้ว Admin ที่ยืนยันตัวตนต้องต่ออายุสิทธิ์ โดยระบบจะใช้ Job ID และแผน resource เดิม",
                     )}</p>
                     <Button type="button" disabled={resumeProductionDatabaseMutation.isPending ||
-                      !databaseTunnelInventoryComplete || !productionDatabaseJobData.tunnelId ||
-                      selectedDatabaseTunnelId !== productionDatabaseJobData.tunnelId}
+                      !databaseTunnelInventoryComplete || !productionDatabaseJobData?.tunnelId ||
+                      selectedDatabaseTunnelId !== productionDatabaseJobData?.tunnelId}
                       onClick={() => resumeProductionDatabaseMutation.mutate({ tenantId, projectId,
-                        jobId: productionDatabaseJobData.jobId, tunnelId: productionDatabaseJobData.tunnelId!, environment: "production" })}>
+                        jobId: productionDatabaseJobData!.jobId, tunnelId: productionDatabaseJobData!.tunnelId!, environment: "production",
+                        ...(productionDatabaseGuardRecovery ? { authorizeAdditionalAttempt: true as const } : {}) })}>
                       {resumeProductionDatabaseMutation.isPending
                         ? text("Renewing and resuming the same job…", "กำลังต่ออายุสิทธิ์และกู้งานเดิม…")
-                        : text("Renew authorization and resume this same job", "ต่ออายุสิทธิ์และทำงานเดิมต่อ")}
+                        : productionDatabaseGuardRecovery
+                          ? text("Authorize one corrected attempt on this same job", "อนุมัติเพิ่ม 1 ครั้งให้งานเดิมหลังแก้ไข")
+                          : text("Renew authorization and resume this same job", "ต่ออายุสิทธิ์และทำงานเดิมต่อ")}
                     </Button>
                     {resumeProductionDatabaseMutation.error ? <p role="alert"><code>{resumeProductionDatabaseMutation.error.message}</code></p> : null}
                   </VStack> : null}
