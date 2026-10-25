@@ -192,6 +192,33 @@ describe("MiniAppRoute", () => {
     expect(screen.getByTestId("miniapp-preview-frame")).toBeInTheDocument();
   });
 
+  it("shows project settings as the primary content instead of the Progress workspace", async () => {
+    mocks.routeMode = "settings";
+    mocks.miniAppParams = { appId: "app_private_settings" };
+    mocks.appQuery.data = {
+      app: {
+        appId: "app_private_settings",
+        visibility: "private",
+        deploymentVersion: 1,
+        lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_private_settings/sha256/" + "c".repeat(64),
+      },
+      html: "<!doctype html><main>Expense tracker</main>",
+      artifactDigest: "c".repeat(64),
+      factory: { repositoryState: "BOUND", repository: { owner: "owner", name: "expense-tracker", url: "https://github.com/owner/expense-tracker" } },
+    };
+
+    render(<MiniAppRoute />);
+
+    expect(await screen.findByRole("heading", { name: "Project settings" })).toBeInTheDocument();
+    expect(screen.getByText("App ID · app_private_settings")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "owner/expense-tracker" })).toHaveAttribute("href", "https://github.com/owner/expense-tracker");
+    expect(screen.getByRole("button", { name: "Open App" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Back to Development" })).toBeEnabled();
+    expect(screen.queryByRole("tab", { name: "Progress" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Development timeline")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("miniapp-progress-card")).not.toBeInTheDocument();
+  });
+
   it("keeps refreshing progress and displays repository setup while a preview is already usable", async () => {
     mocks.miniAppParams = { appId: "app_private_progress" };
     mocks.appQuery.data = {

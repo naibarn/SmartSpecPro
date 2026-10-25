@@ -236,10 +236,11 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
       constrainToParent
       actions={(
         <HStack wrap="wrap" gap={2}>
-          {previewAvailable ? <AppButton label="Open Preview" variant="secondary" onClick={() => setTab("preview")} /> : null}
+          {previewAvailable && mode !== "settings" ? <AppButton label="Open Preview" variant="secondary" onClick={() => setTab("preview")} /> : null}
           {previewAvailable ? <AppButton label={openingApp || runtimePreparation.isPending ? "Preparing App…" : "Open App"} variant="primary" isDisabled={openingApp || runtimePreparation.isPending || active} onClick={() => { void openApp(); }} /> : null}
-          {previewAvailable ? <AppButton label="Downloads" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/downloads`); }} /> : null}
-          <AppButton label="Settings" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/settings`); }} />
+          {previewAvailable && mode !== "settings" ? <AppButton label="Downloads" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/downloads`); }} /> : null}
+          {mode !== "settings" ? <AppButton label="Settings" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/settings`); }} /> : null}
+          {mode === "settings" ? <AppButton label="Back to Development" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/status`); }} /> : null}
           {factory?.retryable ? (
             <AppButton
               label={retry.isPending ? "Repairing…" : "Retry / Repair"}
@@ -252,6 +253,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
       )}
     >
       <VStack gap={4} className="min-w-0 w-full max-w-full">
+        {mode !== "settings" ? <>
         <Grid columns={{ minWidth: 240, max: 3 }} gap={3}>
           <Card padding={4} data-testid="miniapp-status-card">
             <VStack gap={2}>
@@ -408,6 +410,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
             </VStack>
           </Section>
         ) : null}
+        </> : null}
 
         {mode === "downloads" ? <Section>
           <VStack gap={2}>
@@ -415,13 +418,14 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
             <Text type="body" color="secondary">This build is a web app and opens in your browser. No desktop installer is attached to this App version.</Text>
             {data.artifactDigest ? <Text type="body">Web artifact · SHA-256 {data.artifactDigest}</Text> : null}
             {previewAvailable ? <AppButton label="Open version" variant="secondary" onClick={() => { void openApp(app?.deploymentVersion ?? undefined); }} /> : null}
-            <AppButton label="Back to Development" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/status`); }} />
           </VStack>
         </Section> : null}
 
         {mode === "settings" ? <Section>
           <VStack gap={2}>
             <Heading level={3}>Project settings</Heading>
+            <Text type="body" color="secondary">App ID · {appId}</Text>
+            <Text type="body" color="secondary">Current version · {app?.deploymentVersion ?? 0}{previewAvailable ? " · Last-known-good app is available" : " · No runnable version yet"}</Text>
             <Text type="body" color="secondary">Repository: {factory?.repositoryState ?? "Not provisioned yet"}</Text>
             {factory?.repository?.url ? <Text type="body"><a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></Text> : null}
             {factory?.repositoryState === "AUTH_REQUIRED" ? <Text type="body" color="secondary">Connect GitHub in Settings → Integrations to provision a dedicated App repository. The Core repository is never used as a fallback.</Text> : null}
@@ -429,11 +433,10 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
               <AppButton label={provisionRepository.isPending ? "Provisioning repository…" : "Provision private repository from saved source"} variant="secondary" isDisabled={provisionRepository.isPending} onClick={() => provisionRepository.mutate({ appId })} />
               {provisionRepository.error ? <Text type="body" color="secondary" role="alert">{provisionRepository.error.message}</Text> : null}
             </> : null}
-            <AppButton label="Back to Development" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/status`); }} />
           </VStack>
         </Section> : null}
 
-        {factory?.conversationId ? <Section>
+        {factory?.conversationId && mode === "status" ? <Section>
           <VStack gap={3}>
             <Heading level={2}>Continue development</Heading>
             <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} canContinue={migrationStatus === "OWNER_CONFIRMED"} />
