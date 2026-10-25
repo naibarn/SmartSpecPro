@@ -127,12 +127,15 @@ describe("Cloudflare production provider inventory", () => {
         permissionPacket: expect.arrayContaining([
           expect.objectContaining({ scope: "Account", permission: "Hyperdrive Edit" }),
           expect.objectContaining({ scope: "Account", permission: "Connectivity Directory Admin" }),
-          expect.objectContaining({ scope: "Zone", permission: "SSL and Certificates Edit" }),
-          expect.objectContaining({ scope: "Account", permission: "SSL and Certificates Read + Write" }),
           expect.objectContaining({ scope: "Account", permission: "Containers Edit" }),
           expect.objectContaining({ scope: "Zone", permission: "Workers Routes Edit" }),
         ]) } });
     const permissionPacket = result.productionDatabaseProvisioning?.permissionPacket ?? [];
+    expect(permissionPacket.some(item => item.permission === "SSL and Certificates Read + Write")).toBe(false);
+    expect(result.productionDatabaseProvisioning?.conditionalPermissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ scope: "Account", permission: "SSL and Certificates Read + Write" }),
+      expect.objectContaining({ scope: "Zone", permission: "SSL and Certificates Edit" }),
+    ]));
     expect(permissionPacket.some(item => item.permission === "Connectivity Directory Bind")).toBe(false);
     expect(permissionPacket.some(item => item.scope === "Zone" && item.permission === "DNS Read")).toBe(false);
     expect(JSON.stringify(result)).not.toContain("test-token");

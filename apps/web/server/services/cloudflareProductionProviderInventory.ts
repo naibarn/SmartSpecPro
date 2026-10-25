@@ -148,8 +148,6 @@ export async function probeCloudflareProductionProviderInventory(input: {
           { scope: "Account", permission: "Connectivity Directory Read", operations: ["GET /accounts/{account_id}/connectivity/directory/services"] },
           { scope: "Account", permission: "Connectivity Directory Admin", operations: ["POST /accounts/{account_id}/connectivity/directory/services for one PostgreSQL TCP service bound to the existing Tunnel"] },
           { scope: "Account", permission: "Cloudflare Tunnel Read", operations: ["GET /accounts/{account_id}/cfd_tunnel?is_deleted=false to select and verify the existing database Tunnel"] },
-          { scope: "Zone", permission: "SSL and Certificates Edit", operations: ["POST /certificates to issue a Cloudflare Origin CA server certificate for db.smartaihub.app; Workers VPC trusts Cloudflare Origin CA, while the current private PostgreSQL CA is not trusted"] },
-          { scope: "Account", permission: "SSL and Certificates Read + Write", operations: ["GET /accounts/{account_id}/mtls_certificates to inspect the Staging Hyperdrive trust anchor", "POST /accounts/{account_id}/mtls_certificates to register the Cloudflare Origin CA root before rotating PostgreSQL's leaf certificate"] },
           { scope: "Account", permission: "Containers Read", operations: ["GET /accounts/{account_id}/containers/applications"] },
           { scope: "Account", permission: "Containers Edit", operations: ["POST/PATCH /accounts/{account_id}/containers/applications for selected Node/Python production apps"] },
           { scope: "Zone", permission: "Zone Read", operations: ["GET /zones?name=smartaihub.app"] },
@@ -157,6 +155,8 @@ export async function probeCloudflareProductionProviderInventory(input: {
           { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes for the exact smartaihub.app/* route during the authorized canary"] },
         ],
         conditionalPermissions: [
+          { scope: "Account", permission: "SSL and Certificates Read + Write", condition: "only if migrating the existing direct-origin Staging Hyperdrive trust before rotating the shared PostgreSQL leaf certificate; Production VPC TLS is configured on the VPC Service and must not use Hyperdrive mtls settings" },
+          { scope: "Zone", permission: "SSL and Certificates Edit", condition: "only if the already-issued Cloudflare Origin CA certificate for db.smartaihub.app is missing or must be renewed; do not issue another certificate when the existing key-matched certificate is valid" },
           { scope: "Account", permission: "Queues Edit", condition: "only if a fresh complete inventory proves the already-provisioned Production Queue or DLQ is absent" },
           { scope: "Account", permission: "Workers R2 Storage Read/Edit", condition: "only if production provisions or changes an R2 bucket; existing object access uses the separately configured R2 S3 credentials" },
           { scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if the selected existing Tunnel must be changed through the Cloudflare-managed API; VPC service provisioning alone does not edit Tunnel configuration" },
