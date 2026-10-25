@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `30`
-- Updated (UTC): `2026-10-25T09:52:07.000000+00:00`
+- State generation: `32`
+- Updated (UTC): `2026-10-25T10:43:17.719077+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `cd0a5cbb67a24d04f834a97311ac023cbb790445`
-- Outcome: `PARTIAL`
+- Latest recorded merged Main SHA: `faf6747dc91a447eed2805e20beb84da1f36162a`
+- Outcome: `NOT_ACCEPTED`
 - Active section: `section-06-v2-thai-thb-continuation`
-- Next action: The owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. The deployed API verifies the existing owner GitHub connection, branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for the same App ID. Verify the linked run and immutable V2 row after smoke; V1 remains last-known-good until then.
+- Next action: Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and verifies the deployed V2 title and Open App action with their existing authenticated session; do not adopt or start another run. V2 package, deploy, smoke and version 2 are already recorded as successful.
 
 ## Sections
 
@@ -22,12 +22,13 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-real-browser-acceptance | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | f5233d1d75017e64d845a2b1c24324019e7dc485 | f5233d1d75017e64d845a2b1c24324019e7dc485 | Inspect existing mini-app worker job terminal, retry, fencing, lease and DevelopmentWorkUnit recovery paths for app_e6f0be051fd22e09bc4c5dff; implement bounded same-run automatic reconciliation; run focused tests and authorized DB checks without fabricating owner authentication. |
 | section-04-release-final-verify | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Runtime generation 83 serves revision 9c9d77adc4a23eda9cb884d3b5789c2c15967439. The existing target App Identity (owner user 23, tenant tenant-ZCSKEM9s) and expired run anchor are present in the runtime database; the old absence conclusion came from querying a different database endpoint. Owner browser acceptance remains pending a legitimately authenticated owner session. |
 | section-07-settings-navigation | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 1064ba665c91e9c3c15699ce73a5321f868c3ba4 | 1064ba665c91e9c3c15699ce73a5321f868c3ba4 | Deployed generation 100 from SHA 1064ba665c91e9c3c15699ce73a5321f868c3ba4; web and worker health verified, and App, status, and settings routes return the app shell. |
-| section-06-v2-thai-thb-continuation | implementation_ready | owner action pending | /mnt/SmartSpecDev/projects/SmartSpecPro | 5cae812a5f61d423fde8fded05c475e1e681bf50 | 5cae812a5f61d423fde8fded05c475e1e681bf50 | Deployed generation 103 from SHA cd0a5cbb67a24d04f834a97311ac023cbb790445; web and worker report the same revision and HEALTHY status; App and status routes return 200 and the production MiniAppRoute asset contains the adoption control and pinned candidate SHA; focused checks 42/42 passed. The actual owner action is one click: “Use prepared V2 candidate” on the existing App Home. No V2 DevelopmentRun or version row exists yet; V1 remains last-known-good until that owner-authorized run passes smoke. |
+| section-06-v2-thai-thb-continuation | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | faf6747dc91a447eed2805e20beb84da1f36162a | faf6747dc91a447eed2805e20beb84da1f36162a | Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and verifies the deployed V2 title and Open App action with their existing authenticated session; do not adopt or start another run. V2 package, deploy, smoke and version 2 are already recorded as successful. |
 | section-05-v1-buildable-source | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 7b90395508e8a7084026d7dafc80a8e4b2360493 | — | V1 project source is committed and read-back verified in the existing private App repository; proceed with the pending authenticated-owner V2 continuation. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- No authenticated owner browser session is available to this Codex context. No V2 DevelopmentRun or version-2 row has been created. The production adoption action is deployed; it will create the linked run only when the owner clicks it. V1 remains last-known-good.
+- No authenticated owner browser session is available to this Codex context. No V2 DevelopmentRun or version-2 row exists yet. The production adoption action is deployed and owner click is the continuation predicate. V1 remains last-known-good.
+- No authenticated owner browser session is available to this Codex context for a post-deploy visual interaction check. Existing V2 browser evidence records 12/12 checks; production private API returns NOT_FOUND without auth.
 
 ## Resume
 
