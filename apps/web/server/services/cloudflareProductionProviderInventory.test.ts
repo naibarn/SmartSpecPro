@@ -33,7 +33,8 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/queues")) return response([{ queue_name: "smartspec-staging-abc-jobs" }]);
       if (url.pathname.endsWith("/hyperdrive/configs")) return response([{ name: "smartspec-staging-abc-database" }]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
-      if (url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications")) return response([]);
+      if (url.pathname.endsWith("/cfd_tunnel")) return response([{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartaihub-main", status: "healthy", credentials_file: "must-not-return" }]);
+      if (url.pathname.endsWith("/containers/applications")) return response([]);
       if (url.pathname.endsWith("/connectivity/directory/services")) return response([{ service_id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", app_protocol: "postgresql", host: { network: { tunnel_id: "87654321-4321-4321-8321-cba987654321" } } }]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "deployment-a", versions: [{ version_id: versionId, percentage: 100 }] }] });
@@ -48,6 +49,7 @@ describe("Cloudflare production provider inventory", () => {
       originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false },
       queues: [{ name: "smartspec-staging-abc-jobs", environment: "staging" }],
       hyperdrives: [{ name: "smartspec-staging-abc-database", environment: "staging" }],
+      tunnels: [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartaihub-main", status: "healthy" }],
       vpcServices: [{ id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "production" }],
       domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
       worker: { deploymentCount: 1, activeVersionCount: 1, versions: [{ bindingNames: ["CLOUDFLARE_ACTIVATION"], hasVerifiedReleaseIdentity: false }] },
@@ -69,7 +71,8 @@ describe("Cloudflare production provider inventory", () => {
       const url = new URL(String(request));
       if (url.pathname.endsWith("/queues") || url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
-      if (url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications")) return response([]);
+      if (url.pathname.endsWith("/cfd_tunnel")) return response([]);
+      if (url.pathname.endsWith("/containers/applications")) return response([]);
       if (url.pathname.endsWith("/connectivity/directory/services")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
@@ -87,7 +90,8 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/hyperdrive/configs")) return response([]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
-      if (url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications")) return response([]);
+      if (url.pathname.endsWith("/cfd_tunnel")) return response([]);
+      if (url.pathname.endsWith("/containers/applications")) return response([]);
       if (url.pathname.endsWith("/connectivity/directory/services")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
@@ -104,7 +108,8 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/hyperdrive/configs")) return response([]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
-      if (url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications")) return response([]);
+      if (url.pathname.endsWith("/cfd_tunnel")) return response([]);
+      if (url.pathname.endsWith("/containers/applications")) return response(null, 403);
       if (url.pathname.endsWith("/connectivity/directory/services")) return response([], 403);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
@@ -113,14 +118,16 @@ describe("Cloudflare production provider inventory", () => {
     const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
     expect(result).toMatchObject({ status: "PARTIAL", queueInventoryComplete: false,
       accessChecks: { queues: { httpStatus: 403, complete: false }, hyperdrive: { httpStatus: 200, complete: true }, vpcServices: { httpStatus: 403, complete: false } },
-      productionDatabaseProvisioning: { checks: { vpcServices: { httpStatus: 403, readable: false } },
+      productionDatabaseProvisioning: { checks: { vpcServices: { httpStatus: 403, readable: false }, containers: { httpStatus: 403, readable: false } },
         permissionPacket: expect.arrayContaining([
           expect.objectContaining({ scope: "Account", permission: "Hyperdrive Edit" }),
           expect.objectContaining({ scope: "Account", permission: "Connectivity Directory Admin" }),
+          expect.objectContaining({ scope: "Zone", permission: "SSL and Certificates Edit" }),
           expect.objectContaining({ scope: "Account", permission: "Containers Edit" }),
           expect.objectContaining({ scope: "Zone", permission: "Workers Routes Edit" }),
         ]) } });
     expect(JSON.stringify(result)).not.toContain("test-token");
+    expect(JSON.stringify(result)).not.toContain("credentials_file");
   });
 
   it("does not call Cloudflare when target or scoped credential is unavailable", async () => {

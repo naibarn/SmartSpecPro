@@ -1,0 +1,169 @@
+import { createHash } from "node:crypto";
+import { describe, expect, it, vi } from "vitest";
+import {
+  productionDatabaseResourcePlanDigest,
+  provisionCloudflareProductionDatabase,
+  type ProductionDatabaseResourcePlan,
+} from "./cloudflareProductionDatabaseProvision";
+
+const accountRef = "f3fb0b6858e186fcc36be105bfa00243";
+const token = "cf_api_token_test_value_123456789";
+const password = "postgres_password_test_value_abcdefghijklmnopqrstuvwxyz";
+const serviceId = "12345678-1234-4234-8234-123456789abc";
+const hyperdriveId = "abcdefabcdefabcdefabcdefabcdefab";
+const jobId = "12345678-1234-4234-8234-123456789abc";
+const plan: ProductionDatabaseResourcePlan = {
+  tunnelId: "87654321-4321-4321-8321-cba987654321",
+  databaseAddress: "10.20.30.40",
+  databaseName: "smartspec",
+  databaseUser: "sah_cf_prod_0123456789ab",
+  connectionLimit: 5,
+  tlsVerification: "verify_ca",
+};
+const operationId = productionDatabaseResourcePlanDigest(plan).slice(0, 12);
+const service = {
+  service_id: serviceId,
+  name: `smartspec-production-postgres-${operationId}`,
+  type: "tcp",
+  app_protocol: "postgresql",
+  tcp_port: 5432,
+  host: { ipv4: plan.databaseAddress, network: { tunnel_id: plan.tunnelId } },
+  tls_settings: { cert_verification_mode: "verify_ca" },
+};
+const hyperdrive = {
+  id: hyperdriveId,
+  name: `smartspec-production-database-${operationId}`,
+  origin: { service_id: serviceId, database: plan.databaseName, user: plan.databaseUser, scheme: "postgres" },
+  caching: { disabled: true },
+  origin_connection_limit: 5,
+};
+const response = (result: unknown, status = 200) => new Response(JSON.stringify({ success: status < 400, result, errors: status < 400 ? [] : [{ code: 1000 }] }), { status });
+
+describe("Cloudflare production database resources", () => {
+  it("creates and reads back a private VPC PostgreSQL service and uncached Hyperdrive config", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(response({ service_id: serviceId }))
+      .mockResolvedValueOnce(response(service))
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(response({ id: hyperdriveId }))
+      .mockResolvedValueOnce(response(hyperdrive));
+    const assertAuthorized = vi.fn(async () => undefined);
+    const checkpoints: unknown[] = [];
+
+    const result = await provisionCloudflareProductionDatabase({
+      jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      saveCheckpoint: async checkpoint => { checkpoints.push(checkpoint); }, assertAuthorized, fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    expect(assertAuthorized).toHaveBeenCalledTimes(12);
+    for (const [, init] of fetchImpl.mock.calls) {
+      expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${token}`);
+    }
+    const createServiceBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body));
+    expect(createServiceBody).toMatchObject({ host: { ipv4: plan.databaseAddress, network: { tunnel_id: plan.tunnelId } }, tls_settings: { cert_verification_mode: "verify_ca" } });
+    const createHyperdriveBody = JSON.parse(String(fetchImpl.mock.calls[4]?.[1]?.body));
+    expect(createHyperdriveBody).toMatchObject({ origin: { service_id: serviceId, database: plan.databaseName, user: plan.databaseUser, password, scheme: "postgres" }, caching: { disabled: true }, origin_connection_limit: 5 });
+    expect(JSON.stringify(result)).not.toContain(token);
+    expect(JSON.stringify(result)).not.toContain(password);
+    expect(result).toMatchObject({ providerConfigurationVerified: true, workerBound: false, activation: "disabled", vpcService: { id: serviceId }, hyperdrive: { id: hyperdriveId } });
+    expect(checkpoints.at(-1)).toMatchObject({ jobId, pending: null, vpcServiceId: serviceId, hyperdriveId });
+  });
+
+  it("reuses exact existing resources without issuing provider writes", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([service]))
+      .mockResolvedValueOnce(response(service))
+      .mockResolvedValueOnce(response([hyperdrive]))
+      .mockResolvedValueOnce(response(hyperdrive));
+
+    const result = await provisionCloudflareProductionDatabase({
+      jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      checkpoint: { jobId, planDigest: productionDatabaseResourcePlanDigest(plan), databasePasswordDigest: createHash("sha256").update(password).digest("hex"), vpcServiceId: serviceId, hyperdriveId },
+      saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
+    expect(result.providerConfigurationVerified).toBe(true);
+  });
+
+  it("recovers an uncertain create only when the encrypted job checkpoint proves ownership", async () => {
+    const checkpoints: Array<Parameters<Parameters<typeof provisionCloudflareProductionDatabase>[0]["saveCheckpoint"]>[0]> = [];
+    const firstFetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([]))
+      .mockRejectedValueOnce(new Error("connection reset after provider accepted POST"));
+    const base = { jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      saveCheckpoint: async (checkpoint: (typeof checkpoints)[number]) => { checkpoints.push(checkpoint); },
+      assertAuthorized: async () => undefined };
+
+    await expect(provisionCloudflareProductionDatabase({ ...base, fetchImpl: firstFetch }))
+      .rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_DATABASE_WRITE_UNCERTAIN", errorClass: "unknown" });
+    expect(checkpoints.at(-1)).toMatchObject({ pending: "vpc_service", jobId });
+
+    const retryFetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([service]))
+      .mockResolvedValueOnce(response(service))
+      .mockResolvedValueOnce(response([]))
+      .mockResolvedValueOnce(response({ id: hyperdriveId }))
+      .mockResolvedValueOnce(response(hyperdrive));
+    const result = await provisionCloudflareProductionDatabase({ ...base, checkpoint: checkpoints.at(-1), fetchImpl: retryFetch });
+
+    expect(retryFetch).toHaveBeenCalledTimes(5);
+    expect(retryFetch.mock.calls.some(([, init]) => init?.method === "POST" && String(init.body).includes("postgres"))).toBe(true);
+    expect(checkpoints.at(-1)).toMatchObject({ pending: null, vpcServiceId: serviceId, hyperdriveId });
+    expect(result.providerConfigurationVerified).toBe(true);
+  });
+
+  it("rejects checkpoints from another job or password before provider access", async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const checkpoint = { jobId, planDigest: productionDatabaseResourcePlanDigest(plan),
+      databasePasswordDigest: createHash("sha256").update(password).digest("hex"), pending: "vpc_service" as const };
+    const input = { jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      checkpoint, saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl };
+
+    await expect(provisionCloudflareProductionDatabase({ ...input, jobId: "22345678-1234-4234-8234-123456789abc" }))
+      .rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_DATABASE_CHECKPOINT_MISMATCH" });
+    await expect(provisionCloudflareProductionDatabase({ ...input, databasePassword: `${password}-changed` }))
+      .rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_DATABASE_CHECKPOINT_MISMATCH" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("fails closed on an existing VPC service whose endpoint or TLS policy drifted", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([service]))
+      .mockResolvedValueOnce(response({ ...service, host: { ...service.host, ipv4: "10.20.30.41" } }));
+
+    await expect(provisionCloudflareProductionDatabase({
+      jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      checkpoint: { jobId, planDigest: productionDatabaseResourcePlanDigest(plan), databasePasswordDigest: createHash("sha256").update(password).digest("hex"), pending: "vpc_service" },
+      saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
+    })).rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_VPC_SERVICE_READBACK_MISMATCH", errorClass: "unknown" });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it("requires production authorization before every provider operation", async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const assertAuthorized = vi.fn(async () => { throw new Error("revoked"); });
+
+    await expect(provisionCloudflareProductionDatabase({
+      jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      saveCheckpoint: async () => undefined, assertAuthorized, fetchImpl,
+    })).rejects.toThrow("revoked");
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("rejects public addresses, non-CA TLS, and tampered plan digests before provider access", async () => {
+    const fetchImpl = vi.fn<typeof fetch>();
+    const base = { jobId, accountRef, token, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password, saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl };
+
+    await expect(provisionCloudflareProductionDatabase({ ...base, plan: { ...plan, databaseAddress: "203.0.113.8" } }))
+      .rejects.toThrow();
+    await expect(provisionCloudflareProductionDatabase({ ...base, plan: { ...plan, tlsVerification: "disabled" as "verify_ca" } }))
+      .rejects.toThrow();
+    await expect(provisionCloudflareProductionDatabase({ ...base, plan, planDigest: "0".repeat(64) }))
+      .rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_DATABASE_PLAN_INVALID" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+});

@@ -702,7 +702,16 @@ export default function AdminDeploymentTargets() {
                   {!check.complete && checkLabels[key] ? <> · {text("required read scope", "สิทธิ์อ่านที่ต้องมี")}: <code>{checkLabels[key].permission}</code></> : null}
                 </li>)}
               </VStack>
-              <p>{text("Add only the read scope shown for an HTTP 403, then press Check now. No provider changes were made by this check.", "ถ้าได้ HTTP 403 ให้เพิ่มเฉพาะสิทธิ์อ่านที่แสดง แล้วกดตรวจสอบตอนนี้ การตรวจนี้ไม่ได้เปลี่ยน resource บน Cloudflare")}</p>
+              {inventory.productionDatabaseProvisioning ? <>
+                <p>{text("The list below is the complete scope packet for the planned production steps. Apply it in one token update; the missing read checks above are only the scopes needed to inspect those inventories. No provider changes were made by this check.", "รายการด้านล่างคือ permission ทั้งหมดสำหรับขั้นตอน production ที่วางไว้ ให้เพิ่มทั้งหมดในการแก้ token ครั้งเดียว ส่วน read ที่ขาดด้านบนมีไว้ตรวจ inventory เท่านั้น การตรวจนี้ไม่ได้เปลี่ยน resource บน Cloudflare")}</p>
+                <VStack as="ul" gap={1}>{inventory.productionDatabaseProvisioning.permissionPacket.map(item => <li key={`${item.scope}:${item.permission}`}>
+                  <strong>{item.scope} · <code>{item.permission}</code></strong>
+                  <details><summary>{text("Exact API operations", "API operation ที่ใช้จริง")}</summary>
+                    <VStack as="ul" gap={1}>{item.operations.map(operation => <li key={operation}><code>{operation}</code></li>)}</VStack>
+                  </details>
+                </li>)}</VStack>
+                <p>{text("DNS Records Read and Account SSL/mTLS inventory Read are not required for this private VPC path: it uses the existing Tunnel and does not create public DNS records or mTLS certificates.", "เส้นทาง VPC ส่วนตัวนี้ไม่ต้องใช้ DNS Records Read หรือ Account SSL/mTLS inventory Read เพราะใช้ Tunnel เดิม และไม่สร้าง DNS สาธารณะหรือ mTLS certificate")}</p>
+              </> : <p>{text("Add the required read scope shown for an HTTP 403, then press Check now. No provider changes were made by this check.", "ถ้าได้ HTTP 403 ให้เพิ่มสิทธิ์อ่านตามที่แสดง แล้วกดตรวจสอบตอนนี้ การตรวจนี้ไม่ได้เปลี่ยน resource บน Cloudflare")}</p>}
               </VStack>;
             }
             const productionQueues = inventory.queues.filter(item => item.environment === "production");

@@ -102,10 +102,12 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const queueNames = queueDetails.map(row => row.queue_name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(name));
     const hyperdriveNames = hyperdriveDetails.map(row => row.name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,127}$/.test(name));
     const inventoryComplete = queues.complete && hyperdrive.complete && zones.complete && Boolean(routes?.complete) &&
-      deployments.complete && Array.isArray(deploymentRows) && versionDetails.every(version => version.checked) && vpcServices.complete;
+      deployments.complete && Array.isArray(deploymentRows) && versionDetails.every(version => version.checked) &&
+      vpcServices.complete && tunnels.complete && containers.complete;
     const vpcServiceRows = Array.isArray(vpcServices.result) ? vpcServices.result as Array<{
       service_id?: unknown; name?: unknown; type?: unknown; app_protocol?: unknown; host?: { network?: { tunnel_id?: unknown } };
     }> : [];
+    const tunnelRows = Array.isArray(tunnels.result) ? tunnels.result as Array<{ id?: unknown; name?: unknown; status?: unknown }> : [];
     return {
       status: inventoryComplete ? "CHECKED" as const : "PARTIAL" as const,
       checkedAt: new Date().toISOString(),
@@ -120,6 +122,8 @@ export async function probeCloudflareProductionProviderInventory(input: {
         workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows) },
         workerVersions: versionDetails.map(version => ({ httpStatus: version.checked ? 200 : null, complete: version.checked })),
         vpcServices: { httpStatus: vpcServices.status, complete: vpcServices.complete },
+        tunnels: { httpStatus: tunnels.status, complete: tunnels.complete },
+        containers: { httpStatus: containers.status, complete: containers.complete },
       },
       productionDatabaseProvisioning: {
         checks: {
@@ -142,6 +146,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
           { scope: "Account", permission: "Connectivity Directory Admin", operations: ["POST /accounts/{account_id}/connectivity/directory/services for one PostgreSQL TCP service bound to the existing Tunnel"] },
           { scope: "Account", permission: "Connectivity Directory Bind", operations: ["bind the verified PostgreSQL VPC Service to the Production Worker"] },
           { scope: "Account", permission: "Cloudflare Tunnel Read", operations: ["GET /accounts/{account_id}/cfd_tunnel?is_deleted=false to select and verify the existing database Tunnel"] },
+          { scope: "Zone", permission: "SSL and Certificates Edit", operations: ["POST /certificates to issue a Cloudflare Origin CA server certificate for db.smartaihub.app; Workers VPC trusts Cloudflare Origin CA, while the current private PostgreSQL CA is not trusted"] },
           { scope: "Account", permission: "Containers Read", operations: ["GET /accounts/{account_id}/containers/applications"] },
           { scope: "Account", permission: "Containers Edit", operations: ["POST/PATCH /accounts/{account_id}/containers/applications for selected Node/Python production apps"] },
           { scope: "Zone", permission: "Zone Read", operations: ["GET /zones?name=smartaihub.app"] },
@@ -159,6 +164,10 @@ export async function probeCloudflareProductionProviderInventory(input: {
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
       hyperdriveInventoryComplete: hyperdrive.complete,
       hyperdrives: hyperdriveNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
+      tunnelInventoryComplete: tunnels.complete,
+      tunnels: tunnelRows.flatMap(row => typeof row.id === "string" && /^[a-f0-9-]{36}$/i.test(row.id) &&
+        typeof row.name === "string" && /^[a-zA-Z0-9][a-zA-Z0-9 ._-]{0,99}$/.test(row.name)
+        ? [{ id: row.id, name: row.name, ...(typeof row.status === "string" && /^[a-zA-Z0-9_-]{1,32}$/.test(row.status) ? { status: row.status } : {}) }] : []),
       vpcServiceInventoryComplete: vpcServices.complete,
       vpcServices: vpcServiceRows.flatMap(row => typeof row.service_id === "string" && /^[a-f0-9-]{36}$/i.test(row.service_id) &&
         typeof row.name === "string" && /^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$/.test(row.name) && (row.type === "tcp" || row.type === "http")
