@@ -156,13 +156,24 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
     deliveryMilestone: state.appSourceDigest ? state.deliveryMilestone : "BUILDING" as const,
     blockerState: { status: "NONE" as const, code: null },
   };
-  await input.service.recordVerificationEvent({
-    ...input.run,
-    type: "VERIFICATION_OUTCOME",
-    idempotencyKey: `miniapp-factory-retry:${input.run.runId}:${input.stageId}:${attempt}`,
-    payload: { profile: "PERSONAL_MINIAPP", stageId: input.stageId, outcome: "RETRY_SCHEDULED", attempt },
-    runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: scheduledState },
-  });
+  const retryEventKey = `miniapp-factory-retry:${input.run.runId}:${input.stageId}:${attempt}`;
+  const existingRetryEvent = current.events.find(event => event.idempotencyKey === retryEventKey);
+  if (existingRetryEvent) {
+    const payload = existingRetryEvent.payload;
+    if (existingRetryEvent.type !== "VERIFICATION_OUTCOME" ||
+      payload.profile !== "PERSONAL_MINIAPP" || payload.stageId !== input.stageId ||
+      payload.outcome !== "RETRY_SCHEDULED" || payload.attempt !== attempt) {
+      throw new Error("MINI_APP_RETRY_IDEMPOTENCY_CONFLICT");
+    }
+  } else {
+    await input.service.recordVerificationEvent({
+      ...input.run,
+      type: "VERIFICATION_OUTCOME",
+      idempotencyKey: retryEventKey,
+      payload: { profile: "PERSONAL_MINIAPP", stageId: input.stageId, outcome: "RETRY_SCHEDULED", attempt },
+      runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: scheduledState },
+    });
+  }
   const queued = await enqueueNextMiniAppFactoryStage({
     pipeline: input.pipeline,
     service: input.service,
