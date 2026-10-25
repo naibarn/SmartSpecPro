@@ -17,8 +17,8 @@ export type MiniAppFactoryDurableState = {
   migrationState: "NOT_STARTED" | "PENDING" | "APPLIED" | "FAILED";
   deploymentState: "NOT_STARTED" | "PREPARED" | "DEPLOYED" | "FAILED";
   retryState: { status: "READY" | "RETRY_SCHEDULED" | "EXHAUSTED"; attempt: number };
-  /** A single source-only recovery may follow the bounded Gateway retry budget. */
-  candidateRepairAttempted: boolean;
+  /** Bounded non-billable source-only repairs after the Gateway retry budget. */
+  candidateRepairAttempts: number;
   blockerState: { status: "NONE" | "WAITING_EXTERNAL_RETRYABLE" | "BLOCKED_TRUE"; code: string | null };
   nextEligibleStages: string[];
 };
@@ -68,7 +68,7 @@ export function createMiniAppFactoryDurableState(input: {
     migrationState: "NOT_STARTED",
     deploymentState: "NOT_STARTED",
     retryState: { status: "READY", attempt: 0 },
-    candidateRepairAttempted: false,
+    candidateRepairAttempts: 0,
     blockerState: { status: "NONE", code: null },
     nextEligibleStages: [],
   };
@@ -100,7 +100,7 @@ export function parseMiniAppFactoryDurableState(value: unknown): MiniAppFactoryD
     !state.retryState || typeof state.retryState !== "object" ||
     !["READY", "RETRY_SCHEDULED", "EXHAUSTED"].includes(String((state.retryState as Record<string, unknown>).status)) ||
     !Number.isSafeInteger((state.retryState as Record<string, unknown>).attempt) || Number((state.retryState as Record<string, unknown>).attempt) < 0 ||
-    !(state.candidateRepairAttempted === undefined || typeof state.candidateRepairAttempted === "boolean") ||
+    !(state.candidateRepairAttempts === undefined || Number.isSafeInteger(state.candidateRepairAttempts) && Number(state.candidateRepairAttempts) >= 0 && Number(state.candidateRepairAttempts) <= 2) ||
     !state.blockerState || typeof state.blockerState !== "object" ||
     !["NONE", "WAITING_EXTERNAL_RETRYABLE", "BLOCKED_TRUE"].includes(String((state.blockerState as Record<string, unknown>).status)) ||
     !((state.blockerState as Record<string, unknown>).code === null || typeof (state.blockerState as Record<string, unknown>).code === "string") ||
@@ -113,7 +113,9 @@ export function parseMiniAppFactoryDurableState(value: unknown): MiniAppFactoryD
     appSourceDigest: state.appSourceDigest ?? null,
     repository: (state.repository as MiniAppFactoryDurableState["repository"] | undefined) ?? null,
     sourceSha: state.profile === "PLATFORM_SELF_DEVELOPMENT" ? String(state.sourceSha).toLowerCase() : null,
-    candidateRepairAttempted: state.candidateRepairAttempted === true,
+    candidateRepairAttempts: state.candidateRepairAttempts === undefined
+      ? ((state as Record<string, unknown>).candidateRepairAttempted === true ? 1 : 0)
+      : Number(state.candidateRepairAttempts),
   } as unknown as MiniAppFactoryDurableState;
 }
 
@@ -162,7 +164,7 @@ export function advanceMiniAppFactoryDurableState(
     // The bounded retry budget belongs to one stage attempt chain. Once a
     // checkpoint advances the run, the next stage receives its own budget.
     retryState: { status: "READY", attempt: 0 },
-    candidateRepairAttempted: false,
+    candidateRepairAttempts: 0,
     blockerState: { status: "NONE", code: null },
     nextEligibleStages: [...input.nextEligibleStages],
   };

@@ -33,7 +33,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           prompt: run.goal,
           previousSourceRef,
           previousCandidateRef,
-          candidateOnly: state.candidateRepairAttempted,
+          candidateOnly: state.candidateRepairAttempts > 0,
         });
         const repositoryState = artifact.repository
           ? "BOUND"
@@ -48,7 +48,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           `app-source-digest:${artifact.sourceDigest}`,
           ...(artifact.candidateRef ? [`app-candidate:${artifact.candidateRef}`] : []),
           ...(artifact.candidateDigest ? [`app-candidate-digest:${artifact.candidateDigest}`] : []),
-          ...(artifact.repairedFields?.length ? [`app-repaired-fields:${artifact.repairedFields.join(",")}`] : []),
+          ...(artifact.repairedFields?.map(field => `app-repaired-field:${field}`) ?? []),
           `app-repository-state:${repositoryState}`,
           ...(artifact.repository ? [`app-repository:${artifact.repository.mode === "USER_OWNED" ? "user" : "managed"}:${artifact.repository.owner}/${artifact.repository.name}@${artifact.repository.revision}`] : []),
         ] };

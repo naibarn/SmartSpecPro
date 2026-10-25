@@ -144,7 +144,7 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
   const candidateRepairRef = state.artifacts.find(value => value.startsWith("app-candidate:r2://"))?.slice("app-candidate:".length);
   if (input.candidateRepair && (
     state.retryState.status !== "EXHAUSTED" || state.retryState.attempt !== 3 ||
-    state.candidateRepairAttempted || !candidateRepairRef ||
+    state.candidateRepairAttempts >= 2 || !candidateRepairRef ||
     !new RegExp(`^r2://mini-app-candidates/${input.run.tenantId}/${input.appId}/run-[a-f0-9]{16}/sha256/[a-f0-9]{64}$`).test(candidateRepairRef)
   )) throw new Error("MINI_APP_CANDIDATE_REPAIR_NOT_ELIGIBLE");
   let attempt = input.candidateRepair ? 3 : input.retrySequence ?? state.retryState.attempt + 1;
@@ -160,13 +160,13 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
   const scheduledState = {
     ...state,
     retryState: { status: "RETRY_SCHEDULED" as const, attempt },
-    ...(input.candidateRepair ? { candidateRepairAttempted: true } : {}),
+    ...(input.candidateRepair ? { candidateRepairAttempts: state.candidateRepairAttempts + 1 } : {}),
     currentStage: input.stageId,
     deliveryMilestone: state.appSourceDigest ? state.deliveryMilestone : "BUILDING" as const,
     blockerState: { status: "NONE" as const, code: null },
   };
   const retryEventKey = input.candidateRepair
-    ? `miniapp-factory-candidate-repair:${input.run.runId}:${input.stageId}`
+    ? `miniapp-factory-candidate-repair:${input.run.runId}:${input.stageId}:${state.candidateRepairAttempts + 1}`
     : `miniapp-factory-retry:${input.run.runId}:${input.stageId}:${attempt}`;
   const existingRetryEvent = current.events.find(event => event.idempotencyKey === retryEventKey);
   if (existingRetryEvent) {
@@ -189,7 +189,7 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
     pipeline: input.pipeline,
     service: input.service,
     run: input.run,
-    retrySequence: input.candidateRepair ? 4 : attempt,
+    retrySequence: input.candidateRepair ? 4 + state.candidateRepairAttempts : attempt,
     ...(input.createJob ? { createJob: input.createJob } : {}),
   });
   if (queued.stageId !== input.stageId || !queued.jobId) throw new Error("MINI_APP_STAGE_RETRY_ENQUEUE_FAILED");
@@ -342,7 +342,7 @@ export async function reconcileMiniAppFactoryStageRuns(input: {
           continue;
         }
         candidateRepair = state.retryState.status === "EXHAUSTED" && state.retryState.attempt === 3 &&
-          !state.candidateRepairAttempted && state.artifacts.some(value =>
+          state.candidateRepairAttempts < 2 && state.artifacts.some(value =>
             value.startsWith(`app-candidate:r2://mini-app-candidates/${root.tenantId}/${state.miniAppId}/run-`),
           );
         if (state.retryState.attempt >= 3 && !candidateRepair) {

@@ -129,7 +129,7 @@ describe("Mini App Factory worker_jobs binding", () => {
     })).rejects.toThrow("MINI_APP_STAGE_RETRY_EXHAUSTED");
   });
 
-  it("allows one non-billable same-run candidate repair after three Gateway attempts", async () => {
+  it("allows a bounded non-billable same-run candidate repair after three Gateway attempts", async () => {
     const run = makeRun();
     const candidateRef = `r2://mini-app-candidates/${run.tenantId}/app_test/run-${"a".repeat(16)}/sha256/${"b".repeat(64)}`;
     const exhausted = {
@@ -155,11 +155,15 @@ describe("Mini App Factory worker_jobs binding", () => {
     });
     expect(repaired).toEqual({ jobId: "same-run-candidate-repair", stageId: "SPEC", attempt: 3, created: true });
     expect(service.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
-      idempotencyKey: `miniapp-factory-candidate-repair:${run.runId}:SPEC`,
+      idempotencyKey: `miniapp-factory-candidate-repair:${run.runId}:SPEC:1`,
       payload: expect.objectContaining({ outcome: "CANDIDATE_REPAIR_SCHEDULED", attempt: 3 }),
     }));
     expect(createJob).toHaveBeenCalledWith(expect.objectContaining({
-      definition: expect.objectContaining({ idempotencyKey: expect.any(String) }),
+      definition: expect.objectContaining({
+        idempotencyKey: buildMiniAppFactoryStageJobDefinition({
+          tenantId: run.tenantId, actorId: run.actorId, runId: run.runId, stageId: "SPEC", retrySequence: 4,
+        }).idempotencyKey,
+      }),
     }));
   });
 
