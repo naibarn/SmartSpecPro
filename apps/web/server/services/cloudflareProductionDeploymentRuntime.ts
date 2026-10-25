@@ -86,7 +86,7 @@ export function createCloudflareProductionDeploymentRuntime(input: { fetchImpl?:
     withOriginConfiguration: ({ target, configurationRef, configurationDigest, operation }) => withCloudflareOriginConfiguration(db, {
       identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare" },
       configurationRef, configurationDigest,
-    }, operation),
+    }, value => operation({ ...value, configurationRef, configurationDigest })),
     withCredential: ({ target, operation }) => withCloudflareDeploymentCredential(db, {
       identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare" },
       credentialRef: target.credentialRef,

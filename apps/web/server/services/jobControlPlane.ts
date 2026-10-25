@@ -4715,7 +4715,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_ingress_origin_binding";
         replacementGrantRef?: string;
         replacementGrantExpiresAt?: string;
       },
@@ -4743,7 +4743,8 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "cloudflare_staging_native_readback" &&
           evidence.knownRuntime !== "cloudflare_staging_private_database_rejection" &&
           evidence.knownRuntime !== "cloudflare_production_database_dispatch_quarantine" &&
-          evidence.knownRuntime !== "cloudflare_production_database_credential_guard") ||
+          evidence.knownRuntime !== "cloudflare_production_database_credential_guard" &&
+          evidence.knownRuntime !== "cloudflare_production_ingress_origin_binding") ||
         (evidence.replacementGrantRef !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence.replacementGrantRef)) ||
         (evidence.replacementGrantExpiresAt !== undefined && !Number.isFinite(Date.parse(evidence.replacementGrantExpiresAt)))
       ) {
@@ -4876,6 +4877,19 @@ export function createJobControlPlane(
           typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now() &&
           Date.parse(evidence.replacementGrantExpiresAt) <= Date.now() + 15 * 60_000 &&
           evidence.operationKey === `production-database-credential-guard:${job.id}:${job.inputJson.planDigest}`;
+        // The original ingress grant binds the job, not an attempt count. One
+        // definite pre-provider wiring failure may resume under that SAME live
+        // grant/deadline; no replacement authority or traffic scope is created.
+        const knownIngressOriginBinding = evidence.knownRuntime === "cloudflare_production_ingress_origin_binding" &&
+          evidence.disposition === "pre_submission_failure" && scope?.authorizationScope === "infrastructure.cloudflare_production_ingress_technical_recovery" &&
+          actorId == null && scope.requestedByUserId === job?.requestedByUserId &&
+          job?.jobType === "cloudflare.production.deploy" && job.contractVersion === "cloudflare-production-ingress-v1" &&
+          job.status === "failed" && job.errorCode === "CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED" &&
+          job.attempt === 1 && job.maxAttempts === 1 && job.fencingVersion === 1 && job.leaseOwnerToken == null &&
+          job.inputJson?.action === "ingress-canary" && evidence.replacementGrantRef === job.inputJson.grantRef &&
+          typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now()+300000 &&
+          new Date(job.createdAt).getTime()+900000 > Date.now()+300000 &&
+          evidence.operationKey === `ingress-origin-binding:${job.id}:${job.inputJson.buildDigest}`;
         if (
           !job ||
           (job.jobType === "cloudflare.production.database.provision" && !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard) ||
@@ -4887,8 +4901,8 @@ export function createJobControlPlane(
             !knownCloudflareBootstrapReceipt &&
             !knownNativeReadbackFailure &&
             !knownPrivateDatabaseRejection &&
-            !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard) ||
-          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard)
+            !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownIngressOriginBinding) ||
+          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard && !knownIngressOriginBinding)
         )
           return false;
 
@@ -4930,7 +4944,7 @@ export function createJobControlPlane(
                     expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime() + 12 * 60_000)).toISOString(),
                   } } }
               : {}),
-            ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard) ? { maxAttempts: nextAttempt } : {}),
+            ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownIngressOriginBinding) ? { maxAttempts: nextAttempt } : {}),
             errorCode: null,
             errorMessage: null,
             failureReason: null,

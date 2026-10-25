@@ -164,6 +164,7 @@ suite(
         await import("./__tests__/support/spec277AutoTeamRuntimeSchema")
       ).installSpec277AutoTeamRuntimeSchema(client, [
         schema.systemSettings,
+        schema.workerJobActions,
         schema.users,
         schema.tenants,
         schema.tenantDataTransferPlans,
@@ -532,5 +533,23 @@ suite(
         )[0].n
       ).toBe(1);
     });
+    it("recovers only the definite pre-provider origin binding defect under the same unexpired grant",async()=>{
+      fixture.routeLive=false;const input=await submission("ingress-binding-recovery");await caller.queueCloudflareProductionIngress(input);
+      const grant=grants.get(`cf-production-ingress:${input.submissionId}`);
+      const {createJobControlPlane}=await import("./jobControlPlane");const cp=createJobControlPlane();
+      // A disposable failed execution record, never a production authority write.
+      await client`UPDATE worker_jobs SET status='failed',"errorCode"='CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED',"fencingVersion"=1 WHERE id=${input.submissionId}`;
+      const evidence={disposition:"pre_submission_failure" as const,knownRuntime:"cloudflare_production_ingress_origin_binding" as const,
+        operationKey:`ingress-origin-binding:${input.submissionId}:${grant.operation.buildDigest}`,
+        replacementGrantRef:grant.grantRef,replacementGrantExpiresAt:grant.expiresAt};
+      const scope={tenantId:input.tenantId,requestedByUserId:17,authorizationScope:"infrastructure.cloudflare_production_ingress_technical_recovery"};
+      await expect(cp.recoverReviewGatedJob(input.submissionId,randomUUID(),"corrected binding",{...evidence,replacementGrantExpiresAt:new Date(Date.now()+1000).toISOString()},undefined,scope)).resolves.toBe(false);
+      await expect(cp.recoverReviewGatedJob(input.submissionId,randomUUID(),"corrected binding",evidence,undefined,scope)).resolves.toBe(true);
+      const [job]=await client`SELECT status,attempt,"maxAttempts","inputJson" FROM worker_jobs WHERE id=${input.submissionId}`;
+      expect(job).toMatchObject({status:"queued",attempt:2,maxAttempts:2,inputJson:{grantRef:grant.grantRef}});
+      await client`UPDATE worker_jobs SET status='failed',"errorCode"='CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED' WHERE id=${input.submissionId}`;
+      await expect(cp.recoverReviewGatedJob(input.submissionId,randomUUID(),"corrected binding",evidence,undefined,scope)).resolves.toBe(false);
+    });
+
   }
 );
