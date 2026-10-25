@@ -304,14 +304,19 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        map_connect_request_error, request_json_with_agent, safe_refresh_error_code,
-        validate_start_pairing_response, StartPairingResponse,
+        load_connection, load_or_refresh, map_connect_request_error, request_json_with_agent,
+        safe_refresh_error_code, save_connection, validate_start_pairing_response,
+        StartPairingResponse, StoredRunnerConnection,
     };
+    use crate::{config::RunnerConfig, device_proof::generate_device_proof_material};
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine as _;
+    use serde_json::json;
     use std::{
         io::{Read, Write},
         net::TcpListener,
         thread,
-        time::Duration,
+        time::{Duration, SystemTime, UNIX_EPOCH},
     };
 
     fn current_response() -> StartPairingResponse {
@@ -522,6 +527,86 @@ mod tests {
         assert_eq!(error, "RUNNER_CONNECT_RESPONSE_INVALID");
         assert!(!error.contains(secret_body));
         server.join().unwrap();
+    }
+
+    fn test_token(jti: &str, expires_at: u64) -> String {
+        let payload = URL_SAFE_NO_PAD
+            .encode(serde_json::to_vec(&json!({ "jti": jti, "exp": expires_at })).unwrap());
+        format!("e30.{payload}.test-signature")
+    }
+
+    #[test]
+    fn stored_credentials_refresh_and_rotate_without_repairing() {
+        let root = tempfile::tempdir().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let refresh_token = test_token("refresh-old", u64::MAX);
+        let next_control_token = test_token("access-new", u64::MAX);
+        let next_refresh_token = test_token("refresh-new", u64::MAX);
+        let expected_refresh_token = refresh_token.clone();
+        let response_body = json!({
+            "controlToken": next_control_token,
+            "refreshToken": next_refresh_token,
+            "runnerSessionId": "session-next"
+        })
+        .to_string();
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n{}",
+            response_body.len(),
+            response_body
+        );
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0; 8192];
+            let length = stream.read(&mut request).unwrap();
+            let request = String::from_utf8_lossy(&request[..length]).to_ascii_lowercase();
+            assert!(request.starts_with("post /api/runners/local-runner/access/refresh "));
+            assert!(request.contains(&format!(
+                "authorization: bearer {}",
+                expected_refresh_token.to_ascii_lowercase()
+            )));
+            stream.write_all(response.as_bytes()).unwrap();
+        });
+
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let material = generate_device_proof_material(Some("device-1")).unwrap();
+        let connection = StoredRunnerConnection {
+            server_url: format!("http://{address}"),
+            runner_id: "local-runner".into(),
+            display_name: "Local Runner".into(),
+            device_id: material.device_id.clone(),
+            machine_fingerprint: material.machine_fingerprint.clone(),
+            public_key_pem: material.public_key_pem,
+            private_key_pem: material.private_key_pem,
+            control_token: test_token("access-old", now),
+            refresh_token,
+            runner_session_id: Some("session-old".into()),
+            tenant_id: Some("tenant-test".into()),
+        };
+        let mut config = RunnerConfig::local(
+            &connection.runner_id,
+            &connection.device_id,
+            &connection.server_url,
+        );
+        config.data_root = root.path().to_string_lossy().into_owned();
+        save_connection(&config.data_root, &connection).unwrap();
+
+        let refreshed = load_or_refresh(&config).unwrap().unwrap();
+        server.join().unwrap();
+
+        assert_eq!(refreshed.control_token, test_token("access-new", u64::MAX));
+        assert_eq!(refreshed.refresh_token, test_token("refresh-new", u64::MAX));
+        assert_eq!(refreshed.runner_session_id.as_deref(), Some("session-next"));
+        assert_eq!(
+            load_connection(&config.data_root)
+                .unwrap()
+                .unwrap()
+                .control_token,
+            refreshed.control_token
+        );
     }
 }
 
