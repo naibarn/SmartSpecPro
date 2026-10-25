@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `56`
-- Updated (UTC): `2026-10-25T01:59:18+00:00`
+- State generation: `57`
+- Updated (UTC): `2026-10-25T02:00:20+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `9af1df5c341966c10759bbba5839cc36f2a750c9`
+- Latest recorded merged Main SHA: `2cb05d7cfeba5fa983f215f357081336a4406ede`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
-- Next action: Obtain SSH authorization for the existing PostgreSQL Linux host using the current workspace key, then verify/install the production hostname certificate and private Tunnel path, create and test the least-privilege runtime role with tenant isolation, and only then run the already-integrated exact-scope Canonical Job from the authenticated Admin session. Do not change production routes before the independent canary authority passes.
+- Next action: Restore authorized SSH access to the existing PostgreSQL Linux host using the public key below; then verify/install matching production TLS and Tunnel routing, prepare/test the least-privilege role and tenant isolation, and execute the integrated production DB job from the authenticated Admin session. No production route change before independent canary authority passes.
 
 ## Sections
 
