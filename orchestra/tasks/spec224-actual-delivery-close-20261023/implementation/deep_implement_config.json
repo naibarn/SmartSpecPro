@@ -36,10 +36,10 @@
     },
     "section-03-real-browser-acceptance": {
       "status": "checkpointed",
-      "next_action": "Use the existing owner session for user 23 to open https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff with Playwright Chromium, inspect current run and invoke Retry / Repair on the same App ID. Runtime generation 83 includes the missing-title recovery. No authorized owner browser session is available to this execution context; never use the synthetic UAT broker identity for this private app.",
-      "checkpoint_sha": "9c9d77adc4a23eda9cb884d3b5789c2c15967439",
+      "next_action": "Continue live recovery of existing app_e6f0be051fd22e09bc4c5dff using owner user 23 browser session: open canonical App Home with Playwright Chromium, inspect existing DevelopmentRun, invoke Retry / Repair on that same app, then verify progress and preview. Core runtime already includes missing-title recovery. No authenticated owner browser session is currently available to this Codex execution context.",
+      "checkpoint_sha": "f5233d1d75017e64d845a2b1c24324019e7dc485",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "merged_main_sha": "9c9d77adc4a23eda9cb884d3b5789c2c15967439"
+      "merged_main_sha": "f5233d1d75017e64d845a2b1c24324019e7dc485"
     }
   },
   "pre_commit": {
@@ -51,11 +51,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 20,
-  "updated_at": "2026-10-25T01:49:33.912916+00:00",
+  "generation": 21,
+  "updated_at": "2026-10-25T01:50:42.728772+00:00",
   "progress": {
     "active_section": "section-03-real-browser-acceptance",
-    "next_action": "Use the existing owner session for user 23 to open https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff with Playwright Chromium, inspect current run and invoke Retry / Repair on the same App ID. Runtime generation 83 includes the missing-title recovery. No authorized owner browser session is available to this execution context; never use the synthetic UAT broker identity for this private app.",
+    "next_action": "Continue live recovery of existing app_e6f0be051fd22e09bc4c5dff using owner user 23 browser session: open canonical App Home with Playwright Chromium, inspect existing DevelopmentRun, invoke Retry / Repair on that same app, then verify progress and preview. Core runtime already includes missing-title recovery. No authenticated owner browser session is currently available to this Codex execution context.",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "gaps": [
       "No USER_TRIAL_READY trusted receipt is currently emitted into the Mini-App factory DevelopmentRun; current addition validates a receipt but has no production caller.",
@@ -74,6 +74,6 @@
       "The shared dev web process is serving stale checkout 4539aee (282 commits behind main) with unrelated dirty work; dev tunnel DNS currently fails for dev.aimarkethubs.com. Do not overwrite that checkout; real browser verification requires a clean preview built from the merged SHA and restored test hostname.",
       "The app owner user 23 must be authenticated in the browser to perform private App Home and same-run Retry / Repair acceptance; the existing synthetic UAT broker identities are not authorized for this app."
     ],
-    "merged_main_sha": "9c9d77adc4a23eda9cb884d3b5789c2c15967439"
+    "merged_main_sha": "f5233d1d75017e64d845a2b1c24324019e7dc485"
   }
 }

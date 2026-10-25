@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `20`
-- Updated (UTC): `2026-10-25T01:49:33.912916+00:00`
+- State generation: `21`
+- Updated (UTC): `2026-10-25T01:50:42.728772+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `9c9d77adc4a23eda9cb884d3b5789c2c15967439`
+- Latest recorded merged Main SHA: `f5233d1d75017e64d845a2b1c24324019e7dc485`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-real-browser-acceptance`
-- Next action: Use the existing owner session for user 23 to open https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff with Playwright Chromium, inspect current run and invoke Retry / Repair on the same App ID. Runtime generation 83 includes the missing-title recovery. No authorized owner browser session is available to this execution context; never use the synthetic UAT broker identity for this private app.
+- Next action: Continue live recovery of existing app_e6f0be051fd22e09bc4c5dff using owner user 23 browser session: open canonical App Home with Playwright Chromium, inspect existing DevelopmentRun, invoke Retry / Repair on that same app, then verify progress and preview. Core runtime already includes missing-title recovery. No authenticated owner browser session is currently available to this Codex execution context.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-contract-continuation | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | 24e252092c95fd9b71018deed5b1cf0c03eaa909 | Continue through section 02: run real hosted Gateway generation using an authorized non-production tenant and bind its app source/artifact; retain preview-state projection fix. |
 | section-02-live-hosted-execution | checkpointed | — | /home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023 | d0dd405c435f1dba90f78b388b394d43868f24a8 | d0dd405c435f1dba90f78b388b394d43868f24a8 | Prepare an isolated non-production preview from merged main without touching the dirty shared checkout, provision/apply migration 0410 to its disposable DB, configure GitHub OAuth callback once, and run real Gateway-backed expense-tracker owner/unauthorized browser checks. |
-| section-03-real-browser-acceptance | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Use the existing owner session for user 23 to open https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff with Playwright Chromium, inspect current run and invoke Retry / Repair on the same App ID. Runtime generation 83 includes the missing-title recovery. No authorized owner browser session is available to this execution context; never use the synthetic UAT broker identity for this private app. |
+| section-03-real-browser-acceptance | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | f5233d1d75017e64d845a2b1c24324019e7dc485 | f5233d1d75017e64d845a2b1c24324019e7dc485 | Continue live recovery of existing app_e6f0be051fd22e09bc4c5dff using owner user 23 browser session: open canonical App Home with Playwright Chromium, inspect existing DevelopmentRun, invoke Retry / Repair on that same app, then verify progress and preview. Core runtime already includes missing-title recovery. No authenticated owner browser session is currently available to this Codex execution context. |
 | section-04-release-final-verify | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Runtime generation 83 serves revision 9c9d77adc4a23eda9cb884d3b5789c2c15967439. The existing target App Identity (owner user 23, tenant tenant-ZCSKEM9s) and expired run anchor are present in the runtime database; the old absence conclusion came from querying a different database endpoint. Owner browser acceptance remains pending a legitimately authenticated owner session. |
 
 ## Open gaps / blockers (not automatic merge blockers)
