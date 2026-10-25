@@ -29,6 +29,13 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
       "cloudflare-production-queue-provision-v1",
     )).toBeDefined();
   });
+  it("admits the exact grant-bound Production Database provisioning executor", () => {
+    expect(isPostgresNodeJobType("cloudflare.production.database.provision")).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(
+      "cloudflare.production.database.provision",
+      "cloudflare-prod-db-provision-v1",
+    )).toBeDefined();
+  });
   it("admits external_agent_task through the canonical worker path", () => {
     expect(POSTGRES_NODE_JOB_TYPES.has("external_agent_task")).toBe(true);
     expect(isPostgresNodeJobType("external_agent_task")).toBe(true);

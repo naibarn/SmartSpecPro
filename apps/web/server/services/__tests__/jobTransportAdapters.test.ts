@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "../cloudflareHttpImageProvisionContract";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB } from "../cloudflareProductionQueueProvision";
+import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE_JOB } from "../cloudflareProductionDatabaseExecutor";
 import { validateJobDefinition } from "../jobCanonicalization";
 
 import {
@@ -17,6 +18,14 @@ describe("job transport adapters", () => {
     expect(postgres.supports(input)).toBe(true);
     expect(cloudflare.supports(input)).toBe(false);
     expect(postgres.supports({ ...input, contractVersion: `${CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT}-unknown` })).toBe(false);
+  });
+  it("admits the exact Production Database provisioning contract on PostgreSQL pull only", () => {
+    const postgres = new PostgresPullJobTransportAdapter();
+    const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
+    const input = { jobType: CLOUDFLARE_PRODUCTION_DATABASE_JOB, executionClass: "long", contractVersion: CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT };
+    expect(postgres.supports(input)).toBe(true);
+    expect(cloudflare.supports(input)).toBe(false);
+    expect(postgres.supports({ ...input, contractVersion: `${CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT}-unknown` })).toBe(false);
   });
 
   it("admits HTTP image jobs into the real canonical envelope and PostgreSQL-only transport", () => {

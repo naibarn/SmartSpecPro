@@ -65,6 +65,10 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   // operation. Its executor revalidates the exact saved target and job lease;
   // it cannot bind a Worker or change traffic.
   "cloudflare.production.queue.provision",
+  // Production database provisioning is a grant-bound canonical operation.
+  // The executor revalidates the encrypted grant and exact job lease before
+  // creating VPC/Hyperdrive resources.
+  "cloudflare.production.database.provision",
   // Feature 195 is the sole durable execution authority for the
   // provider-neutral external-agent handoff. Provider selection remains in
   // the governed job manifest; it must not create a second queue or worker.
