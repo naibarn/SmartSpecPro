@@ -358,7 +358,10 @@ export async function reconcileMiniAppFactoryStageRuns(input: {
           await service.recordVerificationEvent({
             ...scope,
             type: "VERIFICATION_OUTCOME",
-            idempotencyKey: `miniapp-factory-retry-exhausted:${runId}:${stageId}:${state.retryState.attempt}`,
+            // Bind the terminal projection to this immutable job. A later
+            // source-only repair can fail with a different code while the
+            // Gateway attempt budget remains exhausted.
+            idempotencyKey: `miniapp-factory-retry-exhausted:${runId}:${stageId}:${state.retryState.attempt}:${latestStageJob.id}`,
             payload: { profile: "PERSONAL_MINIAPP", stageId, outcome: "RETRY_EXHAUSTED", code: failureCode },
             runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: exhaustedState },
           });
