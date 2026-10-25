@@ -39,9 +39,12 @@ import { Section } from "@astryxdesign/core/Section";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
 import { TabList, Tab } from "@astryxdesign/core/TabList";
 import { TextArea } from "@astryxdesign/core/TextArea";
+import { Card } from "@astryxdesign/core/Card";
+import { Collapsible } from "@astryxdesign/core/Collapsible";
+import { StatusDot } from "@astryxdesign/core/StatusDot";
 
 // Pages use this facade so app-wide layouts keep a single Astryx entrypoint.
-export { HStack, VStack, Heading, Text, Section, ProgressBar, TabList, Tab, TextArea };
+export { HStack, VStack, Heading, Text, Section, ProgressBar, TabList, Tab, TextArea, Card, Grid, Collapsible, StatusDot };
 export { AstryxButton as AppButton };
 
 /** A single breadcrumb entry. Omit `href` for a non-link (plain text) crumb. */

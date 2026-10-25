@@ -106,7 +106,7 @@ describe("MiniAppRoute", () => {
       factory: null,
     };
     render(<MiniAppRoute />);
-    expect(await screen.findByText("BUILDING")).toBeInTheDocument();
+    expect(await screen.findByText("Building")).toBeInTheDocument();
     expect(await screen.findByText("Generation failed before a source snapshot was created.")).toBeInTheDocument();
     expect(mocks.resolveMiniApp).toHaveBeenCalledWith({ appId: "app_created" }, expect.objectContaining({ enabled: true, retry: false }));
   });
@@ -155,7 +155,8 @@ describe("MiniAppRoute", () => {
     expect(await screen.findByTestId("miniapp-preview-frame")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("tab", { name: "Progress" }));
     expect(screen.getByText(/Connect GitHub in Settings → Integrations/)).toBeInTheDocument();
-    expect(screen.getByText("Next stages: package → deploy")).toBeInTheDocument();
+    expect(screen.getByText("Package app files")).toBeInTheDocument();
+    expect(screen.getByText("Publish private preview")).toBeInTheDocument();
     const options = mocks.resolveMiniApp.mock.calls[0]?.[1] as { refetchInterval?: (query: any) => number | false };
     expect(options.refetchInterval?.({ state: { data: mocks.appQuery.data } })).toBe(2_000);
   });
@@ -170,6 +171,33 @@ describe("MiniAppRoute", () => {
     render(<MiniAppRoute />);
     fireEvent.click(await screen.findByRole("button", { name: "Retry / Repair" }));
     expect(mocks.retryMutation.mutate).toHaveBeenCalledWith({ appId: "app_failed" });
+  });
+
+  it("keeps the App Home visible after a failed build and expands technical diagnostics", async () => {
+    mocks.miniAppParams = { appId: "app_failed" };
+    mocks.appQuery.data = {
+      app: { appId: "app_failed", visibility: "private", deploymentVersion: 0, lastKnownGoodArtifactRef: null },
+      html: null,
+      factory: {
+        milestone: "BUILD_FAILED",
+        jobState: "failed",
+        currentStage: "ui_implementation",
+        latestStageJobId: "job-stage-1",
+        retryable: true,
+        isInProgress: false,
+        remainingStages: ["ui_implementation", "package"],
+        error: { code: "LLMStructuredOutputError", message: "The app generation response was incomplete." },
+      },
+    };
+
+    render(<MiniAppRoute />);
+
+    expect(await screen.findByRole("heading", { name: "app_failed" })).toBeInTheDocument();
+    expect(screen.getByText("The app generation response was incomplete.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry / Repair" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Technical details" }));
+    expect(screen.getByText("Code: LLMStructuredOutputError")).toBeInTheDocument();
+    expect(screen.getByText("Job: job-stage-1")).toBeInTheDocument();
   });
 
   it("submits feedback as a continuation of the same App Workspace", async () => {

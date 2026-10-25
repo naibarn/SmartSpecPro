@@ -1,11 +1,41 @@
 import { lazy, useEffect, useRef, useState } from "react";
 import { useRoute } from "wouter";
-import { AppButton, AppPage, Heading, HStack, ProgressBar, Section, Tab, TabList, Text, TextArea, VStack } from "@/components/AppPage";
+import { AppButton, AppPage, Card, Collapsible, Grid, Heading, HStack, ProgressBar, Section, StatusDot, Tab, TabList, Text, TextArea, VStack } from "@/components/AppPage";
 import { trpc } from "@/lib/trpc";
 
 const ResearchNotesPage = lazy(() => import("@/pages/ResearchNotesPage"));
 const ProjectWikiPagesPage = lazy(() => import("@/pages/ProjectWikiPagesPage"));
 type ProjectTab = "preview" | "progress" | "files" | "builds";
+
+const STAGE_LABELS: Record<string, string> = {
+  ui_implementation: "Implement app interface",
+  package: "Package app files",
+  deploy: "Publish private preview",
+  smoke: "Verify preview",
+  source_repository: "Set up source repository",
+};
+
+function humanizeStage(stage: string): string {
+  return STAGE_LABELS[stage] ?? stage.replace(/[_-]+/g, " ").replace(/^\w/, value => value.toUpperCase());
+}
+
+function readableStatus(status?: string | null): string {
+  const labels: Record<string, string> = {
+    BUILDING: "Building",
+    BUILD_FAILED: "Build needs attention",
+    PREVIEW_AVAILABLE: "Preview available",
+    queued: "Queued",
+    retry_scheduled: "Retry scheduled",
+    leased: "Worker starting",
+    running: "In progress",
+    waiting_external: "Waiting for provider",
+    failed: "Failed",
+    expired: "Timed out",
+    cancelled: "Cancelled",
+    completed: "Completed",
+  };
+  return status ? (labels[status] ?? status.replace(/[_-]+/g, " ")) : "Preparing your private app";
+}
 
 function ContinueMiniApp({ input, onStarted }: {
   input: { appId: string; conversationId: number };
@@ -61,7 +91,7 @@ function MiniAppHome({ appId, app, data, onChanged }: {
   const [tab, setTab] = useState<ProjectTab>(data.html ? "preview" : "progress");
   const factory = data.factory;
   const retry = trpc.spec226DevelopmentControl.retryMiniAppFactoryStage.useMutation({ onSuccess: onChanged });
-  const stages = [...new Set([...(factory?.completedStages ?? []), ...(factory?.remainingStages ?? [])])];
+  const stages = [...new Set([...(factory?.completedStages ?? []), ...(factory?.currentStage ? [factory.currentStage] : []), ...(factory?.remainingStages ?? [])])];
   const progress = stages.length ? Math.round(((factory?.completedStages?.length ?? 0) / stages.length) * 100) : 0;
   const title = factory?.goal
     ? factory.goal.trim().split(/[.!?\n]/, 1)[0]!
@@ -72,6 +102,8 @@ function MiniAppHome({ appId, app, data, onChanged }: {
     : app?.appId ?? appId;
   const active = Boolean(factory?.isInProgress);
   const previewAvailable = Boolean(app?.lastKnownGoodArtifactRef && data.html);
+  const status = previewAvailable && !active ? "PREVIEW_AVAILABLE" : factory?.milestone ?? factory?.jobState ?? "BUILDING";
+  const statusVariant = active ? "accent" : factory?.jobState === "failed" || factory?.jobState === "expired" ? "error" : previewAvailable ? "success" : "warning";
   const artifactRefs = factory?.artifacts?.filter((value: string) => /^(?:app-source|app-artifact|app-candidate|package-digest|app-repository):/.test(value)) ?? [];
 
   useEffect(() => {
@@ -110,9 +142,11 @@ function MiniAppHome({ appId, app, data, onChanged }: {
   return (
     <AppPage
       title={title || app?.appId || appId}
-      description={`Private Mini-App · ${appId}`}
+      description={`Private Mini-App · ${appId} · Version ${app?.deploymentVersion ?? 0}`}
+      constrainToParent
       actions={(
         <HStack wrap="wrap" gap={2}>
+          {previewAvailable ? <AppButton label="Open Preview" variant="secondary" onClick={() => setTab("preview")} /> : null}
           {factory?.retryable ? (
             <AppButton
               label={retry.isPending ? "Repairing…" : "Retry / Repair"}
@@ -124,21 +158,55 @@ function MiniAppHome({ appId, app, data, onChanged }: {
         </HStack>
       )}
     >
-      <VStack gap={4}>
-        <Section>
-          <VStack gap={3}>
-            <HStack justify="between" align="center" wrap="wrap" gap={2}>
-              <Heading level={2}>{factory?.milestone === "BUILDING" && previewAvailable ? "PREVIEW_AVAILABLE" : factory?.milestone ?? (previewAvailable ? "PREVIEW_AVAILABLE" : "BUILDING")}</Heading>
-              <Text type="body" color="secondary">{factory?.jobState ?? "Preparing your private app"}{factory?.currentStage ? ` · ${factory.currentStage}` : ""}</Text>
-            </HStack>
-            <ProgressBar label="Mini-App build progress" value={progress} max={100} hasValueLabel />
-            {factory?.latestStageUpdatedAt ? <Text type="body" color="secondary">Last job update: {new Date(factory.latestStageUpdatedAt).toLocaleString()}</Text> : null}
-            {factory?.remainingStages?.length ? <Text type="body" color="secondary">Next stages: {factory.remainingStages.join(" → ")}</Text> : null}
-            {factory?.error ? <Text type="body" color="secondary" role="alert">{factory.error.message || factory.error.code}</Text> : null}
-            {retry.error ? <Text type="body" color="secondary" role="alert">Repair could not start: {retry.error.message}</Text> : null}
-            {retry.isSuccess ? <Text type="body" color="secondary" role="status">Repair was queued on the existing DevelopmentRun.</Text> : null}
-          </VStack>
-        </Section>
+      <VStack gap={4} className="min-w-0 w-full max-w-full">
+        <Grid columns={{ minWidth: 240, max: 3 }} gap={3}>
+          <Card padding={4} data-testid="miniapp-status-card">
+            <VStack gap={2}>
+              <Text type="label" color="secondary">App status</Text>
+              <HStack align="center" gap={2}>
+                <StatusDot variant={statusVariant} label={readableStatus(status)} isPulsing={active} />
+                <Heading level={3}>{readableStatus(status)}</Heading>
+              </HStack>
+              <Text type="body" color="secondary">{factory?.currentStage ? humanizeStage(factory.currentStage) : previewAvailable ? `Private preview · version ${app?.deploymentVersion ?? 0}` : "Your App Home is saved and available while work continues."}</Text>
+            </VStack>
+          </Card>
+          <Card padding={4} data-testid="miniapp-progress-card">
+            <VStack gap={2}>
+              <Text type="label" color="secondary">Build progress</Text>
+              <ProgressBar label="Mini-App build progress" value={progress} max={100} hasValueLabel />
+              <Text type="body" color="secondary">{factory?.completedStages?.length ?? 0} of {stages.length} stages complete</Text>
+            </VStack>
+          </Card>
+          <Card padding={4} data-testid="miniapp-execution-card">
+            <VStack gap={2}>
+              <Text type="label" color="secondary">Execution</Text>
+              <Text type="body">{readableStatus(factory?.jobState)}</Text>
+              {factory?.latestStageJobId ? <Text type="body" color="secondary">Job · {factory.latestStageJobId}</Text> : <Text type="body" color="secondary">Waiting for the first worker job</Text>}
+              {factory?.latestStageUpdatedAt ? <Text type="body" color="secondary">Updated {new Date(factory.latestStageUpdatedAt).toLocaleString()}</Text> : null}
+            </VStack>
+          </Card>
+        </Grid>
+
+        {factory?.error ? (
+          <Section>
+            <VStack gap={2}>
+              <Heading level={3}>This build needs attention</Heading>
+              <Text type="body" role="alert">{factory.error.message || "The app could not complete this stage. Your App Home and saved work are preserved."}</Text>
+              <Collapsible trigger="Technical details" defaultIsOpen={false}>
+                <VStack gap={1}>
+                  <Text type="body">Code: {factory.error.code}</Text>
+                  {factory.currentStage ? <Text type="body">Stage: {factory.currentStage}</Text> : null}
+                  {factory.latestStageJobId ? <Text type="body">Job: {factory.latestStageJobId}</Text> : null}
+                </VStack>
+              </Collapsible>
+              {retry.error ? <Text type="body" role="alert">Repair could not start: {retry.error.message}</Text> : null}
+              {retry.isSuccess ? <Text type="body" role="status">Repair was queued on this App’s existing DevelopmentRun.</Text> : null}
+            </VStack>
+          </Section>
+        ) : null}
+
+        {!factory?.error && retry.error ? <Text type="body" role="alert">Repair could not start: {retry.error.message}</Text> : null}
+        {retry.isSuccess && !factory?.error ? <Text type="body" role="status">Repair was queued on this App’s existing DevelopmentRun.</Text> : null}
 
         <TabList value={tab} onChange={value => setTab(value as ProjectTab)} role="tablist" layout="fill" hasDivider>
           <Tab value="preview" label="Preview" panelId="miniapp-panel-preview" />
@@ -171,12 +239,25 @@ function MiniAppHome({ appId, app, data, onChanged }: {
         {tab === "progress" ? (
           <Section>
             <VStack gap={3}>
-              <Heading level={3}>Development progress</Heading>
+              <Heading level={2}>Development timeline</Heading>
+              {stages.length ? <Grid columns={{ minWidth: 220, max: 4 }} gap={2}>
+                {stages.map((stage: string) => {
+                  const completed = factory?.completedStages?.includes(stage);
+                  const current = factory?.currentStage === stage && !completed;
+                  const failed = current && (factory?.jobState === "failed" || factory?.jobState === "expired");
+                  const label = completed ? "Complete" : failed ? readableStatus(factory?.jobState) : current ? readableStatus(factory?.jobState) : "Queued";
+                  return <Card key={stage} padding={3} variant={failed ? "red" : completed ? "green" : current ? "blue" : "muted"} data-testid={`miniapp-stage-${stage}`}>
+                    <VStack gap={1}>
+                      <Text type="label">{humanizeStage(stage)}</Text>
+                      <Text type="body" color="secondary">{label}</Text>
+                    </VStack>
+                  </Card>;
+                })}
+              </Grid> : <Text type="body" color="secondary">The development plan will appear when the first run is recorded.</Text>}
               {factory?.sourceSnapshotRef ? <Text type="body">Source snapshot saved · SHA-256 {factory.appSourceDigest ?? "available"}</Text> : <Text type="body" color="secondary">Generation failed before a source snapshot was created.</Text>}
-              {factory?.currentStage && factory?.jobState === "failed" ? <Text type="body" color="secondary">Failed at {factory.currentStage}. {factory.retryable ? "Retry / Repair will resume this stage on the same run." : "This stage is not currently retryable."}</Text> : null}
+              {factory?.currentStage && (factory?.jobState === "failed" || factory?.jobState === "expired") ? <Text type="body" color="secondary">Stopped at {humanizeStage(factory.currentStage)}. {factory.retryable ? "Retry / Repair will resume this stage on the same run." : "This stage is not currently retryable."}</Text> : null}
               {factory?.repository?.url ? <Text type="body">Repository: <a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></Text> : <Text type="body" color="secondary">Repository: {factory?.repositoryState ?? "Not provisioned yet"}</Text>}
               {factory?.repositoryState === "AUTH_REQUIRED" ? <Text type="body" color="secondary">Source and preview remain in this private App Home. Connect GitHub in Settings → Integrations to provision a dedicated repository.</Text> : null}
-              {factory?.conversationId ? <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} /> : null}
             </VStack>
           </Section>
         ) : null}
@@ -195,13 +276,20 @@ function MiniAppHome({ appId, app, data, onChanged }: {
           <Section>
             <VStack gap={2}>
               <Heading level={3}>Build history</Heading>
-              {factory?.completedStages?.length ? <ol>{factory.completedStages.map((stage: string) => <li key={stage}>{stage} · complete</li>)}</ol> : <Text type="body" color="secondary">No stages completed yet.</Text>}
-              {factory?.currentStage ? <Text type="body">Latest attempt: {factory.currentStage} · {factory.jobState}</Text> : null}
+              {factory?.completedStages?.length ? factory.completedStages.map((stage: string) => <Text key={stage} type="body">{humanizeStage(stage)} · complete</Text>) : <Text type="body" color="secondary">No stages completed yet.</Text>}
+              {factory?.currentStage ? <Text type="body">Latest attempt: {humanizeStage(factory.currentStage)} · {readableStatus(factory.jobState)}</Text> : null}
               {factory?.latestStageJobId ? <Text type="body" color="secondary">Job ID: {factory.latestStageJobId}</Text> : null}
-              {factory?.error ? <Text type="body" color="secondary">Error: {factory.error.message || factory.error.code}</Text> : null}
+              {factory?.error ? <Text type="body" color="secondary">Error: {factory.error.code}</Text> : null}
             </VStack>
           </Section>
         ) : null}
+
+        {factory?.conversationId ? <Section>
+          <VStack gap={3}>
+            <Heading level={2}>Continue development</Heading>
+            <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} />
+          </VStack>
+        </Section> : null}
       </VStack>
     </AppPage>
   );
