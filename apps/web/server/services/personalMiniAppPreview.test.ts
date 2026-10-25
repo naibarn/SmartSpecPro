@@ -30,6 +30,7 @@ import {
   buildAndStorePersonalMiniApp,
   derivePersonalMiniAppTitle,
   generatePersonalMiniApp,
+  materializePreparedMiniAppArtifactFiles,
   provisionManagedMiniAppRepository,
   provisionMiniAppRepositoryFromSnapshot,
   promoteMiniAppArtifactAfterVerification,
@@ -56,6 +57,23 @@ beforeEach(() => {
 });
 
 describe("personal Mini-App artifact assembly", () => {
+  it("reproduces the prepared static build from committed source when dist is gitignored", () => {
+    const sourceFiles = {
+      "src/index.html": "<main>V2</main>",
+      "src/styles.css": "main{color:teal}",
+      "src/storage-adapter.js": "window.storageReady=true",
+      "src/app.js": "document.body.dataset.ready='true'",
+    };
+    expect(materializePreparedMiniAppArtifactFiles(sourceFiles)).toEqual({
+      "index.html": sourceFiles["src/index.html"],
+      "styles.css": sourceFiles["src/styles.css"],
+      "storage-adapter.js": sourceFiles["src/storage-adapter.js"],
+      "app.js": sourceFiles["src/app.js"],
+    });
+    expect(() => materializePreparedMiniAppArtifactFiles({ "src/index.html": "<main>V2</main>" }))
+      .toThrow("MINI_APP_CANDIDATE_FILE_MISSING");
+  });
+
   it("keeps V1 serving when a pre-promotion smoke assertion fails", async () => {
     const v1Bytes = Buffer.from("<!doctype html><html><head></head><body><main>V1 expense tracker</main></body></html>");
     const v1Digest = createHash("sha256").update(v1Bytes).digest("hex");

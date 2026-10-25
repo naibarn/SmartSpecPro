@@ -37,11 +37,11 @@ type PreparedMiniAppBundle = {
   files: Record<string, string>;
 };
 
-const PREPARED_FILES = [
+const PREPARED_SOURCE_FILES = [
   "src/index.html", "src/styles.css", "src/storage-adapter.js", "src/app.js",
-  "dist/index.html", "dist/styles.css", "dist/storage-adapter.js", "dist/app.js", "dist/BUILD-MANIFEST.json",
   "package.json", "scripts/build.mjs", "scripts/serve.mjs", "SOURCE_PROVENANCE.json",
 ] as const;
+const PREPARED_ARTIFACT_FILES = ["index.html", "styles.css", "storage-adapter.js", "app.js"] as const;
 
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -54,21 +54,14 @@ function verifyPreparedBundle(bundle: PreparedMiniAppBundle): void {
       bundle.branch !== expected.branch || bundle.revision !== expected.revision ||
       bundle.parentRevision !== expected.parentRevision || bundle.sourceTreeDigest !== expected.sourceTreeDigest ||
       bundle.artifactDigest !== expected.artifactDigest) throw new Error("MINI_APP_CANDIDATE_PROVENANCE_MISMATCH");
-  const sourceFiles = PREPARED_FILES.filter(path => path.startsWith("src/")).map(path => path.slice(4)).sort();
+  const sourceFiles = PREPARED_SOURCE_FILES.filter(path => path.startsWith("src/")).map(path => path.slice(4)).sort();
   const sourceHash = createHash("sha256");
   for (const path of sourceFiles) sourceHash.update(path).update("\0").update(bundle.files[`src/${path}`] ?? "").update("\n");
   if (sourceHash.digest("hex") !== expected.sourceTreeDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_DIGEST_MISMATCH");
-  const manifestText = bundle.files["dist/BUILD-MANIFEST.json"];
-  if (!manifestText) throw new Error("MINI_APP_CANDIDATE_MANIFEST_MISSING");
-  const manifest = JSON.parse(manifestText) as { appId?: unknown; artifactDigest?: unknown; sourceTreeDigest?: unknown; files?: Record<string, unknown> };
-  if (manifest.appId !== expected.appId || manifest.artifactDigest !== expected.artifactDigest || manifest.sourceTreeDigest !== expected.sourceTreeDigest) {
-    throw new Error("MINI_APP_CANDIDATE_MANIFEST_MISMATCH");
-  }
   const artifactHash = createHash("sha256");
-  const artifactFiles = ["app.js", "index.html", "storage-adapter.js", "styles.css"];
-  for (const path of artifactFiles) {
-    const text = bundle.files[`dist/${path}`];
-    if (typeof text !== "string" || manifest.files?.[path] !== sha256(text)) throw new Error("MINI_APP_CANDIDATE_FILE_DIGEST_MISMATCH");
+  for (const path of [...PREPARED_ARTIFACT_FILES].sort()) {
+    const text = bundle.files[`src/${path}`];
+    if (typeof text !== "string") throw new Error("MINI_APP_CANDIDATE_FILE_MISSING");
     artifactHash.update(path).update("\0").update(text).update("\n");
     if (path.endsWith(".js")) new Script(text, { filename: `miniapp/${path}` });
     if (text.length > 600_000) throw new Error("MINI_APP_CANDIDATE_FILE_TOO_LARGE");
@@ -86,9 +79,19 @@ function verifyPreparedBundle(bundle: PreparedMiniAppBundle): void {
       !buildScript.includes("new Function(data.toString(\"utf8\"))")) {
     throw new Error("MINI_APP_CANDIDATE_BUILD_PROVENANCE_INVALID");
   }
-  for (const name of ["index.html", "styles.css", "storage-adapter.js", "app.js"]) {
-    if (bundle.files[`src/${name}`] !== bundle.files[`dist/${name}`]) throw new Error("MINI_APP_CANDIDATE_BUILD_REPRODUCTION_MISMATCH");
+  // The candidate intentionally ignores dist/ in Git. Its pinned build script copies
+  // these verified source files byte-for-byte, so the immutable artifact is rebuilt here.
+}
+
+/** Reproduce the candidate's dependency-free build output from its committed src tree. */
+export function materializePreparedMiniAppArtifactFiles(files: Record<string, string>): Record<string, string> {
+  const output: Record<string, string> = {};
+  for (const name of PREPARED_ARTIFACT_FILES) {
+    const content = files[`src/${name}`];
+    if (typeof content !== "string" || !content.length) throw new Error("MINI_APP_CANDIDATE_FILE_MISSING");
+    output[name] = content;
   }
+  return output;
 }
 
 async function readPreparedGitHubFile(token: string, owner: string, repo: string, blobSha: string): Promise<string> {
@@ -138,7 +141,7 @@ export async function importPreparedMiniAppCandidate(input: { appId: string; ten
   if (tree.truncated || !Array.isArray(tree.tree)) throw new Error("MINI_APP_CANDIDATE_TREE_INVALID");
   const entries = new Map(tree.tree.filter(item => item.type === "blob" && typeof item.path === "string").map(item => [item.path!, item.sha!]));
   const files: Record<string, string> = {};
-  for (const path of PREPARED_FILES) {
+  for (const path of PREPARED_SOURCE_FILES) {
     const blobSha = entries.get(path);
     if (!blobSha) throw new Error("MINI_APP_CANDIDATE_FILE_MISSING");
     files[path] = await readPreparedGitHubFile(token, expected.owner, expected.repository, blobSha);
@@ -164,11 +167,11 @@ export async function packagePreparedMiniAppCandidate(input: { tenantId: string;
   const bundle = JSON.parse(sourceBytes.toString("utf8")) as PreparedMiniAppBundle;
   verifyPreparedBundle(bundle);
   if (bundle.appId !== input.appId) throw new Error("MINI_APP_CANDIDATE_APP_MISMATCH");
-  const files = bundle.files;
-  const css = files["dist/styles.css"];
-  const storageAdapter = files["dist/storage-adapter.js"].replace(/<\/script/gi, "<\\/script");
-  const appJs = files["dist/app.js"].replace(/<\/script/gi, "<\\/script");
-  let html = files["dist/index.html"];
+  const files = materializePreparedMiniAppArtifactFiles(bundle.files);
+  const css = files["styles.css"]!;
+  const storageAdapter = files["storage-adapter.js"]!.replace(/<\/script/gi, "<\\/script");
+  const appJs = files["app.js"]!.replace(/<\/script/gi, "<\\/script");
+  let html = files["index.html"]!;
   html = html.replace(/<link\s+rel="stylesheet"\s+href="\.\/styles\.css"\s*\/?\s*>/i, `<style>${css.replace(/<\/style/gi, "<\\/style")}</style>`);
   html = html.replace(/<script\s+src="\.\/storage-adapter\.js"><\/script>/i, `<script>${storageAdapter}</script>`);
   html = html.replace(/<script\s+src="\.\/app\.js"><\/script>/i, `<script>${appJs}</script>`);
