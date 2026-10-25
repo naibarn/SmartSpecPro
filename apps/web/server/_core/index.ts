@@ -209,6 +209,10 @@ import {
   shutdownInferenceSettlementRecoveryJob,
 } from "../jobs/inferenceSettlementRecoveryJob";
 import {
+  initializeMiniAppFactoryRecoveryJob,
+  shutdownMiniAppFactoryRecoveryJob,
+} from "../jobs/miniAppFactoryRecoveryJob";
+import {
   initializeUnifiedJobControlPlaneReconcilerJob,
   shutdownUnifiedJobControlPlaneReconcilerJob,
 } from "../jobs/unifiedJobControlPlaneReconcilerJob";
@@ -2714,6 +2718,12 @@ async function main() {
   }
 
   try {
+    await initializeMiniAppFactoryRecoveryJob();
+  } catch (error) {
+    console.error("[Startup] Failed to initialize Mini-App Factory recovery job:", error);
+  }
+
+  try {
     await initializeUnifiedJobControlPlaneReconcilerJob();
   } catch (error) {
     console.error(
@@ -2938,6 +2948,7 @@ process.on("SIGTERM", async () => {
   await Promise.resolve(shutdownWorkspaceAuthorityAuditJob()).catch(() => {});
   await Promise.resolve(shutdownSpec224RunnerInputRetentionJob()).catch(() => {});
   await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
+  await Promise.resolve(shutdownMiniAppFactoryRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
     () => {}
   );
@@ -3012,6 +3023,7 @@ process.on("SIGINT", async () => {
   await Promise.resolve(shutdownWorkspaceAuthorityAuditJob()).catch(() => {});
   await Promise.resolve(shutdownSpec224RunnerInputRetentionJob()).catch(() => {});
   await Promise.resolve(shutdownInferenceSettlementRecoveryJob()).catch(() => {});
+  await Promise.resolve(shutdownMiniAppFactoryRecoveryJob()).catch(() => {});
   await Promise.resolve(shutdownUnifiedJobControlPlaneReconcilerJob()).catch(
     () => {}
   );

@@ -11,8 +11,8 @@ import type { JobExecutorRegistry } from "./jobExecutorRegistry";
 import type { DevelopmentRunScope, createDevelopmentRunService } from "./spec224DevelopmentRunPersistence";
 import { registerJobSettlementHook } from "./jobSettlementHooks";
 import { getDb } from "../db";
-import { workerJobs } from "../../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { appIdentities, workerJobs } from "../../drizzle/schema";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 export const MINI_APP_FACTORY_STAGE_JOB_TYPE = "mini_app_factory.stage";
 export const MINI_APP_FACTORY_STAGE_CONTRACT = "mini-app-factory-stage-v1";
@@ -219,6 +219,159 @@ export async function enqueueNextMiniAppFactoryStage(input: {
   return { stageId, jobId: job.jobId, created: job.created, state: "ENQUEUED" };
 }
 
+const MINI_APP_FACTORY_RECOVERY_ACTIVE_JOB_STATES = new Set([
+  "pending", "queued", "leased", "claimed", "preparing", "running",
+  "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing",
+]);
+const MINI_APP_FACTORY_RECOVERY_BACKOFF_MS = [60_000, 5 * 60_000, 15 * 60_000] as const;
+
+/**
+ * Reconcile Personal Mini-App DevelopmentRuns independently of App Home reads.
+ * The sweep only repairs work already authorized by a persisted owner/run
+ * binding; all writes still go through the canonical DevelopmentRun and
+ * worker_jobs/outbox APIs.
+ */
+export async function reconcileMiniAppFactoryStageRuns(input: {
+  pipeline?: MiniAppFactoryPipeline;
+  service?: DevelopmentRunService;
+  limit?: number;
+  now?: Date;
+  runId?: string;
+} = {}): Promise<{ scanned: number; scheduled: number; exhausted: number; skipped: number; errors: number }> {
+  const runtime = getConfiguredMiniAppFactoryStageWorkerRuntime();
+  const pipeline = input.pipeline ?? runtime?.pipeline;
+  const service = input.service ?? runtime?.service;
+  if (!pipeline || !service) throw new Error("FACTORY_STAGE_RUNTIME_NOT_CONFIGURED");
+  const limit = Math.max(1, Math.min(200, Math.trunc(input.limit ?? 100)));
+  const now = input.now ?? new Date();
+  const rootFilters = [sql`
+    ${workerJobs.progressJson}->'spec224'->'metadata'->'miniAppFactoryProgramState'->>'profile' = 'PERSONAL_MINIAPP'
+    AND ${workerJobs.progressJson}->'developmentLifecycle'->'workUnit' IS NOT NULL
+  `];
+  if (input.runId) rootFilters.push(sql`${workerJobs.progressJson}->'spec224'->>'runId' = ${input.runId}`);
+  const roots = await getDb().select({
+    id: workerJobs.id,
+    tenantId: workerJobs.tenantId,
+    requestedByUserId: workerJobs.requestedByUserId,
+    status: workerJobs.status,
+    progressJson: workerJobs.progressJson,
+  }).from(workerJobs).where(and(...rootFilters)).orderBy(asc(workerJobs.createdAt)).limit(limit);
+
+  const summary = { scanned: 0, scheduled: 0, exhausted: 0, skipped: 0, errors: 0 };
+  for (const root of roots) {
+    summary.scanned += 1;
+    try {
+      if (!root.requestedByUserId) { summary.skipped += 1; continue; }
+      const projection = root.progressJson.spec224;
+      if (!projection || typeof projection !== "object" || Array.isArray(projection)) { summary.skipped += 1; continue; }
+      const run = projection as Record<string, unknown>;
+      const runId = typeof run.runId === "string" ? run.runId : "";
+      const metadata = run.metadata && typeof run.metadata === "object" && !Array.isArray(run.metadata)
+        ? run.metadata as Record<string, unknown>
+        : {};
+      const state = parseMiniAppFactoryDurableState(metadata[MINI_APP_FACTORY_STATE_KEY]);
+      if (!runId || state.profile !== "PERSONAL_MINIAPP" || !state.miniAppId) { summary.skipped += 1; continue; }
+      const lifecycle = root.progressJson.developmentLifecycle;
+      const workUnit = lifecycle && typeof lifecycle === "object" && !Array.isArray(lifecycle)
+        ? (lifecycle as Record<string, unknown>).workUnit
+        : null;
+      if (!workUnit || typeof workUnit !== "object" || Array.isArray(workUnit)) { summary.skipped += 1; continue; }
+      const [identity] = await getDb().select({ appId: appIdentities.appId })
+        .from(appIdentities).where(and(
+          eq(appIdentities.appId, state.miniAppId),
+          eq(appIdentities.tenantId, root.tenantId),
+          eq(appIdentities.ownerUserId, root.requestedByUserId),
+        )).limit(1);
+      if (!identity) { summary.skipped += 1; continue; }
+
+      const scope = { runId, tenantId: root.tenantId, actorId: root.requestedByUserId };
+      const current = await service.get(scope);
+      const unit = current.run.workUnit;
+      if (!unit || unit.progress.remainingScope.length === 0) { summary.skipped += 1; continue; }
+      const stageId = selectReadyMiniAppFactoryStages(pipeline, unit, state.profile)[0];
+      if (!stageId) { summary.skipped += 1; continue; }
+      const stageJobs = await getDb().select({
+        id: workerJobs.id,
+        status: workerJobs.status,
+        errorCode: workerJobs.errorCode,
+        finishedAt: workerJobs.finishedAt,
+        inputJson: workerJobs.inputJson,
+        createdAt: workerJobs.createdAt,
+      }).from(workerJobs).where(and(
+        eq(workerJobs.tenantId, root.tenantId),
+        eq(workerJobs.requestedByUserId, root.requestedByUserId),
+        eq(workerJobs.jobType, MINI_APP_FACTORY_STAGE_JOB_TYPE),
+        sql`${workerJobs.inputJson}->>'runId' = ${runId}`,
+      )).orderBy(asc(workerJobs.createdAt));
+      if (stageJobs.some(job => MINI_APP_FACTORY_RECOVERY_ACTIVE_JOB_STATES.has(job.status))) {
+        summary.skipped += 1;
+        continue;
+      }
+      const stageJobsForStage = stageJobs.filter(job => job.inputJson.stageId === stageId);
+      const latestStageJob = stageJobsForStage.at(-1);
+      if (latestStageJob?.status === "cancelled" || latestStageJob?.status === "canceled") {
+        summary.skipped += 1;
+        continue;
+      }
+      if (latestStageJob && ["failed", "expired"].includes(latestStageJob.status)) {
+        if (!isAutoRecoverableMiniAppFactoryError(latestStageJob.errorCode)) {
+          summary.skipped += 1;
+          continue;
+        }
+        if (state.retryState.attempt >= 3) {
+          const failureCode = String(latestStageJob.errorCode || "FACTORY_STAGE_FAILED").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 100);
+          const exhaustedState = {
+            ...state,
+            retryState: { status: "EXHAUSTED" as const, attempt: state.retryState.attempt },
+            deliveryMilestone: state.deliveryMilestone === "PREVIEW_AVAILABLE" || state.deliveryMilestone === "VERIFICATION_PENDING"
+              ? state.deliveryMilestone
+              : "BUILD_FAILED" as const,
+            blockerState: { status: "BLOCKED_TRUE" as const, code: `MINI_APP_STAGE_RETRY_EXHAUSTED:${failureCode}` },
+          };
+          await service.recordVerificationEvent({
+            ...scope,
+            type: "VERIFICATION_OUTCOME",
+            idempotencyKey: `miniapp-factory-retry-exhausted:${runId}:${stageId}:${state.retryState.attempt}`,
+            payload: { profile: "PERSONAL_MINIAPP", stageId, outcome: "RETRY_EXHAUSTED", code: failureCode },
+            runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: exhaustedState },
+          });
+          summary.exhausted += 1;
+          continue;
+        }
+        const backoffMs = MINI_APP_FACTORY_RECOVERY_BACKOFF_MS[state.retryState.attempt] ?? 15 * 60_000;
+        const failedAt = latestStageJob.finishedAt?.getTime() ?? latestStageJob.createdAt.getTime();
+        if (now.getTime() < failedAt + backoffMs) { summary.skipped += 1; continue; }
+      } else if (!latestStageJob && !["succeeded", "failed", "expired", "cancelled", "canceled"].includes(root.status)) {
+        // A fresh anchor may still be dispatching its first stage.
+        summary.skipped += 1;
+        continue;
+      } else if (latestStageJob?.status === "succeeded") {
+        // A stage reported success without a durable WorkUnit checkpoint. Do
+        // not silently bill another Gateway call; retain this inconsistency.
+        summary.skipped += 1;
+        continue;
+      }
+
+      const result = await scheduleMiniAppFactoryStageRetry({
+        pipeline,
+        service,
+        run: scope,
+        appId: state.miniAppId,
+        stageId,
+      });
+      if (result.created) summary.scheduled += 1;
+      else summary.skipped += 1;
+    } catch (error) {
+      summary.errors += 1;
+      console.warn("[MiniAppFactory] background recovery reconciliation deferred", {
+        rootJobId: root.id,
+        code: error instanceof Error ? error.message.slice(0, 120) : "FACTORY_RECOVERY_RECONCILE_FAILED",
+      });
+    }
+  }
+  return summary;
+}
+
 export function createMiniAppFactoryStageJobExecutor(
   resolveRuntime: () => MiniAppFactoryStageWorkerRuntime | null,
   options: { autoScheduleNext?: boolean } = {},
@@ -316,7 +469,11 @@ export function createMiniAppFactoryStageJobExecutor(
           await runtime.service.recordVerificationEvent({
             ...run,
             type: "VERIFICATION_OUTCOME",
-            idempotencyKey: `miniapp-factory-failed:${createHash("sha256").update(`${run.runId}:${input.stageId}:${context.attempt}`).digest("hex")}`,
+            // Worker attempts are single-shot canonical jobs, so context.attempt
+            // restarts at 1 for each fenced retry job. Bind the event to the
+            // immutable job ID as well or later retries collide with the first
+            // failure and leave the durable state stuck at RETRY_SCHEDULED.
+            idempotencyKey: `miniapp-factory-failed:${createHash("sha256").update(`${run.runId}:${input.stageId}:${context.jobId}:${context.attempt}`).digest("hex")}`,
             payload: { profile: "PERSONAL_MINIAPP", stageId: input.stageId, outcome: "BUILD_FAILED", code: state.blockerState.code },
             runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: state },
           });
@@ -351,36 +508,16 @@ export function createMiniAppFactoryStageJobExecutor(
 
 registerJobSettlementHook(MINI_APP_FACTORY_STAGE_JOB_TYPE, async jobId => {
   const [job] = await getDb().select({
-    tenantId: workerJobs.tenantId,
-    requestedByUserId: workerJobs.requestedByUserId,
     status: workerJobs.status,
-    errorCode: workerJobs.errorCode,
     inputJson: workerJobs.inputJson,
   }).from(workerJobs).where(eq(workerJobs.id, jobId)).limit(1);
-  if (!job || !["failed", "expired"].includes(job.status) || !job.requestedByUserId) return;
-  const runtime = getConfiguredMiniAppFactoryStageWorkerRuntime();
-  if (!runtime) return;
+  if (!job || !["succeeded", "failed", "expired"].includes(job.status)) return;
   const input = parseMiniAppFactoryStageJobInput(job.inputJson);
-  const run = { runId: input.runId, tenantId: job.tenantId, actorId: job.requestedByUserId };
-  const current = await runtime.service.get(run);
-  if (!current.run.workUnit) return;
-  const state = parseMiniAppFactoryDurableState(current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
-  if (state.profile !== "PERSONAL_MINIAPP") return;
-  const priorStageCheckpointed = current.run.workUnit.progress.completedScope.includes(input.stageId);
-  if (!priorStageCheckpointed && !isAutoRecoverableMiniAppFactoryError(job.errorCode)) return;
-  const ready = selectReadyMiniAppFactoryStages(runtime.pipeline, current.run.workUnit, state.profile);
-  const nextStageId = ready[0];
-  if (!nextStageId || state.retryState.attempt >= 3) return;
+  if (!getConfiguredMiniAppFactoryStageWorkerRuntime()) return;
   try {
-    await scheduleMiniAppFactoryStageRetry({
-      pipeline: runtime.pipeline,
-      service: runtime.service,
-      run,
-      appId: state.miniAppId,
-      stageId: nextStageId,
-    });
+    await reconcileMiniAppFactoryStageRuns({ runId: input.runId, limit: 5 });
   } catch (error) {
-    console.error("[MiniAppFactory] automatic stage recovery could not enqueue", {
+    console.error("[MiniAppFactory] settlement recovery reconciliation failed", {
       jobId,
       runId: input.runId,
       errorCode: error instanceof Error ? error.message.slice(0, 120) : "FACTORY_AUTO_RECOVERY_FAILED",

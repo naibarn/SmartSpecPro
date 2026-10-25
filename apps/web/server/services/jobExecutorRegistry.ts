@@ -468,6 +468,16 @@ defaultJobExecutorRegistry.register({
 });
 
 defaultJobExecutorRegistry.register({
+  jobType: "mini_app_factory.recovery_sweep",
+  executionClass: "short",
+  contractVersions: new Set(["feature-186-v1"]),
+  executor: async input => {
+    const recovery = await import("../jobs/miniAppFactoryRecoveryJob");
+    return recovery.executeMiniAppFactoryRecoverySweep(input);
+  },
+});
+
+defaultJobExecutorRegistry.register({
   jobType: "computer_use.browser",
   executionClass: "external",
   contractVersions: new Set(["feature-186-v1"]),

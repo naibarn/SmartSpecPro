@@ -21,6 +21,7 @@ import {
   derivePersonalMiniAppTitle,
   generatePersonalMiniApp,
   provisionManagedMiniAppRepository,
+  repairPersonalMiniAppJsonCandidate,
   resolvePersonalMiniAppHomeMilestone,
   resolvePersonalMiniAppPreview,
 } from "./personalMiniAppPreview";
@@ -168,6 +169,38 @@ describe("personal Mini-App artifact assembly", () => {
     })).resolves.toEqual({ ...generated, title: "Personal expense tracker" });
     expect(callLLMStructured).toHaveBeenCalledTimes(1);
     expect(derivePersonalMiniAppTitle("Create a mobile-friendly personal expense tracker with income, expenses and a chart.")).toBe("Mobile-friendly personal expense tracker");
+  });
+
+  it("repairs a complete malformed Gateway JSON candidate locally before another call", async () => {
+    const rawResponse = JSON.stringify({ app: {
+      html: "<!doctype html><html><body><main>Expense tracker</main></body></html>",
+      css: "main{max-width:40rem}",
+      javascript: "document.body.dataset.ready='true'",
+      assets: [],
+    } }).replace(',"css"', '"css"');
+    expect(repairPersonalMiniAppJsonCandidate(rawResponse)).toMatchObject({ html: expect.any(String) });
+    vi.mocked(callLLMStructured).mockRejectedValueOnce(Object.assign(
+      new Error("LLM returned invalid JSON"),
+      { name: "LLMStructuredOutputError", rawResponse },
+    ));
+    await expect(generatePersonalMiniApp({
+      userId: 42,
+      tenantId: "tenant-test",
+      appId: "app_json_repair",
+      runId: "run_json_repair",
+      prompt: "Create a personal expense tracker with monthly charts.",
+    })).resolves.toMatchObject({ title: "Personal expense tracker", html: expect.any(String) });
+    expect(callLLMStructured).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects deterministic JSON repair when the generated HTML document is truncated", () => {
+    const rawResponse = JSON.stringify({
+      html: "<!doctype html><html><body><main>Expense tracker",
+      css: "",
+      javascript: "",
+      assets: [],
+    });
+    expect(repairPersonalMiniAppJsonCandidate(rawResponse)).toBeNull();
   });
 
   it("preserves a partial app candidate and repairs only invalid JavaScript", async () => {

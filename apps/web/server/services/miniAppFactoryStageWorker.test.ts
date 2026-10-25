@@ -4,6 +4,7 @@ import { buildDevelopmentRun } from "./spec224DevelopmentRunContracts";
 import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "./miniAppFactoryDurableState";
 import type { MiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { defaultJobExecutorRegistry } from "./jobExecutorRegistry";
+import { POSTGRES_NODE_JOB_TYPES } from "../jobs/feature186JobTypes";
 import {
   buildMiniAppFactoryStageJobDefinition,
   createMiniAppFactoryStageJobExecutor,
@@ -53,6 +54,8 @@ describe("Mini App Factory worker_jobs binding", () => {
     expect(definition.jobType).toBe("mini_app_factory.stage");
     expect(definition.executionClass).toBe("long");
     expect(defaultJobExecutorRegistry.has("mini_app_factory.stage", MINI_APP_FACTORY_STAGE_CONTRACT)).toBe(true);
+    expect(defaultJobExecutorRegistry.has("mini_app_factory.recovery_sweep", "feature-186-v1")).toBe(true);
+    expect(POSTGRES_NODE_JOB_TYPES.has("mini_app_factory.recovery_sweep")).toBe(true);
     expect(buildMiniAppFactoryStageJobDefinition({ tenantId: "tenant", actorId: 1, runId: input.runId, stageId: input.stageId }).idempotencyKey)
       .toBe(definition.idempotencyKey);
     const retry = buildMiniAppFactoryStageJobDefinition({ tenantId: "tenant", actorId: 1, runId: input.runId, stageId: input.stageId, retrySequence: 1 });

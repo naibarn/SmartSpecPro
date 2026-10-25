@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Script } from "node:vm";
+import { jsonrepair } from "jsonrepair";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { appIdentities, workerJobs } from "../../drizzle/schema";
@@ -389,9 +390,16 @@ async function generatePersonalMiniAppWithRecovery(input: {
     requestLabel: "personal_miniapp_build",
     approvalGranted: true,
   };
-  const response = input.candidateOverride
-    ? { data: input.candidateOverride }
-    : await callLLMStructured({
+  let candidateOverride = input.candidateOverride;
+  if (candidateOverride?.schemaVersion === "raw-generation-candidate.v1" && typeof candidateOverride.rawResponse === "string") {
+    candidateOverride = repairPersonalMiniAppJsonCandidate(candidateOverride.rawResponse) ?? undefined;
+  }
+  let response: { data: Record<string, unknown> };
+  if (candidateOverride) {
+    response = { data: candidateOverride };
+  } else {
+    try {
+      response = await callLLMStructured({
         systemPrompt,
         userMessage: input.prompt,
         zodSchema: GENERATED_APP_CANDIDATE_SCHEMA,
@@ -407,6 +415,32 @@ async function generatePersonalMiniAppWithRecovery(input: {
         maxRetries: 0,
         runtimeOptions,
       });
+    } catch (error) {
+      const rawResponse = error && typeof error === "object" && "rawResponse" in error
+        ? (error as { rawResponse?: unknown }).rawResponse
+        : null;
+      const repairedCandidate = typeof rawResponse === "string"
+        ? repairPersonalMiniAppJsonCandidate(rawResponse)
+        : null;
+      if (!repairedCandidate) {
+        if (typeof rawResponse === "string" && error && typeof error === "object") {
+          const preserved = await storeMiniAppCandidate({
+            tenantId: input.tenantId,
+            appId: input.appId,
+            runId: input.runId,
+            candidate: { schemaVersion: "raw-generation-candidate.v1", rawResponse },
+          });
+          if (preserved) Object.assign(error, { candidateRef: preserved.ref });
+        }
+        throw error;
+      }
+      console.info("[MiniAppFactory] recovered a complete malformed generation candidate without another Gateway call", {
+        appId: input.appId,
+        runId: input.runId,
+      });
+      response = { data: repairedCandidate };
+    }
+  }
   const recovered = await normalizeAndRepairGeneratedCandidate({
     candidate: response.data as Record<string, unknown>,
     goal: input.prompt,
@@ -418,6 +452,45 @@ async function generatePersonalMiniAppWithRecovery(input: {
     runtimeOptions,
   });
   return recovered;
+}
+
+/**
+ * Salvage only a structurally complete app document. jsonrepair can close
+ * truncated JSON, so an unfinished document is rejected instead of turning
+ * a partial model response into source that looks successful.
+ */
+export function repairPersonalMiniAppJsonCandidate(rawResponse: string): Record<string, unknown> | null {
+  if (!rawResponse || rawResponse.length > 512_000) return null;
+  const fenced = rawResponse.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/i);
+  const raw = (fenced?.[1] ?? rawResponse).trim();
+  try {
+    let candidate: unknown;
+    try {
+      candidate = JSON.parse(raw);
+    } catch {
+      candidate = JSON.parse(jsonrepair(raw));
+    }
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return null;
+    let record = candidate as Record<string, unknown>;
+    for (const wrapper of ["app", "miniApp", "output"]) {
+      const nested = record[wrapper];
+      if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+        record = nested as Record<string, unknown>;
+        break;
+      }
+    }
+    const checked = GENERATED_APP_CANDIDATE_SCHEMA.safeParse(record);
+    if (!checked.success || typeof checked.data.html !== "string") return null;
+    const html = checked.data.html;
+    const isDocument = /<!doctype\s+html|<html\b/i.test(html);
+    if (isDocument && !/<\/html\s*>\s*$/i.test(html.trim())) return null;
+    // A repaired top-level object is accepted only if the app markup itself
+    // has a closing boundary; this excludes model/token truncation.
+    if (!raw.endsWith("}") && !/<\/html\s*>\s*$/i.test(html.trim())) return null;
+    return checked.data;
+  } catch {
+    return null;
+  }
 }
 
 export async function generatePersonalMiniApp(input: {

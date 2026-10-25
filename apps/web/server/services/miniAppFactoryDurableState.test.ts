@@ -108,6 +108,22 @@ describe("Mini App Factory durable state projection", () => {
     });
   });
 
+  it("resets the bounded retry budget only after a stage checkpoint advances", () => {
+    const initial = {
+      ...createMiniAppFactoryDurableState({
+        programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+        miniAppId: "app_personal_expenses",
+      }),
+      retryState: { status: "READY" as const, attempt: 2 },
+    };
+    const checkpointed = advanceMiniAppFactoryDurableState(initial, {
+      stageId: "ui_implementation",
+      artifacts: [`app-source-digest:${"c".repeat(64)}`],
+      nextEligibleStages: ["package"],
+    });
+    expect(checkpointed.retryState).toEqual({ status: "READY", attempt: 0 });
+  });
+
   it("rejects malformed or source-unbound state", () => {
     const valid = createMiniAppFactoryDurableState({
       programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",

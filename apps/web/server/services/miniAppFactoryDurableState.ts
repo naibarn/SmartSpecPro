@@ -154,7 +154,9 @@ export function advanceMiniAppFactoryDurableState(
     packageDigest,
     migrationState,
     deploymentState,
-    retryState: { ...state.retryState, status: "READY" },
+    // The bounded retry budget belongs to one stage attempt chain. Once a
+    // checkpoint advances the run, the next stage receives its own budget.
+    retryState: { status: "READY", attempt: 0 },
     blockerState: { status: "NONE", code: null },
     nextEligibleStages: [...input.nextEligibleStages],
   };
