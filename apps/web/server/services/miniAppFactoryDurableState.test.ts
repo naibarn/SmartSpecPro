@@ -4,6 +4,7 @@ import {
   createMiniAppFactoryDurableState,
   failMiniAppFactoryDurableState,
   parseMiniAppFactoryDurableState,
+  resolveMiniAppGitCandidate,
 } from "./miniAppFactoryDurableState";
 
 describe("Mini App Factory durable state projection", () => {
@@ -93,6 +94,19 @@ describe("Mini App Factory durable state projection", () => {
     const awaitingBrowserProof = advanceMiniAppFactoryDurableState(preview, { stageId: "smoke", artifacts: ["owner-access"], nextEligibleStages: [] });
     expect(awaitingBrowserProof.deliveryMilestone).toBe("VERIFICATION_PENDING");
     expect(awaitingBrowserProof.deliveryMilestone).not.toBe("USER_TRIAL_READY");
+  });
+
+  it("resolves arbitrary Git candidates only against their persisted app repository binding", () => {
+    const revision = "c".repeat(40);
+    const state = createMiniAppFactoryDurableState({
+      programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM",
+      miniAppId: "app_another_app",
+      initialArtifacts: [`miniapp-git-candidate:owner/private-miniapp@${revision}`],
+      repository: { mode: "USER_OWNED", owner: "owner", name: "private-miniapp", url: "https://github.com/owner/private-miniapp", revision },
+    });
+    expect(resolveMiniAppGitCandidate(state)).toEqual({ owner: "owner", repository: "private-miniapp", revision });
+    expect(() => resolveMiniAppGitCandidate({ ...state, repository: { ...state.repository!, name: "different-repo" } }))
+      .toThrow("MINI_APP_CANDIDATE_REVISION_MISMATCH");
   });
 
   it("records an early build failure without changing the app identity", () => {

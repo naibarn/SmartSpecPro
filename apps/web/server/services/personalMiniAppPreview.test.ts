@@ -30,12 +30,15 @@ import {
   buildAndStorePersonalMiniApp,
   derivePersonalMiniAppTitle,
   generatePersonalMiniApp,
-  materializePreparedMiniAppArtifactFiles,
+  importMiniAppGitRevisionCandidate,
+  materializeMiniAppGitCandidateArtifactFiles,
+  packageMiniAppGitCandidate,
   provisionManagedMiniAppRepository,
   provisionMiniAppRepositoryFromSnapshot,
   promoteMiniAppArtifactAfterVerification,
   repairPersonalMiniAppJsonCandidate,
   resolveOriginalMiniAppTitle,
+  resolveMiniAppGitCandidateSource,
   resolvePersonalMiniAppHomeMilestone,
   resolvePersonalMiniAppPreview,
 } from "./personalMiniAppPreview";
@@ -78,21 +81,137 @@ describe("personal Mini-App artifact assembly", () => {
     ], "app_expense")).toBe("Personal Expense Tracker");
   });
 
-  it("reproduces the prepared static build from committed source when dist is gitignored", () => {
+  it("reproduces a Git candidate static build from committed source when dist is gitignored", () => {
     const sourceFiles = {
       "src/index.html": "<main>V2</main>",
       "src/styles.css": "main{color:teal}",
       "src/storage-adapter.js": "window.storageReady=true",
       "src/app.js": "document.body.dataset.ready='true'",
+      "src/assets/logo.png": "base64:aGVsbG8=",
     };
-    expect(materializePreparedMiniAppArtifactFiles(sourceFiles)).toEqual({
+    expect(materializeMiniAppGitCandidateArtifactFiles(sourceFiles)).toEqual({
       "index.html": sourceFiles["src/index.html"],
       "styles.css": sourceFiles["src/styles.css"],
       "storage-adapter.js": sourceFiles["src/storage-adapter.js"],
       "app.js": sourceFiles["src/app.js"],
+      "assets/logo.png": "base64:aGVsbG8=",
     });
-    expect(() => materializePreparedMiniAppArtifactFiles({ "src/index.html": "<main>V2</main>" }))
+    expect(() => materializeMiniAppGitCandidateArtifactFiles({ "src/index.html": "<main>V2</main>" }))
       .toThrow("MINI_APP_CANDIDATE_FILE_MISSING");
+    expect(() => materializeMiniAppGitCandidateArtifactFiles({
+      ...sourceFiles,
+      "src/assets/../escape.png": "base64:aGVsbG8=",
+    })).toThrow("MINI_APP_CANDIDATE_ASSET_INVALID");
+  });
+
+  it("imports a dynamically bound private repository revision after Git lineage and blob hash verification", async () => {
+    const appId = "app_other_owner";
+    const owner = "miniapp-owner";
+    const repository = "private-app";
+    const branch = "feature/thai-ui";
+    const revision = "a".repeat(40);
+    const baseRevision = "b".repeat(40);
+    const sourceFiles: Record<string, string> = {
+      "src/index.html": "<!doctype html><html><head><link rel=\"stylesheet\" href=\"./styles.css\"></head><body><main>App</main><script src=\"./storage-adapter.js\"></script><script src=\"./app.js\"></script></body></html>",
+      "src/styles.css": "main{color:teal}",
+      "src/storage-adapter.js": "window.storageReady=true",
+      "src/app.js": "document.body.dataset.ready='true'",
+    };
+    const sourceHash = createHash("sha256");
+    for (const name of ["app.js", "index.html", "storage-adapter.js", "styles.css"]) {
+      sourceHash.update(name).update("\0").update(sourceFiles[`src/${name}`]!).update("\n");
+    }
+    const sourceTreeDigest = sourceHash.digest("hex");
+    const contentByPath: Record<string, string> = {
+      ...sourceFiles,
+      "package.json": JSON.stringify({ scripts: { build: "node scripts/build.mjs" } }),
+      "scripts/build.mjs": 'const sourceFiles = ["index.html", "styles.css", "storage-adapter.js", "app.js"];\nconst sourceTree = await digestTree(source, sourceFiles);\nconst artifactTree = await digestTree(out, sourceFiles);\nnew Function(data.toString("utf8"));',
+      "scripts/serve.mjs": "// no-op static server metadata",
+      "SOURCE_PROVENANCE.json": JSON.stringify({ appId, v2: { branch, sourceTreeDigest } }),
+    };
+    const blobSha = (content: string) => {
+      const bytes = Buffer.from(content, "utf8");
+      return createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+    };
+    const blobs = new Map(Object.entries(contentByPath).map(([path, content]) => [blobSha(content), content]));
+    const fileEntries = Object.entries(contentByPath).map(([path, content]) => ({ path, type: "blob", sha: blobSha(content) }));
+    vi.stubEnv("SMARTAIHUB_MINIAPP_GITHUB_TOKEN", "managed-test-token");
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      const path = decodeURIComponent(url.pathname).replace(`/repos/${owner}/${repository}`, "");
+      if (path === "") return new Response(JSON.stringify({ private: true, full_name: `${owner}/${repository}` }));
+      if (path === `/branches/${branch}`) return new Response(JSON.stringify({ commit: { sha: revision } }));
+      if (path === `/commits/${revision}`) return new Response(JSON.stringify({ sha: revision, parents: [{ sha: baseRevision }], commit: { tree: { sha: "tree-sha" } } }));
+      if (path.startsWith("/compare/")) {
+        const [base, head] = decodeURIComponent(path.slice("/compare/".length)).split("...");
+        return new Response(JSON.stringify({ status: head === revision && base === revision ? "identical" : "ahead", merge_base_commit: { sha: base === baseRevision ? baseRevision : revision } }));
+      }
+      if (path === "/git/trees/tree-sha") return new Response(JSON.stringify({ tree: fileEntries }));
+      const blobMatch = /^\/git\/blobs\/([a-f0-9]+)$/.exec(path);
+      if (blobMatch) return new Response(JSON.stringify({ encoding: "base64", content: Buffer.from(blobs.get(blobMatch[1]!)!, "utf8").toString("base64") }));
+      return new Response("not found", { status: 404 });
+    }));
+    vi.mocked(storagePutContentAddressedIfAbsent).mockImplementation(async (key, bytes) => {
+      const digest = createHash("sha256").update(bytes).digest("hex");
+      return { key: `${key}/sha256/${digest}`, sha256: digest, url: "" };
+    });
+
+    try {
+      const imported = await importMiniAppGitRevisionCandidate({
+        appId,
+        tenantId: "tenant-owner",
+        ownerUserId: 42,
+        repository: { mode: "SMARTAIHUB_MANAGED", owner, name: repository, revision: baseRevision },
+        branch,
+        revision,
+      });
+      expect(imported.bundle).toMatchObject({ appId, owner, repository, branch, revision, parentRevision: baseRevision, sourceTreeDigest });
+      expect(imported.sourceRef).toMatch(/^r2:\/\/mini-app-sources\/tenant-owner\/app_other_owner\/sha256\//);
+      expect(storagePutContentAddressedIfAbsent).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("packages the normal structured app-source repository format without generation", async () => {
+    const revision = "a".repeat(40);
+    const appSource = JSON.stringify(generated);
+    const sourceTreeDigest = createHash("sha256").update(appSource).digest("hex");
+    const bundle = {
+      schemaVersion: "smartaihub-miniapp-git-candidate.v1" as const,
+      format: "STRUCTURED_APP_SOURCE" as const,
+      appId: "app_candidate",
+      owner: "owner",
+      repository: "private-app",
+      branch: "main",
+      revision,
+      parentRevision: "b".repeat(40),
+      sourceTreeDigest,
+      files: { "app-source.json": appSource },
+    };
+    expect(resolveMiniAppGitCandidateSource(bundle)).toEqual(generated);
+    const sourceBytes = Buffer.from(JSON.stringify(bundle));
+    const sourceDigest = createHash("sha256").update(sourceBytes).digest("hex");
+    vi.mocked(storageReadBuffer).mockResolvedValueOnce(sourceBytes);
+    vi.mocked(storagePutContentAddressedIfAbsent).mockImplementation(async (key, bytes) => {
+      const digest = createHash("sha256").update(bytes).digest("hex");
+      return { key: `${key}/sha256/${digest}`, sha256: digest, url: "" };
+    });
+
+    const result = await packageMiniAppGitCandidate({
+      tenantId: "tenant-test",
+      appId: "app_candidate",
+      sourceRef: `r2://mini-app-sources/tenant-test/app_candidate/sha256/${sourceDigest}`,
+      sourceDigest,
+      owner: "owner",
+      repository: "private-app",
+      branch: "main",
+      revision,
+    });
+    expect(result.artifactDigest).toMatch(/^[a-f0-9]{64}$/);
+    expect(storagePutContentAddressedIfAbsent).toHaveBeenCalledOnce();
+    expect(callLLMStructured).not.toHaveBeenCalled();
   });
 
   it("keeps V1 serving when a pre-promotion smoke assertion fails", async () => {

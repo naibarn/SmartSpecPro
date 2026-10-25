@@ -222,21 +222,24 @@ describe("MiniAppRoute", () => {
     expect(screen.queryByTestId("miniapp-progress-card")).not.toBeInTheDocument();
   });
 
-  it("offers the pinned V2 adoption action only on the existing App Home and keeps prompt continuation separate", async () => {
+  it("offers generic Git candidate adoption for the bound repository and keeps prompt continuation separate", async () => {
     mocks.routeMode = "status";
     mocks.miniAppParams = { appId: "app_e6f0be051fd22e09bc4c5dff" };
     mocks.appQuery.data = {
       app: { appId: "app_e6f0be051fd22e09bc4c5dff", visibility: "private", deploymentVersion: 1, lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_e6f0be051fd22e09bc4c5dff/sha256/" + "a".repeat(64), runtimeDataMigrationStatus: "OWNER_CONFIRMED" },
       html: "<!doctype html><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'\">",
       artifactDigest: "a".repeat(64),
-      factory: { conversationId: 1, milestone: "PREVIEW_AVAILABLE", isInProgress: false, completedStages: ["ui_implementation", "package", "deploy", "smoke"], remainingStages: [], artifacts: [] },
+      factory: { conversationId: 1, milestone: "PREVIEW_AVAILABLE", isInProgress: false, completedStages: ["ui_implementation", "package", "deploy", "smoke"], remainingStages: [], artifacts: [], repositoryState: "BOUND", repository: { owner: "owner", name: "expense-app", url: "https://github.com/owner/expense-app", revision: "b".repeat(40) } },
       deploymentVersions: [{ deploymentVersion: 1, artifactDigest: "a".repeat(64), developmentRunId: "run-v1" }],
     };
     render(<MiniAppRoute />);
-    const button = await screen.findByRole("button", { name: "Use prepared V2 candidate" });
+    const button = await screen.findByRole("button", { name: "Use prepared Git revision" });
+    expect(button).toBeDisabled();
+    fireEvent.change(screen.getByRole("textbox", { name: "Candidate branch" }), { target: { value: "feature/v2" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Candidate commit SHA" }), { target: { value: "c".repeat(40) } });
     expect(button).toBeEnabled();
     fireEvent.click(button);
-    expect(mocks.adoptionMutation.mutate).toHaveBeenCalledWith({ appId: "app_e6f0be051fd22e09bc4c5dff" });
+    expect(mocks.adoptionMutation.mutate).toHaveBeenCalledWith({ appId: "app_e6f0be051fd22e09bc4c5dff", branch: "feature/v2", revision: "c".repeat(40) });
     expect(screen.getByRole("textbox", { name: "Continue development" })).toBeInTheDocument();
     expect(mocks.continuationMutation.mutate).not.toHaveBeenCalled();
   });

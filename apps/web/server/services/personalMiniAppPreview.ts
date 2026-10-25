@@ -13,65 +13,60 @@ import { callLLMStructured, type CallLLMStructuredRuntimeOptions } from "./callL
 import { resolveMiniAppForViewer } from "./appIdentityRepository";
 import { getUserGitHubConnection, getUserGitHubToken, validateGitHubToken } from "./userGithubConnectionService";
 
-export const PREPARED_MINIAPP_V2 = {
-  appId: "app_e6f0be051fd22e09bc4c5dff",
-  owner: "pruksacharttk",
-  repository: "smartaihub-app-e6f0be051fd22e09bc4c5dff",
-  branch: "v2/thai-thb",
-  revision: "1d7273d719ff9b034cd304920c1ef76efdd86e76",
-  parentRevision: "7b90395508e8a7084026d7dafc80a8e4b2360493",
-  sourceTreeDigest: "bdf63148f9a239d0d4b36bb816e92c0ddc299171edd5e74f4cd71c419a50487c",
-  artifactDigest: "bdf63148f9a239d0d4b36bb816e92c0ddc299171edd5e74f4cd71c419a50487c",
-} as const;
-
-type PreparedMiniAppBundle = {
-  schemaVersion: "smartaihub-prepared-miniapp.v1";
+export type MiniAppGitCandidateBundle = {
+  schemaVersion: "smartaihub-miniapp-git-candidate.v1";
+  format: "STRUCTURED_APP_SOURCE" | "STATIC_PROJECT";
   appId: string;
   owner: string;
   repository: string;
   branch: string;
   revision: string;
-  parentRevision: string;
+  parentRevision: string | null;
   sourceTreeDigest: string;
-  artifactDigest: string;
   files: Record<string, string>;
 };
 
-const PREPARED_SOURCE_FILES = [
+const MINIAPP_GIT_SOURCE_FILES = [
   "src/index.html", "src/styles.css", "src/storage-adapter.js", "src/app.js",
   "package.json", "scripts/build.mjs", "scripts/serve.mjs", "SOURCE_PROVENANCE.json",
 ] as const;
-const PREPARED_ARTIFACT_FILES = ["index.html", "styles.css", "storage-adapter.js", "app.js"] as const;
+const MINIAPP_ARTIFACT_FILES = ["index.html", "styles.css", "storage-adapter.js", "app.js"] as const;
 
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function verifyPreparedBundle(bundle: PreparedMiniAppBundle): void {
-  const expected = PREPARED_MINIAPP_V2;
-  if (bundle.schemaVersion !== "smartaihub-prepared-miniapp.v1" || bundle.appId !== expected.appId ||
-      bundle.owner.toLowerCase() !== expected.owner || bundle.repository !== expected.repository ||
-      bundle.branch !== expected.branch || bundle.revision !== expected.revision ||
-      bundle.parentRevision !== expected.parentRevision || bundle.sourceTreeDigest !== expected.sourceTreeDigest ||
-      bundle.artifactDigest !== expected.artifactDigest) throw new Error("MINI_APP_CANDIDATE_PROVENANCE_MISMATCH");
-  const sourceFiles = PREPARED_SOURCE_FILES.filter(path => path.startsWith("src/")).map(path => path.slice(4)).sort();
+function verifyMiniAppGitCandidateBundle(bundle: MiniAppGitCandidateBundle): void {
+  if (bundle.schemaVersion !== "smartaihub-miniapp-git-candidate.v1" || !["STRUCTURED_APP_SOURCE", "STATIC_PROJECT"].includes(bundle.format) || !/^app_[A-Za-z0-9_-]{1,120}$/.test(bundle.appId) ||
+      !/^[A-Za-z0-9-]{1,39}$/.test(bundle.owner) || !/^[A-Za-z0-9._-]{1,100}$/.test(bundle.repository) ||
+      !/^[A-Za-z0-9._/-]{1,120}$/.test(bundle.branch) || !/^[a-f0-9]{40}$/i.test(bundle.revision) ||
+      bundle.parentRevision !== null && !/^[a-f0-9]{40}$/i.test(bundle.parentRevision) || !/^[a-f0-9]{64}$/.test(bundle.sourceTreeDigest)) {
+    throw new Error("MINI_APP_CANDIDATE_PROVENANCE_MISMATCH");
+  }
+  if (bundle.format === "STRUCTURED_APP_SOURCE") {
+    const source = bundle.files["app-source.json"];
+    if (typeof source !== "string" || sha256(source) !== bundle.sourceTreeDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_DIGEST_MISMATCH");
+    const parsed = GENERATED_APP_SCHEMA.safeParse(JSON.parse(source));
+    if (!parsed.success || invalidGeneratedFields(parsed.data as unknown as Record<string, unknown>).length) throw new Error("MINI_APP_CANDIDATE_SOURCE_INVALID");
+    return;
+  }
+  const sourceFiles = MINIAPP_GIT_SOURCE_FILES.filter(path => path.startsWith("src/")).map(path => path.slice(4)).sort();
   const sourceHash = createHash("sha256");
   for (const path of sourceFiles) sourceHash.update(path).update("\0").update(bundle.files[`src/${path}`] ?? "").update("\n");
-  if (sourceHash.digest("hex") !== expected.sourceTreeDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_DIGEST_MISMATCH");
-  const artifactHash = createHash("sha256");
-  for (const path of [...PREPARED_ARTIFACT_FILES].sort()) {
+  if (sourceHash.digest("hex") !== bundle.sourceTreeDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_DIGEST_MISMATCH");
+  for (const path of [...MINIAPP_ARTIFACT_FILES].sort()) {
     const text = bundle.files[`src/${path}`];
     if (typeof text !== "string") throw new Error("MINI_APP_CANDIDATE_FILE_MISSING");
-    artifactHash.update(path).update("\0").update(text).update("\n");
     if (path.endsWith(".js")) new Script(text, { filename: `miniapp/${path}` });
     if (text.length > 600_000) throw new Error("MINI_APP_CANDIDATE_FILE_TOO_LARGE");
   }
-  if (artifactHash.digest("hex") !== expected.artifactDigest) throw new Error("MINI_APP_CANDIDATE_ARTIFACT_DIGEST_MISMATCH");
   const provenance = JSON.parse(bundle.files["SOURCE_PROVENANCE.json"] ?? "null") as any;
   const packageJson = JSON.parse(bundle.files["package.json"] ?? "null") as any;
   const buildScript = bundle.files["scripts/build.mjs"] ?? "";
-  if (provenance?.appId !== expected.appId || provenance?.v1?.materializedProjectRevision !== expected.parentRevision ||
-      provenance?.v2?.branch !== expected.branch || provenance?.v2?.sourceTreeDigest !== expected.sourceTreeDigest ||
+  const provenanceAppId = provenance?.appId ?? provenance?.app?.appId;
+  const provenanceBranch = provenance?.candidate?.branch ?? provenance?.v2?.branch;
+  const provenanceSourceDigest = provenance?.candidate?.sourceTreeDigest ?? provenance?.v2?.sourceTreeDigest;
+  if (provenanceAppId !== bundle.appId || provenanceBranch !== bundle.branch || provenanceSourceDigest !== bundle.sourceTreeDigest ||
       packageJson?.scripts?.build !== "node scripts/build.mjs" || packageJson?.dependencies || packageJson?.devDependencies ||
       !buildScript.includes('const sourceFiles = ["index.html", "styles.css", "storage-adapter.js", "app.js"]') ||
       !buildScript.includes("const sourceTree = await digestTree(source, sourceFiles)") ||
@@ -83,18 +78,27 @@ function verifyPreparedBundle(bundle: PreparedMiniAppBundle): void {
   // these verified source files byte-for-byte, so the immutable artifact is rebuilt here.
 }
 
-/** Reproduce the candidate's dependency-free build output from its committed src tree. */
-export function materializePreparedMiniAppArtifactFiles(files: Record<string, string>): Record<string, string> {
+/** Reproduce the dependency-free app build output from its committed src tree. */
+export function materializeMiniAppGitCandidateArtifactFiles(files: Record<string, string>): Record<string, string> {
   const output: Record<string, string> = {};
-  for (const name of PREPARED_ARTIFACT_FILES) {
+  for (const name of MINIAPP_ARTIFACT_FILES) {
     const content = files[`src/${name}`];
     if (typeof content !== "string" || !content.length) throw new Error("MINI_APP_CANDIDATE_FILE_MISSING");
     output[name] = content;
   }
+  for (const [path, content] of Object.entries(files)) {
+    if (!path.startsWith("src/assets/")) continue;
+    const assetPath = path.slice("src/".length);
+    if (!/^assets\/[A-Za-z0-9._/-]{1,180}$/.test(assetPath) || assetPath.split("/").some(segment => segment === "." || segment === "..") ||
+        typeof content !== "string" || !content.startsWith("base64:") || Buffer.from(content.slice(7), "base64").byteLength > 400_000) {
+      throw new Error("MINI_APP_CANDIDATE_ASSET_INVALID");
+    }
+    output[assetPath] = content;
+  }
   return output;
 }
 
-async function readPreparedGitHubFile(token: string, owner: string, repo: string, blobSha: string): Promise<string> {
+async function readMiniAppGitHubBlob(token: string, owner: string, repo: string, blobSha: string): Promise<Buffer> {
   const response = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/blobs/${blobSha}`, {
     headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
     signal: AbortSignal.timeout(15_000),
@@ -102,20 +106,52 @@ async function readPreparedGitHubFile(token: string, owner: string, repo: string
   if (!response.ok) throw new Error(`MINI_APP_CANDIDATE_GITHUB_READ_${response.status}`);
   const blob = await response.json() as { encoding?: string; content?: string };
   if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new Error("MINI_APP_CANDIDATE_GITHUB_BLOB_INVALID");
-  return Buffer.from(blob.content.replace(/\s/g, ""), "base64").toString("utf8");
+  const bytes = Buffer.from(blob.content.replace(/\s/g, ""), "base64");
+  const gitBlobSha = createHash("sha1").update(`blob ${bytes.length}\0`).update(bytes).digest("hex");
+  if (gitBlobSha !== blobSha.toLowerCase()) throw new Error("MINI_APP_CANDIDATE_GIT_BLOB_HASH_MISMATCH");
+  return bytes;
 }
 
-/** Authenticates the existing owner's repository binding and imports the pinned candidate without generation. */
-export async function importPreparedMiniAppCandidate(input: { appId: string; tenantId: string; ownerUserId: number }): Promise<{ sourceRef: string; sourceDigest: string; bundle: PreparedMiniAppBundle }> {
-  const expected = PREPARED_MINIAPP_V2;
-  if (input.appId !== expected.appId) throw new Error("MINI_APP_CANDIDATE_APP_MISMATCH");
-  const [connection, token] = await Promise.all([getUserGitHubConnection(input.ownerUserId), getUserGitHubToken(input.ownerUserId)]);
-  if (!connection.configured || !token || connection.tenantId && connection.tenantId !== input.tenantId) throw new Error("MINI_APP_CANDIDATE_GITHUB_AUTH_REQUIRED");
-  if (String(connection.githubLogin).toLowerCase() !== expected.owner || (await validateGitHubToken(token)).toLowerCase() !== expected.owner) {
+async function readMiniAppGitHubFile(token: string, owner: string, repo: string, blobSha: string): Promise<string> {
+  const bytes = await readMiniAppGitHubBlob(token, owner, repo, blobSha);
+  const text = bytes.toString("utf8");
+  if (!Buffer.from(text, "utf8").equals(bytes)) throw new Error("MINI_APP_CANDIDATE_SOURCE_ENCODING_INVALID");
+  return text;
+}
+
+/** Imports one exact revision from the App Identity's already-bound private repository. */
+export async function importMiniAppGitRevisionCandidate(input: {
+  appId: string;
+  tenantId: string;
+  ownerUserId: number;
+  repository: { mode: "SMARTAIHUB_MANAGED" | "USER_OWNED"; owner: string; name: string; revision: string };
+  branch: string;
+  revision: string;
+}): Promise<{ sourceRef: string; sourceDigest: string; bundle: MiniAppGitCandidateBundle }> {
+  if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.appId) || !/^[A-Za-z0-9._/-]{1,120}$/.test(input.branch) ||
+      !/^[a-f0-9]{40}$/i.test(input.revision) || !/^[a-f0-9]{40}$/i.test(input.repository.revision) ||
+      !/^[A-Za-z0-9-]{1,39}$/.test(input.repository.owner) || !/^[A-Za-z0-9._-]{1,100}$/.test(input.repository.name)) {
+    throw new Error("MINI_APP_CANDIDATE_REQUEST_INVALID");
+  }
+  const token = input.repository.mode === "USER_OWNED"
+    ? await getUserGitHubToken(input.ownerUserId)
+    : process.env.SMARTAIHUB_MINIAPP_GITHUB_TOKEN;
+  if (!token) throw new Error("MINI_APP_CANDIDATE_GITHUB_AUTH_REQUIRED");
+  if (input.repository.mode === "USER_OWNED") {
+    const connection = await getUserGitHubConnection(input.ownerUserId);
+    if (!connection.configured || connection.tenantId && connection.tenantId !== input.tenantId ||
+        String(connection.githubLogin).toLowerCase() !== input.repository.owner.toLowerCase() ||
+        (await validateGitHubToken(token)).toLowerCase() !== input.repository.owner.toLowerCase()) {
+      throw new Error("MINI_APP_CANDIDATE_GITHUB_OWNER_MISMATCH");
+    }
+  } else if (process.env.SMARTAIHUB_MINIAPP_GITHUB_OWNER &&
+      process.env.SMARTAIHUB_MINIAPP_GITHUB_OWNER.toLowerCase() !== input.repository.owner.toLowerCase()) {
     throw new Error("MINI_APP_CANDIDATE_GITHUB_OWNER_MISMATCH");
   }
+  const owner = input.repository.owner;
+  const repository = input.repository.name;
   const api = async (path: string) => {
-    const response = await fetch(`https://api.github.com/repos/${encodeURIComponent(expected.owner)}/${encodeURIComponent(expected.repository)}${path}`, {
+    const response = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}${path}`, {
       headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
       signal: AbortSignal.timeout(15_000),
     });
@@ -124,15 +160,25 @@ export async function importPreparedMiniAppCandidate(input: { appId: string; ten
   };
   const [repo, branch, commit] = await Promise.all([
     api("").catch(error => { throw error; }),
-    api(`/branches/${encodeURIComponent(expected.branch)}`),
-    api(`/commits/${expected.revision}`),
+    api(`/branches/${encodeURIComponent(input.branch)}`),
+    api(`/commits/${input.revision}`),
   ]);
-  if (repo.private !== true) throw new Error("MINI_APP_CANDIDATE_REPOSITORY_NOT_PRIVATE");
-  if (branch.commit?.sha !== expected.revision || commit.sha !== expected.revision) throw new Error("MINI_APP_CANDIDATE_REVISION_MISMATCH");
-  if (!Array.isArray(commit.parents) || !commit.parents.some((parent: any) => parent.sha === expected.parentRevision)) throw new Error("MINI_APP_CANDIDATE_V1_PARENT_MISMATCH");
+  if (repo.private !== true || String(repo.full_name ?? "").toLowerCase() !== `${owner}/${repository}`.toLowerCase()) throw new Error("MINI_APP_CANDIDATE_REPOSITORY_NOT_PRIVATE");
+  const branchHead = String(branch.commit?.sha ?? "").toLowerCase();
+  if (!/^[a-f0-9]{40}$/.test(branchHead) || String(commit.sha ?? "").toLowerCase() !== input.revision.toLowerCase()) throw new Error("MINI_APP_CANDIDATE_REVISION_MISMATCH");
+  if (!Array.isArray(commit.parents)) throw new Error("MINI_APP_CANDIDATE_COMMIT_INVALID");
+  const parentRevision = commit.parents.length === 1 && typeof commit.parents[0]?.sha === "string" ? String(commit.parents[0].sha).toLowerCase() : null;
+  const compare = await api(`/compare/${encodeURIComponent(input.repository.revision)}...${encodeURIComponent(input.revision)}`);
+  if (compare.status !== "ahead" && compare.status !== "identical" || String(compare.merge_base_commit?.sha ?? "").toLowerCase() !== input.repository.revision.toLowerCase()) {
+    throw new Error("MINI_APP_CANDIDATE_SOURCE_LINEAGE_INVALID");
+  }
+  const branchCompare = await api(`/compare/${encodeURIComponent(input.revision)}...${encodeURIComponent(branchHead)}`);
+  if (branchCompare.status !== "ahead" && branchCompare.status !== "identical" || String(branchCompare.merge_base_commit?.sha ?? "").toLowerCase() !== input.revision.toLowerCase()) {
+    throw new Error("MINI_APP_CANDIDATE_NOT_ON_REQUESTED_BRANCH");
+  }
   const treeSha = commit.commit?.tree?.sha;
   if (typeof treeSha !== "string") throw new Error("MINI_APP_CANDIDATE_TREE_MISSING");
-  const treeResponse = await fetch(`https://api.github.com/repos/${encodeURIComponent(expected.owner)}/${encodeURIComponent(expected.repository)}/git/trees/${treeSha}?recursive=1`, {
+  const treeResponse = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}/git/trees/${treeSha}?recursive=1`, {
     headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
     signal: AbortSignal.timeout(15_000),
   });
@@ -141,33 +187,65 @@ export async function importPreparedMiniAppCandidate(input: { appId: string; ten
   if (tree.truncated || !Array.isArray(tree.tree)) throw new Error("MINI_APP_CANDIDATE_TREE_INVALID");
   const entries = new Map(tree.tree.filter(item => item.type === "blob" && typeof item.path === "string").map(item => [item.path!, item.sha!]));
   const files: Record<string, string> = {};
-  for (const path of PREPARED_SOURCE_FILES) {
+  const hasStaticProject = MINIAPP_GIT_SOURCE_FILES.every(path => entries.has(path));
+  const structuredSource = !hasStaticProject && entries.has("app-source.json");
+  const assetPaths = structuredSource ? [] : [...entries.keys()].filter(path => path.startsWith("src/assets/")).sort();
+  if (assetPaths.length > 16) throw new Error("MINI_APP_CANDIDATE_ASSET_LIMIT_EXCEEDED");
+  const sourcePaths = structuredSource ? ["app-source.json"] : [...MINIAPP_GIT_SOURCE_FILES, ...assetPaths];
+  let totalAssetBytes = 0;
+  for (const path of sourcePaths) {
+    if (path.startsWith("src/assets/")) {
+      const assetPath = path.slice("src/".length);
+      if (!/^assets\/[A-Za-z0-9._/-]{1,180}$/.test(assetPath) || assetPath.split("/").some(segment => segment === "." || segment === "..")) {
+        throw new Error("MINI_APP_CANDIDATE_ASSET_INVALID");
+      }
+    }
     const blobSha = entries.get(path);
     if (!blobSha) throw new Error("MINI_APP_CANDIDATE_FILE_MISSING");
-    files[path] = await readPreparedGitHubFile(token, expected.owner, expected.repository, blobSha);
+    if (path.startsWith("src/assets/")) {
+      const bytes = await readMiniAppGitHubBlob(token, owner, repository, blobSha);
+      if (bytes.byteLength > 400_000) throw new Error("MINI_APP_CANDIDATE_ASSET_LIMIT_EXCEEDED");
+      totalAssetBytes += bytes.byteLength;
+      files[path] = `base64:${bytes.toString("base64")}`;
+    } else {
+      files[path] = await readMiniAppGitHubFile(token, owner, repository, blobSha);
+    }
   }
-  const bundle: PreparedMiniAppBundle = {
-    schemaVersion: "smartaihub-prepared-miniapp.v1", appId: expected.appId, owner: expected.owner,
-    repository: expected.repository, branch: expected.branch, revision: expected.revision,
-    parentRevision: expected.parentRevision, sourceTreeDigest: expected.sourceTreeDigest,
-    artifactDigest: expected.artifactDigest, files,
+  if (totalAssetBytes > 2_000_000) throw new Error("MINI_APP_CANDIDATE_ASSET_LIMIT_EXCEEDED");
+  const provenance = structuredSource ? null : JSON.parse(files["SOURCE_PROVENANCE.json"] ?? "null") as any;
+  const sourceTreeDigest = structuredSource
+    ? sha256(files["app-source.json"]!)
+    : String(provenance?.candidate?.sourceTreeDigest ?? provenance?.v2?.sourceTreeDigest ?? "").toLowerCase();
+  const bundle: MiniAppGitCandidateBundle = {
+    schemaVersion: "smartaihub-miniapp-git-candidate.v1", format: structuredSource ? "STRUCTURED_APP_SOURCE" : "STATIC_PROJECT", appId: input.appId, owner, repository,
+    branch: input.branch, revision: input.revision.toLowerCase(), parentRevision, sourceTreeDigest, files,
   };
-  verifyPreparedBundle(bundle);
+  verifyMiniAppGitCandidateBundle(bundle);
   const bytes = Buffer.from(JSON.stringify(bundle), "utf8");
-  const stored = await storagePutContentAddressedIfAbsent(`mini-app-sources/${input.tenantId}/${input.appId}`, bytes, "application/vnd.smartaihub.prepared-miniapp+json");
+  const stored = await storagePutContentAddressedIfAbsent(`mini-app-sources/${input.tenantId}/${input.appId}`, bytes, "application/vnd.smartaihub.miniapp-git-candidate+json");
   if (stored.sha256 !== sha256(bytes)) throw new Error("MINI_APP_CANDIDATE_SOURCE_STORAGE_MISMATCH");
   return { sourceRef: `r2://${stored.key}`, sourceDigest: stored.sha256, bundle };
 }
 
-export async function packagePreparedMiniAppCandidate(input: { tenantId: string; appId: string; sourceRef: string; sourceDigest: string }): Promise<{ artifactRef: string; artifactDigest: string; bytes: number }> {
+export async function packageMiniAppGitCandidate(input: { tenantId: string; appId: string; sourceRef: string; sourceDigest: string; owner: string; repository: string; branch: string; revision: string }): Promise<{ artifactRef: string; artifactDigest: string; bytes: number }> {
   const expectedPrefix = `r2://mini-app-sources/${input.tenantId}/${input.appId}/sha256/`;
   if (!input.sourceRef.startsWith(expectedPrefix) || !/^[a-f0-9]{64}$/.test(input.sourceDigest) || !input.sourceRef.endsWith(input.sourceDigest)) throw new Error("MINI_APP_CANDIDATE_SOURCE_BINDING_INVALID");
   const sourceBytes = await storageReadBuffer(input.sourceRef.slice("r2://".length));
   if (sha256(sourceBytes) !== input.sourceDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_DIGEST_MISMATCH");
-  const bundle = JSON.parse(sourceBytes.toString("utf8")) as PreparedMiniAppBundle;
-  verifyPreparedBundle(bundle);
-  if (bundle.appId !== input.appId) throw new Error("MINI_APP_CANDIDATE_APP_MISMATCH");
-  const files = materializePreparedMiniAppArtifactFiles(bundle.files);
+  const bundle = JSON.parse(sourceBytes.toString("utf8")) as MiniAppGitCandidateBundle;
+  verifyMiniAppGitCandidateBundle(bundle);
+  if (bundle.appId !== input.appId || bundle.owner !== input.owner || bundle.repository !== input.repository || bundle.branch !== input.branch || bundle.revision !== input.revision) throw new Error("MINI_APP_CANDIDATE_BINDING_INVALID");
+  if (bundle.format === "STRUCTURED_APP_SOURCE") {
+    const source = GENERATED_APP_SCHEMA.parse(JSON.parse(bundle.files["app-source.json"]!));
+    const invalidFields = invalidGeneratedFields(source as unknown as Record<string, unknown>);
+    if (invalidFields.length) throw new Error(`MINI_APP_CANDIDATE_SOURCE_INVALID:${invalidFields.join(",")}`);
+    const artifactBytes = Buffer.from(assembleIsolatedMiniAppHtml(source), "utf8");
+    const artifactDigest = sha256(artifactBytes);
+    const stored = await storagePutContentAddressedIfAbsent(`mini-app-previews/${input.tenantId}/${input.appId}`, artifactBytes, "text/html; charset=utf-8");
+    if (stored.sha256 !== artifactDigest) throw new Error("MINI_APP_ARTIFACT_DIGEST_MISMATCH");
+    return { artifactRef: `r2://${stored.key}`, artifactDigest, bytes: artifactBytes.length };
+  }
+  const files = materializeMiniAppGitCandidateArtifactFiles(bundle.files);
   const css = files["styles.css"]!;
   const storageAdapter = files["storage-adapter.js"]!.replace(/<\/script/gi, "<\\/script");
   const appJs = files["app.js"]!.replace(/<\/script/gi, "<\\/script");
@@ -175,7 +253,22 @@ export async function packagePreparedMiniAppCandidate(input: { tenantId: string;
   html = html.replace(/<link\s+rel="stylesheet"\s+href="\.\/styles\.css"\s*\/?\s*>/i, `<style>${css.replace(/<\/style/gi, "<\\/style")}</style>`);
   html = html.replace(/<script\s+src="\.\/storage-adapter\.js"><\/script>/i, `<script>${storageAdapter}</script>`);
   html = html.replace(/<script\s+src="\.\/app\.js"><\/script>/i, `<script>${appJs}</script>`);
-  if (/<(?:script|link)[^>]+(?:src|href)="(?:https?:|\/|\.\.)/i.test(html) || /<script\s+src=/i.test(html) || /<link\s+rel="stylesheet"\s+href=/i.test(html)) throw new Error("MINI_APP_CANDIDATE_EXTERNAL_ASSET_FORBIDDEN");
+  const mimeByExtension: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", svg: "image/svg+xml" };
+  for (const [path, content] of Object.entries(files)) {
+    if (!path.startsWith("assets/")) continue;
+    const extension = path.split(".").pop()?.toLowerCase() ?? "";
+    const mimeType = mimeByExtension[extension];
+    if (!mimeType) throw new Error("MINI_APP_CANDIDATE_ASSET_TYPE_FORBIDDEN");
+    if (!content.startsWith("base64:")) throw new Error("MINI_APP_CANDIDATE_ASSET_INVALID");
+    const dataUrl = `data:${mimeType};base64,${content.slice(7)}`;
+    for (const reference of [`./${path}`, path]) {
+      html = html.split(reference).join(dataUrl);
+    }
+  }
+  if (/<(?:script|link|img|source|video|audio|iframe|object|embed)\b[^>]*(?:src|href)\s*=\s*["'](?!data:|blob:)/i.test(html) ||
+      /<script\s+src=/i.test(html) || /<link\s+rel="stylesheet"\s+href=/i.test(html) || /@import\s|url\(\s*["']?(?!data:|#)[^)]/i.test(css)) {
+    throw new Error("MINI_APP_CANDIDATE_EXTERNAL_ASSET_FORBIDDEN");
+  }
   const csp = `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' data:; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`;
   html = html.replace(/<head([^>]*)>/i, `<head$1><meta http-equiv="Content-Security-Policy" content="${csp}">`);
   const artifactBytes = Buffer.from(html, "utf8");
@@ -295,6 +388,36 @@ function invalidGeneratedFields(candidate: Record<string, unknown>): Array<"html
     }
   }
   return fields;
+}
+
+/** Resolve an imported Git bundle back to the structured source used by prompt continuation. */
+export function resolveMiniAppGitCandidateSource(bundle: MiniAppGitCandidateBundle): GeneratedPersonalMiniApp {
+  verifyMiniAppGitCandidateBundle(bundle);
+  if (bundle.format === "STRUCTURED_APP_SOURCE") {
+    return GENERATED_APP_SCHEMA.parse(JSON.parse(bundle.files["app-source.json"]!));
+  }
+  const files = materializeMiniAppGitCandidateArtifactFiles(bundle.files);
+  const provenance = JSON.parse(bundle.files["SOURCE_PROVENANCE.json"] ?? "null") as Record<string, unknown> | null;
+  const title = typeof provenance?.title === "string" ? provenance.title : "Personal Mini-App";
+  const html = files["index.html"]!
+    .replace(/<link\s+rel="stylesheet"\s+href="\.\/styles\.css"\s*\/?\s*>/i, "")
+    .replace(/<script\s+src="\.\/(?:storage-adapter|app)\.js"><\/script>/gi, "");
+  const assets = Object.entries(files).filter(([path]) => path.startsWith("assets/")).map(([path, encoded]) => {
+    const extension = path.split(".").pop()?.toLowerCase() ?? "";
+    const mimeType = extension === "png" ? "image/png" : extension === "jpg" || extension === "jpeg" ? "image/jpeg" : extension === "webp" ? "image/webp" : extension === "svg" ? "image/svg+xml" : null;
+    if (!mimeType || !encoded.startsWith("base64:")) throw new Error("MINI_APP_CANDIDATE_ASSET_TYPE_FORBIDDEN");
+    return { path, mimeType, dataBase64: encoded.slice(7) };
+  });
+  const source = GENERATED_APP_SCHEMA.parse({
+    title,
+    html,
+    css: files["styles.css"],
+    javascript: `${files["storage-adapter.js"]}\n${files["app.js"]}`,
+    assets,
+  });
+  const invalidFields = invalidGeneratedFields(source as unknown as Record<string, unknown>);
+  if (invalidFields.length) throw new Error(`MINI_APP_CANDIDATE_SOURCE_INVALID:${invalidFields.join(",")}`);
+  return source;
 }
 
 function isSafeCandidateToPersist(raw: string): boolean {
@@ -802,7 +925,13 @@ export async function buildAndStorePersonalMiniApp(input: {
     if (!match) throw new Error("MINI_APP_SOURCE_BINDING_INVALID");
     const previousBytes = await storageReadBuffer(input.previousSourceRef.slice("r2://".length));
     if (createHash("sha256").update(previousBytes).digest("hex") !== match[1]) throw new Error("MINI_APP_SOURCE_DIGEST_MISMATCH");
-    previousSource = GENERATED_APP_SCHEMA.parse(JSON.parse(previousBytes.toString("utf8")));
+    const parsedSource: unknown = JSON.parse(previousBytes.toString("utf8"));
+    if (parsedSource && typeof parsedSource === "object" && !Array.isArray(parsedSource) &&
+        (parsedSource as Record<string, unknown>).schemaVersion === "smartaihub-miniapp-git-candidate.v1") {
+      previousSource = resolveMiniAppGitCandidateSource(parsedSource as MiniAppGitCandidateBundle);
+    } else {
+      previousSource = GENERATED_APP_SCHEMA.parse(parsedSource);
+    }
   }
   let previousCandidate: Record<string, unknown> | undefined;
   if (input.previousCandidateRef) {

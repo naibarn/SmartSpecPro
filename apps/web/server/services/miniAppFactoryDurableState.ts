@@ -23,6 +23,17 @@ export type MiniAppFactoryDurableState = {
   nextEligibleStages: string[];
 };
 
+export function resolveMiniAppGitCandidate(state: MiniAppFactoryDurableState): { owner: string; repository: string; revision: string } | null {
+  const marker = state.artifacts.find(value => value.startsWith("miniapp-git-candidate:"));
+  if (!marker) return null;
+  const match = /^miniapp-git-candidate:([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100})@([a-f0-9]{40})$/i.exec(marker);
+  if (!match || !state.repository || state.repository.owner.toLowerCase() !== match[1]!.toLowerCase() ||
+      state.repository.name !== match[2] || state.repository.revision.toLowerCase() !== match[3]!.toLowerCase()) {
+    throw new Error("MINI_APP_CANDIDATE_REVISION_MISMATCH");
+  }
+  return { owner: match[1]!, repository: match[2]!, revision: match[3]!.toLowerCase() };
+}
+
 function stageList(value: unknown): value is string[] {
   return Array.isArray(value) && value.length <= 128 && value.every(item =>
     typeof item === "string" && /^[A-Za-z0-9_.:-]{1,128}$/.test(item)
@@ -149,8 +160,8 @@ export function advanceMiniAppFactoryDurableState(
     ...state,
     currentStage: input.stageId,
     deliveryMilestone: input.deliveryMilestone ?? (
-      input.stageId === "deploy" && state.profile === "PERSONAL_MINIAPP" && !state.artifacts.some(value => value.startsWith("prepared-miniapp-git:")) ? "PREVIEW_AVAILABLE" :
-      input.stageId === "smoke" && state.profile === "PERSONAL_MINIAPP" ? "PREVIEW_AVAILABLE" :
+      input.stageId === "deploy" && state.profile === "PERSONAL_MINIAPP" && !state.artifacts.some(value => value.startsWith("prepared-miniapp-git:") || value.startsWith("miniapp-git-candidate:")) ? "PREVIEW_AVAILABLE" :
+      input.stageId === "smoke" && state.profile === "PERSONAL_MINIAPP" ? "VERIFICATION_PENDING" :
       state.deliveryMilestone
     ),
     completedStages: [...new Set([...state.completedStages, input.stageId])],

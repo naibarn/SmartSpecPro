@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
   resolveOwnedMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.appId, tenantId: input.tenantId, ownerUserId: input.ownerUserId, visibility: "private" })),
   resolveMiniAppFactoryHome: vi.fn(),
-  importPreparedMiniAppCandidate: vi.fn(async () => ({ sourceRef: `r2://mini-app-sources/tenant-acme/app_e6f0be051fd22e09bc4c5dff/sha256/${"c".repeat(64)}`, sourceDigest: "c".repeat(64), bundle: {} })),
+  importMiniAppGitRevisionCandidate: vi.fn(async () => ({ sourceRef: `r2://mini-app-sources/tenant-acme/app_candidate/sha256/${"c".repeat(64)}`, sourceDigest: "c".repeat(64), bundle: { parentRevision: "b".repeat(40), sourceTreeDigest: "d".repeat(64) } })),
   getUserGitHubConnection: vi.fn(async () => ({ configured: false, githubLogin: null })),
   developmentRunService: {
     initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })),
@@ -106,8 +106,7 @@ vi.mock("../../services/appIdentityRepository", () => ({
 }));
 
 vi.mock("../../services/personalMiniAppPreview", () => ({
-  PREPARED_MINIAPP_V2: { appId: "app_e6f0be051fd22e09bc4c5dff", owner: "pruksacharttk", repository: "smartaihub-app-e6f0be051fd22e09bc4c5dff", branch: "v2/thai-thb", revision: "1d7273d719ff9b034cd304920c1ef76efdd86e76", parentRevision: "7b90395508e8a7084026d7dafc80a8e4b2360493", sourceTreeDigest: "b".repeat(64), artifactDigest: "b".repeat(64) },
-  importPreparedMiniAppCandidate: (...args: unknown[]) => mocks.importPreparedMiniAppCandidate(...args),
+  importMiniAppGitRevisionCandidate: (...args: unknown[]) => mocks.importMiniAppGitRevisionCandidate(...args),
   resolvePersonalMiniAppFactoryHome: (...args: unknown[]) => mocks.resolveMiniAppFactoryHome(...args),
 }));
 
@@ -330,22 +329,34 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
   });
 
-  it("adopts the pinned candidate as a no-generation package run for the authenticated existing owner", async () => {
-    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId: "app_e6f0be051fd22e09bc4c5dff", tenantId: "tenant-acme", ownerUserId: 42, visibility: "private", runtimeDataMigrationStatus: "OWNER_CONFIRMED" });
-    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ runId: "run-v1", isInProgress: false, artifacts: [] });
+  it("adopts an exact candidate revision from the authenticated app's bound repository without generation", async () => {
+    const appId = "app_candidate";
+    const revision = "a".repeat(40);
+    const repository = { mode: "USER_OWNED", owner: "app-owner", name: "private-expense-app", url: "https://github.com/app-owner/private-expense-app", revision: "b".repeat(40) };
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId, tenantId: "tenant-acme", ownerUserId: 42, visibility: "private", runtimeDataMigrationStatus: "OWNER_CONFIRMED" });
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ runId: "run-v1", isInProgress: false, artifacts: [], repository, repositoryState: "BOUND" });
     mocks.enqueueMiniAppStage.mockResolvedValueOnce({ stageId: "package", jobId: "candidate-package-job", created: true, state: "ENQUEUED" });
 
-    const result = await (spec226DevelopmentControlRouter.adoptPreparedMiniAppCandidate as unknown as Function)({ ctx: CTX, input: { appId: "app_e6f0be051fd22e09bc4c5dff" } });
+    const result = await (spec226DevelopmentControlRouter.adoptPreparedMiniAppCandidate as unknown as Function)({ ctx: CTX, input: { appId, branch: "feature/next-version", revision } });
 
-    expect(result).toMatchObject({ appId: "app_e6f0be051fd22e09bc4c5dff", jobId: "candidate-package-job", stageId: "package", sourceRevision: "1d7273d719ff9b034cd304920c1ef76efdd86e76" });
-    expect(mocks.importPreparedMiniAppCandidate).toHaveBeenCalledWith({ appId: "app_e6f0be051fd22e09bc4c5dff", tenantId: "tenant-acme", ownerUserId: 42 });
+    expect(result).toMatchObject({ appId, jobId: "candidate-package-job", stageId: "package", sourceRevision: revision });
+    expect(mocks.importMiniAppGitRevisionCandidate).toHaveBeenCalledWith({ appId, tenantId: "tenant-acme", ownerUserId: 42, repository, branch: "feature/next-version", revision });
     expect(mocks.developmentRunService.initialize).toHaveBeenCalledWith(expect.objectContaining({ run: expect.objectContaining({
       actorId: 42,
-      baseRevision: "git:1d7273d719ff9b034cd304920c1ef76efdd86e76",
-      metadata: expect.objectContaining({ miniAppCandidateAdoption: expect.objectContaining({ revision: "1d7273d719ff9b034cd304920c1ef76efdd86e76" }) }),
+      repositoryRef: "repo:app-owner/private-expense-app",
+      baseRevision: `git:${revision}`,
+      metadata: expect.objectContaining({ miniAppCandidateAdoption: expect.objectContaining({ revision, branch: "feature/next-version" }) }),
       workUnit: expect.objectContaining({ progress: expect.objectContaining({ completedScope: ["ui_implementation", "source_repository"], remainingScope: ["package", "deploy", "smoke"] }) }),
     }) }));
     expect(mocks.enqueueMiniAppStage).toHaveBeenCalledWith(expect.objectContaining({ run: expect.objectContaining({ tenantId: "tenant-acme", actorId: 42 }) }));
+  });
+
+  it("refuses candidate adoption when the existing app has no bound dedicated repository", async () => {
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId: "app_candidate", tenantId: "tenant-acme", ownerUserId: 42, visibility: "private", runtimeDataMigrationStatus: "OWNER_CONFIRMED" });
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ runId: "run-v1", isInProgress: false, artifacts: [], repository: null, repositoryState: "PROVISIONING_PENDING" });
+    await expect((spec226DevelopmentControlRouter.adoptPreparedMiniAppCandidate as unknown as Function)({ ctx: CTX, input: { appId: "app_candidate", branch: "main", revision: "a".repeat(40) } }))
+      .rejects.toMatchObject({ message: "MINI_APP_CANDIDATE_REPOSITORY_NOT_BOUND" });
+    expect(mocks.importMiniAppGitRevisionCandidate).not.toHaveBeenCalled();
   });
 
   it("adds the per-app GitHub source stage when the owner has connected GitHub", async () => {

@@ -3,8 +3,8 @@ import { createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter } 
 import { loadMiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { createMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerStageAdapter";
 import type { MiniAppFactoryStageWorkerRuntime } from "./miniAppFactoryStageWorker";
-import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
-import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, packagePreparedMiniAppCandidate, promoteMiniAppArtifactAfterVerification, provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppPreview, verifyPersonalMiniAppArtifactForPromotion } from "./personalMiniAppPreview";
+import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState, resolveMiniAppGitCandidate } from "./miniAppFactoryDurableState";
+import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, packageMiniAppGitCandidate, promoteMiniAppArtifactAfterVerification, provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppPreview, verifyPersonalMiniAppArtifactForPromotion } from "./personalMiniAppPreview";
 import { storageReadBuffer } from "../storage";
 import { buildMiniAppRuntimeDocument, createMiniAppRuntimeStorageToken } from "./miniAppRuntime";
 
@@ -25,14 +25,13 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
       const state = parseMiniAppFactoryDurableState(run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
       if (state.profile !== "PERSONAL_MINIAPP") throw new Error("FACTORY_HOSTED_PROFILE_FORBIDDEN");
       const baseRef = `miniapp:${state.miniAppId}`;
-      const preparedCandidate = state.artifacts.find(value => value.startsWith("prepared-miniapp-git:"));
-      if (preparedCandidate) {
-        if (!/^prepared-miniapp-git:pruksacharttk\/smartaihub-app-e6f0be051fd22e09bc4c5dff@1d7273d719ff9b034cd304920c1ef76efdd86e76$/.test(preparedCandidate)) throw new Error("MINI_APP_CANDIDATE_REVISION_MISMATCH");
+      const gitCandidate = resolveMiniAppGitCandidate(state);
+      if (gitCandidate) {
         const sourceRef = [...context.artifacts].reverse().find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
         const sourceDigest = [...context.artifacts].reverse().find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
         if (!sourceRef || !sourceDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_MISSING");
         if (stageId === "package") {
-          const packaged = await packagePreparedMiniAppCandidate({ tenantId: context.tenantId, appId: state.miniAppId, sourceRef, sourceDigest });
+          const packaged = await packageMiniAppGitCandidate({ tenantId: context.tenantId, appId: state.miniAppId, sourceRef, sourceDigest, owner: gitCandidate.owner, repository: gitCandidate.repository, branch: String((run.metadata?.miniAppCandidateAdoption as Record<string, unknown> | undefined)?.branch ?? ""), revision: gitCandidate.revision });
           return { artifacts: [`app-artifact:${packaged.artifactRef}`, `app-artifact-digest:${packaged.artifactDigest}`, `app-artifact-bytes:${packaged.bytes}`, `package-verified:${packaged.artifactRef}`, `package-digest:spaas-package-v1:sha256:${packaged.artifactDigest}`] };
         }
         const artifactRef = [...context.artifacts].reverse().find(value => value.startsWith("app-artifact:r2://"))?.slice("app-artifact:".length);
@@ -67,7 +66,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
             },
             promote: () => bindPersonalMiniAppArtifact(binding),
           });
-          return { artifacts: [`deployment:${baseRef}:v${bound.deploymentVersion}`, `private-preview-smoke:${artifactDigest}`, `private-preview-owner-access:${state.miniAppId}`, `private-preview-unauthorized-denied:${state.miniAppId}`, `miniapp-version-source-git:${state.miniAppId}@1d7273d719ff9b034cd304920c1ef76efdd86e76`] };
+          return { artifacts: [`deployment:${baseRef}:v${bound.deploymentVersion}`, `private-preview-smoke:${artifactDigest}`, `private-preview-owner-access:${state.miniAppId}`, `private-preview-unauthorized-denied:${state.miniAppId}`, `miniapp-version-source-git:${state.miniAppId}@${gitCandidate.revision}`] };
         }
         throw new Error("MINI_APP_CANDIDATE_STAGE_UNSUPPORTED:" + stageId);
       }
