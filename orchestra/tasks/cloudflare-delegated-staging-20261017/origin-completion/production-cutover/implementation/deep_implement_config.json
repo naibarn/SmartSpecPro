@@ -21,9 +21,9 @@
     },
     "section-03-production-runtime-composition": {
       "status": "checkpointed",
-      "next_action": "Production credential currently savedAt 2026-10-24T09:30:49Z; DB job/grant are still absent. Current Staging Hyperdrive is direct-origin to db-staging.smartaihub.app with verify-full and CA certificate ID fce9c686-4c0d-46e2-afea-08f1b1992d7d. The corrected UI now treats Account SSL/Certificates as optional for Production VPC, but a shared PostgreSQL cert rotation still requires Staging trust migration or a separate TLS endpoint. Obtain the refreshed scoped Production token in the Admin target, then use the authenticated Prepare Production database connection action once and follow the canonical job.",
-      "checkpoint_sha": "f6ccd0663f9acc73ffa45c5ce6705c0b40d59b23",
-      "merged_main_sha": "f6ccd0663f9acc73ffa45c5ce6705c0b40d59b23",
+      "next_action": "The mTLS inventory 403 does not block Production VPC creation: VPC Service owns TLS and VPC-backed Hyperdrive must omit direct-origin mtls. Current exact Production credential remains savedAt 2026-10-24T09:30:49Z; no production DB job/grant exists. Current PostgreSQL leaf is on the private SmartAIHub CA while Workers VPC trusts public/Cloudflare Origin CA; the already-issued matching Origin CA certificate cannot replace the shared leaf until existing direct-origin Staging Hyperdrive trust is migrated or an isolated TLS endpoint is prepared. In the Admin UI, save the refreshed Production target token with Account → SSL and Certificates → Write (Read or Write permits inventory) once, then create the existing canonical Production DB job once using healthy Tunnel smartspec; follow its result. Continue exact role/tenant SQL checks and Worker composition, and never change the smartaihub.app/* route without the existing independent canary authority.",
+      "checkpoint_sha": "e5e6412dd731f8721389e6f36dbe2ab9e709a5f6",
+      "merged_main_sha": "e5e6412dd731f8721389e6f36dbe2ab9e709a5f6",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
     },
     "section-01-production-target-ui": {
@@ -42,11 +42,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 64,
-  "updated_at": "2026-10-25T06:37:59.323846+00:00",
+  "generation": 65,
+  "updated_at": "2026-10-25T06:49:33.765443+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Production credential currently savedAt 2026-10-24T09:30:49Z; DB job/grant are still absent. Current Staging Hyperdrive is direct-origin to db-staging.smartaihub.app with verify-full and CA certificate ID fce9c686-4c0d-46e2-afea-08f1b1992d7d. The corrected UI now treats Account SSL/Certificates as optional for Production VPC, but a shared PostgreSQL cert rotation still requires Staging trust migration or a separate TLS endpoint. Obtain the refreshed scoped Production token in the Admin target, then use the authenticated Prepare Production database connection action once and follow the canonical job.",
+    "next_action": "The mTLS inventory 403 does not block Production VPC creation: VPC Service owns TLS and VPC-backed Hyperdrive must omit direct-origin mtls. Current exact Production credential remains savedAt 2026-10-24T09:30:49Z; no production DB job/grant exists. Current PostgreSQL leaf is on the private SmartAIHub CA while Workers VPC trusts public/Cloudflare Origin CA; the already-issued matching Origin CA certificate cannot replace the shared leaf until existing direct-origin Staging Hyperdrive trust is migrated or an isolated TLS endpoint is prepared. In the Admin UI, save the refreshed Production target token with Account → SSL and Certificates → Write (Read or Write permits inventory) once, then create the existing canonical Production DB job once using healthy Tunnel smartspec; follow its result. Continue exact role/tenant SQL checks and Worker composition, and never change the smartaihub.app/* route without the existing independent canary authority.",
     "gaps": [
       "The existing Cloudflare Tunnel exposes db-staging.smartaihub.app only; the production database hostname route db.smartaihub.app has not been configured or verified.",
       "No least-privilege production PostgreSQL runtime role or tenant-isolation proof exists. The existing app role is superuser/BYPASSRLS; do not reuse it for Hyperdrive or blanket-enable RLS.",
@@ -68,9 +68,11 @@
       "Live host remains healthy after Linux UI release generation 93 from f6ccd066: smartspec-web, smartspec-backend and cloudflared active; smartaihub.app/readyz and api.smartaihub.app/health return HTTP 200. This release does not change Cloudflare traffic.",
       "PostgreSQL security audit: 680 public tables, 464 with a tenant column, 12 RLS-enabled/forced tables; current smartspec DB identity is SUPERUSER and BYPASSRLS. No production runtime role or positive/negative tenant isolation proof exists. Do not issue a production role or blanket RLS change until canonical job/tenant-context behavior is implemented and verified.",
       "Production VPC/Hyperdrive needs a currently installed certificate chain trusted by Workers VPC. The existing Cloudflare Origin CA cert is issued but the live PostgreSQL leaf remains on the private SmartAIHub CA; rotating it before migrating the direct-origin Staging Hyperdrive will break Staging.",
-      "No canonical Production DB job/grant exists yet. The exact target credential in the app is stale (savedAt 2026-10-24T09:30:49Z); current Cloudflare API mTLS inventory returns HTTP 403. This optional inventory permission is not a Production VPC blocker, but Account SSL and Certificates Write is needed if we choose to migrate Staging trust before rotating the shared cert."
+      "No canonical Production DB job/grant exists yet. The exact target credential in the app is stale (savedAt 2026-10-24T09:30:49Z); current Cloudflare API mTLS inventory returns HTTP 403. This optional inventory permission is not a Production VPC blocker, but Account SSL and Certificates Write is needed if we choose to migrate Staging trust before rotating the shared cert.",
+      "Production Worker runtime still returns 503 activation=disabled with missing HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX; no production DB provisioning job/grant exists.",
+      "Linux web release generation 95 now serves e5e6412dd; smartaihub.app/readyz and api.smartaihub.app/health return 200. This verifies the current Linux origin and does not move traffic to Cloudflare."
     ],
-    "merged_main_sha": "f6ccd0663f9acc73ffa45c5ce6705c0b40d59b23",
+    "merged_main_sha": "e5e6412dd731f8721389e6f36dbe2ab9e709a5f6",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
