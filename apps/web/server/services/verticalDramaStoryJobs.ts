@@ -707,6 +707,18 @@ export async function enqueueVerticalDramaStoryJob(
   await deps.redis.del(recoverablePointerKey(payload.tenantId, payload.seriesId)).catch(() => {});
 
   try {
+    // The full domain record remains in the ephemeral story-job store. The
+    // canonical worker input only needs identity plus the small timeout-policy
+    // projection; carrying the full draft input can exceed the control plane's
+    // 500-key definition limit.
+    const taskInput =
+      record.input && typeof record.input === "object" && !Array.isArray(record.input)
+        ? record.input as Record<string, unknown>
+        : {};
+    const timeoutInput = Object.fromEntries(
+      ["additionalEpisodes", "horizonEpisodes", "episodeCount"]
+        .flatMap((key) => typeof taskInput[key] === "number" ? [[key, taskInput[key]]] : []),
+    );
     const canonicalJobId = await createFeature186VerticalDramaJob({
       jobId,
       tenantId: payload.tenantId,
@@ -714,7 +726,12 @@ export async function enqueueVerticalDramaStoryJob(
       jobType: "vertical_drama.story",
       executionClass: "long",
       activeDedupeKey: activePointerKey(payload.tenantId, payload.seriesId),
-      payload: record as unknown as Record<string, unknown>,
+      payload: {
+        jobId,
+        seriesId: payload.seriesId,
+        kind: payload.kind,
+        input: timeoutInput,
+      },
     });
     if (canonicalJobId !== jobId) {
       // The per-series pointer can be released just before the canonical
