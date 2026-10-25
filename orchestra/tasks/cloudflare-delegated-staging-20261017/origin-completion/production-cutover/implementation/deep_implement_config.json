@@ -21,9 +21,9 @@
     },
     "section-03-production-runtime-composition": {
       "status": "checkpointed",
-      "next_action": "Linux control plane release smartspec-web-5022ebf41c595fe449cc5a899ac28847f1713a4a-04e8a4b5b6d2 is DEPLOYED_VERIFIED (g98; runtime revision 5022ebf41; artifact sha256:1864cc38a17479563ddd894505d209ff642e4df98a86dc29b82e5922616c56e2); public web /readyz and Python /health are HTTP 200. DB role/fence implementation is integrated and validated. Next, use Admin → Settings → Deployment targets → production → smartspec-cloudflare-runtime; the exact existing target token must include Account → SSL and Certificates → Read, then queue the existing authenticated Prepare Production database connection action once and follow its canonical job. The last verified Staging Hyperdrive uses db-staging.smartaihub.app verify-full with CA ID fce9c686-4c0d-46e2-afea-08f1b1992d7d; live PostgreSQL still serves its private SmartAIHub CA leaf, so keep Staging unchanged until its trust is safely migrated. Do not touch the smartaihub.app/* route before the existing canary authority and verified rollback pass.",
-      "checkpoint_sha": "5022ebf41c595fe449cc5a899ac28847f1713a4a",
-      "merged_main_sha": "5022ebf41c595fe449cc5a899ac28847f1713a4a",
+      "next_action": "Authenticated Admin action is the current blocker. The Orca tab at smartaihub.app/admin/settings redirects to /login, so no grant/job was created. After the owner signs in to this existing page, run infrastructure.prepareCloudflareProductionDatabase once with tenant-ZCSKEM9s, project 44fb79ed-8d65-41b0-b04e-97f4b139430b, production target smartspec-cloudflare-runtime, and tunnel 191d047e-674a-48f4-b105-b37269c2dad6; then monitor canonical job and continue without another approval prompt. Staging Hyperdrive latest API read: host db-staging.smartaihub.app, Postgres, database smartspec, cache disabled, no CA/SSL mode returned; Staging unchanged. The host Linux /readyz HTTP 200 is not Cloudflare Worker acceptance.",
+      "checkpoint_sha": "cd81bc717da74f30c370107b02555efdc70baf4a",
+      "merged_main_sha": "cd81bc717da74f30c370107b02555efdc70baf4a",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
     },
     "section-01-production-target-ui": {
@@ -42,35 +42,22 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 67,
-  "updated_at": "2026-10-25T07:54:25.154603+00:00",
+  "generation": 72,
+  "updated_at": "2026-10-25T08:28:16.458277+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Linux control plane release smartspec-web-5022ebf41c595fe449cc5a899ac28847f1713a4a-04e8a4b5b6d2 is DEPLOYED_VERIFIED (g98; runtime revision 5022ebf41; artifact sha256:1864cc38a17479563ddd894505d209ff642e4df98a86dc29b82e5922616c56e2); public web /readyz and Python /health are HTTP 200. DB role/fence implementation is integrated and validated. Next, use Admin → Settings → Deployment targets → production → smartspec-cloudflare-runtime; the exact existing target token must include Account → SSL and Certificates → Read, then queue the existing authenticated Prepare Production database connection action once and follow its canonical job. The last verified Staging Hyperdrive uses db-staging.smartaihub.app verify-full with CA ID fce9c686-4c0d-46e2-afea-08f1b1992d7d; live PostgreSQL still serves its private SmartAIHub CA leaf, so keep Staging unchanged until its trust is safely migrated. Do not touch the smartaihub.app/* route before the existing canary authority and verified rollback pass.",
+    "next_action": "Authenticated Admin action is the current blocker. The Orca tab at smartaihub.app/admin/settings redirects to /login, so no grant/job was created. After the owner signs in to this existing page, run infrastructure.prepareCloudflareProductionDatabase once with tenant-ZCSKEM9s, project 44fb79ed-8d65-41b0-b04e-97f4b139430b, production target smartspec-cloudflare-runtime, and tunnel 191d047e-674a-48f4-b105-b37269c2dad6; then monitor canonical job and continue without another approval prompt. Staging Hyperdrive latest API read: host db-staging.smartaihub.app, Postgres, database smartspec, cache disabled, no CA/SSL mode returned; Staging unchanged. The host Linux /readyz HTTP 200 is not Cloudflare Worker acceptance.",
     "gaps": [
       "The existing Cloudflare Tunnel exposes db-staging.smartaihub.app only; the production database hostname route db.smartaihub.app has not been configured or verified.",
-      "Production VPC service and Hyperdrive are absent. The integrated database job is available but has not run because host TLS and runtime role prerequisites are not verified.",
-      "Production Worker /readyz remains 503 activation=disabled. The deployed production Worker is missing HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET and VECTOR_INDEX bindings.",
       "Production Worker runtime configuration, application/auth/database verification and verified rollback release identity remain incomplete.",
       "smartaihub.app/* is not routed to the Cloudflare Worker. Production route/traffic change must follow the existing independent canary authority; no such cutover was performed.",
-      "Production token Origin CA issuance succeeds, but Account-level GET /mtls_certificates/{id} returns HTTP 403, Cloudflare code 10000 Authentication error. Account SSL and Certificates Read + Write is needed to update Staging Hyperdrive trust before switching the PostgreSQL leaf certificate.",
-      "A valid Cloudflare Origin CA certificate covering both db.smartaihub.app and db-staging.smartaihub.app is issued and key-matched, but not installed because Staging currently trusts a different private CA.",
       "Live production database inventory has zero cloudflare.production.database.provision jobs and zero cloudflare_production_database_grants; only the Production Queue provision job has succeeded. Create the canonical DB grant/job from the authenticated Admin action; do not insert it directly.",
-      "Production Worker /readyz returns HTTP 503 activation=disabled and is missing HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX. No Production Worker route/canary cutover has occurred.",
-      "As of 2026-10-25, exact Production credential savedAt is still 2026-10-24T09:30:49Z; /user/tokens/verify and smartaihub.app zone ownership return HTTP 200, but GET /accounts/{account_id}/mtls_certificates returns HTTP 403 with Cloudflare code 10000 Authentication error. Account SSL and Certificates Read + Write has not been saved to this exact target.",
-      "Cloudflare Origin CA list via GET /certificates?zone_id=... returned HTTP 200 and already contains certificate 584190943135685371580953455529659777096292974256 for db.smartaihub.app and db-staging.smartaihub.app, expiring 2027-10-25; it matches the protected PostgreSQL key, and no additional issuance is needed.",
-      "Database job execution is not observable yet: production database provisioning job count=0 and grant count=0; production deploy job count=0. Existing Production Queue job b2b989d0-3476-4e04-afa6-f55a31add909 succeeded; queue provisioning is complete.",
-      "Integrated revision d21a924586 adds a read-only mTLS certificate permission probe to Production inventory and explains the exact Account scope in Thai/English; focused service/UI tests passed 30/30.",
-      "Fresh Production provider inventory at 2026-10-25T03:57Z: Queues, Hyperdrive, zone, route, Worker deployments/versions, VPC services, Tunnels and Containers all read HTTP 200. Production Queue and DLQ exist; only Staging Hyperdrive exists; VPC service inventory is empty; smartaihub.app/* has no Worker route; Worker active version has only activation/environment/search-cache bindings.",
-      "The exact stored Production token returns HTTP 200 for /user/tokens/verify and Origin CA GET /certificates?zone_id=...; two existing certificates cover db.smartaihub.app and both match the protected PostgreSQL private key. Account /mtls_certificates inventory still returns HTTP 403, so Staging trust cannot safely be migrated before PostgreSQL leaf replacement.",
-      "Production VPC/Hyperdrive needs a currently installed certificate chain trusted by Workers VPC. The existing Cloudflare Origin CA cert is issued but the live PostgreSQL leaf remains on the private SmartAIHub CA; rotating it before migrating the direct-origin Staging Hyperdrive will break Staging.",
-      "No canonical Production DB job/grant exists yet. The exact target credential in the app is stale (savedAt 2026-10-24T09:30:49Z); current Cloudflare API mTLS inventory returns HTTP 403. This optional inventory permission is not a Production VPC blocker, but Account SSL and Certificates Write is needed if we choose to migrate Staging trust before rotating the shared cert.",
-      "Production Worker runtime still returns 503 activation=disabled with missing HYPERDRIVE, JOB_QUEUE, JOB_WORKFLOW, JOB_CONTAINERS, WORKER_APP, MEDIA_BUCKET, VECTOR_INDEX; no production DB provisioning job/grant exists.",
-      "Production provisioning remains unexecuted: last canonical evidence shows no Production VPC Service/Hyperdrive or DB grant/job; Linux DB trust still uses a private CA and Staging Hyperdrive trust must remain intact.",
-      "The saved Production Cloudflare credential last returned HTTP 403 for GET /accounts/{account_id}/mtls_certificates; this checkout could not re-probe it because its local tooling environment lacks LLM_ENCRYPTION_KEY. Need exact Production target credential scope Account → SSL and Certificates → Read to inspect/migrate Staging CA trust (not required by VPC API itself).",
-      "Production Worker bindings/runtime verification and independent canary/rollback authorization remain incomplete; smartaihub.app/* has not been switched."
+      "Production VPC Service and Hyperdrive are still absent. Host TLS and the least-privilege runtime role are prepared; the canonical DB provisioning grant/job has not yet been created because the existing Admin browser session is unauthenticated.",
+      "Production Worker bindings/readiness, Node/Python/API/PostgreSQL tenant-isolation acceptance, executable rollback baseline, and canary authority checks remain pending after database provisioning.",
+      "The authenticated Admin provisioning action has not been submitted because Orca browser currently lands on /login; user authentication in that browser session is required. This is a session access prerequisite, not a request for another deployment approval.",
+      "The current public smartaihub.app/readyz HTTP 200 is served by the Linux origin and is not evidence of Cloudflare Worker readiness; Worker readiness must be checked against the Worker endpoint after production bindings and deployment."
     ],
-    "merged_main_sha": "5022ebf41c595fe449cc5a899ac28847f1713a4a",
+    "merged_main_sha": "cd81bc717da74f30c370107b02555efdc70baf4a",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
