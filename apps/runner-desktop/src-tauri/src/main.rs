@@ -10,7 +10,8 @@ use smartaihub_runner::{
         token_expiry_ms,
     },
     diagnostics::{
-        connection_status_cancellable, discover_local_tools, run_local_entrypoint_desktop,
+        connection_status_cancellable, discover_local_tools,
+        reset_control_plane_heartbeat_diagnostics, run_local_entrypoint_desktop,
         runner_credential_diagnostics, verify_local_tool,
     },
     discovery::ToolCandidate,
@@ -36,6 +37,7 @@ use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
 const RUNNER_STOP_TIMEOUT: Duration = Duration::from_secs(30);
+const CONTROL_PLANE_HEARTBEAT_FRESHNESS: Duration = Duration::from_secs(5 * 60);
 
 #[derive(Clone)]
 struct RunnerLifecycle {
@@ -92,7 +94,9 @@ struct RunnerState {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RunnerStatus {
-    connected: bool,
+    credentials_ready: bool,
+    control_plane_connected: bool,
+    last_control_plane_heartbeat_acknowledged_at_ms: Option<u64>,
     running: bool,
     stopping: bool,
     runner_id: String,
@@ -107,6 +111,13 @@ struct RunnerStatus {
     credential_state: String,
     credential_error_code: Option<String>,
     readiness: RunnerReadinessStatus,
+}
+
+fn control_plane_heartbeat_is_fresh(last_acknowledged_at_ms: Option<u64>, now_ms: u64) -> bool {
+    last_acknowledged_at_ms.is_some_and(|acknowledged_at_ms| {
+        acknowledged_at_ms <= now_ms
+            && now_ms - acknowledged_at_ms < CONTROL_PLANE_HEARTBEAT_FRESHNESS.as_millis() as u64
+    })
 }
 
 fn safe_io_error(_: std::io::Error) -> String {
@@ -334,6 +345,19 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         .as_ref()
         .and_then(|saved| token_expiry_ms(&saved.refresh_token));
     let runtime_diagnostics = runner_credential_diagnostics();
+    let running = state.lifecycle.running.load(Ordering::Acquire);
+    let stopping = state.lifecycle.stopping.load(Ordering::Acquire);
+    let credentials_ready = connection.is_some() && matches!(credential_state, "valid" | "renewed");
+    let last_control_plane_heartbeat_acknowledged_at_ms = runtime_diagnostics
+        .get("lastControlPlaneHeartbeatAcknowledgedAtMs")
+        .and_then(serde_json::Value::as_u64);
+    let control_plane_connected = credentials_ready
+        && running
+        && !stopping
+        && control_plane_heartbeat_is_fresh(
+            last_control_plane_heartbeat_acknowledged_at_ms,
+            now_ms,
+        );
     let mut readiness = state
         .readiness
         .lock()
@@ -359,9 +383,11 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         readiness.capability_snapshot_revision = None;
     }
     Ok(RunnerStatus {
-        connected: connection.is_some() && matches!(credential_state, "valid" | "renewed"),
-        running: state.lifecycle.running.load(Ordering::Acquire),
-        stopping: state.lifecycle.stopping.load(Ordering::Acquire),
+        credentials_ready,
+        control_plane_connected,
+        last_control_plane_heartbeat_acknowledged_at_ms,
+        running,
+        stopping,
         runner_id: state.config.runner_id.clone(),
         default_workspace_id: settings.default_workspace_id.clone(),
         auto_start_enabled: settings.auto_start_enabled,
@@ -772,6 +798,7 @@ fn start_runner_parts(
     lifecycle.stopping.store(false, Ordering::Release);
     set_readiness_publication_pending(&readiness)?;
     smartaihub_runner::diagnostics::reset_capability_publication_diagnostics();
+    reset_control_plane_heartbeat_diagnostics();
     let handle = std::thread::Builder::new()
         .name("smartaihub-runner-control".into())
         .spawn(move || {
@@ -1268,5 +1295,21 @@ mod credential_retry_tests {
             last_attempt.map(|(at, state)| (at, state)),
             Some((attempt, "renewing"))
         );
+    }
+}
+
+#[cfg(test)]
+mod control_plane_heartbeat_tests {
+    use super::control_plane_heartbeat_is_fresh;
+
+    #[test]
+    fn heartbeat_requires_a_recent_acknowledgment_and_rejects_future_or_missing_times() {
+        assert!(control_plane_heartbeat_is_fresh(Some(700_001), 1_000_000));
+        assert!(!control_plane_heartbeat_is_fresh(Some(700_000), 1_000_000));
+        assert!(!control_plane_heartbeat_is_fresh(
+            Some(1_000_001),
+            1_000_000
+        ));
+        assert!(!control_plane_heartbeat_is_fresh(None, 1_000_000));
     }
 }

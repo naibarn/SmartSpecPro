@@ -59,6 +59,7 @@ pub fn runner_credential_diagnostics() -> serde_json::Value {
                 "wssTransportRecreated": false,
                 "wssAuthenticationAcknowledged": false,
                 "lastWssAuthenticationAcknowledgedAt": null,
+                "lastControlPlaneHeartbeatAcknowledgedAtMs": null,
                 "lastCapabilityPublicationAcknowledgedAt": null,
                 "lastCapabilitySnapshotRevision": null,
                 "lastFailureCode": null,
@@ -85,6 +86,20 @@ pub fn reset_capability_publication_diagnostics() {
     {
         diagnostics["lastCapabilityPublicationAcknowledgedAt"] = serde_json::Value::Null;
         diagnostics["lastCapabilitySnapshotRevision"] = serde_json::Value::Null;
+    }
+}
+
+/// Clears the process-local heartbeat evidence when a new control loop starts.
+pub fn reset_control_plane_heartbeat_diagnostics() {
+    if let Ok(mut diagnostics) = RUNNER_CREDENTIAL_DIAGNOSTICS
+        .get_or_init(|| {
+            Mutex::new(json!({
+                "lastControlPlaneHeartbeatAcknowledgedAtMs": null
+            }))
+        })
+        .lock()
+    {
+        diagnostics["lastControlPlaneHeartbeatAcknowledgedAtMs"] = serde_json::Value::Null;
     }
 }
 
@@ -1285,6 +1300,7 @@ struct RotatingControlTransport {
     credential_revision: u64,
     last_rotation_at: Option<String>,
     last_wss_auth_acknowledged_at: Option<String>,
+    last_control_plane_heartbeat_acknowledged_at_ms: Option<u64>,
     last_capability_acknowledged_at: Option<String>,
     last_capability_snapshot_revision: Option<String>,
     wss_transport_recreated: bool,
@@ -1307,6 +1323,7 @@ impl RotatingControlTransport {
             credential_revision: u64::from(binding.is_some()),
             last_rotation_at: None,
             last_wss_auth_acknowledged_at: None,
+            last_control_plane_heartbeat_acknowledged_at_ms: None,
             last_capability_acknowledged_at: None,
             last_capability_snapshot_revision: None,
             wss_transport_recreated: false,
@@ -1401,6 +1418,7 @@ impl RotatingControlTransport {
         self.credential_revision = self.credential_revision.saturating_add(1);
         self.last_rotation_at = Some(current_time_iso());
         self.last_wss_auth_acknowledged_at = None;
+        self.last_control_plane_heartbeat_acknowledged_at_ms = None;
         self.last_capability_acknowledged_at = None;
         self.last_capability_snapshot_revision = None;
         self.wss_transport_recreated = true;
@@ -1418,7 +1436,12 @@ impl RotatingControlTransport {
     }
 
     fn receive_server_message(&mut self) -> Result<serde_json::Value, TransportError> {
-        self.refresh_credentials_if_changed()?;
+        // Credential renewal replaces the WSS socket. Let the control loop
+        // reconnect on its next pass instead of treating that expected socket
+        // replacement as a fatal transport failure.
+        if self.refresh_credentials_if_changed()? {
+            return Err(TransportError::Idle);
+        }
         let message = match self.inner.receive_server_message() {
             Ok(message) => message,
             Err(TransportError::Idle) => return Err(TransportError::Idle),
@@ -1431,7 +1454,9 @@ impl RotatingControlTransport {
         };
         // A Desktop refresh may race a blocking WSS read. Recheck before the
         // received command is parsed, acknowledged, or executed.
-        self.refresh_credentials_if_changed()?;
+        if self.refresh_credentials_if_changed()? {
+            return Err(TransportError::Idle);
+        }
         Ok(message)
     }
 
@@ -1445,6 +1470,7 @@ impl RotatingControlTransport {
             "wssTransportRecreated": self.wss_transport_recreated,
             "wssAuthenticationAcknowledged": self.inner.wss_auth_acknowledged(),
             "lastWssAuthenticationAcknowledgedAt": self.last_wss_auth_acknowledged_at,
+            "lastControlPlaneHeartbeatAcknowledgedAtMs": self.last_control_plane_heartbeat_acknowledged_at_ms,
             "lastCapabilityPublicationAcknowledgedAt": self.last_capability_acknowledged_at,
             "lastCapabilitySnapshotRevision": self.last_capability_snapshot_revision,
             "lastFailureCode": last_failure_code,
@@ -1475,6 +1501,11 @@ impl ControlTransport for RotatingControlTransport {
             .get("type")
             .and_then(serde_json::Value::as_str)
             == Some("runner.capabilities.update");
+        let is_heartbeat = event
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            == Some("runner.reconcile");
         if is_capability_publication {
             self.last_capability_acknowledged_at = None;
             self.last_capability_snapshot_revision = event
@@ -1505,10 +1536,14 @@ impl ControlTransport for RotatingControlTransport {
         {
             self.last_capability_acknowledged_at = Some(current_time_iso());
         }
-        if matches!(
+        let accepted = matches!(
             ack,
             AckState::Accepted | AckState::Applied | AckState::Duplicate
-        ) {
+        );
+        if is_heartbeat && accepted {
+            self.last_control_plane_heartbeat_acknowledged_at_ms = Some(current_time_ms());
+        }
+        if accepted {
             self.last_failure_code = None;
             self.last_failure_at = None;
         } else {
@@ -1526,6 +1561,11 @@ impl ControlTransport for RotatingControlTransport {
             .get("type")
             .and_then(serde_json::Value::as_str)
             == Some("runner.capabilities.update");
+        let is_heartbeat = event
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            == Some("runner.reconcile");
         if is_capability_publication {
             self.last_capability_acknowledged_at = None;
             self.last_capability_snapshot_revision = event
@@ -1546,10 +1586,14 @@ impl ControlTransport for RotatingControlTransport {
                 {
                     self.last_capability_acknowledged_at = Some(current_time_iso());
                 }
-                if matches!(
+                let accepted = matches!(
                     ack,
                     AckState::Accepted | AckState::Applied | AckState::Duplicate
-                ) {
+                );
+                if is_heartbeat && accepted {
+                    self.last_control_plane_heartbeat_acknowledged_at_ms = Some(current_time_ms());
+                }
+                if accepted {
                     self.last_failure_code = None;
                     self.last_failure_at = None;
                 } else {
@@ -3242,6 +3286,124 @@ mod rotating_transport_tests {
             None,
             json!({"type": "runner.capabilities.update", "snapshot": {"revision": "r2"}}),
         )
+    }
+
+    fn heartbeat_event() -> Envelope {
+        Envelope::new(
+            NodeKind::LocalDevice,
+            "runner-rotation-test",
+            None,
+            None,
+            None,
+            json!({"type": "runner.reconcile", "activeJobs": [], "command": "keepalive"}),
+        )
+    }
+
+    #[test]
+    fn credential_rotation_during_wss_receive_reconnects_and_renews_heartbeat_evidence() {
+        let root = tempfile::tempdir().unwrap();
+        let token_a = token("jti-A");
+        let token_b = token("jti-B");
+        let connection_a = connection(token_a.clone());
+        persist(root.path(), &connection_a);
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = format!(
+            "ws://{}/api/runners/control",
+            listener.local_addr().unwrap()
+        );
+        let (credential_rotated_tx, credential_rotated_rx) = std::sync::mpsc::channel();
+        let server = thread::spawn(move || {
+            let (stream, _) = listener.accept().unwrap();
+            let mut first_socket = tungstenite::accept(stream).unwrap();
+            first_socket
+                .send(tungstenite::Message::Text(
+                    r#"{"ackState":"accepted"}"#.into(),
+                ))
+                .unwrap();
+            let _heartbeat = first_socket.read().unwrap();
+            first_socket
+                .send(tungstenite::Message::Text(
+                    r#"{"ackState":"applied"}"#.into(),
+                ))
+                .unwrap();
+            credential_rotated_rx
+                .recv_timeout(Duration::from_secs(3))
+                .unwrap();
+            let _ = first_socket.send(tungstenite::Message::Text(
+                r#"{"type":"runner.test.event"}"#.into(),
+            ));
+
+            let (stream, _) = listener.accept().unwrap();
+            let mut second_socket = tungstenite::accept(stream).unwrap();
+            second_socket
+                .send(tungstenite::Message::Text(
+                    r#"{"ackState":"accepted"}"#.into(),
+                ))
+                .unwrap();
+            let _heartbeat = second_socket.read().unwrap();
+            second_socket
+                .send(tungstenite::Message::Text(
+                    r#"{"ackState":"applied"}"#.into(),
+                ))
+                .unwrap();
+        });
+
+        let proof = DeviceProofSigner::from_material(
+            &crate::device_proof::DeviceProofMaterial {
+                device_id: connection_a.device_id.clone(),
+                machine_fingerprint: connection_a.machine_fingerprint.clone(),
+                public_key_pem: connection_a.public_key_pem.clone(),
+                private_key_pem: connection_a.private_key_pem.clone(),
+            },
+            &token_a,
+        )
+        .unwrap();
+        let native =
+            NativeControlTransport::with_device_proof(token_a, Duration::from_secs(2), Some(proof))
+                .unwrap();
+        let mut transport = RotatingControlTransport::new(
+            native,
+            Some(&connection_a),
+            root.path().to_str().unwrap(),
+            &connection_a.control_token,
+        );
+
+        assert_eq!(
+            transport.send_wss(&endpoint, &heartbeat_event()),
+            Ok(AckState::Applied)
+        );
+        assert!(transport
+            .last_control_plane_heartbeat_acknowledged_at_ms
+            .is_some());
+
+        let connection_path = crate::connection::connection_path(root.path().to_str().unwrap());
+        let mut connection_b = connection_a;
+        connection_b.control_token = token_b;
+        let updater = thread::spawn(move || {
+            thread::sleep(Duration::from_millis(250));
+            std::fs::write(&connection_path, serde_json::to_vec(&connection_b).unwrap()).unwrap();
+            credential_rotated_tx.send(()).unwrap();
+        });
+
+        assert_eq!(
+            transport.receive_server_message(),
+            Err(TransportError::Idle)
+        );
+        updater.join().unwrap();
+        assert_eq!(transport.credential_revision, 2);
+        assert!(transport
+            .last_control_plane_heartbeat_acknowledged_at_ms
+            .is_none());
+
+        assert_eq!(
+            transport.send_wss(&endpoint, &heartbeat_event()),
+            Ok(AckState::Applied)
+        );
+        assert!(transport
+            .last_control_plane_heartbeat_acknowledged_at_ms
+            .is_some());
+        server.join().unwrap();
     }
 
     #[test]

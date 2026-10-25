@@ -193,6 +193,8 @@ function applyRunnerStatus(status) {
       : "Access token ต่ออายุอัตโนมัติเมื่อใกล้หมดอายุ ไม่ต้องเชื่อมต่อผ่านเบราว์เซอร์ทุกครั้งที่เปิดแอป";
 
   const credentialState = status.credentialState;
+  const credentialsReady = status.credentialsReady;
+  const controlPlaneConnected = status.controlPlaneConnected;
   const connectionLabel = connectPending
     ? "รออนุมัติในเบราว์เซอร์"
     : credentialState === "renewing"
@@ -201,12 +203,18 @@ function applyRunnerStatus(status) {
       ? "ต้องเชื่อมต่อใหม่"
       : credentialState === "retrying"
         ? "ต่ออายุไม่สำเร็จ — จะลองใหม่"
-        : status.connected ? "เชื่อมต่อแล้ว" : "ยังไม่เชื่อมต่อ";
+        : controlPlaneConnected ? "เชื่อมต่อแล้ว"
+          : credentialsReady && status.running ? "รอ heartbeat จาก SmartAIHub"
+            : credentialsReady ? "บัญชีพร้อม · Runner หยุดอยู่" : "ยังไม่เชื่อมต่อ";
   elements["connection-state"].textContent = connectionLabel;
-  elements["connection-state"].className = `state-pill${status.connected && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
-  elements["connection-detail"].textContent = status.connected
-    ? `เชื่อมต่อ Runner ${status.runnerId} กับ SmartAIHub แล้ว`
-    : "กดเชื่อมต่อเพื่อเปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์";
+  elements["connection-state"].className = `state-pill${controlPlaneConnected && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
+  elements["connection-detail"].textContent = controlPlaneConnected
+    ? `SmartAIHub ยืนยัน heartbeat ของ Runner ${status.runnerId} เวลา ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
+    : credentialsReady && status.running
+      ? `Runner ทำงานอยู่ แต่ยังไม่มี heartbeat ที่ SmartAIHub ยืนยันใน 5 นาที · ล่าสุด ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
+      : credentialsReady
+        ? "บัญชี Runner พร้อมใช้งาน แต่ Runner หยุดอยู่"
+        : "กดเชื่อมต่อเพื่อเปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์";
 
   if (credentialState === "reauth_required") {
     const notice = status.credentialErrorCode === "RUNNER_CONNECT_REQUEST_REJECTED_409"
@@ -224,9 +232,10 @@ function applyRunnerStatus(status) {
   const runtimeLabel = stopPending || status.stopping
     ? "กำลังหยุด…"
     : status.lastError ? "พบข้อผิดพลาด"
-      : status.running ? "กำลังทำงาน" : "หยุดอยู่";
+      : status.running && !controlPlaneConnected ? "รอ heartbeat"
+        : status.running ? "กำลังทำงาน" : "หยุดอยู่";
   elements["runtime-state"].textContent = runtimeLabel;
-  elements["runtime-state"].className = `state-pill${status.running && !status.stopping && !status.lastError ? " good" : status.stopping || status.lastError ? " warn" : ""}`;
+  elements["runtime-state"].className = `state-pill${status.running && controlPlaneConnected && !status.stopping && !status.lastError ? " good" : status.stopping || status.lastError || status.running && !controlPlaneConnected ? " warn" : ""}`;
   if (status.lastError) setNotice(elements["runtime-notice"], safeError(status.lastError));
 
   const canChangeAccount = !status.running && !status.stopping && !capabilitySyncing;
@@ -237,7 +246,7 @@ function applyRunnerStatus(status) {
       ? "กำลังเชื่อมต่อ…"
       : credentialState === "renewing"
         ? "กำลังต่ออายุ token…"
-        : credentialState === "reauth_required" || !status.connected
+        : credentialState === "reauth_required" || !credentialsReady
           ? "เชื่อมต่อผ่านเบราว์เซอร์"
           : "เปลี่ยนบัญชี / เชื่อมต่อใหม่",
     title: status.running ? "หยุด Runner ก่อนเปลี่ยนบัญชี" : "",
@@ -248,7 +257,7 @@ function applyRunnerStatus(status) {
     label: refreshPending ? "กำลังรีเฟรช…" : "รีเฟรชสถานะ",
   });
   updateButton(elements["start-button"], {
-    disabled: !status.connected || status.running || status.stopping || startPending || capabilitySyncing,
+    disabled: !credentialsReady || status.running || status.stopping || startPending || capabilitySyncing,
     pending: startPending,
     label: startPending ? "กำลังเริ่ม…" : status.running ? "Runner กำลังทำงาน" : "เริ่ม Runner",
     title: status.running ? "Runner กำลังทำงานอยู่" : "",
@@ -287,7 +296,8 @@ function applyRunnerStatus(status) {
   const runtimeText = stopPending || status.stopping
     ? "Runner กำลังยกเลิกงานและรอปิด child processes"
     : status.lastError ? "Runner พบข้อผิดพลาด ตรวจข้อความแจ้งปัญหาด้านบน"
-      : status.running ? "Runner ทำงานอยู่" : "Runner หยุดอยู่";
+      : status.running && !controlPlaneConnected ? "Runner ทำงานอยู่ แต่ยังไม่ได้รับ heartbeat ยืนยันจาก SmartAIHub ภายใน 5 นาที"
+        : status.running ? "Runner ทำงานอยู่และ Control Plane ยืนยัน heartbeat ล่าสุดแล้ว" : "Runner หยุดอยู่";
   elements["readiness-detail"].textContent = `${runtimeText} · ${publicationText} · งานแต่ละรายการยังต้องผ่านการอนุญาตจาก Control Plane`;
   const readinessPending = publicationState === "pending" || stopPending || status.stopping || capabilitySyncing;
   elements["readiness-detail"].dataset.pending = String(readinessPending);
@@ -434,7 +444,7 @@ async function scanTools({ publish = false } = {}) {
     renderTools(tools, latestRunnerStatus);
     setNotice(elements["runtime-notice"], `พบเครื่องมือ ${foundCount} จาก ${tools.length} รายการ — Codex มีปุ่มทดสอบสั่งงานจริง; เครื่องมืออื่นทดสอบตาม adapter ที่รองรับ`);
     await refreshStatus();
-    if (publish && latestRunnerStatus?.connected) await syncCapabilities();
+    if (publish && latestRunnerStatus?.credentialsReady) await syncCapabilities();
   } catch (error) {
     setNotice(elements["runtime-notice"], safeError(error));
   } finally {
@@ -482,7 +492,8 @@ function renderTools(tools, status = latestRunnerStatus) {
       tool.auth_state,
       tool.reason_codes,
     ]),
-    connected: status?.connected,
+    credentialsReady: status?.credentialsReady,
+    controlPlaneConnected: status?.controlPlaneConnected,
     running: status?.running,
     stopping: status?.stopping,
     capabilityFresh,
@@ -523,7 +534,7 @@ function renderTools(tools, status = latestRunnerStatus) {
     const versionPassed = tool.version_probe_state === "passed";
     const authenticated = tool.auth_state === "ready";
     const executionReady = Boolean(
-      isFound && status?.connected && status?.running && !status?.stopping && capabilityFresh
+      isFound && status?.controlPlaneConnected && status?.running && !status?.stopping && capabilityFresh
       && tool.trust_state === "ready" && versionPassed && authenticated && taskPassed,
     );
     const publicationText = capabilityFresh
@@ -560,7 +571,7 @@ function renderTools(tools, status = latestRunnerStatus) {
         ? "ไม่พบ"
         : taskFailed || tool.trust_state === "degraded"
           ? "พบข้อผิดพลาด"
-          : taskPassed && capabilityFresh && status?.connected && status?.running
+          : taskPassed && capabilityFresh && status?.controlPlaneConnected && status?.running
             ? "ผลทดสอบผ่าน · พร้อมรออนุญาตงาน"
             : "ยังไม่พร้อมรับงานที่อนุญาต";
 
