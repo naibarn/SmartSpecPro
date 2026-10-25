@@ -13,6 +13,175 @@ import { callLLMStructured, type CallLLMStructuredRuntimeOptions } from "./callL
 import { resolveMiniAppForViewer } from "./appIdentityRepository";
 import { getUserGitHubConnection, getUserGitHubToken, validateGitHubToken } from "./userGithubConnectionService";
 
+export const PREPARED_MINIAPP_V2 = {
+  appId: "app_e6f0be051fd22e09bc4c5dff",
+  owner: "pruksacharttk",
+  repository: "smartaihub-app-e6f0be051fd22e09bc4c5dff",
+  branch: "v2/thai-thb",
+  revision: "1d7273d719ff9b034cd304920c1ef76efdd86e76",
+  parentRevision: "7b90395508e8a7084026d7dafc80a8e4b2360493",
+  sourceTreeDigest: "bdf63148f9a239d0d4b36bb816e92c0ddc299171edd5e74f4cd71c419a50487c",
+  artifactDigest: "bdf63148f9a239d0d4b36bb816e92c0ddc299171edd5e74f4cd71c419a50487c",
+} as const;
+
+type PreparedMiniAppBundle = {
+  schemaVersion: "smartaihub-prepared-miniapp.v1";
+  appId: string;
+  owner: string;
+  repository: string;
+  branch: string;
+  revision: string;
+  parentRevision: string;
+  sourceTreeDigest: string;
+  artifactDigest: string;
+  files: Record<string, string>;
+};
+
+const PREPARED_FILES = [
+  "src/index.html", "src/styles.css", "src/storage-adapter.js", "src/app.js",
+  "dist/index.html", "dist/styles.css", "dist/storage-adapter.js", "dist/app.js", "dist/BUILD-MANIFEST.json",
+  "package.json", "scripts/build.mjs", "scripts/serve.mjs", "SOURCE_PROVENANCE.json",
+] as const;
+
+function sha256(value: string | Buffer): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function verifyPreparedBundle(bundle: PreparedMiniAppBundle): void {
+  const expected = PREPARED_MINIAPP_V2;
+  if (bundle.schemaVersion !== "smartaihub-prepared-miniapp.v1" || bundle.appId !== expected.appId ||
+      bundle.owner.toLowerCase() !== expected.owner || bundle.repository !== expected.repository ||
+      bundle.branch !== expected.branch || bundle.revision !== expected.revision ||
+      bundle.parentRevision !== expected.parentRevision || bundle.sourceTreeDigest !== expected.sourceTreeDigest ||
+      bundle.artifactDigest !== expected.artifactDigest) throw new Error("MINI_APP_CANDIDATE_PROVENANCE_MISMATCH");
+  const sourceFiles = PREPARED_FILES.filter(path => path.startsWith("src/")).map(path => path.slice(4)).sort();
+  const sourceHash = createHash("sha256");
+  for (const path of sourceFiles) sourceHash.update(path).update("\0").update(bundle.files[`src/${path}`] ?? "").update("\n");
+  if (sourceHash.digest("hex") !== expected.sourceTreeDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_DIGEST_MISMATCH");
+  const manifestText = bundle.files["dist/BUILD-MANIFEST.json"];
+  if (!manifestText) throw new Error("MINI_APP_CANDIDATE_MANIFEST_MISSING");
+  const manifest = JSON.parse(manifestText) as { appId?: unknown; artifactDigest?: unknown; sourceTreeDigest?: unknown; files?: Record<string, unknown> };
+  if (manifest.appId !== expected.appId || manifest.artifactDigest !== expected.artifactDigest || manifest.sourceTreeDigest !== expected.sourceTreeDigest) {
+    throw new Error("MINI_APP_CANDIDATE_MANIFEST_MISMATCH");
+  }
+  const artifactHash = createHash("sha256");
+  const artifactFiles = ["app.js", "index.html", "storage-adapter.js", "styles.css"];
+  for (const path of artifactFiles) {
+    const text = bundle.files[`dist/${path}`];
+    if (typeof text !== "string" || manifest.files?.[path] !== sha256(text)) throw new Error("MINI_APP_CANDIDATE_FILE_DIGEST_MISMATCH");
+    artifactHash.update(path).update("\0").update(text).update("\n");
+    if (path.endsWith(".js")) new Script(text, { filename: `miniapp/${path}` });
+    if (text.length > 600_000) throw new Error("MINI_APP_CANDIDATE_FILE_TOO_LARGE");
+  }
+  if (artifactHash.digest("hex") !== expected.artifactDigest) throw new Error("MINI_APP_CANDIDATE_ARTIFACT_DIGEST_MISMATCH");
+  const provenance = JSON.parse(bundle.files["SOURCE_PROVENANCE.json"] ?? "null") as any;
+  const packageJson = JSON.parse(bundle.files["package.json"] ?? "null") as any;
+  const buildScript = bundle.files["scripts/build.mjs"] ?? "";
+  if (provenance?.appId !== expected.appId || provenance?.v1?.materializedProjectRevision !== expected.parentRevision ||
+      provenance?.v2?.branch !== expected.branch || provenance?.v2?.sourceTreeDigest !== expected.sourceTreeDigest ||
+      packageJson?.scripts?.build !== "node scripts/build.mjs" || packageJson?.dependencies || packageJson?.devDependencies ||
+      !buildScript.includes('const sourceFiles = ["index.html", "styles.css", "storage-adapter.js", "app.js"]') ||
+      !buildScript.includes("const sourceTree = await digestTree(source, sourceFiles)") ||
+      !buildScript.includes("const artifactTree = await digestTree(out, sourceFiles)") ||
+      !buildScript.includes("new Function(data.toString(\"utf8\"))")) {
+    throw new Error("MINI_APP_CANDIDATE_BUILD_PROVENANCE_INVALID");
+  }
+  for (const name of ["index.html", "styles.css", "storage-adapter.js", "app.js"]) {
+    if (bundle.files[`src/${name}`] !== bundle.files[`dist/${name}`]) throw new Error("MINI_APP_CANDIDATE_BUILD_REPRODUCTION_MISMATCH");
+  }
+}
+
+async function readPreparedGitHubFile(token: string, owner: string, repo: string, blobSha: string): Promise<string> {
+  const response = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/blobs/${blobSha}`, {
+    headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new Error(`MINI_APP_CANDIDATE_GITHUB_READ_${response.status}`);
+  const blob = await response.json() as { encoding?: string; content?: string };
+  if (blob.encoding !== "base64" || typeof blob.content !== "string") throw new Error("MINI_APP_CANDIDATE_GITHUB_BLOB_INVALID");
+  return Buffer.from(blob.content.replace(/\s/g, ""), "base64").toString("utf8");
+}
+
+/** Authenticates the existing owner's repository binding and imports the pinned candidate without generation. */
+export async function importPreparedMiniAppCandidate(input: { appId: string; tenantId: string; ownerUserId: number }): Promise<{ sourceRef: string; sourceDigest: string; bundle: PreparedMiniAppBundle }> {
+  const expected = PREPARED_MINIAPP_V2;
+  if (input.appId !== expected.appId) throw new Error("MINI_APP_CANDIDATE_APP_MISMATCH");
+  const [connection, token] = await Promise.all([getUserGitHubConnection(input.ownerUserId), getUserGitHubToken(input.ownerUserId)]);
+  if (!connection.configured || !token || connection.tenantId && connection.tenantId !== input.tenantId) throw new Error("MINI_APP_CANDIDATE_GITHUB_AUTH_REQUIRED");
+  if (String(connection.githubLogin).toLowerCase() !== expected.owner || (await validateGitHubToken(token)).toLowerCase() !== expected.owner) {
+    throw new Error("MINI_APP_CANDIDATE_GITHUB_OWNER_MISMATCH");
+  }
+  const api = async (path: string) => {
+    const response = await fetch(`https://api.github.com/repos/${encodeURIComponent(expected.owner)}/${encodeURIComponent(expected.repository)}${path}`, {
+      headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`MINI_APP_CANDIDATE_GITHUB_READ_${response.status}`);
+    return response.json() as Promise<Record<string, any>>;
+  };
+  const [repo, branch, commit] = await Promise.all([
+    api("").catch(error => { throw error; }),
+    api(`/branches/${encodeURIComponent(expected.branch)}`),
+    api(`/commits/${expected.revision}`),
+  ]);
+  if (repo.private !== true) throw new Error("MINI_APP_CANDIDATE_REPOSITORY_NOT_PRIVATE");
+  if (branch.commit?.sha !== expected.revision || commit.sha !== expected.revision) throw new Error("MINI_APP_CANDIDATE_REVISION_MISMATCH");
+  if (!Array.isArray(commit.parents) || !commit.parents.some((parent: any) => parent.sha === expected.parentRevision)) throw new Error("MINI_APP_CANDIDATE_V1_PARENT_MISMATCH");
+  const treeSha = commit.commit?.tree?.sha;
+  if (typeof treeSha !== "string") throw new Error("MINI_APP_CANDIDATE_TREE_MISSING");
+  const treeResponse = await fetch(`https://api.github.com/repos/${encodeURIComponent(expected.owner)}/${encodeURIComponent(expected.repository)}/git/trees/${treeSha}?recursive=1`, {
+    headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!treeResponse.ok) throw new Error(`MINI_APP_CANDIDATE_GITHUB_READ_${treeResponse.status}`);
+  const tree = await treeResponse.json() as { truncated?: boolean; tree?: Array<{ path?: string; type?: string; sha?: string }> };
+  if (tree.truncated || !Array.isArray(tree.tree)) throw new Error("MINI_APP_CANDIDATE_TREE_INVALID");
+  const entries = new Map(tree.tree.filter(item => item.type === "blob" && typeof item.path === "string").map(item => [item.path!, item.sha!]));
+  const files: Record<string, string> = {};
+  for (const path of PREPARED_FILES) {
+    const blobSha = entries.get(path);
+    if (!blobSha) throw new Error("MINI_APP_CANDIDATE_FILE_MISSING");
+    files[path] = await readPreparedGitHubFile(token, expected.owner, expected.repository, blobSha);
+  }
+  const bundle: PreparedMiniAppBundle = {
+    schemaVersion: "smartaihub-prepared-miniapp.v1", appId: expected.appId, owner: expected.owner,
+    repository: expected.repository, branch: expected.branch, revision: expected.revision,
+    parentRevision: expected.parentRevision, sourceTreeDigest: expected.sourceTreeDigest,
+    artifactDigest: expected.artifactDigest, files,
+  };
+  verifyPreparedBundle(bundle);
+  const bytes = Buffer.from(JSON.stringify(bundle), "utf8");
+  const stored = await storagePutContentAddressedIfAbsent(`mini-app-sources/${input.tenantId}/${input.appId}`, bytes, "application/vnd.smartaihub.prepared-miniapp+json");
+  if (stored.sha256 !== sha256(bytes)) throw new Error("MINI_APP_CANDIDATE_SOURCE_STORAGE_MISMATCH");
+  return { sourceRef: `r2://${stored.key}`, sourceDigest: stored.sha256, bundle };
+}
+
+export async function packagePreparedMiniAppCandidate(input: { tenantId: string; appId: string; sourceRef: string; sourceDigest: string }): Promise<{ artifactRef: string; artifactDigest: string; bytes: number }> {
+  const expectedPrefix = `r2://mini-app-sources/${input.tenantId}/${input.appId}/sha256/`;
+  if (!input.sourceRef.startsWith(expectedPrefix) || !/^[a-f0-9]{64}$/.test(input.sourceDigest) || !input.sourceRef.endsWith(input.sourceDigest)) throw new Error("MINI_APP_CANDIDATE_SOURCE_BINDING_INVALID");
+  const sourceBytes = await storageReadBuffer(input.sourceRef.slice("r2://".length));
+  if (sha256(sourceBytes) !== input.sourceDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_DIGEST_MISMATCH");
+  const bundle = JSON.parse(sourceBytes.toString("utf8")) as PreparedMiniAppBundle;
+  verifyPreparedBundle(bundle);
+  if (bundle.appId !== input.appId) throw new Error("MINI_APP_CANDIDATE_APP_MISMATCH");
+  const files = bundle.files;
+  const css = files["dist/styles.css"];
+  const storageAdapter = files["dist/storage-adapter.js"].replace(/<\/script/gi, "<\\/script");
+  const appJs = files["dist/app.js"].replace(/<\/script/gi, "<\\/script");
+  let html = files["dist/index.html"];
+  html = html.replace(/<link\s+rel="stylesheet"\s+href="\.\/styles\.css"\s*\/?\s*>/i, `<style>${css.replace(/<\/style/gi, "<\\/style")}</style>`);
+  html = html.replace(/<script\s+src="\.\/storage-adapter\.js"><\/script>/i, `<script>${storageAdapter}</script>`);
+  html = html.replace(/<script\s+src="\.\/app\.js"><\/script>/i, `<script>${appJs}</script>`);
+  if (/<(?:script|link)[^>]+(?:src|href)="(?:https?:|\/|\.\.)/i.test(html) || /<script\s+src=/i.test(html) || /<link\s+rel="stylesheet"\s+href=/i.test(html)) throw new Error("MINI_APP_CANDIDATE_EXTERNAL_ASSET_FORBIDDEN");
+  const csp = `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' data:; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`;
+  html = html.replace(/<head([^>]*)>/i, `<head$1><meta http-equiv="Content-Security-Policy" content="${csp}">`);
+  const artifactBytes = Buffer.from(html, "utf8");
+  const artifactDigest = sha256(artifactBytes);
+  const stored = await storagePutContentAddressedIfAbsent(`mini-app-previews/${input.tenantId}/${input.appId}`, artifactBytes, "text/html; charset=utf-8");
+  if (stored.sha256 !== artifactDigest) throw new Error("MINI_APP_ARTIFACT_DIGEST_MISMATCH");
+  return { artifactRef: `r2://${stored.key}`, artifactDigest, bytes: artifactBytes.length };
+}
+
 const ASSET_MIME = new Set([
   "image/png",
   "image/jpeg",

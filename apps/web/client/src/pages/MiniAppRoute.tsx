@@ -121,6 +121,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
   const [openingApp, setOpeningApp] = useState(false);
   const storagePreparationStarted = useRef(false);
   const retry = trpc.spec226DevelopmentControl.retryMiniAppFactoryStage.useMutation({ onSuccess: onChanged });
+  const adoptCandidate = trpc.spec226DevelopmentControl.adoptPreparedMiniAppCandidate.useMutation({ onSuccess: onChanged });
   const deploymentVersions = "deploymentVersions" in data ? data.deploymentVersions ?? [] : [];
   const stages = [...new Set([...(factory?.completedStages ?? []), ...(factory?.currentStage ? [factory.currentStage] : []), ...(factory?.remainingStages ?? [])])];
   const progress = stages.length ? Math.round(((factory?.completedStages?.length ?? 0) / stages.length) * 100) : 0;
@@ -438,6 +439,20 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
 
         {factory?.conversationId && mode === "status" ? <Section>
           <VStack gap={3}>
+            {appId === "app_e6f0be051fd22e09bc4c5dff" ? <Card padding={4} data-testid="miniapp-prepared-v2-candidate">
+              <VStack gap={2}>
+                <Heading level={3}>Prepared Thai / THB version</Heading>
+                <Text type="body" color="secondary">A verified candidate is ready from your private app repository. Adopting it reuses this App ID and source commit; it does not call generation. Version 1 stays live until package, deployment and smoke checks pass.</Text>
+                <Text type="body" color="secondary">Git revision · 1d7273d719ff9b034cd304920c1ef76efdd86e76</Text>
+                {factory?.artifacts?.some((value: string) => value === "prepared-miniapp-git:pruksacharttk/smartaihub-app-e6f0be051fd22e09bc4c5dff@1d7273d719ff9b034cd304920c1ef76efdd86e76") ? (
+                  <Text type="body" role="status">This candidate is linked to DevelopmentRun {factory.runId ?? ""}. Check Progress for package, deploy and smoke status.</Text>
+                ) : (
+                  <AppButton label={adoptCandidate.isPending ? "Verifying and adopting candidate…" : "Use prepared V2 candidate"} variant="primary" isDisabled={adoptCandidate.isPending} onClick={() => adoptCandidate.mutate({ appId })} />
+                )}
+                {adoptCandidate.error ? <Text type="body" role="alert" color="secondary">Candidate adoption could not start: {adoptCandidate.error.message}</Text> : null}
+                {adoptCandidate.data ? <Text type="body" role="status">DevelopmentRun {adoptCandidate.data.runId} is queued at {adoptCandidate.data.stageId ?? "the next stage"}. V1 remains available while it is checked.</Text> : null}
+              </VStack>
+            </Card> : null}
             <Heading level={2}>Continue development</Heading>
             <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} canContinue={migrationStatus === "OWNER_CONFIRMED"} />
           </VStack>

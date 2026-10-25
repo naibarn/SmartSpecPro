@@ -1,9 +1,11 @@
+import { createHash } from "node:crypto";
 import { createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter } from "./spec224DevelopmentRunPersistence";
 import { loadMiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { createMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerStageAdapter";
 import type { MiniAppFactoryStageWorkerRuntime } from "./miniAppFactoryStageWorker";
 import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
-import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppPreview } from "./personalMiniAppPreview";
+import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, packagePreparedMiniAppCandidate, provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppPreview } from "./personalMiniAppPreview";
+import { storageReadBuffer } from "../storage";
 
 /** Personal apps use hosted Skill Execution -> Gateway; platform development stays Runner-admitted. */
 export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWorkerRuntime {
@@ -22,6 +24,39 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
       const state = parseMiniAppFactoryDurableState(run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
       if (state.profile !== "PERSONAL_MINIAPP") throw new Error("FACTORY_HOSTED_PROFILE_FORBIDDEN");
       const baseRef = `miniapp:${state.miniAppId}`;
+      const preparedCandidate = state.artifacts.find(value => value.startsWith("prepared-miniapp-git:"));
+      if (preparedCandidate) {
+        if (!/^prepared-miniapp-git:pruksacharttk\/smartaihub-app-e6f0be051fd22e09bc4c5dff@1d7273d719ff9b034cd304920c1ef76efdd86e76$/.test(preparedCandidate)) throw new Error("MINI_APP_CANDIDATE_REVISION_MISMATCH");
+        const sourceRef = [...context.artifacts].reverse().find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
+        const sourceDigest = [...context.artifacts].reverse().find(value => value.startsWith("app-source-digest:"))?.slice("app-source-digest:".length);
+        if (!sourceRef || !sourceDigest) throw new Error("MINI_APP_CANDIDATE_SOURCE_MISSING");
+        if (stageId === "package") {
+          const packaged = await packagePreparedMiniAppCandidate({ tenantId: context.tenantId, appId: state.miniAppId, sourceRef, sourceDigest });
+          return { artifacts: [`app-artifact:${packaged.artifactRef}`, `app-artifact-digest:${packaged.artifactDigest}`, `app-artifact-bytes:${packaged.bytes}`, `package-verified:${packaged.artifactRef}`, `package-digest:spaas-package-v1:sha256:${packaged.artifactDigest}`] };
+        }
+        const artifactRef = [...context.artifacts].reverse().find(value => value.startsWith("app-artifact:r2://"))?.slice("app-artifact:".length);
+        const artifactDigest = [...context.artifacts].reverse().find(value => value.startsWith("app-artifact-digest:"))?.slice("app-artifact-digest:".length);
+        if (!artifactRef || !artifactDigest) throw new Error("MINI_APP_CANDIDATE_ARTIFACT_MISSING");
+        if (stageId === "deploy") {
+          const artifact = await storageReadBuffer(artifactRef.slice("r2://".length));
+          if (artifact.byteLength < 1 || createHash("sha256").update(artifact).digest("hex") !== artifactDigest) throw new Error("MINI_APP_CANDIDATE_ARTIFACT_DIGEST_MISMATCH");
+          return { artifacts: [`deployment-candidate:${baseRef}:${artifactDigest}`, `deployment-artifact:${artifactRef}`] };
+        }
+        if (stageId === "smoke") {
+          if (!context.artifacts.includes(`deployment-candidate:${baseRef}:${artifactDigest}`)) throw new Error("MINI_APP_CANDIDATE_DEPLOYMENT_RECEIPT_MISSING");
+          const previous = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId });
+          if (!previous?.html || !previous.artifactDigest) throw new Error("MINI_APP_PREVIOUS_VERSION_NOT_SERVABLE");
+          const unauthorizedBeforePromotion = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId + 1 });
+          if (unauthorizedBeforePromotion) throw new Error("MINI_APP_PRIVATE_PREVIEW_AUTHORIZATION_FAILED");
+          const bound = await bindPersonalMiniAppArtifact({ tenantId: context.tenantId, ownerUserId: context.actorId, appId: state.miniAppId, developmentRunId: context.runId, sourceRef, sourceDigest, artifactRef, artifactDigest });
+          const preview = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId });
+          if (!preview?.html || preview.artifactDigest !== artifactDigest || !preview.html.includes("Content-Security-Policy")) throw new Error("MINI_APP_CANDIDATE_PRIVATE_PREVIEW_SMOKE_FAILED");
+          const unauthorized = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId + 1 });
+          if (unauthorized) throw new Error("MINI_APP_PRIVATE_PREVIEW_AUTHORIZATION_FAILED");
+          return { artifacts: [`deployment:${baseRef}:v${bound.deploymentVersion}`, `private-preview-smoke:${artifactDigest}`, `private-preview-owner-access:${state.miniAppId}`, `private-preview-unauthorized-denied:${state.miniAppId}`, `miniapp-version-source-git:${state.miniAppId}@1d7273d719ff9b034cd304920c1ef76efdd86e76`] };
+        }
+        throw new Error("MINI_APP_CANDIDATE_STAGE_UNSUPPORTED:" + stageId);
+      }
       if (stageId === "ui_implementation") {
         const previousSourceRef = [...context.artifacts].reverse().find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
         const previousCandidateRef = state.artifacts.find(value => value.startsWith("app-candidate:r2://"))?.slice("app-candidate:".length);

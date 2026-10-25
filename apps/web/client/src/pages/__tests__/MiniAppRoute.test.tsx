@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   resolveMiniApp: vi.fn(),
   retryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
   continuationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
+  adoptionMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null, data: null },
   runtimeMutation: { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0, verified: 0, migrationStatus: "VERIFIED" })), isPending: false },
   confirmMigrationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
   provisionRepositoryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
@@ -61,6 +62,7 @@ vi.mock("@/lib/trpc", () => ({
     spec226DevelopmentControl: {
       retryMiniAppFactoryStage: { useMutation: () => mocks.retryMutation },
       startWorkspaceRun: { useMutation: () => mocks.continuationMutation },
+      adoptPreparedMiniAppCandidate: { useMutation: () => mocks.adoptionMutation },
     },
   },
 }));
@@ -90,6 +92,7 @@ describe("MiniAppRoute", () => {
     mocks.resolveMiniApp.mockImplementation(() => mocks.appQuery);
     mocks.retryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
     mocks.continuationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
+    mocks.adoptionMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null, data: null };
     mocks.runtimeMutation = { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0, verified: 0, migrationStatus: "VERIFIED" })), isPending: false };
     mocks.confirmMigrationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
     mocks.provisionRepositoryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
@@ -217,6 +220,25 @@ describe("MiniAppRoute", () => {
     expect(screen.queryByRole("tab", { name: "Progress" })).not.toBeInTheDocument();
     expect(screen.queryByText("Development timeline")).not.toBeInTheDocument();
     expect(screen.queryByTestId("miniapp-progress-card")).not.toBeInTheDocument();
+  });
+
+  it("offers the pinned V2 adoption action only on the existing App Home and keeps prompt continuation separate", async () => {
+    mocks.routeMode = "status";
+    mocks.miniAppParams = { appId: "app_e6f0be051fd22e09bc4c5dff" };
+    mocks.appQuery.data = {
+      app: { appId: "app_e6f0be051fd22e09bc4c5dff", visibility: "private", deploymentVersion: 1, lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_e6f0be051fd22e09bc4c5dff/sha256/" + "a".repeat(64), runtimeDataMigrationStatus: "OWNER_CONFIRMED" },
+      html: "<!doctype html><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'\">",
+      artifactDigest: "a".repeat(64),
+      factory: { conversationId: 1, milestone: "PREVIEW_AVAILABLE", isInProgress: false, completedStages: ["ui_implementation", "package", "deploy", "smoke"], remainingStages: [], artifacts: [] },
+      deploymentVersions: [{ deploymentVersion: 1, artifactDigest: "a".repeat(64), developmentRunId: "run-v1" }],
+    };
+    render(<MiniAppRoute />);
+    const button = await screen.findByRole("button", { name: "Use prepared V2 candidate" });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(mocks.adoptionMutation.mutate).toHaveBeenCalledWith({ appId: "app_e6f0be051fd22e09bc4c5dff" });
+    expect(screen.getByRole("textbox", { name: "Continue development" })).toBeInTheDocument();
+    expect(mocks.continuationMutation.mutate).not.toHaveBeenCalled();
   });
 
   it("keeps refreshing progress and displays repository setup while a preview is already usable", async () => {

@@ -40,7 +40,7 @@ describe("Mini-App full-page runtime isolation and storage", () => {
 
   it("serves artifact as a full document under opaque CSP sandbox with only app storage network access", () => {
     const doc = buildMiniAppRuntimeDocument({
-      html: '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; connect-src \'none\'"></head><body><main>Expense tracker</main></body></html>',
+      html: '<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; connect-src \'none\'"><script>window.beforeBody=true</script></head><body><main>Expense tracker</main><script>window.appStarted=true</script></body></html>',
       appId: scope.appId,
       statusUrl: `/miniapp/${scope.appId}/status`,
       storageToken: createMiniAppRuntimeStorageToken(scope),
@@ -51,6 +51,7 @@ describe("Mini-App full-page runtime isolation and storage", () => {
     expect(doc.html).toContain("connect-src https://smartaihub.app");
     expect(doc.html).toContain("Back to Development");
     expect(doc.html).toContain("_miniapp-runtime/app_expense/storage");
+    expect(doc.html.indexOf("window.smartaihubStorage")).toBeLessThan(doc.html.indexOf("window.appStarted"));
     expect(doc.html).toContain("<main>Expense tracker</main>");
     expect(doc.html).not.toContain("<iframe");
   });

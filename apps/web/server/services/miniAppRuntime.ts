@@ -190,13 +190,16 @@ export function buildMiniAppRuntimeDocument(input: {
   const apiOrigin = origin.origin;
   const csp = `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' data:; img-src data: blob:; font-src data:; connect-src ${apiOrigin}; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-scripts allow-forms allow-top-navigation-by-user-activation`;
   const metaCsp = `default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' data:; img-src data: blob:; font-src data:; connect-src ${apiOrigin}; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'`;
-  const runtimeScript = `(()=>{const endpoint=${JSON.stringify(`${apiOrigin}/_miniapp-runtime/${input.appId}/storage`)};const token=${JSON.stringify(input.storageToken)};addEventListener('message',async e=>{const m=e.data;if(!m||m.channel!=='smartaihub-miniapp-storage-v1'||!['GET','SET'].includes(m.action)||typeof m.requestId!=='string'||typeof m.key!=='string')return;try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:m.action,key:m.key,...(m.action==='SET'?{value:m.value}:{})})});const d=await r.json();if(!r.ok)throw new Error(typeof d.error==='string'?d.error:'storage unavailable');postMessage({channel:'smartaihub-miniapp-storage-result-v1',requestId:m.requestId,value:d.value},'*')}catch{postMessage({channel:'smartaihub-miniapp-storage-result-v1',requestId:m.requestId,error:'storage unavailable'},'*')}})})();`;
+  const runtimeScript = `(()=>{const endpoint=${JSON.stringify(`${apiOrigin}/_miniapp-runtime/${input.appId}/storage`)};const token=${JSON.stringify(input.storageToken)};let seq=0;const pending=new Map;window.smartaihubStorage={get:key=>call('GET',key),set:(key,value)=>call('SET',key,value)};function call(action,key,value){return new Promise((resolve,reject)=>{const requestId='s'+(++seq);pending.set(requestId,{resolve,reject});postMessage({channel:'smartaihub-miniapp-storage-v1',action,requestId,key,...(action==='SET'?{value}:{})},'*')})}addEventListener('message',async e=>{const m=e.data;if(m&&m.channel==='smartaihub-miniapp-storage-result-v1'&&typeof m.requestId==='string'){const p=pending.get(m.requestId);if(!p)return;pending.delete(m.requestId);if(m.error)p.reject(new Error(m.error));else p.resolve(m.value);return}if(!m||m.channel!=='smartaihub-miniapp-storage-v1'||!['GET','SET'].includes(m.action)||typeof m.requestId!=='string'||typeof m.key!=='string')return;try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({action:m.action,key:m.key,...(m.action==='SET'?{value:m.value}:{})})});const d=await r.json();if(!r.ok)throw new Error(typeof d.error==='string'?d.error:'storage unavailable');postMessage({channel:'smartaihub-miniapp-storage-result-v1',requestId:m.requestId,value:d.value},'*')}catch{postMessage({channel:'smartaihub-miniapp-storage-result-v1',requestId:m.requestId,error:'storage unavailable'},'*')}})})();`;
   const navigation = `<header><a href="${escapeHtml(input.statusUrl)}" target="_top">← Back to Development</a></header>`;
   const cspMeta = /(<meta\s+http-equiv="Content-Security-Policy"\s+content=")[^"]*("[^>]*>)/i;
   let html = input.html.replace(cspMeta, `$1${metaCsp}$2`);
   if (html === input.html) throw new Error("MINI_APP_RUNTIME_ARTIFACT_CSP_MISSING");
-  const injected = `${navigation}<script>${runtimeScript}</script>`;
-  if (/<\/body\s*>/i.test(html)) html = html.replace(/<\/body\s*>/i, `${injected}</body>`);
-  else html += injected;
+  const runtime = `<script>${runtimeScript}</script>`;
+  const headClose = /<\/head\s*>/i;
+  if (headClose.test(html)) html = html.replace(headClose, `${runtime}</head>`);
+  else throw new Error("MINI_APP_RUNTIME_HEAD_MISSING");
+  if (/<\/body\s*>/i.test(html)) html = html.replace(/<\/body\s*>/i, `${navigation}</body>`);
+  else html += navigation;
   return { html, contentSecurityPolicy: csp };
 }

@@ -149,8 +149,8 @@ export function advanceMiniAppFactoryDurableState(
     ...state,
     currentStage: input.stageId,
     deliveryMilestone: input.deliveryMilestone ?? (
-      input.stageId === "deploy" && state.profile === "PERSONAL_MINIAPP" ? "PREVIEW_AVAILABLE" :
-      input.stageId === "smoke" && state.profile === "PERSONAL_MINIAPP" ? "VERIFICATION_PENDING" :
+      input.stageId === "deploy" && state.profile === "PERSONAL_MINIAPP" && !state.artifacts.some(value => value.startsWith("prepared-miniapp-git:")) ? "PREVIEW_AVAILABLE" :
+      input.stageId === "smoke" && state.profile === "PERSONAL_MINIAPP" ? "PREVIEW_AVAILABLE" :
       state.deliveryMilestone
     ),
     completedStages: [...new Set([...state.completedStages, input.stageId])],

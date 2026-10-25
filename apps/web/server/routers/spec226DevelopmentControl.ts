@@ -19,7 +19,7 @@ import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY, parseMini
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
 import { buildMiniAppFactoryRunAnchorDefinition } from "../services/miniAppFactoryRunAnchor";
 import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
-import { resolvePersonalMiniAppFactoryHome } from "../services/personalMiniAppPreview";
+import { importPreparedMiniAppCandidate, PREPARED_MINIAPP_V2, resolvePersonalMiniAppFactoryHome } from "../services/personalMiniAppPreview";
 import { getUserGitHubConnection } from "../services/userGithubConnectionService";
 import {
   createDevelopmentRunService,
@@ -541,6 +541,75 @@ export const spec226DevelopmentControlRouter = router({
           userId: scope.actorId,
           metadata: { action: "retry_mini_app_factory_stage", appId: input.appId, accepted: false, errorCode: errorCode(error) },
         });
+        return asTrpcError(error);
+      }
+    }),
+
+  adoptPreparedMiniAppCandidate: protectedProcedure
+    .input(z.object({ appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/) }).strict())
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      try {
+        if (input.appId !== PREPARED_MINIAPP_V2.appId) throw new Error("MINI_APP_CANDIDATE_APP_MISMATCH");
+        const identity = await resolveOwnedPrivateMiniAppIdentity({ appId: input.appId, tenantId: scope.tenantId, ownerUserId: scope.actorId });
+        if (!identity) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+        if (identity.runtimeDataMigrationStatus !== "OWNER_CONFIRMED") throw new Error("MINI_APP_DATA_MIGRATION_CONFIRMATION_REQUIRED");
+        const existingHome = await resolvePersonalMiniAppFactoryHome({ tenantId: scope.tenantId, userId: scope.actorId }, input.appId);
+        if (!existingHome) throw new Error("MINI_APP_CONTINUATION_NOT_FOUND");
+        const runDigest = createHash("sha256").update(`${scope.tenantId}:${scope.actorId}:${input.appId}:${PREPARED_MINIAPP_V2.revision}`, "utf8").digest("hex").slice(0, 40);
+        const runId = `run-${runDigest}`;
+        if (existingHome.isInProgress && existingHome.runId !== runId) throw new Error("MINI_APP_DEVELOPMENT_RUN_ALREADY_ACTIVE");
+        if (existingHome.runId === runId && existingHome.artifacts.some(value => value === `prepared-miniapp-git:${PREPARED_MINIAPP_V2.owner}/${PREPARED_MINIAPP_V2.repository}@${PREPARED_MINIAPP_V2.revision}`)) {
+          return { appId: input.appId, runId, jobId: existingHome.latestStageJobId ?? null, stageId: existingHome.currentStage ?? null, sourceRevision: PREPARED_MINIAPP_V2.revision, sourceDigest: existingHome.appSourceDigest ?? null, statusUrl: `/miniapp/${input.appId}/status`, idempotent: true };
+        }
+        const imported = await importPreparedMiniAppCandidate({ appId: input.appId, tenantId: scope.tenantId, ownerUserId: scope.actorId });
+        const artifacts = [
+          `app-source:${imported.sourceRef}`,
+          `app-source-digest:${imported.sourceDigest}`,
+          `prepared-miniapp-git:${PREPARED_MINIAPP_V2.owner}/${PREPARED_MINIAPP_V2.repository}@${PREPARED_MINIAPP_V2.revision}`,
+          `app-repository-state:BOUND`,
+          `app-repository:user:${PREPARED_MINIAPP_V2.owner}/${PREPARED_MINIAPP_V2.repository}@${PREPARED_MINIAPP_V2.revision}`,
+        ];
+        const state = createMiniAppFactoryDurableState({ programId: "AUTONOMOUS_MINI_APP_FACTORY_PROGRAM", miniAppId: input.appId, profile: "PERSONAL_MINIAPP", initialArtifacts: artifacts });
+        state.completedStages = ["ui_implementation", "source_repository"];
+        const pipeline = loadMiniAppFactoryPipeline();
+        const workUnit = createDevelopmentWorkUnit({
+          workId: `prepared-v2-${runDigest}`,
+          projectId: `miniapp-${input.appId}`,
+          repositoryId: `github-${PREPARED_MINIAPP_V2.owner}-${PREPARED_MINIAPP_V2.repository}`,
+          source: { type: "generated", ref: `git:${PREPARED_MINIAPP_V2.revision}` },
+          objective: "Adopt the owner's verified Thai and THB Mini-App candidate without regenerating source",
+          ownership: { actor: String(scope.actorId), session: `candidate-adoption:${PREPARED_MINIAPP_V2.revision}`, harness: "hosted-mini-app-factory" },
+          canonicalTarget: { kind: "application-version", locator: `miniapp:${input.appId}:candidate:${PREPARED_MINIAPP_V2.revision}` },
+          baseRevision: `git:${PREPARED_MINIAPP_V2.revision}`,
+        });
+        workUnit.artifacts = [...artifacts];
+        workUnit.progress.state = "WORKING";
+        workUnit.progress.completedScope = ["ui_implementation", "source_repository"];
+        workUnit.progress.remainingScope = ["package", "deploy", "smoke"];
+        workUnit.progress.immediatelyRunnableScope = selectReadyMiniAppFactoryStages(pipeline, workUnit, "PERSONAL_MINIAPP");
+        state.nextEligibleStages = [...workUnit.progress.immediatelyRunnableScope];
+        const run = buildDevelopmentRun({
+          runId,
+          ...scope,
+          goal: "Adopt the verified prepared Thai and THB candidate for the existing Mini-App",
+          repositoryRef: `repo:${PREPARED_MINIAPP_V2.owner}/${PREPARED_MINIAPP_V2.repository}`,
+          baseRevision: `git:${PREPARED_MINIAPP_V2.revision}`,
+          contextPackHash: imported.sourceDigest,
+          workspaceId: `miniapp-${input.appId}`,
+          workUnit,
+          metadata: {
+            [MINI_APP_FACTORY_STATE_KEY]: state,
+            miniAppCandidateAdoption: { branch: PREPARED_MINIAPP_V2.branch, revision: PREPARED_MINIAPP_V2.revision, parentRevision: PREPARED_MINIAPP_V2.parentRevision, sourceTreeDigest: PREPARED_MINIAPP_V2.sourceTreeDigest },
+          },
+        });
+        await developmentRunService.initialize({ run, eventIdempotencyKey: `miniapp-candidate-adoption:${input.appId}:${PREPARED_MINIAPP_V2.revision}`, scope, rootJobDefinition: buildMiniAppFactoryRunAnchorDefinition({ runId }) });
+        const queued = await enqueueNextMiniAppFactoryStage({ pipeline, service: developmentRunService, run: { runId, ...scope } });
+        if (queued.state !== "ENQUEUED" || !queued.jobId) throw new Error("MINI_APP_CANDIDATE_PACKAGE_ENQUEUE_FAILED");
+        auditLogger.log({ eventType: "mini_app_factory_run_started", userId: scope.actorId, tenantId: scope.tenantId, endpoint: "spec226DevelopmentControl.adoptPreparedMiniAppCandidate", requestPayload: { appId: input.appId, runId, jobId: queued.jobId, sourceRevision: PREPARED_MINIAPP_V2.revision, generationSkipped: true } });
+        return { appId: input.appId, runId, jobId: queued.jobId, stageId: queued.stageId, sourceRevision: PREPARED_MINIAPP_V2.revision, sourceDigest: imported.sourceDigest, statusUrl: `/miniapp/${input.appId}/status`, idempotent: !queued.created };
+      } catch (error) {
+        auditLogger.log({ eventType: "mini_app_factory_run_started", userId: scope.actorId, tenantId: scope.tenantId, endpoint: "spec226DevelopmentControl.adoptPreparedMiniAppCandidate", requestPayload: { appId: input.appId, accepted: false, errorCode: errorCode(error) } });
         return asTrpcError(error);
       }
     }),
