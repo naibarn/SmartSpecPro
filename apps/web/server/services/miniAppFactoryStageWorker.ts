@@ -110,10 +110,17 @@ export function buildMiniAppFactoryStageJobDefinition(input: {
   };
 }
 
-const AUTO_RECOVERABLE_FACTORY_ERRORS = /^(?:LLMStructuredOutputError|PersonalMiniAppGenerationError|MINI_APP_FIELD_REPAIR_FAILED|MINI_APP_GENERATED_CONTENT_INVALID|JOB_DEADLINE_EXPIRED|JOB_HARD_TIMEOUT|WORKER_TIMEOUT|LEASE_EXPIRED|LEASE_EXPIRED_RETRYING|TimeoutError|AbortError|ETIMEDOUT|ECONNRESET|EAI_AGAIN|ECONNREFUSED|HTTP_?(?:408|429|5\d\d)|PROVIDER_(?:UNAVAILABLE|TIMEOUT|RATE_LIMITED)|GATEWAY_(?:UNAVAILABLE|TIMEOUT)|(?:08|40)[0-9A-Z]{3})$/i;
+const AUTO_RECOVERABLE_FACTORY_ERRORS = /^(?:LLMStructuredOutputError|PersonalMiniAppGenerationError|MINI_APP_FIELD_REPAIR_FAILED|MINI_APP_GENERATED_CONTENT_INVALID|FACTORY_ARTIFACT_REF_INVALID|JOB_DEADLINE_EXPIRED|JOB_HARD_TIMEOUT|WORKER_TIMEOUT|LEASE_EXPIRED|LEASE_EXPIRED_RETRYING|TimeoutError|AbortError|ETIMEDOUT|ECONNRESET|EAI_AGAIN|ECONNREFUSED|HTTP_?(?:408|429|5\d\d)|PROVIDER_(?:UNAVAILABLE|TIMEOUT|RATE_LIMITED)|GATEWAY_(?:UNAVAILABLE|TIMEOUT)|(?:08|40)[0-9A-Z]{3})$/i;
 
 export function isAutoRecoverableMiniAppFactoryError(code: unknown): boolean {
   return typeof code === "string" && AUTO_RECOVERABLE_FACTORY_ERRORS.test(code.trim());
+}
+
+export function resolveRecoverableMiniAppFactoryErrorCode(errorCode: unknown, errorMessage: unknown): string | null {
+  if (isAutoRecoverableMiniAppFactoryError(errorCode)) return String(errorCode).trim();
+  if (typeof errorMessage !== "string") return null;
+  const diagnostic = errorMessage.trim().match(/^([A-Za-z][A-Za-z0-9_.:-]{1,127})/);
+  return diagnostic && isAutoRecoverableMiniAppFactoryError(diagnostic[1]) ? diagnostic[1] : null;
 }
 
 /** Enqueue a bounded, same-run attempt. Its active-dedupe key prevents parallel billing. */
@@ -316,6 +323,7 @@ export async function reconcileMiniAppFactoryStageRuns(input: {
         id: workerJobs.id,
         status: workerJobs.status,
         errorCode: workerJobs.errorCode,
+        errorMessage: workerJobs.errorMessage,
         finishedAt: workerJobs.finishedAt,
         inputJson: workerJobs.inputJson,
         createdAt: workerJobs.createdAt,
@@ -337,7 +345,8 @@ export async function reconcileMiniAppFactoryStageRuns(input: {
       }
       let candidateRepair = false;
       if (latestStageJob && ["failed", "expired"].includes(latestStageJob.status)) {
-        if (!isAutoRecoverableMiniAppFactoryError(latestStageJob.errorCode)) {
+        const recoveryErrorCode = resolveRecoverableMiniAppFactoryErrorCode(latestStageJob.errorCode, latestStageJob.errorMessage);
+        if (!recoveryErrorCode) {
           summary.skipped += 1;
           continue;
         }
@@ -346,7 +355,7 @@ export async function reconcileMiniAppFactoryStageRuns(input: {
             value.startsWith(`app-candidate:r2://mini-app-candidates/${root.tenantId}/${state.miniAppId}/run-`),
           );
         if (state.retryState.attempt >= 3 && !candidateRepair) {
-          const failureCode = String(latestStageJob.errorCode || "FACTORY_STAGE_FAILED").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 100);
+          const failureCode = recoveryErrorCode.replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 100);
           const exhaustedState = {
             ...state,
             retryState: { status: "EXHAUSTED" as const, attempt: state.retryState.attempt },

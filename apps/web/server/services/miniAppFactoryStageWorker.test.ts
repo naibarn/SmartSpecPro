@@ -10,6 +10,7 @@ import {
   createMiniAppFactoryStageJobExecutor,
   enqueueNextMiniAppFactoryStage,
   isAutoRecoverableMiniAppFactoryError,
+  resolveRecoverableMiniAppFactoryErrorCode,
   scheduleMiniAppFactoryStageRetry,
   MINI_APP_FACTORY_STAGE_CONTRACT,
   parseMiniAppFactoryStageJobInput,
@@ -109,7 +110,10 @@ describe("Mini App Factory worker_jobs binding", () => {
   it("bounds automatic repair to recoverable errors and three durable attempts", async () => {
     expect(isAutoRecoverableMiniAppFactoryError("LLMStructuredOutputError")).toBe(true);
     expect(isAutoRecoverableMiniAppFactoryError("ETIMEDOUT")).toBe(true);
+    expect(isAutoRecoverableMiniAppFactoryError("FACTORY_ARTIFACT_REF_INVALID")).toBe(true);
     expect(isAutoRecoverableMiniAppFactoryError("MINI_APP_OWNER_BINDING_NOT_FOUND")).toBe(false);
+    expect(resolveRecoverableMiniAppFactoryErrorCode("Error", "FACTORY_ARTIFACT_REF_INVALID")).toBe("FACTORY_ARTIFACT_REF_INVALID");
+    expect(resolveRecoverableMiniAppFactoryErrorCode("Error", "access denied")).toBeNull();
     const run = makeRun();
     const exhausted = {
       ...run,
