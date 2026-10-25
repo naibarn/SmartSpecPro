@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `32`
-- Updated (UTC): `2026-10-25T10:43:17.719077+00:00`
+- State generation: `33`
+- Updated (UTC): `2026-10-25T11:48:27.424532+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `faf6747dc91a447eed2805e20beb84da1f36162a`
 - Outcome: `NOT_ACCEPTED`
-- Active section: `section-06-v2-thai-thb-continuation`
-- Next action: Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and verifies the deployed V2 title and Open App action with their existing authenticated session; do not adopt or start another run. V2 package, deploy, smoke and version 2 are already recorded as successful.
+- Active section: `section-08-generic-miniapp-continuous-delivery`
+- Next action: Reconcile exact V1/V2 production job receipts and version ledger, record owner acceptance separately, then replace hardcoded pilot candidate runtime constants with a generic owner-bound repository candidate contract.
 
 ## Sections
 
@@ -24,6 +24,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-07-settings-navigation | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 1064ba665c91e9c3c15699ce73a5321f868c3ba4 | 1064ba665c91e9c3c15699ce73a5321f868c3ba4 | Deployed generation 100 from SHA 1064ba665c91e9c3c15699ce73a5321f868c3ba4; web and worker health verified, and App, status, and settings routes return the app shell. |
 | section-06-v2-thai-thb-continuation | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | faf6747dc91a447eed2805e20beb84da1f36162a | faf6747dc91a447eed2805e20beb84da1f36162a | Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and verifies the deployed V2 title and Open App action with their existing authenticated session; do not adopt or start another run. V2 package, deploy, smoke and version 2 are already recorded as successful. |
 | section-05-v1-buildable-source | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 7b90395508e8a7084026d7dafc80a8e4b2360493 | — | V1 project source is committed and read-back verified in the existing private App repository; proceed with the pending authenticated-owner V2 continuation. |
+| section-08-generic-miniapp-continuous-delivery | in_progress | — | /mnt/SmartSpecDev/projects/SmartSpecPro | — | — | Reconcile exact V1/V2 production job receipts and version ledger, record owner acceptance separately, then replace hardcoded pilot candidate runtime constants with a generic owner-bound repository candidate contract. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

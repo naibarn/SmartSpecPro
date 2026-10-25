@@ -11,6 +11,7 @@ section-04-release-final-verify
 section-05-v1-buildable-source
 section-06-v2-thai-thb-continuation
 section-07-settings-navigation
+section-08-generic-miniapp-continuous-delivery
 END_MANIFEST -->
 
 # Implementation Sections Index
@@ -26,6 +27,7 @@ END_MANIFEST -->
 | section-05-v1-buildable-source | V1 baseline | 06 | No |
 | section-06-v2-thai-thb-continuation | 05 | - | No |
 | section-07-settings-navigation | - | - | Yes |
+| section-08-generic-miniapp-continuous-delivery | 06 | - | No |
 
 ## Execution Order
 
@@ -36,6 +38,7 @@ END_MANIFEST -->
 5. Section 05: materialize and independently build retained V1 in its App repository.
 6. Section 06: prepare and verify V2, then bind it only through the authenticated same-App continuation.
 7. Section 07: fix project Settings navigation independently.
+8. Section 08: reconcile the V1/V2 pilot receipts, generalize candidate adoption and app-scoped build/promotion, and verify resumable delivery without using the pilot identifiers as runtime policy.
 
 ## Requirement Ledger
 
@@ -56,3 +59,4 @@ END_MANIFEST -->
 - `section-05-v1-buildable-source`: buildable repository source and V1 parity.
 - `section-06-v2-thai-thb-continuation`: V2 candidate and owner-scoped deployment lineage.
 - `section-07-settings-navigation`: dedicated Settings view and project navigation.
+- `section-08-generic-miniapp-continuous-delivery`: preserve pilot evidence and generalize candidate validation, adoption, package/deploy/smoke, LKG/version handling, and same-run recovery for owner-bound Mini-App repositories.
