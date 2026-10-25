@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `28`
-- Updated (UTC): `2026-10-25T08:57:56.409046+00:00`
+- State generation: `29`
+- Updated (UTC): `2026-10-25T09:43:54.000000+00:00`
 - Sections source: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023/orchestra/tasks/spec224-actual-delivery-close-20261023/sections`
 - Target checkout: `/home/dev/.cache/codex/canonical-sources/task-worktrees/f29801373bfd4154/spec224-close-actual-delivery-20261023`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `1064ba665c91e9c3c15699ce73a5321f868c3ba4`
-- Outcome: `NOT_ACCEPTED`
+- Latest recorded merged Main SHA: `5cae812a5f61d423fde8fded05c475e1e681bf50`
+- Outcome: `PARTIAL`
 - Active section: `section-06-v2-thai-thb-continuation`
-- Next action: Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status, chooses Continue Development, and submits the Thai/THB request documented in section-06. Then verify the linked run, source binding, version ledger and rollback through the normal owner-authenticated workflow.
+- Next action: The owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. The deployed API verifies the existing owner GitHub connection, branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for the same App ID. Verify the linked run and immutable V2 row after smoke; V1 remains last-known-good until then.
 
 ## Sections
 
@@ -22,12 +22,12 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-real-browser-acceptance | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | f5233d1d75017e64d845a2b1c24324019e7dc485 | f5233d1d75017e64d845a2b1c24324019e7dc485 | Inspect existing mini-app worker job terminal, retry, fencing, lease and DevelopmentWorkUnit recovery paths for app_e6f0be051fd22e09bc4c5dff; implement bounded same-run automatic reconciliation; run focused tests and authorized DB checks without fabricating owner authentication. |
 | section-04-release-final-verify | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | 9c9d77adc4a23eda9cb884d3b5789c2c15967439 | Runtime generation 83 serves revision 9c9d77adc4a23eda9cb884d3b5789c2c15967439. The existing target App Identity (owner user 23, tenant tenant-ZCSKEM9s) and expired run anchor are present in the runtime database; the old absence conclusion came from querying a different database endpoint. Owner browser acceptance remains pending a legitimately authenticated owner session. |
 | section-07-settings-navigation | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 1064ba665c91e9c3c15699ce73a5321f868c3ba4 | 1064ba665c91e9c3c15699ce73a5321f868c3ba4 | Deployed generation 100 from SHA 1064ba665c91e9c3c15699ce73a5321f868c3ba4; web and worker health verified, and App, status, and settings routes return the app shell. |
-| section-06-v2-thai-thb-continuation | in_progress | — | /mnt/SmartSpecDev/projects/SmartSpecPro | — | — | V2 candidate source 1d7273d719ff9b034cd304920c1ef76efdd86e76 and Playwright 12/12 evidence are ready. The only remaining owner-scoped step is the real owner opening the existing App Home and using Continue Development to create the linked same-App DevelopmentRun; then bind/verify the candidate via the normal workflow before promoting V2. |
+| section-06-v2-thai-thb-continuation | implementation_ready | owner action pending | /mnt/SmartSpecDev/projects/SmartSpecPro | 5cae812a5f61d423fde8fded05c475e1e681bf50 | 5cae812a5f61d423fde8fded05c475e1e681bf50 | Deployed generation 102 from SHA 5cae812a5f61d423fde8fded05c475e1e681bf50; focused checks 42/42 passed. The actual owner action is one click: “Use prepared V2 candidate” on the existing App Home. No V2 DevelopmentRun or version row exists yet; V1 remains last-known-good until that owner-authorized run passes smoke. |
 | section-05-v1-buildable-source | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 7b90395508e8a7084026d7dafc80a8e4b2360493 | — | V1 project source is committed and read-back verified in the existing private App repository; proceed with the pending authenticated-owner V2 continuation. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- A legitimately authenticated owner browser session is not available in this Codex context. Until the owner starts the same-App Thai/THB continuation, no linked V2 DevelopmentRun or production version-2 row can be created; V1 remains the last-known-good version.
+- A legitimately authenticated owner browser session is not available in this Codex context. No V2 DevelopmentRun or version-2 row has been created. The deployed adoption action is ready; it will create the linked run only when the owner clicks it. V1 remains the last-known-good version.
 
 ## Resume
 

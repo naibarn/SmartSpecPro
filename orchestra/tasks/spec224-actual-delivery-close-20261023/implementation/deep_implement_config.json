@@ -49,9 +49,11 @@
       "next_action": "Deployed generation 100 from SHA 1064ba665c91e9c3c15699ce73a5321f868c3ba4; web and worker health verified, and App, status, and settings routes return the app shell."
     },
     "section-06-v2-thai-thb-continuation": {
-      "status": "in_progress",
+      "status": "implementation_ready",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "V2 candidate source 1d7273d719ff9b034cd304920c1ef76efdd86e76 and Playwright 12/12 evidence are ready. The only remaining owner-scoped step is the real owner opening the existing App Home and using Continue Development to create the linked same-App DevelopmentRun; then bind/verify the candidate via the normal workflow before promoting V2."
+      "next_action": "The owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. The deployed API verifies the existing owner GitHub connection, branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for the same App ID. Verify the linked run and immutable V2 row after smoke; V1 remains last-known-good until then.",
+      "checkpoint_sha": "5cae812a5f61d423fde8fded05c475e1e681bf50",
+      "merged_main_sha": "5cae812a5f61d423fde8fded05c475e1e681bf50"
     },
     "section-05-v1-buildable-source": {
       "checkpoint_sha": "7b90395508e8a7084026d7dafc80a8e4b2360493",
@@ -69,15 +71,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 28,
-  "updated_at": "2026-10-25T08:57:56.409046+00:00",
+  "generation": 29,
+  "updated_at": "2026-10-25T09:43:54.000000+00:00",
   "progress": {
     "active_section": "section-06-v2-thai-thb-continuation",
-    "next_action": "Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status, chooses Continue Development, and submits the Thai/THB request documented in section-06. Then verify the linked run, source binding, version ledger and rollback through the normal owner-authenticated workflow.",
+    "next_action": "The owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. The deployed API verifies the existing owner GitHub connection, branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for the same App ID. Verify the linked run and immutable V2 row after smoke; V1 remains last-known-good until then.",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "gaps": [
-      "A legitimately authenticated owner browser session is not available in this Codex context. Until the owner starts the same-App Thai/THB continuation, no linked V2 DevelopmentRun or production version-2 row can be created; V1 remains the last-known-good version."
+      "No legitimately authenticated owner session is available to this Codex context. No V2 DevelopmentRun or version-2 row exists yet. The deployed candidate-adoption action is ready; owner click is the continuation predicate. V1 remains last-known-good."
     ],
-    "merged_main_sha": "1064ba665c91e9c3c15699ce73a5321f868c3ba4"
+    "merged_main_sha": "5cae812a5f61d423fde8fded05c475e1e681bf50"
   }
 }
