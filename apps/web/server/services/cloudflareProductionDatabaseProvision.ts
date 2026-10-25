@@ -35,9 +35,11 @@ export function productionDatabaseResourcePlanDigest(plan: ProductionDatabaseRes
 }
 
 export class ProductionDatabaseProvisionError extends Error {
+  readonly class: "permanent" | "retryable" | "unknown";
   constructor(readonly diagnosticCode: string, readonly errorClass: "permanent" | "retryable" | "unknown" = "permanent") {
     super(diagnosticCode);
     this.name = "ProductionDatabaseProvisionError";
+    this.class = errorClass;
   }
 }
 function fail(code: string, kind: "permanent" | "retryable" | "unknown" = "permanent"): never {
@@ -137,6 +139,16 @@ export async function provisionCloudflareProductionDatabase(input: {
   }
 
   const servicesPath = `${accountPath}/connectivity/directory/services`;
+  // Validate the existing private network before creating provider resources.
+  // A selected tunnel ID alone does not prove that the tunnel is still live.
+  const tunnelEnvelope = await request(
+    `${accountPath}/cfd_tunnel/${encodeURIComponent(plan.tunnelId)}`,
+    "GET"
+  );
+  const tunnel = tunnelEnvelope.result as Resource | undefined;
+  if (tunnel.id !== plan.tunnelId || tunnel.status !== "healthy") {
+    fail("CLOUDFLARE_PRODUCTION_DATABASE_TUNNEL_NOT_HEALTHY");
+  }
   const vpcCandidates = (await list(`${servicesPath}?per_page=100`)).filter(row => row?.name === serviceName);
   if (vpcCandidates.length > 1) fail("CLOUDFLARE_PRODUCTION_VPC_SERVICE_NAME_AMBIGUOUS", "unknown");
   let vpcServiceId = vpcCandidates[0]?.service_id;
@@ -207,6 +219,8 @@ export async function provisionCloudflareProductionDatabase(input: {
     hyperdrive: { id: hyperdriveId, name: hyperdriveName, databaseName: plan.databaseName, databaseUser: plan.databaseUser,
       connectionLimit: plan.connectionLimit, cachingDisabled: true },
     providerConfigurationVerified: true as const,
+    databaseConnectionVerified: false as const,
+    runtimeRolePrepared: false as const,
     workerBound: false as const,
     activation: "disabled" as const,
   };

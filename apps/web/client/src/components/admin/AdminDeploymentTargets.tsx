@@ -355,6 +355,8 @@ export default function AdminDeploymentTargets() {
   const [workflowRuntimeToken, setWorkflowRuntimeToken] = useState("");
   const [controlPlaneToken, setControlPlaneToken] = useState("");
   const [productionQueueJobId, setProductionQueueJobId] = useState("");
+  const [productionDatabaseJobId, setProductionDatabaseJobId] = useState("");
+  const [productionTunnelId, setProductionTunnelId] = useState("");
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
@@ -405,6 +407,12 @@ export default function AdminDeploymentTargets() {
       query.state.data?.status === "succeeded" || query.state.data?.status === "failed" ? false : 2_000 },
   );
   const productionQueueJobData = productionQueueJob.data ?? latestProductionQueueJob.data;
+  const latestProductionDatabaseJob = trpc.infrastructure.getLatestCloudflareProductionDatabaseJob.useQuery(
+    { tenantId, projectId, environment: "production" },
+    { enabled: validScope && environment === "production", refetchInterval: query =>
+      !query.state.data || ["succeeded", "failed", "cancelled", "expired"].includes(query.state.data.status) ? false : 2_000 },
+  );
+  const productionDatabaseJobData = latestProductionDatabaseJob.data;
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const stagingCloudflareTargets = ((stagingTargetsQuery.data ?? []) as DeploymentTarget[])
@@ -445,6 +453,12 @@ export default function AdminDeploymentTargets() {
       await latestProductionQueueJob.refetch();
     },
   });
+  const productionDatabaseMutation = trpc.infrastructure.prepareCloudflareProductionDatabase.useMutation({
+    onSuccess: async result => {
+      setProductionDatabaseJobId(result.jobId);
+      await latestProductionDatabaseJob.refetch();
+    },
+  });
   useEffect(() => {
     const latestJobId = latestProductionQueueJob.data?.jobId;
     if (latestJobId && latestJobId !== productionQueueJobId) setProductionQueueJobId(latestJobId);
@@ -454,6 +468,15 @@ export default function AdminDeploymentTargets() {
       void Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
     }
   }, [productionQueueJobData?.status]);
+  useEffect(() => {
+    const latestJobId = latestProductionDatabaseJob.data?.jobId;
+    if (latestJobId && latestJobId !== productionDatabaseJobId) setProductionDatabaseJobId(latestJobId);
+  }, [latestProductionDatabaseJob.data?.jobId, productionDatabaseJobId]);
+  useEffect(() => {
+    if (productionDatabaseJobData?.status === "succeeded") {
+      void Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
+    }
+  }, [productionDatabaseJobData?.status]);
   const activateStagingProfile = trpc.infrastructure.activateCloudflareStagingQueueProfile.useMutation({
     onSuccess: async result => {
       setSavedStagingScope({ tenantId, projectId });
@@ -722,6 +745,8 @@ export default function AdminDeploymentTargets() {
             const stagingHyperdrives = inventory.hyperdrives.filter(item => item.environment === "staging");
             const productionPostgresVpcs = inventory.vpcServices.filter(item => item.environment === "production" && item.type === "tcp" && item.appProtocol === "postgresql");
             const stagingPostgresVpcs = inventory.vpcServices.filter(item => item.environment === "staging" && item.type === "tcp" && item.appProtocol === "postgresql");
+            const databaseTunnels = inventory.tunnels.filter(item => item.status === "healthy");
+            const selectedDatabaseTunnelId = productionTunnelId || (databaseTunnels.length === 1 ? databaseTunnels[0].id : "");
             const activeVersions = inventory.worker.versions;
             const verifiedRollback = activeVersions.some(version => version.checked && version.hasVerifiedReleaseIdentity);
             const nodeAndPythonIngressBound = activeVersions.some(version => version.checked &&
@@ -785,6 +810,32 @@ export default function AdminDeploymentTargets() {
               <p><strong>{text("Production PostgreSQL VPC service", "Workers VPC สำหรับ PostgreSQL Production")}</strong>: {productionPostgresVpcs.length > 0
                 ? text(`Found ${productionPostgresVpcs.length} PostgreSQL TCP service(s).`, `พบ PostgreSQL TCP service ${productionPostgresVpcs.length} รายการ`)
                 : text(stagingPostgresVpcs.length > 0 ? `Not provisioned. Only Staging exists (${stagingPostgresVpcs.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingPostgresVpcs.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingPostgresVpcs.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
+              {inventory.status === "CHECKED" && (productionHyperdrives.length === 0 || productionPostgresVpcs.length === 0) ? <VStack as="section" gap={1} role="group" aria-label={text("Prepare Production PostgreSQL connection", "เตรียมการเชื่อมต่อ PostgreSQL Production")}>
+                <p><strong>{text("Prepare the retained PostgreSQL connection", "เตรียมการเชื่อมต่อ PostgreSQL เครื่องเดิม")}</strong></p>
+                <p>{text("The system will use the selected existing Cloudflare Tunnel, create the private VPC PostgreSQL service and uncached Hyperdrive config, and verify provider readback. PostgreSQL stays on this Linux host. No public database route, Worker binding, activation, or production traffic change is made.", "ระบบจะใช้ Cloudflare Tunnel เดิมที่เลือก สร้าง private VPC PostgreSQL service และ Hyperdrive แบบปิด cache แล้วตรวจ readback โดย PostgreSQL ยังคงอยู่บน Linux เครื่องเดิม ขั้นตอนนี้ไม่สร้าง public database route ไม่ bind หรือเปิด Worker และไม่เปลี่ยน production traffic")}</p>
+                {databaseTunnels.length > 1 ? <label htmlFor="cloudflare-production-db-tunnel">{text("Existing Cloudflare Tunnel", "Cloudflare Tunnel เดิม")}</label> : null}
+                {databaseTunnels.length > 1 ? <select id="cloudflare-production-db-tunnel" value={selectedDatabaseTunnelId} onChange={event => setProductionTunnelId(event.target.value)}>
+                  <option value="">{text("Choose the Tunnel that reaches PostgreSQL on the Linux host", "เลือก Tunnel ที่เชื่อมถึง PostgreSQL บน Linux host")}</option>
+                  {databaseTunnels.map(tunnel => <option key={tunnel.id} value={tunnel.id}>{tunnel.name} · {tunnel.status ?? "status unknown"} · {tunnel.id}</option>)}
+                </select> : databaseTunnels.length === 1 ? <p>{text("Using the only existing Tunnel", "ใช้ Tunnel เดิมรายการเดียว")}: <code>{databaseTunnels[0].name}</code> · <code>{databaseTunnels[0].id}</code></p>
+                  : <p role="alert">{text("No usable existing Tunnel is visible. Check Account → Cloudflare Tunnel → Read before preparing the private database path.", "ไม่พบ Tunnel เดิมที่ใช้งานได้ ให้ตรวจสิทธิ์ Account → Cloudflare Tunnel → Read ก่อนเตรียมเส้นทางฐานข้อมูลส่วนตัว")}</p>}
+                <Button type="button" disabled={!selectedDatabaseTunnelId || productionDatabaseMutation.isPending || Boolean(productionDatabaseJobData)}
+                  onClick={() => productionDatabaseMutation.mutate({ tenantId, projectId, environment: "production", tunnelId: selectedDatabaseTunnelId })}>
+                  {productionDatabaseMutation.isPending ? text("Queueing database setup…", "กำลังส่งงานเตรียมฐานข้อมูล…") : productionDatabaseJobData
+                    ? text("Production database job already exists", "มีงานเตรียมฐานข้อมูล Production แล้ว")
+                      : text("Prepare Production database connection", "เตรียมการเชื่อมต่อฐานข้อมูล Production")}
+                </Button>
+                {productionDatabaseMutation.error ? <p role="alert"><code>{productionDatabaseMutation.error.message}</code></p> : null}
+                {productionDatabaseJobData ? <VStack gap={1} role="status" aria-label={text("Production database provisioning job", "สถานะงานเตรียมฐานข้อมูล Production")}>
+                  <p>{text("Job", "งาน")}: <code>{productionDatabaseJobData.jobId}</code> · {text("Status", "สถานะ")}: <strong>{productionDatabaseJobData.status}</strong>
+                    {productionDatabaseJobData.attempt ? <> · {text("Attempt", "ครั้งที่")}: {productionDatabaseJobData.attempt}/{productionDatabaseJobData.maxAttempts}</> : null}</p>
+                  {productionDatabaseJobData.errorCode ? <p role="alert"><code>{productionDatabaseJobData.errorCode}</code></p> : null}
+                  {productionDatabaseJobData.vpcService ? <p>VPC: <code>{productionDatabaseJobData.vpcService.name}</code> · <code>{productionDatabaseJobData.vpcService.id}</code> · TLS <code>{productionDatabaseJobData.vpcService.tlsVerification}</code></p> : null}
+                  {productionDatabaseJobData.hyperdrive ? <p>Hyperdrive: <code>{productionDatabaseJobData.hyperdrive.name}</code> · <code>{productionDatabaseJobData.hyperdrive.id}</code></p> : null}
+                  {productionDatabaseJobData.providerConfigurationVerified ? <p role="note">{text("Cloudflare resource readback passed. The live PostgreSQL connection and a least-privilege application role are not verified by this step.", "ตรวจ readback ของ resource บน Cloudflare ผ่านแล้ว ขั้นตอนนี้ยังไม่ได้ยืนยันการเชื่อมต่อ PostgreSQL จริงหรือ application role แบบ least-privilege")}</p> : null}
+                  {productionDatabaseJobData.status === "queued" ? <p>{text("The canonical worker will claim this same job. This page follows its status and will not create duplicates.", "canonical worker จะรับงานเดิม หน้านี้ติดตามสถานะและไม่สร้าง job ซ้ำ")}</p> : null}
+                </VStack> : null}
+              </VStack> : null}
               {inventory.productionDatabaseProvisioning ? <VStack as="section" gap={1} role="group" aria-label={text("Production database provisioning access", "สิทธิ์สำหรับเตรียมฐานข้อมูล Production")}>
                 <p><strong>{text("Production PostgreSQL connection setup", "การเตรียมการเชื่อมต่อ PostgreSQL ของ Production")}</strong></p>
                 <p>{text("Read-only permission checks for the private PostgreSQL path (HTTP 200 proves read access only):", "ผลตรวจสิทธิ์อ่านสำหรับ PostgreSQL ส่วนตัว (HTTP 200 ยืนยันเฉพาะการอ่าน):")}</p>
@@ -838,8 +889,8 @@ export default function AdminDeploymentTargets() {
                 </a>
               </p>
               {productionHyperdrives.length === 0 ? <p role="status">{text(
-                "The retained PostgreSQL connection still needs a TLS certificate chain accepted by Workers VPC. The current private CA chain failed strict verification, so the implementation must verify whether it is usable with verify_ca or replace it with a publicly trusted or Cloudflare Origin CA certificate before Hyperdrive is provisioned. TLS verification will not be disabled.",
-                "การเชื่อมต่อ PostgreSQL เดิมยังต้องมี TLS certificate chain ที่ Workers VPC ยอมรับ โดย chain ของ private CA ปัจจุบันตรวจแบบเข้มงวดไม่ผ่าน จึงต้องตรวจว่าใช้ verify_ca ได้หรือเปลี่ยนเป็น certificate จาก public CA หรือ Cloudflare Origin CA ก่อนสร้าง Hyperdrive ระบบจะไม่ปิดการตรวจ TLS",
+                "The retained PostgreSQL connection needs a trusted certificate matching db.smartaihub.app. This plan uses verify_full, which validates both the certificate chain and hostname; a private CA rejected by Cloudflare must be replaced with a publicly trusted or Cloudflare Origin CA certificate before the database path can pass runtime verification.",
+                "การเชื่อมต่อ PostgreSQL เดิมต้องใช้ certificate ที่เชื่อถือได้และตรงกับ db.smartaihub.app แผนนี้ใช้ verify_full เพื่อตรวจทั้ง chain และ hostname หาก Cloudflare ไม่เชื่อถือ private CA ปัจจุบัน ต้องเปลี่ยนเป็น certificate จาก public CA หรือ Cloudflare Origin CA ก่อนตรวจ runtime ผ่าน",
               )} <a href="https://developers.cloudflare.com/hyperdrive/configuration/connect-to-private-database-vpc/" target="_blank" rel="noreferrer">
                 {text("Cloudflare: private PostgreSQL with Workers VPC", "คู่มือ Cloudflare: เชื่อม PostgreSQL ส่วนตัวด้วย Workers VPC")}
               </a></p> : null}

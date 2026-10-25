@@ -7,7 +7,7 @@
  */
 
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure } from "../_core/trpc";
 import { fetchWithResilience } from "../_core/fetchWithResilience";
@@ -80,6 +80,10 @@ import { probeCloudflareProductionRuntimeReadiness } from "../services/cloudflar
 import { probeCloudflareProductionProviderInventory } from "../services/cloudflareProductionProviderInventory";
 import { resolveCloudflareProductionDeploymentTarget } from "../services/cloudflareProductionDeploymentContract";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB } from "../services/cloudflareProductionQueueProvision";
+import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE_JOB,
+  createProductionDatabaseGrant, newProductionDatabaseJobId, revokeCloudflareProductionDatabaseGrant,
+  saveCloudflareProductionDatabaseGrant } from "../services/cloudflareProductionDatabaseExecutor";
+import { productionDatabaseResourcePlanSchema } from "../services/cloudflareProductionDatabaseProvision";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
@@ -694,6 +698,132 @@ export const infrastructureRouter = router({
           requestType: "cloudflare_production_queue_prepare", responsePayload: { tenantId, projectId: input.projectId, jobId: job.jobId }, statusCode: 202 });
       } catch { /* The canonical job and outbox remain authoritative if audit projection is unavailable. */ }
       return { jobId: job.jobId, status: "queued" as const, environment: "production" as const, trafficShifted: false as const };
+    }),
+
+  prepareCloudflareProductionDatabase: exactAdminProcedure
+    .input(z.object({
+      tenantId: deploymentTenantIdSchema,
+      projectId: z.string().trim().min(1).max(100),
+      environment: z.literal("production"),
+      tunnelId: z.string().uuid(),
+    }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      }
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId, projectId: input.projectId });
+      if (!target) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_TARGET_NOT_CONFIGURED" });
+      const credential = await getCloudflareDeploymentCredentialState(db, {
+        identity: { tenantId, projectId: input.projectId, environment: "production", provider: "cloudflare" }, credentialRef: target.credentialRef,
+      });
+      if (credential.status !== "CONFIGURED") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_CREDENTIAL_NOT_CONFIGURED" });
+
+      const jobId = newProductionDatabaseJobId();
+      const databaseName = "smartspec";
+      const databaseUser = `sah_cf_prod_${createHash("sha256").update(`${input.tunnelId}:${databaseName}`).digest("hex").slice(0, 12)}`;
+      const plan = productionDatabaseResourcePlanSchema.parse({ tunnelId: input.tunnelId, databaseHostname: "db.smartaihub.app",
+        databaseName, databaseUser,
+        connectionLimit: 5, tlsVerification: "verify_full" });
+      const { grant, databasePassword } = createProductionDatabaseGrant({ jobId, tenantId, projectId: input.projectId,
+        requesterUserId: ctx.user.id, accountRef: target.accountRef, plan });
+      await saveCloudflareProductionDatabaseGrant(db, grant, databasePassword);
+      try {
+        const job = await createControlPlaneJob({
+          context: { tenantId, actorType: "user", actorId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_production_database_provision",
+            correlationId: ctx.req.requestId ?? jobId, idempotencyKey: `cloudflare-production-database:${jobId}` },
+          definition: { contractVersion: CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, jobType: CLOUDFLARE_PRODUCTION_DATABASE_JOB,
+            executionClass: "long", priority: 48,
+            input: { contractVersion: CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, projectId: input.projectId, targetId: "smartspec-cloudflare-runtime",
+              environment: "production", grantRef: grant.grantRef, planDigest: grant.planDigest },
+            idempotencyKey: `cloudflare-production-database:${jobId}`,
+            activeDedupeKey: `cloudflare-production-database:${tenantId}:${input.projectId}`,
+            retryPolicy: { maxAttempts: 2, baseDelayMs: 2_000, maxDelayMs: 5_000, jitter: "bounded", deadlineMs: 12 * 60_000, allowedErrorClasses: ["retryable"] },
+            timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 12 * 60_000 } },
+          createOptions: { canonicalJobId: jobId, runtimeType: "node_job_worker" },
+        });
+        if (!job.created) {
+          await db.delete(systemSettings).where(and(
+            eq(systemSettings.category, "cloudflare_production_database_grants"),
+            eq(systemSettings.key, jobId),
+          ));
+          const [existing] = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType,
+            contractVersion: workerJobs.contractVersion, tenantId: workerJobs.tenantId, inputJson: workerJobs.inputJson })
+            .from(workerJobs).where(and(eq(workerJobs.id, job.jobId), eq(workerJobs.tenantId, tenantId))).limit(1);
+          const existingInput = existing?.inputJson as Record<string, unknown> | null;
+          if (!existing || existing.jobType !== CLOUDFLARE_PRODUCTION_DATABASE_JOB ||
+              existing.contractVersion !== CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT ||
+              existingInput?.projectId !== input.projectId || existingInput?.targetId !== "smartspec-cloudflare-runtime" ||
+              existingInput?.environment !== "production") {
+            throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_ACTIVE_JOB_SCOPE_MISMATCH" });
+          }
+          return { jobId: existing.id, status: "existing" as const, targetId: "smartspec-cloudflare-runtime" as const,
+            environment: "production" as const };
+        }
+        try {
+          auditLogger.log({ eventType: "cloudflare_production_database_provision_queued", userId: ctx.user.id,
+            requestType: "cloudflare_production_database_provision", responsePayload: { tenantId, projectId: input.projectId, jobId,
+              targetId: target.targetId, environment: "production", planDigest: grant.planDigest }, statusCode: 202 });
+        } catch { /* The canonical job and outbox remain authoritative if audit projection is unavailable. */ }
+        return { jobId: job.jobId, grantRef: grant.grantRef, planDigest: grant.planDigest, status: "queued" as const,
+          targetId: target.targetId, environment: "production" as const, expiresAt: grant.expiresAt };
+      } catch (error) {
+        await db.delete(systemSettings).where(and(eq(systemSettings.category, "cloudflare_production_database_grants"), eq(systemSettings.key, jobId)));
+        throw error;
+      }
+    }),
+
+  getLatestCloudflareProductionDatabaseJob: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("production") }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [job] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, jobType: workerJobs.jobType,
+        contractVersion: workerJobs.contractVersion, status: workerJobs.status, errorCode: workerJobs.errorCode,
+        inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson, attempt: workerJobs.attempt,
+        maxAttempts: workerJobs.maxAttempts, createdAt: workerJobs.createdAt, startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt, nextRetryAt: workerJobs.nextRetryAt, leaseExpiresAt: workerJobs.leaseExpiresAt,
+        heartbeatAt: workerJobs.heartbeatAt })
+        .from(workerJobs).where(and(eq(workerJobs.tenantId, tenantId), eq(workerJobs.jobType, CLOUDFLARE_PRODUCTION_DATABASE_JOB),
+          eq(workerJobs.contractVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT),
+          sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`,
+          sql`${workerJobs.inputJson}->>'targetId' = 'smartspec-cloudflare-runtime'`,
+          sql`${workerJobs.inputJson}->>'environment' = 'production'`))
+        .orderBy(desc(workerJobs.createdAt)).limit(1);
+      if (!job) return null;
+      const jobInput = job.inputJson as Record<string, unknown> | null;
+      const output = job.outputJson as Record<string, unknown> | null;
+      return { jobId: job.id, status: job.status, errorCode: job.errorCode, attempt: job.attempt, maxAttempts: job.maxAttempts,
+        createdAt: job.createdAt?.toISOString() ?? null, startedAt: job.startedAt?.toISOString() ?? null,
+        finishedAt: job.finishedAt?.toISOString() ?? null, nextRetryAt: job.nextRetryAt?.toISOString() ?? null,
+        leaseExpiresAt: job.leaseExpiresAt?.toISOString() ?? null, heartbeatAt: job.heartbeatAt?.toISOString() ?? null,
+        planDigest: typeof jobInput?.planDigest === "string" ? jobInput.planDigest : null,
+        vpcService: output?.vpcService ?? null, hyperdrive: output?.hyperdrive ?? null,
+        providerConfigurationVerified: output?.providerConfigurationVerified === true,
+        workerBound: output?.workerBound === true, activation: output?.activation === "disabled" ? "disabled" as const : null };
+    }),
+
+  revokeCloudflareProductionDatabaseJobGrant: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), jobId: z.string().uuid(), environment: z.literal("production") }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [job] = await db.select({ inputJson: workerJobs.inputJson }).from(workerJobs)
+        .where(and(eq(workerJobs.id, input.jobId), eq(workerJobs.tenantId, tenantId), eq(workerJobs.jobType, CLOUDFLARE_PRODUCTION_DATABASE_JOB),
+          eq(workerJobs.contractVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT))).limit(1);
+      const jobInput = job?.inputJson as Record<string, unknown> | null;
+      if (!job || jobInput?.projectId !== input.projectId || jobInput?.targetId !== "smartspec-cloudflare-runtime" || jobInput?.environment !== "production") {
+        throw new TRPCError({ code: "NOT_FOUND", message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_NOT_FOUND" });
+      }
+      try { await revokeCloudflareProductionDatabaseGrant(db, input.jobId, ctx.user.id); }
+      catch (error) { throw new TRPCError({ code: "FORBIDDEN", message: error instanceof Error ? error.message : "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_DENIED" }); }
+      return { jobId: input.jobId, revoked: true as const };
     }),
 
   getCloudflareProductionQueueJobStatus: exactAdminProcedure

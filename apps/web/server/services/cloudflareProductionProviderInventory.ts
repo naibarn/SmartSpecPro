@@ -105,7 +105,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
       deployments.complete && Array.isArray(deploymentRows) && versionDetails.every(version => version.checked) &&
       vpcServices.complete && tunnels.complete && containers.complete;
     const vpcServiceRows = Array.isArray(vpcServices.result) ? vpcServices.result as Array<{
-      service_id?: unknown; name?: unknown; type?: unknown; app_protocol?: unknown; host?: { network?: { tunnel_id?: unknown } };
+      service_id?: unknown; name?: unknown; type?: unknown; app_protocol?: unknown; host?: { resolver_network?: { tunnel_id?: unknown } };
     }> : [];
     const tunnelRows = Array.isArray(tunnels.result) ? tunnels.result as Array<{ id?: unknown; name?: unknown; status?: unknown }> : [];
     return {
@@ -171,7 +171,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
       vpcServices: vpcServiceRows.flatMap(row => typeof row.service_id === "string" && /^[a-f0-9-]{36}$/i.test(row.service_id) &&
         typeof row.name === "string" && /^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$/.test(row.name) && (row.type === "tcp" || row.type === "http")
         ? [{ id: row.service_id, name: row.name, type: row.type, ...(row.app_protocol === "postgresql" || row.app_protocol === "mysql" ? { appProtocol: row.app_protocol } : {}),
-            ...(typeof row.host?.network?.tunnel_id === "string" && /^[a-f0-9-]{36}$/i.test(row.host.network.tunnel_id) ? { tunnelId: row.host.network.tunnel_id } : {}),
+            ...(typeof row.host?.resolver_network?.tunnel_id === "string" && /^[a-f0-9-]{36}$/i.test(row.host.resolver_network.tunnel_id) ? { tunnelId: row.host.resolver_network.tunnel_id } : {}),
             environment: /(?:^|-)production(?:-|$)/i.test(row.name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(row.name) ? "staging" as const : "other" as const }] : []),
       domainRoute: { inventoryComplete: Boolean(routes?.complete), attached: matchingRoutes.length === 1 && matchingRoutes[0].script === target.targetId,
         conflicting: matchingRoutes.length > 1 || (matchingRoutes.length === 1 && matchingRoutes[0].script !== target.targetId) },

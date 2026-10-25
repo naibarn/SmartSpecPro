@@ -42,6 +42,7 @@ const response = (result: unknown, status = 200) => new Response(JSON.stringify(
 describe("Cloudflare production database resources", () => {
   it("creates and reads back a private VPC PostgreSQL service and uncached Hyperdrive config", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
       .mockResolvedValueOnce(response([]))
       .mockResolvedValueOnce(response({ service_id: serviceId }))
       .mockResolvedValueOnce(response(service))
@@ -56,14 +57,14 @@ describe("Cloudflare production database resources", () => {
       saveCheckpoint: async checkpoint => { checkpoints.push(checkpoint); }, assertAuthorized, fetchImpl,
     });
 
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
-    expect(assertAuthorized).toHaveBeenCalledTimes(12);
+    expect(fetchImpl).toHaveBeenCalledTimes(7);
+    expect(assertAuthorized).toHaveBeenCalledTimes(13);
     for (const [, init] of fetchImpl.mock.calls) {
       expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${token}`);
     }
-    const createServiceBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body));
+    const createServiceBody = JSON.parse(String(fetchImpl.mock.calls[2]?.[1]?.body));
     expect(createServiceBody).toMatchObject({ host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } }, tls_settings: { cert_verification_mode: "verify_full" } });
-    const createHyperdriveBody = JSON.parse(String(fetchImpl.mock.calls[4]?.[1]?.body));
+    const createHyperdriveBody = JSON.parse(String(fetchImpl.mock.calls[5]?.[1]?.body));
     expect(createHyperdriveBody).toMatchObject({ origin: { service_id: serviceId, database: plan.databaseName, user: plan.databaseUser, password, scheme: "postgres" }, caching: { disabled: true }, origin_connection_limit: 5 });
     expect(JSON.stringify(result)).not.toContain(token);
     expect(JSON.stringify(result)).not.toContain(password);
@@ -73,6 +74,7 @@ describe("Cloudflare production database resources", () => {
 
   it("reuses exact existing resources without issuing provider writes", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
       .mockResolvedValueOnce(response([service]))
       .mockResolvedValueOnce(response(service))
       .mockResolvedValueOnce(response([hyperdrive]))
@@ -84,7 +86,7 @@ describe("Cloudflare production database resources", () => {
       saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
     });
 
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
     expect(fetchImpl.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
     expect(result.providerConfigurationVerified).toBe(true);
   });
@@ -92,6 +94,7 @@ describe("Cloudflare production database resources", () => {
   it("recovers an uncertain create only when the encrypted job checkpoint proves ownership", async () => {
     const checkpoints: Array<Parameters<Parameters<typeof provisionCloudflareProductionDatabase>[0]["saveCheckpoint"]>[0]> = [];
     const firstFetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
       .mockResolvedValueOnce(response([]))
       .mockRejectedValueOnce(new Error("connection reset after provider accepted POST"));
     const base = { jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
@@ -103,6 +106,7 @@ describe("Cloudflare production database resources", () => {
     expect(checkpoints.at(-1)).toMatchObject({ pending: "vpc_service", jobId });
 
     const retryFetch = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
       .mockResolvedValueOnce(response([service]))
       .mockResolvedValueOnce(response(service))
       .mockResolvedValueOnce(response([]))
@@ -110,7 +114,7 @@ describe("Cloudflare production database resources", () => {
       .mockResolvedValueOnce(response(hyperdrive));
     const result = await provisionCloudflareProductionDatabase({ ...base, checkpoint: checkpoints.at(-1), fetchImpl: retryFetch });
 
-    expect(retryFetch).toHaveBeenCalledTimes(5);
+    expect(retryFetch).toHaveBeenCalledTimes(6);
     expect(retryFetch.mock.calls.some(([, init]) => init?.method === "POST" && String(init.body).includes("postgres"))).toBe(true);
     expect(checkpoints.at(-1)).toMatchObject({ pending: null, vpcServiceId: serviceId, hyperdriveId });
     expect(result.providerConfigurationVerified).toBe(true);
@@ -132,6 +136,7 @@ describe("Cloudflare production database resources", () => {
 
   it("fails closed on an existing VPC service whose endpoint or TLS policy drifted", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
       .mockResolvedValueOnce(response([service]))
       .mockResolvedValueOnce(response({ ...service, host: { ...service.host, hostname: "db-staging.smartaihub.app" } }));
 
@@ -140,7 +145,7 @@ describe("Cloudflare production database resources", () => {
       checkpoint: { jobId, planDigest: productionDatabaseResourcePlanDigest(plan), databasePasswordDigest: createHash("sha256").update(password).digest("hex"), pending: "vpc_service" },
       saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
     })).rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_VPC_SERVICE_READBACK_MISMATCH", errorClass: "unknown" });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it("requires production authorization before every provider operation", async () => {

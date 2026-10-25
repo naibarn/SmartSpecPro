@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   disable: vi.fn(),
   queueStagingDeploy: vi.fn(),
   prepareProductionQueue: vi.fn(),
+  prepareProductionDatabase: vi.fn(),
   activateStagingProfile: vi.fn(),
   activationError: null as string | null,
   activationSucceeds: false,
@@ -29,6 +30,7 @@ const mocks = vi.hoisted(() => ({
   refetchProductionProviderInventory: vi.fn(),
   refetchLatestProductionQueueJob: vi.fn(),
   latestProductionQueueJob: null as Record<string, unknown> | null,
+  latestProductionDatabaseJob: null as Record<string, unknown> | null,
   productionQueues: [] as Array<Record<string, unknown>>,
   productionHyperdrives: [] as Array<Record<string, unknown>>,
   saveCredential: vi.fn(),
@@ -52,6 +54,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionProviderInventory: { invalidate: mocks.invalidate },
       getCloudflareProductionQueueJobStatus: { invalidate: mocks.invalidate },
       getLatestCloudflareProductionQueueJob: { invalidate: mocks.invalidate },
+      getLatestCloudflareProductionDatabaseJob: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
       { id: "tenant-system", name: "System", selectorKind: "system" },
@@ -84,6 +87,7 @@ vi.mock("@/lib/trpc", () => ({
         ],
         conditionalPermissions: [{ scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if the selected existing Tunnel must be changed" }] },
         queueInventoryComplete: true, queues: [...mocks.productionQueues, { name: "smartspec-staging-project-jobs", environment: "staging" }],
+        tunnels: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }],
         hyperdriveInventoryComplete: true, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
         vpcServiceInventoryComplete: true, vpcServices: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartspec-staging-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
@@ -92,6 +96,7 @@ vi.mock("@/lib/trpc", () => ({
         isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionProviderInventory }) },
       getCloudflareProductionQueueJobStatus: { useQuery: () => ({ data: null }) },
       getLatestCloudflareProductionQueueJob: { useQuery: () => ({ data: mocks.latestProductionQueueJob, refetch: mocks.refetchLatestProductionQueueJob }) },
+      getLatestCloudflareProductionDatabaseJob: { useQuery: () => ({ data: mocks.latestProductionDatabaseJob, refetch: mocks.refetchProductionProviderInventory }) },
       getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED" }, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
@@ -99,6 +104,10 @@ vi.mock("@/lib/trpc", () => ({
       queueCloudflareStagingDeploy: { useMutation: () => ({ mutate: mocks.queueStagingDeploy, isPending: false, error: null }) },
       prepareCloudflareProductionQueue: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
         mutate: (input: unknown) => { mocks.prepareProductionQueue(input); void options.onSuccess?.({ jobId: "33333333-3333-4333-8333-333333333333" }); },
+        isPending: false, error: null,
+      }) },
+      prepareCloudflareProductionDatabase: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
+        mutate: (input: unknown) => { mocks.prepareProductionDatabase(input); void options.onSuccess?.({ jobId: "44444444-4444-4444-8444-444444444444" }); },
         isPending: false, error: null,
       }) },
       activateCloudflareStagingQueueProfile: { useMutation: (options: { onSuccess?: (result: { configurationRef: string }) => unknown }) => ({
@@ -185,6 +194,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.stagingTargets = [];
     mocks.targetsError = false;
     mocks.latestProductionQueueJob = null;
+    mocks.latestProductionDatabaseJob = null;
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
     mocks.activationError = null;
@@ -607,8 +617,12 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/PostgreSQL will use a Workers VPC TCP service over the existing private Tunnel/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Cloudflare API Tokens only if a write operation reports a missing scope" }))
       .toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
-    expect(screen.getByText(/TLS certificate chain accepted by Workers VPC/i)).toBeInTheDocument();
-    expect(screen.getByText(/verify_ca or replace it with a publicly trusted/i)).toBeInTheDocument();
+    expect(screen.getByText(/needs a trusted certificate matching db\.smartaihub\.app/i)).toBeInTheDocument();
+    expect(screen.getByText(/This plan uses verify_full, which validates both the certificate chain and hostname/i)).toBeInTheDocument();
+    const prepareDatabase = screen.getByRole("button", { name: "Prepare Production database connection" });
+    expect(prepareDatabase).toBeEnabled();
+    await user.click(prepareDatabase);
+    await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({ tenantId, projectId, environment: "production", tunnelId: "87654321-4321-4321-8321-cba987654321" }));
     const prepareQueue = screen.getByRole("button", { name: "Prepare Production Queue" });
     expect(prepareQueue).toBeEnabled();
     await user.click(prepareQueue);

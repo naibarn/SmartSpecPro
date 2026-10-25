@@ -35,7 +35,7 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
       if (url.pathname.endsWith("/cfd_tunnel")) return response([{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartaihub-main", status: "healthy", credentials_file: "must-not-return" }]);
       if (url.pathname.endsWith("/containers/applications")) return response([]);
-      if (url.pathname.endsWith("/connectivity/directory/services")) return response([{ service_id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", app_protocol: "postgresql", host: { network: { tunnel_id: "87654321-4321-4321-8321-cba987654321" } } }]);
+      if (url.pathname.endsWith("/connectivity/directory/services")) return response([{ service_id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", app_protocol: "postgresql", host: { resolver_network: { tunnel_id: "87654321-4321-4321-8321-cba987654321" } } }]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "deployment-a", versions: [{ version_id: versionId, percentage: 100 }] }] });
       if (url.pathname.endsWith(`/versions/${versionId}`)) return response({ annotations: {}, resources: { bindings: [{ name: "CLOUDFLARE_ACTIVATION" }], script_runtime: { containers: [] } } });
