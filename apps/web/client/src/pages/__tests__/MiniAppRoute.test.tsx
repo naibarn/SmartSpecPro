@@ -126,7 +126,7 @@ describe("MiniAppRoute", () => {
     };
     render(<MiniAppRoute />);
     const frame = await screen.findByTestId("miniapp-preview-frame");
-    expect(frame).toHaveAttribute("sandbox", "allow-scripts");
+    expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-forms");
     expect(frame).toHaveAttribute("srcdoc", "<!doctype html><main>Expense tracker</main>");
     expect(screen.queryByText("BUILDING")).not.toBeInTheDocument();
   });

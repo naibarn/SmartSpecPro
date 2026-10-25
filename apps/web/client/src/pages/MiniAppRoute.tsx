@@ -223,7 +223,9 @@ function MiniAppHome({ appId, app, data, onChanged }: {
                 ref={frameRef}
                 title={`${title} preview`}
                 srcDoc={data.html}
-                sandbox="allow-scripts"
+                // Local app forms run inside the opaque sandbox; the artifact CSP
+                // still blocks all form navigation with `form-action 'none'`.
+                sandbox="allow-scripts allow-forms"
                 referrerPolicy="no-referrer"
                 data-testid="miniapp-preview-frame"
                 style={{ display: "block", width: "100%", height: "min(78vh, 900px)", border: 0 }}
