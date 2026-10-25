@@ -82,6 +82,8 @@ function fixture() {
   const runtime: CloudflareProductionDatabaseRuntime = {
     db: {} as never,
     fetchImpl,
+    prepareRuntimeRole: vi.fn(async () => ({ role: plan.databaseUser, databaseName: plan.databaseName, connectionLimit: 5,
+      rolePrepared: true as const, leastPrivilegeScope: "cloudflare_emergency_intake_v1" as const, tableCount: 3, ownershipMarker: "redacted-marker" })),
     resolveTarget: vi.fn(async () => target),
     resolveGrant: vi.fn(async () => ({ grant, databasePassword })),
     withCredential: vi.fn(async (_project, _tenant, _ref, operation) =>
@@ -165,6 +167,8 @@ describe("canonical Cloudflare production database job", () => {
     expect(f.reporter.assertActive).toHaveBeenCalled();
     expect(result.output).toMatchObject({
       providerConfigurationVerified: true,
+      runtimeRolePrepared: true,
+      runtimeRole: { rolePrepared: true, leastPrivilegeScope: "cloudflare_emergency_intake_v1", tableCount: 3 },
       workerBound: false,
       activation: "disabled",
       jobId,
@@ -172,6 +176,7 @@ describe("canonical Cloudflare production database job", () => {
       projectId,
       targetId: target.targetId,
     });
+    expect(f.runtime.prepareRuntimeRole).toHaveBeenCalledWith(plan, f.databasePassword, productionDatabaseResourcePlanDigest(plan));
     expect(JSON.stringify(result)).not.toContain(f.databasePassword);
     expect(JSON.stringify(result)).not.toContain(
       "cloudflare-token-long-enough-for-tests"

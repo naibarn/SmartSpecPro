@@ -7,6 +7,7 @@ import { decrypt, encrypt } from "./crypto";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { resolveCloudflareProductionDeploymentTarget } from "./cloudflareProductionDeploymentContract";
 import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
+import { prepareCloudflareProductionRuntimeRole } from "./cloudflareProductionDatabaseRole";
 import type { JobExecutor } from "./jobExecutor";
 import {
   productionDatabaseResourcePlanDigest,
@@ -100,6 +101,10 @@ export type CloudflareProductionDatabaseRuntime = {
     credentialRef: string,
     op: (token: string) => Promise<T>
   ): Promise<T>;
+  prepareRuntimeRole(plan: ProductionDatabaseResourcePlan, databasePassword: string, planDigest: string): Promise<{
+    role: string; databaseName: string; connectionLimit: number; rolePrepared: true;
+    leastPrivilegeScope: "cloudflare_emergency_intake_v1"; tableCount: number; ownershipMarker: string;
+  }>;
   checkpoint(
     jobId: string,
     actorId: number,
@@ -283,6 +288,9 @@ export function createCloudflareProductionDatabaseRuntime(
           "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE"
         );
       return result.value;
+    },
+    async prepareRuntimeRole(plan, databasePassword, planDigest) {
+      return prepareCloudflareProductionRuntimeRole({ db, plan, databasePassword, planDigest });
     },
     async checkpoint(jobId, actorId, planDigest) {
       const rows = await db
@@ -505,6 +513,8 @@ export function createCloudflareProductionDatabaseExecutor(
         );
     };
     await assertAuthorized();
+    const runtimeRole = await active.prepareRuntimeRole(grant.plan, databasePassword, grant.planDigest);
+    await assertAuthorized();
     const checkpoint = await active.checkpoint(
       context.jobId,
       grant.requesterUserId,
@@ -540,6 +550,15 @@ export function createCloudflareProductionDatabaseExecutor(
     return {
       output: {
         ...configured,
+        runtimeRolePrepared: runtimeRole.rolePrepared,
+        runtimeRole: {
+          databaseName: runtimeRole.databaseName,
+          role: runtimeRole.role,
+          rolePrepared: runtimeRole.rolePrepared,
+          connectionLimit: runtimeRole.connectionLimit,
+          leastPrivilegeScope: runtimeRole.leastPrivilegeScope,
+          tableCount: runtimeRole.tableCount,
+        },
         grantRef: grant.grantRef,
         tenantId: grant.tenantId,
         projectId: grant.projectId,

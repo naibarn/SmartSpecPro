@@ -24,4 +24,34 @@ describe("direct intake admission", () => {
     await expect(executeHyperdriveEmergencyIntake(d, { begin, unsafe: vi.fn() })).rejects.toThrow("NOT_ADMITTED");
     expect(begin).not.toHaveBeenCalled();
   });
+  it("requires the installed security-definer lease fence in Production", async () => {
+    const d = delivery();
+    Object.assign(d.env, { CLOUDFLARE_ENVIRONMENT: "production" });
+    const begin = vi.fn();
+    await expect(executeHyperdriveEmergencyIntake(d, { begin, unsafe: vi.fn() })).rejects.toThrow("NOT_ADMITTED");
+    expect(begin).not.toHaveBeenCalled();
+  });
+  it("uses only the installed fence function for Production job-control locking", async () => {
+    const d = delivery();
+    Object.assign(d.env, { CLOUDFLARE_ENVIRONMENT: "production", CLOUDFLARE_PRODUCTION_FENCE_MODE: "security-definer-v1" });
+    const unsafe = vi.fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ accepted: true }])
+      .mockResolvedValueOnce([{ status: "received", workerJobId: "job-1" }])
+      .mockResolvedValueOnce([{ id: "case-1", revision: 0 }])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: "report-1" }])
+      .mockResolvedValueOnce([{ id: "case-1" }])
+      .mockResolvedValueOnce([{ accepted: true }]);
+    const transaction = { unsafe, begin: async () => { throw new Error("nested transaction denied"); } };
+    const client = { unsafe, begin: (callback: (tx: typeof transaction) => Promise<unknown>) => callback(transaction) };
+    await executeHyperdriveEmergencyIntake(d, client);
+    expect(unsafe.mock.calls[2]?.[0]).toContain("cloudflare_validate_emergency_intake_v1");
+    expect(unsafe.mock.calls[2]?.[1]?.slice(0, 5)).toEqual(["job-1", "tenant-a", 1, "attempt-1", 1]);
+    expect(unsafe.mock.calls[2]?.[0]).toContain("$9::text::jsonb");
+    expect(JSON.parse(String(unsafe.mock.calls[2]?.[1]?.[8]))).toEqual(d.job.input);
+    expect(unsafe.mock.calls.at(-1)?.[0]).toContain("cloudflare_validate_emergency_intake_v1");
+  });
 });

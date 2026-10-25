@@ -148,6 +148,21 @@ describe("Cloudflare production database resources", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
+  it("rejects incompatible direct-origin mTLS settings on a VPC-backed Hyperdrive", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
+      .mockResolvedValueOnce(response([service]))
+      .mockResolvedValueOnce(response(service))
+      .mockResolvedValueOnce(response([hyperdrive]))
+      .mockResolvedValueOnce(response({ ...hyperdrive, mtls: { sslmode: "verify-full", ca_certificate_id: "a".repeat(32) } }));
+
+    await expect(provisionCloudflareProductionDatabase({
+      jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      checkpoint: { jobId, planDigest: productionDatabaseResourcePlanDigest(plan), databasePasswordDigest: createHash("sha256").update(password).digest("hex"), vpcServiceId: serviceId, hyperdriveId },
+      saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
+    })).rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", errorClass: "unknown" });
+  });
+
   it("requires production authorization before every provider operation", async () => {
     const fetchImpl = vi.fn<typeof fetch>();
     const assertAuthorized = vi.fn(async () => { throw new Error("revoked"); });

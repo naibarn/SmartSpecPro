@@ -205,7 +205,7 @@ export async function provisionCloudflareProductionDatabase(input: {
   if (hyperdrive.id !== hyperdriveId || hyperdrive.name !== hyperdriveName || hyperdrive.origin?.service_id !== vpcServiceId ||
       hyperdrive.origin?.database !== plan.databaseName || hyperdrive.origin?.user !== plan.databaseUser ||
       hyperdrive.origin?.scheme !== "postgres" || hyperdrive.caching?.disabled !== true ||
-      hyperdrive.origin_connection_limit !== plan.connectionLimit) {
+      hyperdrive.origin_connection_limit !== plan.connectionLimit || hyperdrive.mtls != null) {
     fail("CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", "unknown");
   }
   await input.assertAuthorized();

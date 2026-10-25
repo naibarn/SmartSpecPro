@@ -1,9 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHash, randomUUID } from "node:crypto";
 import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import { executeHyperdriveEmergencyIntake } from "../../../cloudflare/src/emergencyHyperdriveIntake";
 import { withHyperdrivePostgres } from "../../../cloudflare/src/postgresClient";
 import type { CanonicalWorkerExecution } from "../../../cloudflare/src/contracts";
+import { prepareCloudflareProductionRuntimeRole } from "./cloudflareProductionDatabaseRole";
+import { productionDatabaseResourcePlanDigest } from "./cloudflareProductionDatabaseProvision";
+import type { DrizzleDB } from "../db";
+import { randomBytes } from "node:crypto";
 
 const suite = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true" ? describe : describe.skip;
 suite("direct Hyperdrive intake semantics in owner-marked disposable PostgreSQL", () => {
@@ -92,6 +97,46 @@ suite("direct Hyperdrive intake semantics in owner-marked disposable PostgreSQL"
     expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("received");
     expect(await sql`SELECT id FROM emergency_case_events WHERE "caseId"=${f.caseId}`).toHaveLength(0);
   });
+  it("denies a report owned by another tenant and leaves its state untouched", async () => {
+    const f = await fixture(), foreignReportId = randomUUID();
+    await sql`INSERT INTO emergency_reports (id,"tenantId","workerJobId","publicRef","idempotencyKeyHash","reportType",summary)
+      VALUES (${foreignReportId},'tenant-disposable-b',${f.jobId},${foreignReportId.slice(0,24)},${createHash('sha256').update(foreignReportId).digest('hex')},'disposable_test','Foreign tenant fixture')`;
+    f.delivery.job.input.reportId = foreignReportId;
+    await sql`UPDATE worker_jobs SET "inputJson"=${sql.json(f.delivery.job.input)} WHERE id=${f.jobId}`;
+    await expect(run(f.delivery)).rejects.toThrow("HYPERDRIVE_INTAKE_REPORT_SCOPE_DENIED");
+    expect((await sql`SELECT status FROM emergency_reports WHERE id=${foreignReportId} AND "tenantId"='tenant-disposable-b'`)[0]?.status).toBe("received");
+    expect(await sql`SELECT id FROM emergency_case_events WHERE "caseId"=${f.caseId}`).toHaveLength(0);
+  });
+  it("provisions the least-privilege Production role and runs the fenced intake without job-table grants", async () => {
+    const role = `sah_cf_prod_${randomUUID().replaceAll("-", "").slice(0, 12)}`;
+    const password = randomBytes(40).toString("base64url");
+    const databaseName = new URL(disposable.databaseUrl).pathname.slice(1);
+    const plan = { tunnelId: "87654321-4321-4321-8321-cba987654321", databaseHostname: "db.smartaihub.app" as const,
+      databaseName, databaseUser: role, connectionLimit: 5 as const, tlsVerification: "verify_full" as const };
+    const planDigest = productionDatabaseResourcePlanDigest(plan);
+    const roleSql = postgres(disposable.databaseUrl, { max: 1 });
+    const db = drizzle(roleSql) as unknown as DrizzleDB;
+    try {
+      const receipt = await prepareCloudflareProductionRuntimeRole({ db, plan, databasePassword: password, planDigest });
+      expect(receipt).toMatchObject({ role, databaseName, rolePrepared: true, tableCount: 3 });
+      await expect(prepareCloudflareProductionRuntimeRole({ db, plan, databasePassword: password, planDigest })).resolves.toMatchObject({ rolePrepared: true });
+      const f = await fixture();
+      f.delivery.env.CLOUDFLARE_ENVIRONMENT = "production";
+      f.delivery.env.CLOUDFLARE_PRODUCTION_FENCE_MODE = "security-definer-v1";
+      const roleUrl = new URL(disposable.databaseUrl); roleUrl.username = role; roleUrl.password = password;
+      await withHyperdrivePostgres({ connectionString: roleUrl.href }, client => executeHyperdriveEmergencyIntake(f.delivery, client));
+      expect((await sql`SELECT status FROM emergency_reports WHERE id=${f.reportId}`)[0].status).toBe("triage");
+      await expect(withHyperdrivePostgres({ connectionString: roleUrl.href }, client => client.unsafe("SELECT id FROM worker_jobs"))).rejects.toThrow();
+      await expect(withHyperdrivePostgres({ connectionString: roleUrl.href }, client => client.unsafe("DELETE FROM emergency_reports"))).rejects.toThrow();
+    } finally {
+      const created = await sql`SELECT rolname FROM pg_roles WHERE rolname=${role}`;
+      if (created.length) {
+        await sql.unsafe(`DROP OWNED BY "${role}"`);
+        await sql.unsafe(`DROP ROLE "${role}"`);
+      }
+      await roleSql.end({ timeout: 5 });
+    }
+  }, 30_000);
   it.each(["policy", "legacy"])("rejects an elapsed %s hard deadline despite a live lease", async mode => {
     const f = await fixture();
     await sql`UPDATE worker_jobs SET "startedAt"=now()-interval '2 seconds',"timeoutSeconds"=1,

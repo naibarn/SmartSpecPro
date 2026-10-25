@@ -9,7 +9,8 @@
   "vars": {
     "CLOUDFLARE_ACTIVATION": "disabled",
     "CLOUDFLARE_ENVIRONMENT": "production",
-    "CLOUDFLARE_JOB_TRANSPORT": "queues"
+    "CLOUDFLARE_JOB_TRANSPORT": "queues",
+    "CLOUDFLARE_PRODUCTION_FENCE_MODE": "security-definer-v1"
   },
   "assets": {
     "directory": "../web/dist/public",

@@ -115,6 +115,8 @@ export type CloudflareEnvironment = import("./applicationHttpBridge").Applicatio
   CLOUDFLARE_WORKFLOW_EXPIRES_AT?: string;
   /** Explicit immutable capability; absent keeps the existing Node executor. */
   CLOUDFLARE_WORKFLOW_DATABASE?: string;
+  /** Production-only least-privilege lease fence implemented by the installed DB function. */
+  CLOUDFLARE_PRODUCTION_FENCE_MODE?: string;
   /** Independently bounded system schedule; job transport never enables Cron. */
   CLOUDFLARE_RETENTION_SCHEDULE?: string;
   CLOUDFLARE_RETENTION_TENANT_ID?: string;

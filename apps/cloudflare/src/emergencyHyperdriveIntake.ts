@@ -17,6 +17,7 @@ export async function executeHyperdriveEmergencyIntake(delivery: Delivery, clien
   const { env, job, envelope, claim } = delivery;
   if (env.CLOUDFLARE_ACTIVATION !== "enabled" || !["workflows", "queues"].includes(env.CLOUDFLARE_JOB_TRANSPORT ?? "") ||
       env.CLOUDFLARE_WORKFLOW_DATABASE !== "hyperdrive-intake" ||
+      (env.CLOUDFLARE_ENVIRONMENT === "production" && env.CLOUDFLARE_PRODUCTION_FENCE_MODE !== "security-definer-v1") ||
       !(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) ||
       job.tenantId !== env.CLOUDFLARE_WORKFLOW_TENANT_ID || job.jobType !== "emergency.report.intake" ||
       job.contractVersion !== "feature-186-v1" || job.executionClass !== "short" ||
@@ -33,8 +34,8 @@ export async function executeHyperdriveEmergencyIntake(delivery: Delivery, clien
     await tx.unsafe("SET LOCAL lock_timeout = '2s'");
     await tx.unsafe("SET LOCAL statement_timeout = '5s'");
     const parameters = [job.jobId, job.tenantId, job.businessAttempt, claim.attemptId, claim.fencingVersion,
-      leaseHash, envelope.dispatch_id, envelope.dedupe_key, job.input];
-    const fenceQuery = `SELECT w.id FROM worker_jobs w
+      leaseHash, envelope.dispatch_id, envelope.dedupe_key, JSON.stringify(job.input)];
+    const directFenceQuery = `SELECT w.id FROM worker_jobs w
       JOIN worker_job_attempts a ON a."workerJobId"=w.id AND a.attempt=w.attempt
       JOIN worker_job_dispatches d ON d."workerJobId"=w.id AND d.id=$7 AND d."dedupeKey"=$8
       JOIN worker_job_outbox o ON o.id=d.id AND o."workerJobId"=w.id AND o."dedupeKey"=d."dedupeKey"
@@ -49,14 +50,21 @@ export async function executeHyperdriveEmergencyIntake(delivery: Delivery, clien
           THEN (w."timeoutPolicyJson"->>'hardTimeoutMs')::numeric ELSE w."timeoutSeconds"::numeric*1000 END
         AND w."jobType"='emergency.report.intake' AND w."executionClass"='short'
         AND w."runtimeType"='node_job_worker' AND w."contractVersion"='feature-186-v1'
-        AND w."inputJson"=$9::jsonb AND d.adapter=$10
+        AND w."inputJson"=$9::text::jsonb AND d.adapter=$10
         AND d."publicationStatus" IN ('published','consumed') AND d."publishedAt" IS NOT NULL AND d."failedAt" IS NULL
         AND o."publishedAt" IS NOT NULL AND o."cancelledAt" IS NULL AND o."quarantinedAt" IS NULL
         AND (o."envelopeJson"->>'businessAttempt')::int=$3
       FOR UPDATE OF w, a`;
     async function fence() {
-      if (!(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) ||
-          (await tx.unsafe<unknown[]>(fenceQuery, [...parameters, env.CLOUDFLARE_JOB_TRANSPORT === "queues" ? "cloudflare-queues" : "cloudflare-workflows"])).length !== 1) denied("HYPERDRIVE_INTAKE_LEASE_STALE");
+      if (!(Date.parse(env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now())) denied("HYPERDRIVE_INTAKE_LEASE_STALE");
+      const adapter = env.CLOUDFLARE_JOB_TRANSPORT === "queues" ? "cloudflare-queues" : "cloudflare-workflows";
+      if (env.CLOUDFLARE_ENVIRONMENT === "production") {
+        const [result] = await tx.unsafe<Array<{ accepted: boolean }>>(
+          `SELECT public.cloudflare_validate_emergency_intake_v1($1,$2,$3,$4,$5,$6,$7,$8,$9::text::jsonb,$10) AS accepted`, [...parameters, adapter]);
+        if (result?.accepted !== true) denied("HYPERDRIVE_INTAKE_LEASE_STALE");
+        return;
+      }
+      if ((await tx.unsafe<unknown[]>(directFenceQuery, [...parameters, adapter])).length !== 1) denied("HYPERDRIVE_INTAKE_LEASE_STALE");
     }
     await fence();
     const [report] = await tx.unsafe<Array<{ status: string; workerJobId: string }>>(
