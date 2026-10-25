@@ -75,6 +75,7 @@ describe("appRouter compatibility shape", () => {
         "spec226DevelopmentControl.events",
         "spec226DevelopmentControl.command",
         "spec226DevelopmentControl.requestFullVerification",
+        "spec226DevelopmentControl.retryMiniAppFactoryStage",
       ])
     );
   });

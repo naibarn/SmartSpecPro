@@ -51,9 +51,11 @@ describe("Mini App Factory worker_jobs binding", () => {
     expect(definition.jobType).toBe("mini_app_factory.stage");
     expect(definition.executionClass).toBe("long");
     expect(defaultJobExecutorRegistry.has("mini_app_factory.stage", MINI_APP_FACTORY_STAGE_CONTRACT)).toBe(true);
-    expect(definition.activeDedupeKey).toBe(definition.idempotencyKey);
     expect(buildMiniAppFactoryStageJobDefinition({ tenantId: "tenant", actorId: 1, runId: input.runId, stageId: input.stageId }).idempotencyKey)
       .toBe(definition.idempotencyKey);
+    const retry = buildMiniAppFactoryStageJobDefinition({ tenantId: "tenant", actorId: 1, runId: input.runId, stageId: input.stageId, retrySequence: 1 });
+    expect(retry.idempotencyKey).not.toBe(definition.idempotencyKey);
+    expect(retry.activeDedupeKey).toBe(definition.activeDedupeKey);
   });
 
   it("enqueues only the first dependency-ready stage through the canonical job producer", async () => {

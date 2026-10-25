@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 vi.mock("../storage", () => ({
   storagePutContentAddressedIfAbsent: vi.fn(),
@@ -18,6 +18,7 @@ import { resolveMiniAppForViewer } from "./appIdentityRepository";
 import {
   assembleIsolatedMiniAppHtml,
   buildAndStorePersonalMiniApp,
+  derivePersonalMiniAppTitle,
   generatePersonalMiniApp,
   provisionManagedMiniAppRepository,
   resolvePersonalMiniAppHomeMilestone,
@@ -31,6 +32,12 @@ const generated = {
   javascript: "document.body.dataset.ready='true'",
   assets: [],
 };
+
+beforeEach(() => {
+  vi.mocked(callLLMStructured).mockReset();
+  vi.mocked(storagePutContentAddressedIfAbsent).mockReset();
+  vi.mocked(storageReadBuffer).mockReset();
+});
 
 describe("personal Mini-App artifact assembly", () => {
   it("keeps an existing preview available when a later factory stage fails", () => {
@@ -147,6 +154,99 @@ describe("personal Mini-App artifact assembly", () => {
       repositoryState: "PROVISIONING_PENDING",
     });
     vi.unstubAllEnvs();
+  });
+
+  it("derives a missing app title from the owner's goal without a second model call", async () => {
+    const { title: _title, ...candidate } = generated;
+    vi.mocked(callLLMStructured).mockResolvedValueOnce({ data: candidate } as any);
+    await expect(generatePersonalMiniApp({
+      userId: 42,
+      tenantId: "tenant-test",
+      appId: "app_expenses",
+      runId: "run_expenses",
+      prompt: "Create a personal expense tracker with income and monthly charts.",
+    })).resolves.toEqual({ ...generated, title: "Personal expense tracker" });
+    expect(callLLMStructured).toHaveBeenCalledTimes(1);
+    expect(derivePersonalMiniAppTitle("Create a mobile-friendly personal expense tracker with income, expenses and a chart.")).toBe("Mobile-friendly personal expense tracker");
+  });
+
+  it("preserves a partial app candidate and repairs only invalid JavaScript", async () => {
+    const candidate = { ...generated, javascript: "const = broken" };
+    vi.mocked(callLLMStructured)
+      .mockResolvedValueOnce({ data: candidate } as any)
+      .mockResolvedValueOnce({ data: { javascript: "document.body.dataset.ready='true'" } } as any);
+    vi.mocked(storagePutContentAddressedIfAbsent).mockImplementation(async (key, bytes) => {
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      return { key: `${key}/sha256/${sha256}`, sha256, url: "" };
+    });
+
+    await expect(buildAndStorePersonalMiniApp({
+      userId: 42,
+      tenantId: "tenant-test",
+      appId: "app_expenses",
+      runId: "run_repair",
+      prompt: "Create an expense tracker with monthly totals.",
+    })).resolves.toMatchObject({
+      candidateRef: expect.stringMatching(/^r2:\/\/mini-app-candidates\/tenant-test\/app_expenses\/run-/),
+      candidateDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+      repairedFields: ["javascript"],
+    });
+    expect(callLLMStructured).toHaveBeenCalledTimes(2);
+    expect(callLLMStructured.mock.calls[1]?.[0]).toMatchObject({
+      billingDescription: "Personal Mini-App field repair",
+      runtimeOptions: expect.objectContaining({ requestLabel: "personal_miniapp_field_repair" }),
+    });
+    expect(storagePutContentAddressedIfAbsent).toHaveBeenCalledTimes(3);
+  });
+
+  it("fails safely when repaired content remains invalid and keeps the candidate reference", async () => {
+    const candidate = { ...generated, html: "<iframe src='https://example.invalid'></iframe>" };
+    vi.mocked(callLLMStructured)
+      .mockResolvedValueOnce({ data: candidate } as any)
+      .mockResolvedValueOnce({ data: { html: "<script>alert(1)</script>" } } as any);
+    vi.mocked(storagePutContentAddressedIfAbsent).mockImplementationOnce(async (key, bytes) => {
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      return { key: `${key}/sha256/${sha256}`, sha256, url: "" };
+    });
+    await expect(generatePersonalMiniApp({
+      userId: 42,
+      tenantId: "tenant-test",
+      appId: "app_expenses",
+      runId: "run_invalid",
+      prompt: "Create an expense tracker.",
+    })).rejects.toMatchObject({
+      name: "PersonalMiniAppGenerationError",
+      candidateRef: expect.stringMatching(/^r2:\/\/mini-app-candidates\//),
+      invalidFields: ["html"],
+    });
+  });
+
+  it("resumes the original candidate by digest and repairs it without another generation call", async () => {
+    const candidate = { ...generated, javascript: "const = broken" };
+    const candidateBytes = Buffer.from(JSON.stringify(candidate));
+    const candidateDigest = createHash("sha256").update(candidateBytes).digest("hex");
+    const runId = "run_resume";
+    const candidateRef = `r2://mini-app-candidates/tenant-test/app_expenses/run-${createHash("sha256").update(runId).digest("hex").slice(0, 16)}/sha256/${candidateDigest}`;
+    vi.mocked(storageReadBuffer).mockResolvedValueOnce(candidateBytes);
+    vi.mocked(callLLMStructured).mockResolvedValueOnce({ data: { javascript: generated.javascript } } as any);
+    vi.mocked(storagePutContentAddressedIfAbsent).mockImplementation(async (key, bytes) => {
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      return { key: `${key}/sha256/${sha256}`, sha256, url: "" };
+    });
+
+    const result = await buildAndStorePersonalMiniApp({
+      userId: 42,
+      tenantId: "tenant-test",
+      appId: "app_expenses",
+      runId,
+      prompt: "Create an expense tracker with monthly totals.",
+      previousCandidateRef: candidateRef,
+    });
+    expect(result.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.repairedFields).toEqual(["javascript"]);
+    expect(callLLMStructured).toHaveBeenCalledTimes(1);
+    expect(callLLMStructured).toHaveBeenCalledWith(expect.objectContaining({ billingDescription: "Personal Mini-App field repair" }));
+    expect(storageReadBuffer).toHaveBeenCalledWith(candidateRef.slice("r2://".length));
   });
 
   it("assembles runnable content with a restrictive sandbox CSP and local assets", () => {

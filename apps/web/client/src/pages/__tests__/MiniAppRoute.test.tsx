@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import MiniAppRoute from "../MiniAppRoute";
 
 const mocks = vi.hoisted(() => ({
@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   },
   resolvePublicApp: vi.fn(),
   resolveMiniApp: vi.fn(),
+  retryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
+  continuationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
 }));
 
 vi.mock("wouter", () => ({
@@ -32,6 +34,10 @@ vi.mock("@/lib/trpc", () => ({
       resolveMiniApp: {
         useQuery: mocks.resolveMiniApp,
       },
+    },
+    spec226DevelopmentControl: {
+      retryMiniAppFactoryStage: { useMutation: () => mocks.retryMutation },
+      startWorkspaceRun: { useMutation: () => mocks.continuationMutation },
     },
   },
 }));
@@ -57,6 +63,8 @@ describe("MiniAppRoute", () => {
     };
     mocks.resolvePublicApp.mockImplementation(() => mocks.appQuery);
     mocks.resolveMiniApp.mockImplementation(() => mocks.appQuery);
+    mocks.retryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
+    mocks.continuationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
   });
 
   it("renders Research Notes only for its canonical App identity", async () => {
@@ -99,7 +107,7 @@ describe("MiniAppRoute", () => {
     };
     render(<MiniAppRoute />);
     expect(await screen.findByText("BUILDING")).toBeInTheDocument();
-    expect(await screen.findByText("Your private Mini App project is being prepared.")).toBeInTheDocument();
+    expect(await screen.findByText("Generation failed before a source snapshot was created.")).toBeInTheDocument();
     expect(mocks.resolveMiniApp).toHaveBeenCalledWith({ appId: "app_created" }, expect.objectContaining({ enabled: true, retry: false }));
   });
 
@@ -145,9 +153,41 @@ describe("MiniAppRoute", () => {
     render(<MiniAppRoute />);
 
     expect(await screen.findByTestId("miniapp-preview-frame")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Progress" }));
     expect(screen.getByText(/Connect GitHub in Settings → Integrations/)).toBeInTheDocument();
-    expect(screen.getByText("Remaining stages: package, deploy")).toBeInTheDocument();
+    expect(screen.getByText("Next stages: package → deploy")).toBeInTheDocument();
     const options = mocks.resolveMiniApp.mock.calls[0]?.[1] as { refetchInterval?: (query: any) => number | false };
     expect(options.refetchInterval?.({ state: { data: mocks.appQuery.data } })).toBe(2_000);
+  });
+
+  it("starts Retry / Repair for the same private App ID", async () => {
+    mocks.miniAppParams = { appId: "app_failed" };
+    mocks.appQuery.data = {
+      app: { appId: "app_failed", visibility: "private", deploymentVersion: 0, lastKnownGoodArtifactRef: null },
+      html: null,
+      factory: { milestone: "BUILD_FAILED", jobState: "failed", currentStage: "ui_implementation", retryable: true, isInProgress: false, remainingStages: ["ui_implementation"] },
+    };
+    render(<MiniAppRoute />);
+    fireEvent.click(await screen.findByRole("button", { name: "Retry / Repair" }));
+    expect(mocks.retryMutation.mutate).toHaveBeenCalledWith({ appId: "app_failed" });
+  });
+
+  it("submits feedback as a continuation of the same App Workspace", async () => {
+    mocks.miniAppParams = { appId: "app_existing" };
+    mocks.appQuery.data = {
+      app: { appId: "app_existing", visibility: "private", deploymentVersion: 1, lastKnownGoodArtifactRef: "r2://preview" },
+      html: "<main>existing</main>",
+      factory: { milestone: "PREVIEW_AVAILABLE", conversationId: 73, isInProgress: false, remainingStages: [] },
+    };
+    render(<MiniAppRoute />);
+    fireEvent.click(screen.getByRole("tab", { name: "Progress" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Continue development" }), { target: { value: "Add category filters" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue Development" }));
+    expect(mocks.continuationMutation.mutate).toHaveBeenCalledWith(expect.objectContaining({
+      appId: "app_existing",
+      conversationId: 73,
+      prompt: "Add category filters",
+      factoryMode: true,
+    }));
   });
 });

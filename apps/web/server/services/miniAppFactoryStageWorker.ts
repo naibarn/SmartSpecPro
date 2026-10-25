@@ -74,18 +74,21 @@ export function buildMiniAppFactoryStageJobDefinition(input: {
   actorId: number;
   runId: string;
   stageId: string;
+  retrySequence?: number;
 }): Omit<JobDefinition, "requestedByUserId"> {
-  if (!/^[A-Za-z0-9_.:-]{1,160}$/.test(input.runId) || !stageIdPattern.test(input.stageId)) {
+  const retrySequence = input.retrySequence ?? 0;
+  if (!/^[A-Za-z0-9_.:-]{1,160}$/.test(input.runId) || !stageIdPattern.test(input.stageId) || !Number.isSafeInteger(retrySequence) || retrySequence < 0 || retrySequence > 20) {
     throw new Error("FACTORY_STAGE_JOB_INPUT_INVALID");
   }
   const identity = `${input.tenantId}:${input.actorId}:${input.runId}:${input.stageId}`;
   const digest = createHash("sha256").update(identity).digest("hex");
+  const attemptDigest = createHash("sha256").update(`${identity}:retry:${retrySequence}`).digest("hex");
   return {
     contractVersion: MINI_APP_FACTORY_STAGE_CONTRACT,
     jobType: MINI_APP_FACTORY_STAGE_JOB_TYPE,
     executionClass: "long",
     input: { contractVersion: MINI_APP_FACTORY_STAGE_CONTRACT, runId: input.runId, stageId: input.stageId },
-    idempotencyKey: `mini-app-factory-stage:${digest}`,
+    idempotencyKey: `mini-app-factory-stage:${attemptDigest}`,
     activeDedupeKey: `mini-app-factory-stage:${digest}`,
     retryPolicy: {
       maxAttempts: 3,
@@ -107,6 +110,7 @@ export async function enqueueNextMiniAppFactoryStage(input: {
   createJob?: typeof createControlPlaneJob;
   executorRegistry?: JobExecutorRegistry;
   createRunnerStage?: MiniAppFactoryStageWorkerRuntime["createRunnerStage"];
+  retrySequence?: number;
 }): Promise<{
   stageId: string | null;
   jobId: string | null;
@@ -138,7 +142,7 @@ export async function enqueueNextMiniAppFactoryStage(input: {
       authorizationScope: "mini_app_factory.stage",
       correlationId: `mini-app-factory:${input.run.runId}:${stageId}`,
     },
-    definition: buildMiniAppFactoryStageJobDefinition({ ...input.run, stageId }),
+    definition: buildMiniAppFactoryStageJobDefinition({ ...input.run, stageId, retrySequence: input.retrySequence }),
     ...(input.executorRegistry ? { executorRegistry: input.executorRegistry } : {}),
   });
   return { stageId, jobId: job.jobId, created: job.created, state: "ENQUEUED" };
@@ -225,7 +229,18 @@ export function createMiniAppFactoryStageJobExecutor(
       const current = await runtime.service.get(run);
       const currentState = parseMiniAppFactoryDurableState(current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
       if (currentState.profile === "PERSONAL_MINIAPP") {
-        const state = failMiniAppFactoryDurableState(currentState, error instanceof Error ? error.message.slice(0, 128).replace(/[^A-Za-z0-9_.:-]/g, "_") : "FACTORY_STAGE_FAILED");
+        const candidateRef = error && typeof error === "object" && "candidateRef" in error
+          ? (error as { candidateRef?: unknown }).candidateRef
+          : null;
+        const preservedArtifacts = typeof candidateRef === "string" &&
+          /^r2:\/\/mini-app-candidates\/[A-Za-z0-9_-]{1,64}\/app_[A-Za-z0-9_-]{1,120}\/sha256\/[a-f0-9]{64}$/.test(candidateRef)
+          ? [`app-candidate:${candidateRef}`]
+          : [];
+        const state = failMiniAppFactoryDurableState(
+          currentState,
+          error instanceof Error ? error.message.slice(0, 128).replace(/[^A-Za-z0-9_.:-]/g, "_") : "FACTORY_STAGE_FAILED",
+          preservedArtifacts,
+        );
         try {
           await runtime.service.recordVerificationEvent({
             ...run,

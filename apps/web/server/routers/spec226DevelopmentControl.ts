@@ -15,7 +15,7 @@ import { resolveTenantIdVarchar } from "../services/tenantContext";
 import { buildDevelopmentRun } from "../services/spec224DevelopmentRunContracts";
 import { createDevelopmentWorkUnit } from "../services/developmentLifecycleContracts";
 import { loadMiniAppFactoryPipeline, selectReadyMiniAppFactoryStages } from "../services/miniAppFactoryPipeline";
-import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../services/miniAppFactoryDurableState";
+import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "../services/miniAppFactoryDurableState";
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
 import { buildMiniAppFactoryRunAnchorDefinition } from "../services/miniAppFactoryRunAnchor";
 import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
@@ -464,6 +464,80 @@ export const spec226DevelopmentControlRouter = router({
       try {
         return await defaultSpec224WorkspaceSpecSetService.prepareWorkspaceRun({ ...requireScope(ctx), ...input });
       } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  retryMiniAppFactoryStage: protectedProcedure
+    .input(z.object({ appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/) }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      try {
+        const identity = await resolveOwnedPrivateMiniAppIdentity({
+          appId: input.appId,
+          tenantId: scope.tenantId,
+          ownerUserId: scope.actorId,
+        });
+        if (!identity) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+        const home = await resolvePersonalMiniAppFactoryHome(scope, input.appId);
+        if (!home?.runId || !home.retryable || !home.currentStage || home.isInProgress) {
+          throw new Error("MINI_APP_STAGE_NOT_RETRYABLE");
+        }
+        const runScope = { runId: home.runId, tenantId: scope.tenantId, actorId: scope.actorId };
+        const record = await developmentRunService.get(runScope);
+        if (!record.run.workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
+        const state = parseMiniAppFactoryDurableState(record.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
+        if (state.profile !== "PERSONAL_MINIAPP" || state.miniAppId !== input.appId) throw new Error("MINI_APP_RUN_BINDING_MISMATCH");
+        const retryAttempt = state.retryState.attempt + 1;
+        if (retryAttempt > 3) {
+          const exhausted = { ...state, retryState: { status: "EXHAUSTED" as const, attempt: state.retryState.attempt } };
+          await developmentRunService.recordVerificationEvent({
+            ...runScope,
+            type: "VERIFICATION_OUTCOME",
+            idempotencyKey: `miniapp-factory-retry-exhausted:${home.runId}:${home.currentStage}`,
+            payload: { profile: "PERSONAL_MINIAPP", stageId: home.currentStage, outcome: "RETRY_EXHAUSTED" },
+            runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: exhausted },
+          });
+          throw new Error("MINI_APP_STAGE_RETRY_EXHAUSTED");
+        }
+        const pipeline = loadMiniAppFactoryPipeline();
+        const ready = selectReadyMiniAppFactoryStages(pipeline, record.run.workUnit, state.profile);
+        if (ready[0] !== home.currentStage || !record.run.workUnit.progress.remainingScope.includes(home.currentStage)) {
+          throw new Error("MINI_APP_STAGE_NO_LONGER_ELIGIBLE");
+        }
+        const scheduledState = {
+          ...state,
+          retryState: { status: "RETRY_SCHEDULED" as const, attempt: retryAttempt },
+          currentStage: home.currentStage,
+          deliveryMilestone: state.appSourceDigest ? state.deliveryMilestone : "BUILDING" as const,
+          blockerState: { status: "NONE" as const, code: null },
+        };
+        await developmentRunService.recordVerificationEvent({
+          ...runScope,
+          type: "VERIFICATION_OUTCOME",
+          idempotencyKey: `miniapp-factory-retry:${home.runId}:${home.currentStage}:${retryAttempt}`,
+          payload: { profile: "PERSONAL_MINIAPP", stageId: home.currentStage, outcome: "RETRY_SCHEDULED", attempt: retryAttempt },
+          runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: scheduledState },
+        });
+        const queued = await enqueueNextMiniAppFactoryStage({ pipeline, service: developmentRunService, run: runScope, retrySequence: retryAttempt });
+        if (queued.stageId !== home.currentStage || !queued.jobId) throw new Error("MINI_APP_STAGE_RETRY_ENQUEUE_FAILED");
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: { action: "retry_mini_app_factory_stage", runId: home.runId, jobId: queued.jobId, appId: input.appId, stageId: queued.stageId, attempt: retryAttempt },
+        });
+        return { appId: input.appId, runId: home.runId, jobId: queued.jobId, stageId: queued.stageId, created: queued.created };
+      } catch (error) {
+        auditLogger.log({
+          eventType: "spec226_development_control" as AuditEventType,
+          traceId,
+          tenantId: scope.tenantId,
+          userId: scope.actorId,
+          metadata: { action: "retry_mini_app_factory_stage", appId: input.appId, accepted: false, errorCode: errorCode(error) },
+        });
         return asTrpcError(error);
       }
     }),

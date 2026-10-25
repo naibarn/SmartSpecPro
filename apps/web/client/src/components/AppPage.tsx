@@ -35,6 +35,14 @@ import { Center } from "@astryxdesign/core/Center";
 import { Banner } from "@astryxdesign/core/Banner";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Button as AstryxButton } from "@astryxdesign/core/Button";
+import { Section } from "@astryxdesign/core/Section";
+import { ProgressBar } from "@astryxdesign/core/ProgressBar";
+import { TabList, Tab } from "@astryxdesign/core/TabList";
+import { TextArea } from "@astryxdesign/core/TextArea";
+
+// Pages use this facade so app-wide layouts keep a single Astryx entrypoint.
+export { HStack, VStack, Heading, Text, Section, ProgressBar, TabList, Tab, TextArea };
+export { AstryxButton as AppButton };
 
 /** A single breadcrumb entry. Omit `href` for a non-link (plain text) crumb. */
 export type AppPageBreadcrumb = {

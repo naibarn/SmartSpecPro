@@ -24,6 +24,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
       const baseRef = `miniapp:${state.miniAppId}`;
       if (stageId === "ui_implementation") {
         const previousSourceRef = context.artifacts.find(value => value.startsWith("app-source:r2://"))?.slice("app-source:".length);
+        const previousCandidateRef = state.artifacts.find(value => value.startsWith("app-candidate:r2://"))?.slice("app-candidate:".length);
         const artifact = await buildAndStorePersonalMiniApp({
           userId: context.actorId,
           tenantId: context.tenantId,
@@ -31,6 +32,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           runId: context.runId,
           prompt: run.goal,
           previousSourceRef,
+          previousCandidateRef,
         });
         const repositoryState = artifact.repository
           ? "BOUND"
@@ -43,6 +45,9 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           `app-artifact-bytes:${artifact.bytes}`,
           `app-source:${artifact.sourceRef}`,
           `app-source-digest:${artifact.sourceDigest}`,
+          ...(artifact.candidateRef ? [`app-candidate:${artifact.candidateRef}`] : []),
+          ...(artifact.candidateDigest ? [`app-candidate-digest:${artifact.candidateDigest}`] : []),
+          ...(artifact.repairedFields?.length ? [`app-repaired-fields:${artifact.repairedFields.join(",")}`] : []),
           `app-repository-state:${repositoryState}`,
           ...(artifact.repository ? [`app-repository:${artifact.repository.mode === "USER_OWNED" ? "user" : "managed"}:${artifact.repository.owner}/${artifact.repository.name}@${artifact.repository.revision}`] : []),
         ] };

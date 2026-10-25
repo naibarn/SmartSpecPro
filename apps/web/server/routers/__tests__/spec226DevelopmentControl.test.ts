@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   getUserGitHubConnection: vi.fn(async () => ({ configured: false, githubLogin: null })),
   developmentRunService: {
     initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })),
+    get: vi.fn(),
     recordVerificationEvent: vi.fn(async () => ({ accepted: true })),
   },
   enqueueMiniAppStage: vi.fn(async () => ({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" })),
@@ -57,6 +58,7 @@ vi.mock("../../services/spec224DevelopmentRunPersistence", () => ({
     mocks.createRun(...args),
   createDevelopmentRunService: () => ({
     initialize: (...args: unknown[]) => mocks.developmentRunService.initialize(...args),
+    get: (...args: unknown[]) => mocks.developmentRunService.get(...args),
     recordVerificationEvent: (...args: unknown[]) => mocks.developmentRunService.recordVerificationEvent(...args),
     requestFullVerification: (...args: unknown[]) => mocks.requestFullVerification(...args),
   }),
@@ -119,11 +121,14 @@ vi.mock("../../services/workspaceAuthoritySafeActions", () => ({
 }));
 
 import { spec226DevelopmentControlRouter } from "../spec226DevelopmentControl";
+import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY } from "../../services/miniAppFactoryDurableState";
 
 const CTX = { tenantId: "tenant-acme", user: { id: 42, role: "admin" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.developmentRunService.get.mockReset();
+  mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
 
 describe("spec226DevelopmentControlRouter", () => {
@@ -161,6 +166,47 @@ describe("spec226DevelopmentControlRouter", () => {
   it("keeps workspace viewing a query and treats preparation as a mutation", () => {
     expect((spec226DevelopmentControlRouter.getConversationWorkspace as any).procedureType).toBe("query");
     expect((spec226DevelopmentControlRouter.prepareWorkspaceRun as any).procedureType).toBe("mutation");
+  });
+
+  it("queues a bounded repair attempt for the owner's failed stage on the same DevelopmentRun", async () => {
+    const runId = "run-existing-mini-app";
+    const state = createMiniAppFactoryDurableState({ programId: "factory", miniAppId: "app_existing", profile: "PERSONAL_MINIAPP" });
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({
+      runId,
+      retryable: true,
+      currentStage: "ui_implementation",
+      jobState: "failed",
+    });
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId,
+      workUnit: { progress: { remainingScope: ["ui_implementation"], completedScope: [] }, dependencies: [] },
+      metadata: { [MINI_APP_FACTORY_STATE_KEY]: state },
+    } });
+    mocks.enqueueMiniAppStage.mockResolvedValueOnce({ stageId: "ui_implementation", jobId: "repair-job-1", created: true, state: "ENQUEUED" });
+
+    await expect((spec226DevelopmentControlRouter.retryMiniAppFactoryStage as unknown as Function)({
+      ctx: CTX,
+      input: { appId: "app_existing" },
+    })).resolves.toEqual({ appId: "app_existing", runId, jobId: "repair-job-1", stageId: "ui_implementation", created: true });
+    expect(mocks.developmentRunService.get).toHaveBeenCalledWith({ runId, tenantId: "tenant-acme", actorId: 42 });
+    expect(mocks.developmentRunService.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
+      runId,
+      idempotencyKey: `miniapp-factory-retry:${runId}:ui_implementation:1`,
+      payload: expect.objectContaining({ outcome: "RETRY_SCHEDULED", attempt: 1 }),
+    }));
+    expect(mocks.enqueueMiniAppStage).toHaveBeenCalledWith(expect.objectContaining({
+      run: { runId, tenantId: "tenant-acme", actorId: 42 },
+      retrySequence: 1,
+    }));
+  });
+
+  it("does not create a retry when the latest stage is active or not retryable", async () => {
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ runId: "run-active", retryable: false, currentStage: "ui_implementation", jobState: "running" });
+    await expect((spec226DevelopmentControlRouter.retryMiniAppFactoryStage as unknown as Function)({
+      ctx: CTX,
+      input: { appId: "app_existing" },
+    })).rejects.toMatchObject({ message: "MINI_APP_STAGE_NOT_RETRYABLE" });
+    expect(mocks.enqueueMiniAppStage).not.toHaveBeenCalled();
   });
 
   it("dispatches an authenticated safe action through the scoped worker job gateway", async () => {

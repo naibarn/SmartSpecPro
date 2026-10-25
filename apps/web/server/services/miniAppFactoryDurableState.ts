@@ -154,6 +154,7 @@ export function advanceMiniAppFactoryDurableState(
     packageDigest,
     migrationState,
     deploymentState,
+    retryState: { ...state.retryState, status: "READY" },
     blockerState: { status: "NONE", code: null },
     nextEligibleStages: [...input.nextEligibleStages],
   };
@@ -162,11 +163,13 @@ export function advanceMiniAppFactoryDurableState(
 export function failMiniAppFactoryDurableState(
   current: MiniAppFactoryDurableState,
   code: string,
+  artifacts: string[] = [],
 ): MiniAppFactoryDurableState {
   const state = parseMiniAppFactoryDurableState(current);
-  if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(code)) throw new Error("FACTORY_FAILURE_CODE_INVALID");
+  if (!/^[A-Za-z0-9_.:-]{1,128}$/.test(code) || !artifactList(artifacts)) throw new Error("FACTORY_FAILURE_CODE_INVALID");
   return {
     ...state,
+    artifacts: [...new Set([...state.artifacts, ...artifacts])],
     deliveryMilestone: state.profile === "PERSONAL_MINIAPP" && state.deliveryMilestone !== "PREVIEW_AVAILABLE" && state.deliveryMilestone !== "VERIFICATION_PENDING" && state.deliveryMilestone !== "USER_TRIAL_READY"
       ? "BUILD_FAILED"
       : state.deliveryMilestone,
