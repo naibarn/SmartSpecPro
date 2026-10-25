@@ -29,6 +29,7 @@ vi.mock("../services/jobControlPlaneGateway", async importOriginal => ({
 }));
 
 import { infrastructureRouter } from "./infrastructure";
+import { validateJobDefinition } from "../services/jobCanonicalization";
 
 const tenantId = "tenant-ZCSKEM9s";
 const projectId = "2fe8a309-8be6-4370-9813-8fb9cc4645a0";
@@ -100,6 +101,25 @@ describe("Production database canonical admission", () => {
     expect(f.jobs.size).toBe(1);
     expect(mocks.createJob).toHaveBeenCalledOnce();
     expect(f.db.select).toHaveBeenCalled();
+  });
+
+  it("submits a production database contract accepted by the canonical job definition validator", async () => {
+    const f = setup();
+    mocks.createJob.mockImplementationOnce(async (input: any) => {
+      expect(() => validateJobDefinition({
+        ...input.definition,
+        tenantId: input.context.tenantId,
+        requestedByUserId: input.context.actorId,
+        idempotencyKey: input.context.idempotencyKey,
+      })).not.toThrow();
+      const jobId = input.createOptions.canonicalJobId as string;
+      f.jobs.set(jobId, { id: jobId, jobType: input.definition.jobType,
+        contractVersion: input.definition.contractVersion, requestedByUserId: input.context.actorId,
+        status: "queued", inputJson: input.definition.input });
+      return { jobId, created: true };
+    });
+
+    await expect(f.submit()).resolves.toMatchObject({ jobId: submissionId, status: "queued" });
   });
 
   it("reconciles a Control Plane timeout after commit and preserves the valid grant", async () => {

@@ -19,7 +19,7 @@ import {
 } from "./cloudflareProductionDatabaseProvision";
 
 export const CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT =
-  "cloudflare-production-database-provision-v1" as const;
+  "cloudflare-prod-db-provision-v1" as const;
 export const CLOUDFLARE_PRODUCTION_DATABASE_JOB =
   "cloudflare.production.database.provision" as const;
 export const CLOUDFLARE_PRODUCTION_DATABASE_GRANT =
