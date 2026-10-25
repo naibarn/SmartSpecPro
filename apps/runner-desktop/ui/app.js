@@ -214,7 +214,13 @@ function applyRunnerStatus(status) {
       ? `Runner ทำงานอยู่ แต่ยังไม่มี heartbeat ที่ SmartAIHub ยืนยันใน 5 นาที · ล่าสุด ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
       : credentialsReady
         ? "บัญชี Runner พร้อมใช้งาน แต่ Runner หยุดอยู่"
-        : "กดเชื่อมต่อเพื่อเปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์";
+        : credentialState === "renewing"
+          ? "กำลังต่ออายุ access token ด้วย refresh token ที่จัดเก็บไว้"
+          : credentialState === "retrying"
+            ? "การต่ออายุ token ล้มเหลวชั่วคราว ระบบจะลองใหม่โดยใช้ข้อมูลเชื่อมต่อเดิม"
+            : credentialState === "reauth_required"
+              ? "ต้องยืนยันบัญชีผ่านเบราว์เซอร์ เนื่องจาก refresh token ใช้ต่อไม่ได้แล้ว"
+              : "กดเชื่อมต่อเพื่อเปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์";
 
   if (credentialState === "reauth_required") {
     const notice = status.credentialErrorCode === "RUNNER_CONNECT_REQUEST_REJECTED_409"
