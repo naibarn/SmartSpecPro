@@ -35,6 +35,7 @@ import {
   provisionMiniAppRepositoryFromSnapshot,
   promoteMiniAppArtifactAfterVerification,
   repairPersonalMiniAppJsonCandidate,
+  resolveOriginalMiniAppTitle,
   resolvePersonalMiniAppHomeMilestone,
   resolvePersonalMiniAppPreview,
 } from "./personalMiniAppPreview";
@@ -57,6 +58,26 @@ beforeEach(() => {
 });
 
 describe("personal Mini-App artifact assembly", () => {
+  it("keeps the app title from its original run instead of the V2 development goal", () => {
+    const original = {
+      spec224: {
+        runId: "run-v1",
+        goal: "Create a personal expense tracker with income, expenses and monthly charts.",
+        metadata: { miniAppFactoryProgramState: { miniAppId: "app_expense" } },
+      },
+    };
+    const adoption = {
+      spec224: {
+        runId: "run-v2",
+        goal: "Adopt the verified prepared Thai and THB candidate for the existing Mini-App",
+        metadata: { miniAppFactoryProgramState: { miniAppId: "app_expense" } },
+      },
+    };
+    expect(resolveOriginalMiniAppTitle([
+      { progressJson: adoption }, { progressJson: original },
+    ], "app_expense")).toBe("Personal Expense Tracker");
+  });
+
   it("reproduces the prepared static build from committed source when dist is gitignored", () => {
     const sourceFiles = {
       "src/index.html": "<main>V2</main>",

@@ -253,6 +253,26 @@ export function derivePersonalMiniAppTitle(goal: string): string {
   return safe ? safe.charAt(0).toLocaleUpperCase() + safe.slice(1) : "Personal Mini-App";
 }
 
+export function resolveOriginalMiniAppTitle(rows: Array<{ progressJson: Record<string, unknown> }>, appId: string): string | null {
+  for (const row of [...rows].reverse()) {
+    const projection = row.progressJson.spec224;
+    if (!projection || typeof projection !== "object" || Array.isArray(projection)) continue;
+    const run = projection as Record<string, unknown>;
+    const metadata = run.metadata && typeof run.metadata === "object" && !Array.isArray(run.metadata)
+      ? run.metadata as Record<string, unknown>
+      : {};
+    const factory = metadata.miniAppFactoryProgramState && typeof metadata.miniAppFactoryProgramState === "object" && !Array.isArray(metadata.miniAppFactoryProgramState)
+      ? metadata.miniAppFactoryProgramState as Record<string, unknown>
+      : {};
+    if (factory.miniAppId !== appId || typeof run.goal !== "string") continue;
+    const title = derivePersonalMiniAppTitle(run.goal);
+    return title.toLocaleLowerCase() === "personal expense tracker"
+      ? "Personal Expense Tracker"
+      : title.replace(/\b[a-z]/g, letter => letter.toLocaleUpperCase());
+  }
+  return null;
+}
+
 function validAppField<K extends keyof typeof GENERATED_APP_FIELD_SCHEMAS>(field: K, value: unknown) {
   return GENERATED_APP_FIELD_SCHEMAS[field].safeParse(value);
 }
@@ -1237,7 +1257,7 @@ export async function resolvePersonalMiniAppFactoryHome(
       eq(workerJobs.tenantId, input.tenantId),
       eq(workerJobs.requestedByUserId, input.userId),
       sql`${workerJobs.progressJson}->'spec224'->'metadata'->'miniAppFactoryProgramState'->>'miniAppId' = ${appId}`,
-    )).orderBy(sql`${workerJobs.createdAt} DESC`).limit(20);
+    )).orderBy(sql`${workerJobs.createdAt} DESC`).limit(100);
   } catch {
     return null;
   }
@@ -1253,6 +1273,7 @@ export async function resolvePersonalMiniAppFactoryHome(
     ? metadata.miniAppFactoryProgramState as Record<string, unknown>
     : null;
   if (!factory) return null;
+  const applicationTitle = resolveOriginalMiniAppTitle(rows, appId);
   const artifacts = Array.isArray(factory.artifacts) ? factory.artifacts : [];
   const sourceSnapshot = [...artifacts].reverse().find(value => typeof value === "string" && value.startsWith("app-source:r2://"));
   const repositoryState = [...artifacts].reverse().find(value => typeof value === "string" && value.startsWith("app-repository-state:"));
@@ -1330,6 +1351,7 @@ export async function resolvePersonalMiniAppFactoryHome(
   return {
     runId: run?.runId ?? null,
     goal: typeof run?.goal === "string" ? run.goal : "",
+    applicationTitle,
     conversationId: Number.isSafeInteger(run?.metadata && typeof run.metadata === "object" ? (run.metadata as Record<string, unknown>).conversationId : null)
       ? Number((run!.metadata as Record<string, unknown>).conversationId)
       : null,

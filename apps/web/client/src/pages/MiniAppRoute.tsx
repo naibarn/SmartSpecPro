@@ -125,13 +125,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
   const deploymentVersions = "deploymentVersions" in data ? data.deploymentVersions ?? [] : [];
   const stages = [...new Set([...(factory?.completedStages ?? []), ...(factory?.currentStage ? [factory.currentStage] : []), ...(factory?.remainingStages ?? [])])];
   const progress = stages.length ? Math.round(((factory?.completedStages?.length ?? 0) / stages.length) * 100) : 0;
-  const title = factory?.goal
-    ? factory.goal.trim().split(/[.!?\n]/, 1)[0]!
-        .replace(/^\s*(?:please\s+)?(?:create|build|make|design|generate)\s+/i, "")
-        .split(/\b(?:with|including|that|which)\b/i, 1)[0]!
-        .replace(/^\s*(?:a|an|the)\s+/i, "")
-        .trim()
-    : app?.appId ?? appId;
+  const title = factory?.applicationTitle || app?.appId || appId;
   const active = Boolean(factory?.isInProgress);
   const previewAvailable = Boolean(app?.lastKnownGoodArtifactRef && data.html);
   const status = previewAvailable && !active ? "PREVIEW_AVAILABLE" : ["orphaned", "expired", "cancelled", "canceled"].includes(factory?.jobState ?? "") ? factory?.jobState : factory?.milestone ?? factory?.jobState ?? "BUILDING";
@@ -238,7 +232,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
       actions={(
         <HStack wrap="wrap" gap={2}>
           {previewAvailable && mode !== "settings" ? <AppButton label="Open Preview" variant="secondary" onClick={() => setTab("preview")} /> : null}
-          {previewAvailable ? <AppButton label={openingApp || runtimePreparation.isPending ? "Preparing App…" : "Open App"} variant="primary" isDisabled={openingApp || runtimePreparation.isPending || active} onClick={() => { void openApp(); }} /> : null}
+          {previewAvailable ? <AppButton label={openingApp || runtimePreparation.isPending ? "Preparing App…" : "Open App"} variant="primary" isDisabled={openingApp || runtimePreparation.isPending} onClick={() => { void openApp(); }} /> : null}
           {previewAvailable && mode !== "settings" ? <AppButton label="Downloads" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/downloads`); }} /> : null}
           {mode !== "settings" ? <AppButton label="Settings" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/settings`); }} /> : null}
           {mode === "settings" ? <AppButton label="Back to Development" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/status`); }} /> : null}
@@ -341,6 +335,12 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
           <Section>
             <VStack gap={3}>
               <Heading level={2}>Development timeline</Heading>
+              {factory?.goal ? <Card padding={3} data-testid="miniapp-current-development-goal">
+                <VStack gap={1}>
+                  <Text type="label">Current Development Goal</Text>
+                  <Text type="body" color="secondary">{factory.goal}</Text>
+                </VStack>
+              </Card> : null}
               {stages.length ? <Grid columns={{ minWidth: 220, max: 4 }} gap={2}>
                 {stages.map((stage: string) => {
                   const completed = factory?.completedStages?.includes(stage);

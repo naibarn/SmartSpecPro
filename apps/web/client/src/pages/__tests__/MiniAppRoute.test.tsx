@@ -255,6 +255,8 @@ describe("MiniAppRoute", () => {
       factory: {
         milestone: "BUILDING",
         isInProgress: true,
+        applicationTitle: "Personal Expense Tracker",
+        goal: "Adopt the verified prepared Thai and THB candidate for the existing Mini-App",
         repositoryState: "AUTH_REQUIRED",
         remainingStages: ["package", "deploy"],
       },
@@ -263,7 +265,11 @@ describe("MiniAppRoute", () => {
     render(<MiniAppRoute />);
 
     expect(await screen.findByTestId("miniapp-preview-frame")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Personal Expense Tracker" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open App" })).toBeEnabled();
     fireEvent.click(screen.getByRole("tab", { name: "Progress" }));
+    expect(screen.getByText("Current Development Goal")).toBeInTheDocument();
+    expect(screen.getByText("Adopt the verified prepared Thai and THB candidate for the existing Mini-App")).toBeInTheDocument();
     expect(screen.getByText(/Connect GitHub in Settings → Integrations/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Provision private repository from saved source" }));
     expect(mocks.provisionRepositoryMutation.mutate).toHaveBeenCalledWith({ appId: "app_private_progress" });
