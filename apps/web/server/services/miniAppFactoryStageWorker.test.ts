@@ -129,6 +129,40 @@ describe("Mini App Factory worker_jobs binding", () => {
     })).rejects.toThrow("MINI_APP_STAGE_RETRY_EXHAUSTED");
   });
 
+  it("allows one non-billable same-run candidate repair after three Gateway attempts", async () => {
+    const run = makeRun();
+    const candidateRef = `r2://mini-app-candidates/${run.tenantId}/app_test/run-${"a".repeat(16)}/sha256/${"b".repeat(64)}`;
+    const exhausted = {
+      ...run,
+      metadata: {
+        [MINI_APP_FACTORY_STATE_KEY]: {
+          ...run.metadata?.[MINI_APP_FACTORY_STATE_KEY],
+          retryState: { status: "EXHAUSTED", attempt: 3 },
+          artifacts: [`app-candidate:${candidateRef}`],
+        },
+      },
+    };
+    const createJob = vi.fn(async () => ({ jobId: "same-run-candidate-repair", created: true }));
+    const service = {
+      get: vi.fn(async () => ({ run: exhausted, revision: 1, events: [] })),
+      recordVerificationEvent: vi.fn(async () => ({ accepted: true })),
+    };
+    const repaired = await scheduleMiniAppFactoryStageRetry({
+      pipeline, service: service as any,
+      run: { runId: run.runId, tenantId: run.tenantId, actorId: run.actorId },
+      appId: "app_test", stageId: "SPEC", candidateRepair: true,
+      createJob: createJob as any,
+    });
+    expect(repaired).toEqual({ jobId: "same-run-candidate-repair", stageId: "SPEC", attempt: 3, created: true });
+    expect(service.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
+      idempotencyKey: `miniapp-factory-candidate-repair:${run.runId}:SPEC`,
+      payload: expect.objectContaining({ outcome: "CANDIDATE_REPAIR_SCHEDULED", attempt: 3 }),
+    }));
+    expect(createJob).toHaveBeenCalledWith(expect.objectContaining({
+      definition: expect.objectContaining({ idempotencyKey: expect.any(String) }),
+    }));
+  });
+
   it("persists exactly the leased stage checkpoint before returning success and resumes duplicate delivery idempotently", async () => {
     let run = makeRun();
     let revision = 0;

@@ -124,6 +124,8 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
   appId: string;
   stageId: string;
   retrySequence?: number;
+  /** Permit one non-billable source-only resume after the Gateway budget is exhausted. */
+  candidateRepair?: boolean;
   createJob?: typeof createControlPlaneJob;
 }): Promise<{ jobId: string; stageId: string; attempt: number; created: boolean }> {
   if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.appId) || !stageIdPattern.test(input.stageId)) {
@@ -139,7 +141,13 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
   if (eligible[0] !== input.stageId || !current.run.workUnit.progress.remainingScope.includes(input.stageId)) {
     throw new Error("MINI_APP_STAGE_NO_LONGER_ELIGIBLE");
   }
-  let attempt = input.retrySequence ?? state.retryState.attempt + 1;
+  const candidateRepairRef = state.artifacts.find(value => value.startsWith("app-candidate:r2://"))?.slice("app-candidate:".length);
+  if (input.candidateRepair && (
+    state.retryState.status !== "EXHAUSTED" || state.retryState.attempt !== 3 ||
+    state.candidateRepairAttempted || !candidateRepairRef ||
+    !new RegExp(`^r2://mini-app-candidates/${input.run.tenantId}/${input.appId}/run-[a-f0-9]{16}/sha256/[a-f0-9]{64}$`).test(candidateRepairRef)
+  )) throw new Error("MINI_APP_CANDIDATE_REPAIR_NOT_ELIGIBLE");
+  let attempt = input.candidateRepair ? 3 : input.retrySequence ?? state.retryState.attempt + 1;
   if (input.retrySequence === undefined && state.retryState.status === "RETRY_SCHEDULED") {
     const priorDefinition = buildMiniAppFactoryStageJobDefinition({ ...input.run, stageId: input.stageId, retrySequence: state.retryState.attempt });
     const [priorJob] = await getDb().select({ id: workerJobs.id, status: workerJobs.status })
@@ -152,17 +160,20 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
   const scheduledState = {
     ...state,
     retryState: { status: "RETRY_SCHEDULED" as const, attempt },
+    ...(input.candidateRepair ? { candidateRepairAttempted: true } : {}),
     currentStage: input.stageId,
     deliveryMilestone: state.appSourceDigest ? state.deliveryMilestone : "BUILDING" as const,
     blockerState: { status: "NONE" as const, code: null },
   };
-  const retryEventKey = `miniapp-factory-retry:${input.run.runId}:${input.stageId}:${attempt}`;
+  const retryEventKey = input.candidateRepair
+    ? `miniapp-factory-candidate-repair:${input.run.runId}:${input.stageId}`
+    : `miniapp-factory-retry:${input.run.runId}:${input.stageId}:${attempt}`;
   const existingRetryEvent = current.events.find(event => event.idempotencyKey === retryEventKey);
   if (existingRetryEvent) {
     const payload = existingRetryEvent.payload;
     if (existingRetryEvent.type !== "VERIFICATION_OUTCOME" ||
       payload.profile !== "PERSONAL_MINIAPP" || payload.stageId !== input.stageId ||
-      payload.outcome !== "RETRY_SCHEDULED" || payload.attempt !== attempt) {
+      payload.outcome !== (input.candidateRepair ? "CANDIDATE_REPAIR_SCHEDULED" : "RETRY_SCHEDULED") || payload.attempt !== attempt) {
       throw new Error("MINI_APP_RETRY_IDEMPOTENCY_CONFLICT");
     }
   } else {
@@ -170,7 +181,7 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
       ...input.run,
       type: "VERIFICATION_OUTCOME",
       idempotencyKey: retryEventKey,
-      payload: { profile: "PERSONAL_MINIAPP", stageId: input.stageId, outcome: "RETRY_SCHEDULED", attempt },
+      payload: { profile: "PERSONAL_MINIAPP", stageId: input.stageId, outcome: input.candidateRepair ? "CANDIDATE_REPAIR_SCHEDULED" : "RETRY_SCHEDULED", attempt },
       runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: scheduledState },
     });
   }
@@ -178,7 +189,7 @@ export async function scheduleMiniAppFactoryStageRetry(input: {
     pipeline: input.pipeline,
     service: input.service,
     run: input.run,
-    retrySequence: attempt,
+    retrySequence: input.candidateRepair ? 4 : attempt,
     ...(input.createJob ? { createJob: input.createJob } : {}),
   });
   if (queued.stageId !== input.stageId || !queued.jobId) throw new Error("MINI_APP_STAGE_RETRY_ENQUEUE_FAILED");
@@ -324,12 +335,17 @@ export async function reconcileMiniAppFactoryStageRuns(input: {
         summary.skipped += 1;
         continue;
       }
+      let candidateRepair = false;
       if (latestStageJob && ["failed", "expired"].includes(latestStageJob.status)) {
         if (!isAutoRecoverableMiniAppFactoryError(latestStageJob.errorCode)) {
           summary.skipped += 1;
           continue;
         }
-        if (state.retryState.attempt >= 3) {
+        candidateRepair = state.retryState.status === "EXHAUSTED" && state.retryState.attempt === 3 &&
+          !state.candidateRepairAttempted && state.artifacts.some(value =>
+            value.startsWith(`app-candidate:r2://mini-app-candidates/${root.tenantId}/${state.miniAppId}/run-`),
+          );
+        if (state.retryState.attempt >= 3 && !candidateRepair) {
           const failureCode = String(latestStageJob.errorCode || "FACTORY_STAGE_FAILED").replace(/[^A-Za-z0-9_.:-]/g, "_").slice(0, 100);
           const exhaustedState = {
             ...state,
@@ -369,6 +385,7 @@ export async function reconcileMiniAppFactoryStageRuns(input: {
         run: scope,
         appId: state.miniAppId,
         stageId,
+        ...(candidateRepair ? { candidateRepair: true } : {}),
       });
       if (result.created) summary.scheduled += 1;
       else summary.skipped += 1;
@@ -468,7 +485,7 @@ export function createMiniAppFactoryStageJobExecutor(
           ? (error as { candidateRef?: unknown }).candidateRef
           : null;
         const preservedArtifacts = typeof candidateRef === "string" &&
-          /^r2:\/\/mini-app-candidates\/[A-Za-z0-9_-]{1,64}\/app_[A-Za-z0-9_-]{1,120}\/sha256\/[a-f0-9]{64}$/.test(candidateRef)
+          /^r2:\/\/mini-app-candidates\/[A-Za-z0-9_-]{1,64}\/app_[A-Za-z0-9_-]{1,120}\/run-[a-f0-9]{16}\/sha256\/[a-f0-9]{64}$/.test(candidateRef)
           ? [`app-candidate:${candidateRef}`]
           : [];
         const state = failMiniAppFactoryDurableState(

@@ -33,6 +33,7 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
           prompt: run.goal,
           previousSourceRef,
           previousCandidateRef,
+          candidateOnly: state.candidateRepairAttempted,
         });
         const repositoryState = artifact.repository
           ? "BOUND"

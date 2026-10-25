@@ -193,6 +193,43 @@ describe("personal Mini-App artifact assembly", () => {
     expect(callLLMStructured).toHaveBeenCalledTimes(1);
   });
 
+  it("normalizes the common js alias from a complete persisted candidate", () => {
+    const candidate = repairPersonalMiniAppJsonCandidate(JSON.stringify({ app: {
+      title: "Expense tracker",
+      html: generated.html,
+      css: generated.css,
+      js: generated.javascript,
+      assets: [],
+    } }));
+    expect(candidate).toMatchObject({ javascript: generated.javascript });
+  });
+
+  it("builds an eligible persisted candidate locally without another Gateway call", async () => {
+    const candidate = { app: { html: generated.html, css: generated.css, js: generated.javascript, assets: [] } };
+    const candidateBytes = Buffer.from(JSON.stringify(candidate));
+    const candidateDigest = createHash("sha256").update(candidateBytes).digest("hex");
+    const runId = "run_candidate_only";
+    const candidateRef = `r2://mini-app-candidates/tenant-test/app_expenses/run-${createHash("sha256").update(runId).digest("hex").slice(0, 16)}/sha256/${candidateDigest}`;
+    vi.mocked(storageReadBuffer).mockResolvedValueOnce(candidateBytes);
+    vi.mocked(storagePutContentAddressedIfAbsent).mockImplementation(async (key, bytes) => {
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      return { key: `${key}/sha256/${sha256}`, sha256, url: "" };
+    });
+
+    const result = await buildAndStorePersonalMiniApp({
+      userId: 42,
+      tenantId: "tenant-test",
+      appId: "app_expenses",
+      runId,
+      prompt: "Create an expense tracker with monthly totals.",
+      previousCandidateRef: candidateRef,
+      candidateOnly: true,
+    });
+    expect(result.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.artifactDigest).toMatch(/^[a-f0-9]{64}$/);
+    expect(callLLMStructured).not.toHaveBeenCalled();
+  });
+
   it("repairs malformed field-repair JSON locally while retaining the candidate", async () => {
     const invalid = { ...generated, html: `${generated.html}<script>bad()</script>`, javascript: "const = broken" };
     const repairedHtml = "<!doctype html><html><body><main>Expense tracker</main></body></html>";
