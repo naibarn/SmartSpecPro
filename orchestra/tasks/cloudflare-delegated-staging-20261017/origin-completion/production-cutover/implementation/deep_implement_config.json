@@ -35,9 +35,9 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Production DB same-job recovery is integrated at b829fa978c1fb008243c9b507737747346befb9b with authenticated expired-grant renewal and bounded attempt-2 recovery; focused tests pass. Deploy the canonical Linux web release and verify serving SHA/health. Then the authenticated original requester must renew authority and resume job b9ca8316-1604-4764-a769-d92f46e4c823 from the UI; monitor provisioning and SQL acceptance automatically. Keep Linux serving and preserve separate canary authority.",
-      "checkpoint_sha": "b829fa978c1fb008243c9b507737747346befb9b",
-      "merged_main_sha": "b829fa978c1fb008243c9b507737747346befb9b"
+      "next_action": "Linux release g113 from source 6f1aeacefe2638007cb585cf6402e63bf1c306e3 is serving and healthy; public AdminSettings assets contain the same-job recovery action. Wait for the authenticated original requester to click it once. Then poll job b9ca8316-1604-4764-a769-d92f46e4c823 automatically, verify attempt-2 grant/lease/outbox, observe VPC/Hyperdrive receipts and run actual PostgreSQL connectivity/least-privilege checks. Continue Worker runtime, rollback and canary readiness; do not switch production traffic before independent canary authority.",
+      "checkpoint_sha": "6f1aeacefe2638007cb585cf6402e63bf1c306e3",
+      "merged_main_sha": "6f1aeacefe2638007cb585cf6402e63bf1c306e3"
     }
   },
   "pre_commit": {
@@ -49,11 +49,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 83,
-  "updated_at": "2026-10-25T13:52:57.324943+00:00",
+  "generation": 84,
+  "updated_at": "2026-10-25T14:01:32.213674+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Production DB same-job recovery is integrated at b829fa978c1fb008243c9b507737747346befb9b with authenticated expired-grant renewal and bounded attempt-2 recovery; focused tests pass. Deploy the canonical Linux web release and verify serving SHA/health. Then the authenticated original requester must renew authority and resume job b9ca8316-1604-4764-a769-d92f46e4c823 from the UI; monitor provisioning and SQL acceptance automatically. Keep Linux serving and preserve separate canary authority.",
+    "next_action": "Linux release g113 from source 6f1aeacefe2638007cb585cf6402e63bf1c306e3 is serving and healthy; public AdminSettings assets contain the same-job recovery action. Wait for the authenticated original requester to click it once. Then poll job b9ca8316-1604-4764-a769-d92f46e4c823 automatically, verify attempt-2 grant/lease/outbox, observe VPC/Hyperdrive receipts and run actual PostgreSQL connectivity/least-privilege checks. Continue Worker runtime, rollback and canary readiness; do not switch production traffic before independent canary authority.",
     "gaps": [
       "The existing Cloudflare Tunnel exposes db-staging.smartaihub.app only; the production database hostname route db.smartaihub.app has not been configured or verified.",
       "Production Worker runtime configuration, application/auth/database verification and verified rollback release identity remain incomplete.",
@@ -61,9 +61,10 @@
       "Production Worker bindings/readiness, Node/Python/API/PostgreSQL tenant-isolation acceptance, executable rollback baseline, and canary authority checks remain pending after database provisioning.",
       "The current public smartaihub.app/readyz HTTP 200 is served by the Linux origin and is not evidence of Cloudflare Worker readiness; Worker readiness must be checked against the Worker endpoint after production bindings and deployment.",
       "Production VPC/Hyperdrive provisioning, Cloudflare-to-PostgreSQL SQL and tenant-isolation acceptance, Worker runtime verification, rollback, canary and traffic cutover remain incomplete.",
-      "Production DB job b9ca8316-1604-4764-a769-d92f46e4c823 was accepted and quarantined before worker claim because the production DB adapter contract was unsupported; it then expired and its grant is no longer valid. The adapter fix is integrated, but safe continuation requires authenticated same-job grant renewal and attempt-2 recovery; no VPC/Hyperdrive provider writes have been verified."
+      "Production DB job b9ca8316-1604-4764-a769-d92f46e4c823 was accepted and quarantined before worker claim because the production DB adapter contract was unsupported; it then expired and its grant is no longer valid. The adapter fix is integrated, but safe continuation requires authenticated same-job grant renewal and attempt-2 recovery; no VPC/Hyperdrive provider writes have been verified.",
+      "Production DB attempt-2 execution requires the authenticated requester to click Renew authorization and resume this same job once; no CLI/service authority may impersonate that Owner action or reuse the expired grant."
     ],
-    "merged_main_sha": "b829fa978c1fb008243c9b507737747346befb9b",
+    "merged_main_sha": "6f1aeacefe2638007cb585cf6402e63bf1c306e3",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
