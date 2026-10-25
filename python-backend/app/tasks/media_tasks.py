@@ -1399,6 +1399,12 @@ def _classify_kie_task_failure(status_response: Any) -> tuple[str, bool]:
     code_text = str(code or "").strip().lower()
     message = _extract_kie_failure_message(payload).lower()
 
+    if code_text == "400" and any(
+        marker in message
+        for marker in ("flagged as sensitive", "sensitive content", "content policy", "safety filter")
+    ):
+        return "content_policy_rejected", False
+
     if code_text == "812" or "corporate funds" in message:
         # Kie's task record reports this as a provider billing/account failure.
         # It is not an HTTP 429 and available account balance alone cannot
@@ -1622,7 +1628,14 @@ async def _poll_kie_image_task_async(
                 or status_response.get("data", {}).get("errorCode")
             ) if isinstance(status_response.get("data"), dict) else None
             code_label = f" code={failure_code}" if failure_code is not None else ""
-            if failure_kind == "provider_billing_rejected":
+            if failure_kind == "content_policy_rejected":
+                failure_message = (
+                    f"KIE_CONTENT_POLICY_REJECTED{code_label} (not retryable). Kie.ai blocked "
+                    "the prompt or generated result as sensitive. Revise the prompt or reference "
+                    "media to comply with the provider's content policy, then submit a new job. "
+                    f"Provider message: {raw_failure_message}"
+                )
+            elif failure_kind == "provider_billing_rejected":
                 failure_message = (
                     f"KIE_PROVIDER_BILLING_REJECTED{code_label} (not an HTTP 429 rate limit; "
                     "not a SmartAIHub credit shortage). Kie.ai rejected billing for this task. "

@@ -1175,10 +1175,28 @@ defaultJobExecutorRegistry.register({
     );
     await reporter.assertActive(lease);
     assertDomainExecutionSucceeded("vertical_drama.story", record);
-    const output = record.result && typeof record.result === "object" && !Array.isArray(record.result)
-      ? record.result as Record<string, unknown>
-      : { result: record.result };
-    return { output: omitUndefinedJobPayloadProperties(output) as Record<string, unknown> };
+    const domainResult = record.result;
+    const resultSummary = {
+      type: Array.isArray(domainResult)
+        ? "array"
+        : domainResult !== null && typeof domainResult === "object"
+          ? "object"
+          : typeof domainResult,
+      ...(Array.isArray(domainResult)
+        ? { itemCount: domainResult.length }
+        : domainResult !== null && typeof domainResult === "object"
+          ? { fieldCount: Object.keys(domainResult).length }
+          : {}),
+    };
+    return {
+      output: {
+        storyJobId: record.jobId,
+        kind: record.kind,
+        status: record.status,
+        seriesId: Number(seriesId),
+        resultSummary,
+      },
+    };
   },
 });
 
