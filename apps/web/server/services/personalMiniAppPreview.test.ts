@@ -32,6 +32,7 @@ import {
   generatePersonalMiniApp,
   provisionManagedMiniAppRepository,
   provisionMiniAppRepositoryFromSnapshot,
+  promoteMiniAppArtifactAfterVerification,
   repairPersonalMiniAppJsonCandidate,
   resolvePersonalMiniAppHomeMilestone,
   resolvePersonalMiniAppPreview,
@@ -55,6 +56,41 @@ beforeEach(() => {
 });
 
 describe("personal Mini-App artifact assembly", () => {
+  it("keeps V1 serving when a pre-promotion smoke assertion fails", async () => {
+    const v1Bytes = Buffer.from("<!doctype html><html><head></head><body><main>V1 expense tracker</main></body></html>");
+    const v1Digest = createHash("sha256").update(v1Bytes).digest("hex");
+    const v1Ref = `r2://mini-app-previews/tenant-test/app_test/sha256/${v1Digest}`;
+    const identity = { lastKnownGoodArtifactRef: v1Ref, deploymentVersion: 1 };
+    const candidateRef = "r2://mini-app-previews/tenant-test/app_test/sha256/" + "b".repeat(64);
+    const promote = vi.fn(async () => {
+      identity.lastKnownGoodArtifactRef = candidateRef;
+      identity.deploymentVersion += 1;
+      return { deploymentVersion: identity.deploymentVersion };
+    });
+    const serveOwnerApp = () => identity.lastKnownGoodArtifactRef;
+
+    await expect(promoteMiniAppArtifactAfterVerification({
+      verify: async () => {
+        // Candidate bytes, rendering/CSP and private access checks pass first.
+        // Inject the final pre-promotion assertion failure from the smoke stage.
+        throw new Error("INJECTED_PRE_PROMOTION_SMOKE_FAILURE");
+      },
+      promote,
+    })).rejects.toThrow("INJECTED_PRE_PROMOTION_SMOKE_FAILURE");
+
+    expect(promote).not.toHaveBeenCalled();
+    expect(identity.deploymentVersion).toBe(1);
+    expect(serveOwnerApp()).toBe(v1Ref);
+    vi.mocked(resolveMiniAppForViewer).mockResolvedValueOnce({
+      appId: "app_test", tenantId: "tenant-test", ownerUserId: 42, visibility: "private",
+      deploymentVersion: identity.deploymentVersion, lastKnownGoodArtifactRef: identity.lastKnownGoodArtifactRef,
+      lifecycle: "active",
+    } as any);
+    vi.mocked(storageReadBuffer).mockResolvedValueOnce(v1Bytes);
+    await expect(resolvePersonalMiniAppPreview({ appId: "app_test", tenantId: "tenant-test", userId: 42 }))
+      .resolves.toMatchObject({ html: v1Bytes.toString("utf8"), artifactDigest: v1Digest });
+  });
+
   it("keeps an existing preview available when a later factory stage fails", () => {
     expect(resolvePersonalMiniAppHomeMilestone({
       failed: true,

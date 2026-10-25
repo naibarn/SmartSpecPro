@@ -4,8 +4,9 @@ import { loadMiniAppFactoryPipeline } from "./miniAppFactoryPipeline";
 import { createMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerStageAdapter";
 import type { MiniAppFactoryStageWorkerRuntime } from "./miniAppFactoryStageWorker";
 import { MINI_APP_FACTORY_STATE_KEY, parseMiniAppFactoryDurableState } from "./miniAppFactoryDurableState";
-import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, packagePreparedMiniAppCandidate, provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppPreview } from "./personalMiniAppPreview";
+import { buildAndStorePersonalMiniApp, bindPersonalMiniAppArtifact, packagePreparedMiniAppCandidate, promoteMiniAppArtifactAfterVerification, provisionMiniAppRepositoryFromSnapshot, resolvePersonalMiniAppPreview, verifyPersonalMiniAppArtifactForPromotion } from "./personalMiniAppPreview";
 import { storageReadBuffer } from "../storage";
+import { buildMiniAppRuntimeDocument, createMiniAppRuntimeStorageToken } from "./miniAppRuntime";
 
 /** Personal apps use hosted Skill Execution -> Gateway; platform development stays Runner-admitted. */
 export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWorkerRuntime {
@@ -44,15 +45,28 @@ export function createMiniAppFactoryStageWorkerRuntime(): MiniAppFactoryStageWor
         }
         if (stageId === "smoke") {
           if (!context.artifacts.includes(`deployment-candidate:${baseRef}:${artifactDigest}`)) throw new Error("MINI_APP_CANDIDATE_DEPLOYMENT_RECEIPT_MISSING");
-          const previous = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId });
-          if (!previous?.html || !previous.artifactDigest) throw new Error("MINI_APP_PREVIOUS_VERSION_NOT_SERVABLE");
-          const unauthorizedBeforePromotion = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId + 1 });
-          if (unauthorizedBeforePromotion) throw new Error("MINI_APP_PRIVATE_PREVIEW_AUTHORIZATION_FAILED");
-          const bound = await bindPersonalMiniAppArtifact({ tenantId: context.tenantId, ownerUserId: context.actorId, appId: state.miniAppId, developmentRunId: context.runId, sourceRef, sourceDigest, artifactRef, artifactDigest });
-          const preview = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId });
-          if (!preview?.html || preview.artifactDigest !== artifactDigest || !preview.html.includes("Content-Security-Policy")) throw new Error("MINI_APP_CANDIDATE_PRIVATE_PREVIEW_SMOKE_FAILED");
-          const unauthorized = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId + 1 });
-          if (unauthorized) throw new Error("MINI_APP_PRIVATE_PREVIEW_AUTHORIZATION_FAILED");
+          const binding = { tenantId: context.tenantId, ownerUserId: context.actorId, appId: state.miniAppId, developmentRunId: context.runId, sourceRef, sourceDigest, artifactRef, artifactDigest };
+          const bound = await promoteMiniAppArtifactAfterVerification({
+            verify: async () => {
+              const previous = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId });
+              if (!previous?.html || !previous.artifactDigest) throw new Error("MINI_APP_PREVIOUS_VERSION_NOT_SERVABLE");
+              const unauthorized = await resolvePersonalMiniAppPreview({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId + 1 });
+              if (unauthorized) throw new Error("MINI_APP_PRIVATE_PREVIEW_AUTHORIZATION_FAILED");
+              const candidateHtml = await verifyPersonalMiniAppArtifactForPromotion(binding);
+              const rendered = buildMiniAppRuntimeDocument({
+                html: candidateHtml,
+                appId: state.miniAppId,
+                statusUrl: `/miniapp/${state.miniAppId}/status`,
+                storageToken: createMiniAppRuntimeStorageToken({ appId: state.miniAppId, tenantId: context.tenantId, userId: context.actorId }),
+                storageApiOrigin: "https://smartaihub.app",
+              });
+              if (!rendered.html.includes("Back to Development") || rendered.html.includes("<iframe") ||
+                  !rendered.contentSecurityPolicy.includes("sandbox allow-scripts") || rendered.contentSecurityPolicy.includes("allow-same-origin")) {
+                throw new Error("MINI_APP_CANDIDATE_PRIVATE_PREVIEW_SMOKE_FAILED");
+              }
+            },
+            promote: () => bindPersonalMiniAppArtifact(binding),
+          });
           return { artifacts: [`deployment:${baseRef}:v${bound.deploymentVersion}`, `private-preview-smoke:${artifactDigest}`, `private-preview-owner-access:${state.miniAppId}`, `private-preview-unauthorized-denied:${state.miniAppId}`, `miniapp-version-source-git:${state.miniAppId}@1d7273d719ff9b034cd304920c1ef76efdd86e76`] };
         }
         throw new Error("MINI_APP_CANDIDATE_STAGE_UNSUPPORTED:" + stageId);

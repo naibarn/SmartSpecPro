@@ -926,6 +926,43 @@ export async function bindPersonalMiniAppArtifact(input: {
   return { appId: input.appId, deploymentVersion };
 }
 
+/** Verify the immutable candidate bytes and its document contract before it can become LKG. */
+export async function verifyPersonalMiniAppArtifactForPromotion(input: {
+  tenantId: string;
+  appId: string;
+  developmentRunId: string;
+  sourceRef: string;
+  sourceDigest: string;
+  artifactRef: string;
+  artifactDigest: string;
+}): Promise<string> {
+  await verifyMiniAppDeploymentVersionContent({ ...input, deploymentVersion: 1 });
+  const bytes = await storageReadBuffer(input.artifactRef.slice("r2://".length));
+  if (!bytes || createHash("sha256").update(bytes).digest("hex") !== input.artifactDigest) {
+    throw new Error("MINI_APP_ARTIFACT_DIGEST_MISMATCH");
+  }
+  const html = bytes.toString("utf8");
+  const csp = /<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]*)"/i.exec(html)?.[1];
+  if (!/^<!doctype html>/i.test(html) || !/<head(?:\s|>)/i.test(html) || !/<body(?:\s|>)/i.test(html) ||
+      !csp?.includes("default-src 'none'") || !csp.includes("script-src 'unsafe-inline'") ||
+      !csp.includes("connect-src 'none'") || !csp.includes("frame-src 'none'") ||
+      !csp.includes("object-src 'none'") || !csp.includes("base-uri 'none'") ||
+      !csp.includes("form-action 'none'") || /<iframe\b|<object\b|<embed\b|<base\b/i.test(html) ||
+      /<(?:script|link)[^>]+(?:src|href)="(?:https?:|\/|\.\.)/i.test(html)) {
+    throw new Error("MINI_APP_CANDIDATE_RENDERING_CONTRACT_INVALID");
+  }
+  return html;
+}
+
+/** All fallible candidate checks run before the single atomic LKG + ledger transaction. */
+export async function promoteMiniAppArtifactAfterVerification<T>(input: {
+  verify: () => Promise<void>;
+  promote: () => Promise<T>;
+}): Promise<T> {
+  await input.verify();
+  return input.promote();
+}
+
 export type MiniAppDeploymentVersion = {
   appId: string;
   deploymentVersion: number;
