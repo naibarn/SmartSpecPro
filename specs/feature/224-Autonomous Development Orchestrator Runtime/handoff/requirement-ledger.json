@@ -1,5 +1,5 @@
 {
-  "generation": 26,
+  "generation": 27,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -3452,7 +3452,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
@@ -3465,7 +3465,8 @@
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
       ],
       "verification_method": "Focused disposable-PostgreSQL integration asserts Final Verify is refused when required workspace receipts are absent."
     },
@@ -27751,7 +27752,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/personalMiniAppPreview.ts",
@@ -27765,7 +27766,8 @@
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
       ],
       "verification_method": "Existing pilot receipts and pre-promotion failure regression evidence; relevant delivery/runtime files are unchanged from verified source SHA f80ca9721e7631c0d257e2bda87c08bd71a8fc85 to audited source SHA."
     },
@@ -27859,7 +27861,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+      "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
       "final_state": "PASS",
       "implementation_evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
@@ -27873,7 +27875,8 @@
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
       ],
       "verification_method": "Evidence review keeps Functional Mini-App, normative SPEC and protected Runner acceptance distinct."
     },

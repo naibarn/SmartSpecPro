@@ -223,7 +223,7 @@ describe("Production database canonical admission", () => {
     expect(mocks.createJob).not.toHaveBeenCalled();
   });
 
-  it("renews authority and resumes the exact quarantined job only after proving no provider write began", async () => {
+  it.each(["adapter_contract_unsupported", "expired:job_deadline"])("recovers the exact unclaimed job with outbox reason %s", async failedReason => {
     const f = setup();
     const jobId = "77777777-7777-4777-8777-777777777777";
     const planDigest = "a".repeat(64);
@@ -237,7 +237,7 @@ describe("Production database canonical admission", () => {
       targetId: "smartspec-cloudflare-runtime", environment: "production", accountRef: target.accountRef,
       plan: { tunnelId }, planDigest, expiresAt: new Date(Date.now() - 60_000).toISOString(), revokedAt: null });
     f.outboxes.set("outbox-1", { workerJobId: jobId, envelopeVersion: "cloudflare-prod-db-provision-v1",
-      publishedAt: null, quarantinedAt: new Date(), failedReason: "adapter_contract_unsupported" });
+      publishedAt: null, quarantinedAt: new Date(Date.now() - 60_000), cancelledAt: new Date(), failedReason });
 
     await expect(f.caller.resumeExpiredCloudflareProductionDatabaseJob({ tenantId, projectId, jobId, tunnelId, environment: "production" }))
       .resolves.toMatchObject({ jobId, status: "queued", attempt: 2, planDigest });

@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 3 pass / 1280 unresolved of 1284
-- Next action: Run the original Core DevelopmentRun lifecycle and protected Windows Runner E2E after fresh Runner/workspace and authenticated non-production tenant context are available; separately exercise the uncovered Revision-24 public publish/unpublish and Gateway receipt cases. Do not repeat Personal Mini-App V1/V2 acceptance.
-- Manifest generation: 166
+- Next action: Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.
+- Manifest generation: 169
 
 ## Source-declared status and relationship claims
 

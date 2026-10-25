@@ -931,14 +931,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+    "expected_canonical_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Continue original SPEC-224 Core DevelopmentRun and protected Windows Runner E2E, then close the uncovered Revision-24 public publish/unpublish, Gateway receipt, and tenant/browser matrix cases. Personal Mini-App pilot and generic Mini-App engineering remain closed. The current evidence does not support overall SPEC completion.",
+    "next_action": "Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE on the existing Windows local-runner identity and workspace after installing the 0.2.37 review artifact while preserving stored enrollment and workspace state. Exercise the interactive UI, configured Codex task probe, live capability acknowledgement, and a real run-bound DevelopmentRun grant; then continue the uncovered Revision-24 public/Gateway cases. Do not reopen Mini-App work.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
     "reactivation_predicate": "Resume protected execution when the existing Windows local-runner reconnects with a fresh Codex-ready capability snapshot and actual owned workspace, and an authenticated non-production tenant owner starts a real DevelopmentRun so the existing admission service can bind a scoped grant to actual run/job/attempt/lease/fence/source/budget identities. For Revision-24 public access tests, use authorized disposable tenant-bound owner and second-user identities on an isolated target.",
-    "resume_point": "Canonical code evidence SHA 65644d583564f31e9d39376c8cff57f8e53c3df8. Focused integration profile passed 36/36 tests across 5 files, including disposable PostgreSQL bounded-repair and Final Verify evidence rejection. No live Core run or protected Windows dispatch occurred. Continue from Core/Runner/Revision-24 live acceptance; do not reopen closed Mini-App milestones.",
+    "resume_point": "Canonical implementation commit 1e2d03b90b8de561835ca73fedbb5b800271c8e5 with refresh-test checkpoint 2656a487f0c4b576833be3338a98095703c6ebc4. Local focused Runner/Web checks passed; hosted Windows native boundary and workspace-binding tests passed; unsigned Runner 0.2.37 installer SHA-256 c3e0f5b68170f030a4a41f734cbacb5e42a02dfcb7b8c7d2cb98cfded580e468 was built from source 1e2d03b90b8de561835ca73fedbb5b800271c8e5. Interactive Windows UI, real Codex task, live capability acknowledgement, and live Core run remain unverified because this environment has no Windows Desktop session or tenant-bound grant. Continue with SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE; Mini-App milestones remain closed.",
     "waiting_predicate": "Only protected Windows dispatch waits for the exact fresh Runner capability/workspace, authenticated tenant owner and run-bound scoped grant described in blocker R11. The Revision-24 public visibility path requires disposable authenticated owner/second-user identities. Independent local code and focused verification may continue under existing task authority."
   },
   "continuation_assessment": {
@@ -950,10 +950,16 @@
         "observed_at": "2026-10-25T13:25:00Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
         "source_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-25T14:45:56Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+        "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
       }
     ],
-    "next_action": "Run the original Core DevelopmentRun lifecycle and protected Windows Runner E2E after fresh Runner/workspace and authenticated non-production tenant context are available; separately exercise the uncovered Revision-24 public publish/unpublish and Gateway receipt cases. Do not repeat Personal Mini-App V1/V2 acceptance.",
-    "rationale": "Focused current-SHA engineering checks and existing closed Mini-App evidence are preserved. No actual authenticated Core lifecycle, protected Windows Runner receipt/settlement, live Gateway receipt chain, or full Revision-24 public/tenant browser matrix was captured. Keep normative acceptance partial.",
+    "next_action": "Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.",
+    "rationale": "Responsiveness/readiness implementation is integrated at canonical SHA 2656a487f0c4b576833be3338a98095703c6ebc4. Focused Linux/Web checks and hosted Windows Runner boundary, workspace-binding, and installer build checks passed. The Windows GUI, actual Codex harness task, live capability acknowledgement, authenticated Core lifecycle, settlement receipt, live Gateway receipt, and full Revision-24 public/tenant browser matrix remain unverified. Keep overall SPEC-224 acceptance partial.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1003,7 +1009,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 166,
+  "generation": 169,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1205,11 +1211,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+    "canonical_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
     "integrated": true,
-    "integrated_at": "2026-10-25T13:25:00Z",
+    "integrated_at": "2026-10-25T14:33:13Z",
     "pull_request": null,
-    "source_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8"
+    "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2103,10 +2109,16 @@
           "observed_at": "2026-10-25T13:25:00Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
           "source_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-25T14:45:56Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+          "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
         }
       ],
-      "next_action": "Run the original Core DevelopmentRun lifecycle and protected Windows Runner E2E after fresh Runner/workspace and authenticated non-production tenant context are available; separately exercise the uncovered Revision-24 public publish/unpublish and Gateway receipt cases. Do not repeat Personal Mini-App V1/V2 acceptance.",
-      "rationale": "Focused current-SHA engineering checks and existing closed Mini-App evidence are preserved. No actual authenticated Core lifecycle, protected Windows Runner receipt/settlement, live Gateway receipt chain, or full Revision-24 public/tenant browser matrix was captured. Keep normative acceptance partial.",
+      "next_action": "Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.",
+      "rationale": "Responsiveness/readiness implementation is integrated at canonical SHA 2656a487f0c4b576833be3338a98095703c6ebc4. Focused Linux/Web checks and hosted Windows Runner boundary, workspace-binding, and installer build checks passed. The Windows GUI, actual Codex harness task, live capability acknowledgement, authenticated Core lifecycle, settlement receipt, live Gateway receipt, and full Revision-24 public/tenant browser matrix remain unverified. Keep overall SPEC-224 acceptance partial.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -2439,7 +2451,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+        "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/personalMiniAppPreview.ts",
@@ -2453,7 +2465,8 @@
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
         ],
         "verification_method": "Existing pilot receipts and pre-promotion failure regression evidence; relevant delivery/runtime files are unchanged from verified source SHA f80ca9721e7631c0d257e2bda87c08bd71a8fc85 to audited source SHA."
       },
@@ -2466,7 +2479,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+        "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
@@ -2479,7 +2492,8 @@
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
         ],
         "verification_method": "Focused disposable-PostgreSQL integration asserts Final Verify is refused when required workspace receipts are absent."
       },
@@ -3217,7 +3231,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+        "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
         "final_state": "PASS",
         "implementation_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
@@ -3231,7 +3245,8 @@
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
         ],
         "verification_method": "Evidence review keeps Functional Mini-App, normative SPEC and protected Runner acceptance distinct."
       },
@@ -3579,7 +3594,7 @@
     "unresolved": 1280
   },
   "schema_version": 1,
-  "updated_at": "2026-10-25T13:22:18.874163Z",
+  "updated_at": "2026-10-25T14:48:23.969345Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3895,13 +3910,14 @@
         "scope": "Exact canonical main source 2132aef1795eeece482423ce08386667fc3946c0 passed the canonical package build at 2026-10-23 05:10 UTC; web artifact sha256:6edcf6d089ce421c06e72718782ccaeed2792ea55bcf1090666b6b4c7928ac8f (126593 files) and immutable Cloudflare staging object sha256:9ba80bd4c0238ca3dd962da5fd73a4a3e9b743a4c6b0a4b80275da6366133653 (1593 assets/2 modules), no Worker deployment. CI 39903295562: turbo_build 503 repo-wide TS diagnostics with no SPEC-224/226 path diagnostics; Python 49 failed / 4858 passed / 32 skipped, including 6 SPEC-224 PostgreSQL tests blocked by absent exact disposable DB target (RESOURCE_BLOCKED / QUEUED_RESOURCE); SmartSpecWeb remains in progress. No production action.",
         "source_sha": "2132aef1795eeece482423ce08386667fc3946c0",
         "status": "PASS"
-      }
+      },
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
     ],
     "freshness": "STALE",
     "required_profiles": [
       "quick"
     ],
-    "sha": "2132aef1795eeece482423ce08386667fc3946c0",
+    "sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
     "status": "PARTIAL",
     "task_regressions": []
   }

@@ -395,12 +395,31 @@ export async function applyWorkerJobRetryDeadline<T extends DeadlineContractIden
 /** Resolve the current bounded deadline for legacy jobs that predate deadlineMode. */
 export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity & {
   jobType: string;
+  attempt?: number;
+  createdAt?: Date | string;
   runtimeType?: string;
   executionClass?: string;
   input: Record<string, unknown>;
-  retryPolicy: { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" };
+  retryPolicy: { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed";
+    productionDatabaseRecovery?: { attempt: number; grantRef: string; authorizedAt: string; expiresAt: string } };
   timeoutSeconds?: number;
 }): number {
+  // One Owner-reauthorized attempt may start long after the original dispatch
+  // expired. Preserve createdAt and the original budget; use only the bounded,
+  // grant-bound recovery window written by recoverReviewGatedJob.
+  const recovery = input.retryPolicy.productionDatabaseRecovery;
+  if (recovery && input.jobType === "cloudflare.production.database.provision" &&
+      input.contractVersion === "cloudflare-prod-db-provision-v1" && input.runtimeType === "node_job_worker" &&
+      input.executionClass === "long" && input.attempt === 2 && recovery.attempt === input.attempt &&
+      input.input.targetId === "smartspec-cloudflare-runtime" && input.input.environment === "production" &&
+      input.input.grantRef === recovery.grantRef) {
+    const created = input.createdAt instanceof Date ? input.createdAt.getTime() : Date.parse(input.createdAt ?? "");
+    const authorized = Date.parse(recovery.authorizedAt), expires = Date.parse(recovery.expiresAt);
+    if (Number.isFinite(created) && Number.isFinite(authorized) && Number.isFinite(expires) &&
+        authorized >= created && expires > authorized && expires - authorized <= 12 * 60_000) {
+      return expires - created;
+    }
+  }
   const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(input.jobType, input.input);
   if (storyDeadlineMs !== null) {
     return Math.min(storyDeadlineMs, VERTICAL_DRAMA_STORY_MAX_DEADLINE_MS);

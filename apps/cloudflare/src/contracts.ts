@@ -133,6 +133,8 @@ export type CloudflareEnvironment = import("./applicationHttpBridge").Applicatio
   CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED?: string;
   /** Pinned private origin for the existing Linux API/auth authority. */
   AUTH_ORIGIN?: string;
+  /** Explicit HTTP-only production ingress; independent from native job readiness. */
+  CLOUDFLARE_INGRESS_MODE?: string;
   /** Exact private hostname paired with AUTH_ORIGIN to prevent host injection. */
   AUTH_ORIGIN_PRIVATE_HOST?: string;
   /** Shared Worker-to-origin attestation secret; never exposed to clients. */

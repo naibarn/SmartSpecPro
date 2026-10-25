@@ -3782,7 +3782,7 @@ export function createJobControlPlane(
           executionClass: job.executionClass,
           input: job.inputJson ?? {},
           retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
-          timeoutSeconds: job.timeoutSeconds,
+          timeoutSeconds: job.timeoutSeconds, createdAt: job.createdAt, attempt: job.attempt,
         });
         const withinDeadline = now.getTime() < job.createdAt.getTime() + effectiveDeadlineMs;
         const allowed =
@@ -4717,6 +4717,7 @@ export function createJobControlPlane(
         operationKey?: string;
         knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine";
         replacementGrantRef?: string;
+        replacementGrantExpiresAt?: string;
       },
       actorId?: number,
       scope?: JobMutationScope
@@ -4742,7 +4743,8 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "cloudflare_staging_native_readback" &&
           evidence.knownRuntime !== "cloudflare_staging_private_database_rejection" &&
           evidence.knownRuntime !== "cloudflare_production_database_dispatch_quarantine") ||
-        (evidence.replacementGrantRef !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence.replacementGrantRef))
+        (evidence.replacementGrantRef !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence.replacementGrantRef)) ||
+        (evidence.replacementGrantExpiresAt !== undefined && !Number.isFinite(Date.parse(evidence.replacementGrantExpiresAt)))
       ) {
         throw new JobControlPlaneError(
           "JOB_RECOVERY_EVIDENCE_INVALID",
@@ -4754,7 +4756,7 @@ export function createJobControlPlane(
         500,
         "operator_review_recovery"
       );
-      const actionReason = `${safeReason}:${evidence.disposition}${evidence.knownRuntime ? `:${evidence.knownRuntime}` : ""}${evidence.replacementGrantRef ? `:${evidence.replacementGrantRef}` : ""}`;
+      const actionReason = `${safeReason}:${evidence.disposition}${evidence.knownRuntime ? `:${evidence.knownRuntime}` : ""}${evidence.replacementGrantRef ? `:${evidence.replacementGrantRef}` : ""}${evidence.replacementGrantExpiresAt ? `:${evidence.replacementGrantExpiresAt}` : ""}`;
       return repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         const existingAction = await repo.findAction(actionId);
@@ -4853,6 +4855,9 @@ export function createJobControlPlane(
           job.fencingVersion === 0 && typeof job.inputJson?.planDigest === "string" &&
           /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
           typeof evidence.replacementGrantRef === "string" &&
+          typeof evidence.replacementGrantExpiresAt === "string" &&
+          Date.parse(evidence.replacementGrantExpiresAt) > Date.now() &&
+          Date.parse(evidence.replacementGrantExpiresAt) <= Date.now() + 15 * 60_000 &&
           evidence.operationKey === `production-database-dispatch:${job.id}:${job.inputJson.planDigest}`;
         if (
           !job ||
@@ -4902,7 +4907,11 @@ export function createJobControlPlane(
             nextRetryAt: null,
             statusReason: "operator_review_recovery",
             ...(knownProductionDatabaseDispatchQuarantine
-              ? { inputJson: { ...job.inputJson, grantRef: evidence.replacementGrantRef } }
+              ? { inputJson: { ...job.inputJson, grantRef: evidence.replacementGrantRef },
+                  retryPolicyJson: { ...job.retryPolicyJson, productionDatabaseRecovery: {
+                    attempt: nextAttempt, grantRef: evidence.replacementGrantRef, authorizedAt: now.toISOString(),
+                    expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime() + 12 * 60_000)).toISOString(),
+                  } } }
               : {}),
             ...(knownNativeReadbackFailure ? { maxAttempts: nextAttempt } : {}),
             errorCode: null,
@@ -7001,7 +7010,7 @@ export function createJobControlPlane(
           executionClass: job.executionClass,
           input: job.inputJson ?? {},
           retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
-          timeoutSeconds: job.timeoutSeconds,
+          timeoutSeconds: job.timeoutSeconds, createdAt: job.createdAt, attempt: job.attempt,
         });
         if (now.getTime() < job.createdAt.getTime() + deadlineMs)
           return { outcome: "ignored" as const, jobType: undefined };
@@ -7083,7 +7092,7 @@ export function createJobControlPlane(
           executionClass: job.executionClass,
           input: job.inputJson ?? {},
           retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
-          timeoutSeconds: job.timeoutSeconds,
+          timeoutSeconds: job.timeoutSeconds, createdAt: job.createdAt, attempt: job.attempt,
         });
         const withinDeadline = now.getTime() < job.createdAt.getTime() + effectiveDeadlineMs;
         const shouldRetry = withinDeadline && job.attempt < job.maxAttempts;
@@ -7275,7 +7284,7 @@ async function guardedLeaseUpdate(
         attemptId: lease.attemptId,
         values: {
           startedAt: new Date(),
-          leaseExpiresAt: values.leaseExpiresAt ?? null,
+          leaseExpiresAt: values.leaseExpiresAt ?? job!.leaseExpiresAt,
         },
       });
     } else if (eventType === "COMPLETED") {

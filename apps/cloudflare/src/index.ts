@@ -94,6 +94,17 @@ export function createCloudflareWorker(
       } catch {
         return json({ error: "APPLICATION_HTTP_PATH_INVALID" }, 400);
       }
+      if (env.CLOUDFLARE_INGRESS_MODE) {
+        if (env.CLOUDFLARE_ENVIRONMENT !== "production" || env.CLOUDFLARE_INGRESS_MODE !== "production-origin-bridge-v1") {
+          return json({ error: "PRODUCTION_INGRESS_MODE_INVALID" }, 503);
+        }
+        if (request.headers.get("upgrade")?.toLowerCase() === "websocket") return proxyWebSocketToOrigin(request, env);
+        const upstream = await proxyAuthToOrigin(request, env);
+        const headers = new Headers(upstream.headers);
+        headers.set("x-smartaihub-ingress", "cloudflare-worker");
+        headers.set("x-smartaihub-application-runtime", "linux-origin");
+        return new Response(upstream.body, { status: upstream.status, statusText: upstream.statusText, headers });
+      }
       if (url.pathname === "/healthz" && ["GET", "HEAD"].includes(request.method)) {
         return json({ ok: true, service: "smartspec-cloudflare-runtime" });
       }

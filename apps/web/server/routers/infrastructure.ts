@@ -1036,7 +1036,9 @@ export const infrastructureRouter = router({
         eq(systemSettings.category, "cloudflare_production_database_runs"), eq(systemSettings.key, job.id),
       )).limit(1);
       if (outboxes.length !== 1 || !outbox || outbox.publishedAt || !outbox.quarantinedAt ||
-          outbox.failedReason !== "adapter_contract_unsupported" || dispatches.length || checkpoints.length) {
+          !((outbox.failedReason === "adapter_contract_unsupported") ||
+            (outbox.failedReason === "expired:job_deadline" && outbox.cancelledAt &&
+              outbox.cancelledAt.getTime() >= outbox.quarantinedAt.getTime())) || dispatches.length || checkpoints.length) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_EXECUTION_OUTCOME_UNCERTAIN" });
       }
       const previousGrant = await readCloudflareProductionDatabaseGrant(db, job.id);
@@ -1072,7 +1074,8 @@ export const infrastructureRouter = router({
         actionId,
         "Owner reauthorized the same Production database job after the deployed adapter admission repair",
         { disposition: "pre_submission_failure", knownRuntime: "cloudflare_production_database_dispatch_quarantine",
-          operationKey: `production-database-dispatch:${job.id}:${jobInput.planDigest}`, replacementGrantRef: renewedGrant.grantRef },
+          operationKey: `production-database-dispatch:${job.id}:${jobInput.planDigest}`, replacementGrantRef: renewedGrant.grantRef,
+          replacementGrantExpiresAt: renewedGrant.expiresAt },
         ctx.user.id,
         { tenantId, requestedByUserId: ctx.user.id, authorizationScope: "infrastructure.cloudflare_production_database_recover" },
       );

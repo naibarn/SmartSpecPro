@@ -35,6 +35,8 @@ export const cloudflareOriginSettingsSchema = z.object({
   mediaProbe: z.object({ containerPolicy: z.literal(CLOUDFLARE_CONTAINER_ON_DEMAND), capability: z.literal("container-media-probe-v1"),
     imageRef: z.string().refine(value => isCloudflareMediaProbeImage(value)) }).strict().optional(),
   applicationHttp: cloudflareHttpApplicationSettingsSchema.optional(),
+  /** M2 ingress preserves the Linux HTTP authority without activating job or Container workloads. */
+  ingressMode: z.literal("production-origin-bridge-v1").optional(),
   /** Provision class namespaces without API bindings, runtime secrets or VM access. */
   applicationHttpPhase: z.literal("namespace-only").optional(),
 }).strict();
@@ -47,6 +49,10 @@ export const cloudflareOriginDescriptorSchema = cloudflareOriginSettingsSchema.e
 }).strict().superRefine((value, ctx) => {
   const expectedTarget = value.environment === "staging" ? "smartspec-cloudflare-staging" : "smartspec-cloudflare-runtime";
   if (value.targetId !== expectedTarget) ctx.addIssue({ code: "custom", message: "Origin target/environment mismatch" });
+  if (value.ingressMode && (value.environment !== "production" || value.applicationHttp || value.nativeResources ||
+      value.workflowExecution || value.retentionSchedule || value.runnerReleaseCatalog || value.jobTransport || value.mediaProbe)) {
+    ctx.addIssue({ code: "custom", message: "Origin bridge requires production HTTP-only scope" });
+  }
   if (value.environment === "production" && (value.nativeResources || value.workflowExecution ||
       value.workflowDatabase || value.runnerReleaseCatalog || value.jobTransport || value.retentionSchedule || value.mediaProbe)) {
     ctx.addIssue({ code: "custom", message: "Production background capabilities require separate admission" });
@@ -81,8 +87,9 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
  * by the deployment grant, never inferred from a caller's runtime flags. */
 export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersionBindings) {
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
-  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog && !value.descriptor.applicationHttp) return [];
+  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog && !value.descriptor.applicationHttp && !value.descriptor.ingressMode) return [];
   return [
+    ...(value.descriptor.ingressMode ? [{ name: "CLOUDFLARE_INGRESS_MODE", type: "plain_text", text: value.descriptor.ingressMode }] : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
       { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
@@ -126,7 +133,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
   }) || actual.some(binding => (binding?.name?.startsWith("CLOUDFLARE_RUNNER_RELEASE_") || binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_CONTAINER_POLICY" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
     binding?.name?.startsWith("CLOUDFLARE_NODE_HTTP_") || binding?.name?.startsWith("CLOUDFLARE_PYTHON_HTTP_") ||
     binding?.name === "CLOUDFLARE_APPLICATION_CANARY_TOKEN" ||
-    binding?.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC" ||
+    binding?.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC" || binding?.name === "CLOUDFLARE_INGRESS_MODE" ||
     binding?.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");

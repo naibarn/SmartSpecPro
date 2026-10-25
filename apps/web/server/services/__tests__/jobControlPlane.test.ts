@@ -1172,6 +1172,8 @@ describe("job control plane", () => {
     });
     expect(lease).not.toBeNull();
     await controlPlane.start(lease!);
+    expect(state.attempts[0].leaseExpiresAt).toEqual(state.jobs.get(created.jobId).leaseExpiresAt);
+    expect(state.attempts[0].leaseExpiresAt).not.toBeNull();
     await expect(
       controlPlane.heartbeat({
         ...lease!,
@@ -2067,14 +2069,16 @@ describe("job control plane", () => {
       idempotencyKey: undefined,
     });
     const job = state.jobs.get(created.jobId);
-    Object.assign(job, { status: "expired", errorCode: "JOB_DEADLINE_EXPIRED", operatorReviewRequired: true,
+    Object.assign(job, { createdAt: new Date(Date.now() - 5 * 86400_000),
+      status: "expired", errorCode: "JOB_DEADLINE_EXPIRED", operatorReviewRequired: true,
       operatorReviewReason: "adapter_contract_unsupported", startedAt: null, heartbeatAt: null, fencingVersion: 0 });
     Object.assign(state.outbox[0], { quarantinedAt: new Date(), failedReason: "adapter_contract_unsupported" });
 
     const replacementGrantRef = "00000000-0000-4000-8000-000000000102";
     const evidence = { disposition: "pre_submission_failure" as const,
       knownRuntime: "cloudflare_production_database_dispatch_quarantine" as const,
-      operationKey: `production-database-dispatch:${created.jobId}:${planDigest}`, replacementGrantRef };
+      operationKey: `production-database-dispatch:${created.jobId}:${planDigest}`, replacementGrantRef,
+      replacementGrantExpiresAt: new Date(Date.now() + 15 * 60_000).toISOString() };
     const scope = { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId,
       authorizationScope: "infrastructure.cloudflare_production_database_recover" };
 
@@ -2083,6 +2087,8 @@ describe("job control plane", () => {
     expect(state.jobs.get(created.jobId)).toMatchObject({ status: "queued", attempt: 2,
       inputJson: { grantRef: replacementGrantRef, planDigest } });
     expect(state.outbox).toHaveLength(2);
+    await expect(controlPlane.expireDeadline(created.jobId, new Date())).resolves.toBe("ignored");
+    expect(state.jobs.get(created.jobId).createdAt.getTime()).toBeLessThan(Date.now() - 4 * 86400_000);
     await expect(controlPlane.recoverReviewGatedJob(created.jobId, created.jobId, "same_job_grant_renewed",
       evidence, definition.requestedByUserId, scope)).resolves.toBe(true);
     expect(state.jobs.get(created.jobId).attempt).toBe(2);
@@ -2110,7 +2116,8 @@ describe("job control plane", () => {
     const evidence = { disposition: "pre_submission_failure" as const,
       knownRuntime: "cloudflare_production_database_dispatch_quarantine" as const,
       operationKey: `production-database-dispatch:${created.jobId}:${correctDigest ? planDigest : "e".repeat(64)}`,
-      replacementGrantRef: replacementGrantRef as string };
+      replacementGrantRef: replacementGrantRef as string,
+      replacementGrantExpiresAt: new Date(Date.now() + 15 * 60_000).toISOString() };
     await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000105", "same_job_grant_renewed",
       evidence, definition.requestedByUserId, { tenantId: definition.tenantId,
         requestedByUserId: definition.requestedByUserId, authorizationScope: authorizationScope as string })).resolves.toBe(allowed);

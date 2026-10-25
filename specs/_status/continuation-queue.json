@@ -3009,7 +3009,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 4,
-      "next_action": "Continue the existing Mini-App runtime/Gateway verification work with fresh environment evidence; no additional local owner approval or new task worktree is required.",
+      "next_action": "Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -4947,7 +4947,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "P1",
-      "rationale": "Continue the existing Mini-App runtime/Gateway verification work with fresh environment evidence; no additional local owner approval or new task worktree is required.",
+      "rationale": "Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
       "spec_id": "224"
     },

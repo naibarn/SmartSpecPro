@@ -346,7 +346,7 @@ export function createCloudflareStagingApiTransport(input: {
           ? [{ name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" }]
           : []),
         ...(origin?.descriptor.nativeResources ? nativeWorkerBindings(origin.descriptor.nativeResources) : []),
-        ...productionQueueBinding(target),
+        ...(!origin?.descriptor.ingressMode ? productionQueueBinding(target) : []),
         ...(http && !origin?.descriptor.applicationHttpPhase ? http.bindings : []),
         ...(origin ? cloudflareWorkflowVersionBindings(origin) : []),
         ...(origin ? [
@@ -364,7 +364,7 @@ export function createCloudflareStagingApiTransport(input: {
           ...(bundle.assets["_headers"] ? { _headers: new TextDecoder().decode(bundle.assets["_headers"].bytes) } : {}),
           ...(bundle.assets["_redirects"] ? { _redirects: new TextDecoder().decode(bundle.assets["_redirects"].bytes) } : {}),
           not_found_handling: "single-page-application",
-          run_worker_first: [
+          run_worker_first: origin?.descriptor.ingressMode ? true : [
             "/api", "/api/*", "/v1", "/v1/*", "/trpc", "/trpc/*", "/auth", "/auth/*",
             "/oauth", "/oauth/*", "/uploads", "/uploads/*", "/internal", "/internal/*",
             "/.well-known/*", "/healthz", "/readyz", "/metrics", "/socket.io*", "/ws*", "/widget/v1/ws",

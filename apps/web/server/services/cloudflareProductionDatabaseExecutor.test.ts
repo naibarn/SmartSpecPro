@@ -99,6 +99,7 @@ function fixture() {
     projectId,
     requestedByUserId: 9,
     jobType: CLOUDFLARE_PRODUCTION_DATABASE_JOB,
+    executionClass: "long",
     contractVersion: CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT,
     attempt: 1,
     createdAt: new Date().toISOString(),
@@ -161,6 +162,18 @@ function fixture() {
 }
 
 describe("canonical Cloudflare production database job", () => {
+  it("executes an old same-job recovery only inside its fresh grant-bound attempt window", async () => {
+    const f = fixture();
+    f.context.createdAt = new Date(Date.now() - 5 * 86400_000).toISOString();
+    f.context.attempt = f.lease.attempt = 2;
+    Object.assign(f.context.retryPolicy, { productionDatabaseRecovery: { attempt: 2, grantRef: f.grant.grantRef,
+      authorizedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 12 * 60_000).toISOString() } });
+    f.controlPlane.getStatus.mockResolvedValue({ status: "running", attempt: 2,
+      lease: { active: true, stale: false, expiresAt: f.lease.expiresAt, fencingVersion: 2 } });
+    await expect(f.run()).resolves.toMatchObject({ output: { providerConfigurationVerified: true } });
+    expect(f.fetchImpl).toHaveBeenCalledTimes(7);
+  });
+
   it("executes only the exact job grant and returns a sanitized provider receipt", async () => {
     const f = fixture();
     const result = await f.run();

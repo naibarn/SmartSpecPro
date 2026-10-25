@@ -57,10 +57,11 @@ function json(result: unknown, status = 200) {
 }
 
 describe("Cloudflare staging API transport", () => {
-  it("uploads a production version without attaching a route or shifting traffic", async () => {
+  it.each([undefined, "production-origin-bridge-v1" as const])("uploads a production version (%s) without attaching a route or shifting traffic", async ingressMode => {
     const productionTarget: CloudflareStagingTarget = { ...target, targetId: "smartspec-cloudflare-runtime",
       environment: "production", workerRef: "smartspec-cloudflare-runtime", runtimePolicy: "pending" };
     const descriptor: CloudflareOriginDescriptor = {
+      ...(ingressMode ? { ingressMode } : {}),
       schemaVersion: "cloudflare.origin-configuration.v1", versionId: "33333333-3333-4333-8333-333333333333",
       tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare",
       accountRef: accountId, targetId: "smartspec-cloudflare-runtime", origin: "https://origin.example.com",
@@ -82,8 +83,13 @@ describe("Cloudflare staging API transport", () => {
         expect(uploadedMetadata.bindings).toEqual(expect.arrayContaining([
           { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "production" },
           { name: "AUTH_ORIGIN", type: "plain_text", text: descriptor.origin },
-          { name: "JOB_QUEUE", type: "queue", queue_name: "smartspec-canonical-job-queue-production" },
+          ...(!ingressMode ? [{ name: "JOB_QUEUE", type: "queue", queue_name: "smartspec-canonical-job-queue-production" }] : []),
         ]));
+        if (ingressMode) {
+          expect(uploadedMetadata.assets.config.run_worker_first).toBe(true);
+          expect(uploadedMetadata.bindings).toContainEqual({ name: "CLOUDFLARE_INGRESS_MODE", type: "plain_text", text: ingressMode });
+          expect(uploadedMetadata.bindings.some((binding: any) => ["HYPERDRIVE", "JOB_QUEUE", "JOB_CONTAINERS"].includes(binding.name))).toBe(false);
+        }
         expect(uploadedMetadata.annotations["workers/message"]).toBe(`SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}`);
         return json({ id: versionId });
       }

@@ -10,6 +10,23 @@ import {
 } from "../workerJobDeadlinePolicy";
 
 describe("worker job deadline policy", () => {
+  it("keeps a same-job Production DB recovery inside its renewed authorization window without rewriting creation time", () => {
+    const createdAt = new Date("2026-10-01T00:00:00.000Z");
+    const authorizedAt = "2026-10-25T14:00:00.000Z", expiresAt = "2026-10-25T14:12:00.000Z";
+    const input = { jobType: "cloudflare.production.database.provision", contractVersion: "cloudflare-prod-db-provision-v1",
+      runtimeType: "node_job_worker", executionClass: "long", attempt: 2, createdAt,
+      input: { targetId: "smartspec-cloudflare-runtime", environment: "production", grantRef: "renewed-grant" },
+      retryPolicy: { deadlineMs: 600000, deadlineMode: "fixed" as const,
+        productionDatabaseRecovery: { attempt: 2, grantRef: "renewed-grant", authorizedAt, expiresAt } } };
+    expect(createdAt.getTime() + getEffectiveWorkerJobDeadlineMs(input)).toBe(Date.parse(expiresAt));
+    for (const change of [{ attempt: 1 }, { jobType: "unrelated" }, { contractVersion: "wrong-contract" },
+      { input: { ...input.input, grantRef: "old-grant" } },
+      { retryPolicy: { ...input.retryPolicy, productionDatabaseRecovery: { ...input.retryPolicy.productionDatabaseRecovery,
+        expiresAt: "2026-10-25T14:13:00.000Z" } } }]) {
+      expect(getEffectiveWorkerJobDeadlineMs({ ...input, ...change })).toBe(600000);
+    }
+  });
+
   it("sets bounded starting deadlines for every job family and classifies media", () => {
     expect(DEFAULT_WORKER_JOB_DEADLINE_SETTINGS.families).toEqual({
       python: { retryMinutes: 10, maxMinutes: 10 },
