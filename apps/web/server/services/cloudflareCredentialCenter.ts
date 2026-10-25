@@ -140,11 +140,12 @@ export type DeploymentCredentialState = "CONFIGURED" | "NOT_CONFIGURED" | "PERMI
 /** Metadata-only credential state; never returns ciphertext or plaintext. */
 export async function getCloudflareDeploymentCredentialState(db: DrizzleDB, input: {
   identity: DeploymentTargetIdentity; credentialRef: string;
-}): Promise<{ status: DeploymentCredentialState; credentialRef: string }> {
+}): Promise<{ status: DeploymentCredentialState; credentialRef: string; savedAt: string | null }> {
   if (input.identity.provider !== "cloudflare" || input.credentialRef !== deploymentCredentialRef(input.identity))
-    return { status: "PERMISSION_DENIED", credentialRef: input.credentialRef };
+    return { status: "PERMISSION_DENIED", credentialRef: input.credentialRef, savedAt: null };
   try {
-    const [row] = await db.select({ status: providerDeploymentCredentials.status, encryptedSecret: providerDeploymentCredentials.encryptedSecret })
+    const [row] = await db.select({ status: providerDeploymentCredentials.status, encryptedSecret: providerDeploymentCredentials.encryptedSecret,
+      updatedAt: providerDeploymentCredentials.updatedAt })
       .from(providerDeploymentCredentials).where(and(
         eq(providerDeploymentCredentials.tenantId, input.identity.tenantId),
         eq(providerDeploymentCredentials.projectId, input.identity.projectId),
@@ -152,14 +153,15 @@ export async function getCloudflareDeploymentCredentialState(db: DrizzleDB, inpu
         eq(providerDeploymentCredentials.provider, input.identity.provider),
         eq(providerDeploymentCredentials.credentialRef, input.credentialRef),
       )).limit(1);
-    if (!row) return { status: "NOT_CONFIGURED", credentialRef: input.credentialRef };
-    if (row.status === "REVOKED") return { status: "REVOKED", credentialRef: input.credentialRef };
-    if (row.status !== "CONFIGURED" || !row.encryptedSecret) return { status: "UNAVAILABLE", credentialRef: input.credentialRef };
-    try { if (!decrypt(row.encryptedSecret)) return { status: "UNAVAILABLE", credentialRef: input.credentialRef }; }
-    catch { return { status: "UNAVAILABLE", credentialRef: input.credentialRef }; }
-    return { status: "CONFIGURED", credentialRef: input.credentialRef };
+    if (!row) return { status: "NOT_CONFIGURED", credentialRef: input.credentialRef, savedAt: null };
+    const savedAt = row.updatedAt instanceof Date && Number.isFinite(row.updatedAt.getTime()) ? row.updatedAt.toISOString() : null;
+    if (row.status === "REVOKED") return { status: "REVOKED", credentialRef: input.credentialRef, savedAt };
+    if (row.status !== "CONFIGURED" || !row.encryptedSecret) return { status: "UNAVAILABLE", credentialRef: input.credentialRef, savedAt };
+    try { if (!decrypt(row.encryptedSecret)) return { status: "UNAVAILABLE", credentialRef: input.credentialRef, savedAt }; }
+    catch { return { status: "UNAVAILABLE", credentialRef: input.credentialRef, savedAt }; }
+    return { status: "CONFIGURED", credentialRef: input.credentialRef, savedAt };
   } catch {
-    return { status: "UNAVAILABLE", credentialRef: input.credentialRef };
+    return { status: "UNAVAILABLE", credentialRef: input.credentialRef, savedAt: null };
   }
 }
 

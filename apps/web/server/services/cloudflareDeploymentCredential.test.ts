@@ -15,7 +15,7 @@ const previousKey = process.env.LLM_ENCRYPTION_KEY;
 const identity = { tenantId: "tenant-a", projectId: "project-a", environment: "staging", provider: "cloudflare" };
 const ref = deploymentCredentialRef(identity);
 
-function dbFor(row?: { status: string; encryptedSecret: string }) {
+function dbFor(row?: { status: string; encryptedSecret: string; updatedAt?: Date }) {
   const query = { from: vi.fn(() => query), where: vi.fn(() => query), limit: vi.fn(async () => row ? [row] : []) };
   return { select: vi.fn(() => query) } as never;
 }
@@ -53,13 +53,14 @@ describe("tenant-bound Cloudflare deployment credentials", () => {
   it("distinguishes missing, revoked, and undecryptable credentials without exposing secrets", async () => {
     process.env.LLM_ENCRYPTION_KEY = key;
     await expect(getCloudflareDeploymentCredentialState(dbFor(), { identity, credentialRef: ref }))
-      .resolves.toEqual({ status: "NOT_CONFIGURED", credentialRef: ref });
+      .resolves.toEqual({ status: "NOT_CONFIGURED", credentialRef: ref, savedAt: null });
     await expect(withCloudflareDeploymentCredential(dbFor({ status: "REVOKED", encryptedSecret: "cipher" }), { identity, credentialRef: ref }, async () => "never"))
       .resolves.toEqual({ status: "REVOKED" });
     await expect(withCloudflareDeploymentCredential(dbFor({ status: "CONFIGURED", encryptedSecret: "invalid-ciphertext" }), { identity, credentialRef: ref }, async () => "never"))
       .resolves.toEqual({ status: "UNAVAILABLE" });
-    const state = await getCloudflareDeploymentCredentialState(dbFor({ status: "CONFIGURED", encryptedSecret: encrypt("secret-token", key) }), { identity, credentialRef: ref });
-    expect(state).toEqual({ status: "CONFIGURED", credentialRef: ref });
+    const savedAt = new Date("2026-10-24T09:30:49.037Z");
+    const state = await getCloudflareDeploymentCredentialState(dbFor({ status: "CONFIGURED", encryptedSecret: encrypt("secret-token", key), updatedAt: savedAt }), { identity, credentialRef: ref });
+    expect(state).toEqual({ status: "CONFIGURED", credentialRef: ref, savedAt: savedAt.toISOString() });
     expect(JSON.stringify(state)).not.toContain("secret-token");
   });
 

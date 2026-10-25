@@ -97,7 +97,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionQueueJobStatus: { useQuery: () => ({ data: null }) },
       getLatestCloudflareProductionQueueJob: { useQuery: () => ({ data: mocks.latestProductionQueueJob, refetch: mocks.refetchLatestProductionQueueJob }) },
       getLatestCloudflareProductionDatabaseJob: { useQuery: () => ({ data: mocks.latestProductionDatabaseJob, refetch: mocks.refetchProductionProviderInventory }) },
-      getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED" }, isLoading: false, isError: false }) },
+      getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED", savedAt: "2026-10-24T09:30:49.037Z" }, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
       disableProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.disable, isPending: false, error: null }) },
@@ -327,6 +327,18 @@ describe("AdminDeploymentTargets", () => {
       provider: "cloudflare",
       targetRowId: "target-row-1",
     });
+  });
+
+  it("shows when the Production target's encrypted token copy was last saved", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime" }];
+    const { container } = render(<AdminDeploymentTargets />);
+
+    await chooseProductionScope(user);
+    expect(await screen.findByText("smartspec-cloudflare-runtime")).toBeInTheDocument();
+    expect(screen.getByText(/Production token copy saved here:/)).toBeInTheDocument();
+    expect(screen.getByText(/Cloudflare dashboard edits do not update this encrypted copy/)).toBeInTheDocument();
+    expect(container.querySelector('time[datetime="2026-10-24T09:30:49.037Z"]')).toBeInTheDocument();
   });
 
   it("shows live runtime blockers separately from artifact deploy readiness and marks containers optional", async () => {

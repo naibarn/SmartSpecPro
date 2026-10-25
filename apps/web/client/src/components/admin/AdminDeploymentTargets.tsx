@@ -196,6 +196,16 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
       <Badge variant={data?.status === "CONFIGURED" ? "default" : "secondary"}>
         {text("Credential", "Credential")}: {label}
       </Badge>
+      {target.environment === "production" && data?.status === "CONFIGURED" && data.savedAt ? <p role="status">
+        {text(
+          "Production token copy saved here: ",
+          "บันทึกสำเนา token ของ Production ไว้ที่นี่เมื่อ: ",
+        )}<time dateTime={data.savedAt}>{new Date(data.savedAt).toLocaleString()}</time>{" "}
+        {text(
+          "Cloudflare dashboard edits do not update this encrypted copy. Save the updated token here before checking permissions or provisioning resources.",
+          "การแก้ token ใน Cloudflare Dashboard ไม่ได้เปลี่ยนสำเนาเข้ารหัสนี้ ให้นำ token ที่อัปเดตแล้วมาบันทึกที่นี่ก่อนตรวจสิทธิ์หรือสร้าง resource",
+        )}
+      </p> : null}
       <details>
         <summary>{text("Configure target account credential", "ตั้งค่า credential ของบัญชีสำหรับ target นี้")}</summary>
         <VStack as="form" gap={2} onSubmit={event => {
