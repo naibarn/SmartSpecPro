@@ -17,7 +17,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartspec123}
       POSTGRES_DB: ${POSTGRES_DB:-smartspec}
     ports:
-      - "5432:5432"
+      # PostgreSQL is reached by host-local services and Docker peers only.
+      # Keep the published port off external interfaces; remote access uses
+      # the private Cloudflare Tunnel rather than a public database socket.
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
