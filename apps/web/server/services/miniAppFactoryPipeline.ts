@@ -16,14 +16,26 @@ export type MiniAppFactoryProfile = "PERSONAL_MINIAPP" | "PLATFORM_SELF_DEVELOPM
 
 /** Loads the canonical Factory pipeline contract used by the autonomous program. */
 export function loadMiniAppFactoryPipeline(path = process.env.SMARTSPEC_MINI_APP_FACTORY_PIPELINE_PATH): MiniAppFactoryPipeline {
-  const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
-  const filePath = path ?? resolve(repositoryRoot, "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json");
+  const serviceDirectory = dirname(fileURLToPath(import.meta.url));
+  const repositoryRoot = resolve(serviceDirectory, "../../../..");
+  const filePaths = path
+    ? [path]
+    : [
+        // Linux releases flatten apps/web into the release root. The runtime
+        // package carries the canonical contract next to this service.
+        resolve(serviceDirectory, "mini-app-factory-pipeline.v1.json"),
+        resolve(repositoryRoot, "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json"),
+      ];
   let raw: unknown;
-  try {
-    raw = JSON.parse(readFileSync(filePath, "utf8"));
-  } catch {
-    throw new Error("FACTORY_PIPELINE_SOURCE_UNAVAILABLE");
+  for (const filePath of filePaths) {
+    try {
+      raw = JSON.parse(readFileSync(filePath, "utf8"));
+      break;
+    } catch {
+      // Continue to the source-tree fallback in development.
+    }
   }
+  if (raw === undefined) throw new Error("FACTORY_PIPELINE_SOURCE_UNAVAILABLE");
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error("FACTORY_PIPELINE_INVALID");
   const value = raw as Record<string, unknown>;
   const pipeline = {

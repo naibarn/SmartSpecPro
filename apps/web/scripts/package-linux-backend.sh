@@ -57,6 +57,14 @@ trap cleanup EXIT
 PACKAGE_ROOT="$STAGING_ROOT/runtime"
 
 "${PNPM[@]}" --filter @smartspec/web --prod deploy --legacy "$PACKAGE_ROOT"
+# Runtime releases are flattened from apps/web and do not contain the
+# monorepo's orchestra tree. Ship the canonical Factory DAG beside its loader.
+FACTORY_PIPELINE_SOURCE="$REPO_ROOT/orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json"
+if [[ ! -f "$FACTORY_PIPELINE_SOURCE" ]]; then
+  echo "Canonical Mini-App Factory pipeline source is missing" >&2
+  exit 2
+fi
+cp -- "$FACTORY_PIPELINE_SOURCE" "$PACKAGE_ROOT/server/services/mini-app-factory-pipeline.v1.json"
 # Some npm packages ship their own test .env (for example Bottleneck's Redis
 # fixture). Runtime environments are supplied outside the immutable artifact.
 # find does not follow pnpm symlinks; deletion affects only this owned staging tree.

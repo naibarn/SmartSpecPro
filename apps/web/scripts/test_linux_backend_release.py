@@ -623,6 +623,9 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         (web / "scripts").mkdir(parents=True)
         (web / "dist/public").mkdir(parents=True)
         (web / "package.json").write_text('{"name":"@smartspec/web","dependencies":{}}\n')
+        factory_pipeline = repo / "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json"
+        factory_pipeline.parent.mkdir(parents=True)
+        factory_pipeline.write_text('{"schemaVersion":"mini-app-factory-pipeline.v1","pipelineId":"fixture","stages":[]}\n')
         (web / "dist/public/index.html").write_text("<html>packaged frontend</html>")
         (web / "tsconfig.json").write_text(json.dumps({
             "extends": "../../tsconfig.base.json",
@@ -696,6 +699,10 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertFalse((runtime / ".env").exists())
         self.assertTrue((runtime / ".env.example").exists())
         self.assertTrue((runtime / "server/_core/index.ts").is_file())
+        self.assertEqual(
+            (runtime / "server/services/mini-app-factory-pipeline.v1.json").read_bytes(),
+            factory_pipeline.read_bytes(),
+        )
         self.assertTrue((runtime / "node_modules/tsx/package.json").is_file())
         runtime_tsconfig = json.loads((runtime / "tsconfig.json").read_text())
         self.assertNotIn("extends", runtime_tsconfig)
