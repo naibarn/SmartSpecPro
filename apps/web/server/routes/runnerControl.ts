@@ -396,6 +396,10 @@ export function runnerSnapshotHasReadyExecution(
       tool.trustState === "ready" && tool.availabilityState === "available" &&
       tool.authState === "authenticated" && tool.healthState === "healthy" &&
       tool.installState === "installed" && tool.configurationState === "configured" &&
+      tool.versionProbeState === "passed" && tool.taskProbeState === "passed" &&
+      typeof tool.taskProbeObservedAtMs === "number" && tool.taskProbeObservedAtMs <= now &&
+      typeof tool.taskProbeExpiresAtMs === "number" && tool.taskProbeExpiresAtMs > now &&
+      Boolean(tool.taskProbeEvidenceRef?.trim()) &&
       Boolean(tool.authorizationEvidenceRef?.trim())
     )
   );
@@ -1846,6 +1850,9 @@ export function registerRunnerControlRoutes(
                 toolId: typeof tool.toolId === "string" ? tool.toolId : "unknown",
                 displayName: typeof tool.displayName === "string" ? tool.displayName : String(tool.toolId ?? "Unknown tool"),
                 version: typeof tool.version === "string" ? tool.version : null,
+                versionProbeState: typeof tool.versionProbeState === "string" ? tool.versionProbeState : "not_run",
+                taskProbeState: typeof tool.taskProbeState === "string" ? tool.taskProbeState : "not_run",
+                taskProbeExpiresAtMs: typeof tool.taskProbeExpiresAtMs === "number" ? tool.taskProbeExpiresAtMs : null,
                 availabilityState: !readiness.snapshotCurrent ? "stale" : typeof tool.availabilityState === "string" ? tool.availabilityState : "unknown",
                 trustState: !readiness.snapshotCurrent ? "degraded" : typeof tool.trustState === "string" ? tool.trustState : "unknown",
                 reasonCodes: !readiness.snapshotCurrent ? ["capability_snapshot_not_current"] : Array.isArray(tool.reasonCodes) ? tool.reasonCodes.filter((code): code is string => typeof code === "string") : [],

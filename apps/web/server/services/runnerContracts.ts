@@ -178,6 +178,7 @@ export type RunnerAuthState =
 export type RunnerHealthState = "unknown" | "unhealthy" | "healthy";
 export type RunnerAvailabilityState =
   "unknown" | "unavailable" | "available" | "busy" | "stale" | "disabled";
+export type RunnerProbeState = "not_run" | "passed" | "failed" | "unsupported";
 export type RunnerPolicyDecision = "pending" | "allowed" | "denied";
 
 export type RunnerToolInventoryEntry = {
@@ -195,6 +196,11 @@ export type RunnerToolInventoryEntry = {
   availabilityState: RunnerAvailabilityState;
   trustState: RunnerInventoryTrustState;
   fingerprint: string;
+  versionProbeState: RunnerProbeState;
+  taskProbeState: RunnerProbeState;
+  taskProbeObservedAtMs?: number;
+  taskProbeExpiresAtMs?: number;
+  taskProbeEvidenceRef?: string;
   /** Immutable, redacted proof that this adapter passed its auth/readiness gate. */
   authorizationEvidenceRef?: string;
   observedAt: string;
@@ -695,6 +701,12 @@ function validateInventoryWindow(
   return { observedAt, expiresAt };
 }
 
+function safeEpochMs(value: unknown, field: string): number {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
+    invalid(`${field} is invalid`);
+  return value;
+}
+
 function validateRunnerToolInventory(
   value: unknown
 ): RunnerToolInventoryEntry[] {
@@ -755,6 +767,30 @@ function validateRunnerToolInventory(
       ] as const
     );
     const adapterId = nullableText(raw.adapterId, `${prefix}.adapterId`, 128);
+    const versionProbeState = enumText(
+      raw.versionProbeState ?? "not_run",
+      `${prefix}.versionProbeState`,
+      ["not_run", "passed", "failed", "unsupported"] as const,
+    );
+    const taskProbeState = enumText(
+      raw.taskProbeState ?? "not_run",
+      `${prefix}.taskProbeState`,
+      ["not_run", "passed", "failed", "unsupported"] as const,
+    );
+    const taskProbeObservedAtMs = raw.taskProbeObservedAtMs === undefined || raw.taskProbeObservedAtMs === null
+      ? undefined
+      : safeEpochMs(raw.taskProbeObservedAtMs, `${prefix}.taskProbeObservedAtMs`);
+    const taskProbeExpiresAtMs = raw.taskProbeExpiresAtMs === undefined || raw.taskProbeExpiresAtMs === null
+      ? undefined
+      : safeEpochMs(raw.taskProbeExpiresAtMs, `${prefix}.taskProbeExpiresAtMs`);
+    const taskProbeEvidenceRef = raw.taskProbeEvidenceRef === undefined || raw.taskProbeEvidenceRef === null
+      ? undefined
+      : requiredText(raw.taskProbeEvidenceRef, `${prefix}.taskProbeEvidenceRef`, 240);
+    if (taskProbeState === "passed" && (
+      taskProbeObservedAtMs === undefined || taskProbeExpiresAtMs === undefined ||
+      !taskProbeEvidenceRef || taskProbeExpiresAtMs <= taskProbeObservedAtMs ||
+      taskProbeExpiresAtMs - taskProbeObservedAtMs > 60 * 60 * 1000
+    )) invalid(`${prefix} claims a passed task probe without fresh evidence`);
     if (
       trustState === "ready" &&
       (adapterId === null ||
@@ -762,7 +798,9 @@ function validateRunnerToolInventory(
         configurationState !== "configured" ||
         (authState !== "authenticated" && authState !== "not_required") ||
         healthState !== "healthy" ||
-        (availabilityState !== "available" && availabilityState !== "busy"))
+        (availabilityState !== "available" && availabilityState !== "busy") ||
+        ((adapterId === "codex.v1" || adapterId === "claude.v1") &&
+          (versionProbeState !== "passed" || taskProbeState !== "passed")))
     )
       invalid(`${prefix} claims ready without verified execution state`);
     const { observedAt, expiresAt } = validateInventoryWindow(raw, prefix);
@@ -799,6 +837,11 @@ function validateRunnerToolInventory(
       availabilityState,
       trustState,
       fingerprint: requiredText(raw.fingerprint, `${prefix}.fingerprint`, 256),
+      versionProbeState,
+      taskProbeState,
+      ...(taskProbeObservedAtMs === undefined ? {} : { taskProbeObservedAtMs }),
+      ...(taskProbeExpiresAtMs === undefined ? {} : { taskProbeExpiresAtMs }),
+      ...(taskProbeEvidenceRef === undefined ? {} : { taskProbeEvidenceRef }),
       ...(raw.authorizationEvidenceRef === undefined || raw.authorizationEvidenceRef === null
         ? {}
         : {
@@ -1093,6 +1136,8 @@ export function validateRunnerCapabilitySnapshot(
     tool.installState === "installed" && tool.configurationState === "configured" &&
     tool.authState === "authenticated" && tool.healthState === "healthy" &&
     tool.trustState === "ready" && tool.availabilityState === "available" &&
+    tool.versionProbeState === "passed" && tool.taskProbeState === "passed" &&
+    Boolean(tool.taskProbeEvidenceRef?.trim()) &&
     Boolean(tool.authorizationEvidenceRef?.trim()));
   if (codexReady && !capabilities.includes("agent.external_task")) {
     capabilities.push("agent.external_task");

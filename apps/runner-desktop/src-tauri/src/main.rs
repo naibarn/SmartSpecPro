@@ -10,9 +10,10 @@ use smartaihub_runner::{
         token_expiry_ms,
     },
     diagnostics::{
-        connection_status, discover_local_tools, run_local_entrypoint_desktop,
+        connection_status_cancellable, discover_local_tools, run_local_entrypoint_desktop,
         runner_credential_diagnostics, verify_local_tool,
     },
+    discovery::ToolCandidate,
     workspace_registry::{self, LocalWorkspaceDetails},
 };
 use std::{
@@ -34,6 +35,39 @@ use tauri::{
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
 
+const RUNNER_STOP_TIMEOUT: Duration = Duration::from_secs(30);
+
+#[derive(Clone)]
+struct RunnerLifecycle {
+    gate: Arc<Mutex<()>>,
+    stop: Arc<Mutex<Option<Arc<AtomicBool>>>>,
+    worker: Arc<Mutex<Option<JoinHandle<()>>>>,
+    running: Arc<AtomicBool>,
+    stopping: Arc<AtomicBool>,
+    sync_stop: Arc<AtomicBool>,
+    last_error: Arc<Mutex<Option<String>>>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RunnerReadinessStatus {
+    tool_inventory: Vec<ToolCandidate>,
+    capability_publication_state: String,
+    capability_publication_acknowledged_at: Option<String>,
+    capability_snapshot_revision: Option<String>,
+}
+
+impl Default for RunnerReadinessStatus {
+    fn default() -> Self {
+        Self {
+            tool_inventory: Vec::new(),
+            capability_publication_state: "unknown".into(),
+            capability_publication_acknowledged_at: None,
+            capability_snapshot_revision: None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 struct DesktopSettings {
@@ -49,11 +83,8 @@ struct RunnerState {
     build_date: String,
     settings_path: PathBuf,
     settings: Mutex<DesktopSettings>,
-    stop: Mutex<Option<Arc<AtomicBool>>>,
-    worker: Mutex<Option<JoinHandle<()>>>,
-    running: Arc<AtomicBool>,
-    last_error: Arc<Mutex<Option<String>>>,
-    lifecycle: Arc<Mutex<()>>,
+    lifecycle: RunnerLifecycle,
+    readiness: Arc<Mutex<RunnerReadinessStatus>>,
     last_refresh_attempt: Mutex<Option<(Instant, &'static str)>>,
     last_refresh_error: Mutex<Option<String>>,
 }
@@ -63,6 +94,7 @@ struct RunnerState {
 struct RunnerStatus {
     connected: bool,
     running: bool,
+    stopping: bool,
     runner_id: String,
     default_workspace_id: Option<String>,
     auto_start_enabled: bool,
@@ -74,6 +106,7 @@ struct RunnerStatus {
     reauth_required_by_ms: Option<u64>,
     credential_state: String,
     credential_error_code: Option<String>,
+    readiness: RunnerReadinessStatus,
 }
 
 fn safe_io_error(_: std::io::Error) -> String {
@@ -122,6 +155,56 @@ fn setting_lock(state: &RunnerState) -> Result<std::sync::MutexGuard<'_, Desktop
         .map_err(|_| "RUNNER_LOCAL_SETTINGS_LOCK_FAILED".into())
 }
 
+fn set_readiness_publication_pending(
+    readiness: &Arc<Mutex<RunnerReadinessStatus>>,
+) -> Result<(), String> {
+    let mut status = readiness
+        .lock()
+        .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?;
+    status.capability_publication_state = "pending".into();
+    status.capability_publication_acknowledged_at = None;
+    status.capability_snapshot_revision = None;
+    Ok(())
+}
+
+fn update_tool_readiness(
+    readiness: &Arc<Mutex<RunnerReadinessStatus>>,
+    tools: &[ToolCandidate],
+    force_pending: bool,
+) -> Result<(), String> {
+    let changed = {
+        let mut status = readiness
+            .lock()
+            .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?;
+        let changed = force_pending
+            || status.tool_inventory.len() != tools.len()
+            || tools.iter().any(|tool| {
+                status
+                    .tool_inventory
+                    .iter()
+                    .find(|current| current.tool_id == tool.tool_id)
+                    .is_none_or(|current| {
+                        current.fingerprint != tool.fingerprint
+                            || current.version_probe_state != tool.version_probe_state
+                            || current.task_probe_state != tool.task_probe_state
+                            || current.auth_state != tool.auth_state
+                            || current.trust_state != tool.trust_state
+                    })
+            });
+        status.tool_inventory = tools.to_vec();
+        if changed {
+            status.capability_publication_state = "pending".into();
+            status.capability_publication_acknowledged_at = None;
+            status.capability_snapshot_revision = None;
+        }
+        changed
+    };
+    if changed {
+        smartaihub_runner::diagnostics::reset_capability_publication_diagnostics();
+    }
+    Ok(())
+}
+
 fn reset_refresh_backoff_for_manual_retry(
     last_attempt: &mut Option<(Instant, &'static str)>,
     now: Instant,
@@ -145,6 +228,7 @@ fn refresh_requires_browser_reauthorization(error: &str) -> bool {
 
 #[tauri::command]
 async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> {
+    let _ = reap_finished_worker(&state.lifecycle);
     let settings = setting_lock(&state)?.clone();
     let mut connection = load_connection(&state.config.data_root)?;
     let mut credential_state = if connection.is_some() {
@@ -249,13 +333,40 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
     let reauth_required_by_ms = connection
         .as_ref()
         .and_then(|saved| token_expiry_ms(&saved.refresh_token));
+    let runtime_diagnostics = runner_credential_diagnostics();
+    let mut readiness = state
+        .readiness
+        .lock()
+        .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?
+        .clone();
+    if let Some(acknowledged_at) = runtime_diagnostics
+        .get("lastCapabilityPublicationAcknowledgedAt")
+        .and_then(serde_json::Value::as_str)
+    {
+        readiness.capability_publication_state = "acknowledged".into();
+        readiness.capability_publication_acknowledged_at = Some(acknowledged_at.to_string());
+        readiness.capability_snapshot_revision = runtime_diagnostics
+            .get("lastCapabilitySnapshotRevision")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string);
+    } else if runtime_diagnostics
+        .get("runtimeCredentialUpdated")
+        .and_then(serde_json::Value::as_bool)
+        == Some(true)
+    {
+        readiness.capability_publication_state = "pending".into();
+        readiness.capability_publication_acknowledged_at = None;
+        readiness.capability_snapshot_revision = None;
+    }
     Ok(RunnerStatus {
         connected: connection.is_some() && matches!(credential_state, "valid" | "renewed"),
-        running: state.running.load(Ordering::Acquire),
+        running: state.lifecycle.running.load(Ordering::Acquire),
+        stopping: state.lifecycle.stopping.load(Ordering::Acquire),
         runner_id: state.config.runner_id.clone(),
         default_workspace_id: settings.default_workspace_id.clone(),
         auto_start_enabled: settings.auto_start_enabled,
         last_error: state
+            .lifecycle
             .last_error
             .lock()
             .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
@@ -267,6 +378,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         reauth_required_by_ms,
         credential_state: credential_state.into(),
         credential_error_code,
+        readiness,
     })
 }
 
@@ -315,9 +427,14 @@ async fn rescan_runner(
     state: State<'_, RunnerState>,
 ) -> Result<Vec<smartaihub_runner::discovery::ToolCandidate>, String> {
     let config = state.config.clone();
+    let readiness = state.readiness.clone();
     tauri::async_runtime::spawn_blocking(move || discover_local_tools(&config))
         .await
         .map_err(|_| "RUNNER_TOOL_SCAN_TASK_FAILED".to_string())
+        .and_then(|tools| {
+            update_tool_readiness(&readiness, &tools, false)?;
+            Ok(tools)
+        })
 }
 
 #[tauri::command]
@@ -326,9 +443,26 @@ async fn verify_runner_tool(
     state: State<'_, RunnerState>,
 ) -> Result<smartaihub_runner::diagnostics::ToolVerificationResult, String> {
     let config = state.config.clone();
-    tauri::async_runtime::spawn_blocking(move || verify_local_tool(&config, &tool_id))
+    let readiness = state.readiness.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || verify_local_tool(&config, &tool_id))
         .await
-        .map_err(|_| "RUNNER_TOOL_VERIFY_TASK_FAILED".to_string())?
+        .map_err(|_| "RUNNER_TOOL_VERIFY_TASK_FAILED".to_string())??;
+    let mut tools = readiness
+        .lock()
+        .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?
+        .tool_inventory
+        .clone();
+    if let Some(existing) = tools
+        .iter_mut()
+        .find(|tool| tool.tool_id == result.tool.tool_id)
+    {
+        *existing = result.tool.clone();
+    } else {
+        tools.push(result.tool.clone());
+    }
+    update_tool_readiness(&readiness, &tools, true)?;
+    smartaihub_runner::diagnostics::reset_capability_publication_diagnostics();
+    Ok(result)
 }
 
 /// Publish readiness using the existing authenticated rescan path. This does
@@ -338,18 +472,36 @@ async fn verify_runner_tool(
 async fn sync_runner_capabilities(state: State<'_, RunnerState>) -> Result<String, String> {
     let config = state.config.clone();
     let lifecycle = state.lifecycle.clone();
-    let running = state.running.clone();
-    tauri::async_runtime::spawn_blocking(move || {
+    let readiness = state.readiness.clone();
+    if lifecycle.stopping.load(Ordering::Acquire) {
+        return Err("RUNNER_SHUTDOWN_IN_PROGRESS".into());
+    }
+    {
+        let mut current = readiness
+            .lock()
+            .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?;
+        current.capability_publication_state = "pending".into();
+        current.capability_publication_acknowledged_at = None;
+        current.capability_snapshot_revision = None;
+    }
+    smartaihub_runner::diagnostics::reset_capability_publication_diagnostics();
+    let result = tauri::async_runtime::spawn_blocking(move || -> Result<String, String> {
         let _guard = lifecycle
+            .gate
             .lock()
             .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?;
-        if running.load(Ordering::Acquire) {
+        if lifecycle.stopping.load(Ordering::Acquire) {
+            return Ok("stopping".into());
+        }
+        if lifecycle.running.load(Ordering::Acquire) {
+            smartaihub_runner::diagnostics::request_capability_refresh();
             return Ok("runtime_running".into());
         }
         if load_connection(&config.data_root)?.is_none() {
             return Ok("disconnected".into());
         }
-        let report = connection_status(&config, "rescan")?;
+        lifecycle.sync_stop.store(false, Ordering::Release);
+        let report = connection_status_cancellable(&config, "rescan", &lifecycle.sync_stop)?;
         let report: serde_json::Value =
             serde_json::from_str(&report).map_err(|_| "RUNNER_CAPABILITY_SYNC_RESPONSE_INVALID")?;
         let accepted = matches!(
@@ -363,7 +515,40 @@ async fn sync_runner_capabilities(state: State<'_, RunnerState>) -> Result<Strin
         }
     })
     .await
-    .map_err(|_| "RUNNER_CAPABILITY_SYNC_TASK_FAILED".to_string())?
+    .map_err(|_| "RUNNER_CAPABILITY_SYNC_TASK_FAILED".to_string())?;
+    match result {
+        Ok(sync_state) => {
+            let mut current = readiness
+                .lock()
+                .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?;
+            current.capability_publication_state = if sync_state == "synced" {
+                "acknowledged".into()
+            } else if matches!(sync_state.as_str(), "runtime_running" | "stopping") {
+                "pending".into()
+            } else {
+                "unknown".into()
+            };
+            let runtime = runner_credential_diagnostics();
+            current.capability_publication_acknowledged_at = runtime
+                .get("lastCapabilityPublicationAcknowledgedAt")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            current.capability_snapshot_revision = runtime
+                .get("lastCapabilitySnapshotRevision")
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            Ok(sync_state)
+        }
+        Err(error) => {
+            let mut current = readiness
+                .lock()
+                .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?;
+            current.capability_publication_state = "failed".into();
+            current.capability_publication_acknowledged_at = None;
+            current.capability_snapshot_revision = None;
+            Err(error)
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -416,9 +601,14 @@ async fn export_runner_debug_report(
     let config = state.config.clone();
     let app_version = state.app_version.clone();
     let build_date = state.build_date.clone();
-    let running = state.running.load(Ordering::Acquire);
+    let running = state.lifecycle.running.load(Ordering::Acquire);
     let runner_id = config.runner_id.clone();
-    let last_error = state.last_error.lock().ok().and_then(|value| value.clone());
+    let last_error = state
+        .lifecycle
+        .last_error
+        .lock()
+        .ok()
+        .and_then(|value| value.clone());
     let refresh_error = state
         .last_refresh_error
         .lock()
@@ -532,32 +722,56 @@ fn open_runner_debug_folder(state: State<'_, RunnerState>) -> Result<(), String>
 }
 
 fn start_runner_inner(state: &RunnerState) -> Result<(), String> {
-    let _lifecycle = state
-        .lifecycle
+    let settings = setting_lock(state)?.clone();
+    start_runner_parts(
+        state.config.clone(),
+        settings,
+        state.lifecycle.clone(),
+        state.readiness.clone(),
+    )
+}
+
+fn start_runner_parts(
+    config: RunnerConfig,
+    settings: DesktopSettings,
+    lifecycle: RunnerLifecycle,
+    readiness: Arc<Mutex<RunnerReadinessStatus>>,
+) -> Result<(), String> {
+    if lifecycle.stopping.load(Ordering::Acquire) {
+        return Err("RUNNER_SHUTDOWN_IN_PROGRESS".into());
+    }
+    let _lifecycle = lifecycle
+        .gate
         .lock()
         .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?;
-    if state.running.load(Ordering::Acquire) {
+    if lifecycle.stopping.load(Ordering::Acquire) {
+        return Err("RUNNER_SHUTDOWN_IN_PROGRESS".into());
+    }
+    reap_finished_worker(&lifecycle)?;
+    if lifecycle.running.load(Ordering::Acquire) {
         return Ok(());
     }
-    let settings = setting_lock(state)?.clone();
     if let Some(workspace_id) = settings.default_workspace_id {
-        workspace_registry::resolve(&state.config, &workspace_id)?;
+        workspace_registry::resolve(&config, &workspace_id)?;
         std::env::set_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID", workspace_id);
     } else {
         std::env::remove_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID");
     }
     let stop = Arc::new(AtomicBool::new(false));
-    *state
+    *lifecycle
         .stop
         .lock()
         .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")? = Some(stop.clone());
-    let config = state.config.clone();
-    let running = state.running.clone();
-    let last_error = state.last_error.clone();
+    lifecycle.sync_stop.store(false, Ordering::Release);
+    let running = lifecycle.running.clone();
+    let last_error = lifecycle.last_error.clone();
     if let Ok(mut error) = last_error.lock() {
         *error = None;
     }
-    state.running.store(true, Ordering::Release);
+    lifecycle.running.store(true, Ordering::Release);
+    lifecycle.stopping.store(false, Ordering::Release);
+    set_readiness_publication_pending(&readiness)?;
+    smartaihub_runner::diagnostics::reset_capability_publication_diagnostics();
     let handle = std::thread::Builder::new()
         .name("smartaihub-runner-control".into())
         .spawn(move || {
@@ -572,54 +786,142 @@ fn start_runner_inner(state: &RunnerState) -> Result<(), String> {
             }
         })
         .map_err(|_| {
-            state.running.store(false, Ordering::Release);
+            lifecycle.running.store(false, Ordering::Release);
             "RUNNER_THREAD_START_FAILED"
         })?;
-    *state
+    *lifecycle
         .worker
         .lock()
         .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")? = Some(handle);
     Ok(())
 }
 
-fn stop_runner_inner(state: &RunnerState) -> Result<(), String> {
-    let _lifecycle = state
-        .lifecycle
+fn stop_runner_inner(lifecycle: RunnerLifecycle) -> Result<(), String> {
+    let _lifecycle = lifecycle
+        .gate
         .lock()
         .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?;
-    if let Some(stop) = state
+    if let Some(stop) = lifecycle
         .stop
         .lock()
         .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
-        .take()
+        .as_ref()
     {
         stop.store(true, Ordering::Release);
     }
-    if let Some(worker) = state
+    lifecycle.sync_stop.store(true, Ordering::Release);
+    let worker = lifecycle
         .worker
         .lock()
         .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
-        .take()
-    {
-        worker.join().map_err(|_| "RUNNER_THREAD_JOIN_FAILED")?;
+        .take();
+    let Some(worker) = worker else {
+        lifecycle.running.store(false, Ordering::Release);
+        lifecycle.stopping.store(false, Ordering::Release);
+        if let Ok(mut stop) = lifecycle.stop.lock() {
+            *stop = None;
+        }
+        std::env::remove_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID");
+        return Ok(());
+    };
+    let deadline = Instant::now() + RUNNER_STOP_TIMEOUT;
+    while !worker.is_finished() {
+        if Instant::now() >= deadline {
+            *lifecycle
+                .worker
+                .lock()
+                .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")? = Some(worker);
+            if let Ok(mut last_error) = lifecycle.last_error.lock() {
+                *last_error = Some("RUNNER_STOP_TIMEOUT".into());
+            }
+            return Err("RUNNER_STOP_TIMEOUT".into());
+        }
+        std::thread::sleep(Duration::from_millis(50));
     }
-    state.running.store(false, Ordering::Release);
+    let join_failed = worker.join().is_err();
+    lifecycle.running.store(false, Ordering::Release);
+    lifecycle.stopping.store(false, Ordering::Release);
+    if let Ok(mut stop) = lifecycle.stop.lock() {
+        *stop = None;
+    }
     std::env::remove_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID");
+    if join_failed {
+        if let Ok(mut last_error) = lifecycle.last_error.lock() {
+            *last_error = Some("RUNNER_THREAD_JOIN_FAILED".into());
+        }
+        return Err("RUNNER_THREAD_JOIN_FAILED".into());
+    }
+    if let Ok(mut last_error) = lifecycle.last_error.lock() {
+        if last_error.as_deref() == Some("RUNNER_STOP_TIMEOUT") {
+            *last_error = None;
+        }
+    }
+    Ok(())
+}
+
+fn reap_finished_worker(lifecycle: &RunnerLifecycle) -> Result<(), String> {
+    let finished = lifecycle
+        .worker
+        .lock()
+        .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
+        .as_ref()
+        .is_some_and(JoinHandle::is_finished);
+    if !finished {
+        return Ok(());
+    }
+    let worker = lifecycle
+        .worker
+        .lock()
+        .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
+        .take();
+    if let Some(worker) = worker {
+        let join_failed = worker.join().is_err();
+        lifecycle.running.store(false, Ordering::Release);
+        lifecycle.stopping.store(false, Ordering::Release);
+        if let Ok(mut stop) = lifecycle.stop.lock() {
+            *stop = None;
+        }
+        std::env::remove_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID");
+        if join_failed {
+            if let Ok(mut last_error) = lifecycle.last_error.lock() {
+                *last_error = Some("RUNNER_THREAD_JOIN_FAILED".into());
+            }
+        } else if let Ok(mut last_error) = lifecycle.last_error.lock() {
+            if last_error.as_deref() == Some("RUNNER_STOP_TIMEOUT") {
+                *last_error = None;
+            }
+        }
+    }
     Ok(())
 }
 
 #[tauri::command]
-fn start_runner(state: State<'_, RunnerState>) -> Result<(), String> {
-    start_runner_inner(&state)
+async fn start_runner(state: State<'_, RunnerState>) -> Result<(), String> {
+    let settings = setting_lock(&state)?.clone();
+    let config = state.config.clone();
+    let lifecycle = state.lifecycle.clone();
+    let readiness = state.readiness.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        start_runner_parts(config, settings, lifecycle, readiness)
+    })
+    .await
+    .map_err(|_| "RUNNER_START_TASK_FAILED".to_string())?
 }
 
 #[tauri::command]
-fn stop_runner(state: State<'_, RunnerState>) -> Result<(), String> {
-    stop_runner_inner(&state)
+async fn stop_runner(state: State<'_, RunnerState>) -> Result<(), String> {
+    let lifecycle = state.lifecycle.clone();
+    lifecycle.stopping.store(true, Ordering::Release);
+    lifecycle.sync_stop.store(true, Ordering::Release);
+    tauri::async_runtime::spawn_blocking(move || stop_runner_inner(lifecycle))
+        .await
+        .map_err(|_| "RUNNER_STOP_TASK_FAILED".to_string())?
 }
 
 #[tauri::command]
-fn list_workspaces(state: State<'_, RunnerState>) -> Result<Vec<workspace_view::WorkspaceView>, String> {
+fn list_workspaces(
+    state: State<'_, RunnerState>,
+) -> Result<Vec<workspace_view::WorkspaceView>, String> {
     workspace_view::list(&state.config)
 }
 
@@ -632,11 +934,13 @@ fn bind_workspace_identity(
 ) -> Result<(), String> {
     let _lifecycle = state
         .lifecycle
+        .gate
         .lock()
         .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?;
     workspace_view::bind(
         &state.config,
-        state.running.load(Ordering::Acquire),
+        state.lifecycle.running.load(Ordering::Acquire)
+            || state.lifecycle.stopping.load(Ordering::Acquire),
         &workspace_id,
         project_id.as_deref(),
         repository_id.as_deref(),
@@ -664,7 +968,9 @@ async fn add_workspace(
 
 #[tauri::command]
 fn remove_workspace(workspace_id: String, state: State<'_, RunnerState>) -> Result<bool, String> {
-    if state.running.load(Ordering::Acquire) {
+    if state.lifecycle.running.load(Ordering::Acquire)
+        || state.lifecycle.stopping.load(Ordering::Acquire)
+    {
         return Err("RUNNER_WORKSPACE_REQUIRES_STOP".into());
     }
     let was_default = setting_lock(&state)?.default_workspace_id.as_deref() == Some(&workspace_id);
@@ -679,7 +985,9 @@ fn set_default_workspace_id(
     state: &RunnerState,
     workspace_id: Option<String>,
 ) -> Result<(), String> {
-    if state.running.load(Ordering::Acquire) {
+    if state.lifecycle.running.load(Ordering::Acquire)
+        || state.lifecycle.stopping.load(Ordering::Acquire)
+    {
         return Err("RUNNER_DEFAULT_WORKSPACE_REQUIRES_STOP".into());
     }
     if let Some(id) = workspace_id.as_deref() {
@@ -738,8 +1046,13 @@ fn set_auto_start(
 }
 
 #[tauri::command]
-fn quit_runner(app: tauri::AppHandle, state: State<'_, RunnerState>) -> Result<(), String> {
-    stop_runner_inner(&state)?;
+async fn quit_runner(app: tauri::AppHandle, state: State<'_, RunnerState>) -> Result<(), String> {
+    let lifecycle = state.lifecycle.clone();
+    lifecycle.stopping.store(true, Ordering::Release);
+    lifecycle.sync_stop.store(true, Ordering::Release);
+    tauri::async_runtime::spawn_blocking(move || stop_runner_inner(lifecycle))
+        .await
+        .map_err(|_| "RUNNER_STOP_TASK_FAILED".to_string())??;
     app.exit(0);
     Ok(())
 }
@@ -775,11 +1088,16 @@ fn main() {
                     .to_string(),
                 settings_path,
                 settings: Mutex::new(settings.clone()),
-                stop: Mutex::new(None),
-                worker: Mutex::new(None),
-                running: Arc::new(AtomicBool::new(false)),
-                last_error: Arc::new(Mutex::new(None)),
-                lifecycle: Arc::new(Mutex::new(())),
+                lifecycle: RunnerLifecycle {
+                    gate: Arc::new(Mutex::new(())),
+                    stop: Arc::new(Mutex::new(None)),
+                    worker: Arc::new(Mutex::new(None)),
+                    running: Arc::new(AtomicBool::new(false)),
+                    stopping: Arc::new(AtomicBool::new(false)),
+                    sync_stop: Arc::new(AtomicBool::new(false)),
+                    last_error: Arc::new(Mutex::new(None)),
+                },
+                readiness: Arc::new(Mutex::new(RunnerReadinessStatus::default())),
                 last_refresh_attempt: Mutex::new(None),
                 last_refresh_error: Mutex::new(None),
             });
@@ -805,9 +1123,27 @@ fn main() {
                     }
                     "quit" => {
                         if let Some(state) = app.try_state::<RunnerState>() {
-                            let _ = stop_runner_inner(&state);
+                            let lifecycle = state.lifecycle.clone();
+                            lifecycle.stopping.store(true, Ordering::Release);
+                            lifecycle.sync_stop.store(true, Ordering::Release);
+                            let app_handle = app.clone();
+                            tauri::async_runtime::spawn_blocking(move || {
+                                let result = stop_runner_inner(lifecycle.clone());
+                                if let Err(error) = result {
+                                    if let Ok(mut last_error) = lifecycle.last_error.lock() {
+                                        *last_error = Some(error);
+                                    }
+                                    if let Some(window) = app_handle.get_webview_window("main") {
+                                        let _ = window.show();
+                                        let _ = window.set_focus();
+                                    }
+                                } else {
+                                    app_handle.exit(0);
+                                }
+                            });
+                        } else {
+                            app.exit(0);
                         }
-                        app.exit(0);
                     }
                     _ => {}
                 })
@@ -821,7 +1157,7 @@ fn main() {
                 if settings.auto_start_enabled {
                     if let Some(state) = app.try_state::<RunnerState>() {
                         if let Err(error) = start_runner_inner(&state) {
-                            if let Ok(mut last_error) = state.last_error.lock() {
+                            if let Ok(mut last_error) = state.lifecycle.last_error.lock() {
                                 *last_error = Some(
                                     if error.starts_with("RUNNER_TRUSTED_WORKSPACE")
                                         || error.starts_with("RUNNER_WORKSPACE")

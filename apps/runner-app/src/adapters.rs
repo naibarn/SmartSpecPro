@@ -1,4 +1,4 @@
-use crate::discovery::{ToolCandidate, ToolKind, TrustState};
+use crate::discovery::{ProbeState, ToolCandidate, ToolKind, TrustState};
 use crate::process::{command_for_cli, hide_console_window, ProcessSpec};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -191,6 +191,7 @@ pub fn build_external_agent_authorization_ref(
     runner_session_id: &str,
     tenant_id: &str,
     adapter_id: &str,
+    task_probe_evidence_ref: &str,
     expires_at_ms: u64,
 ) -> String {
     let mut hasher = Sha256::new();
@@ -201,6 +202,8 @@ pub fn build_external_agent_authorization_ref(
     hasher.update(tenant_id.as_bytes());
     hasher.update([0]);
     hasher.update(adapter_id.as_bytes());
+    hasher.update([0]);
+    hasher.update(task_probe_evidence_ref.as_bytes());
     hasher.update([0]);
     hasher.update(expires_at_ms.to_le_bytes());
     format!("runner-agent-auth:sha256:{:x}", hasher.finalize())
@@ -253,6 +256,21 @@ pub fn apply_probe(
     if !approved_manifest(candidate) {
         return Err("RUNNER_ADAPTER_NOT_APPROVED".into());
     }
+    candidate.version_probe_state = if result
+        .reason_codes
+        .iter()
+        .any(|code| code == "version_probe_ok")
+    {
+        ProbeState::Passed
+    } else if result
+        .reason_codes
+        .iter()
+        .any(|code| code == "verify_unsupported")
+    {
+        ProbeState::Unsupported
+    } else {
+        ProbeState::Failed
+    };
     candidate.version = Some(result.version);
     candidate.auth_state = if result.authenticated {
         crate::discovery::CapabilityDimension::Ready
@@ -275,14 +293,30 @@ pub fn apply_probe(
         candidate.configuration_state
     };
     candidate.reason_codes = result.reason_codes;
-    candidate.trust_state = if result.available && result.healthy && result.authenticated {
+    if candidate
+        .reason_codes
+        .iter()
+        .any(|code| code == "task_probe_ok")
+    {
+        candidate.task_probe_state = ProbeState::Passed;
+    }
+    let requires_task_probe = supports_task_smoke_test(candidate.adapter_id.as_deref());
+    let task_probe_passed = candidate
+        .reason_codes
+        .iter()
+        .any(|code| code == "task_probe_ok");
+    candidate.trust_state = if result.available
+        && result.healthy
+        && result.authenticated
+        && (!requires_task_probe || task_probe_passed)
+    {
         TrustState::Ready
     } else if !result.healthy || !result.available {
         TrustState::Degraded
     } else if !result.authenticated {
         TrustState::AuthRequired
     } else {
-        TrustState::Degraded
+        TrustState::Probed
     };
     Ok(())
 }
@@ -2052,6 +2086,33 @@ pub fn can_execute(candidate: &ToolCandidate) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn codex_version_and_authentication_probes_do_not_prove_task_readiness() {
+        let mut codex = crate::discovery::scan_known_tools(
+            crate::config::RunnerProfile::LocalDevice,
+            &["codex".into()],
+        )
+        .into_iter()
+        .find(|tool| tool.tool_id == "codex")
+        .unwrap();
+
+        apply_probe(
+            &mut codex,
+            AdapterProbeResult {
+                version: "test-codex".into(),
+                authenticated: true,
+                healthy: true,
+                available: true,
+                reason_codes: vec!["version_probe_ok".into(), "auth_status_ok".into()],
+            },
+        )
+        .unwrap();
+
+        assert_eq!(codex.version_probe_state, ProbeState::Passed);
+        assert_eq!(codex.task_probe_state, ProbeState::NotRun);
+        assert_eq!(codex.trust_state, TrustState::Probed);
+    }
 
     #[test]
     fn probe_spawn_failures_map_to_safe_actionable_reason_codes() {

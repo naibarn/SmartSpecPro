@@ -138,12 +138,22 @@ describe("Runner control transport routes", () => {
       expiresAt: new Date(at + 30_000).toISOString(),
       toolInventory: [{ adapterId: "codex.v1", trustState: "ready", availabilityState: "available",
         authState: "authenticated", healthState: "healthy", installState: "installed",
-        configurationState: "configured", authorizationEvidenceRef: "TEST_ONLY_READY_REFERENCE" }],
+        configurationState: "configured", versionProbeState: "passed", taskProbeState: "passed",
+        taskProbeObservedAtMs: at - 2_000, taskProbeExpiresAtMs: at + 20_000,
+        taskProbeEvidenceRef: "runner-task-probe:sha256:TEST_ONLY_REFERENCE",
+        authorizationEvidenceRef: "TEST_ONLY_READY_REFERENCE" }],
     } as unknown as NonNullable<Parameters<typeof runnerSnapshotHasReadyExecution>[0]>;
     expect(runnerSnapshotHasReadyExecution(base, at)).toBe(true);
     expect(runnerSnapshotHasReadyExecution({ ...base, observedAt: "invalid" }, at)).toBe(false);
     expect(runnerSnapshotHasReadyExecution({ ...base, expiresAt: new Date(at).toISOString() }, at)).toBe(false);
-    for (const change of [{ authorizationEvidenceRef: null }, { authState: "auth_required" }, { adapterId: "unsupported.v1" }]) {
+    for (const change of [
+      { authorizationEvidenceRef: null },
+      { authState: "auth_required" },
+      { adapterId: "unsupported.v1" },
+      { taskProbeState: "not_run" },
+      { taskProbeExpiresAtMs: at },
+      { versionProbeState: "failed" },
+    ]) {
       expect(runnerSnapshotHasReadyExecution({ ...base, toolInventory: [{ ...base.toolInventory![0], ...change }] } as typeof base, at)).toBe(false);
     }
   });

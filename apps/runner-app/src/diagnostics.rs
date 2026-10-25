@@ -7,7 +7,9 @@ use crate::config::RunnerConfig;
 use crate::control_channel::{ControlChannel, RunnerExecutionBinding};
 use crate::device_proof::DeviceProofSigner;
 use crate::device_proof::{canonical_json_bytes, endpoint_path};
-use crate::discovery::{scan_environment, CapabilityDimension, ToolCandidate, TrustState};
+use crate::discovery::{
+    scan_environment, CapabilityDimension, ProbeState, ToolCandidate, TrustState,
+};
 use crate::external_agent::{start_external_agent, ExternalAgentProcess, ExternalAgentResult};
 use crate::journal::{ExternalAgentCommandClaim, RunnerReceiptJournal};
 use crate::protocol::{
@@ -22,12 +24,11 @@ use crate::{
     MIN_COMPATIBLE_RUNNER_VERSION, RUNNER_CONNECT_SCHEMA_REVISION, RUNNER_CONTROL_CONTRACT_VERSION,
     RUNNER_VERSION,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use std::fs;
-#[cfg(target_os = "linux")]
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
@@ -38,7 +39,12 @@ const MAX_REFRESH_INTERVAL_SECONDS: u64 = 86_400;
 const CONTROL_CHANNEL_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(30);
 const CAPABILITY_SNAPSHOT_TTL: Duration = Duration::from_secs(300);
 const CAPABILITY_SNAPSHOT_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
+const TASK_PROBE_EVIDENCE_FILE: &str = "tool-task-probe-evidence.json";
+const TASK_PROBE_EVIDENCE_TTL: Duration = Duration::from_secs(60 * 60);
+const MAX_TASK_PROBE_EVIDENCE_BYTES: u64 = 256 * 1024;
 static RUNNER_CREDENTIAL_DIAGNOSTICS: OnceLock<Mutex<serde_json::Value>> = OnceLock::new();
+static TASK_PROBE_EVIDENCE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static CAPABILITY_REFRESH_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 /// Returns the current process-local credential handoff status for sanitized
 /// Desktop debug export. The object never contains credentials or key material.
@@ -54,6 +60,7 @@ pub fn runner_credential_diagnostics() -> serde_json::Value {
                 "wssAuthenticationAcknowledged": false,
                 "lastWssAuthenticationAcknowledgedAt": null,
                 "lastCapabilityPublicationAcknowledgedAt": null,
+                "lastCapabilitySnapshotRevision": null,
                 "lastFailureCode": null,
                 "lastFailureAt": null
             }))
@@ -61,6 +68,30 @@ pub fn runner_credential_diagnostics() -> serde_json::Value {
         .lock()
         .map(|value| value.clone())
         .unwrap_or_else(|_| json!({ "diagnosticsState": "unavailable" }))
+}
+
+/// Invalidates the process-local capability acknowledgment after the local
+/// inventory or credential binding changes. The next accepted publication
+/// records its own snapshot revision and timestamp.
+pub fn reset_capability_publication_diagnostics() {
+    if let Ok(mut diagnostics) = RUNNER_CREDENTIAL_DIAGNOSTICS
+        .get_or_init(|| {
+            Mutex::new(json!({
+                "lastCapabilityPublicationAcknowledgedAt": null,
+                "lastCapabilitySnapshotRevision": null
+            }))
+        })
+        .lock()
+    {
+        diagnostics["lastCapabilityPublicationAcknowledgedAt"] = serde_json::Value::Null;
+        diagnostics["lastCapabilitySnapshotRevision"] = serde_json::Value::Null;
+    }
+}
+
+/// Requests an immediate capability refresh from the active control loop.
+/// The loop owns the authenticated transport and performs the publication.
+pub fn request_capability_refresh() {
+    CAPABILITY_REFRESH_REQUESTED.store(true, Ordering::Release);
 }
 #[cfg(target_os = "linux")]
 const MAX_SAFE_JS_INTEGER: u64 = 9_007_199_254_740_991;
@@ -171,10 +202,22 @@ fn build_local_session_inventories(
 }
 
 pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
-    let tools = scan_environment(config.profile);
+    let tools = inspect_local_tools(config);
     let ready_tools = tools
         .iter()
-        .filter(|tool| tool.trust_state == TrustState::Ready)
+        .filter(|tool| tool_ready_for_authorized_execution(tool))
+        .count();
+    let version_probe_passed = tools
+        .iter()
+        .filter(|tool| tool.version_probe_state == ProbeState::Passed)
+        .count();
+    let authenticated = tools
+        .iter()
+        .filter(|tool| tool.auth_state == CapabilityDimension::Ready)
+        .count();
+    let task_probe_passed = tools
+        .iter()
+        .filter(|tool| tool.task_probe_state == ProbeState::Passed)
         .count();
     json!({
         "command": command,
@@ -189,10 +232,33 @@ pub fn redacted_status(config: &RunnerConfig, command: &str) -> String {
         "state": runner_status_state(ready_tools),
         "toolCount": tools.len(),
         "readyToolCount": ready_tools,
+        "readiness": {
+            "versionProbePassedToolCount": version_probe_passed,
+            "authenticatedToolCount": authenticated,
+            "realTaskProbePassedToolCount": task_probe_passed,
+            "authorizedExecutionReadyToolCount": ready_tools,
+            "executionGrant": "per_task_control_plane_admission_required"
+        },
         "tools": tools,
         "credentials": "redacted"
     })
     .to_string()
+}
+
+fn tool_ready_for_authorized_execution(tool: &ToolCandidate) -> bool {
+    if tool.trust_state != TrustState::Ready {
+        return false;
+    }
+    if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1")) {
+        return tool.version_probe_state == ProbeState::Passed
+            && tool.auth_state == CapabilityDimension::Ready
+            && tool.task_probe_state == ProbeState::Passed
+            && tool.task_probe_evidence_ref.is_some()
+            && tool
+                .task_probe_expires_at_ms
+                .is_some_and(|expires_at| expires_at > current_time_ms());
+    }
+    true
 }
 
 #[cfg(test)]
@@ -224,13 +290,65 @@ pub fn inspect_local_tools(config: &RunnerConfig) -> Vec<ToolCandidate> {
             apply_bounded_probe(tool);
         }
     }
+    apply_cached_task_probe_evidence(config, &mut tools, None, None);
     tools
 }
 
 /// Returns locally discovered tool candidates without launching them. Discovery
 /// is safe to repeat and must remain separate from any command or auth probe.
 pub fn discover_local_tools(config: &RunnerConfig) -> Vec<ToolCandidate> {
-    scan_environment(config.profile)
+    let mut tools = scan_environment(config.profile);
+    apply_cached_task_probe_evidence(config, &mut tools, None, None);
+    tools
+}
+
+fn apply_cached_task_probe_evidence(
+    config: &RunnerConfig,
+    tools: &mut [ToolCandidate],
+    runner_session_id: Option<&str>,
+    tenant_id: Option<&str>,
+) {
+    let connection_identity = if runner_session_id.is_none() || tenant_id.is_none() {
+        crate::connection::load_connection(&config.data_root)
+            .ok()
+            .flatten()
+    } else {
+        None
+    };
+    let current_session = runner_session_id
+        .map(str::to_string)
+        .or_else(|| {
+            connection_identity
+                .as_ref()
+                .and_then(|value| value.runner_session_id.clone())
+        })
+        .or_else(|| {
+            connection_identity
+                .as_ref()
+                .and_then(|value| crate::connection::token_runner_session_id(&value.control_token))
+        });
+    let current_tenant = tenant_id
+        .map(str::to_string)
+        .or_else(|| {
+            connection_identity
+                .as_ref()
+                .and_then(|value| value.tenant_id.clone())
+        })
+        .or_else(|| {
+            connection_identity
+                .as_ref()
+                .and_then(|value| crate::connection::token_tenant_id(&value.control_token))
+        });
+    let entries = load_task_probe_evidence(&config.data_root);
+    for tool in tools {
+        apply_task_probe_evidence(
+            tool,
+            &entries,
+            &config.runner_id,
+            current_session.as_deref(),
+            current_tenant.as_deref(),
+        );
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -249,6 +367,247 @@ pub struct ToolVerificationResult {
     pub task_check: Option<ToolTaskCheck>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TaskProbeEvidence {
+    runner_id: String,
+    runner_session_id: Option<String>,
+    tenant_id: Option<String>,
+    tool_id: String,
+    adapter_id: String,
+    fingerprint: String,
+    #[serde(default)]
+    version: Option<String>,
+    #[serde(default)]
+    version_probe_state: ProbeState,
+    #[serde(default)]
+    auth_state: Option<CapabilityDimension>,
+    #[serde(default)]
+    health_state: Option<CapabilityDimension>,
+    #[serde(default)]
+    availability_state: Option<CapabilityDimension>,
+    state: ProbeState,
+    reason_code: Option<String>,
+    evidence_ref: String,
+    observed_at_ms: u64,
+    expires_at_ms: u64,
+}
+
+fn current_time_ms() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis()
+        .min(u128::from(u64::MAX)) as u64
+}
+
+fn task_probe_evidence_path(data_root: &str) -> PathBuf {
+    Path::new(data_root).join(TASK_PROBE_EVIDENCE_FILE)
+}
+
+fn task_probe_evidence_ref(evidence: &TaskProbeEvidence) -> String {
+    let identity = json!({
+        "runnerId": evidence.runner_id.as_str(),
+        "runnerSessionId": evidence.runner_session_id.as_deref(),
+        "tenantId": evidence.tenant_id.as_deref(),
+        "toolId": evidence.tool_id.as_str(),
+        "adapterId": evidence.adapter_id.as_str(),
+        "fingerprint": evidence.fingerprint.as_str(),
+        "version": evidence.version.as_deref(),
+        "versionProbeState": evidence.version_probe_state,
+        "authState": evidence.auth_state,
+        "healthState": evidence.health_state,
+        "availabilityState": evidence.availability_state,
+        "taskProbeState": evidence.state,
+        "reasonCode": evidence.reason_code.as_deref(),
+        "observedAtMs": evidence.observed_at_ms,
+        "expiresAtMs": evidence.expires_at_ms,
+    });
+    let bytes = serde_json::to_vec(&identity).unwrap_or_default();
+    format!("runner-task-probe:sha256:{:x}", Sha256::digest(bytes))
+}
+
+fn load_task_probe_evidence(data_root: &str) -> Vec<TaskProbeEvidence> {
+    let path = task_probe_evidence_path(data_root);
+    let Ok(metadata) = fs::metadata(&path) else {
+        return Vec::new();
+    };
+    if metadata.len() > MAX_TASK_PROBE_EVIDENCE_BYTES {
+        return Vec::new();
+    }
+    let Ok(bytes) = fs::read(path) else {
+        return Vec::new();
+    };
+    let Ok(entries) = serde_json::from_slice::<Vec<TaskProbeEvidence>>(&bytes) else {
+        return Vec::new();
+    };
+    let now_ms = current_time_ms();
+    entries
+        .into_iter()
+        .filter(|entry| {
+            entry.expires_at_ms > now_ms
+                && entry.expires_at_ms > entry.observed_at_ms
+                && entry.expires_at_ms.saturating_sub(entry.observed_at_ms)
+                    <= TASK_PROBE_EVIDENCE_TTL.as_millis() as u64
+                && entry.evidence_ref == task_probe_evidence_ref(entry)
+                && entry.evidence_ref.len() <= 96
+                && entry.tool_id.len() <= 128
+                && entry.adapter_id.len() <= 128
+                && entry.fingerprint.len() <= 256
+                && entry
+                    .reason_code
+                    .as_deref()
+                    .is_none_or(|reason| reason.starts_with("task_probe_") && reason.len() <= 96)
+        })
+        .take(128)
+        .collect()
+}
+
+fn save_task_probe_evidence(
+    config: &RunnerConfig,
+    tool: &ToolCandidate,
+    state: ProbeState,
+    reason_code: Option<&str>,
+) -> Result<TaskProbeEvidence, String> {
+    let adapter_id = tool
+        .adapter_id
+        .as_deref()
+        .ok_or_else(|| "RUNNER_TASK_PROBE_ADAPTER_MISSING".to_string())?;
+    let connection = crate::connection::load_connection(&config.data_root)
+        .ok()
+        .flatten();
+    let runner_session_id = connection
+        .as_ref()
+        .and_then(|value| value.runner_session_id.clone())
+        .or_else(|| {
+            connection
+                .as_ref()
+                .and_then(|value| crate::connection::token_runner_session_id(&value.control_token))
+        });
+    let tenant_id = connection
+        .as_ref()
+        .and_then(|value| value.tenant_id.clone())
+        .or_else(|| {
+            connection
+                .as_ref()
+                .and_then(|value| crate::connection::token_tenant_id(&value.control_token))
+        });
+    let observed_at_ms = current_time_ms();
+    let expires_at_ms = observed_at_ms.saturating_add(TASK_PROBE_EVIDENCE_TTL.as_millis() as u64);
+    let mut evidence = TaskProbeEvidence {
+        runner_id: config.runner_id.clone(),
+        runner_session_id,
+        tenant_id,
+        tool_id: tool.tool_id.clone(),
+        adapter_id: adapter_id.to_string(),
+        fingerprint: tool.fingerprint.clone(),
+        version: tool.version.clone(),
+        version_probe_state: tool.version_probe_state,
+        auth_state: Some(tool.auth_state),
+        health_state: Some(tool.health_state),
+        availability_state: Some(tool.availability_state),
+        state,
+        reason_code: reason_code.map(str::to_string),
+        evidence_ref: String::new(),
+        observed_at_ms,
+        expires_at_ms,
+    };
+    evidence.evidence_ref = task_probe_evidence_ref(&evidence);
+
+    let _guard = TASK_PROBE_EVIDENCE_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "RUNNER_TASK_PROBE_EVIDENCE_LOCK_FAILED")?;
+    let path = task_probe_evidence_path(&config.data_root);
+    let root = path
+        .parent()
+        .ok_or_else(|| "RUNNER_TASK_PROBE_EVIDENCE_PATH_INVALID".to_string())?;
+    fs::create_dir_all(root).map_err(|_| "RUNNER_TASK_PROBE_EVIDENCE_WRITE_FAILED")?;
+    let mut entries = load_task_probe_evidence(&config.data_root);
+    entries.retain(|entry| entry.tool_id != tool.tool_id);
+    entries.push(evidence.clone());
+    let bytes =
+        serde_json::to_vec(&entries).map_err(|_| "RUNNER_TASK_PROBE_EVIDENCE_SERIALIZE_FAILED")?;
+    let temp = root.join(format!(
+        ".{TASK_PROBE_EVIDENCE_FILE}.tmp-{}",
+        std::process::id()
+    ));
+    fs::write(&temp, bytes).map_err(|_| "RUNNER_TASK_PROBE_EVIDENCE_WRITE_FAILED")?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&temp, fs::Permissions::from_mode(0o600))
+            .map_err(|_| "RUNNER_TASK_PROBE_EVIDENCE_PERMISSION_FAILED")?;
+    }
+    #[cfg(windows)]
+    if path.exists() {
+        fs::remove_file(&path).map_err(|_| "RUNNER_TASK_PROBE_EVIDENCE_REPLACE_FAILED")?;
+    }
+    fs::rename(temp, path).map_err(|_| "RUNNER_TASK_PROBE_EVIDENCE_REPLACE_FAILED")?;
+    Ok(evidence)
+}
+
+fn apply_task_probe_evidence(
+    tool: &mut ToolCandidate,
+    entries: &[TaskProbeEvidence],
+    runner_id: &str,
+    runner_session_id: Option<&str>,
+    tenant_id: Option<&str>,
+) {
+    let Some(evidence) = entries.iter().rev().find(|entry| {
+        entry.runner_id == runner_id
+            && entry.tool_id == tool.tool_id
+            && Some(entry.adapter_id.as_str()) == tool.adapter_id.as_deref()
+            && entry.fingerprint == tool.fingerprint
+            && entry.runner_session_id.as_deref() == runner_session_id
+            && entry.tenant_id.as_deref() == tenant_id
+    }) else {
+        return;
+    };
+    tool.task_probe_state = evidence.state;
+    tool.task_probe_observed_at_ms = Some(evidence.observed_at_ms);
+    tool.task_probe_expires_at_ms = Some(evidence.expires_at_ms);
+    tool.task_probe_evidence_ref = Some(evidence.evidence_ref.clone());
+    if tool.version_probe_state == ProbeState::NotRun {
+        tool.version = evidence.version.clone();
+        tool.version_probe_state = evidence.version_probe_state;
+    }
+    if tool.auth_state == CapabilityDimension::Unknown {
+        if let Some(auth_state) = evidence.auth_state {
+            tool.auth_state = auth_state;
+        }
+    }
+    if tool.health_state == CapabilityDimension::Unknown {
+        if let Some(health_state) = evidence.health_state {
+            tool.health_state = health_state;
+        }
+    }
+    if tool.availability_state == CapabilityDimension::Unknown {
+        if let Some(availability_state) = evidence.availability_state {
+            tool.availability_state = availability_state;
+        }
+    }
+    tool.reason_codes
+        .retain(|code| !code.starts_with("task_probe_"));
+    if let Some(reason_code) = evidence.reason_code.as_ref() {
+        tool.reason_codes.push(reason_code.clone());
+    } else if evidence.state == ProbeState::Passed {
+        tool.reason_codes.push("task_probe_ok".into());
+    }
+    if evidence.state == ProbeState::Passed
+        && tool.version_probe_state == ProbeState::Passed
+        && tool.auth_state == CapabilityDimension::Ready
+        && tool.health_state == CapabilityDimension::Ready
+        && tool.availability_state == CapabilityDimension::Ready
+    {
+        tool.trust_state = TrustState::Ready;
+    } else if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1"))
+        && tool.trust_state == TrustState::Ready
+    {
+        tool.trust_state = TrustState::Probed;
+    }
+}
+
 /// Runs the approved bounded command probe and, when a documented one-shot
 /// entrypoint exists, sends a harmless real prompt so a version string is never
 /// mistaken for task readiness.
@@ -264,6 +623,7 @@ pub fn verify_local_tool(
     if tool.executable_path.is_some() && tool.adapter_id.is_some() {
         if !crate::adapters::approved_manifest(&tool) {
             tool.reason_codes = vec!["verify_unsupported".into()];
+            tool.task_probe_state = ProbeState::Unsupported;
             return Ok(ToolVerificationResult { tool, task_check });
         }
         match probe_candidate(&tool, Duration::from_secs(5)) {
@@ -312,6 +672,32 @@ pub fn verify_local_tool(
                 response,
                 reason_code,
             });
+        }
+    }
+    if let Some(check) = task_check.as_ref() {
+        let state = match check.state.as_str() {
+            "passed" => ProbeState::Passed,
+            "failed" => ProbeState::Failed,
+            "unsupported" => ProbeState::Unsupported,
+            _ => ProbeState::NotRun,
+        };
+        if state != ProbeState::NotRun {
+            let evidence = save_task_probe_evidence(
+                config,
+                &tool,
+                state,
+                check
+                    .reason_code
+                    .as_deref()
+                    .or_else(|| (state == ProbeState::Passed).then_some("task_probe_ok")),
+            )?;
+            apply_task_probe_evidence(
+                &mut tool,
+                std::slice::from_ref(&evidence),
+                &config.runner_id,
+                evidence.runner_session_id.as_deref(),
+                evidence.tenant_id.as_deref(),
+            );
         }
     }
     Ok(ToolVerificationResult { tool, task_check })
@@ -369,6 +755,7 @@ fn scan_capability_tools(
             })
         })
     });
+    let task_probe_evidence = load_task_probe_evidence(&config.data_root);
     let mut tools = scan_environment(config.profile);
     for tool in &mut tools {
         if tool.executable_path.is_some() && tool.adapter_id.is_some() {
@@ -411,6 +798,13 @@ fn scan_capability_tools(
             if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
                 return Ok(None);
             }
+            apply_task_probe_evidence(
+                tool,
+                &task_probe_evidence,
+                &config.runner_id,
+                runner_session_id,
+                tenant_id,
+            );
             if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1")) {
                 tool.authorization_evidence_ref = external_agent_readiness_ref(
                     config,
@@ -436,11 +830,20 @@ fn external_agent_readiness_ref(
     access_token_expires_at_ms: Option<u64>,
 ) -> Option<String> {
     let adapter_id = tool.adapter_id.as_deref()?;
-    // A real Codex login-status probe can establish adapter readiness too.
-    // This redacted reference binds those facts to the approved session; it
-    // never grants provider policy, a job lease or SPEC-224 recovery authority.
+    // A login-status/version probe is not proof that the configured harness can
+    // complete a model task. Bind this reference to a recent real task probe;
+    // it still grants no provider policy, job lease or SPEC-224 authority.
     if tool.trust_state != TrustState::Ready
         || tool.auth_state != CapabilityDimension::Ready
+        || tool.version_probe_state != ProbeState::Passed
+        || tool.task_probe_state != ProbeState::Passed
+        || tool
+            .task_probe_evidence_ref
+            .as_deref()
+            .is_none_or(str::is_empty)
+        || tool
+            .task_probe_expires_at_ms
+            .is_none_or(|expires_at| expires_at <= current_time_ms())
         || !(adapter_id == "codex.v1" || deterministic_certification_adapter_enabled())
         || !matches!(adapter_id, "codex.v1" | "claude.v1")
     {
@@ -461,6 +864,7 @@ fn external_agent_readiness_ref(
         session_id,
         tenant_id,
         adapter_id,
+        tool.task_probe_evidence_ref.as_deref()?,
         expires_at,
     ))
 }
@@ -833,7 +1237,23 @@ fn rebind_capability_snapshot(
                 && tool
                     .get("authState")
                     .and_then(serde_json::Value::as_str)
-                    .is_some_and(|state| matches!(state, "authenticated" | "not_required"));
+                    .is_some_and(|state| matches!(state, "authenticated" | "not_required"))
+                && tool
+                    .get("versionProbeState")
+                    .and_then(serde_json::Value::as_str)
+                    == Some("passed")
+                && tool
+                    .get("taskProbeState")
+                    .and_then(serde_json::Value::as_str)
+                    == Some("passed")
+                && tool
+                    .get("taskProbeEvidenceRef")
+                    .and_then(serde_json::Value::as_str)
+                    .is_some_and(|value| !value.is_empty())
+                && tool
+                    .get("taskProbeExpiresAtMs")
+                    .and_then(serde_json::Value::as_u64)
+                    .is_some_and(|expires_at| expires_at > current_time_ms());
             (ready && matches!(adapter, "codex.v1" | "claude.v1")).then(|| adapter.to_string())
         })
         .collect();
@@ -866,6 +1286,7 @@ struct RotatingControlTransport {
     last_rotation_at: Option<String>,
     last_wss_auth_acknowledged_at: Option<String>,
     last_capability_acknowledged_at: Option<String>,
+    last_capability_snapshot_revision: Option<String>,
     wss_transport_recreated: bool,
     last_failure_code: Option<String>,
     last_failure_at: Option<String>,
@@ -887,6 +1308,7 @@ impl RotatingControlTransport {
             last_rotation_at: None,
             last_wss_auth_acknowledged_at: None,
             last_capability_acknowledged_at: None,
+            last_capability_snapshot_revision: None,
             wss_transport_recreated: false,
             last_failure_code: None,
             last_failure_at: None,
@@ -980,6 +1402,7 @@ impl RotatingControlTransport {
         self.last_rotation_at = Some(current_time_iso());
         self.last_wss_auth_acknowledged_at = None;
         self.last_capability_acknowledged_at = None;
+        self.last_capability_snapshot_revision = None;
         self.wss_transport_recreated = true;
         Ok(true)
     }
@@ -1023,6 +1446,7 @@ impl RotatingControlTransport {
             "wssAuthenticationAcknowledged": self.inner.wss_auth_acknowledged(),
             "lastWssAuthenticationAcknowledgedAt": self.last_wss_auth_acknowledged_at,
             "lastCapabilityPublicationAcknowledgedAt": self.last_capability_acknowledged_at,
+            "lastCapabilitySnapshotRevision": self.last_capability_snapshot_revision,
             "lastFailureCode": last_failure_code,
             "lastFailureAt": self.last_failure_at,
         })
@@ -1046,6 +1470,21 @@ fn transport_error_code(error: TransportError) -> &'static str {
 impl ControlTransport for RotatingControlTransport {
     fn send_wss(&mut self, endpoint: &str, event: &Envelope) -> Result<AckState, TransportError> {
         self.refresh_credentials_if_changed()?;
+        let is_capability_publication = event
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            == Some("runner.capabilities.update");
+        if is_capability_publication {
+            self.last_capability_acknowledged_at = None;
+            self.last_capability_snapshot_revision = event
+                .payload
+                .get("snapshot")
+                .and_then(|snapshot| snapshot.get("revision"))
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            self.publish_runtime_diagnostics();
+        }
         let ack = match self.inner.send_wss(endpoint, event) {
             Ok(ack) => ack,
             Err(error) => {
@@ -1058,11 +1497,7 @@ impl ControlTransport for RotatingControlTransport {
         if self.inner.wss_auth_acknowledged() && self.last_wss_auth_acknowledged_at.is_none() {
             self.last_wss_auth_acknowledged_at = Some(current_time_iso());
         }
-        if event
-            .payload
-            .get("type")
-            .and_then(serde_json::Value::as_str)
-            == Some("runner.capabilities.update")
+        if is_capability_publication
             && matches!(
                 ack,
                 AckState::Accepted | AckState::Applied | AckState::Duplicate
@@ -1086,8 +1521,44 @@ impl ControlTransport for RotatingControlTransport {
 
     fn send_https(&mut self, endpoint: &str, event: &Envelope) -> Result<AckState, TransportError> {
         self.refresh_credentials_if_changed()?;
+        let is_capability_publication = event
+            .payload
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            == Some("runner.capabilities.update");
+        if is_capability_publication {
+            self.last_capability_acknowledged_at = None;
+            self.last_capability_snapshot_revision = event
+                .payload
+                .get("snapshot")
+                .and_then(|snapshot| snapshot.get("revision"))
+                .and_then(serde_json::Value::as_str)
+                .map(str::to_string);
+            self.publish_runtime_diagnostics();
+        }
         match self.inner.send_https(endpoint, event) {
-            Ok(ack) => Ok(ack),
+            Ok(ack) => {
+                if is_capability_publication
+                    && matches!(
+                        ack,
+                        AckState::Accepted | AckState::Applied | AckState::Duplicate
+                    )
+                {
+                    self.last_capability_acknowledged_at = Some(current_time_iso());
+                }
+                if matches!(
+                    ack,
+                    AckState::Accepted | AckState::Applied | AckState::Duplicate
+                ) {
+                    self.last_failure_code = None;
+                    self.last_failure_at = None;
+                } else {
+                    self.last_failure_code = Some("RUNNER_CONTROL_EVENT_REJECTED".into());
+                    self.last_failure_at = Some(current_time_iso());
+                }
+                self.publish_runtime_diagnostics();
+                Ok(ack)
+            }
             Err(error) => {
                 self.last_failure_code = Some(transport_error_code(error).to_owned());
                 self.last_failure_at = Some(current_time_iso());
@@ -1126,34 +1597,80 @@ fn run_live_control_loop(
 ) -> Result<String, String> {
     let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
     let mut browser_processes = std::collections::HashMap::<String, ActiveBrowserExecution>::new();
-    let result = run_live_control_loop_inner(
-        config,
-        endpoint,
-        transport,
-        channel,
-        node_kind,
-        snapshot_credential_revision,
-        tools,
-        snapshot,
-        browser_grant,
-        stop,
-        &mut external_processes,
-        &mut browser_processes,
-    );
-    if result
-        .as_ref()
-        .is_err_and(|error| credential_failure_requires_cancellation(error))
-    {
-        for active in external_processes.values_mut() {
-            let _ = active.process.cancel();
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_live_control_loop_inner(
+            config,
+            endpoint,
+            transport,
+            channel,
+            node_kind,
+            snapshot_credential_revision,
+            tools,
+            snapshot,
+            browser_grant,
+            stop,
+            &mut external_processes,
+            &mut browser_processes,
+        )
+    }));
+    match result {
+        Ok(result) => {
+            if result.is_err() {
+                finish_active_processes(&mut external_processes, &mut browser_processes);
+            }
+            result
         }
-        for active in browser_processes.values_mut() {
-            active.process.request_cancel();
+        Err(_) => {
+            finish_active_processes(&mut external_processes, &mut browser_processes);
+            Err("RUNNER_CONTROL_LOOP_PANICKED".into())
         }
     }
-    result
 }
 
+/// Keep ownership of child processes until cancellation has completed. A
+/// failed kill remains observable as a live Runner worker; the Desktop stop
+/// command can time out without reporting the process as stopped.
+fn finish_active_processes(
+    external_processes: &mut std::collections::HashMap<String, ActiveExternalAgent>,
+    browser_processes: &mut std::collections::HashMap<String, ActiveBrowserExecution>,
+) {
+    loop {
+        let external_ids = external_processes.keys().cloned().collect::<Vec<_>>();
+        for command_id in external_ids {
+            let cancelled = external_processes
+                .get_mut(&command_id)
+                .is_some_and(|active| active.process.cancel().is_ok());
+            if cancelled {
+                external_processes.remove(&command_id);
+            }
+        }
+
+        let browser_ids = browser_processes.keys().cloned().collect::<Vec<_>>();
+        for command_id in &browser_ids {
+            if let Some(active) = browser_processes.get_mut(command_id) {
+                active.process.request_cancel();
+            }
+        }
+        for command_id in browser_ids {
+            match browser_processes
+                .get_mut(&command_id)
+                .map(|active| active.process.try_collect())
+            {
+                Some(Ok(Some(_))) | Some(Err(_)) => {
+                    browser_processes.remove(&command_id);
+                }
+                Some(Ok(None)) | None => {}
+            }
+        }
+
+        if external_processes.is_empty() && browser_processes.is_empty() {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(250));
+    }
+}
+
+#[cfg(test)]
 fn credential_failure_requires_cancellation(error: &str) -> bool {
     error.starts_with("RUNNER_CREDENTIAL_")
 }
@@ -1243,18 +1760,19 @@ fn run_live_control_loop_inner(
     let mut force_capability_refresh =
         transport.credential_revision != snapshot_credential_revision;
     loop {
+        if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
+            finish_active_processes(external_processes, browser_processes);
+            return Ok(json!({"command": "run", "state": "stopped"}).to_string());
+        }
+        if CAPABILITY_REFRESH_REQUESTED.swap(false, Ordering::AcqRel) {
+            force_capability_refresh = true;
+        }
         let credentials_changed = transport
             .refresh_credentials_if_changed()
             .map_err(|error| transport_error_code(error).to_owned())?;
         if credentials_changed || transport.credential_revision != last_seen_credential_revision {
             force_capability_refresh = true;
             last_seen_credential_revision = transport.credential_revision;
-        }
-        if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
-            for active in external_processes.values_mut() {
-                let _ = active.process.cancel();
-            }
-            return Ok(json!({"command": "run", "state": "stopped"}).to_string());
         }
         if keepalive_due(last_keepalive.elapsed(), CONTROL_CHANNEL_KEEPALIVE_INTERVAL) {
             let keepalive =
@@ -2817,6 +3335,11 @@ mod rotating_transport_tests {
             transport.send_wss(&endpoint, &capability_event()),
             Ok(AckState::Rejected)
         );
+        assert!(transport.last_capability_acknowledged_at.is_none());
+        assert_eq!(
+            transport.last_capability_snapshot_revision.as_deref(),
+            Some("r2")
+        );
         transport.inner.close_wss();
 
         let mut connection_b = connection_a.clone();
@@ -2864,6 +3387,10 @@ mod rotating_transport_tests {
         assert!(transport.last_rotation_at.is_some());
         assert!(transport.last_wss_auth_acknowledged_at.is_some());
         assert!(transport.last_capability_acknowledged_at.is_some());
+        assert_eq!(
+            transport.last_capability_snapshot_revision.as_deref(),
+            Some("r2")
+        );
         assert!(!transport
             .credential_diagnostics(None)
             .to_string()
@@ -3530,6 +4057,11 @@ fn capability_snapshot(
                 "availabilityState": dimension_to_availability(tool.availability_state, tool.trust_state),
                 "trustState": tool.trust_state,
                 "fingerprint": tool.fingerprint,
+                "versionProbeState": tool.version_probe_state,
+                "taskProbeState": tool.task_probe_state,
+                "taskProbeObservedAtMs": tool.task_probe_observed_at_ms,
+                "taskProbeExpiresAtMs": tool.task_probe_expires_at_ms,
+                "taskProbeEvidenceRef": tool.task_probe_evidence_ref,
                 "authorizationEvidenceRef": tool.authorization_evidence_ref,
                 "observedAt": observed_at,
                 "expiresAt": expires_at,
@@ -3779,6 +4311,76 @@ mod lifecycle_tests {
     use std::time::Duration;
 
     #[test]
+    fn task_probe_evidence_is_redacted_and_bound_to_runner_session() {
+        let root = tempfile::tempdir().unwrap();
+        let mut config =
+            RunnerConfig::local("runner-evidence-test", "device", "https://example.test");
+        config.data_root = root.path().to_string_lossy().into_owned();
+        let mut tool = scan_known_tools(RunnerProfile::LocalDevice, &["codex".into()])
+            .into_iter()
+            .find(|candidate| candidate.tool_id == "codex")
+            .unwrap();
+        tool.version = Some("test-codex".into());
+        tool.version_probe_state = crate::discovery::ProbeState::Passed;
+        tool.auth_state = crate::discovery::CapabilityDimension::Ready;
+        tool.health_state = crate::discovery::CapabilityDimension::Ready;
+        tool.availability_state = crate::discovery::CapabilityDimension::Ready;
+
+        let evidence = super::save_task_probe_evidence(
+            &config,
+            &tool,
+            crate::discovery::ProbeState::Passed,
+            Some("task_probe_ok"),
+        )
+        .unwrap();
+        let persisted =
+            std::fs::read_to_string(super::task_probe_evidence_path(&config.data_root)).unwrap();
+        assert!(!persisted.contains("response"));
+        assert!(!persisted.contains("secret task output"));
+        assert!(!persisted.contains("control-token"));
+
+        let entries = super::load_task_probe_evidence(&config.data_root);
+        let mut matching = tool.clone();
+        matching.version = None;
+        matching.version_probe_state = crate::discovery::ProbeState::NotRun;
+        matching.auth_state = crate::discovery::CapabilityDimension::Unknown;
+        matching.health_state = crate::discovery::CapabilityDimension::Unknown;
+        matching.availability_state = crate::discovery::CapabilityDimension::Unknown;
+        super::apply_task_probe_evidence(&mut matching, &entries, &config.runner_id, None, None);
+        assert_eq!(
+            matching.task_probe_state,
+            crate::discovery::ProbeState::Passed
+        );
+        assert_eq!(matching.version.as_deref(), Some("test-codex"));
+        assert_eq!(
+            matching.version_probe_state,
+            crate::discovery::ProbeState::Passed
+        );
+        assert_eq!(
+            matching.auth_state,
+            crate::discovery::CapabilityDimension::Ready
+        );
+        assert_eq!(matching.trust_state, crate::discovery::TrustState::Ready);
+        assert_eq!(
+            matching.task_probe_evidence_ref.as_deref(),
+            Some(evidence.evidence_ref.as_str())
+        );
+
+        let mut different_session = tool;
+        super::apply_task_probe_evidence(
+            &mut different_session,
+            &entries,
+            &config.runner_id,
+            Some("new-session"),
+            Some("tenant"),
+        );
+        assert_eq!(
+            different_session.task_probe_state,
+            crate::discovery::ProbeState::NotRun
+        );
+    }
+
+    #[test]
     fn authenticated_codex_has_session_bound_evidence_without_certification_mode() {
         let config = RunnerConfig::local("runner-codex", "device-codex", "https://example.test");
         let mut tool = scan_known_tools(RunnerProfile::LocalDevice, &["codex".into()])
@@ -3792,10 +4394,18 @@ mod lifecycle_tests {
                 authenticated: true,
                 healthy: true,
                 available: true,
-                reason_codes: vec!["TEST_ONLY_AUTH_FIXTURE".into()],
+                reason_codes: vec![
+                    "version_probe_ok".into(),
+                    "auth_status_ok".into(),
+                    "task_probe_ok".into(),
+                ],
             },
         )
         .unwrap();
+        tool.task_probe_state = crate::discovery::ProbeState::Passed;
+        tool.task_probe_observed_at_ms = Some(super::current_time_ms());
+        tool.task_probe_expires_at_ms = Some(super::current_time_ms() + 60_000);
+        tool.task_probe_evidence_ref = Some("runner-task-probe:sha256:test".into());
         let expiry = super::snapshot_expiry_ms();
         let evidence = external_agent_readiness_ref(
             &config,

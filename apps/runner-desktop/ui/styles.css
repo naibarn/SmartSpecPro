@@ -70,7 +70,15 @@ h2 { font-size: 1.2rem; }
   transition: filter 130ms ease, transform 130ms ease;
 }
 .button:hover:not(:disabled) { filter: brightness(0.96); transform: translateY(-0.05rem); }
-.button:disabled { cursor: wait; opacity: 0.6; }
+.button:disabled { cursor: not-allowed; opacity: 0.6; }
+.button.pending { opacity: 0.85; }
+.button.pending::before, #readiness-detail[data-pending="true"]::before {
+  content: "◌";
+  display: inline-block;
+  margin-inline-end: 0.4em;
+  animation: runner-spin 900ms linear infinite;
+}
+@keyframes runner-spin { to { transform: rotate(360deg); } }
 .primary { color: white; background: linear-gradient(110deg, royalblue, teal); }
 .quiet { color: var(--color-text-primary, darkslategray); background: var(--color-background-subtle, ghostwhite); border-color: var(--color-border-subtle, lightsteelblue); }
 .danger { color: firebrick; background: mistyrose; }
@@ -118,6 +126,7 @@ h2 { font-size: 1.2rem; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+  .button.pending::before, #readiness-detail[data-pending="true"]::before { animation: none; }
 }
 
 .workspace-binding .select-control { display: block; }

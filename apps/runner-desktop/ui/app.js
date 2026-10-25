@@ -14,6 +14,19 @@ const elements = Object.fromEntries(
 const verifiedTools = new Map();
 const verifyingTools = new Set();
 let capabilitySyncing = false;
+let connectPending = false;
+let refreshPending = false;
+let scanPending = false;
+let startPending = false;
+let stopPending = false;
+let quitPending = false;
+let activeStatusRequest = null;
+let queuedStatusRefresh = false;
+let queuedCredentialRetry = false;
+let uiStateRevision = 0;
+let latestRunnerStatus = null;
+let latestToolInventory = [];
+let lastToolRenderKey = "";
 const taskVerifiableAdapters = new Set([
   "codex.v1", "claude.v1", "deepseek.v1", "antigravity.v1", "openclaw.v1", "hermes.v1",
 ]);
@@ -64,6 +77,19 @@ function setNotice(target, message = "") {
   target.textContent = message;
 }
 
+function invalidatePendingStatus() {
+  uiStateRevision += 1;
+}
+
+function updateButton(button, { disabled, pending, label, title }) {
+  button.disabled = disabled;
+  button.classList.toggle("pending", Boolean(pending));
+  if (pending) button.setAttribute("aria-busy", "true");
+  else button.removeAttribute("aria-busy");
+  if (label) button.textContent = label;
+  button.title = title ?? "";
+}
+
 function safeError(error) {
   const code = String(error ?? "").split(/[\s:;]/, 1)[0];
   const messages = {
@@ -100,6 +126,10 @@ function safeError(error) {
     RUNNER_AUTO_START_DISABLE_FAILED: "ปิดเริ่มอัตโนมัติไม่สำเร็จ",
     RUNNER_AUTO_START_REQUIRES_CONNECTION: "เชื่อมต่อ SmartAIHub ก่อนเปิดเริ่มอัตโนมัติ",
     RUNNER_THREAD_START_FAILED: "เริ่ม Runner ไม่สำเร็จ กรุณาปิดแล้วเปิดแอปใหม่",
+    RUNNER_STOP_TIMEOUT: "Runner ยังหยุดไม่เสร็จ งานย่อยอาจยังปิดไม่ครบ ระบบคงสถานะว่ากำลังทำงานไว้ กรุณารอสักครู่แล้วลองหยุดอีกครั้ง",
+    RUNNER_THREAD_JOIN_FAILED: "Runner หยุดพร้อมข้อผิดพลาด กรุณาตรวจไฟล์ Debug ก่อนเริ่มใหม่",
+    RUNNER_CONTROL_LOOP_PANICKED: "Runner พบข้อผิดพลาดภายในและกำลังปิดงานย่อยอย่างปลอดภัย",
+    RUNNER_SHUTDOWN_IN_PROGRESS: "Runner กำลังหยุดอยู่ กรุณารอให้เสร็จก่อนสั่งงานใหม่",
     RUNNER_CAPABILITY_SYNC_PENDING: "ทดสอบในเครื่องแล้ว แต่ Backend ยังไม่ยืนยันรับข้อมูลความพร้อม ตรวจการเชื่อมต่อและลองใหม่",
     RUNNER_CAPABILITY_SYNC_TASK_FAILED: "ส่งข้อมูลความพร้อมไม่สำเร็จ ผลทดสอบในเครื่องยังคงอยู่",
     RUNNER_CAPABILITY_SYNC_RESPONSE_INVALID: "Backend ยังไม่ยืนยันข้อมูลความพร้อม ผลทดสอบในเครื่องยังคงอยู่",
@@ -110,62 +140,164 @@ function safeError(error) {
 }
 
 async function refreshStatus({ retryCredentials = false } = {}) {
-  try {
-    const status = await invoke(
-      retryCredentials ? "retry_runner_credentials" : "runner_status",
-    );
-    elements["app-version"].textContent = status.appVersion ?? "—";
-    elements["app-build-date"].textContent = formatDate(status.buildDate);
-    elements["first-launch-date"].textContent = formatDate(status.firstLaunchAtMs);
-    elements["access-token-expiry"].textContent = formatDate(status.accessTokenExpiresAtMs);
-    elements["reauth-deadline"].textContent = formatDate(status.reauthRequiredByMs);
-    elements["credential-detail"].textContent = status.credentialState === "reauth_required"
-      ? `การต่ออายุอัตโนมัติไม่สำเร็จ ต้องเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง${status.credentialErrorCode ? ` (${status.credentialErrorCode})` : ""}`
-      : status.credentialState === "retrying"
-        ? `การต่ออายุอัตโนมัติล้มเหลว ระบบจะลองใหม่ในภายหลัง (${status.credentialErrorCode ?? "RUNNER_CREDENTIAL_REFRESH_FAILED"})`
-        : "Access token ต่ออายุอัตโนมัติเมื่อใกล้หมดอายุ ไม่ต้องเชื่อมต่อผ่านเบราว์เซอร์ทุกครั้งที่เปิดแอป";
-    elements["connection-state"].textContent = status.connected ? "เชื่อมต่อแล้ว" : "ยังไม่เชื่อมต่อ";
-    elements["connection-state"].className = `state-pill${status.connected ? " good" : " warn"}`;
-    elements["connection-detail"].textContent = status.connected
-      ? `เชื่อมต่อ Runner ${status.runnerId} กับ SmartAIHub แล้ว`
-      : "กดเชื่อมต่อเพื่อเปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์";
-    elements["runtime-state"].textContent = status.running ? "กำลังทำงาน" : "หยุดอยู่";
-    elements["runtime-state"].className = `state-pill${status.running ? " good" : ""}`;
-    if (status.lastError) setNotice(elements["runtime-notice"], safeError(status.lastError));
-    elements["start-button"].disabled = !status.connected || status.running || capabilitySyncing;
-    elements["stop-button"].disabled = !status.running;
-    elements["connect-button"].disabled = status.running || capabilitySyncing;
-    if (status.credentialState === "reauth_required") {
-      elements["connection-state"].textContent = "ต้องเชื่อมต่อใหม่";
-      elements["connection-state"].className = "state-pill warn";
-      const notice = status.credentialErrorCode === "RUNNER_CONNECT_REQUEST_REJECTED_409"
-        ? "SmartAIHub ปฏิเสธคำขอต่ออายุด้วย HTTP 409 การลองซ้ำอัตโนมัติจะไม่ช่วย กรุณาเชื่อมต่อผ่านเบราว์เซอร์เพื่อยืนยัน session ใหม่"
-        : "Refresh token หมดอายุหรือถูกเพิกถอน กรุณาเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง";
-      setNotice(elements["connection-notice"], notice);
-      elements["connect-button"].textContent = "เชื่อมต่อผ่านเบราว์เซอร์";
-    } else if (status.credentialState === "renewed") {
-      setNotice(elements["connection-notice"], "ต่ออายุ token ให้อัตโนมัติแล้ว");
-      elements["connect-button"].textContent = "เปลี่ยนบัญชี / เชื่อมต่อใหม่";
-    } else if (status.credentialState === "renewing") {
-      setNotice(elements["connection-notice"], "กำลังส่งคำขอต่ออายุ token ไปยัง SmartAIHub");
-      elements["connection-state"].textContent = "กำลังต่ออายุ token";
-      elements["connection-state"].className = "state-pill warn";
-      elements["connect-button"].textContent = "กำลังต่ออายุ token…";
-      elements["connect-button"].disabled = true;
-    } else if (status.credentialState === "retrying") {
-      setNotice(elements["connection-notice"], refreshFailureMessage(status.credentialErrorCode));
-      elements["connection-state"].textContent = "ต่ออายุไม่สำเร็จ — จะลองใหม่";
-      elements["connection-state"].className = "state-pill warn";
-      elements["connect-button"].textContent = "เชื่อมต่อผ่านเบราว์เซอร์";
-      elements["connect-button"].disabled = status.running || capabilitySyncing;
-    } else {
-      elements["connect-button"].textContent = status.connected ? "เปลี่ยนบัญชี / เชื่อมต่อใหม่" : "เชื่อมต่อผ่านเบราว์เซอร์";
-    }
-    elements["auto-start"].checked = status.autoStartEnabled;
-    elements["default-workspace"].value = status.defaultWorkspaceId ?? "";
-  } catch (error) {
-    setNotice(elements["global-notice"], safeError(error));
+  if (activeStatusRequest) {
+    queuedStatusRefresh = true;
+    queuedCredentialRetry ||= retryCredentials;
+    return activeStatusRequest;
   }
+  const request = (async () => {
+    let retry = retryCredentials;
+    do {
+      queuedStatusRefresh = false;
+      retry ||= queuedCredentialRetry;
+      queuedCredentialRetry = false;
+      const revision = uiStateRevision;
+      try {
+        const status = await invoke(retry ? "retry_runner_credentials" : "runner_status");
+        if (revision === uiStateRevision) applyRunnerStatus(status);
+        else queuedStatusRefresh = true;
+      } catch (error) {
+        if (revision === uiStateRevision) setNotice(elements["global-notice"], safeError(error));
+      }
+      retry = false;
+    } while (queuedStatusRefresh || queuedCredentialRetry);
+  })();
+  activeStatusRequest = request;
+  try {
+    await request;
+  } finally {
+    activeStatusRequest = null;
+  }
+}
+
+function capabilityAcknowledged(status) {
+  const readiness = status?.readiness;
+  const timestamp = Date.parse(readiness?.capabilityPublicationAcknowledgedAt ?? "");
+  return readiness?.capabilityPublicationState === "acknowledged"
+    && Number.isFinite(timestamp)
+    && timestamp <= Date.now() + 30_000
+    && Date.now() - timestamp <= 5 * 60_000;
+}
+
+function applyRunnerStatus(status) {
+  latestRunnerStatus = status;
+  elements["app-version"].textContent = status.appVersion ?? "—";
+  elements["app-build-date"].textContent = formatDate(status.buildDate);
+  elements["first-launch-date"].textContent = formatDate(status.firstLaunchAtMs);
+  elements["access-token-expiry"].textContent = formatDate(status.accessTokenExpiresAtMs);
+  elements["reauth-deadline"].textContent = formatDate(status.reauthRequiredByMs);
+  elements["credential-detail"].textContent = status.credentialState === "reauth_required"
+    ? `การต่ออายุอัตโนมัติไม่สำเร็จ ต้องเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง${status.credentialErrorCode ? ` (${status.credentialErrorCode})` : ""}`
+    : status.credentialState === "retrying"
+      ? `การต่ออายุอัตโนมัติล้มเหลว ระบบจะลองใหม่ในภายหลัง (${status.credentialErrorCode ?? "RUNNER_CREDENTIAL_REFRESH_FAILED"})`
+      : "Access token ต่ออายุอัตโนมัติเมื่อใกล้หมดอายุ ไม่ต้องเชื่อมต่อผ่านเบราว์เซอร์ทุกครั้งที่เปิดแอป";
+
+  const credentialState = status.credentialState;
+  const connectionLabel = connectPending
+    ? "รออนุมัติในเบราว์เซอร์"
+    : credentialState === "renewing"
+    ? "กำลังต่ออายุ token"
+    : credentialState === "reauth_required"
+      ? "ต้องเชื่อมต่อใหม่"
+      : credentialState === "retrying"
+        ? "ต่ออายุไม่สำเร็จ — จะลองใหม่"
+        : status.connected ? "เชื่อมต่อแล้ว" : "ยังไม่เชื่อมต่อ";
+  elements["connection-state"].textContent = connectionLabel;
+  elements["connection-state"].className = `state-pill${status.connected && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
+  elements["connection-detail"].textContent = status.connected
+    ? `เชื่อมต่อ Runner ${status.runnerId} กับ SmartAIHub แล้ว`
+    : "กดเชื่อมต่อเพื่อเปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์";
+
+  if (credentialState === "reauth_required") {
+    const notice = status.credentialErrorCode === "RUNNER_CONNECT_REQUEST_REJECTED_409"
+      ? "SmartAIHub ปฏิเสธคำขอต่ออายุด้วย HTTP 409 กรุณาเชื่อมต่อผ่านเบราว์เซอร์เพื่อยืนยัน session ใหม่"
+      : "Refresh token หมดอายุหรือถูกเพิกถอน กรุณาเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง";
+    setNotice(elements["connection-notice"], notice);
+  } else if (credentialState === "retrying") {
+    setNotice(elements["connection-notice"], refreshFailureMessage(status.credentialErrorCode));
+  } else if (credentialState === "renewing") {
+    setNotice(elements["connection-notice"], "กำลังต่ออายุ token ที่จัดเก็บไว้ ระบบจะเชื่อมต่อใหม่อัตโนมัติเมื่อสำเร็จ");
+  } else if (credentialState === "renewed") {
+    setNotice(elements["connection-notice"], "ต่ออายุ token ให้อัตโนมัติแล้ว");
+  }
+
+  const runtimeLabel = stopPending || status.stopping
+    ? "กำลังหยุด…"
+    : status.lastError ? "พบข้อผิดพลาด"
+      : status.running ? "กำลังทำงาน" : "หยุดอยู่";
+  elements["runtime-state"].textContent = runtimeLabel;
+  elements["runtime-state"].className = `state-pill${status.running && !status.stopping && !status.lastError ? " good" : status.stopping || status.lastError ? " warn" : ""}`;
+  if (status.lastError) setNotice(elements["runtime-notice"], safeError(status.lastError));
+
+  const canChangeAccount = !status.running && !status.stopping && !capabilitySyncing;
+  updateButton(elements["connect-button"], {
+    disabled: !canChangeAccount || connectPending || credentialState === "renewing",
+    pending: connectPending || credentialState === "renewing",
+    label: connectPending
+      ? "กำลังเชื่อมต่อ…"
+      : credentialState === "renewing"
+        ? "กำลังต่ออายุ token…"
+        : credentialState === "reauth_required" || !status.connected
+          ? "เชื่อมต่อผ่านเบราว์เซอร์"
+          : "เปลี่ยนบัญชี / เชื่อมต่อใหม่",
+    title: status.running ? "หยุด Runner ก่อนเปลี่ยนบัญชี" : "",
+  });
+  updateButton(elements["refresh-button"], {
+    disabled: refreshPending,
+    pending: refreshPending,
+    label: refreshPending ? "กำลังรีเฟรช…" : "รีเฟรชสถานะ",
+  });
+  updateButton(elements["start-button"], {
+    disabled: !status.connected || status.running || status.stopping || startPending || capabilitySyncing,
+    pending: startPending,
+    label: startPending ? "กำลังเริ่ม…" : status.running ? "Runner กำลังทำงาน" : "เริ่ม Runner",
+    title: status.running ? "Runner กำลังทำงานอยู่" : "",
+  });
+  updateButton(elements["stop-button"], {
+    disabled: stopPending || (!status.running && !status.stopping),
+    pending: stopPending || status.stopping,
+    label: stopPending || status.stopping ? "กำลังหยุด…" : "หยุด Runner",
+  });
+  updateButton(elements["rescan-button"], {
+    disabled: scanPending,
+    pending: scanPending,
+    label: scanPending ? "กำลังสแกน…" : "ตรวจเครื่องมืออีกครั้ง",
+  });
+  updateButton(elements["quit-button"], {
+    disabled: quitPending,
+    pending: quitPending,
+    label: quitPending ? "กำลังปิด…" : "ออกจากโปรแกรม",
+  });
+
+  elements["auto-start"].checked = status.autoStartEnabled;
+  if (document.activeElement !== elements["default-workspace"]) {
+    elements["default-workspace"].value = status.defaultWorkspaceId ?? "";
+  }
+  const readiness = status.readiness ?? {};
+  const publicationState = readiness.capabilityPublicationState ?? "unknown";
+  const publicationText = capabilitySyncing
+    ? "กำลังส่ง capability ไปยัง SmartAIHub"
+    : publicationState === "acknowledged" && capabilityAcknowledged(status)
+    ? `Capability ได้รับการยืนยันจาก SmartAIHub เวลา ${formatDate(readiness.capabilityPublicationAcknowledgedAt)}`
+    : publicationState === "pending" || publicationState === "acknowledged"
+      ? "กำลังรอการยืนยัน capability จาก SmartAIHub"
+      : publicationState === "failed"
+        ? "SmartAIHub ยังไม่ยืนยัน capability ล่าสุด"
+        : "ยังไม่มีหลักฐานยืนยัน capability จาก SmartAIHub";
+  const runtimeText = stopPending || status.stopping
+    ? "Runner กำลังยกเลิกงานและรอปิด child processes"
+    : status.lastError ? "Runner พบข้อผิดพลาด ตรวจข้อความแจ้งปัญหาด้านบน"
+      : status.running ? "Runner ทำงานอยู่" : "Runner หยุดอยู่";
+  elements["readiness-detail"].textContent = `${runtimeText} · ${publicationText} · งานแต่ละรายการยังต้องผ่านการอนุญาตจาก Control Plane`;
+  const readinessPending = publicationState === "pending" || stopPending || status.stopping || capabilitySyncing;
+  elements["readiness-detail"].dataset.pending = String(readinessPending);
+  if (readinessPending) elements["readiness-detail"].setAttribute("aria-busy", "true");
+  else elements["readiness-detail"].removeAttribute("aria-busy");
+
+  if (Array.isArray(readiness.toolInventory) && readiness.toolInventory.length > 0) {
+    latestToolInventory = readiness.toolInventory;
+  }
+  renderTools(latestToolInventory, status);
 }
 
 function formatDate(timestamp) {
@@ -180,16 +312,15 @@ function formatDate(timestamp) {
 
 async function refreshWorkspaces() {
   try {
-    const [workspaces, status] = await Promise.all([
-      invoke("list_workspaces"),
-      invoke("runner_status"),
-    ]);
+    const workspaces = await invoke("list_workspaces");
     const select = elements["default-workspace"];
+    const selectedWorkspaceId = select.value;
     select.replaceChildren(new Option("ไม่กำหนด workspace หลัก", ""));
     for (const workspace of workspaces) {
       select.add(new Option(workspace.displayName, workspace.workspaceId));
     }
-    select.value = status.defaultWorkspaceId ?? "";
+    select.value = latestRunnerStatus?.defaultWorkspaceId
+      ?? selectedWorkspaceId;
     const list = elements["workspace-list"];
     list.replaceChildren();
     if (workspaces.length === 0) {
@@ -242,6 +373,7 @@ async function refreshWorkspaces() {
       identity.append(hint, save);
       identity.addEventListener("submit", async event => {
         event.preventDefault();
+        invalidatePendingStatus();
         save.disabled = true;
         try {
           await invoke("bind_workspace_identity", {
@@ -263,6 +395,7 @@ async function refreshWorkspaces() {
       remove.type = "button";
       remove.textContent = "นำออก";
       remove.addEventListener("click", async () => {
+        invalidatePendingStatus();
         try {
           await invoke("remove_workspace", { workspaceId: workspace.workspaceId });
           await refreshWorkspaces();
@@ -279,35 +412,53 @@ async function refreshWorkspaces() {
   }
 }
 
-async function scanTools() {
-  elements["rescan-button"].disabled = true;
+async function scanTools({ publish = false } = {}) {
+  if (scanPending) return;
+  invalidatePendingStatus();
+  scanPending = true;
+  updateButton(elements["rescan-button"], {
+    disabled: true,
+    pending: true,
+    label: "กำลังสแกน…",
+  });
   setNotice(elements["runtime-notice"], "กำลังตรวจสอบเครื่องมือในเครื่อง…");
   try {
     const tools = await invoke("rescan_runner");
-    verifiedTools.clear();
+    const fingerprints = new Map(tools.map(tool => [tool.tool_id, tool.fingerprint]));
+    for (const [toolId, report] of verifiedTools) {
+      if (report.tool?.fingerprint !== fingerprints.get(toolId)) verifiedTools.delete(toolId);
+    }
+    latestToolInventory = tools;
     const foundCount = tools.filter(tool => tool.trust_state !== "unsupported").length;
     elements["tool-count"].textContent = `${foundCount}/${tools.length}`;
-    renderTools(tools);
+    renderTools(tools, latestRunnerStatus);
     setNotice(elements["runtime-notice"], `พบเครื่องมือ ${foundCount} จาก ${tools.length} รายการ — Codex มีปุ่มทดสอบสั่งงานจริง; เครื่องมืออื่นทดสอบตาม adapter ที่รองรับ`);
+    await refreshStatus();
+    if (publish && latestRunnerStatus?.connected) await syncCapabilities();
   } catch (error) {
     setNotice(elements["runtime-notice"], safeError(error));
   } finally {
-    elements["rescan-button"].disabled = false;
+    scanPending = false;
+    if (latestRunnerStatus) applyRunnerStatus(latestRunnerStatus);
+    else updateButton(elements["rescan-button"], { disabled: false, pending: false, label: "ตรวจเครื่องมืออีกครั้ง" });
   }
 }
 
 async function syncCapabilities() {
   if (capabilitySyncing) return;
   capabilitySyncing = true;
-  elements["start-button"].disabled = true;
-  elements["connect-button"].disabled = true;
+  invalidatePendingStatus();
+  elements["readiness-detail"].dataset.pending = "true";
+  elements["readiness-detail"].setAttribute("aria-busy", "true");
+  elements["readiness-detail"].textContent = "กำลังส่งข้อมูลความพร้อมของเครื่องมือไปยัง SmartAIHub";
+  if (latestRunnerStatus) applyRunnerStatus(latestRunnerStatus);
   try {
     setNotice(elements["runtime-notice"], "กำลังส่งข้อมูลความพร้อมไปยัง SmartAIHub…");
     const state = await invoke("sync_runner_capabilities");
     setNotice(elements["runtime-notice"], state === "synced"
-      ? "SmartAIHub รับข้อมูลความพร้อมแล้ว — เริ่ม Runner เพื่อรับงานที่ได้รับอนุญาต"
+      ? "SmartAIHub รับข้อมูลความพร้อมแล้ว — งานแต่ละรายการยังต้องผ่าน Control Plane authorization"
       : state === "runtime_running"
-        ? "Runner กำลังทำงานและจะอัปเดตความพร้อมตามรอบ — ผลทดสอบนี้เป็นผลในเครื่อง"
+        ? "Runner รับคำขอส่ง capability ล่าสุดแล้ว — งานยังต้องผ่าน Control Plane authorization"
         : "ทดสอบในเครื่องแล้ว — เชื่อมต่อ SmartAIHub เพื่อส่งข้อมูลความพร้อม");
   } catch (error) {
     // Pairing and a completed local task remain valid when publishing fails.
@@ -318,82 +469,151 @@ async function syncCapabilities() {
   }
 }
 
-function renderTools(tools) {
+function renderTools(tools, status = latestRunnerStatus) {
+  const capabilityFresh = capabilityAcknowledged(status);
+  const renderKey = JSON.stringify({
+    tools: tools.map(tool => [
+      tool.tool_id,
+      tool.fingerprint,
+      tool.trust_state,
+      tool.version_probe_state,
+      tool.task_probe_state,
+      tool.task_probe_expires_at_ms,
+      tool.auth_state,
+      tool.reason_codes,
+    ]),
+    connected: status?.connected,
+    running: status?.running,
+    stopping: status?.stopping,
+    capabilityFresh,
+    publicationState: status?.readiness?.capabilityPublicationState,
+    verifying: [...verifyingTools],
+    verified: [...verifiedTools.entries()].map(([toolId, report]) => [
+      toolId,
+      report.tool?.fingerprint,
+      report.taskCheck?.state,
+      report.taskCheck?.response,
+    ]),
+  });
+  if (renderKey === lastToolRenderKey) return;
+  lastToolRenderKey = renderKey;
   const list = elements["tool-list"];
   list.replaceChildren();
+  elements["tool-count"].textContent = `${tools.filter(tool => tool.trust_state !== "unsupported").length}/${tools.length}`;
   for (const discovered of tools) {
-      const report = verifiedTools.get(discovered.tool_id);
-      const tool = report?.tool ?? discovered;
-      const taskCheck = report?.taskCheck;
-      const item = document.createElement("li");
-      item.className = "tool-row";
-      const title = document.createElement("p");
-      title.className = "tool-title";
-      title.textContent = tool.display_name;
-      const detail = document.createElement("p");
-      detail.className = "tool-detail";
-      const response = document.createElement("p");
-      response.className = "tool-task-response";
-      response.textContent = taskCheck?.response ?? "";
-      const isFound = discovered.trust_state !== "unsupported";
-      const isVerified = verifiedTools.has(discovered.tool_id);
-      const runsTaskProbe = taskVerifiableAdapters.has(discovered.adapter_id);
-      const reasons = tool.reason_codes?.map(code => readableReason[code]).filter(Boolean) ?? [];
-      const version = isVerified && tool.version ? `เวอร์ชัน ${tool.version}` : "";
-      const taskFailure = taskCheck?.reasonCode ? readableReason[taskCheck.reasonCode] : "";
-      detail.textContent = !isFound
-        ? reasons.join(" · ") || "ไม่พบโปรแกรมในเครื่องนี้"
-        : !runsTaskProbe
-          ? "พบโปรแกรมแล้ว แต่ยังไม่มีวิธีส่งงานและตรวจคำตอบจริงที่รองรับ"
-        : !isVerified
-          ? "พบโปรแกรมในเครื่องแล้ว — ยังไม่ได้ทดสอบคำสั่ง"
-          : [version, ...reasons, taskFailure].filter(Boolean).join(" · ") || "ตรวจคำสั่งแล้ว";
-      const state = document.createElement("output");
-      const verifyUnsupported = !runsTaskProbe || taskCheck?.state === "unsupported"
-        || (isVerified && tool.reason_codes?.includes("verify_unsupported"));
-      const verifiedOk = isVerified && tool.health_state === "ready" && tool.availability_state === "ready";
-      const failed = isVerified && tool.trust_state === "degraded";
-      const taskPassed = taskCheck?.state === "passed";
-      const taskFailed = taskCheck?.state === "failed";
-      state.className = `tool-status ${!isFound ? "warn" : taskPassed || verifiedOk ? "good" : taskFailed || failed ? "bad" : "warn"}`;
-      state.textContent = !isFound ? "ไม่พบ" : verifyUnsupported ? "ยังทดสอบงานจริงไม่ได้" : !isVerified ? "พบแล้ว" : taskPassed ? "ส่งงานและได้คำตอบ" : taskFailed ? "ทดสอบสั่งงานไม่ผ่าน" : failed ? "ตรวจคำสั่งไม่ผ่าน" : tool.trust_state === "auth_required" ? "คำสั่งตอบกลับ · ยังไม่ยืนยันบัญชี" : verifiedOk ? "คำสั่งตอบกลับแล้ว" : "ยังไม่ยืนยันผล";
-      const actions = document.createElement("section");
-      actions.className = "tool-actions";
-      if (isFound) {
-        const verify = document.createElement("button");
-        verify.className = "button quiet verify-tool";
-        verify.type = "button";
-        verify.textContent = verifyingTools.has(discovered.tool_id)
-          ? "กำลังทดสอบ…"
-          : runsTaskProbe ? "ทดสอบสั่งงานจริง" : "ยังทดสอบงานจริงไม่ได้";
-        verify.disabled = verifyingTools.has(discovered.tool_id) || !runsTaskProbe;
-        verify.addEventListener("click", async () => {
-          if (!window.confirm("จะส่งข้อความทดสอบผ่าน CLI จริงและแสดงคำตอบ โดยใช้บัญชีและการตั้งค่าปัจจุบันของเครื่องมือ อาจใช้โควตาหรือค่าใช้บริการของบัญชี ต้องการดำเนินการต่อไหม?")) return;
-          verifyingTools.add(discovered.tool_id);
-          renderTools(tools);
-          try {
-            verifiedTools.set(discovered.tool_id, await invoke("verify_runner_tool", { toolId: discovered.tool_id }));
-            await syncCapabilities();
-          } catch (error) {
-            setNotice(elements["runtime-notice"], safeError(error));
-          } finally {
-            verifyingTools.delete(discovered.tool_id);
-            renderTools(tools);
-          }
-        });
-        actions.append(verify);
-      }
-      item.append(title, detail, actions, state);
-      if (response.textContent) {
-        response.textContent = `Prompt: ${taskCheck.prompt}\nคำตอบจาก ${tool.display_name}:\n${response.textContent}`;
-        item.append(response);
-      }
-      list.append(item);
+    const report = verifiedTools.get(discovered.tool_id);
+    const tool = report?.tool ?? discovered;
+    const taskCheck = report?.taskCheck;
+    const item = document.createElement("li");
+    item.className = "tool-row";
+    const title = document.createElement("p");
+    title.className = "tool-title";
+    title.textContent = tool.display_name;
+    const detail = document.createElement("p");
+    detail.className = "tool-detail";
+    const response = document.createElement("p");
+    response.className = "tool-task-response";
+    response.textContent = taskCheck?.response ?? "";
+    const isFound = discovered.trust_state !== "unsupported";
+    const runsTaskProbe = taskVerifiableAdapters.has(discovered.adapter_id);
+    const taskState = taskCheck?.state ?? tool.task_probe_state ?? "not_run";
+    const taskExpiry = tool.task_probe_expires_at_ms;
+    const taskPassed = taskState === "passed" && typeof taskExpiry === "number" && taskExpiry > Date.now();
+    const taskFailed = taskState === "failed";
+    const versionPassed = tool.version_probe_state === "passed";
+    const authenticated = tool.auth_state === "ready";
+    const executionReady = Boolean(
+      isFound && status?.connected && status?.running && !status?.stopping && capabilityFresh
+      && tool.trust_state === "ready" && versionPassed && authenticated && taskPassed,
+    );
+    const publicationText = capabilityFresh
+      ? "Capability ได้รับการยืนยันแล้ว"
+      : status?.readiness?.capabilityPublicationState === "pending"
+        ? "กำลังส่ง Capability"
+        : "Capability ยังไม่ยืนยัน";
+    const taskText = taskPassed
+      ? "งานทดสอบจริงผ่าน"
+      : taskFailed
+        ? "งานทดสอบจริงไม่ผ่าน"
+        : taskState === "unsupported" || !runsTaskProbe
+          ? "ยังไม่มี task probe ที่รองรับ"
+          : taskState === "passed"
+            ? "ผล task probe หมดอายุ"
+            : "ยังไม่ได้ทดสอบงานจริง";
+    const reason = taskCheck?.reasonCode ? readableReason[taskCheck.reasonCode] : "";
+    detail.textContent = !isFound
+      ? tool.reason_codes?.map(code => readableReason[code]).filter(Boolean).join(" · ") || "ไม่พบโปรแกรมในเครื่องนี้"
+      : [
+        "พบโปรแกรมแล้ว",
+        versionPassed ? `version probe ผ่าน${tool.version ? ` (${tool.version})` : ""}` : tool.version_probe_state === "failed" ? "version probe ไม่ผ่าน" : "ยังไม่ตรวจ version",
+        authenticated ? "ยืนยันสถานะบัญชีแล้ว" : tool.auth_state === "required" ? "ต้องเข้าสู่ระบบใน CLI" : "ยังไม่ยืนยันบัญชี",
+        taskText,
+        publicationText,
+      ].filter(Boolean).join(" · ");
+    if (reason && taskFailed) detail.textContent += ` · ${reason}`;
+
+    const state = document.createElement("output");
+    state.className = `tool-status ${executionReady ? "good" : taskFailed || tool.trust_state === "degraded" ? "bad" : "warn"}`;
+    state.textContent = executionReady
+      ? "พร้อมรับ Control Plane-authorized work"
+      : !isFound
+        ? "ไม่พบ"
+        : taskFailed || tool.trust_state === "degraded"
+          ? "พบข้อผิดพลาด"
+          : taskPassed && capabilityFresh && status?.connected && status?.running
+            ? "ผลทดสอบผ่าน · พร้อมรออนุญาตงาน"
+            : "ยังไม่พร้อมรับงานที่อนุญาต";
+
+    const actions = document.createElement("section");
+    actions.className = "tool-actions";
+    if (isFound) {
+      const verify = document.createElement("button");
+      const verifying = verifyingTools.has(discovered.tool_id);
+      verify.className = `button quiet verify-tool${verifying ? " pending" : ""}`;
+      verify.type = "button";
+      verify.textContent = verifying ? "กำลังทดสอบ…" : runsTaskProbe ? "ทดสอบสั่งงานจริง" : "ยังทดสอบงานจริงไม่ได้";
+      verify.disabled = verifying || !runsTaskProbe;
+      if (verifying) verify.setAttribute("aria-busy", "true");
+      verify.addEventListener("click", async () => {
+        if (!window.confirm("จะส่งข้อความทดสอบผ่าน CLI จริงและแสดงคำตอบ โดยใช้บัญชีและการตั้งค่าปัจจุบันของเครื่องมือ อาจใช้โควตาหรือค่าใช้บริการของบัญชี ต้องการดำเนินการต่อไหม?")) return;
+        invalidatePendingStatus();
+        verifyingTools.add(discovered.tool_id);
+        lastToolRenderKey = "";
+        renderTools(latestToolInventory, latestRunnerStatus);
+        try {
+          const result = await invoke("verify_runner_tool", { toolId: discovered.tool_id });
+          verifiedTools.set(discovered.tool_id, result);
+          latestToolInventory = latestToolInventory.map(candidate => candidate.tool_id === discovered.tool_id ? result.tool : candidate);
+          await syncCapabilities();
+        } catch (error) {
+          setNotice(elements["runtime-notice"], safeError(error));
+          await refreshStatus();
+        } finally {
+          verifyingTools.delete(discovered.tool_id);
+          lastToolRenderKey = "";
+          renderTools(latestToolInventory, latestRunnerStatus);
+        }
+      });
+      actions.append(verify);
+    }
+    item.append(title, detail, actions, state);
+    if (response.textContent) {
+      response.textContent = `Prompt: ${taskCheck.prompt}\nคำตอบจาก ${tool.display_name}:\n${response.textContent}`;
+      item.append(response);
+    }
+    list.append(item);
   }
 }
 
 elements["connect-button"].addEventListener("click", async () => {
-  elements["connect-button"].disabled = true;
+  if (connectPending) return;
+  invalidatePendingStatus();
+  connectPending = true;
+  updateButton(elements["connect-button"], {
+    disabled: true,
+    pending: true,
+    label: "กำลังเชื่อมต่อ…",
+  });
   elements["connection-state"].textContent = "รออนุมัติในเบราว์เซอร์";
   setNotice(elements["connection-notice"], "เปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์นี้");
   try {
@@ -406,25 +626,28 @@ elements["connect-button"].addEventListener("click", async () => {
     setNotice(elements["connection-notice"], safeError(error));
     elements["connection-state"].textContent = "เชื่อมต่อไม่สำเร็จ";
   } finally {
-    elements["connect-button"].disabled = false;
+    connectPending = false;
+    if (latestRunnerStatus) applyRunnerStatus(latestRunnerStatus);
+    else updateButton(elements["connect-button"], { disabled: false, pending: false, label: "เชื่อมต่อผ่านเบราว์เซอร์" });
   }
 });
 
 elements["refresh-button"].addEventListener("click", async () => {
-  const button = elements["refresh-button"];
-  button.disabled = true;
-  button.textContent = "กำลังลองต่ออายุ…";
-  setNotice(elements["connection-notice"], "กำลังตรวจสถานะและลองต่ออายุ token อีกครั้ง");
+  if (refreshPending) return;
+  invalidatePendingStatus();
+  refreshPending = true;
+  updateButton(elements["refresh-button"], { disabled: true, pending: true, label: "กำลังรีเฟรช…" });
+  setNotice(elements["connection-notice"], "กำลังตรวจสถานะและต่ออายุ token ที่บันทึกไว้หากจำเป็น");
   try {
     await refreshStatus({ retryCredentials: true });
     await refreshWorkspaces();
-    await scanTools();
   } finally {
-    button.disabled = false;
-    button.textContent = "รีเฟรชสถานะ";
+    refreshPending = false;
+    if (latestRunnerStatus) applyRunnerStatus(latestRunnerStatus);
+    else updateButton(elements["refresh-button"], { disabled: false, pending: false, label: "รีเฟรชสถานะ" });
   }
 });
-elements["rescan-button"].addEventListener("click", scanTools);
+elements["rescan-button"].addEventListener("click", () => scanTools({ publish: true }));
 elements["export-debug-button"].addEventListener("click", async () => {
   const button = elements["export-debug-button"];
   button.disabled = true;
@@ -455,27 +678,39 @@ elements["open-debug-folder-button"].addEventListener("click", async () => {
   }
 });
 elements["start-button"].addEventListener("click", async () => {
+  if (startPending) return;
+  invalidatePendingStatus();
+  startPending = true;
+  updateButton(elements["start-button"], { disabled: true, pending: true, label: "กำลังเริ่ม…" });
   try {
     await invoke("start_runner");
     setNotice(elements["runtime-notice"], "เริ่ม Runner แล้ว กำลังเชื่อมต่อกับ SmartAIHub");
-    await refreshStatus();
   } catch (error) {
     setNotice(elements["runtime-notice"], safeError(error));
+  } finally {
+    startPending = false;
+    await refreshStatus();
   }
 });
 elements["stop-button"].addEventListener("click", async () => {
-  elements["stop-button"].disabled = true;
+  if (stopPending) return;
+  invalidatePendingStatus();
+  stopPending = true;
+  updateButton(elements["stop-button"], { disabled: true, pending: true, label: "กำลังหยุด…" });
   setNotice(elements["runtime-notice"], "กำลังหยุด Runner และปิดงานย่อยที่ทำงานอยู่…");
   try {
     await invoke("stop_runner");
     setNotice(elements["runtime-notice"], "หยุด Runner แล้ว");
-    await refreshStatus();
   } catch (error) {
     setNotice(elements["runtime-notice"], safeError(error));
+  } finally {
+    stopPending = false;
+    await refreshStatus();
   }
 });
 elements["add-workspace-button"].addEventListener("click", async () => {
   const button = elements["add-workspace-button"];
+  invalidatePendingStatus();
   button.disabled = true;
   setNotice(elements["runtime-notice"], "กำลังเปิดหน้าต่างเลือกโฟลเดอร์…");
   try {
@@ -493,6 +728,7 @@ elements["add-workspace-button"].addEventListener("click", async () => {
   }
 });
 elements["default-workspace"].addEventListener("change", async event => {
+  invalidatePendingStatus();
   try {
     await invoke("set_default_workspace", { workspaceId: event.target.value || null });
     setNotice(elements["runtime-notice"], "บันทึก workspace หลักไว้ในเครื่องแล้ว");
@@ -501,6 +737,7 @@ elements["default-workspace"].addEventListener("change", async event => {
   }
 });
 elements["auto-start"].addEventListener("change", async event => {
+  invalidatePendingStatus();
   try {
     await invoke("set_auto_start", { enabled: event.target.checked });
     setNotice(elements["global-notice"], event.target.checked ? "เปิดเริ่มอัตโนมัติเมื่อเข้าสู่ระบบแล้ว" : "ปิดเริ่มอัตโนมัติแล้ว");
@@ -509,7 +746,19 @@ elements["auto-start"].addEventListener("change", async event => {
     setNotice(elements["global-notice"], safeError(error));
   }
 });
-elements["quit-button"].addEventListener("click", () => invoke("quit_runner"));
+elements["quit-button"].addEventListener("click", async () => {
+  if (quitPending) return;
+  invalidatePendingStatus();
+  quitPending = true;
+  updateButton(elements["quit-button"], { disabled: true, pending: true, label: "กำลังหยุดและปิด…" });
+  try {
+    await invoke("quit_runner");
+  } catch (error) {
+    quitPending = false;
+    setNotice(elements["runtime-notice"], safeError(error));
+    await refreshStatus();
+  }
+});
 
 async function showWindowIfReady() {
   await refreshStatus();
@@ -518,4 +767,4 @@ async function showWindowIfReady() {
 }
 
 showWindowIfReady();
-window.setInterval(refreshStatus, 5000);
+window.setInterval(() => { void refreshStatus(); }, 5000);

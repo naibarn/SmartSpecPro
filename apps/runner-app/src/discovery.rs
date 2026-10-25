@@ -42,6 +42,16 @@ pub enum CapabilityDimension {
     NotApplicable,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ProbeState {
+    #[default]
+    NotRun,
+    Passed,
+    Failed,
+    Unsupported,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolCandidate {
     pub tool_id: String,
@@ -53,6 +63,16 @@ pub struct ToolCandidate {
     pub fingerprint: String,
     pub trust_state: TrustState,
     pub reason_codes: Vec<String>,
+    #[serde(default)]
+    pub version_probe_state: ProbeState,
+    #[serde(default)]
+    pub task_probe_state: ProbeState,
+    #[serde(default)]
+    pub task_probe_observed_at_ms: Option<u64>,
+    #[serde(default)]
+    pub task_probe_expires_at_ms: Option<u64>,
+    #[serde(default)]
+    pub task_probe_evidence_ref: Option<String>,
     pub install_state: CapabilityDimension,
     pub configuration_state: CapabilityDimension,
     pub auth_state: CapabilityDimension,
@@ -455,6 +475,11 @@ fn candidate_with_path(
         ),
         trust_state: TrustState::Discovered,
         reason_codes: vec!["probe_required".into()],
+        version_probe_state: ProbeState::NotRun,
+        task_probe_state: ProbeState::NotRun,
+        task_probe_observed_at_ms: None,
+        task_probe_expires_at_ms: None,
+        task_probe_evidence_ref: None,
         install_state: CapabilityDimension::Ready,
         configuration_state: CapabilityDimension::Unknown,
         auth_state: CapabilityDimension::Unknown,
@@ -490,6 +515,11 @@ fn unsupported_candidate_with_source_reason(
         fingerprint: fingerprint(name, source),
         trust_state: TrustState::Unsupported,
         reason_codes: vec![reason.into()],
+        version_probe_state: ProbeState::Unsupported,
+        task_probe_state: ProbeState::Unsupported,
+        task_probe_observed_at_ms: None,
+        task_probe_expires_at_ms: None,
+        task_probe_evidence_ref: None,
         install_state: CapabilityDimension::Unavailable,
         configuration_state: CapabilityDimension::NotApplicable,
         auth_state: CapabilityDimension::NotApplicable,
