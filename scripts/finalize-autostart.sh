@@ -136,6 +136,30 @@ fi
 
 log_info "✓ All services enabled"
 
+# Enabling a unit only affects future target activation; it does not start a
+# worker when the target is already active. Start and verify the queue consumer
+# explicitly so this script cannot report success with jobs accumulating unseen.
+log_step "Starting PostgreSQL Python job worker..."
+if ! systemctl start smartspec-python-job-worker.service; then
+    log_error "Failed to start PostgreSQL Python job worker"
+    systemctl status smartspec-python-job-worker.service --no-pager || true
+    journalctl -u smartspec-python-job-worker.service -n 50 --no-pager || true
+    exit 1
+fi
+for attempt in 1 2 3 4 5; do
+    if systemctl is-active --quiet smartspec-python-job-worker.service; then
+        break
+    fi
+    sleep 1
+done
+if ! systemctl is-active --quiet smartspec-python-job-worker.service; then
+    log_error "PostgreSQL Python job worker did not become active"
+    systemctl status smartspec-python-job-worker.service --no-pager || true
+    journalctl -u smartspec-python-job-worker.service -n 50 --no-pager || true
+    exit 1
+fi
+log_info "✓ PostgreSQL Python job worker is active"
+
 echo ""
 echo -e "${GREEN}╔═══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║             AUTO-START CONFIGURATION COMPLETE!                ║${NC}"

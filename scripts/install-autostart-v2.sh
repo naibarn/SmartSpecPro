@@ -55,8 +55,13 @@ cmd_install() {
     echo "╚═══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
 
-    # Stop existing services if running
+    # Stop the target first so a later `start smartspec.target` is not a no-op
+    # when the target is already active. PartOf= propagates this stop to the
+    # services managed by the target.
     log_step "Stopping existing services..."
+    if systemctl is-active --quiet smartspec.target 2>/dev/null; then
+        systemctl stop smartspec.target
+    fi
     for service in "${SERVICES[@]}"; do
         if systemctl is-active --quiet "$service" 2>/dev/null; then
             systemctl stop "$service" || true
@@ -93,13 +98,24 @@ cmd_install() {
     # Start services
     log_step "Starting services..."
     if systemctl start smartspec.target; then
-        log_info "Services started successfully"
+        log_info "Service target started"
     else
-        log_warn "Service failed to start. Check: sudo journalctl -u smartspec.target -n 50"
+        log_error "Service target failed to start. Check: sudo journalctl -u smartspec.target -n 50"
+        exit 1
     fi
 
     # Wait a bit for services to initialize
     sleep 5
+
+    # A successful target start does not guarantee every wanted unit stayed
+    # active. Treat the Python queue consumer as a required install postcondition.
+    if ! systemctl is-active --quiet smartspec-python-job-worker.service; then
+        log_error "PostgreSQL Python job worker is not active. Recent logs:"
+        systemctl status smartspec-python-job-worker.service --no-pager || true
+        journalctl -u smartspec-python-job-worker.service -n 50 --no-pager || true
+        exit 1
+    fi
+    log_info "PostgreSQL Python job worker is active"
 
     echo ""
     echo -e "${GREEN}✓ Auto-start installation completed!${NC}"
