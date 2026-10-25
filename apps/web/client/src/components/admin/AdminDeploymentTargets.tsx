@@ -721,6 +721,7 @@ export default function AdminDeploymentTargets() {
                 tunnels: { en: "Cloudflare Tunnel inventory", th: "รายการ Cloudflare Tunnel", permission: "Account → Cloudflare Tunnel → Read" },
                 vpcServices: { en: "Workers VPC service inventory", th: "รายการ Workers VPC service", permission: "Account → Connectivity Directory → Read" },
                 containers: { en: "Cloudflare Containers inventory", th: "รายการ Cloudflare Containers", permission: "Account → Containers → Read" },
+                mtlsCertificates: { en: "Hyperdrive TLS trust certificates", th: "ใบรับรอง trust ของ Hyperdrive TLS", permission: "Account → SSL and Certificates → Read (Write is also required to add the Cloudflare Origin CA root)" },
               };
               return <VStack gap={1} role="alert">
               <p>{text(
@@ -743,7 +744,7 @@ export default function AdminDeploymentTargets() {
                     <VStack as="ul" gap={1}>{item.operations.map(operation => <li key={operation}><code>{operation}</code></li>)}</VStack>
                   </details>
                 </li>)}</VStack>
-                <p>{text("DNS Records Read and Account SSL/mTLS inventory Read are not required for this private VPC path: it uses the existing Tunnel and does not create public DNS records or mTLS certificates.", "เส้นทาง VPC ส่วนตัวนี้ไม่ต้องใช้ DNS Records Read หรือ Account SSL/mTLS inventory Read เพราะใช้ Tunnel เดิม และไม่สร้าง DNS สาธารณะหรือ mTLS certificate")}</p>
+                <p>{text("DNS Records Read is not needed because this path uses the existing Tunnel and does not create public DNS records. Account SSL and Certificates Read + Write is needed only to inspect and migrate the existing Staging Hyperdrive trust anchor before rotating the shared PostgreSQL server certificate.", "ไม่ต้องใช้ DNS Records Read เพราะใช้ Tunnel เดิมและไม่สร้าง DNS สาธารณะ แต่ต้องมี Account SSL and Certificates Read + Write เพื่ออ่านและย้าย trust anchor ของ Staging Hyperdrive ก่อนเปลี่ยนใบรับรอง PostgreSQL ที่ใช้ร่วมกัน")}</p>
               </> : <p>{text("Add the required read scope shown for an HTTP 403, then press Check now. No provider changes were made by this check.", "ถ้าได้ HTTP 403 ให้เพิ่มสิทธิ์อ่านตามที่แสดง แล้วกดตรวจสอบตอนนี้ การตรวจนี้ไม่ได้เปลี่ยน resource บน Cloudflare")}</p>}
               </VStack>;
             }
@@ -856,7 +857,8 @@ export default function AdminDeploymentTargets() {
                       tunnel: { en: "Cloudflare Tunnel", th: "Cloudflare Tunnel", read: "Account → Cloudflare Tunnel → Read" },
                       vpcServices: { en: "Workers VPC service", th: "Workers VPC service", read: "Account → Connectivity Directory → Read" },
                       containers: { en: "Cloudflare Containers", th: "Cloudflare Containers", read: "Account → Containers → Read" },
-                    } as const)[key as "hyperdrive" | "tunnel" | "vpcServices" | "containers"] ?? { en: key, th: key, read: "Account → Connectivity Directory → Read" };
+                      mtlsCertificates: { en: "Hyperdrive TLS trust certificates", th: "ใบรับรอง trust ของ Hyperdrive TLS", read: "Account → SSL and Certificates → Read (also grant Write to register the Origin CA root)" },
+                    } as const)[key as "hyperdrive" | "tunnel" | "vpcServices" | "containers" | "mtlsCertificates"] ?? { en: key, th: key, read: "Account → Connectivity Directory → Read" };
                     return <li key={key}><strong>{text(info.en, info.th)}</strong>: HTTP {check.httpStatus ?? text("not checked", "ยังไม่ได้ตรวจ")} · {check.readable ? text("readable", "อ่านได้") : text("read denied/incomplete", "สิทธิ์อ่านถูกปฏิเสธหรือตรวจไม่ครบ")} {!check.readable ? <>· {text("read scope", "สิทธิ์อ่าน")}: <code>{info.read}</code></> : null}</li>;
                   })}
                 </VStack>

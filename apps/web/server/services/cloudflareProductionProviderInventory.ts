@@ -71,13 +71,14 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
     const zoneId = typeof zone?.id === "string" ? zone.id : undefined;
-    const [routes, queueDetails, hyperdriveDetails, tunnels, containers, vpcServices] = await Promise.all([
+    const [routes, queueDetails, hyperdriveDetails, tunnels, containers, vpcServices, mtlsCertificates] = await Promise.all([
       zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
       Array.isArray(queues.result) ? queues.result as Array<{ queue_name?: unknown }> : [],
       Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{ name?: unknown }> : [],
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/cfd_tunnel?is_deleted=false&per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/containers/applications?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/connectivity/directory/services?per_page=100`, fetchImpl),
+      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/mtls_certificates?per_page=100`, fetchImpl),
     ]);
     const routeRows = Array.isArray(routes?.result) ? routes.result as Array<{ id?: unknown; pattern?: unknown; script?: unknown }> : [];
     const matchingRoutes = routeRows.filter(row => row.pattern === "smartaihub.app/*");
@@ -124,6 +125,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
         vpcServices: { httpStatus: vpcServices.status, complete: vpcServices.complete },
         tunnels: { httpStatus: tunnels.status, complete: tunnels.complete },
         containers: { httpStatus: containers.status, complete: containers.complete },
+        mtlsCertificates: { httpStatus: mtlsCertificates.status, complete: mtlsCertificates.complete },
       },
       productionDatabaseProvisioning: {
         checks: {
@@ -131,6 +133,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
           tunnel: { httpStatus: tunnels.status, readable: tunnels.complete },
           vpcServices: { httpStatus: vpcServices.status, readable: vpcServices.complete },
           containers: { httpStatus: containers.status, readable: containers.complete },
+          mtlsCertificates: { httpStatus: mtlsCertificates.status, readable: mtlsCertificates.complete },
         },
         // One consolidated packet from the concrete production APIs used by
         // inventory, DB provisioning, Worker version publishing and cutover.
@@ -146,6 +149,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
           { scope: "Account", permission: "Connectivity Directory Admin", operations: ["POST /accounts/{account_id}/connectivity/directory/services for one PostgreSQL TCP service bound to the existing Tunnel"] },
           { scope: "Account", permission: "Cloudflare Tunnel Read", operations: ["GET /accounts/{account_id}/cfd_tunnel?is_deleted=false to select and verify the existing database Tunnel"] },
           { scope: "Zone", permission: "SSL and Certificates Edit", operations: ["POST /certificates to issue a Cloudflare Origin CA server certificate for db.smartaihub.app; Workers VPC trusts Cloudflare Origin CA, while the current private PostgreSQL CA is not trusted"] },
+          { scope: "Account", permission: "SSL and Certificates Read + Write", operations: ["GET /accounts/{account_id}/mtls_certificates to inspect the Staging Hyperdrive trust anchor", "POST /accounts/{account_id}/mtls_certificates to register the Cloudflare Origin CA root before rotating PostgreSQL's leaf certificate"] },
           { scope: "Account", permission: "Containers Read", operations: ["GET /accounts/{account_id}/containers/applications"] },
           { scope: "Account", permission: "Containers Edit", operations: ["POST/PATCH /accounts/{account_id}/containers/applications for selected Node/Python production apps"] },
           { scope: "Zone", permission: "Zone Read", operations: ["GET /zones?name=smartaihub.app"] },
