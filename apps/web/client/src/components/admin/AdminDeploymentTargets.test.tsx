@@ -71,23 +71,22 @@ vi.mock("@/lib/trpc", () => ({
         accountRef: "f3fb0b6858e186fcc36be105bfa00243",
         accessChecks: { queues: { httpStatus: 200, complete: true }, hyperdrive: { httpStatus: 200, complete: true }, zone: { httpStatus: 200, complete: true },
           routes: { httpStatus: 200, complete: true }, workerDeployments: { httpStatus: 200, complete: true }, workerVersions: [],
-          productionDatabaseDns: { httpStatus: 200, complete: true }, mtlsCertificates: { httpStatus: 200, complete: true },
-          accessApplications: { httpStatus: 200, complete: true }, accessServiceTokens: { httpStatus: 200, complete: true } },
+          vpcServices: { httpStatus: 403, complete: false } },
         originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false },
         productionDatabaseProvisioning: { checks: {
-          dns: { httpStatus: 403, readable: false }, mtlsCertificates: { httpStatus: 403, readable: false },
-          accessApplications: { httpStatus: 200, readable: true }, serviceTokens: { httpStatus: 200, readable: true },
-          hyperdrive: { httpStatus: 200, readable: true }, tunnel: { httpStatus: 403, readable: false },
+          hyperdrive: { httpStatus: 200, readable: true }, tunnel: { httpStatus: 200, readable: true },
+          vpcServices: { httpStatus: 403, readable: false },
           containers: { httpStatus: 200, readable: true },
         }, permissionPacket: [
-          { scope: "Zone", permission: "DNS Write", operations: ["POST /zones/{zone_id}/dns_records"] },
-          { scope: "Account", permission: "Access: Apps and Policies Edit", operations: ["POST /accounts/{account_id}/access/apps"] },
           { scope: "Account", permission: "Hyperdrive Edit", operations: ["POST /accounts/{account_id}/hyperdrive/configs"] },
+          { scope: "Account", permission: "Connectivity Directory Admin", operations: ["POST /accounts/{account_id}/connectivity/directory/services"] },
+          { scope: "Account", permission: "Connectivity Directory Bind", operations: ["bind VPC service to Worker"] },
           { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes"] },
         ],
-        conditionalPermissions: [{ scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if Cloudflare-managed Tunnel configuration is used" }] },
+        conditionalPermissions: [{ scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if the selected existing Tunnel must be changed" }] },
         queueInventoryComplete: true, queues: [...mocks.productionQueues, { name: "smartspec-staging-project-jobs", environment: "staging" }],
         hyperdriveInventoryComplete: true, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
+        vpcServiceInventoryComplete: true, vpcServices: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartspec-staging-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
         worker: { deploymentInventoryComplete: true, deploymentCount: 1, activeVersionCount: 1,
           versions: [{ versionId: "11111111-1111-4111-8111-111111111111", percentage: 100, bindingNames: ["CLOUDFLARE_ACTIVATION"], containerNames: [], hasVerifiedReleaseIdentity: false, checked: true }] } },
@@ -601,22 +600,23 @@ describe("AdminDeploymentTargets", () => {
 
     expect(await screen.findByText(/Not provisioned\. Only Staging exists \(smartspec-staging-project-jobs\)/)).toBeInTheDocument();
     expect(screen.getByText(/Not provisioned\. Only Staging exists \(smartspec-staging-project-db\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Not provisioned\. Only Staging exists \(smartspec-staging-postgres\)/)).toBeInTheDocument();
     expect(screen.getByText(/Production currently has no origin\/runtime configuration/)).toBeInTheDocument();
     expect(screen.getByText(/Not configured or bound in the active Worker version/)).toBeInTheDocument();
     expect(screen.getByText(/cannot be used as a rollback baseline/i)).toBeInTheDocument();
     expect(screen.getByText(/The exact smartaihub\.app\/\* Worker Route is not attached/i)).toBeInTheDocument();
-    expect(screen.getByText(/Queue action above tests Queue Edit through the canonical job/i)).toBeInTheDocument();
+    expect(screen.getByText(/PostgreSQL will use a Workers VPC TCP service over the existing private Tunnel/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Cloudflare API Tokens only if a write operation reports a missing scope" }))
       .toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
-    expect(screen.getByText(/strict certificate verification fails \(UNABLE_TO_VERIFY_LEAF_SIGNATURE\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/configure a CA-trusted server certificate whose hostname matches/i)).toBeInTheDocument();
+    expect(screen.getByText(/TLS certificate chain accepted by Workers VPC/i)).toBeInTheDocument();
+    expect(screen.getByText(/verify_ca or replace it with a publicly trusted/i)).toBeInTheDocument();
     const prepareQueue = screen.getByRole("button", { name: "Prepare Production Queue" });
     expect(prepareQueue).toBeEnabled();
     await user.click(prepareQueue);
     await waitFor(() => expect(mocks.prepareProductionQueue).toHaveBeenCalledWith({ tenantId, projectId, environment: "production" }));
     await user.click(screen.getByRole("button", { name: "Check this target’s Cloudflare access" }));
     expect(screen.getByText(/This is an account-member role, not a setting on the API token/i)).toBeInTheDocument();
-    expect(screen.getByText(/Connectivity Directory Admin/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Connectivity Directory Admin/).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute("href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/");
     expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
   });
@@ -650,10 +650,9 @@ describe("AdminDeploymentTargets", () => {
     await chooseProductionScope(user);
 
     expect(await screen.findByText(/Production PostgreSQL connection setup/i)).toBeInTheDocument();
-    expect(screen.getByText(/Zone → DNS → Read/)).toBeInTheDocument();
-    expect(screen.getByText(/Account: SSL and Certificates Read/)).toBeInTheDocument();
-    expect(screen.getByText(/DNS Write/)).toBeInTheDocument();
-    expect(screen.getByText(/Access: Apps and Policies Edit/)).toBeInTheDocument();
+    expect(screen.getByText(/Connectivity Directory → Read/)).toBeInTheDocument();
+    expect(screen.getByText(/Connectivity Directory Admin/)).toBeInTheDocument();
+    expect(screen.getByText(/Connectivity Directory Bind/)).toBeInTheDocument();
     expect(screen.getByText(/Hyperdrive Edit/)).toBeInTheDocument();
     expect(screen.getByText(/Workers Routes Edit/)).toBeInTheDocument();
   });

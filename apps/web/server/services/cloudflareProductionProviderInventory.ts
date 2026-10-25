@@ -71,16 +71,13 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
     const zoneId = typeof zone?.id === "string" ? zone.id : undefined;
-    const [routes, queueDetails, hyperdriveDetails, zoneDns, mtlsCertificates, accessApps, serviceTokens, tunnels, containers] = await Promise.all([
+    const [routes, queueDetails, hyperdriveDetails, tunnels, containers, vpcServices] = await Promise.all([
       zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
       Array.isArray(queues.result) ? queues.result as Array<{ queue_name?: unknown }> : [],
       Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{ name?: unknown }> : [],
-      zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/dns_records?name=db-prod.smartaihub.app&per_page=100`, fetchImpl) : Promise.resolve(null),
-      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/mtls_certificates?per_page=100`, fetchImpl),
-      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/apps?per_page=100`, fetchImpl),
-      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/access/service_tokens?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/cfd_tunnel?is_deleted=false&per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/containers/applications?per_page=100`, fetchImpl),
+      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/connectivity/directory/services?per_page=100`, fetchImpl),
     ]);
     const routeRows = Array.isArray(routes?.result) ? routes.result as Array<{ id?: unknown; pattern?: unknown; script?: unknown }> : [];
     const matchingRoutes = routeRows.filter(row => row.pattern === "smartaihub.app/*");
@@ -105,7 +102,10 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const queueNames = queueDetails.map(row => row.queue_name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(name));
     const hyperdriveNames = hyperdriveDetails.map(row => row.name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,127}$/.test(name));
     const inventoryComplete = queues.complete && hyperdrive.complete && zones.complete && Boolean(routes?.complete) &&
-      deployments.complete && Array.isArray(deploymentRows) && versionDetails.every(version => version.checked);
+      deployments.complete && Array.isArray(deploymentRows) && versionDetails.every(version => version.checked) && vpcServices.complete;
+    const vpcServiceRows = Array.isArray(vpcServices.result) ? vpcServices.result as Array<{
+      service_id?: unknown; name?: unknown; type?: unknown; app_protocol?: unknown; host?: { network?: { tunnel_id?: unknown } };
+    }> : [];
     return {
       status: inventoryComplete ? "CHECKED" as const : "PARTIAL" as const,
       checkedAt: new Date().toISOString(),
@@ -119,19 +119,13 @@ export async function probeCloudflareProductionProviderInventory(input: {
         routes: { httpStatus: routes?.status ?? null, complete: routes?.complete ?? false },
         workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows) },
         workerVersions: versionDetails.map(version => ({ httpStatus: version.checked ? 200 : null, complete: version.checked })),
-        productionDatabaseDns: { httpStatus: zoneDns?.status ?? null, complete: zoneDns?.complete ?? false },
-        mtlsCertificates: { httpStatus: mtlsCertificates.status, complete: mtlsCertificates.complete },
-        accessApplications: { httpStatus: accessApps.status, complete: accessApps.complete },
-        accessServiceTokens: { httpStatus: serviceTokens.status, complete: serviceTokens.complete },
+        vpcServices: { httpStatus: vpcServices.status, complete: vpcServices.complete },
       },
       productionDatabaseProvisioning: {
         checks: {
-          dns: { httpStatus: zoneDns?.status ?? null, readable: zoneDns?.complete ?? false },
-          mtlsCertificates: { httpStatus: mtlsCertificates.status, readable: mtlsCertificates.complete },
-          accessApplications: { httpStatus: accessApps.status, readable: accessApps.complete },
-          serviceTokens: { httpStatus: serviceTokens.status, readable: serviceTokens.complete },
           hyperdrive: { httpStatus: hyperdrive.status, readable: hyperdrive.complete },
           tunnel: { httpStatus: tunnels.status, readable: tunnels.complete },
+          vpcServices: { httpStatus: vpcServices.status, readable: vpcServices.complete },
           containers: { httpStatus: containers.status, readable: containers.complete },
         },
         // One consolidated packet from the concrete production APIs used by
@@ -144,26 +138,20 @@ export async function probeCloudflareProductionProviderInventory(input: {
           { scope: "Account", permission: "Queues Read", operations: ["GET /accounts/{account_id}/queues"] },
           { scope: "Account", permission: "Hyperdrive Read", operations: ["GET /accounts/{account_id}/hyperdrive/configs", "GET /accounts/{account_id}/hyperdrive/configs/{hyperdrive_id}"] },
           { scope: "Account", permission: "Hyperdrive Edit", operations: ["POST /accounts/{account_id}/hyperdrive/configs for the dedicated Production origin"] },
-          { scope: "Account", permission: "Account: SSL and Certificates Read", operations: ["GET /accounts/{account_id}/mtls_certificates", "GET /accounts/{account_id}/mtls_certificates/{certificate_id}"] },
-          { scope: "Account", permission: "Account: SSL and Certificates Edit", operations: ["POST /accounts/{account_id}/mtls_certificates for the dedicated PostgreSQL CA"] },
-          { scope: "Account", permission: "Access: Apps and Policies Read", operations: ["GET /accounts/{account_id}/access/apps", "GET /accounts/{account_id}/access/apps/{app_id}/policies"] },
-          { scope: "Account", permission: "Access: Apps and Policies Edit", operations: ["POST /accounts/{account_id}/access/apps", "POST /accounts/{account_id}/access/apps/{app_id}/policies"] },
-          { scope: "Account", permission: "Access: Service Tokens Read", operations: ["GET /accounts/{account_id}/access/service_tokens"] },
-          { scope: "Account", permission: "Access: Service Tokens Edit", operations: ["POST /accounts/{account_id}/access/service_tokens"] },
-          { scope: "Account", permission: "Cloudflare Tunnel Read", operations: ["GET /accounts/{account_id}/cfd_tunnel?is_deleted=false"] },
+          { scope: "Account", permission: "Connectivity Directory Read", operations: ["GET /accounts/{account_id}/connectivity/directory/services"] },
+          { scope: "Account", permission: "Connectivity Directory Admin", operations: ["POST /accounts/{account_id}/connectivity/directory/services for one PostgreSQL TCP service bound to the existing Tunnel"] },
+          { scope: "Account", permission: "Connectivity Directory Bind", operations: ["bind the verified PostgreSQL VPC Service to the Production Worker"] },
+          { scope: "Account", permission: "Cloudflare Tunnel Read", operations: ["GET /accounts/{account_id}/cfd_tunnel?is_deleted=false to select and verify the existing database Tunnel"] },
           { scope: "Account", permission: "Containers Read", operations: ["GET /accounts/{account_id}/containers/applications"] },
           { scope: "Account", permission: "Containers Edit", operations: ["POST/PATCH /accounts/{account_id}/containers/applications for selected Node/Python production apps"] },
           { scope: "Zone", permission: "Zone Read", operations: ["GET /zones?name=smartaihub.app"] },
-          { scope: "Zone", permission: "DNS Read", operations: ["GET /zones/{zone_id}/dns_records?name=db-prod.smartaihub.app"] },
-          { scope: "Zone", permission: "DNS Write", operations: ["POST /zones/{zone_id}/dns_records only for the dedicated private Tunnel hostname"] },
           { scope: "Zone", permission: "Workers Routes Read", operations: ["GET /zones/{zone_id}/workers/routes"] },
           { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes for the exact smartaihub.app/* route during the authorized canary"] },
         ],
         conditionalPermissions: [
           { scope: "Account", permission: "Queues Edit", condition: "only if a fresh complete inventory proves the already-provisioned Production Queue or DLQ is absent" },
           { scope: "Account", permission: "Workers R2 Storage Read/Edit", condition: "only if production provisions or changes an R2 bucket; existing object access uses the separately configured R2 S3 credentials" },
-          { scope: "Account", permission: "Connectivity Directory Read/Edit", condition: "only if the chosen PostgreSQL path uses Workers VPC; the current implementation uses the retained Cloudflare Tunnel path" },
-          { scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if Tunnel ingress is changed through the Cloudflare-managed API; the retained tunnel is locally configured" },
+          { scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if the selected existing Tunnel must be changed through the Cloudflare-managed API; VPC service provisioning alone does not edit Tunnel configuration" },
         ],
       },
       originConfiguration,
@@ -171,6 +159,12 @@ export async function probeCloudflareProductionProviderInventory(input: {
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
       hyperdriveInventoryComplete: hyperdrive.complete,
       hyperdrives: hyperdriveNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
+      vpcServiceInventoryComplete: vpcServices.complete,
+      vpcServices: vpcServiceRows.flatMap(row => typeof row.service_id === "string" && /^[a-f0-9-]{36}$/i.test(row.service_id) &&
+        typeof row.name === "string" && /^[a-zA-Z0-9][a-zA-Z0-9-]{0,62}$/.test(row.name) && (row.type === "tcp" || row.type === "http")
+        ? [{ id: row.service_id, name: row.name, type: row.type, ...(row.app_protocol === "postgresql" || row.app_protocol === "mysql" ? { appProtocol: row.app_protocol } : {}),
+            ...(typeof row.host?.network?.tunnel_id === "string" && /^[a-f0-9-]{36}$/i.test(row.host.network.tunnel_id) ? { tunnelId: row.host.network.tunnel_id } : {}),
+            environment: /(?:^|-)production(?:-|$)/i.test(row.name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(row.name) ? "staging" as const : "other" as const }] : []),
       domainRoute: { inventoryComplete: Boolean(routes?.complete), attached: matchingRoutes.length === 1 && matchingRoutes[0].script === target.targetId,
         conflicting: matchingRoutes.length > 1 || (matchingRoutes.length === 1 && matchingRoutes[0].script !== target.targetId) },
       worker: { deploymentInventoryComplete: deployments.complete && Array.isArray(deploymentRows), deploymentCount: records.length,

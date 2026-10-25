@@ -665,7 +665,7 @@ export default function AdminDeploymentTargets() {
           })() : null}
           <Divider />
           <strong>{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
-          {productionProviderInventory.isLoading ? <p role="status">{text("Reading Production queues, Hyperdrive, Worker versions, and domain route…", "กำลังตรวจ Queue, Hyperdrive, Worker version และ route ของ Production…")}</p> : null}
+          {productionProviderInventory.isLoading ? <p role="status">{text("Reading Production queues, Hyperdrive, VPC services, Worker versions, and domain route…", "กำลังตรวจ Queue, Hyperdrive, VPC service, Worker version และ route ของ Production…")}</p> : null}
           {productionProviderInventory.isError ? <p role="alert">{text("Cloudflare resource inventory could not be read. No provider changes were made.", "อ่าน inventory ของ Cloudflare ไม่สำเร็จ และไม่มีการเปลี่ยนแปลง resource")}</p> : null}
           {productionProviderInventory.data ? (() => {
             const inventory = productionProviderInventory.data;
@@ -685,11 +685,8 @@ export default function AdminDeploymentTargets() {
                 routes: { en: "Worker routes", th: "Worker routes", permission: "Zone → Workers Routes → Read" },
                 workerDeployments: { en: "Worker deployments", th: "Worker deployments", permission: "Account → Workers Scripts → Read" },
                 workerVersions: { en: "Worker versions", th: "Worker versions", permission: "Account → Workers Scripts → Read" },
-                productionDatabaseDns: { en: "Production database DNS inventory", th: "รายการ DNS ของฐานข้อมูล Production", permission: "Zone → DNS → Read" },
-                mtlsCertificates: { en: "Origin CA certificate inventory", th: "รายการใบรับรอง CA ของฐานข้อมูล", permission: "Account → SSL and Certificates → Read" },
-                accessApplications: { en: "Access application inventory", th: "รายการ Access application", permission: "Account → Access: Apps and Policies → Read" },
-                accessServiceTokens: { en: "Access service-token inventory", th: "รายการ Access service token", permission: "Account → Access: Service Tokens → Read" },
                 tunnels: { en: "Cloudflare Tunnel inventory", th: "รายการ Cloudflare Tunnel", permission: "Account → Cloudflare Tunnel → Read" },
+                vpcServices: { en: "Workers VPC service inventory", th: "รายการ Workers VPC service", permission: "Account → Connectivity Directory → Read" },
                 containers: { en: "Cloudflare Containers inventory", th: "รายการ Cloudflare Containers", permission: "Account → Containers → Read" },
               };
               return <VStack gap={1} role="alert">
@@ -714,6 +711,8 @@ export default function AdminDeploymentTargets() {
             const hasProductionDeadLetterQueue = productionQueues.some(queue => queue.name === "smartspec-canonical-job-queue-production-dlq");
             const productionHyperdrives = inventory.hyperdrives.filter(item => item.environment === "production");
             const stagingHyperdrives = inventory.hyperdrives.filter(item => item.environment === "staging");
+            const productionPostgresVpcs = inventory.vpcServices.filter(item => item.environment === "production" && item.type === "tcp" && item.appProtocol === "postgresql");
+            const stagingPostgresVpcs = inventory.vpcServices.filter(item => item.environment === "staging" && item.type === "tcp" && item.appProtocol === "postgresql");
             const activeVersions = inventory.worker.versions;
             const verifiedRollback = activeVersions.some(version => version.checked && version.hasVerifiedReleaseIdentity);
             const nodeAndPythonIngressBound = activeVersions.some(version => version.checked &&
@@ -722,6 +721,7 @@ export default function AdminDeploymentTargets() {
             const productionResourceGaps = [
               ...(!hasProductionQueue || !hasProductionDeadLetterQueue ? [text("Production Queue and dead-letter queue", "Production Queue และ dead-letter queue")] : []),
               ...(productionHyperdrives.length === 0 ? [text("Production Hyperdrive for the retained PostgreSQL host", "Production Hyperdrive สำหรับ PostgreSQL เครื่องเดิม")] : []),
+              ...(productionPostgresVpcs.length === 0 ? [text("Production PostgreSQL Workers VPC service", "Workers VPC service สำหรับ PostgreSQL Production")] : []),
               ...(!verifiedRollback ? [text("a verified Worker rollback release", "Worker release สำหรับ rollback ที่ตรวจสอบแล้ว")] : []),
               ...(!inventory.domainRoute.attached ? [text("the smartaihub.app/* Worker Route", "Worker Route smartaihub.app/*")] : []),
             ];
@@ -773,20 +773,20 @@ export default function AdminDeploymentTargets() {
               <p><strong>Production Hyperdrive</strong>: {productionHyperdrives.length > 0
                 ? text(`Found ${productionHyperdrives.length}`, `พบ ${productionHyperdrives.length} รายการ`)
                 : text(stagingHyperdrives.length > 0 ? `Not provisioned. Only Staging exists (${stagingHyperdrives.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingHyperdrives.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingHyperdrives.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
+              <p><strong>{text("Production PostgreSQL VPC service", "Workers VPC สำหรับ PostgreSQL Production")}</strong>: {productionPostgresVpcs.length > 0
+                ? text(`Found ${productionPostgresVpcs.length} PostgreSQL TCP service(s).`, `พบ PostgreSQL TCP service ${productionPostgresVpcs.length} รายการ`)
+                : text(stagingPostgresVpcs.length > 0 ? `Not provisioned. Only Staging exists (${stagingPostgresVpcs.map(item => item.name).join(", ")}).` : "Not provisioned.", stagingPostgresVpcs.length > 0 ? `ยังไม่มี Production มีเฉพาะ Staging (${stagingPostgresVpcs.map(item => item.name).join(", ")})` : "ยังไม่ได้สร้าง")}</p>
               {inventory.productionDatabaseProvisioning ? <VStack as="section" gap={1} role="group" aria-label={text("Production database provisioning access", "สิทธิ์สำหรับเตรียมฐานข้อมูล Production")}>
                 <p><strong>{text("Production PostgreSQL connection setup", "การเตรียมการเชื่อมต่อ PostgreSQL ของ Production")}</strong></p>
                 <p>{text("Read-only permission checks for the private PostgreSQL path (HTTP 200 proves read access only):", "ผลตรวจสิทธิ์อ่านสำหรับ PostgreSQL ส่วนตัว (HTTP 200 ยืนยันเฉพาะการอ่าน):")}</p>
                 <VStack as="ul" gap={1}>
                   {Object.entries(inventory.productionDatabaseProvisioning.checks).map(([key, check]) => {
                     const info = ({
-                      dns: { en: "Production database DNS", th: "DNS ฐานข้อมูล Production", read: "Zone → DNS → Read" },
-                      mtlsCertificates: { en: "Origin CA certificate", th: "ใบรับรอง CA ของฐานข้อมูล", read: "Account: SSL and Certificates Read" },
-                      accessApplications: { en: "Access policy", th: "Access policy", read: "Account → Access: Apps and Policies → Read" },
-                      serviceTokens: { en: "Access service token", th: "Access service token", read: "Account → Access: Service Tokens → Read" },
                       hyperdrive: { en: "Hyperdrive", th: "Hyperdrive", read: "Account → Hyperdrive → Read" },
                       tunnel: { en: "Cloudflare Tunnel", th: "Cloudflare Tunnel", read: "Account → Cloudflare Tunnel → Read" },
+                      vpcServices: { en: "Workers VPC service", th: "Workers VPC service", read: "Account → Connectivity Directory → Read" },
                       containers: { en: "Cloudflare Containers", th: "Cloudflare Containers", read: "Account → Containers → Read" },
-                    } as const)[key as "dns" | "mtlsCertificates" | "accessApplications" | "serviceTokens" | "hyperdrive" | "tunnel" | "containers"];
+                    } as const)[key as "hyperdrive" | "tunnel" | "vpcServices" | "containers"] ?? { en: key, th: key, read: "Account → Connectivity Directory → Read" };
                     return <li key={key}><strong>{text(info.en, info.th)}</strong>: HTTP {check.httpStatus ?? text("not checked", "ยังไม่ได้ตรวจ")} · {check.readable ? text("readable", "อ่านได้") : text("read denied/incomplete", "สิทธิ์อ่านถูกปฏิเสธหรือตรวจไม่ครบ")} {!check.readable ? <>· {text("read scope", "สิทธิ์อ่าน")}: <code>{info.read}</code></> : null}</li>;
                   })}
                 </VStack>
@@ -820,8 +820,8 @@ export default function AdminDeploymentTargets() {
                 `งาน Production ที่ยังเหลือ: ${productionResourceGaps.join(", ")} การตรวจ inventory นี้อ่านอย่างเดียวและยังไม่ได้เปลี่ยน traffic`,
               )}</p> : null}
               <p>{text(
-                `The saved Production token can read account ${inventory.accountRef}. Read-only checks cannot prove write access; the Queue action above tests Queue Edit through the canonical job and reports the exact Cloudflare error if denied. The token scopes and Connectivity Directory member role you updated are reused; do not paste the token again. Hyperdrive preparation is currently blocked by the PostgreSQL certificate and Production Tunnel route, not by the read probe.`,
-                `Token Production ที่บันทึกไว้อ่าน account ${inventory.accountRef} ได้ การตรวจแบบอ่านอย่างเดียวพิสูจน์สิทธิ์เขียนไม่ได้ ปุ่มเตรียม Queue ด้านบนจะทดสอบ Queues Edit ผ่าน canonical job และรายงาน error จาก Cloudflare ตรง ๆ ระบบจะใช้ token และ Connectivity Directory role ที่คุณเพิ่มไว้ ไม่ต้องใส่ token ซ้ำ ส่วน Hyperdrive ยังติด certificate ของ PostgreSQL และ Tunnel route สำหรับ Production ไม่ใช่ผล read probe`,
+                `The saved Production token can read account ${inventory.accountRef}. PostgreSQL will use a Workers VPC TCP service over the existing private Tunnel, then Hyperdrive. This avoids creating a public database DNS record or Access service token. The production token is reused; do not paste it again.`,
+                `Token Production ที่บันทึกไว้อ่าน account ${inventory.accountRef} ได้ เส้นทาง PostgreSQL จะใช้ Workers VPC แบบ TCP ผ่าน Tunnel ส่วนตัวเดิม แล้วเชื่อมต่อ Hyperdrive จึงไม่ต้องสร้าง DNS สาธารณะหรือ Access service token และระบบใช้ token Production ที่บันทึกไว้แล้ว ไม่ต้องใส่ซ้ำ`,
               )}</p>
               <p>
                 <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">
@@ -829,8 +829,8 @@ export default function AdminDeploymentTargets() {
                 </a>
               </p>
               {productionHyperdrives.length === 0 ? <p role="status">{text(
-                "The PostgreSQL server accepts TLS, but the app's current database session is not encrypted and strict certificate verification fails (UNABLE_TO_VERIFY_LEAF_SIGNATURE). Before Hyperdrive can connect, configure a CA-trusted server certificate whose hostname matches the database host exposed through the Cloudflare Tunnel. A running Tunnel alone does not prove that this database route is configured.",
-                "PostgreSQL รับ TLS ได้ แต่ session ฐานข้อมูลที่แอปใช้อยู่ยังไม่เข้ารหัส และตรวจ certificate แบบเข้มงวดไม่ผ่าน (UNABLE_TO_VERIFY_LEAF_SIGNATURE) ก่อน Hyperdrive เชื่อมต่อ ต้องตั้ง certificate ที่ออกโดย CA ซึ่งเชื่อถือได้และ hostname ตรงกับชื่อฐานข้อมูลที่เปิดผ่าน Cloudflare Tunnel การที่ Tunnel ทำงานอยู่ยังไม่ยืนยันว่ามี route มายังฐานข้อมูลนี้",
+                "The retained PostgreSQL connection still needs a TLS certificate chain accepted by Workers VPC. The current private CA chain failed strict verification, so the implementation must verify whether it is usable with verify_ca or replace it with a publicly trusted or Cloudflare Origin CA certificate before Hyperdrive is provisioned. TLS verification will not be disabled.",
+                "การเชื่อมต่อ PostgreSQL เดิมยังต้องมี TLS certificate chain ที่ Workers VPC ยอมรับ โดย chain ของ private CA ปัจจุบันตรวจแบบเข้มงวดไม่ผ่าน จึงต้องตรวจว่าใช้ verify_ca ได้หรือเปลี่ยนเป็น certificate จาก public CA หรือ Cloudflare Origin CA ก่อนสร้าง Hyperdrive ระบบจะไม่ปิดการตรวจ TLS",
               )} <a href="https://developers.cloudflare.com/hyperdrive/configuration/connect-to-private-database-vpc/" target="_blank" rel="noreferrer">
                 {text("Cloudflare: private PostgreSQL with Workers VPC", "คู่มือ Cloudflare: เชื่อม PostgreSQL ส่วนตัวด้วย Workers VPC")}
               </a></p> : null}
