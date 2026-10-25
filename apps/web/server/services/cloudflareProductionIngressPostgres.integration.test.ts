@@ -548,6 +548,7 @@ suite(
       const [job]=await client`SELECT status,attempt,"maxAttempts","inputJson" FROM worker_jobs WHERE id=${input.submissionId}`;
       expect(job).toMatchObject({status:"queued",attempt:2,maxAttempts:2,inputJson:{grantRef:grant.grantRef}});
       await client`UPDATE worker_jobs SET status='failed',"errorCode"='CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED' WHERE id=${input.submissionId}`;
+      await client`UPDATE worker_jobs SET attempt=3,"maxAttempts"=3,"fencingVersion"=3 WHERE id=${input.submissionId}`;
       await expect(cp.recoverReviewGatedJob(input.submissionId,randomUUID(),"corrected binding",evidence,undefined,scope)).resolves.toBe(false);
     });
 

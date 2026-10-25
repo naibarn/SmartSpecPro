@@ -4885,7 +4885,7 @@ export function createJobControlPlane(
           actorId == null && scope.requestedByUserId === job?.requestedByUserId &&
           job?.jobType === "cloudflare.production.deploy" && job.contractVersion === "cloudflare-production-ingress-v1" &&
           job.status === "failed" && job.errorCode === "CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED" &&
-          job.attempt === 1 && job.maxAttempts === 1 && job.fencingVersion === 1 && job.leaseOwnerToken == null &&
+          [1,2].includes(job.attempt) && job.maxAttempts === job.attempt && job.fencingVersion === job.attempt && job.leaseOwnerToken == null &&
           job.inputJson?.action === "ingress-canary" && evidence.replacementGrantRef === job.inputJson.grantRef &&
           typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now()+300000 &&
           new Date(job.createdAt).getTime()+900000 > Date.now()+300000 &&
