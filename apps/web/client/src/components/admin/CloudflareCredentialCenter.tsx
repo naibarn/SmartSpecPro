@@ -123,6 +123,10 @@ export default function CloudflareCredentialCenter() {
           <strong>{text("Read-only permission results", "ผลตรวจสิทธิ์แบบอ่านอย่างเดียว")}</strong>
           <span>{new Date(report.checkedAt).toLocaleString()}</span>
         </HStack>
+        {profileId === "deployment" ? <p role="note">{text(
+          "For the selected private PostgreSQL Workers VPC + Hyperdrive path, DNS Records Read and Account SSL/mTLS inventory Read are optional inventory checks. HTTP 403 on either check does not block provisioning. The required database certificate operation is Zone → SSL and Certificates → Edit; production traffic changes still require the separate canary authority.",
+          "เส้นทาง PostgreSQL แบบ private Workers VPC + Hyperdrive นี้ไม่บังคับ DNS Records Read หรือ Account SSL/mTLS inventory Read ผล HTTP 403 ของสองรายการนี้ไม่ขวางการ provision ส่วนการออก certificate ฐานข้อมูลต้องใช้ Zone → SSL and Certificates → Edit และการเปลี่ยน production traffic ยังต้องผ่าน canary authority แยกต่างหาก"
+        )}</p> : null}
         {report.accountId ? <p>{text("Cloudflare Account ID", "Cloudflare Account ID")}: {report.accountId}</p> : null}
         {report.zoneId ? <p>{text("smartaihub.app Zone ID", "Zone ID ของ smartaihub.app")}: {report.zoneId}</p> : null}
         {report.error ? <p role="status">{report.error === "credential_not_configured" ? text("No token is saved for this profile. Save a token before probing.", "profile นี้ยังไม่มี token ให้บันทึก token ก่อนตรวจ") : text("Cloudflare Account ID is not configured. Set it in this page before probing.", "ยังไม่ได้ตั้ง Cloudflare Account ID ให้ตั้งค่าในหน้านี้ก่อนตรวจ")}</p> : null}

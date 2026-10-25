@@ -144,7 +144,6 @@ export async function probeCloudflareProductionProviderInventory(input: {
           { scope: "Account", permission: "Hyperdrive Edit", operations: ["POST /accounts/{account_id}/hyperdrive/configs for the dedicated Production origin"] },
           { scope: "Account", permission: "Connectivity Directory Read", operations: ["GET /accounts/{account_id}/connectivity/directory/services"] },
           { scope: "Account", permission: "Connectivity Directory Admin", operations: ["POST /accounts/{account_id}/connectivity/directory/services for one PostgreSQL TCP service bound to the existing Tunnel"] },
-          { scope: "Account", permission: "Connectivity Directory Bind", operations: ["bind the verified PostgreSQL VPC Service to the Production Worker"] },
           { scope: "Account", permission: "Cloudflare Tunnel Read", operations: ["GET /accounts/{account_id}/cfd_tunnel?is_deleted=false to select and verify the existing database Tunnel"] },
           { scope: "Zone", permission: "SSL and Certificates Edit", operations: ["POST /certificates to issue a Cloudflare Origin CA server certificate for db.smartaihub.app; Workers VPC trusts Cloudflare Origin CA, while the current private PostgreSQL CA is not trusted"] },
           { scope: "Account", permission: "Containers Read", operations: ["GET /accounts/{account_id}/containers/applications"] },

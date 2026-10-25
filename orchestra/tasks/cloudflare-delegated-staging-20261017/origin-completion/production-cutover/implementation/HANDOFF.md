@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `51`
-- Updated (UTC): `2026-10-25T00:39:50.005694+00:00`
+- State generation: `53`
+- Updated (UTC): `2026-10-25T00:53:22.691931+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `4dd172b6a1ecb199c4f7dcf6a027d6651eaff612`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-production-runtime-composition`
-- Next action: Integrated SHA 4dd172b6 and Linux release generation 81 are serving and verified healthy; live Cloudflare inventory at 2026-10-25T00:25Z confirms Production Queue/DLQ exist but VPC service, Hyperdrive, required workload bindings, verified rollback identity and smartaihub.app/* route are absent. Resume with one Zone SSL and Certificates Edit token scope to issue db.smartaihub.app Cloudflare Origin CA certificate, then implement encrypted host install/role job, verified DB access and Worker composition; preserve separate canary grant before route changes.
+- Next action: Permission UI and inventory packet corrections are implemented; focused inventory and AdminDeploymentTargets tests pass (29/29). Next implement production origin descriptor and transport bindings for exact Queue, production Hyperdrive and Node/Python app ingress with activation/route unchanged, then wire a canonical provisioning job to the existing production DB provisioner.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Production inventory UI is integrated and serving Linux release generation 72 at db36dcbad2befa78635c2586816f9aeb6e3f1b43; login/settings/health endpoints return 200. Continue exact production resource provisioning and runtime composition. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | User reports Production token permissions have been updated; actual Queue write still needs the canonical Admin job receipt. Keep current independent Production deployment grant/canary authority intact; do not bypass it. |
-| section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 4dd172b6a1ecb199c4f7dcf6a027d6651eaff612 | 4dd172b6a1ecb199c4f7dcf6a027d6651eaff612 | Integrated SHA 4dd172b6 and Linux release generation 81 are serving and verified healthy; live Cloudflare inventory at 2026-10-25T00:25Z confirms Production Queue/DLQ exist but VPC service, Hyperdrive, required workload bindings, verified rollback identity and smartaihub.app/* route are absent. Resume with one Zone SSL and Certificates Edit token scope to issue db.smartaihub.app Cloudflare Origin CA certificate, then implement encrypted host install/role job, verified DB access and Worker composition; preserve separate canary grant before route changes. |
+| section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | 4dd172b6a1ecb199c4f7dcf6a027d6651eaff612 | 4dd172b6a1ecb199c4f7dcf6a027d6651eaff612 | Permission UI and inventory packet corrections are implemented; focused inventory and AdminDeploymentTargets tests pass (29/29). Next implement production origin descriptor and transport bindings for exact Queue, production Hyperdrive and Node/Python app ingress with activation/route unchanged, then wire a canonical provisioning job to the existing production DB provisioner. |
 | section-04-production-readiness-and-cutover | pending | — | — | — | — | — |
 
 ## Open gaps / blockers (not automatic merge blockers)

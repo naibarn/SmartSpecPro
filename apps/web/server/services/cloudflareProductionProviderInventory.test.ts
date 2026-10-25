@@ -126,6 +126,10 @@ describe("Cloudflare production provider inventory", () => {
           expect.objectContaining({ scope: "Account", permission: "Containers Edit" }),
           expect.objectContaining({ scope: "Zone", permission: "Workers Routes Edit" }),
         ]) } });
+    const permissionPacket = result.productionDatabaseProvisioning?.permissionPacket ?? [];
+    expect(permissionPacket.some(item => item.permission === "Connectivity Directory Bind")).toBe(false);
+    expect(permissionPacket.some(item => item.scope === "Zone" && item.permission === "DNS Read")).toBe(false);
+    expect(permissionPacket.some(item => item.scope === "Account" && item.permission === "SSL and Certificates Read")).toBe(false);
     expect(JSON.stringify(result)).not.toContain("test-token");
     expect(JSON.stringify(result)).not.toContain("credentials_file");
   });

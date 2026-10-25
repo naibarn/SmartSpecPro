@@ -21,7 +21,7 @@
     },
     "section-03-production-runtime-composition": {
       "status": "checkpointed",
-      "next_action": "Integrated SHA 4dd172b6 and Linux release generation 81 are serving and verified healthy; live Cloudflare inventory at 2026-10-25T00:25Z confirms Production Queue/DLQ exist but VPC service, Hyperdrive, required workload bindings, verified rollback identity and smartaihub.app/* route are absent. Resume with one Zone SSL and Certificates Edit token scope to issue db.smartaihub.app Cloudflare Origin CA certificate, then implement encrypted host install/role job, verified DB access and Worker composition; preserve separate canary grant before route changes.",
+      "next_action": "Permission UI and inventory packet corrections are implemented; focused inventory and AdminDeploymentTargets tests pass (29/29). Next implement production origin descriptor and transport bindings for exact Queue, production Hyperdrive and Node/Python app ingress with activation/route unchanged, then wire a canonical provisioning job to the existing production DB provisioner.",
       "checkpoint_sha": "4dd172b6a1ecb199c4f7dcf6a027d6651eaff612",
       "merged_main_sha": "4dd172b6a1ecb199c4f7dcf6a027d6651eaff612",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
@@ -42,11 +42,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 51,
-  "updated_at": "2026-10-25T00:39:50.005694+00:00",
+  "generation": 53,
+  "updated_at": "2026-10-25T00:53:22.691931+00:00",
   "progress": {
     "active_section": "section-03-production-runtime-composition",
-    "next_action": "Integrated SHA 4dd172b6 and Linux release generation 81 are serving and verified healthy; live Cloudflare inventory at 2026-10-25T00:25Z confirms Production Queue/DLQ exist but VPC service, Hyperdrive, required workload bindings, verified rollback identity and smartaihub.app/* route are absent. Resume with one Zone SSL and Certificates Edit token scope to issue db.smartaihub.app Cloudflare Origin CA certificate, then implement encrypted host install/role job, verified DB access and Worker composition; preserve separate canary grant before route changes.",
+    "next_action": "Permission UI and inventory packet corrections are implemented; focused inventory and AdminDeploymentTargets tests pass (29/29). Next implement production origin descriptor and transport bindings for exact Queue, production Hyperdrive and Node/Python app ingress with activation/route unchanged, then wire a canonical provisioning job to the existing production DB provisioner.",
     "gaps": [
       "Hyperdrive requires an exact verified private database/Tunnel plan and cannot be derived from the Staging config or a public/loopback DB URL.",
       "PostgreSQL accepts TLS, but the application session is non-TLS and strict CA verification fails UNABLE_TO_VERIFY_LEAF_SIGNATURE; a trusted matching certificate and actual Tunnel route remain unverified.",

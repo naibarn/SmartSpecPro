@@ -80,7 +80,6 @@ vi.mock("@/lib/trpc", () => ({
         }, permissionPacket: [
           { scope: "Account", permission: "Hyperdrive Edit", operations: ["POST /accounts/{account_id}/hyperdrive/configs"] },
           { scope: "Account", permission: "Connectivity Directory Admin", operations: ["POST /accounts/{account_id}/connectivity/directory/services"] },
-          { scope: "Account", permission: "Connectivity Directory Bind", operations: ["bind VPC service to Worker"] },
           { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes"] },
         ],
         conditionalPermissions: [{ scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if the selected existing Tunnel must be changed" }] },
@@ -652,7 +651,7 @@ describe("AdminDeploymentTargets", () => {
     expect(await screen.findByText(/Production PostgreSQL connection setup/i)).toBeInTheDocument();
     expect(screen.getByText(/Connectivity Directory → Read/)).toBeInTheDocument();
     expect(screen.getByText(/Connectivity Directory Admin/)).toBeInTheDocument();
-    expect(screen.getByText(/Connectivity Directory Bind/)).toBeInTheDocument();
+    expect(screen.queryByText(/Connectivity Directory Bind/)).not.toBeInTheDocument();
     expect(screen.getByText(/Hyperdrive Edit/)).toBeInTheDocument();
     expect(screen.getByText(/Workers Routes Edit/)).toBeInTheDocument();
   });
