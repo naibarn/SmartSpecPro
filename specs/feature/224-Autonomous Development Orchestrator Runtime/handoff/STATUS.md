@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 3 pass / 1280 unresolved of 1284
-- Next action: Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.
-- Manifest generation: 169
+- Next action: Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.
+- Manifest generation: 171
 
 ## Source-declared status and relationship claims
 

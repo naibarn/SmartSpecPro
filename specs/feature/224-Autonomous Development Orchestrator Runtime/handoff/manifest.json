@@ -931,14 +931,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+    "expected_canonical_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE on the existing Windows local-runner identity and workspace after installing the 0.2.37 review artifact while preserving stored enrollment and workspace state. Exercise the interactive UI, configured Codex task probe, live capability acknowledgement, and a real run-bound DevelopmentRun grant; then continue the uncovered Revision-24 public/Gateway cases. Do not reopen Mini-App work.",
+    "next_action": "Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
     "reactivation_predicate": "Resume protected execution when the existing Windows local-runner reconnects with a fresh Codex-ready capability snapshot and actual owned workspace, and an authenticated non-production tenant owner starts a real DevelopmentRun so the existing admission service can bind a scoped grant to actual run/job/attempt/lease/fence/source/budget identities. For Revision-24 public access tests, use authorized disposable tenant-bound owner and second-user identities on an isolated target.",
-    "resume_point": "Canonical implementation commit 1e2d03b90b8de561835ca73fedbb5b800271c8e5 with refresh-test checkpoint 2656a487f0c4b576833be3338a98095703c6ebc4. Local focused Runner/Web checks passed; hosted Windows native boundary and workspace-binding tests passed; unsigned Runner 0.2.37 installer SHA-256 c3e0f5b68170f030a4a41f734cbacb5e42a02dfcb7b8c7d2cb98cfded580e468 was built from source 1e2d03b90b8de561835ca73fedbb5b800271c8e5. Interactive Windows UI, real Codex task, live capability acknowledgement, and live Core run remain unverified because this environment has no Windows Desktop session or tenant-bound grant. Continue with SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE; Mini-App milestones remain closed.",
+    "resume_point": "Canonical source bc2950f0a84404e8b8074523251fb5abc373c6cf; heartbeat token-rotation fix at f670365a72afbc2acdb1b522ce04103bc0b2c697. Focused Rust tests passed (rotation transport 6/6, heartbeat freshness 1/1), JavaScript syntax and diff checks passed. Windows workflow 40215438638 passed and produced unsigned-review Runner 0.2.38, installer SHA-256 cc84313a2fb2373b2d31de7c12ca1ed573a27a6bfe9817639c2c6fe81f4528f3. Interactive Windows UI, production heartbeat observation, configured Codex task, and live DevelopmentRun remain unverified. Continue on the existing enrolled local-runner identity/workspace; do not reopen Mini-App work.",
     "waiting_predicate": "Only protected Windows dispatch waits for the exact fresh Runner capability/workspace, authenticated tenant owner and run-bound scoped grant described in blocker R11. The Revision-24 public visibility path requires disposable authenticated owner/second-user identities. Independent local code and focused verification may continue under existing task authority."
   },
   "continuation_assessment": {
@@ -958,7 +958,7 @@
         "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
       }
     ],
-    "next_action": "Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.",
+    "next_action": "Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.",
     "rationale": "Responsiveness/readiness implementation is integrated at canonical SHA 2656a487f0c4b576833be3338a98095703c6ebc4. Focused Linux/Web checks and hosted Windows Runner boundary, workspace-binding, and installer build checks passed. The Windows GUI, actual Codex harness task, live capability acknowledgement, authenticated Core lifecycle, settlement receipt, live Gateway receipt, and full Revision-24 public/tenant browser matrix remain unverified. Keep overall SPEC-224 acceptance partial.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -1009,7 +1009,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 169,
+  "generation": 171,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1211,11 +1211,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+    "canonical_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
     "integrated": true,
-    "integrated_at": "2026-10-25T14:33:13Z",
+    "integrated_at": "2026-10-25T17:13:00Z",
     "pull_request": null,
-    "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
+    "source_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2117,7 +2117,7 @@
           "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
         }
       ],
-      "next_action": "Install Runner 0.2.37 on the existing Windows local-runner host without changing its enrollment or workspace. Verify the interactive UI, run the configured Codex task probe, confirm live capability publication acknowledgement, then run the real Core DevelopmentRun with its actual tenant-bound grant. Continue the Revision-24 public/Gateway cases afterward; keep Mini-App work closed.",
+      "next_action": "Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.",
       "rationale": "Responsiveness/readiness implementation is integrated at canonical SHA 2656a487f0c4b576833be3338a98095703c6ebc4. Focused Linux/Web checks and hosted Windows Runner boundary, workspace-binding, and installer build checks passed. The Windows GUI, actual Codex harness task, live capability acknowledgement, authenticated Core lifecycle, settlement receipt, live Gateway receipt, and full Revision-24 public/tenant browser matrix remain unverified. Keep overall SPEC-224 acceptance partial.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -2451,7 +2451,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+        "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/personalMiniAppPreview.ts",
@@ -2479,7 +2479,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+        "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
@@ -3231,7 +3231,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+        "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
         "final_state": "PASS",
         "implementation_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
@@ -3594,7 +3594,7 @@
     "unresolved": 1280
   },
   "schema_version": 1,
-  "updated_at": "2026-10-25T14:48:23.969345Z",
+  "updated_at": "2026-10-25T17:33:47.752689Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3911,13 +3911,20 @@
         "source_sha": "2132aef1795eeece482423ce08386667fc3946c0",
         "status": "PASS"
       },
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+      {
+        "kind": "RUNNER_HEARTBEAT_TOKEN_ROTATION_FIX",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-heartbeat-rotation-fix-20261026.md",
+        "scope": "Exact canonical source bc2950f0a84404e8b8074523251fb5abc373c6cf: Linux WSS token-rotation loopback suite 6/6; Desktop heartbeat-freshness test 1/1; JavaScript syntax and diff checks passed. Windows review workflow 40215438638 passed Runner release UI/API, native Windows boundary, workspace-binding, and unsigned NSIS installer checks. Version 0.2.38 artifact SHA-256 cc84313a2fb2373b2d31de7c12ca1ed573a27a6bfe9817639c2c6fe81f4528f3; downloaded artifact checksum verified. Actual user Windows UI, current production heartbeat, configured Codex task, and live SPEC-224 DevelopmentRun remain unverified.",
+        "source_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+        "status": "PARTIAL"
+      }
     ],
     "freshness": "STALE",
     "required_profiles": [
       "quick"
     ],
-    "sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+    "sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
     "status": "PARTIAL",
     "task_regressions": []
   }

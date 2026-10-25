@@ -1,5 +1,5 @@
 {
-  "generation": 27,
+  "generation": 28,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -3452,7 +3452,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+      "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
@@ -27752,7 +27752,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+      "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/personalMiniAppPreview.ts",
@@ -27861,7 +27861,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "2656a487f0c4b576833be3338a98095703c6ebc4",
+      "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
       "final_state": "PASS",
       "implementation_evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
