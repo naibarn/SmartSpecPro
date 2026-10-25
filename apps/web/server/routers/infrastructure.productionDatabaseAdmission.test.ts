@@ -39,9 +39,28 @@ const target = { targetId: "smartspec-cloudflare-runtime", credentialRef: "crede
 function setup() {
   const jobs = new Map<string, Record<string, unknown>>();
   const grants = new Map<string, Record<string, unknown>>();
+  const rowsForWhere = (condition: any) => {
+    const values: unknown[] = [];
+    let filtersByJobId = false;
+    const visit = (chunk: any) => {
+      if (!chunk || typeof chunk !== "object") return;
+      if (Array.isArray(chunk)) return chunk.forEach(visit);
+      if (chunk.constructor?.name === "Param") values.push(chunk.value);
+      if (chunk.name === "id" && chunk.table) filtersByJobId = true;
+      if (Array.isArray(chunk.queryChunks)) chunk.queryChunks.forEach(visit);
+    };
+    visit(condition);
+    if (filtersByJobId) {
+      const requestedJobId = values.find(value => typeof value === "string" && /^[a-f0-9-]{36}$/i.test(value));
+      const exactJob = requestedJobId ? jobs.get(requestedJobId) : null;
+      return exactJob ? [exactJob] : [];
+    }
+    return Array.from(jobs.values());
+  };
   const db = {
-    select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn(() => ({
-      limit: vi.fn(async () => Array.from(jobs.values())),
+    select: vi.fn(() => ({ from: vi.fn(() => ({ where: vi.fn((condition: any) => ({
+      limit: vi.fn(async () => rowsForWhere(condition)),
+      orderBy: vi.fn(() => ({ limit: vi.fn(async () => rowsForWhere(condition)) })),
     })) })) })),
   };
   mocks.getDb.mockResolvedValue(db);
@@ -63,8 +82,8 @@ function setup() {
     tenantId,
     req: { requestId: "request-admission-test" },
   } as any);
-  const submit = () => caller.prepareCloudflareProductionDatabase({
-    tenantId, projectId, environment: "production", tunnelId, submissionId,
+  const submit = (requestId = submissionId) => caller.prepareCloudflareProductionDatabase({
+    tenantId, projectId, environment: "production", tunnelId, submissionId: requestId,
   });
   return { db, jobs, grants, caller, submit };
 }
@@ -102,6 +121,16 @@ describe("Production database canonical admission", () => {
     const f = setup();
     await f.submit();
     await expect(f.submit()).resolves.toMatchObject({ jobId: submissionId, status: "queued" });
+    expect(mocks.saveGrant).toHaveBeenCalledOnce();
+    expect(mocks.createJob).toHaveBeenCalledOnce();
+  });
+
+  it("reconciles an active job before creating a grant for a different submission ID", async () => {
+    const f = setup();
+    await f.submit();
+    await expect(f.submit("66666666-6666-4666-8666-666666666666"))
+      .resolves.toMatchObject({ jobId: submissionId, status: "queued" });
+    expect(f.grants).toHaveProperty("size", 1);
     expect(mocks.saveGrant).toHaveBeenCalledOnce();
     expect(mocks.createJob).toHaveBeenCalledOnce();
   });

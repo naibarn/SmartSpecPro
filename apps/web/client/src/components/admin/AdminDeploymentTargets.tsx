@@ -85,7 +85,7 @@ function storeProductionDatabaseAdmission(scopeKey: string, value: ProductionDat
 }
 
 function canonicalDatabaseAdmissionStatus(status: string): ProductionDatabaseAdmissionStatus {
-  if (status === "succeeded") return "SUCCEEDED";
+  if (["succeeded", "completed"].includes(status)) return "SUCCEEDED";
   if (["failed", "cancelled", "expired"].includes(status)) return "FAILED";
   if (["queued", "pending"].includes(status)) return "JOB_ACCEPTED";
   return "RUNNING";
@@ -873,7 +873,8 @@ export default function AdminDeploymentTargets() {
             const submittedDatabaseJobId = productionDatabaseSubmissions[productionScopeKey] ?? "";
             const databaseAdmission = productionDatabaseAdmissions[productionScopeKey] ?? readStoredProductionDatabaseAdmission(productionScopeKey);
             const databaseJobAlreadySubmitted = Boolean(
-              ["queued", "running", "retry_wait", "scheduled", "succeeded"].includes(productionDatabaseJobData?.status ?? "") ||
+              ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing", "pending", "leased",
+                "waiting_external", "retry_scheduled", "succeeded", "completed"].includes(productionDatabaseJobData?.status ?? "") ||
               ["JOB_ACCEPTED", "RUNNING", "SUCCEEDED"].includes(databaseAdmission?.status ?? ""),
             );
             const databaseAdmissionJob = productionDatabaseJobData && (!databaseAdmission ||

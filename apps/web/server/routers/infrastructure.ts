@@ -13,7 +13,7 @@ import { router, adminProcedure, rateLimitedAdminProcedure, protectedProcedure }
 import { fetchWithResilience } from "../_core/fetchWithResilience";
 import { getDb } from "../db";
 import { canonicalProjects, systemSettings, tenants, users, workerJobs } from "../../drizzle/schema";
-import { eq, and, asc, desc, sql } from "drizzle-orm";
+import { eq, and, asc, desc, inArray, sql } from "drizzle-orm";
 import { getFeatureFlag, setFeatureFlag } from "../services/featureFlags";
 import {
   getAllQueueMetrics,
@@ -812,6 +812,32 @@ export const infrastructureRouter = router({
         logCloudflareProductionDatabaseAdmission({ stage, outcome: "completed", requestId, tenantId,
           projectId: input.projectId, jobId: existingBySubmission.id });
         return responseForJob(existingBySubmission, existingInput);
+      }
+      const [activeScopeJob] = await db.select({ id: workerJobs.id, jobType: workerJobs.jobType,
+        contractVersion: workerJobs.contractVersion, requestedByUserId: workerJobs.requestedByUserId,
+        status: workerJobs.status, inputJson: workerJobs.inputJson })
+        .from(workerJobs).where(and(eq(workerJobs.tenantId, tenantId),
+          eq(workerJobs.jobType, CLOUDFLARE_PRODUCTION_DATABASE_JOB),
+          eq(workerJobs.contractVersion, CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT),
+          inArray(workerJobs.status, ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing",
+            "pending", "leased", "waiting_external", "retry_scheduled", "succeeded", "completed"]),
+          sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`,
+          sql`${workerJobs.inputJson}->>'targetId' = 'smartspec-cloudflare-runtime'`,
+          sql`${workerJobs.inputJson}->>'environment' = 'production'`))
+        .orderBy(desc(workerJobs.createdAt)).limit(1);
+      if (activeScopeJob) {
+        const activeInput = validateExistingJob(activeScopeJob);
+        const activeGrant = await readCloudflareProductionDatabaseGrant(db, activeScopeJob.id);
+        if (!activeGrant || activeGrant.grantRef !== activeInput.grantRef || activeGrant.planDigest !== activeInput.planDigest ||
+            activeGrant.tenantId !== tenantId || activeGrant.projectId !== input.projectId ||
+            activeGrant.requesterUserId !== ctx.user.id || activeGrant.plan.tunnelId !== input.tunnelId) {
+          logCloudflareProductionDatabaseAdmission({ stage, outcome: "unknown", requestId, tenantId,
+            projectId: input.projectId, jobId, errorCode: "CANONICAL_ACTIVE_JOB_GRANT_SCOPE_MISMATCH" });
+          throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_ACTIVE_JOB_SCOPE_MISMATCH" });
+        }
+        logCloudflareProductionDatabaseAdmission({ stage, outcome: "completed", requestId, tenantId,
+          projectId: input.projectId, jobId: activeScopeJob.id });
+        return responseForJob(activeScopeJob, activeInput);
       }
       const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId, projectId: input.projectId });
       if (!target) {
