@@ -10,6 +10,7 @@ test("production uses the configured Queue transport without enabling activation
     CLOUDFLARE_ACTIVATION: "disabled",
     CLOUDFLARE_ENVIRONMENT: "production",
     CLOUDFLARE_JOB_TRANSPORT: "queues",
+    CLOUDFLARE_PRODUCTION_FENCE_MODE: "security-definer-v1",
   });
   assert.deepEqual(config.queues.producers, [
     { binding: "JOB_QUEUE", queue: "smartspec-canonical-job-queue-production" },
