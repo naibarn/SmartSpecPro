@@ -33,9 +33,11 @@
       "next_action": "Production inventory UI is integrated and serving Linux release generation 72 at db36dcbad2befa78635c2586816f9aeb6e3f1b43; login/settings/health endpoints return 200. Continue exact production resource provisioning and runtime composition."
     },
     "section-04-production-readiness-and-cutover": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Continue from canonical Main c23009cd3b6af59662e56f0e3697bf74abfcdf2e. Latest read-only check: Production DB job/grant absent; Worker readyz 503 (activation disabled; missing HYPERDRIVE and JOB_QUEUE); Production VPC/Hyperdrive absent; Queue/DLQ exist; domain route unattached; active Worker version has no verified release identity. Live Linux Admin release generation 105 from source 7735e065 is active and includes the verified Tunnel picker; Linux health/settings are HTTP 200. Owner reports submitting the authenticated DB preparation action. Do not repeat it or fabricate a job/grant. Obtain the UI's existing response/error, then monitor the canonical job as soon as admitted. Continue DB connectivity, Worker composition, rollback and canary preparation; keep Linux serving and do not mutate production routes without the independent canary authority."
+      "next_action": "Production DB request admission hotfix is integrated at 83dc8b0446135161fbbd397dbd78d072d890f321 and serving Linux release generation 108 (HTTP health 200; public AdminSettings JS hash matches deployed artifact). Same production DB identity smartspec/public on 172.18.0.2:5432 still has zero cloudflare.production.database.provision jobs and zero cloudflare_production_database_grants, so the reported original submission is not resumable from canonical state. The previous serving code generated a random server-only job ID and deleted the grant on Control Plane rejection/exception; old logs had no admission-stage records, so the exact historical stage cannot be proven. Owner action: from authenticated Admin Deployment targets, submit Prepare Production database connection once; the new client persists a stable submission ID and the server reconciles the same ID against canonical Job+Grant, preserving ambiguous grants. Follow its admission status and logs, then continue DB provisioning/connectivity, Worker bindings/runtime, rollback and canary; keep Linux serving and do not change Production route/traffic absent independent canary authority.",
+      "checkpoint_sha": "83dc8b0446135161fbbd397dbd78d072d890f321",
+      "merged_main_sha": "83dc8b0446135161fbbd397dbd78d072d890f321"
     }
   },
   "pre_commit": {
@@ -47,11 +49,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 77,
-  "updated_at": "2026-10-25T10:34:25.311622+00:00",
+  "generation": 78,
+  "updated_at": "2026-10-25T12:23:15.081798+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Continue from canonical Main c23009cd3b6af59662e56f0e3697bf74abfcdf2e. Latest read-only check: Production DB job/grant absent; Worker readyz 503 (activation disabled; missing HYPERDRIVE and JOB_QUEUE); Production VPC/Hyperdrive absent; Queue/DLQ exist; domain route unattached; active Worker version has no verified release identity. Live Linux Admin release generation 105 from source 7735e065 is active and includes the verified Tunnel picker; Linux health/settings are HTTP 200. Owner reports submitting the authenticated DB preparation action. Do not repeat it or fabricate a job/grant. Obtain the UI's existing response/error, then monitor the canonical job as soon as admitted. Continue DB connectivity, Worker composition, rollback and canary preparation; keep Linux serving and do not mutate production routes without the independent canary authority.",
+    "next_action": "Production DB request admission hotfix is integrated at 83dc8b0446135161fbbd397dbd78d072d890f321 and serving Linux release generation 108 (HTTP health 200; public AdminSettings JS hash matches deployed artifact). Same production DB identity smartspec/public on 172.18.0.2:5432 still has zero cloudflare.production.database.provision jobs and zero cloudflare_production_database_grants, so the reported original submission is not resumable from canonical state. The previous serving code generated a random server-only job ID and deleted the grant on Control Plane rejection/exception; old logs had no admission-stage records, so the exact historical stage cannot be proven. Owner action: from authenticated Admin Deployment targets, submit Prepare Production database connection once; the new client persists a stable submission ID and the server reconciles the same ID against canonical Job+Grant, preserving ambiguous grants. Follow its admission status and logs, then continue DB provisioning/connectivity, Worker bindings/runtime, rollback and canary; keep Linux serving and do not change Production route/traffic absent independent canary authority.",
     "gaps": [
       "The existing Cloudflare Tunnel exposes db-staging.smartaihub.app only; the production database hostname route db.smartaihub.app has not been configured or verified.",
       "Production Worker runtime configuration, application/auth/database verification and verified rollback release identity remain incomplete.",
@@ -59,9 +61,10 @@
       "Live production database inventory has zero cloudflare.production.database.provision jobs and zero cloudflare_production_database_grants; only the Production Queue provision job has succeeded. Create the canonical DB grant/job from the authenticated Admin action; do not insert it directly.",
       "Production Worker bindings/readiness, Node/Python/API/PostgreSQL tenant-isolation acceptance, executable rollback baseline, and canary authority checks remain pending after database provisioning.",
       "The current public smartaihub.app/readyz HTTP 200 is served by the Linux origin and is not evidence of Cloudflare Worker readiness; Worker readiness must be checked against the Worker endpoint after production bindings and deployment.",
-      "Owner reports authenticated Production DB preparation submitted, but fresh canonical registry reads still show zero matching jobs and zero grants as of 2026-10-25 10:32 UTC; need the already-rendered UI result/error to distinguish an unsent request from a rejected admission. No retry or direct DB write."
+      "No canonical Production DB job or grant exists in the production-serving database after deployment of the admission fix; the original request cannot be assigned to a historical stage because the previous serving revision had no admission-stage telemetry and deleted grants on admission exceptions. Await one new authenticated Admin submission with the deployed stable-ID reconciliation UI; do not create grants/jobs outside the canonical admission path.",
+      "Admission fix is deployed on Linux, but actual Cloudflare VPC/Hyperdrive provisioning, PostgreSQL connectivity/tenant-isolation acceptance, Worker bindings/runtime, verified rollback, canary and traffic cutover remain incomplete."
     ],
-    "merged_main_sha": "c23009cd3b6af59662e56f0e3697bf74abfcdf2e",
+    "merged_main_sha": "83dc8b0446135161fbbd397dbd78d072d890f321",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
