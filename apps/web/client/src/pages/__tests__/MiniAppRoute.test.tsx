@@ -3,12 +3,14 @@
  */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import MiniAppRoute from "../MiniAppRoute";
 
 const mocks = vi.hoisted(() => ({
   params: { publicAppId: "research-notes" },
   miniAppParams: { appId: "" },
+  routeMode: "legacy",
+  setLocation: vi.fn(),
   appQuery: {
     data: { appId: "app_research_notes" },
     isLoading: false,
@@ -19,10 +21,20 @@ const mocks = vi.hoisted(() => ({
   resolveMiniApp: vi.fn(),
   retryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
   continuationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
+  runtimeMutation: { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0 })), isPending: false },
 }));
 
 vi.mock("wouter", () => ({
-  useRoute: (path: string) => [true, path === "/miniapp/:appId" ? mocks.miniAppParams : mocks.params],
+  useLocation: () => ["/miniapp/test", mocks.setLocation],
+  useRoute: (path: string) => {
+    const hasMiniApp = Boolean(mocks.miniAppParams.appId);
+    const workspace = hasMiniApp && mocks.routeMode !== "canonical";
+    if (path === "/miniapp/:appId/status") return [workspace && mocks.routeMode !== "downloads" && mocks.routeMode !== "settings", mocks.miniAppParams];
+    if (path === "/miniapp/:appId/downloads") return [workspace && mocks.routeMode === "downloads", mocks.miniAppParams];
+    if (path === "/miniapp/:appId/settings") return [workspace && mocks.routeMode === "settings", mocks.miniAppParams];
+    if (path === "/miniapp/:appId") return [hasMiniApp && !workspace, mocks.miniAppParams];
+    return [!hasMiniApp, mocks.params];
+  },
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -33,6 +45,9 @@ vi.mock("@/lib/trpc", () => ({
       },
       resolveMiniApp: {
         useQuery: mocks.resolveMiniApp,
+      },
+      prepareMiniAppRuntime: {
+        useMutation: () => mocks.runtimeMutation,
       },
     },
     spec226DevelopmentControl: {
@@ -55,6 +70,8 @@ describe("MiniAppRoute", () => {
     vi.clearAllMocks();
     mocks.params = { publicAppId: "research-notes" };
     mocks.miniAppParams = { appId: "" };
+    mocks.routeMode = "legacy";
+    mocks.setLocation = vi.fn();
     mocks.appQuery = {
       data: { appId: "app_research_notes" },
       isLoading: false,
@@ -65,6 +82,7 @@ describe("MiniAppRoute", () => {
     mocks.resolveMiniApp.mockImplementation(() => mocks.appQuery);
     mocks.retryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
     mocks.continuationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
+    mocks.runtimeMutation = { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0 })), isPending: false };
   });
 
   it("renders Research Notes only for its canonical App identity", async () => {
@@ -129,6 +147,39 @@ describe("MiniAppRoute", () => {
     expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-forms");
     expect(frame).toHaveAttribute("srcdoc", "<!doctype html><main>Expense tracker</main>");
     expect(screen.queryByText("BUILDING")).not.toBeInTheDocument();
+  });
+
+  it("redirects the canonical entry to the development workspace when no usable artifact exists", async () => {
+    mocks.routeMode = "canonical";
+    mocks.miniAppParams = { appId: "app_no_preview" };
+    mocks.appQuery.data = {
+      app: { appId: "app_no_preview", visibility: "private", deploymentVersion: 0, lastKnownGoodArtifactRef: null },
+      html: null,
+      factory: { milestone: "BUILD_FAILED", jobState: "failed" },
+    };
+    render(<MiniAppRoute />);
+    await waitFor(() => expect(mocks.setLocation).toHaveBeenCalledWith("/miniapp/app_no_preview/status"));
+  });
+
+  it("keeps the status workspace separate and exposes full-page runtime and settings actions", async () => {
+    mocks.routeMode = "status";
+    mocks.miniAppParams = { appId: "app_private" };
+    mocks.appQuery.data = {
+      app: {
+        appId: "app_private",
+        visibility: "private",
+        deploymentVersion: 1,
+        lastKnownGoodArtifactRef: "r2://mini-app-previews/tenant-owner/app_private/sha256/" + "a".repeat(64),
+      },
+      html: '<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src \'none\'">',
+      artifactDigest: "a".repeat(64),
+      factory: null,
+    };
+    render(<MiniAppRoute />);
+    expect(await screen.findByRole("button", { name: "Open App" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Settings" })).toBeInTheDocument();
+    expect(mocks.runtimeMutation.mutateAsync).toHaveBeenCalledWith({ appId: "app_private", legacyEntries: [] });
+    expect(screen.getByTestId("miniapp-preview-frame")).toBeInTheDocument();
   });
 
   it("keeps refreshing progress and displays repository setup while a preview is already usable", async () => {

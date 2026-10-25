@@ -1,11 +1,12 @@
 import { lazy, useEffect, useRef, useState } from "react";
-import { useRoute } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { AppButton, AppPage, Card, Collapsible, Grid, Heading, HStack, ProgressBar, Section, StatusDot, Tab, TabList, Text, TextArea, VStack } from "@/components/AppPage";
 import { trpc } from "@/lib/trpc";
 
 const ResearchNotesPage = lazy(() => import("@/pages/ResearchNotesPage"));
 const ProjectWikiPagesPage = lazy(() => import("@/pages/ProjectWikiPagesPage"));
 type ProjectTab = "preview" | "progress" | "files" | "builds";
+type WorkspaceMode = "status" | "downloads" | "settings";
 
 const STAGE_LABELS: Record<string, string> = {
   ui_implementation: "Implement app interface",
@@ -82,15 +83,38 @@ function ContinueMiniApp({ input, onStarted }: {
   );
 }
 
-function MiniAppHome({ appId, app, data, onChanged }: {
+function readLegacyMiniAppStorage(appId: string): Array<{ key: string; value: unknown }> {
+  const prefix = `smartaihub:miniapp:${appId}:`;
+  const entries: Array<{ key: string; value: unknown }> = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const storageKey = window.localStorage.key(index);
+    if (!storageKey?.startsWith(prefix)) continue;
+    const key = storageKey.slice(prefix.length);
+    try {
+      entries.push({ key, value: JSON.parse(window.localStorage.getItem(storageKey) ?? "null") });
+    } catch {
+      // Leave malformed legacy values untouched so users can still recover them.
+    }
+  }
+  return entries;
+}
+
+function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
   appId: string;
   app: NonNullable<ReturnType<typeof trpc.appIdentity.resolveMiniApp.useQuery>["data"]>["app"];
   data: NonNullable<ReturnType<typeof trpc.appIdentity.resolveMiniApp.useQuery>["data"]>;
   onChanged: () => void;
+  onOpenApp: (version?: number) => Promise<void>;
+  mode: WorkspaceMode;
 }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const [tab, setTab] = useState<ProjectTab>(data.html ? "preview" : "progress");
+  const [tab, setTab] = useState<ProjectTab>(mode === "downloads" ? "files" : data.html ? "preview" : "progress");
   const factory = data.factory;
+  const runtimePreparation = trpc.appIdentity.prepareMiniAppRuntime.useMutation();
+  const [storageToken, setStorageToken] = useState<string | null>(null);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [openingApp, setOpeningApp] = useState(false);
+  const storagePreparationStarted = useRef(false);
   const retry = trpc.spec226DevelopmentControl.retryMiniAppFactoryStage.useMutation({ onSuccess: onChanged });
   const stages = [...new Set([...(factory?.completedStages ?? []), ...(factory?.currentStage ? [factory.currentStage] : []), ...(factory?.remainingStages ?? [])])];
   const progress = stages.length ? Math.round(((factory?.completedStages?.length ?? 0) / stages.length) * 100) : 0;
@@ -108,7 +132,31 @@ function MiniAppHome({ appId, app, data, onChanged }: {
   const artifactRefs = factory?.artifacts?.filter((value: string) => /^(?:app-source|app-artifact|app-candidate|package-digest|app-repository):/.test(value)) ?? [];
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
+    if (!previewAvailable || storageToken || storagePreparationStarted.current || runtimePreparation.isPending) return;
+    storagePreparationStarted.current = true;
+    void runtimePreparation.mutateAsync({ appId, legacyEntries: readLegacyMiniAppStorage(appId) })
+      .then(result => setStorageToken(result.storageToken))
+      .catch(error => setRuntimeError(error instanceof Error ? error.message : "App data migration is unavailable. Existing browser data remains intact."));
+  }, [appId, previewAvailable, runtimePreparation.isPending, runtimePreparation.mutateAsync, storageToken]);
+
+  const openApp = async (version?: number) => {
+    setRuntimeError(null);
+    setOpeningApp(true);
+    try {
+      if (!storageToken) {
+        const result = await runtimePreparation.mutateAsync({ appId, legacyEntries: readLegacyMiniAppStorage(appId) });
+        setStorageToken(result.storageToken);
+        storagePreparationStarted.current = true;
+      }
+      await onOpenApp(version);
+    } catch (error) {
+      setRuntimeError(error instanceof Error ? error.message : "The app could not be opened. Legacy browser data is still intact.");
+      setOpeningApp(false);
+    }
+  };
+
+  useEffect(() => {
+    const onMessage = async (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow) return;
       const message = event.data as Record<string, unknown> | null;
       if (!message || message.channel !== "smartaihub-miniapp-storage-v1" ||
@@ -118,14 +166,40 @@ function MiniAppHome({ appId, app, data, onChanged }: {
       let value: unknown;
       let error: string | undefined;
       try {
-        if (message.action === "GET") {
-          const stored = window.localStorage.getItem(storageKey);
-          value = stored === null ? null : JSON.parse(stored);
-        } else {
+        if (message.action === "SET") {
           const encoded = JSON.stringify(message.value);
           if (encoded === undefined || encoded.length > 65_536) throw new Error("value too large");
           window.localStorage.setItem(storageKey, encoded);
           value = true;
+        } else {
+          const stored = window.localStorage.getItem(storageKey);
+          value = stored === null ? null : JSON.parse(stored);
+        }
+        if (storageToken) {
+          const response = await fetch(`/_miniapp-runtime/${appId}/storage`, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${storageToken}` },
+            body: JSON.stringify({ action: message.action, key: message.key, ...(message.action === "SET" ? { value: message.value } : {}) }),
+          });
+          const result = await response.json() as { value?: unknown };
+          if (!response.ok) throw new Error("runtime storage unavailable");
+          if (message.action === "GET") {
+            if (result.value !== null && result.value !== undefined) {
+              value = result.value;
+              window.localStorage.setItem(storageKey, JSON.stringify(value));
+            } else if (value !== null) {
+              // Preserve an older local value if it was not part of a valid
+              // migration and seed the app-scoped store without deleting it.
+              const migration = await fetch(`/_miniapp-runtime/${appId}/storage`, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${storageToken}` },
+                body: JSON.stringify({ action: "SET", key: message.key, value }),
+              });
+              if (!migration.ok) throw new Error("runtime storage unavailable");
+            }
+          }
         }
       } catch {
         error = "storage unavailable";
@@ -138,7 +212,7 @@ function MiniAppHome({ appId, app, data, onChanged }: {
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
-  }, [appId]);
+  }, [appId, storageToken]);
 
   return (
     <AppPage
@@ -148,6 +222,9 @@ function MiniAppHome({ appId, app, data, onChanged }: {
       actions={(
         <HStack wrap="wrap" gap={2}>
           {previewAvailable ? <AppButton label="Open Preview" variant="secondary" onClick={() => setTab("preview")} /> : null}
+          {previewAvailable ? <AppButton label={openingApp || runtimePreparation.isPending ? "Preparing App…" : "Open App"} variant="primary" isDisabled={openingApp || runtimePreparation.isPending || active} onClick={() => { void openApp(); }} /> : null}
+          {previewAvailable ? <AppButton label="Downloads" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/downloads`); }} /> : null}
+          <AppButton label="Settings" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/settings`); }} />
           {factory?.retryable ? (
             <AppButton
               label={retry.isPending ? "Repairing…" : "Retry / Repair"}
@@ -208,6 +285,7 @@ function MiniAppHome({ appId, app, data, onChanged }: {
 
         {!factory?.error && retry.error ? <Text type="body" role="alert">Repair could not start: {retry.error.message}</Text> : null}
         {retry.isSuccess && !factory?.error ? <Text type="body" role="status">Repair was queued on this App’s existing DevelopmentRun.</Text> : null}
+        {runtimeError ? <Text type="body" role="alert">Could not open or sync the app: {runtimeError}. Legacy browser data has not been deleted.</Text> : null}
 
         <TabList value={tab} onChange={value => setTab(value as ProjectTab)} role="tablist" layout="fill" hasDivider>
           <Tab value="preview" label="Preview" panelId="miniapp-panel-preview" />
@@ -218,7 +296,7 @@ function MiniAppHome({ appId, app, data, onChanged }: {
 
         {tab === "preview" ? (
           <Section>
-            {previewAvailable && data.html ? (
+            {previewAvailable && data.html && storageToken ? (
               <iframe
                 ref={frameRef}
                 title={`${title} preview`}
@@ -230,6 +308,8 @@ function MiniAppHome({ appId, app, data, onChanged }: {
                 data-testid="miniapp-preview-frame"
                 style={{ display: "block", width: "100%", height: "min(78vh, 900px)", border: 0 }}
               />
+            ) : previewAvailable && !storageToken ? (
+              <Text type="body" color="secondary">Preparing the app-scoped storage adapter before opening the preview. Your existing browser data remains available.</Text>
             ) : (
               <VStack gap={2}>
                 <Heading level={3}>Preview is not available yet</Heading>
@@ -287,6 +367,26 @@ function MiniAppHome({ appId, app, data, onChanged }: {
           </Section>
         ) : null}
 
+        {mode === "downloads" ? <Section>
+          <VStack gap={2}>
+            <Heading level={3}>Downloads</Heading>
+            <Text type="body" color="secondary">This build is a web app and opens in your browser. No desktop installer is attached to this App version.</Text>
+            {data.artifactDigest ? <Text type="body">Web artifact · SHA-256 {data.artifactDigest}</Text> : null}
+            {previewAvailable ? <AppButton label="Open version" variant="secondary" onClick={() => { void openApp(app?.deploymentVersion ?? undefined); }} /> : null}
+            <AppButton label="Back to Development" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/status`); }} />
+          </VStack>
+        </Section> : null}
+
+        {mode === "settings" ? <Section>
+          <VStack gap={2}>
+            <Heading level={3}>Project settings</Heading>
+            <Text type="body" color="secondary">Repository: {factory?.repositoryState ?? "Not provisioned yet"}</Text>
+            {factory?.repository?.url ? <Text type="body"><a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></Text> : null}
+            {factory?.repositoryState === "AUTH_REQUIRED" ? <Text type="body" color="secondary">Connect GitHub in Settings → Integrations to provision a dedicated App repository. The Core repository is never used as a fallback.</Text> : null}
+            <AppButton label="Back to Development" variant="secondary" onClick={() => { window.location.assign(`/miniapp/${appId}/status`); }} />
+          </VStack>
+        </Section> : null}
+
         {factory?.conversationId ? <Section>
           <VStack gap={3}>
             <Heading level={2}>Continue development</Heading>
@@ -299,11 +399,18 @@ function MiniAppHome({ appId, app, data, onChanged }: {
 }
 
 export default function MiniAppRoute() {
-  const [, miniAppParams] = useRoute("/miniapp/:appId");
+  const [, setLocation] = useLocation();
+  const [isStatusRoute, statusParams] = useRoute("/miniapp/:appId/status");
+  const [isDownloadsRoute, downloadsParams] = useRoute("/miniapp/:appId/downloads");
+  const [isSettingsRoute, settingsParams] = useRoute("/miniapp/:appId/settings");
+  const [isCanonicalMiniAppRoute, miniAppParams] = useRoute("/miniapp/:appId");
   const [, legacyParams] = useRoute("/apps/:publicAppId");
-  const appId = miniAppParams?.appId ?? "";
+  const appId = statusParams?.appId ?? downloadsParams?.appId ?? settingsParams?.appId ?? miniAppParams?.appId ?? "";
   const publicAppId = legacyParams?.publicAppId ?? "";
   const isMiniAppRoute = Boolean(appId);
+  const isWorkspaceRoute = Boolean(isStatusRoute || isDownloadsRoute || isSettingsRoute);
+  const workspaceMode: WorkspaceMode = isDownloadsRoute ? "downloads" : isSettingsRoute ? "settings" : "status";
+  const openingRuntime = useRef(false);
   const miniAppQuery = trpc.appIdentity.resolveMiniApp.useQuery(
     { appId },
     {
@@ -320,6 +427,24 @@ export default function MiniAppRoute() {
   );
   const legacyQuery = trpc.appIdentity.resolvePublicApp.useQuery({ publicAppId }, { enabled: !isMiniAppRoute && Boolean(publicAppId), retry: false });
   const appQuery = isMiniAppRoute ? miniAppQuery : legacyQuery;
+  const runtimePreparation = trpc.appIdentity.prepareMiniAppRuntime.useMutation();
+  const openRuntime = async (version?: number) => {
+    window.location.assign(version ? `/miniapp/${appId}/preview/${version}` : `/miniapp/${appId}`);
+  };
+
+  useEffect(() => {
+    if (!isCanonicalMiniAppRoute || !appId || !miniAppQuery.data || openingRuntime.current) return;
+    if (!miniAppQuery.data.html || !miniAppQuery.data.app.lastKnownGoodArtifactRef) {
+      setLocation(`/miniapp/${appId}/status`);
+      return;
+    }
+    openingRuntime.current = true;
+    void runtimePreparation.mutateAsync({ appId, legacyEntries: readLegacyMiniAppStorage(appId) }).then(() => openRuntime()).catch(error => {
+      openingRuntime.current = false;
+      console.error("Mini-App runtime preparation failed", error);
+      setLocation(`/miniapp/${appId}/status`);
+    });
+  }, [appId, isCanonicalMiniAppRoute, miniAppQuery.data, runtimePreparation.mutateAsync, setLocation]);
 
   if (appQuery.isLoading) return <AppPage title="Mini App" state="loading" />;
   if (appQuery.isError || !appQuery.data) {
@@ -328,7 +453,8 @@ export default function MiniAppRoute() {
   if (isMiniAppRoute) {
     const miniAppData = miniAppQuery.data;
     if (!miniAppData) return <AppPage title="Mini App unavailable" state="error" />;
-    return <MiniAppHome appId={appId} app={miniAppData.app} data={miniAppData} onChanged={() => { void miniAppQuery.refetch(); }} />;
+    if (!isWorkspaceRoute) return <AppPage title="Opening your app" description="Preparing the isolated full-page runtime and preserving saved app data." state="loading" />;
+    return <MiniAppHome appId={appId} app={miniAppData.app} data={miniAppData} mode={workspaceMode} onOpenApp={openRuntime} onChanged={() => { void miniAppQuery.refetch(); }} />;
   }
   if (appQuery.data.appId === "app_project_wiki_pages") return <ProjectWikiPagesPage appId={appQuery.data.appId} />;
   if (appQuery.data.appId === "app_research_notes") return <ResearchNotesPage />;

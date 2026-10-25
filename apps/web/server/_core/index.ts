@@ -108,6 +108,7 @@ import { registerBlogRoutes } from "../routers/blog";
 import { registerAdminTenantsRoutes } from "../routers/adminTenants";
 import { registerMarketplaceCaptureRoutes } from "../routes/marketplaceCapture";
 import { registerMarketplaceConnectorAuthRoutes } from "../routes/marketplaceConnectorAuth";
+import { applyMiniAppRuntimeStorageCors, registerMiniAppRuntimeRoutes } from "../routes/miniAppRuntime";
 import { isAllowedMarketplaceOrigin } from "../services/marketplaceCaptureConfig";
 import { tenantMiddleware } from "./tenant";
 import { ENV } from "./env";
@@ -356,6 +357,7 @@ app.set("trust proxy", 1);
 // Worker-proxied requests carry a shared private credential. Validate it
 // before trusting the forwarded public host/protocol set by the Worker.
 app.use(createCloudflareOriginMiddleware());
+app.use(applyMiniAppRuntimeStorageCors);
 
 // Trusted origin check (shared between CORS and CSRF middleware)
 const isAllowedOrigin = createAllowedBrowserOrigin({
@@ -467,6 +469,9 @@ app.use(
 // use direct R2 upload and do not pass file bytes through this JSON boundary.
 app.use("/trpc/library.uploadFile", express.json({ limit: "75mb" }));
 app.use("/trpc/library.replaceFile", express.json({ limit: "75mb" }));
+// App runtime values are deliberately small JSON records. Parse the bounded
+// isolated-runtime endpoint before the general API body parser.
+app.use("/_miniapp-runtime", express.json({ limit: "72kb" }));
 
 // Default JSON body limit — 10MB covers all normal API requests.
 // Other upload routes use raw body or multipart, not JSON, so they're unaffected.
@@ -565,6 +570,7 @@ app.use((req: any, _res: any, next: any) => {
 
 // Multi-tenant middleware - identifies tenant from domain
 app.use(tenantMiddleware);
+registerMiniAppRuntimeRoutes(app);
 
 // CSRF protection: verify Origin header on state-changing requests
 // Registered BEFORE route handlers so it protects both /trpc and /api/* REST endpoints

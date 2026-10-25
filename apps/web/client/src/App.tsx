@@ -740,6 +740,15 @@ function Router() {
               <MiniAppRoute />
             </RequireAuth>
           </Route>
+          <Route path="/miniapp/:appId/status">
+            <MiniAppRoute />
+          </Route>
+          <Route path="/miniapp/:appId/downloads">
+            <MiniAppRoute />
+          </Route>
+          <Route path="/miniapp/:appId/settings">
+            <MiniAppRoute />
+          </Route>
           <Route path="/miniapp/:appId">
             <MiniAppRoute />
           </Route>

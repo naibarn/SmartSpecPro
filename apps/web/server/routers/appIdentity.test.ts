@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
-const mocks = vi.hoisted(() => ({ scheduleRetry: vi.fn(async () => ({ jobId: "recovery-job", created: true, attempt: 1, stageId: "ui_implementation" })) }));
+const mocks = vi.hoisted(() => ({
+  scheduleRetry: vi.fn(async () => ({ jobId: "recovery-job", created: true, attempt: 1, stageId: "ui_implementation" })),
+  migrateRuntimeValues: vi.fn(async () => ({ imported: 1, preserved: 0 })),
+}));
+vi.mock("../services/miniAppRuntime", () => ({
+  createMiniAppRuntimeReadyMarker: () => "signed-ready-marker",
+  createMiniAppRuntimeStorageToken: () => "scoped-storage-token",
+  migrateMiniAppRuntimeValues: (...args: unknown[]) => mocks.migrateRuntimeValues(...args),
+  parseMiniAppRuntimeEntries: (value: unknown) => value,
+}));
 vi.mock("../services/personalMiniAppPreview", () => ({ resolvePersonalMiniAppPreview: vi.fn() }));
 vi.mock("../services/miniAppFactoryStageWorker", () => ({
   isAutoRecoverableMiniAppFactoryError: (code: unknown) => code === "LLMStructuredOutputError",
@@ -14,6 +23,7 @@ import { createAppIdentityRouter } from "./appIdentity";
 import * as appIdentityRepository from "../services/appIdentityRepository";
 
 function setup(user: any = { id: 1, currentTenantId: "tenant-account" }) {
+  const response = { cookie: vi.fn() };
   const service = {
     resolveAppRouteForTenant: vi.fn(async () => ({
       appId: "app_research",
@@ -50,8 +60,9 @@ function setup(user: any = { id: 1, currentTenantId: "tenant-account" }) {
   const caller = createAppIdentityRouter(service).createCaller({
     user,
     tenantId: "tenant-from-host",
+    res: response,
   } as any);
-  return { caller, service };
+  return { caller, service, response };
 }
 
 describe("appIdentity runtime router", () => {
@@ -138,6 +149,34 @@ describe("appIdentity runtime router", () => {
       tenantId: "tenant-owner",
       userId: 91,
     });
+  });
+
+  it("migrates legacy values without changing App ownership and marks the canonical runtime ready", async () => {
+    mocks.migrateRuntimeValues.mockClear();
+    const { caller, service, response } = setup({ id: 23, currentTenantId: "tenant-owner" });
+    service.resolveMiniAppForViewer.mockResolvedValueOnce({
+      appId: "app_created",
+      publicAppId: "mini_created",
+      tenantId: "tenant-owner",
+      ownerUserId: 23,
+      visibility: "private",
+      deploymentVersion: 1,
+      lastKnownGoodArtifactRef: "r2://preview",
+      lifecycle: "draft",
+    } as any);
+
+    await expect(caller.prepareMiniAppRuntime({
+      appId: "app_created",
+      legacyEntries: [{ key: "expenses", value: [{ amount: 20 }] }],
+    })).resolves.toMatchObject({ appId: "app_created", deploymentVersion: 1, imported: 1 });
+    expect(mocks.migrateRuntimeValues).toHaveBeenCalledWith(
+      { appId: "app_created", tenantId: "tenant-owner", userId: 23 },
+      [{ key: "expenses", value: [{ amount: 20 }] }],
+    );
+    expect(response.cookie).toHaveBeenCalledWith("miniapp_runtime_ready", "signed-ready-marker", expect.objectContaining({
+      httpOnly: true,
+      path: "/miniapp/app_created",
+    }));
   });
 
   it("automatically resumes a recoverable failed stage for the authenticated private owner", async () => {

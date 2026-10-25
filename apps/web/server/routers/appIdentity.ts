@@ -12,6 +12,7 @@ import { resolvePersonalMiniAppPreview } from "../services/personalMiniAppPrevie
 import { loadMiniAppFactoryPipeline } from "../services/miniAppFactoryPipeline";
 import { isAutoRecoverableMiniAppFactoryError, scheduleMiniAppFactoryStageRetry } from "../services/miniAppFactoryStageWorker";
 import { createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter } from "../services/spec224DevelopmentRunPersistence";
+import { createMiniAppRuntimeReadyMarker, createMiniAppRuntimeStorageToken, migrateMiniAppRuntimeValues, parseMiniAppRuntimeEntries } from "../services/miniAppRuntime";
 
 const developmentRunService = createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter);
 
@@ -67,6 +68,37 @@ export function createAppIdentityRouter(service: AppIdentityService = {
         const result = await service.setMiniAppVisibility({ appId: input.appId, tenantId, ownerUserId, visibility: "private" });
         if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Mini App unavailable" });
         return result;
+      }),
+    prepareMiniAppRuntime: protectedProcedure
+      .input(z.object({
+        appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/),
+        legacyEntries: z.array(z.object({ key: z.string(), value: z.unknown() }).strict()).max(100),
+      }).strict())
+      .mutation(async ({ ctx, input }) => {
+        const tenantId = authenticatedTenant(ctx);
+        const userId = Number(ctx.user.id);
+        if (!Number.isSafeInteger(userId) || userId <= 0) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated owner required" });
+        }
+        const app = await service.resolveMiniAppForViewer({ appId: input.appId, tenantId, userId });
+        if (!app || app.visibility !== "private" || app.ownerUserId !== userId || !app.lastKnownGoodArtifactRef) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Mini App unavailable" });
+        }
+        const legacyEntries = parseMiniAppRuntimeEntries(input.legacyEntries);
+        const migrated = await migrateMiniAppRuntimeValues({ appId: app.appId, tenantId, userId }, legacyEntries);
+        ctx.res.cookie("miniapp_runtime_ready", createMiniAppRuntimeReadyMarker({ appId: app.appId, tenantId, userId }), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: `/miniapp/${app.appId}`,
+          maxAge: 365 * 24 * 60 * 60 * 1000,
+        });
+        return {
+          appId: app.appId,
+          deploymentVersion: app.deploymentVersion,
+          storageToken: createMiniAppRuntimeStorageToken({ appId: app.appId, tenantId, userId }),
+          ...migrated,
+        };
       }),
     resolveMiniApp: publicProcedure
       .input(z.object({ appId: z.string().trim().min(1).max(128) }).strict())
