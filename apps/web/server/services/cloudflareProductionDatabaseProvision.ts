@@ -21,15 +21,12 @@ export type ProductionDatabaseProvisionCheckpoint = z.infer<typeof productionDat
 /** Non-secret, immutable identity for one production PostgreSQL connection plan. */
 export const productionDatabaseResourcePlanSchema = z.object({
   tunnelId: tunnel,
-  databaseAddress: z.string().ip({ version: "v4" }),
+  databaseHostname: z.literal("db.smartaihub.app"),
   databaseName: z.string().regex(/^[a-zA-Z0-9_]{1,63}$/),
   databaseUser: postgresRole,
   connectionLimit: z.literal(5),
-  tlsVerification: z.literal("verify_ca"),
-}).strict().refine(plan => {
-  const octets = plan.databaseAddress.split(".").map(Number), [a, b] = octets;
-  return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
-}, "Production PostgreSQL VPC address must be private or loopback");
+  tlsVerification: z.literal("verify_full"),
+}).strict();
 export type ProductionDatabaseResourcePlan = z.infer<typeof productionDatabaseResourcePlanSchema>;
 
 export function productionDatabaseResourcePlanDigest(plan: ProductionDatabaseResourcePlan) {
@@ -155,7 +152,7 @@ export async function provisionCloudflareProductionDatabase(input: {
       type: "tcp",
       app_protocol: "postgresql",
       tcp_port: 5432,
-      host: { ipv4: plan.databaseAddress, network: { tunnel_id: plan.tunnelId } },
+      host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } },
       tls_settings: { cert_verification_mode: plan.tlsVerification },
     });
     vpcServiceId = resourceId.parse((created.result as Resource | undefined)?.service_id);
@@ -165,7 +162,7 @@ export async function provisionCloudflareProductionDatabase(input: {
   const vpcService = vpcServiceEnvelope.result as Resource | undefined;
   if (vpcService.service_id !== vpcServiceId || vpcService.name !== serviceName || vpcService.type !== "tcp" ||
       vpcService.app_protocol !== "postgresql" || vpcService.tcp_port !== 5432 ||
-      vpcService.host?.ipv4 !== plan.databaseAddress || vpcService.host?.network?.tunnel_id !== plan.tunnelId ||
+      vpcService.host?.hostname !== plan.databaseHostname || vpcService.host?.resolver_network?.tunnel_id !== plan.tunnelId ||
       vpcService.tls_settings?.cert_verification_mode !== plan.tlsVerification) {
     fail("CLOUDFLARE_PRODUCTION_VPC_SERVICE_READBACK_MISMATCH", "unknown");
   }
@@ -206,7 +203,7 @@ export async function provisionCloudflareProductionDatabase(input: {
   return {
     accountRef: input.accountRef,
     planDigest: input.planDigest,
-    vpcService: { id: vpcServiceId, name: serviceName, tunnelId: plan.tunnelId, type: "tcp", appProtocol: "postgresql", tlsVerification: plan.tlsVerification },
+    vpcService: { id: vpcServiceId, name: serviceName, tunnelId: plan.tunnelId, hostname: plan.databaseHostname, type: "tcp", appProtocol: "postgresql", tlsVerification: plan.tlsVerification },
     hyperdrive: { id: hyperdriveId, name: hyperdriveName, databaseName: plan.databaseName, databaseUser: plan.databaseUser,
       connectionLimit: plan.connectionLimit, cachingDisabled: true },
     providerConfigurationVerified: true as const,

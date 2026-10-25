@@ -14,11 +14,11 @@ const hyperdriveId = "abcdefabcdefabcdefabcdefabcdefab";
 const jobId = "12345678-1234-4234-8234-123456789abc";
 const plan: ProductionDatabaseResourcePlan = {
   tunnelId: "87654321-4321-4321-8321-cba987654321",
-  databaseAddress: "10.20.30.40",
+  databaseHostname: "db.smartaihub.app",
   databaseName: "smartspec",
   databaseUser: "sah_cf_prod_0123456789ab",
   connectionLimit: 5,
-  tlsVerification: "verify_ca",
+  tlsVerification: "verify_full",
 };
 const operationId = productionDatabaseResourcePlanDigest(plan).slice(0, 12);
 const service = {
@@ -27,8 +27,8 @@ const service = {
   type: "tcp",
   app_protocol: "postgresql",
   tcp_port: 5432,
-  host: { ipv4: plan.databaseAddress, network: { tunnel_id: plan.tunnelId } },
-  tls_settings: { cert_verification_mode: "verify_ca" },
+  host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } },
+  tls_settings: { cert_verification_mode: "verify_full" },
 };
 const hyperdrive = {
   id: hyperdriveId,
@@ -62,7 +62,7 @@ describe("Cloudflare production database resources", () => {
       expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${token}`);
     }
     const createServiceBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body));
-    expect(createServiceBody).toMatchObject({ host: { ipv4: plan.databaseAddress, network: { tunnel_id: plan.tunnelId } }, tls_settings: { cert_verification_mode: "verify_ca" } });
+    expect(createServiceBody).toMatchObject({ host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } }, tls_settings: { cert_verification_mode: "verify_full" } });
     const createHyperdriveBody = JSON.parse(String(fetchImpl.mock.calls[4]?.[1]?.body));
     expect(createHyperdriveBody).toMatchObject({ origin: { service_id: serviceId, database: plan.databaseName, user: plan.databaseUser, password, scheme: "postgres" }, caching: { disabled: true }, origin_connection_limit: 5 });
     expect(JSON.stringify(result)).not.toContain(token);
@@ -133,7 +133,7 @@ describe("Cloudflare production database resources", () => {
   it("fails closed on an existing VPC service whose endpoint or TLS policy drifted", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response([service]))
-      .mockResolvedValueOnce(response({ ...service, host: { ...service.host, ipv4: "10.20.30.41" } }));
+      .mockResolvedValueOnce(response({ ...service, host: { ...service.host, hostname: "db-staging.smartaihub.app" } }));
 
     await expect(provisionCloudflareProductionDatabase({
       jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
@@ -154,13 +154,13 @@ describe("Cloudflare production database resources", () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("rejects public addresses, non-CA TLS, and tampered plan digests before provider access", async () => {
+  it("rejects an unapproved database hostname, weaker TLS verification, and tampered plan digests before provider access", async () => {
     const fetchImpl = vi.fn<typeof fetch>();
     const base = { jobId, accountRef, token, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password, saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl };
 
-    await expect(provisionCloudflareProductionDatabase({ ...base, plan: { ...plan, databaseAddress: "203.0.113.8" } }))
+    await expect(provisionCloudflareProductionDatabase({ ...base, plan: { ...plan, databaseHostname: "attacker.example" as "db.smartaihub.app" } }))
       .rejects.toThrow();
-    await expect(provisionCloudflareProductionDatabase({ ...base, plan: { ...plan, tlsVerification: "disabled" as "verify_ca" } }))
+    await expect(provisionCloudflareProductionDatabase({ ...base, plan: { ...plan, tlsVerification: "verify_ca" as "verify_full" } }))
       .rejects.toThrow();
     await expect(provisionCloudflareProductionDatabase({ ...base, plan, planDigest: "0".repeat(64) }))
       .rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_DATABASE_PLAN_INVALID" });
