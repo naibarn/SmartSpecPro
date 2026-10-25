@@ -15,6 +15,7 @@ import { Divider } from "@astryxdesign/core/Divider";
 import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
+import { Selector } from "@astryxdesign/core/Selector";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
 const ENVIRONMENTS = ["preview", "staging", "production"] as const;
@@ -87,6 +88,25 @@ const optionalProductionInventoryChecks = new Set([
   "dispatchNamespaces", "kv", "workflows", "loadBalancerPools", "r2", "vectorize",
   "dns", "zoneLoadBalancers",
 ]);
+
+type CloudflareTunnelOption = { id: string; name: string; status?: string };
+
+const tunnelIdPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
+const nonProductionTunnelNamePattern = /(?:^|[\s._-])(?:dev|development|staging|preview|test|uat)(?=$|[\s._-])/i;
+
+function tunnelStatusLabel(tunnel: CloudflareTunnelOption): string {
+  const status = tunnel.status?.trim().toLowerCase();
+  return status || "unknown";
+}
+
+function productionDatabaseTunnelBlocker(tunnel: CloudflareTunnelOption): string | null {
+  if (!tunnelIdPattern.test(tunnel.id)) return "invalid tunnel ID";
+  if (!tunnel.name.trim()) return "missing tunnel name";
+  const status = tunnelStatusLabel(tunnel);
+  if (status !== "healthy") return status === "unknown" ? "health status not reported" : `status ${status}`;
+  if (nonProductionTunnelNamePattern.test(tunnel.name)) return "marked as non-production";
+  return null;
+}
 
 function SearchableScopeSelect({
   label,
@@ -365,8 +385,8 @@ export default function AdminDeploymentTargets() {
   const [workflowRuntimeToken, setWorkflowRuntimeToken] = useState("");
   const [controlPlaneToken, setControlPlaneToken] = useState("");
   const [productionQueueJobId, setProductionQueueJobId] = useState("");
-  const [productionDatabaseJobId, setProductionDatabaseJobId] = useState("");
-  const [productionTunnelId, setProductionTunnelId] = useState("");
+  const [productionDatabaseSubmissions, setProductionDatabaseSubmissions] = useState<Record<string, string>>({});
+  const [productionTunnelSelections, setProductionTunnelSelections] = useState<Record<string, string>>({});
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
@@ -423,6 +443,7 @@ export default function AdminDeploymentTargets() {
       !query.state.data || ["succeeded", "failed", "cancelled", "expired"].includes(query.state.data.status) ? false : 2_000 },
   );
   const productionDatabaseJobData = latestProductionDatabaseJob.data;
+  const productionScopeKey = `${tenantId}:${projectId}:production`;
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const stagingCloudflareTargets = ((stagingTargetsQuery.data ?? []) as DeploymentTarget[])
@@ -465,7 +486,7 @@ export default function AdminDeploymentTargets() {
   });
   const productionDatabaseMutation = trpc.infrastructure.prepareCloudflareProductionDatabase.useMutation({
     onSuccess: async result => {
-      setProductionDatabaseJobId(result.jobId);
+      setProductionDatabaseSubmissions(current => ({ ...current, [productionScopeKey]: result.jobId }));
       await latestProductionDatabaseJob.refetch();
     },
   });
@@ -480,8 +501,10 @@ export default function AdminDeploymentTargets() {
   }, [productionQueueJobData?.status]);
   useEffect(() => {
     const latestJobId = latestProductionDatabaseJob.data?.jobId;
-    if (latestJobId && latestJobId !== productionDatabaseJobId) setProductionDatabaseJobId(latestJobId);
-  }, [latestProductionDatabaseJob.data?.jobId, productionDatabaseJobId]);
+    if (latestJobId && productionDatabaseSubmissions[productionScopeKey] !== latestJobId) {
+      setProductionDatabaseSubmissions(current => ({ ...current, [productionScopeKey]: latestJobId }));
+    }
+  }, [latestProductionDatabaseJob.data?.jobId, productionScopeKey, productionDatabaseSubmissions]);
   useEffect(() => {
     if (productionDatabaseJobData?.status === "succeeded") {
       void Promise.all([productionProviderInventory.refetch(), productionRuntimeReadiness.refetch()]);
@@ -758,8 +781,19 @@ export default function AdminDeploymentTargets() {
             const stagingHyperdrives = inventory.hyperdrives.filter(item => item.environment === "staging");
             const productionPostgresVpcs = inventory.vpcServices.filter(item => item.environment === "production" && item.type === "tcp" && item.appProtocol === "postgresql");
             const stagingPostgresVpcs = inventory.vpcServices.filter(item => item.environment === "staging" && item.type === "tcp" && item.appProtocol === "postgresql");
-            const databaseTunnels = inventory.tunnels.filter(item => item.status === "healthy");
-            const selectedDatabaseTunnelId = productionTunnelId || (databaseTunnels.length === 1 ? databaseTunnels[0].id : "");
+            const databaseTunnelInventoryComplete = inventory.status === "CHECKED" &&
+              inventory.tunnelInventoryComplete === true && inventory.accessChecks.tunnels?.complete === true;
+            const allDatabaseTunnels = inventory.tunnels as CloudflareTunnelOption[];
+            const databaseTunnels = databaseTunnelInventoryComplete
+              ? allDatabaseTunnels.filter(tunnel => productionDatabaseTunnelBlocker(tunnel) === null)
+              : [];
+            const unverifiedDatabaseTunnels = allDatabaseTunnels.filter(tunnel => productionDatabaseTunnelBlocker(tunnel) !== null);
+            const tunnelSelectionKey = `${tenantId}:${projectId}:${inventory.accountRef ?? "unknown-account"}`;
+            const savedTunnelId = productionTunnelSelections[tunnelSelectionKey] ?? "";
+            const selectedSavedTunnel = databaseTunnels.find(tunnel => tunnel.id === savedTunnelId);
+            const selectedDatabaseTunnelId = selectedSavedTunnel?.id ?? (databaseTunnels.length === 1 ? databaseTunnels[0].id : "");
+            const submittedDatabaseJobId = productionDatabaseSubmissions[productionScopeKey] ?? "";
+            const databaseJobAlreadySubmitted = Boolean(productionDatabaseJobData || submittedDatabaseJobId);
             const activeVersions = inventory.worker.versions;
             const verifiedRollback = activeVersions.some(version => version.checked && version.hasVerifiedReleaseIdentity);
             const nodeAndPythonIngressBound = activeVersions.some(version => version.checked &&
@@ -826,27 +860,51 @@ export default function AdminDeploymentTargets() {
               {inventory.status === "CHECKED" && (productionHyperdrives.length === 0 || productionPostgresVpcs.length === 0) ? <VStack as="section" gap={1} role="group" aria-label={text("Prepare Production PostgreSQL connection", "เตรียมการเชื่อมต่อ PostgreSQL Production")}>
                 <p><strong>{text("Prepare the retained PostgreSQL connection", "เตรียมการเชื่อมต่อ PostgreSQL เครื่องเดิม")}</strong></p>
                 <p>{text("The system will use the selected existing Cloudflare Tunnel, create the private VPC PostgreSQL service and uncached Hyperdrive config, and verify provider readback. PostgreSQL stays on this Linux host. No public database route, Worker binding, activation, or production traffic change is made.", "ระบบจะใช้ Cloudflare Tunnel เดิมที่เลือก สร้าง private VPC PostgreSQL service และ Hyperdrive แบบปิด cache แล้วตรวจ readback โดย PostgreSQL ยังคงอยู่บน Linux เครื่องเดิม ขั้นตอนนี้ไม่สร้าง public database route ไม่ bind หรือเปิด Worker และไม่เปลี่ยน production traffic")}</p>
-                {databaseTunnels.length > 1 ? <label htmlFor="cloudflare-production-db-tunnel">{text("Existing Cloudflare Tunnel", "Cloudflare Tunnel เดิม")}</label> : null}
-                {databaseTunnels.length > 1 ? <select id="cloudflare-production-db-tunnel" value={selectedDatabaseTunnelId} onChange={event => setProductionTunnelId(event.target.value)}>
-                  <option value="">{text("Choose the Tunnel that reaches PostgreSQL on the Linux host", "เลือก Tunnel ที่เชื่อมถึง PostgreSQL บน Linux host")}</option>
-                  {databaseTunnels.map(tunnel => <option key={tunnel.id} value={tunnel.id}>{tunnel.name} · {tunnel.status ?? "status unknown"} · {tunnel.id}</option>)}
-                </select> : databaseTunnels.length === 1 ? <p>{text("Using the only existing Tunnel", "ใช้ Tunnel เดิมรายการเดียว")}: <code>{databaseTunnels[0].name}</code> · <code>{databaseTunnels[0].id}</code></p>
-                  : <p role="alert">{text("No usable existing Tunnel is visible. Check Account → Cloudflare Tunnel → Read before preparing the private database path.", "ไม่พบ Tunnel เดิมที่ใช้งานได้ ให้ตรวจสิทธิ์ Account → Cloudflare Tunnel → Read ก่อนเตรียมเส้นทางฐานข้อมูลส่วนตัว")}</p>}
-                <Button type="button" disabled={!selectedDatabaseTunnelId || productionDatabaseMutation.isPending || Boolean(productionDatabaseJobData)}
+                <Selector
+                  label={text("Existing PostgreSQL Tunnel", "Tunnel PostgreSQL เดิม")}
+                  description={text("Only a complete Cloudflare inventory, a valid Tunnel ID, healthy status, and a production-capable Tunnel name allow preparation. The server rechecks the Tunnel before creating resources.", "ต้องตรวจ inventory ของ Cloudflare ครบ, Tunnel ID ถูกต้อง, สถานะ healthy และชื่อไม่ระบุว่าเป็น dev/staging/test จึงเริ่มเตรียมได้ ระบบจะตรวจ Tunnel ซ้ำก่อนสร้าง resource")}
+                  options={databaseTunnels.map(tunnel => ({
+                    value: tunnel.id,
+                    label: tunnel.name,
+                    description: `${tunnelStatusLabel(tunnel)} · ${tunnel.id}`,
+                  }))}
+                  value={selectedDatabaseTunnelId}
+                  onChange={value => setProductionTunnelSelections(current => ({ ...current, [tunnelSelectionKey]: value }))}
+                  placeholder={text("Choose a verified Tunnel", "เลือก Tunnel ที่ตรวจสอบแล้ว")}
+                  emptyText={text("No verified production-capable Tunnel is available.", "ไม่พบ Tunnel ที่ตรวจสอบแล้วและเหมาะกับ Production")}
+                  isDisabled={!databaseTunnelInventoryComplete || databaseTunnels.length === 0}
+                  width="100%"
+                />
+                {!databaseTunnelInventoryComplete ? <p role="alert">{text(
+                  `Cloudflare Tunnel inventory is incomplete (HTTP ${inventory.accessChecks.tunnels?.httpStatus ?? "not checked"}). Refresh the inventory before selecting a Tunnel.`,
+                  `ตรวจรายการ Cloudflare Tunnel ไม่ครบ (HTTP ${inventory.accessChecks.tunnels?.httpStatus ?? "ยังไม่ได้ตรวจ"}) ให้รีเฟรช inventory ก่อนเลือก Tunnel`,
+                )}</p> : databaseTunnels.length === 0 ? <p role="alert">{text(
+                  "No verified production-capable Tunnel is available. Existing Tunnel records are shown below with the reason they cannot be selected; no new Tunnel is required by this screen.",
+                  "ยังไม่มี Tunnel ที่ตรวจสอบแล้วและเหมาะกับ Production รายการ Tunnel เดิมแสดงด้านล่างพร้อมเหตุผลที่เลือกไม่ได้ หน้านี้ไม่ได้กำหนดให้สร้าง Tunnel ใหม่",
+                )}</p> : databaseTunnels.length > 1 && !selectedDatabaseTunnelId ? <p role="status">{text(
+                  "Choose the existing Tunnel that reaches the retained PostgreSQL host. The action enables after a selection.",
+                  "เลือก Tunnel เดิมที่เชื่อมถึง PostgreSQL บนเครื่องเดิม ปุ่มจะเปิดให้กดหลังเลือก Tunnel",
+                )}</p> : databaseTunnels.length === 1 ? <p role="status">{text("The only verified production-capable Tunnel is selected automatically.", "เลือก Tunnel ที่ตรวจสอบแล้วและเหมาะกับ Production เพียงรายการเดียวให้อัตโนมัติแล้ว")}</p> : null}
+                {unverifiedDatabaseTunnels.length > 0 ? <VStack as="ul" gap={1} aria-label={text("Unavailable Tunnel reasons", "เหตุผลที่ Tunnel เดิมเลือกไม่ได้")}>
+                  {unverifiedDatabaseTunnels.map(tunnel => <li key={tunnel.id}>
+                    <code>{tunnel.name || text("Unnamed Tunnel", "Tunnel ไม่มีชื่อ")}</code> · <code>{tunnelStatusLabel(tunnel)}</code> · <code>{tunnel.id}</code> — {productionDatabaseTunnelBlocker(tunnel)}
+                  </li>)}
+                </VStack> : null}
+                <Button type="button" disabled={!databaseTunnelInventoryComplete || !selectedDatabaseTunnelId || productionDatabaseMutation.isPending || databaseJobAlreadySubmitted}
                   onClick={() => productionDatabaseMutation.mutate({ tenantId, projectId, environment: "production", tunnelId: selectedDatabaseTunnelId })}>
-                  {productionDatabaseMutation.isPending ? text("Queueing database setup…", "กำลังส่งงานเตรียมฐานข้อมูล…") : productionDatabaseJobData
+                  {productionDatabaseMutation.isPending ? text("Queueing database setup…", "กำลังส่งงานเตรียมฐานข้อมูล…") : databaseJobAlreadySubmitted
                     ? text("Production database job already exists", "มีงานเตรียมฐานข้อมูล Production แล้ว")
                       : text("Prepare Production database connection", "เตรียมการเชื่อมต่อฐานข้อมูล Production")}
                 </Button>
                 {productionDatabaseMutation.error ? <p role="alert"><code>{productionDatabaseMutation.error.message}</code></p> : null}
-                {productionDatabaseJobData ? <VStack gap={1} role="status" aria-label={text("Production database provisioning job", "สถานะงานเตรียมฐานข้อมูล Production")}>
-                  <p>{text("Job", "งาน")}: <code>{productionDatabaseJobData.jobId}</code> · {text("Status", "สถานะ")}: <strong>{productionDatabaseJobData.status}</strong>
-                    {productionDatabaseJobData.attempt ? <> · {text("Attempt", "ครั้งที่")}: {productionDatabaseJobData.attempt}/{productionDatabaseJobData.maxAttempts}</> : null}</p>
-                  {productionDatabaseJobData.errorCode ? <p role="alert"><code>{productionDatabaseJobData.errorCode}</code></p> : null}
-                  {productionDatabaseJobData.vpcService ? <p>VPC: <code>{productionDatabaseJobData.vpcService.name}</code> · <code>{productionDatabaseJobData.vpcService.id}</code> · TLS <code>{productionDatabaseJobData.vpcService.tlsVerification}</code></p> : null}
-                  {productionDatabaseJobData.hyperdrive ? <p>Hyperdrive: <code>{productionDatabaseJobData.hyperdrive.name}</code> · <code>{productionDatabaseJobData.hyperdrive.id}</code></p> : null}
-                  {productionDatabaseJobData.providerConfigurationVerified ? <p role="note">{text("Cloudflare resource readback passed. The live PostgreSQL connection and a least-privilege application role are not verified by this step.", "ตรวจ readback ของ resource บน Cloudflare ผ่านแล้ว ขั้นตอนนี้ยังไม่ได้ยืนยันการเชื่อมต่อ PostgreSQL จริงหรือ application role แบบ least-privilege")}</p> : null}
-                  {productionDatabaseJobData.status === "queued" ? <p>{text("The canonical worker will claim this same job. This page follows its status and will not create duplicates.", "canonical worker จะรับงานเดิม หน้านี้ติดตามสถานะและไม่สร้าง job ซ้ำ")}</p> : null}
+                {productionDatabaseJobData || submittedDatabaseJobId ? <VStack gap={1} role="status" aria-label={text("Production database provisioning job", "สถานะงานเตรียมฐานข้อมูล Production")}>
+                  <p>{text("Job", "งาน")}: <code>{productionDatabaseJobData?.jobId ?? submittedDatabaseJobId}</code> · {text("Status", "สถานะ")}: <strong>{productionDatabaseJobData?.status ?? "queued"}</strong>
+                    {productionDatabaseJobData?.attempt ? <> · {text("Attempt", "ครั้งที่")}: {productionDatabaseJobData.attempt}/{productionDatabaseJobData.maxAttempts}</> : null}</p>
+                  {productionDatabaseJobData?.errorCode ? <p role="alert"><code>{productionDatabaseJobData.errorCode}</code></p> : null}
+                  {productionDatabaseJobData?.vpcService ? <p>VPC: <code>{productionDatabaseJobData.vpcService.name}</code> · <code>{productionDatabaseJobData.vpcService.id}</code> · TLS <code>{productionDatabaseJobData.vpcService.tlsVerification}</code></p> : null}
+                  {productionDatabaseJobData?.hyperdrive ? <p>Hyperdrive: <code>{productionDatabaseJobData.hyperdrive.name}</code> · <code>{productionDatabaseJobData.hyperdrive.id}</code></p> : null}
+                  {productionDatabaseJobData?.providerConfigurationVerified ? <p role="note">{text("Cloudflare resource readback passed. The live PostgreSQL connection and a least-privilege application role are not verified by this step.", "ตรวจ readback ของ resource บน Cloudflare ผ่านแล้ว ขั้นตอนนี้ยังไม่ได้ยืนยันการเชื่อมต่อ PostgreSQL จริงหรือ application role แบบ least-privilege")}</p> : null}
+                  {productionDatabaseJobData?.status === "queued" || submittedDatabaseJobId ? <p>{text("The canonical worker will claim this same job. This page follows its status and will not create duplicates.", "canonical worker จะรับงานเดิม หน้านี้ติดตามสถานะและไม่สร้าง job ซ้ำ")}</p> : null}
                 </VStack> : null}
               </VStack> : null}
               {inventory.productionDatabaseProvisioning ? <VStack as="section" gap={1} role="group" aria-label={text("Production database provisioning access", "สิทธิ์สำหรับเตรียมฐานข้อมูล Production")}>

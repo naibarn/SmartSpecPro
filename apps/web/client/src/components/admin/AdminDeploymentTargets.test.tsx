@@ -33,6 +33,8 @@ const mocks = vi.hoisted(() => ({
   latestProductionDatabaseJob: null as Record<string, unknown> | null,
   productionQueues: [] as Array<Record<string, unknown>>,
   productionHyperdrives: [] as Array<Record<string, unknown>>,
+  productionTunnels: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }] as Array<Record<string, unknown>>,
+  tunnelInventoryComplete: true,
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   probeCredential: vi.fn(),
@@ -74,7 +76,7 @@ vi.mock("@/lib/trpc", () => ({
         accountRef: "f3fb0b6858e186fcc36be105bfa00243",
         accessChecks: { queues: { httpStatus: 200, complete: true }, hyperdrive: { httpStatus: 200, complete: true }, zone: { httpStatus: 200, complete: true },
           routes: { httpStatus: 200, complete: true }, workerDeployments: { httpStatus: 200, complete: true }, workerVersions: [],
-          vpcServices: { httpStatus: 403, complete: false } },
+          tunnels: { httpStatus: 200, complete: mocks.tunnelInventoryComplete }, vpcServices: { httpStatus: 403, complete: false } },
         originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false },
         productionDatabaseProvisioning: { checks: {
           hyperdrive: { httpStatus: 200, readable: true }, tunnel: { httpStatus: 200, readable: true },
@@ -87,7 +89,8 @@ vi.mock("@/lib/trpc", () => ({
         ],
         conditionalPermissions: [{ scope: "Account", permission: "Cloudflare Tunnel Edit", condition: "only if the selected existing Tunnel must be changed" }] },
         queueInventoryComplete: true, queues: [...mocks.productionQueues, { name: "smartspec-staging-project-jobs", environment: "staging" }],
-        tunnels: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }],
+        tunnelInventoryComplete: mocks.tunnelInventoryComplete,
+        tunnels: mocks.productionTunnels,
         hyperdriveInventoryComplete: true, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
         vpcServiceInventoryComplete: true, vpcServices: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartspec-staging-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
@@ -197,6 +200,8 @@ describe("AdminDeploymentTargets", () => {
     mocks.latestProductionDatabaseJob = null;
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
+    mocks.productionTunnels = [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }];
+    mocks.tunnelInventoryComplete = true;
     mocks.activationError = null;
     mocks.activationSucceeds = false;
     mocks.stagingPreflight = { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null };
@@ -635,6 +640,7 @@ describe("AdminDeploymentTargets", () => {
     expect(prepareDatabase).toBeEnabled();
     await user.click(prepareDatabase);
     await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({ tenantId, projectId, environment: "production", tunnelId: "87654321-4321-4321-8321-cba987654321" }));
+    expect(prepareDatabase).toBeDisabled();
     const prepareQueue = screen.getByRole("button", { name: "Prepare Production Queue" });
     expect(prepareQueue).toBeEnabled();
     await user.click(prepareQueue);
@@ -644,6 +650,93 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getAllByText(/Connectivity Directory Admin/).length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: "Cloudflare: manage account member roles" })).toHaveAttribute("href", "https://developers.cloudflare.com/fundamentals/manage-members/manage/");
     expect(screen.queryByRole("button", { name: /approve|deploy|cutover/i })).not.toBeInTheDocument();
+  });
+
+  it("preselects the independently verified production Tunnel and excludes the healthy dev Tunnel", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.productionTunnels = [
+      { id: "cc9ce9c0-3036-4312-a4fc-5c8f75d59e32", name: "mastercafediary_com", status: "down" },
+      { id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartspec", status: "healthy" },
+      { id: "288efe2d-034b-4532-811a-ee3e974d802b", name: "smartspec-dev", status: "healthy" },
+    ];
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    const tunnel = screen.getByRole("combobox", { name: "Existing PostgreSQL Tunnel" });
+    expect(tunnel).toHaveTextContent("smartspec");
+    expect(screen.queryByRole("option", { name: /smartspec-dev/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/marked as non-production/)).toBeInTheDocument();
+    const prepare = screen.getByRole("button", { name: "Prepare Production database connection" });
+    expect(prepare).toBeEnabled();
+    await user.click(prepare);
+    await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({
+      tenantId, projectId, environment: "production", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6",
+    }));
+  });
+
+  it("allows keyboard selection among multiple verified production Tunnels and keeps the choice on inventory refresh", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.productionTunnels = [
+      { id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartspec-primary", status: "healthy" },
+      { id: "288efe2d-034b-4532-811a-ee3e974d802b", name: "smartspec-secondary", status: "healthy" },
+    ];
+    const { rerender } = render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    const prepare = screen.getByRole("button", { name: "Prepare Production database connection" });
+    const selector = screen.getByRole("combobox", { name: "Existing PostgreSQL Tunnel" });
+    expect(prepare).toBeDisabled();
+    await user.click(selector);
+    await user.keyboard("{ArrowDown}{ArrowDown}{Enter}");
+    await waitFor(() => expect(prepare).toBeEnabled());
+    expect(selector).toHaveTextContent("smartspec-secondary");
+
+    rerender(<AdminDeploymentTargets />);
+    expect(screen.getByRole("combobox", { name: "Existing PostgreSQL Tunnel" })).toHaveTextContent("smartspec-secondary");
+    await user.click(prepare);
+    await waitFor(() => expect(mocks.prepareProductionDatabase).toHaveBeenCalledWith({
+      tenantId, projectId, environment: "production", tunnelId: "288efe2d-034b-4532-811a-ee3e974d802b",
+    }));
+  });
+
+  it("explains and blocks empty, incomplete, unknown-status, and malformed Tunnel inventory", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.productionTunnels = [
+      { id: "not-a-uuid", name: "smartspec-invalid", status: "healthy" },
+      { id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartspec-unknown" },
+      { id: "288efe2d-034b-4532-811a-ee3e974d802b", name: "smartspec-connecting", status: "connecting" },
+    ];
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(screen.getByRole("alert", { name: "" })).toHaveTextContent(/No verified production-capable Tunnel is available/);
+    expect(screen.getByText(/invalid tunnel ID/)).toBeInTheDocument();
+    expect(screen.getByText(/health status not reported/)).toBeInTheDocument();
+    expect(screen.getByText(/status connecting/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prepare Production database connection" })).toBeDisabled();
+  });
+
+  it("does not offer or submit a Tunnel when the inventory is empty or incomplete", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.productionTunnels = [];
+    const { rerender } = render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+    expect(screen.getByRole("alert", { name: "" })).toHaveTextContent(/No verified production-capable Tunnel is available/);
+    expect(screen.getByRole("button", { name: "Prepare Production database connection" })).toBeDisabled();
+
+    mocks.tunnelInventoryComplete = false;
+    rerender(<AdminDeploymentTargets />);
+    expect(screen.getByText(/Tunnel inventory is incomplete/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prepare Production database connection" })).toBeDisabled();
+    expect(mocks.prepareProductionDatabase).not.toHaveBeenCalled();
   });
 
   it("does not tell the admin to repeat Queue setup after Production Queue and DLQ are verified", async () => {
