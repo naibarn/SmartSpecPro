@@ -726,6 +726,7 @@ export const infrastructureRouter = router({
       const databaseUser = `sah_cf_prod_${createHash("sha256").update(`${input.tunnelId}:${databaseName}`).digest("hex").slice(0, 12)}`;
       const plan = productionDatabaseResourcePlanSchema.parse({ tunnelId: input.tunnelId, databaseHostname: "db.smartaihub.app",
         databaseName, databaseUser,
+        vpcTcpPort: 5433,
         connectionLimit: 5, tlsVerification: "verify_full" });
       const { grant, databasePassword } = createProductionDatabaseGrant({ jobId, tenantId, projectId: input.projectId,
         requesterUserId: ctx.user.id, accountRef: target.accountRef, plan });

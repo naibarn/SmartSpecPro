@@ -17,6 +17,7 @@ const plan: ProductionDatabaseResourcePlan = {
   databaseHostname: "db.smartaihub.app",
   databaseName: "smartspec",
   databaseUser: "sah_cf_prod_0123456789ab",
+  vpcTcpPort: 5433,
   connectionLimit: 5,
   tlsVerification: "verify_full",
 };
@@ -26,7 +27,7 @@ const service = {
   name: `smartspec-production-postgres-${operationId}`,
   type: "tcp",
   app_protocol: "postgresql",
-  tcp_port: 5432,
+  tcp_port: 5433,
   host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } },
   tls_settings: { cert_verification_mode: "verify_full" },
 };
@@ -63,12 +64,15 @@ describe("Cloudflare production database resources", () => {
       expect(new Headers(init?.headers).get("authorization")).toBe(`Bearer ${token}`);
     }
     const createServiceBody = JSON.parse(String(fetchImpl.mock.calls[2]?.[1]?.body));
-    expect(createServiceBody).toMatchObject({ host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } }, tls_settings: { cert_verification_mode: "verify_full" } });
+    expect(createServiceBody).toMatchObject({ tcp_port: 5433,
+      host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } },
+      tls_settings: { cert_verification_mode: "verify_full" } });
     const createHyperdriveBody = JSON.parse(String(fetchImpl.mock.calls[5]?.[1]?.body));
     expect(createHyperdriveBody).toMatchObject({ origin: { service_id: serviceId, database: plan.databaseName, user: plan.databaseUser, password, scheme: "postgres" }, caching: { disabled: true }, origin_connection_limit: 5 });
     expect(JSON.stringify(result)).not.toContain(token);
     expect(JSON.stringify(result)).not.toContain(password);
-    expect(result).toMatchObject({ providerConfigurationVerified: true, workerBound: false, activation: "disabled", vpcService: { id: serviceId }, hyperdrive: { id: hyperdriveId } });
+    expect(result).toMatchObject({ providerConfigurationVerified: true, workerBound: false, activation: "disabled",
+      vpcService: { id: serviceId, port: 5433 }, hyperdrive: { id: hyperdriveId } });
     expect(checkpoints.at(-1)).toMatchObject({ jobId, pending: null, vpcServiceId: serviceId, hyperdriveId });
   });
 

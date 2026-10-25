@@ -1,0 +1,37 @@
+[Unit]
+Description=Loopback TLS endpoint for Cloudflare Workers VPC PostgreSQL
+After=network.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/opt/smartspec/cloudflare
+Environment=PG_ORIGIN_TLS_CERT_FILE=/home/dev/.config/smartspec/secrets/cloudflare-db-origin-20261025/server-multi.crt
+Environment=PG_ORIGIN_TLS_KEY_FILE=/home/dev/.config/smartspec/secrets/cloudflare-db-origin-20261025/server.key
+Environment=PG_ORIGIN_TLS_LISTEN_HOST=127.0.0.1
+Environment=PG_ORIGIN_TLS_LISTEN_PORT=5433
+Environment=PG_ORIGIN_TLS_UPSTREAM_HOST=127.0.0.1
+Environment=PG_ORIGIN_TLS_UPSTREAM_PORT=5432
+Environment=PG_ORIGIN_TLS_UPSTREAM_CERT_SHA256=3664B87FCF56E5BA724F0C494625ED09F94255B391D7ABFDFC24B10F8B858DEE
+Environment=PG_ORIGIN_TLS_MAX_CONNECTIONS=12
+ExecStart=/home/dev/.nvm/versions/node/v22.23.4/bin/node /opt/smartspec/cloudflare/cloudflare-postgres-origin-proxy.mjs
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+NoExecPaths=/tmp /var/tmp
+CapabilityBoundingSet=
+MemoryMax=128M
+CPUQuota=20%
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

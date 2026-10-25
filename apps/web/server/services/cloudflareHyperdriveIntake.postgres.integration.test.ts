@@ -112,7 +112,7 @@ suite("direct Hyperdrive intake semantics in owner-marked disposable PostgreSQL"
     const password = randomBytes(40).toString("base64url");
     const databaseName = new URL(disposable.databaseUrl).pathname.slice(1);
     const plan = { tunnelId: "87654321-4321-4321-8321-cba987654321", databaseHostname: "db.smartaihub.app" as const,
-      databaseName, databaseUser: role, connectionLimit: 5 as const, tlsVerification: "verify_full" as const };
+      databaseName, databaseUser: role, vpcTcpPort: 5433 as const, connectionLimit: 5 as const, tlsVerification: "verify_full" as const };
     const planDigest = productionDatabaseResourcePlanDigest(plan);
     const roleSql = postgres(disposable.databaseUrl, { max: 1 });
     const db = drizzle(roleSql) as unknown as DrizzleDB;

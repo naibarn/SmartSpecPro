@@ -24,6 +24,7 @@ export const productionDatabaseResourcePlanSchema = z.object({
   databaseHostname: z.literal("db.smartaihub.app"),
   databaseName: z.string().regex(/^[a-zA-Z0-9_]{1,63}$/),
   databaseUser: postgresRole,
+  vpcTcpPort: z.literal(5433),
   connectionLimit: z.literal(5),
   tlsVerification: z.literal("verify_full"),
 }).strict();
@@ -163,7 +164,7 @@ export async function provisionCloudflareProductionDatabase(input: {
       name: serviceName,
       type: "tcp",
       app_protocol: "postgresql",
-      tcp_port: 5432,
+      tcp_port: plan.vpcTcpPort,
       host: { hostname: plan.databaseHostname, resolver_network: { tunnel_id: plan.tunnelId } },
       tls_settings: { cert_verification_mode: plan.tlsVerification },
     });
@@ -173,7 +174,7 @@ export async function provisionCloudflareProductionDatabase(input: {
   const vpcServiceEnvelope = await request(`${servicesPath}/${encodeURIComponent(vpcServiceId)}`, "GET");
   const vpcService = vpcServiceEnvelope.result as Resource | undefined;
   if (vpcService.service_id !== vpcServiceId || vpcService.name !== serviceName || vpcService.type !== "tcp" ||
-      vpcService.app_protocol !== "postgresql" || vpcService.tcp_port !== 5432 ||
+      vpcService.app_protocol !== "postgresql" || vpcService.tcp_port !== plan.vpcTcpPort ||
       vpcService.host?.hostname !== plan.databaseHostname || vpcService.host?.resolver_network?.tunnel_id !== plan.tunnelId ||
       vpcService.tls_settings?.cert_verification_mode !== plan.tlsVerification) {
     fail("CLOUDFLARE_PRODUCTION_VPC_SERVICE_READBACK_MISMATCH", "unknown");
@@ -215,7 +216,8 @@ export async function provisionCloudflareProductionDatabase(input: {
   return {
     accountRef: input.accountRef,
     planDigest: input.planDigest,
-    vpcService: { id: vpcServiceId, name: serviceName, tunnelId: plan.tunnelId, hostname: plan.databaseHostname, type: "tcp", appProtocol: "postgresql", tlsVerification: plan.tlsVerification },
+    vpcService: { id: vpcServiceId, name: serviceName, tunnelId: plan.tunnelId, hostname: plan.databaseHostname,
+      port: plan.vpcTcpPort, type: "tcp", appProtocol: "postgresql", tlsVerification: plan.tlsVerification },
     hyperdrive: { id: hyperdriveId, name: hyperdriveName, databaseName: plan.databaseName, databaseUser: plan.databaseUser,
       connectionLimit: plan.connectionLimit, cachingDisabled: true },
     providerConfigurationVerified: true as const,

@@ -30,6 +30,7 @@ const plan: ProductionDatabaseResourcePlan = {
   databaseHostname: "db.smartaihub.app",
   databaseName: "smartspec",
   databaseUser: "sah_cf_prod_0123456789ab",
+  vpcTcpPort: 5433,
   connectionLimit: 5,
   tlsVerification: "verify_full",
 };
@@ -51,7 +52,7 @@ function fixture() {
     name: `smartspec-production-postgres-${planDigest.slice(0, 12)}`,
     type: "tcp",
     app_protocol: "postgresql",
-    tcp_port: 5432,
+    tcp_port: 5433,
     host: {
       hostname: plan.databaseHostname,
       resolver_network: { tunnel_id: plan.tunnelId },
