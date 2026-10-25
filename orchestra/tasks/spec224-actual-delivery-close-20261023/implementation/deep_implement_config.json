@@ -62,9 +62,11 @@
       "next_action": "V1 project source is committed and read-back verified in the existing private App repository; proceed with the pending authenticated-owner V2 continuation."
     },
     "section-08-generic-miniapp-continuous-delivery": {
-      "status": "in_progress",
+      "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Reconcile exact V1/V2 production job receipts and version ledger, record owner acceptance separately, then replace hardcoded pilot candidate runtime constants with a generic owner-bound repository candidate contract."
+      "next_action": "Deploy integrated shared runtime SHA 297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70 through the existing release control and verify runtime routes/API. Keep owner-authenticated V2 trial as separate pending evidence; do not repeat app generation or migrations.",
+      "checkpoint_sha": "297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70",
+      "merged_main_sha": "297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70"
     }
   },
   "pre_commit": {
@@ -76,16 +78,16 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 33,
-  "updated_at": "2026-10-25T11:48:27.424532+00:00",
+  "generation": 36,
+  "updated_at": "2026-10-25T12:03:17.100942+00:00",
   "progress": {
     "active_section": "section-08-generic-miniapp-continuous-delivery",
-    "next_action": "Reconcile exact V1/V2 production job receipts and version ledger, record owner acceptance separately, then replace hardcoded pilot candidate runtime constants with a generic owner-bound repository candidate contract.",
+    "next_action": "Deploy integrated shared runtime SHA 297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70 through the existing release control and verify runtime routes/API. Keep owner-authenticated V2 trial as separate pending evidence; do not repeat app generation or migrations.",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "gaps": [
-      "No authenticated owner browser session is available to this Codex context. No V2 DevelopmentRun or version-2 row exists yet. The production adoption action is deployed and owner click is the continuation predicate. V1 remains last-known-good.",
-      "No authenticated owner browser session is available to this Codex context for a post-deploy visual interaction check. Existing V2 browser evidence records 12/12 checks; production private API returns NOT_FOUND without auth."
+      "Generic candidate-adoption code is integrated in origin/main but not yet deployed to the SmartAIHub runtime. Release SHA 297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70 through the existing authorized release control and verify user-facing routes.",
+      "Owner-authenticated browser acceptance of the deployed V2 is not yet evidenced; retain the existing App and run, and record owner verification only after the owner opens the real URL."
     ],
-    "merged_main_sha": "faf6747dc91a447eed2805e20beb84da1f36162a"
+    "merged_main_sha": "297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70"
   }
 }
