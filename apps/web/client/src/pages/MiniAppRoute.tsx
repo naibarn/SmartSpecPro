@@ -437,7 +437,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
           </VStack>
         </Section> : null}
 
-        {factory?.conversationId && mode === "status" ? <Section>
+        {mode === "status" ? <Section>
           <VStack gap={3}>
             {appId === "app_e6f0be051fd22e09bc4c5dff" ? <Card padding={4} data-testid="miniapp-prepared-v2-candidate">
               <VStack gap={2}>
@@ -453,8 +453,10 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
                 {adoptCandidate.data ? <Text type="body" role="status">DevelopmentRun {adoptCandidate.data.runId} is queued at {adoptCandidate.data.stageId ?? "the next stage"}. V1 remains available while it is checked.</Text> : null}
               </VStack>
             </Card> : null}
-            <Heading level={2}>Continue development</Heading>
-            <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} canContinue={migrationStatus === "OWNER_CONFIRMED"} />
+            {factory?.conversationId ? <>
+              <Heading level={2}>Continue development</Heading>
+              <ContinueMiniApp input={{ appId, conversationId: factory.conversationId }} onStarted={onChanged} canContinue={migrationStatus === "OWNER_CONFIRMED"} />
+            </> : null}
           </VStack>
         </Section> : null}
       </VStack>
