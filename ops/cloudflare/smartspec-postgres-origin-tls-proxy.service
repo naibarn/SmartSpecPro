@@ -14,7 +14,6 @@ Environment=PG_ORIGIN_TLS_LISTEN_HOST=127.0.0.1
 Environment=PG_ORIGIN_TLS_LISTEN_PORT=5433
 Environment=PG_ORIGIN_TLS_UPSTREAM_HOST=127.0.0.1
 Environment=PG_ORIGIN_TLS_UPSTREAM_PORT=5432
-Environment=PG_ORIGIN_TLS_UPSTREAM_CERT_SHA256=3664B87FCF56E5BA724F0C494625ED09F94255B391D7ABFDFC24B10F8B858DEE
 Environment=PG_ORIGIN_TLS_MAX_CONNECTIONS=12
 ExecStart=/home/dev/.nvm/versions/node/v22.23.4/bin/node /opt/smartspec/cloudflare/cloudflare-postgres-origin-proxy.mjs
 Restart=on-failure

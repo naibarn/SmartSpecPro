@@ -1,20 +1,14 @@
 import { createReadStream } from "node:fs";
 import { createConnection, createServer as createNetServer } from "node:net";
-import { checkServerIdentity, createSecureContext, connect as connectTls, TLSSocket } from "node:tls";
+import { createSecureContext, TLSSocket } from "node:tls";
 import { pathToFileURL } from "node:url";
 
 const LOOPBACKS = new Set(["127.0.0.1", "::1", "localhost"]);
 const POSTGRES_SSL_REQUEST = Buffer.from([0, 0, 0, 8, 4, 210, 22, 47]);
-const UPSTREAM_TLS_SERVERNAME = "db-staging.smartaihub.app";
-
-function certFingerprint(socket) {
-  return socket.getPeerCertificate()?.fingerprint256?.replaceAll(":", "").toUpperCase();
-}
 
 export function createPostgresOriginTlsProxy({
   certificate,
   privateKey,
-  expectedUpstreamFingerprint,
   listenHost = "127.0.0.1",
   listenPort = 5433,
   upstreamHost = "127.0.0.1",
@@ -22,7 +16,7 @@ export function createPostgresOriginTlsProxy({
   maxConnections = 12,
   netConnect = createConnection,
 } = {}) {
-  if (!certificate || !privateKey || !/^[A-Fa-f0-9]{64}$/.test(expectedUpstreamFingerprint ?? "") ||
+  if (!certificate || !privateKey ||
       !LOOPBACKS.has(listenHost) || !LOOPBACKS.has(upstreamHost) ||
       !Number.isInteger(listenPort) || listenPort < 0 || listenPort > 65535 ||
       !Number.isInteger(upstreamPort) || upstreamPort < 1 || upstreamPort > 65535 ||
@@ -63,76 +57,34 @@ export function createPostgresOriginTlsProxy({
       sockets.add(upstream);
       upstream.setNoDelay(true);
       upstream.setTimeout(5_000, () => upstream.destroy());
-      let response = Buffer.alloc(0);
-      const onUpstreamResponse = chunk => {
-        response = Buffer.concat([response, chunk]);
-        if (response.length < 1) return;
-        upstream.off("data", onUpstreamResponse);
-        if (response[0] !== 0x53 || response.length !== 1) {
-          reject();
-          upstream.destroy();
-          return;
-        }
+      upstream.once("connect", () => {
         client.write("S");
         client.setTimeout(0);
         upstream.setTimeout(0);
-
         const clientTls = new TLSSocket(client, { isServer: true, secureContext, handshakeTimeout: 5_000 });
-        const upstreamTls = connectTls({ socket: upstream, servername: UPSTREAM_TLS_SERVERNAME,
-          minVersion: "TLSv1.2", rejectUnauthorized: false });
         sockets.add(clientTls);
-        sockets.add(upstreamTls);
-        let clientSecure = false;
-        let upstreamSecure = false;
-        let bridged = false;
-        const bridgeIfReady = () => {
-          if (bridged || !clientSecure || !upstreamSecure) return;
-          bridged = true;
-          clientTls.setTimeout(0);
-          upstreamTls.setTimeout(0);
-          clientTls.pipe(upstreamTls);
-          upstreamTls.pipe(clientTls);
-        };
         const closePair = () => {
           sockets.delete(client);
           sockets.delete(upstream);
           sockets.delete(clientTls);
-          sockets.delete(upstreamTls);
           clientTls.destroy();
-          upstreamTls.destroy();
+          upstream.destroy();
         };
         clientTls.once("secure", () => {
-          clientSecure = true;
-          bridgeIfReady();
-        });
-        upstreamTls.once("secureConnect", () => {
-          const peer = upstreamTls.getPeerCertificate();
-          const fingerprint = certFingerprint(upstreamTls);
-          const identityError = checkServerIdentity(UPSTREAM_TLS_SERVERNAME, peer);
-          const now = Date.now();
-          // The existing PostgreSQL leaf is issued by a private CA not installed on this host.
-          // Pin that exact leaf and still enforce its DNS identity and validity window.
-          if (identityError || fingerprint !== expectedUpstreamFingerprint.toUpperCase() ||
-              !Number.isFinite(Date.parse(peer.valid_from)) || !Number.isFinite(Date.parse(peer.valid_to)) ||
-              Date.parse(peer.valid_from) > now || Date.parse(peer.valid_to) <= now) {
-            process.stderr.write("CLOUDFLARE_POSTGRES_ORIGIN_PROXY_UPSTREAM_CERTIFICATE_REJECTED\n");
-            closePair();
-            return;
-          }
-          upstreamSecure = true;
-          bridgeIfReady();
+          clientTls.setTimeout(0);
+          // PostgreSQL stays on this host's loopback. Keeping its socket unwrapped
+          // preserves PostgreSQL SCRAM channel-binding negotiation and never sends
+          // decrypted database traffic over a non-local interface.
+          clientTls.pipe(upstream);
+          upstream.pipe(clientTls);
         });
         clientTls.once("error", closePair);
-        upstreamTls.once("error", closePair);
+        clientTls.setTimeout(5_000, () => closePair());
         client.once("close", closePair);
         upstream.once("close", closePair);
         client.once("error", closePair);
         upstream.once("error", closePair);
-        clientTls.setTimeout(5_000, () => closePair());
-        upstreamTls.setTimeout(5_000, () => closePair());
-      };
-      upstream.on("data", onUpstreamResponse);
-      upstream.once("connect", () => upstream.write(POSTGRES_SSL_REQUEST));
+      });
       upstream.once("error", () => reject());
     };
     client.on("data", onInitialData);
@@ -178,14 +130,12 @@ async function readFile(path) {
 async function main() {
   const certificatePath = process.env.PG_ORIGIN_TLS_CERT_FILE;
   const privateKeyPath = process.env.PG_ORIGIN_TLS_KEY_FILE;
-  const expectedUpstreamFingerprint = process.env.PG_ORIGIN_TLS_UPSTREAM_CERT_SHA256;
-  if (!certificatePath || !privateKeyPath || !expectedUpstreamFingerprint) {
+  if (!certificatePath || !privateKeyPath) {
     throw new Error("CLOUDFLARE_POSTGRES_ORIGIN_PROXY_CERTIFICATE_CONFIG_MISSING");
   }
   const proxy = createPostgresOriginTlsProxy({
     certificate: await readFile(certificatePath),
     privateKey: await readFile(privateKeyPath),
-    expectedUpstreamFingerprint,
     listenHost: process.env.PG_ORIGIN_TLS_LISTEN_HOST ?? "127.0.0.1",
     listenPort: Number(process.env.PG_ORIGIN_TLS_LISTEN_PORT ?? 5433),
     upstreamHost: process.env.PG_ORIGIN_TLS_UPSTREAM_HOST ?? "127.0.0.1",
