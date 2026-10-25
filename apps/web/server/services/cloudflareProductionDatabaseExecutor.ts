@@ -373,11 +373,14 @@ export function createCloudflareProductionDatabaseRuntime(
         },
         op
       );
-      if (result.status !== "CONFIGURED" || result.value === undefined)
+      // Authorization-only callbacks intentionally return void. A successfully
+      // decrypted credential remains CONFIGURED even when that callback has no
+      // result; only the credential status denotes a credential failure.
+      if (result.status !== "CONFIGURED")
         throw new CloudflareProductionDatabaseJobError(
           "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE"
         );
-      return result.value;
+      return result.value!;
     },
     async prepareRuntimeRole(plan, databasePassword, planDigest) {
       return prepareCloudflareProductionRuntimeRole({ db, plan, databasePassword, planDigest });

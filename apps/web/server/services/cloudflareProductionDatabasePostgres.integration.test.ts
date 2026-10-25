@@ -28,6 +28,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     const schema = await import("../../drizzle/schema");
     await (await import("./__tests__/support/spec277AutoTeamRuntimeSchema")).installSpec277AutoTeamRuntimeSchema(client, [
       schema.systemSettings, schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions, schema.workerJobActions,
+      schema.providerDeploymentCredentials,
     ]);
     // Only the intake columns used by the production role are required here;
     // no geospatial workload or PostGIS dependency belongs to this dispatch proof.
@@ -62,8 +63,12 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     const jobId = randomUUID(), tunnelId = randomUUID(), tenantId = "tenant-production-db-fixture", projectId = randomUUID();
     const plan = { tunnelId, databaseHostname: "db.smartaihub.app" as const, databaseName: disposable.database,
       databaseUser: "sah_cf_prod_0123456789ab", vpcTcpPort: 5433 as const, connectionLimit: 5 as const, tlsVerification: "verify_full" as const };
+    const identity = { tenantId, projectId, provider: "cloudflare", environment: "production" } as const;
+    const { deploymentCredentialRef } = await import("./providerDeploymentTargetAuthority");
     scope.target = { tenantId, projectId, targetId: "smartspec-cloudflare-runtime", workerRef: "smartspec-cloudflare-runtime",
-      accountRef: "a".repeat(32), credentialRef: "production-fixture-credential", environment: "production", enabled: true };
+      accountRef: "a".repeat(32), credentialRef: deploymentCredentialRef(identity), environment: "production", enabled: true };
+    const { saveCloudflareDeploymentCredential } = await import("./cloudflareCredentialCenter");
+    await saveCloudflareDeploymentCredential(db, { identity, token: "isolated-provider-fixture-token", actorUserId: 17 });
     const { grant, databasePassword } = executorModule.createProductionDatabaseGrant({ jobId, tenantId, projectId,
       requesterUserId: 17, accountRef: scope.target.accountRef, plan });
     await executorModule.saveCloudflareProductionDatabaseGrant(db, grant, databasePassword);
@@ -116,7 +121,6 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
       return new Response(JSON.stringify({ success: true, result }), { status: 200 });
     });
     const runtime = executorModule.createCloudflareProductionDatabaseRuntime({ db, fetchImpl });
-    runtime.withCredential = async (_project, _tenant, _ref, operation) => operation("isolated-provider-fixture-token");
     const registry = new JobExecutorRegistry();
     registry.register({ jobType, executionClass: "long", contractVersions: new Set([contractVersion]),
       executor: executorModule.createCloudflareProductionDatabaseExecutor(runtime) });
