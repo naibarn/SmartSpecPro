@@ -189,11 +189,30 @@ async function normalizeAndRepairGeneratedCandidate(input: {
       });
       repaired = response.data as Record<string, unknown>;
     } catch (error) {
-      throw new PersonalMiniAppGenerationError(
-        error instanceof Error ? `MINI_APP_FIELD_REPAIR_FAILED:${repairFields.join(",")}` : "MINI_APP_FIELD_REPAIR_FAILED",
-        candidate?.ref,
-        repairFields,
-      );
+      const rawResponse = error && typeof error === "object" && "rawResponse" in error
+        ? (error as { rawResponse?: unknown }).rawResponse
+        : null;
+      const repairedCandidate = typeof rawResponse === "string"
+        ? repairPersonalMiniAppJsonCandidate(rawResponse)
+        : null;
+      const repairedFields = repairedCandidate
+        ? Object.fromEntries(repairFields.map(field => [field, repairedCandidate[field]]))
+        : null;
+      const repairedValidation = repairedFields ? repairSchema.safeParse(repairedFields) : null;
+      if (repairedValidation?.success) {
+        repaired = repairedValidation.data as Record<string, unknown>;
+        console.info("[MiniAppFactory] recovered complete malformed field-repair JSON locally", {
+          appId: input.appId,
+          runId: input.runId,
+          repairedFields: repairFields,
+        });
+      } else {
+        throw new PersonalMiniAppGenerationError(
+          error instanceof Error ? `MINI_APP_FIELD_REPAIR_FAILED:${repairFields.join(",")}` : "MINI_APP_FIELD_REPAIR_FAILED",
+          candidate?.ref,
+          repairFields,
+        );
+      }
     }
     for (const field of repairFields) {
       normalized[field] = repaired[field];

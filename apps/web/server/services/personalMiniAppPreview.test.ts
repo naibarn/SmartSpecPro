@@ -193,6 +193,35 @@ describe("personal Mini-App artifact assembly", () => {
     expect(callLLMStructured).toHaveBeenCalledTimes(1);
   });
 
+  it("repairs malformed field-repair JSON locally while retaining the candidate", async () => {
+    const invalid = { ...generated, html: `${generated.html}<script>bad()</script>`, javascript: "const = broken" };
+    const repairedHtml = "<!doctype html><html><body><main>Expense tracker</main></body></html>";
+    const malformedRepair = JSON.stringify({ html: repairedHtml, javascript: "document.body.dataset.ready='true'" })
+      .replace(',"javascript"', '"javascript"');
+    vi.mocked(callLLMStructured)
+      .mockResolvedValueOnce({ data: invalid } as any)
+      .mockRejectedValueOnce(Object.assign(new Error("invalid field repair JSON"), {
+        name: "LLMStructuredOutputError",
+        rawResponse: malformedRepair,
+      }));
+    vi.mocked(storagePutContentAddressedIfAbsent).mockImplementation(async (key, bytes) => {
+      const sha256 = createHash("sha256").update(bytes).digest("hex");
+      return { key: `${key}/sha256/${sha256}`, sha256, url: "" };
+    });
+    await expect(generatePersonalMiniApp({
+      userId: 42,
+      tenantId: "tenant-test",
+      appId: "app_field_repair",
+      runId: "run_field_repair",
+      prompt: "Create a personal expense tracker with income and monthly charts.",
+    })).resolves.toMatchObject({
+      html: repairedHtml,
+      javascript: "document.body.dataset.ready='true'",
+    });
+    expect(callLLMStructured).toHaveBeenCalledTimes(2);
+    expect(storagePutContentAddressedIfAbsent).toHaveBeenCalledOnce();
+  });
+
   it("rejects deterministic JSON repair when the generated HTML document is truncated", () => {
     const rawResponse = JSON.stringify({
       html: "<!doctype html><html><body><main>Expense tracker",
