@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
+import { verifyCloudflareIngressInBrowser } from "@/lib/cloudflareIngressAcceptance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -521,6 +522,24 @@ export default function AdminDeploymentTargets() {
     onSuccess:async()=>{await latestProductionIngressJob.refetch();await productionProviderInventory.refetch();},
     onError:()=>{void latestProductionIngressJob.refetch();},
   });
+  const ingressAcceptanceStarted=useRef(new Set<string>());
+  const [ingressBrowserResult,setIngressBrowserResult]=useState<Record<string,string>>({});
+  useEffect(()=>{
+    if(!validScope||environment!=="production")return;
+    const job=latestProductionIngressJob.data;
+    const progress=job?.progress as {stage?:string;measured?:Record<string,unknown>}|undefined;
+    const measured=progress?.measured;
+    if(!job||job.status!=="running"||progress?.stage!=="AWAITING_AUTHENTICATED_ACCEPTANCE"||!measured||
+      ingressAcceptanceStarted.current.has(job.jobId)||!job.requesterUserId)return;
+    const {routeId,deploymentId,versionId}=measured;
+    if(typeof routeId!=="string"||typeof deploymentId!=="string"||typeof versionId!=="string")return;
+    ingressAcceptanceStarted.current.add(job.jobId);
+    setIngressBrowserResult(current=>({...current,[job.jobId]:"checking"}));
+    void verifyCloudflareIngressInBrowser({jobId:job.jobId,requesterUserId:job.requesterUserId,tenantId,
+      receipt:{routeId,deploymentId,versionId}}).then(result=>{
+      setIngressBrowserResult(current=>({...current,[job.jobId]:result.passed?"passed":"failed"}));
+    }).catch(()=>setIngressBrowserResult(current=>({...current,[job.jobId]:"failed"})));
+  },[latestProductionIngressJob.data,tenantId,validScope,environment]);
 
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
@@ -856,6 +875,7 @@ export default function AdminDeploymentTargets() {
               <p>{text("This approval routes all smartaihub.app HTTP traffic through the Cloudflare Worker to the existing Linux application. Node/Python and PostgreSQL stay on Linux during this phase.", "การยืนยันนี้ให้ HTTP ทั้งหมดของ smartaihub.app ผ่าน Cloudflare Worker ไปยังแอป Linux เดิม ในขั้นนี้ Node/Python และ PostgreSQL ยังอยู่ Linux")}</p>
               <p>{text("Origin", "Origin")}: <code>{productionIngressPreflight.data.origin}</code> · {text("Release", "รุ่น")}: <code>{productionIngressPreflight.data.artifact.sourceSha}</code></p>
               <p>{text("The job tests the candidate through runtime.smartaihub.app before attaching smartaihub.app/*. If web/auth acceptance fails, it removes the exact created route and restores the previous Worker deployment. DNS stays on its current configuration.", "งานจะทดสอบ candidate ผ่าน runtime.smartaihub.app ก่อนผูก smartaihub.app/* หากตรวจเว็บหรือระบบยืนยันตัวตนไม่ผ่าน จะถอด route ที่สร้างและคืน Worker deployment เดิม โดยใช้ DNS ปัจจุบัน")}</p>
+              <p>{text("Keep this Admin page open. After route attachment it automatically checks your existing session, tenant and authenticated API, then records the result through a protected write. Failure or no result within two minutes rolls back the route. This does not log you out or change your preferences.", "เปิดหน้า Admin นี้ไว้ หลังผูก route ระบบจะตรวจ session เดิม, tenant และ API ที่ต้องล็อกอิน แล้วบันทึกผลผ่านคำขอเขียนที่ตรวจสิทธิ์ หากไม่ผ่านหรือไม่มีผลภายใน 2 นาทีจะย้อน route กลับ โดยไม่ logout หรือเปลี่ยนการตั้งค่าของคุณ")}</p>
               <Button type="button" disabled={productionIngressMutation.isPending||Boolean(latestProductionIngressJob.data)} onClick={()=>{
                 const key=`smartaihub-production-ingress:${productionScopeKey}`;
                 const submission=ingressSubmission(key,productionIngressPreflight.data!.ready?productionIngressPreflight.data!.planDigest:"");
@@ -871,6 +891,7 @@ export default function AdminDeploymentTargets() {
             {productionIngressMutation.error ? <p role="alert"><code>{productionIngressMutation.error.message}</code> · {text("Retry reconciles the same stored Submission ID.", "การตรวจซ้ำใช้ Submission ID เดิม")}</p> : null}
             {latestProductionIngressJob.data ? <VStack gap={1} role="status">
               <p>{text("Ingress job", "งานย้ายทางเข้าเว็บ")}: <code>{latestProductionIngressJob.data.jobId}</code> · <strong>{latestProductionIngressJob.data.status}</strong></p>
+              {ingressBrowserResult[latestProductionIngressJob.data.jobId]?<p role="status">{text("Live browser session check", "ผลตรวจ session ผ่านทางเข้าเว็บจริง")}: {ingressBrowserResult[latestProductionIngressJob.data.jobId]}</p>:null}
               {latestProductionIngressJob.data.errorCode ? <p role="alert"><code>{latestProductionIngressJob.data.errorCode}</code></p> : null}
               {latestProductionIngressJob.data.output?.productionTrafficShifted===true ? <p>{text("Worker ingress receipt", "หลักฐานทางเข้าผ่าน Worker")}: <code>{String(latestProductionIngressJob.data.output.routeId)}</code> · {text("Application runtime: Linux", "แอปยังประมวลผลบน Linux")}</p> : null}
             </VStack> : null}

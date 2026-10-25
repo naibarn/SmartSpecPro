@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   ingressPreflight: null as any,
   ingressJob: null as any,
   queueProductionIngress: vi.fn(),
+  verifyIngressBrowser:vi.fn(async()=>({passed:true})),
   databaseAdmissionUnknownOnce: false,
   activateStagingProfile: vi.fn(),
   activationError: null as string | null,
@@ -47,6 +48,8 @@ const mocks = vi.hoisted(() => ({
   stagingTargets: [] as Array<Record<string, unknown>>,
   targetsError: false,
 }));
+
+vi.mock("@/lib/cloudflareIngressAcceptance",()=>({verifyCloudflareIngressInBrowser:mocks.verifyIngressBrowser}));
 
 vi.mock("wouter", () => ({ useLocation: () => ["/admin/settings", vi.fn()] }));
 vi.mock("@/lib/trpc", () => ({
@@ -912,6 +915,20 @@ describe("AdminDeploymentTargets", () => {
     await user.click(retry);
     await waitFor(() => expect(mocks.prepareProductionQueue).toHaveBeenCalledTimes(1));
     expect(mocks.prepareProductionQueue).toHaveBeenCalledWith({ tenantId, projectId, environment: "production" });
+  });
+
+  it("automatically verifies the existing browser session once while the same ingress job holds its lease",async()=>{
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
+    const receipt={routeId:"a".repeat(32),deploymentId:"22222222-2222-4222-8222-222222222222",versionId:"33333333-3333-4333-8333-333333333333"};
+    mocks.ingressJob={jobId:"11111111-1111-4111-8111-111111111111",status:"running",requesterUserId:17,
+      progress:{stage:"AWAITING_AUTHENTICATED_ACCEPTANCE",measured:receipt}};
+    const {rerender}=render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    await waitFor(()=>expect(mocks.verifyIngressBrowser).toHaveBeenCalledTimes(1));
+    expect(mocks.verifyIngressBrowser).toHaveBeenCalledWith({jobId:mocks.ingressJob.jobId,requesterUserId:17,tenantId,receipt});
+    rerender(<AdminDeploymentTargets/>);
+    expect(mocks.verifyIngressBrowser).toHaveBeenCalledTimes(1);
+    expect(mocks.queueProductionIngress).not.toHaveBeenCalled();
   });
 
   it("does not guess a production account when no enabled Staging target can establish it", async () => {

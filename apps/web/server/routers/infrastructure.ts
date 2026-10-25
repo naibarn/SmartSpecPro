@@ -1,5 +1,7 @@
 import { getProductionIngressPreflight, getProductionIngressRollbackPreflight, queueProductionIngress } from "../services/cloudflareProductionIngressAdmission";
 import { PRODUCTION_INGRESS_CONTRACT } from "../services/cloudflareProductionIngressContract";
+import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../services/cloudflareProductionIngressAcceptance";
+import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMiddleware";
 /**
  * Infrastructure Settings tRPC Router
  *
@@ -734,10 +736,21 @@ export const infrastructureRouter = router({
       if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_INGRESS_TENANT_MISMATCH"});
       const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
       const [job]=await db.select({jobId:workerJobs.id,status:workerJobs.status,errorCode:workerJobs.errorCode,
-        output:workerJobs.outputJson,input:workerJobs.inputJson}).from(workerJobs).where(and(eq(workerJobs.tenantId,input.tenantId),
+        output:workerJobs.outputJson,input:workerJobs.inputJson,progress:workerJobs.progressJson,
+        requesterUserId:workerJobs.requestedByUserId}).from(workerJobs).where(and(eq(workerJobs.tenantId,input.tenantId),
         eq(workerJobs.jobType,"cloudflare.production.deploy"),eq(workerJobs.contractVersion,PRODUCTION_INGRESS_CONTRACT),
         sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`)).orderBy(desc(workerJobs.createdAt)).limit(1);
       return job??null;
+    }),
+
+  recordCloudflareProductionIngressAcceptance: exactAdminProcedure
+    .input(z.object({jobId:z.string().uuid(),receipt:ingressBrowserReceiptSchema,passed:z.boolean()}).strict())
+    .mutation(async({input,ctx})=>{
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(!tenantId||!ctx.user?.id)throw new TRPCError({code:"FORBIDDEN",message:"INGRESS_ACCEPTANCE_SCOPE_DENIED"});
+      try{return await recordIngressBrowserAcceptance(await getDb(),{...input,actorUserId:ctx.user.id,tenantId,
+        verifiedPublicOrigin:getVerifiedCloudflarePublicOrigin(ctx.req)});}
+      catch{throw new TRPCError({code:"PRECONDITION_FAILED",message:"INGRESS_ACCEPTANCE_SCOPE_DENIED"});}
     }),
 
   getCloudflareProductionRuntimeReadiness: exactAdminProcedure

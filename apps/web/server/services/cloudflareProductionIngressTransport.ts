@@ -13,12 +13,13 @@ type Deployment = {
 type Route = { id: string; pattern: string; script: string | null };
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const deny = (code: string): never => {
-  throw new Error(`CLOUDFLARE_PRODUCTION_INGRESS_${code}`);
+  const diagnosticCode = `CLOUDFLARE_PRODUCTION_INGRESS_${code}`;
+  throw Object.assign(new Error(diagnosticCode), { diagnosticCode });
 };
 
 /** Exact apex-route canary with compensating detach. All writes retain the existing grant/lease fence. */
 export function createCloudflareProductionIngressTransport(
-  options: { fetchImpl?: typeof fetch } = {}
+  options: { fetchImpl?: typeof fetch; observationMs?: number } = {}
 ) {
   const fetchImpl = options.fetchImpl ?? fetch;
   return async function execute(input: {
@@ -27,6 +28,11 @@ export function createCloudflareProductionIngressTransport(
     grant: ProductionIngressGrant;
     candidate?: CloudflareProductionVersion;
     probeToken?: string;
+    acceptApplication?: (receipt: {
+      routeId: string;
+      deploymentId: string;
+      versionId: string;
+    }) => Promise<unknown>;
     assertMutationAuthorized: () => Promise<void>;
   }) {
     const { token, target, grant, candidate, assertMutationAuthorized } = input;
@@ -224,6 +230,9 @@ export function createCloudflareProductionIngressTransport(
       candidate.configurationDigest !== job.configurationDigest
     )
       deny("CANDIDATE_DENIED");
+    if (!input.acceptApplication) deny("AUTHENTICATED_ACCEPTANCE_REQUIRED");
+    if (Date.parse(grant.expiresAt) - Date.now() < 300000)
+      deny("INSUFFICIENT_ROLLBACK_WINDOW");
     const version = await api<{
       id: string;
       annotations?: Record<string, string>;
@@ -272,6 +281,35 @@ export function createCloudflareProductionIngressTransport(
       if (persisted?.id !== created.id || persisted.script !== target.workerRef)
         deny("ROUTE_READBACK_MISMATCH");
       await probe("https://smartaihub.app", candidate.versionId);
+      const authenticatedAcceptance = await input.acceptApplication!({
+        routeId: created.id,
+        deploymentId: deployed.id,
+        versionId: candidate.versionId,
+      });
+      if (
+        !authenticatedAcceptance ||
+        (authenticatedAcceptance as { verified?: unknown }).verified !== true
+      )
+        deny("AUTHENTICATED_ACCEPTANCE_INVALID");
+      const observationEnd =
+        Date.now() +
+        Math.max(0, Math.min(options.observationMs ?? 30000, 30000));
+      while (Date.now() < observationEnd) {
+        await new Promise(resolve =>
+          setTimeout(resolve, Math.min(10000, observationEnd - Date.now()))
+        );
+        await assertMutationAuthorized();
+        await probe("https://smartaihub.app", candidate.versionId);
+      }
+      // Recheck the real route and active deployment after browser acceptance.
+      const finalRoute = await route(),
+        finalDeployment = await active();
+      if (
+        finalRoute?.id !== created.id ||
+        finalRoute.script !== target.workerRef ||
+        finalDeployment.id !== deployed.id
+      )
+        deny("ACCEPTANCE_BASELINE_CHANGED");
       return {
         deploymentId: deployed.id,
         versionId: candidate.versionId,
@@ -281,6 +319,7 @@ export function createCloudflareProductionIngressTransport(
         productionTrafficShifted: true,
         applicationRuntime: "linux-origin",
         exposure: grant.exposure,
+        authenticatedAcceptance,
       };
     } catch (cause) {
       // Never adopt or delete an uncertain POST result. Only our exact received

@@ -373,5 +373,164 @@ suite(
         reason: "INGRESS_ROLLBACK_PROVIDER_CHANGED",
       });
     });
+    it("publishes, claims and executes the admitted job with fenced authenticated acceptance", async () => {
+      fixture.routeLive = false;
+      const input = await submission("ingress-claim-fixture");
+      await caller.queueCloudflareProductionIngress(input);
+      const grant = grants.get(`cf-production-ingress:${input.submissionId}`);
+      const { getDb } = await import("../db");
+      const db = getDb();
+      const { createJobControlPlane } = await import("./jobControlPlane");
+      const { publishJobOutboxRow } = await import("./jobOutboxPublisher");
+      const { PostgresPullJobTransportAdapter } =
+        await import("./jobTransportAdapters");
+      const { JobExecutorRegistry } = await import("./jobExecutorRegistry");
+      const { executeCanonicalJobEnvelope } =
+        await import("../jobs/unifiedJobConsumer");
+      const { createCloudflareProductionIngressExecutor } =
+        await import("./cloudflareProductionIngressExecutor");
+      const {
+        recordIngressBrowserAcceptance,
+        waitForIngressBrowserAcceptance,
+      } = await import("./cloudflareProductionIngressAcceptance");
+      const [outbox] =
+        await client`SELECT * FROM worker_job_outbox WHERE "workerJobId"=${input.submissionId}`;
+      await expect(
+        publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter())
+      ).resolves.toMatchObject({ state: "published" });
+      const receipt = {
+        routeId: "e".repeat(32),
+        deploymentId: randomUUID(),
+        versionId: randomUUID(),
+      };
+      const runtime: any = {
+        resolveExecutorId: () => grant.executorId,
+        resolveIngressGrant: async () => grant,
+        resolveTarget: async () => ({
+          tenantId: input.tenantId,
+          projectId: input.projectId,
+          targetId: grant.targetId,
+          workerRef: grant.targetId,
+          accountRef: grant.accountRef,
+          environment: "production",
+          enabled: true,
+          credentialRef: "fixture",
+          runtimePolicy: grant.operation.configurationRef,
+        }),
+        resolveArtifact: async () => ({
+          artifactRef: grant.operation.artifactRef,
+          sourceSha: grant.operation.sourceSha,
+          buildDigest: grant.operation.buildDigest,
+        }),
+        withCredential: async ({ operation }: any) => ({
+          status: "CONFIGURED",
+          value: await operation("fixture"),
+        }),
+        withOriginConfiguration: async ({ operation }: any) =>
+          operation({
+            descriptor: {
+              ingressMode: "production-origin-bridge-v1",
+              allowedPublicOrigins: [
+                "https://smartaihub.app",
+                "https://runtime.smartaihub.app",
+              ],
+            },
+            secrets: { applicationCanaryToken: "p".repeat(32) },
+          }),
+        prepareVersion: async () => ({
+          versionId: receipt.versionId,
+          sourceSha: grant.operation.sourceSha,
+          buildDigest: grant.operation.buildDigest,
+          configurationDigest: grant.operation.configurationDigest,
+          trafficShifted: false,
+        }),
+        ingress: async ({ acceptApplication }: any) => ({
+          ...receipt,
+          productionTrafficShifted: true,
+          authenticatedAcceptance: await acceptApplication(receipt),
+        }),
+        waitForIngressAcceptance: async (parameters: any) => {
+          const event = {
+            jobId: input.submissionId,
+            actorUserId: 17,
+            tenantId: input.tenantId,
+            receipt,
+            passed: true,
+            verifiedPublicOrigin: "https://smartaihub.app",
+          };
+          await expect(
+            recordIngressBrowserAcceptance(db, { ...event, actorUserId: 18 })
+          ).rejects.toThrow("SCOPE_DENIED");
+          await expect(
+            recordIngressBrowserAcceptance(db, {
+              ...event,
+              tenantId: "foreign",
+            })
+          ).rejects.toThrow("SCOPE_DENIED");
+          await expect(
+            recordIngressBrowserAcceptance(db, {
+              ...event,
+              verifiedPublicOrigin: undefined,
+            })
+          ).rejects.toThrow("NOT_EDGE_ATTESTED");
+          await expect(
+            recordIngressBrowserAcceptance(db, {
+              ...event,
+              receipt: { ...receipt, routeId: "0".repeat(32) },
+            })
+          ).rejects.toThrow("SCOPE_DENIED");
+          await recordIngressBrowserAcceptance(db, event);
+          await recordIngressBrowserAcceptance(db, event);
+          return waitForIngressBrowserAcceptance(db, {
+            ...parameters,
+            pollMs: 1,
+          });
+        },
+        now: () => new Date(),
+      };
+      const registry = new JobExecutorRegistry();
+      registry.register({
+        jobType: "cloudflare.production.deploy",
+        executionClass: "long",
+        contractVersions: new Set([grant.operation.contractVersion]),
+        executor: createCloudflareProductionIngressExecutor(() => runtime),
+      });
+      const result = await executeCanonicalJobEnvelope(outbox.envelopeJson, {
+        controlPlane: createJobControlPlane(),
+        executorRegistry: registry,
+        runnerId: "isolated-ingress-node",
+        adapter: "postgres-pull",
+      });
+      expect(result.state).toBe("succeeded");
+      const [job] =
+        await client`SELECT status,"outputJson","fencingVersion" FROM worker_jobs WHERE id=${input.submissionId}`;
+      expect(job).toMatchObject({
+        status: "succeeded",
+        fencingVersion: 1,
+        outputJson: {
+          authenticatedAcceptance: { verified: true, actorUserId: 17 },
+        },
+      });
+      expect(
+        (
+          await client`SELECT count(*)::int AS n FROM worker_job_events WHERE "workerJobId"=${input.submissionId} AND "eventType"='INGRESS_BROWSER_ACCEPTANCE'`
+        )[0].n
+      ).toBe(1);
+      await expect(
+        recordIngressBrowserAcceptance(db, {
+          jobId: input.submissionId,
+          actorUserId: 17,
+          tenantId: input.tenantId,
+          receipt,
+          passed: true,
+          verifiedPublicOrigin: "https://smartaihub.app",
+        })
+      ).rejects.toThrow("SCOPE_DENIED");
+      expect(
+        (
+          await client`SELECT count(*)::int AS n FROM worker_job_outbox WHERE "workerJobId"=${input.submissionId}`
+        )[0].n
+      ).toBe(1);
+    });
   }
 );

@@ -1,4 +1,5 @@
 import { productionIngressGrantSchema } from "./cloudflareProductionIngressContract";
+import { waitForIngressBrowserAcceptance } from "./cloudflareProductionIngressAcceptance";
 import { createCloudflareProductionIngressTransport } from "./cloudflareProductionIngressTransport";
 import { createHash } from "node:crypto";
 import { getDb } from "../db";
@@ -81,6 +82,7 @@ export function createCloudflareProductionDeploymentRuntime(input: { fetchImpl?:
       return parsed.success && parsed.data.grantRef === grantRef ? parsed.data : null;
     },
     ingress: createCloudflareProductionIngressTransport({ fetchImpl }),
+    waitForIngressAcceptance: input => waitForIngressBrowserAcceptance(db,input),
     withOriginConfiguration: ({ target, configurationRef, configurationDigest, operation }) => withCloudflareOriginConfiguration(db, {
       identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare" },
       configurationRef, configurationDigest,

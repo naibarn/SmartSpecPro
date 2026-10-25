@@ -7,9 +7,11 @@ import {
 } from "./cloudflareProductionIngressContract";
 import { withCloudflareStagingLeaseHeartbeat } from "./cloudflareStagingLeaseHeartbeat";
 import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
+import { INGRESS_BROWSER_STAGE } from "./cloudflareProductionIngressAcceptance";
 
 const deny = (code: string): never => {
-  throw new Error(`CLOUDFLARE_PRODUCTION_INGRESS_${code}`);
+  const diagnosticCode = `CLOUDFLARE_PRODUCTION_INGRESS_${code}`;
+  throw Object.assign(new Error(diagnosticCode), { diagnosticCode });
 };
 /** Reuse the production grant resolver, canonical lease, artifact and target authorities. */
 export function createCloudflareProductionIngressExecutor(
@@ -29,6 +31,8 @@ export function createCloudflareProductionIngressExecutor(
         runtime = factory();
       if (!runtime?.resolveIngressGrant || !runtime.ingress)
         deny("RUNTIME_UNAVAILABLE");
+      if (job.action === "ingress-canary" && !runtime.waitForIngressAcceptance)
+        deny("AUTHENTICATED_ACCEPTANCE_UNAVAILABLE");
       const executorId = runtime.resolveExecutorId();
       if (!executorId) deny("EXECUTOR_UNAVAILABLE");
       const grant = await runtime.resolveIngressGrant(job.grantRef);
@@ -162,6 +166,34 @@ export function createCloudflareProductionIngressExecutor(
             candidate,
             probeToken,
             assertMutationAuthorized,
+            acceptApplication: async receipt => {
+              const deadline = Date.now() + 120000;
+              await reporter.progress(lease, {
+                progress: 85,
+                stage: INGRESS_BROWSER_STAGE,
+                message:
+                  "Checking the existing authenticated Admin browser through the attached Worker route",
+                measured: { ...receipt, acceptanceDeadline: deadline },
+              });
+              try {
+                return await runtime.waitForIngressAcceptance!({
+                  jobId: context.jobId,
+                  requesterUserId: context.requestedByUserId,
+                  tenantId: context.tenantId,
+                  fencingVersion: lease.fencingVersion,
+                  receipt,
+                  deadline,
+                  assertActive: assertMutationAuthorized,
+                });
+              } catch (error) {
+                if (
+                  error instanceof Error &&
+                  /^INGRESS_[A-Z_]+$/.test(error.message)
+                )
+                  deny(error.message.slice("INGRESS_".length));
+                throw error;
+              }
+            },
           });
         },
       });

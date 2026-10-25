@@ -31,6 +31,7 @@ export type CloudflareProductionDeploymentRuntime = Readonly<{
   resolveExecutorId: () => string | null;
   resolveIngressGrant?: (grantRef: string) => Promise<ProductionIngressGrant | null>;
   ingress?: ReturnType<typeof import("./cloudflareProductionIngressTransport").createCloudflareProductionIngressTransport>;
+  waitForIngressAcceptance?: (input: Parameters<typeof import("./cloudflareProductionIngressAcceptance").waitForIngressBrowserAcceptance>[1]) => ReturnType<typeof import("./cloudflareProductionIngressAcceptance").waitForIngressBrowserAcceptance>;
 
   resolveGrant: (grantRef: string) => Promise<CloudflareProductionDeploymentGrant | null>;
   resolveTarget: (input: { tenantId: string; projectId: string }) => Promise<CloudflareProductionDeploymentTarget | null>;

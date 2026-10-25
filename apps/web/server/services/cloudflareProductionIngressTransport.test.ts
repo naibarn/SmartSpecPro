@@ -143,6 +143,7 @@ function provider(
     });
   });
   return {
+    observationMs: 0,
     fetchImpl,
     writes,
     order,
@@ -215,6 +216,7 @@ describe("Production ingress origin-route authority and compensation", () => {
       grant,
       candidate,
       probeToken: "p".repeat(32),
+      acceptApplication: async () => ({ verified: true }),
       assertMutationAuthorized: authorize,
     });
     expect(result).toMatchObject({
@@ -254,6 +256,7 @@ describe("Production ingress origin-route authority and compensation", () => {
         grant,
         candidate,
         probeToken: "p".repeat(32),
+        acceptApplication: async () => ({ verified: true }),
         assertMutationAuthorized: auth(),
       })
     ).rejects.toThrow("APPLICATION_PROBE_FAILED");
@@ -273,6 +276,7 @@ describe("Production ingress origin-route authority and compensation", () => {
         grant,
         candidate,
         probeToken: "p".repeat(32),
+        acceptApplication: async () => ({ verified: true }),
         assertMutationAuthorized: authorize,
       })
     ).rejects.toThrow("APPLICATION_PROBE_FAILED");
@@ -281,6 +285,32 @@ describe("Production ingress origin-route authority and compensation", () => {
       /\/workers\/routes\/[f]{32}$/
     );
     expect(authorize).toHaveBeenCalledTimes(5);
+    expect(p.active.versions).toEqual([
+      { version_id: grant.operation.runtimeBaselineVersionId, percentage: 100 },
+    ]);
+  });
+  it.each([
+    "INGRESS_BROWSER_ACCEPTANCE_FAILED",
+    "INGRESS_BROWSER_ACCEPTANCE_TIMEOUT",
+  ])("detaches the exact route and restores baseline when %s", async code => {
+    const p = provider();
+    await expect(
+      createCloudflareProductionIngressTransport(p)({
+        token: "fixture",
+        target,
+        grant,
+        candidate,
+        probeToken: "p".repeat(32),
+        acceptApplication: async () => {
+          throw new Error(code);
+        },
+        assertMutationAuthorized: auth(),
+      })
+    ).rejects.toThrow(code);
+    expect(p.routes).toHaveLength(0);
+    expect(p.writes.find(w => w.method === "DELETE")?.path).toMatch(
+      /\/workers\/routes\/[f]{32}$/
+    );
     expect(p.active.versions).toEqual([
       { version_id: grant.operation.runtimeBaselineVersionId, percentage: 100 },
     ]);
@@ -294,6 +324,7 @@ describe("Production ingress origin-route authority and compensation", () => {
         grant,
         candidate,
         probeToken: "p".repeat(32),
+        acceptApplication: async () => ({ verified: true }),
         assertMutationAuthorized: auth(),
       })
     ).rejects.toThrow("ROUTE_SUBMISSION_UNKNOWN");
@@ -311,6 +342,7 @@ describe("Production ingress origin-route authority and compensation", () => {
       grant,
       candidate,
       probeToken: "p".repeat(32),
+      acceptApplication: async () => ({ verified: true }),
       assertMutationAuthorized: auth(),
     });
     const rollback = {
@@ -356,6 +388,7 @@ describe("Production ingress origin-route authority and compensation", () => {
         grant,
         candidate,
         probeToken: "p".repeat(32),
+        acceptApplication: async () => ({ verified: true }),
         assertMutationAuthorized: auth(),
       })
     ).rejects.toThrow("BASELINE_CHANGED");
@@ -368,6 +401,7 @@ describe("Production ingress origin-route authority and compensation", () => {
         grant,
         candidate,
         probeToken: "p".repeat(32),
+        acceptApplication: async () => ({ verified: true }),
         assertMutationAuthorized: async () => {
           throw new Error("REVOKED");
         },
@@ -394,6 +428,7 @@ describe("Production ingress canonical executor admission", () => {
       return { ...candidate, trafficShifted: false };
     });
     const runtime: any = {
+      waitForIngressAcceptance: async () => ({ verified: true }),
       resolveExecutorId: () => grant.executorId,
       resolveIngressGrant: async () => grant,
       resolveTarget: async () => ({
@@ -445,6 +480,7 @@ describe("Production ingress canonical executor admission", () => {
         expiresAt: new Date(Date.now() + 60000).toISOString(),
       },
       reporter: {
+        progress: vi.fn(async () => {}),
         assertActive: vi.fn(async () => {}),
         heartbeat: vi.fn(async () => {}),
       },
