@@ -51,9 +51,9 @@
     "section-06-v2-thai-thb-continuation": {
       "status": "implementation_ready",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "The owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. The deployed API verifies the existing owner GitHub connection, branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for the same App ID. Verify the linked run and immutable V2 row after smoke; V1 remains last-known-good until then.",
-      "checkpoint_sha": "5cae812a5f61d423fde8fded05c475e1e681bf50",
-      "merged_main_sha": "5cae812a5f61d423fde8fded05c475e1e681bf50"
+      "next_action": "Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. Production generation 103 runs this action. It validates the existing owner GitHub connection, repository branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for this App ID. Verify the linked run and V2 ledger row after smoke; V1 remains last-known-good until then.",
+      "checkpoint_sha": "cd0a5cbb67a24d04f834a97311ac023cbb790445",
+      "merged_main_sha": "cd0a5cbb67a24d04f834a97311ac023cbb790445"
     },
     "section-05-v1-buildable-source": {
       "checkpoint_sha": "7b90395508e8a7084026d7dafc80a8e4b2360493",
@@ -71,15 +71,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 29,
-  "updated_at": "2026-10-25T09:43:54.000000+00:00",
+  "generation": 30,
+  "updated_at": "2026-10-25T09:52:07.000000+00:00",
   "progress": {
     "active_section": "section-06-v2-thai-thb-continuation",
-    "next_action": "The owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. The deployed API verifies the existing owner GitHub connection, branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for the same App ID. Verify the linked run and immutable V2 row after smoke; V1 remains last-known-good until then.",
+    "next_action": "Owner opens https://smartaihub.app/miniapp/app_e6f0be051fd22e09bc4c5dff/status and clicks Use prepared V2 candidate once. Production generation 103 runs this action. It validates the existing owner GitHub connection, repository branch and pinned SHA, imports source without LLM generation, then queues package, deploy and smoke for this App ID. Verify the linked run and V2 ledger row after smoke; V1 remains last-known-good until then.",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "gaps": [
-      "No legitimately authenticated owner session is available to this Codex context. No V2 DevelopmentRun or version-2 row exists yet. The deployed candidate-adoption action is ready; owner click is the continuation predicate. V1 remains last-known-good."
+      "No authenticated owner browser session is available to this Codex context. No V2 DevelopmentRun or version-2 row exists yet. The production adoption action is deployed and owner click is the continuation predicate. V1 remains last-known-good."
     ],
-    "merged_main_sha": "5cae812a5f61d423fde8fded05c475e1e681bf50"
+    "merged_main_sha": "cd0a5cbb67a24d04f834a97311ac023cbb790445"
   }
 }
