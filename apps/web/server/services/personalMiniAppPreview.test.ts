@@ -31,6 +31,7 @@ import {
   derivePersonalMiniAppTitle,
   generatePersonalMiniApp,
   importMiniAppGitRevisionCandidate,
+  listMiniAppGitRevisionCandidates,
   materializeMiniAppGitCandidateArtifactFiles,
   packageMiniAppGitCandidate,
   provisionManagedMiniAppRepository,
@@ -61,6 +62,35 @@ beforeEach(() => {
 });
 
 describe("personal Mini-App artifact assembly", () => {
+  it("lists branch heads for a second app repository without exposing Git details as a requirement", async () => {
+    vi.stubEnv("SMARTAIHUB_MINIAPP_GITHUB_TOKEN", "managed-test-token");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/branches")) return new Response(JSON.stringify([
+        { name: "main", commit: { sha: "a".repeat(40) } },
+        { name: "feature/dashboard", commit: { sha: "b".repeat(40) } },
+      ]));
+      return new Response(JSON.stringify({ private: true, full_name: "synthetic-owner/another-private-app", default_branch: "main" }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      await expect(listMiniAppGitRevisionCandidates({
+        tenantId: "tenant-synthetic-two",
+        ownerUserId: 73,
+        repository: { mode: "SMARTAIHUB_MANAGED", owner: "synthetic-owner", name: "another-private-app", revision: "c".repeat(40) },
+      })).resolves.toEqual({
+        defaultBranch: "main",
+        candidates: [
+          { branch: "main", revision: "a".repeat(40), isDefault: true },
+          { branch: "feature/dashboard", revision: "b".repeat(40), isDefault: false },
+        ],
+      });
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps the app title from its original run instead of the V2 development goal", () => {
     const original = {
       spec224: {

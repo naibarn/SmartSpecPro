@@ -40,3 +40,24 @@ This is a V1/V2 pilot evidence record only. It does not mark overall SPEC-224, p
 - Release controller verification reported `DEPLOYED_VERIFIED`, service `HEALTHY`, and `/api/health` returned HTTP 200. The public `/miniapp/app_e6f0be051fd22e09bc4c5dff/status` route returned HTTP 200 with the SPA shell. This does not prove authenticated private data access or owner browser acceptance.
 - Focused Vitest verification for candidate import/adoption, durable state, pipeline/stage worker and Mini-App UI passed: 6 files, 81 tests. No migrations or Cloudflare activation/cutover were performed.
 - Generic behavior is implemented and deployed; production owner acceptance and arbitrary second-app end-to-end adoption remain unverified. Keep those distinct from pilot receipts and do not mark overall SPEC-224 acceptance complete.
+
+## Final generic Personal Mini-App engineering acceptance
+
+- **Disposable second-app fixture:** A fresh loopback PostgreSQL instance is created and destroyed by the focused integration test. It seeds a synthetic tenant, owner and private `app_synthetic_second`, with source/artifact bytes in an isolated in-memory storage adapter. The fixture has distinct app, tenant, owner, repository, branch, Git SHA and content digests; it does not read or write the production Expense Tracker.
+- **Candidate discovery and dispatch:** Focused service/router/UI tests verify listing heads from the app's bound private repository, owner scoping, selecting a revision without entering Git details, and dispatching package for a linked DevelopmentRun without calling generation or creating an App Identity. Branch/SHA entry remains an explicit Advanced control.
+- **Packaging, promotion, ledger and rollback:** The disposable PostgreSQL test verifies the injected pre-promotion failure leaves V1 as LKG, successful verification promotes V2 exactly once, both immutable ledger rows remain present, rollback selects V1 without decrementing the deployment counter, V1 serves through the ledger-backed preview resolver, and another user cannot resolve either private version.
+- **Focused result:** 7 Vitest files passed, 87 tests passed, including the disposable PostgreSQL integration case and jsdom Mini-App workspace tests. No shared development/production DB or migration was used. Playwright owner browser UAT was not run because no authenticated owner session was available in this execution environment.
+- **Supported formats:** The verified candidate adapter accepts `STRUCTURED_APP_SOURCE` and the dependency-free `STATIC_PROJECT` contract. Arbitrary React/Vue/Next or other multi-stack candidates are not claimed or tested.
+- **Pilot acceptance remains separate:** V1 owner functional acceptance was previously reported as 6/6; this mission did not repeat that trial. V2 owner browser acceptance is still pending actual owner evidence. The V2 stage receipts and promotion remain as recorded above.
+- **Production runtime:** Before this implementation slice, generation 107 served SHA `a6748b9a58915f6a2b5704e62323d8e3b8b2e082`. Candidate listing, rollback controls and ledger-backed rollback serving require a newer web/worker release; deployment evidence will be recorded after release verification.
+
+### Mini-App milestone disposition
+
+| Milestone | Status | Evidence boundary |
+|---|---|---|
+| Expense Tracker V1 delivery and historical owner trial | CLOSED | V1 ledger/source/artifact digests above; prior owner trial reported 6/6. |
+| Expense Tracker V2 promotion | CLOSED | V2 exact Git/source/artifact revision and package/deploy/smoke receipts above. |
+| Generic candidate import, isolated package, dispatch, promotion, version history and rollback | CLOSED — engineering acceptance | Disposable second-app Postgres fixture plus 87 focused passing tests. |
+| Candidate picker and Advanced SHA entry | CLOSED — engineering acceptance | Focused Mini-App workspace tests; owner runtime deployment is separately tracked below. |
+| V2 owner browser acceptance | PENDING | Requires the owner's existing authenticated browser evidence; no session was fabricated. |
+| Arbitrary application stacks | NOT TESTED | Only the two formats stated above are supported by current verified adapters. |

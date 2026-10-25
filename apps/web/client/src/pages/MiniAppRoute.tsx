@@ -1,6 +1,7 @@
 import { lazy, useEffect, useRef, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { AppButton, AppPage, Card, Collapsible, Grid, Heading, HStack, ProgressBar, Section, StatusDot, Tab, TabList, Text, TextArea, VStack } from "@/components/AppPage";
+import { Selector } from "@astryxdesign/core/Selector";
 import { trpc } from "@/lib/trpc";
 
 const ResearchNotesPage = lazy(() => import("@/pages/ResearchNotesPage"));
@@ -122,9 +123,16 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
   const storagePreparationStarted = useRef(false);
   const retry = trpc.spec226DevelopmentControl.retryMiniAppFactoryStage.useMutation({ onSuccess: onChanged });
   const adoptCandidate = trpc.spec226DevelopmentControl.adoptPreparedMiniAppCandidate.useMutation({ onSuccess: onChanged });
+  const rollbackVersion = trpc.spec226DevelopmentControl.rollbackMiniAppVersion.useMutation({ onSuccess: onChanged });
+  const [showAdvancedCandidate, setShowAdvancedCandidate] = useState(false);
   const [candidateBranch, setCandidateBranch] = useState("");
   const [candidateRevision, setCandidateRevision] = useState("");
+  const gitCandidatesQuery = trpc.spec226DevelopmentControl.listMiniAppGitCandidates.useQuery(
+    { appId },
+    { enabled: mode === "status" && factory?.repositoryState === "BOUND" && Boolean(factory.repository) },
+  );
   const deploymentVersions = "deploymentVersions" in data ? data.deploymentVersions ?? [] : [];
+  const currentLkgVersion = deploymentVersions.find(version => version.artifactRef === app?.lastKnownGoodArtifactRef)?.deploymentVersion ?? app?.deploymentVersion ?? 0;
   const stages = [...new Set([...(factory?.completedStages ?? []), ...(factory?.currentStage ? [factory.currentStage] : []), ...(factory?.remainingStages ?? [])])];
   const progress = stages.length ? Math.round(((factory?.completedStages?.length ?? 0) / stages.length) * 100) : 0;
   const title = factory?.applicationTitle || app?.appId || appId;
@@ -229,7 +237,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
   return (
     <AppPage
       title={title || app?.appId || appId}
-      description={`Private Mini-App · ${appId} · Version ${app?.deploymentVersion ?? 0}`}
+      description={`Private Mini-App · ${appId} · Version ${currentLkgVersion}`}
       constrainToParent
       actions={(
         <HStack wrap="wrap" gap={2}>
@@ -259,7 +267,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
                 <StatusDot variant={statusVariant} label={readableStatus(status)} isPulsing={active} />
                 <Heading level={3}>{readableStatus(status)}</Heading>
               </HStack>
-              <Text type="body" color="secondary">{factory?.currentStage ? humanizeStage(factory.currentStage) : previewAvailable ? `Private preview · version ${app?.deploymentVersion ?? 0}` : "Your App Home is saved and available while work continues."}</Text>
+              <Text type="body" color="secondary">{factory?.currentStage ? humanizeStage(factory.currentStage) : previewAvailable ? `Private preview · version ${currentLkgVersion}` : "Your App Home is saved and available while work continues."}</Text>
             </VStack>
           </Card>
           <Card padding={4} data-testid="miniapp-progress-card">
@@ -408,7 +416,9 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
                 {deploymentVersions.map(version => <HStack key={version.deploymentVersion} align="center" gap={2} wrap="wrap">
                   <Text type="body">Version {version.deploymentVersion} · {version.artifactDigest.slice(0, 12)} · run {version.developmentRunId}</Text>
                   <AppButton label="Open version" variant="secondary" onClick={() => { void openApp(version.deploymentVersion); }} />
+                  {version.deploymentVersion === currentLkgVersion ? <Text type="body" role="status">Current app</Text> : <AppButton label={rollbackVersion.isPending ? "Restoring…" : "Make current"} variant="secondary" isDisabled={rollbackVersion.isPending || active} onClick={() => rollbackVersion.mutate({ appId, deploymentVersion: version.deploymentVersion })} />}
                 </HStack>)}
+                {rollbackVersion.error ? <Text type="body" color="secondary" role="alert">Could not restore this version: {rollbackVersion.error.message}</Text> : null}
               </VStack> : <Text type="body" color="secondary">Version history will appear after the current artifact is bound to its retained source snapshot.</Text>}
             </VStack>
           </Section>
@@ -428,7 +438,7 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
           <VStack gap={2}>
             <Heading level={3}>Project settings</Heading>
             <Text type="body" color="secondary">App ID · {appId}</Text>
-            <Text type="body" color="secondary">Current version · {app?.deploymentVersion ?? 0}{previewAvailable ? " · Last-known-good app is available" : " · No runnable version yet"}</Text>
+            <Text type="body" color="secondary">Current version · {currentLkgVersion}{previewAvailable ? " · Last-known-good app is available" : " · No runnable version yet"}</Text>
             <Text type="body" color="secondary">Repository: {factory?.repositoryState ?? "Not provisioned yet"}</Text>
             {factory?.repository?.url ? <Text type="body"><a href={factory.repository.url} target="_blank" rel="noreferrer">{factory.repository.owner}/{factory.repository.name}</a></Text> : null}
             {factory?.repositoryState === "AUTH_REQUIRED" ? <Text type="body" color="secondary">Connect GitHub in Settings → Integrations to provision a dedicated App repository. The Core repository is never used as a fallback.</Text> : null}
@@ -446,19 +456,37 @@ function MiniAppHome({ appId, app, data, onChanged, onOpenApp, mode }: {
                 <Heading level={3}>Use a prepared Git revision</Heading>
                 <Text type="body" color="secondary">Verify a commit from this App’s bound private repository and continue package, deploy and smoke without calling generation. The current Last-Known-Good version stays available until verification succeeds.</Text>
                 <Text type="body" color="secondary">Repository · {factory.repository.owner}/{factory.repository.name}</Text>
-                {factory?.artifacts?.some((value: string) => value.startsWith(`miniapp-git-candidate:${factory.repository!.owner}/${factory.repository!.name}@`)) ? (
+                {active && factory?.artifacts?.some((value: string) => value.startsWith(`miniapp-git-candidate:${factory.repository!.owner}/${factory.repository!.name}@`)) ? (
                   <Text type="body" role="status">A Git candidate is linked to DevelopmentRun {factory.runId ?? ""}. Check Progress for package, deploy and smoke status.</Text>
                 ) : (
                   <>
-                    <label>
-                      <Text type="label">Branch</Text>
-                      <input aria-label="Candidate branch" autoComplete="off" value={candidateBranch} onChange={event => setCandidateBranch(event.target.value)} />
-                    </label>
-                    <label>
-                      <Text type="label">Commit SHA</Text>
-                      <input aria-label="Candidate commit SHA" autoComplete="off" value={candidateRevision} onChange={event => setCandidateRevision(event.target.value)} />
-                    </label>
-                    <AppButton label={adoptCandidate.isPending ? "Verifying candidate…" : "Use prepared Git revision"} variant="primary" isDisabled={adoptCandidate.isPending || active || !candidateBranch.trim() || !/^[a-f0-9]{40}$/i.test(candidateRevision.trim())} onClick={() => adoptCandidate.mutate({ appId, branch: candidateBranch.trim(), revision: candidateRevision.trim() })} />
+                    {gitCandidatesQuery.isLoading ? <Text type="body" color="secondary">Loading available revisions…</Text> : null}
+                    {gitCandidatesQuery.error ? <Text type="body" role="alert" color="secondary">Could not load repository revisions: {gitCandidatesQuery.error.message}</Text> : null}
+                    {gitCandidatesQuery.data?.candidates.length ? <Selector
+                      label="Repository revisions"
+                      description="Select a revision from this private repository. The server verifies its source lineage and supported files before use."
+                      placeholder="Choose a revision"
+                      presentation="adaptive"
+                      value={candidateBranch && candidateRevision ? `${candidateBranch}@${candidateRevision}` : ""}
+                      options={gitCandidatesQuery.data.candidates.map((candidate, index) => ({ value: `${candidate.branch}@${candidate.revision}`, label: candidate.isDefault ? "Default branch update" : `Prepared update ${index + 1}` }))}
+                      onChange={value => {
+                        const candidate = gitCandidatesQuery.data?.candidates.find(item => `${item.branch}@${item.revision}` === value);
+                        if (candidate) { setCandidateBranch(candidate.branch); setCandidateRevision(candidate.revision); }
+                      }}
+                    /> : !gitCandidatesQuery.isLoading && !gitCandidatesQuery.error ? <Text type="body" color="secondary">No repository revisions are available.</Text> : null}
+                    <AppButton label="Refresh revisions" variant="secondary" isDisabled={gitCandidatesQuery.isFetching} onClick={() => { void gitCandidatesQuery.refetch(); }} />
+                    <AppButton label={showAdvancedCandidate ? "Hide advanced revision entry" : "Advanced: enter branch and commit SHA"} variant="secondary" onClick={() => setShowAdvancedCandidate(value => !value)} />
+                    {showAdvancedCandidate ? <>
+                      <label>
+                        <Text type="label">Branch</Text>
+                        <input aria-label="Candidate branch" autoComplete="off" value={candidateBranch} onChange={event => setCandidateBranch(event.target.value)} />
+                      </label>
+                      <label>
+                        <Text type="label">Commit SHA</Text>
+                        <input aria-label="Candidate commit SHA" autoComplete="off" value={candidateRevision} onChange={event => setCandidateRevision(event.target.value)} />
+                      </label>
+                    </> : null}
+                    <AppButton label={adoptCandidate.isPending ? "Verifying candidate…" : "Use prepared revision"} variant="primary" isDisabled={adoptCandidate.isPending || active || !candidateBranch.trim() || !/^[a-f0-9]{40}$/i.test(candidateRevision.trim())} onClick={() => adoptCandidate.mutate({ appId, branch: candidateBranch.trim(), revision: candidateRevision.trim() })} />
                   </>
                 )}
                 {adoptCandidate.error ? <Text type="body" role="alert" color="secondary">Candidate adoption could not start: {adoptCandidate.error.message}</Text> : null}

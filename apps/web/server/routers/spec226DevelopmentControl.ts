@@ -19,7 +19,7 @@ import { createMiniAppFactoryDurableState, MINI_APP_FACTORY_STATE_KEY, parseMini
 import { enqueueNextMiniAppFactoryStage } from "../services/miniAppFactoryStageWorker";
 import { buildMiniAppFactoryRunAnchorDefinition } from "../services/miniAppFactoryRunAnchor";
 import { createPrivateMiniAppIdentity, resolveOwnedPrivateMiniAppIdentity } from "../services/appIdentityRepository";
-import { importMiniAppGitRevisionCandidate, resolvePersonalMiniAppFactoryHome } from "../services/personalMiniAppPreview";
+import { importMiniAppGitRevisionCandidate, listMiniAppGitRevisionCandidates, resolvePersonalMiniAppFactoryHome, restoreMiniAppDeploymentVersion } from "../services/personalMiniAppPreview";
 import { getUserGitHubConnection } from "../services/userGithubConnectionService";
 import {
   createDevelopmentRunService,
@@ -541,6 +541,40 @@ export const spec226DevelopmentControlRouter = router({
           userId: scope.actorId,
           metadata: { action: "retry_mini_app_factory_stage", appId: input.appId, accepted: false, errorCode: errorCode(error) },
         });
+        return asTrpcError(error);
+      }
+    }),
+
+  listMiniAppGitCandidates: protectedProcedure
+    .input(z.object({ appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/) }).strict())
+    .query(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      try {
+        const identity = await resolveOwnedPrivateMiniAppIdentity({ appId: input.appId, tenantId: scope.tenantId, ownerUserId: scope.actorId });
+        if (!identity) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+        const home = await resolvePersonalMiniAppFactoryHome({ tenantId: scope.tenantId, userId: scope.actorId }, input.appId, false);
+        if (!home?.repository || home.repositoryState !== "BOUND") throw new Error("MINI_APP_CANDIDATE_REPOSITORY_NOT_BOUND");
+        return await listMiniAppGitRevisionCandidates({ tenantId: scope.tenantId, ownerUserId: scope.actorId, repository: home.repository });
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  rollbackMiniAppVersion: protectedProcedure
+    .input(z.object({ appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/), deploymentVersion: z.number().int().positive() }).strict())
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      try {
+        const identity = await resolveOwnedPrivateMiniAppIdentity({ appId: input.appId, tenantId: scope.tenantId, ownerUserId: scope.actorId });
+        if (!identity) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+        const home = await resolvePersonalMiniAppFactoryHome({ tenantId: scope.tenantId, userId: scope.actorId }, input.appId, false);
+        if (home?.isInProgress) throw new Error("MINI_APP_ROLLBACK_BUILD_IN_PROGRESS");
+        const result = await restoreMiniAppDeploymentVersion({ ...scope, ownerUserId: scope.actorId, appId: input.appId, deploymentVersion: input.deploymentVersion });
+        auditLogger.log({ eventType: "spec226_development_control" as AuditEventType, traceId, tenantId: scope.tenantId, userId: scope.actorId, metadata: { action: "rollback_mini_app_version", appId: input.appId, deploymentVersion: input.deploymentVersion, artifactRef: result.artifactRef, accepted: true } });
+        return result;
+      } catch (error) {
+        auditLogger.log({ eventType: "spec226_development_control" as AuditEventType, traceId, tenantId: scope.tenantId, userId: scope.actorId, metadata: { action: "rollback_mini_app_version", appId: input.appId, deploymentVersion: input.deploymentVersion, accepted: false, errorCode: errorCode(error) } });
         return asTrpcError(error);
       }
     }),

@@ -26,6 +26,12 @@ export type MiniAppGitCandidateBundle = {
   files: Record<string, string>;
 };
 
+export type MiniAppGitRevisionCandidate = {
+  branch: string;
+  revision: string;
+  isDefault: boolean;
+};
+
 const MINIAPP_GIT_SOURCE_FILES = [
   "src/index.html", "src/styles.css", "src/storage-adapter.js", "src/app.js",
   "package.json", "scripts/build.mjs", "scripts/serve.mjs", "SOURCE_PROVENANCE.json",
@@ -119,20 +125,11 @@ async function readMiniAppGitHubFile(token: string, owner: string, repo: string,
   return text;
 }
 
-/** Imports one exact revision from the App Identity's already-bound private repository. */
-export async function importMiniAppGitRevisionCandidate(input: {
-  appId: string;
+async function resolveMiniAppGitHubToken(input: {
   tenantId: string;
   ownerUserId: number;
-  repository: { mode: "SMARTAIHUB_MANAGED" | "USER_OWNED"; owner: string; name: string; revision: string };
-  branch: string;
-  revision: string;
-}): Promise<{ sourceRef: string; sourceDigest: string; bundle: MiniAppGitCandidateBundle }> {
-  if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.appId) || !/^[A-Za-z0-9._/-]{1,120}$/.test(input.branch) ||
-      !/^[a-f0-9]{40}$/i.test(input.revision) || !/^[a-f0-9]{40}$/i.test(input.repository.revision) ||
-      !/^[A-Za-z0-9-]{1,39}$/.test(input.repository.owner) || !/^[A-Za-z0-9._-]{1,100}$/.test(input.repository.name)) {
-    throw new Error("MINI_APP_CANDIDATE_REQUEST_INVALID");
-  }
+  repository: { mode: "SMARTAIHUB_MANAGED" | "USER_OWNED"; owner: string };
+}): Promise<string> {
   const token = input.repository.mode === "USER_OWNED"
     ? await getUserGitHubToken(input.ownerUserId)
     : process.env.SMARTAIHUB_MINIAPP_GITHUB_TOKEN;
@@ -148,6 +145,58 @@ export async function importMiniAppGitRevisionCandidate(input: {
       process.env.SMARTAIHUB_MINIAPP_GITHUB_OWNER.toLowerCase() !== input.repository.owner.toLowerCase()) {
     throw new Error("MINI_APP_CANDIDATE_GITHUB_OWNER_MISMATCH");
   }
+  return token;
+}
+
+/** Lists current heads from the already-bound private repository; adoption still verifies lineage and files. */
+export async function listMiniAppGitRevisionCandidates(input: {
+  tenantId: string;
+  ownerUserId: number;
+  repository: { mode: "SMARTAIHUB_MANAGED" | "USER_OWNED"; owner: string; name: string; revision: string };
+}): Promise<{ defaultBranch: string; candidates: MiniAppGitRevisionCandidate[] }> {
+  if (!/^[A-Za-z0-9-]{1,39}$/.test(input.repository.owner) || !/^[A-Za-z0-9._-]{1,100}$/.test(input.repository.name) ||
+      !/^[a-f0-9]{40}$/i.test(input.repository.revision)) throw new Error("MINI_APP_CANDIDATE_REQUEST_INVALID");
+  const token = await resolveMiniAppGitHubToken(input);
+  const owner = input.repository.owner;
+  const repository = input.repository.name;
+  const api = async (path: string) => {
+    const response = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repository)}${path}`, {
+      headers: { Accept: "application/vnd.github+json", Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) throw new Error(`MINI_APP_CANDIDATE_GITHUB_READ_${response.status}`);
+    return response.json() as Promise<Record<string, any>>;
+  };
+  const [repo, branches] = await Promise.all([api(""), api("/branches?per_page=100")]);
+  if (repo.private !== true || String(repo.full_name ?? "").toLowerCase() !== `${owner}/${repository}`.toLowerCase()) {
+    throw new Error("MINI_APP_CANDIDATE_REPOSITORY_NOT_PRIVATE");
+  }
+  const defaultBranch = String(repo.default_branch ?? "");
+  if (!/^[A-Za-z0-9._/-]{1,120}$/.test(defaultBranch) || !Array.isArray(branches)) throw new Error("MINI_APP_CANDIDATE_BRANCH_LIST_INVALID");
+  const candidates = branches.flatMap((item: any) => {
+    const branch = String(item.name ?? "");
+    const revision = String(item.commit?.sha ?? "").toLowerCase();
+    if (!/^[A-Za-z0-9._/-]{1,120}$/.test(branch) || !/^[a-f0-9]{40}$/.test(revision)) return [];
+    return [{ branch, revision, isDefault: branch === defaultBranch }];
+  });
+  return { defaultBranch, candidates };
+}
+
+/** Imports one exact revision from the App Identity's already-bound private repository. */
+export async function importMiniAppGitRevisionCandidate(input: {
+  appId: string;
+  tenantId: string;
+  ownerUserId: number;
+  repository: { mode: "SMARTAIHUB_MANAGED" | "USER_OWNED"; owner: string; name: string; revision: string };
+  branch: string;
+  revision: string;
+}): Promise<{ sourceRef: string; sourceDigest: string; bundle: MiniAppGitCandidateBundle }> {
+  if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.appId) || !/^[A-Za-z0-9._/-]{1,120}$/.test(input.branch) ||
+      !/^[a-f0-9]{40}$/i.test(input.revision) || !/^[a-f0-9]{40}$/i.test(input.repository.revision) ||
+      !/^[A-Za-z0-9-]{1,39}$/.test(input.repository.owner) || !/^[A-Za-z0-9._-]{1,100}$/.test(input.repository.name)) {
+    throw new Error("MINI_APP_CANDIDATE_REQUEST_INVALID");
+  }
+  const token = await resolveMiniAppGitHubToken(input);
   const owner = input.repository.owner;
   const repository = input.repository.name;
   const api = async (path: string) => {
@@ -1281,6 +1330,55 @@ export async function resolveMiniAppDeploymentVersion(input: {
   };
 }
 
+/** Restores an immutable, verified version as LKG without changing the monotonic version counter. */
+export async function restoreMiniAppDeploymentVersion(input: {
+  appId: string;
+  tenantId: string;
+  ownerUserId: number;
+  deploymentVersion: number;
+}) {
+  if (!Number.isSafeInteger(input.deploymentVersion) || input.deploymentVersion <= 0) {
+    throw new Error("MINI_APP_DEPLOYMENT_VERSION_INVALID");
+  }
+  const [version] = await getDb().select().from(appDeploymentVersions).where(and(
+    eq(appDeploymentVersions.appId, input.appId),
+    eq(appDeploymentVersions.tenantId, input.tenantId),
+    eq(appDeploymentVersions.deploymentVersion, input.deploymentVersion),
+  )).limit(1);
+  if (!version) throw new Error("MINI_APP_DEPLOYMENT_VERSION_NOT_FOUND");
+  const binding = { ...version, tenantId: input.tenantId };
+  await verifyMiniAppDeploymentVersionContent(binding);
+  return getDb().transaction(async (tx: any) => {
+    const [current] = await tx.select({
+      deploymentVersion: appIdentities.deploymentVersion,
+      lastKnownGoodArtifactRef: appIdentities.lastKnownGoodArtifactRef,
+    }).from(appIdentities).where(and(
+      eq(appIdentities.appId, input.appId),
+      eq(appIdentities.tenantId, input.tenantId),
+      eq(appIdentities.ownerUserId, input.ownerUserId),
+      eq(appIdentities.visibility, "private"),
+      sql`${appIdentities.lifecycle} IN ('draft', 'active')`,
+    )).limit(1);
+    if (!current) throw new Error("MINI_APP_OWNER_BINDING_NOT_FOUND");
+    const [updated] = await tx.update(appIdentities).set({
+      lastKnownGoodArtifactRef: version.artifactRef,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(appIdentities.appId, input.appId),
+      eq(appIdentities.tenantId, input.tenantId),
+      eq(appIdentities.ownerUserId, input.ownerUserId),
+      eq(appIdentities.visibility, "private"),
+      eq(appIdentities.deploymentVersion, current.deploymentVersion),
+      current.lastKnownGoodArtifactRef === null
+        ? sql`${appIdentities.lastKnownGoodArtifactRef} IS NULL`
+        : eq(appIdentities.lastKnownGoodArtifactRef, current.lastKnownGoodArtifactRef),
+      sql`${appIdentities.lifecycle} IN ('draft', 'active')`,
+    )).returning({ appId: appIdentities.appId });
+    if (!updated) throw new Error("MINI_APP_ROLLBACK_STATE_CHANGED");
+    return { appId: input.appId, deploymentVersion: input.deploymentVersion, artifactRef: version.artifactRef };
+  });
+}
+
 export async function resolvePersonalMiniAppPreview(input: {
   appId: string;
   tenantId: string | null;
@@ -1304,6 +1402,28 @@ export async function resolvePersonalMiniAppPreview(input: {
   const digest = createHash("sha256").update(bytes).digest("hex");
   if (digest !== match[4]) return null;
   const factory = await resolvePersonalMiniAppFactoryHome(input, app.appId, true);
+  const isPrivateOwner = app.visibility === "private" && app.ownerUserId === input.userId && app.tenantId === input.tenantId;
+  let deploymentVersions: MiniAppDeploymentVersion[] = [];
+  let ledgerBindsCurrentArtifact = false;
+  if (isPrivateOwner && input.tenantId) {
+    try {
+      deploymentVersions = await getDb().select().from(appDeploymentVersions).where(and(
+        eq(appDeploymentVersions.appId, app.appId),
+        eq(appDeploymentVersions.tenantId, input.tenantId),
+      )).orderBy(appDeploymentVersions.deploymentVersion) as MiniAppDeploymentVersion[];
+      const binding = deploymentVersions.find(version => version.artifactRef === app.lastKnownGoodArtifactRef && version.artifactDigest === digest);
+      if (binding) {
+        await verifyMiniAppDeploymentVersionContent({ ...binding, tenantId: input.tenantId });
+        ledgerBindsCurrentArtifact = true;
+      }
+    } catch (error) {
+      // A missing/unavailable history ledger must not take down the current LKG preview.
+      console.warn("[MiniAppFactory] deployment history lookup deferred", {
+        appId: app.appId,
+        code: error instanceof Error ? error.message.slice(0, 100) : "MINI_APP_VERSION_HISTORY_UNAVAILABLE",
+      });
+    }
+  }
   const currentSourceRef = factory?.sourceSnapshotRef;
   const currentSourceDigest = factory?.appSourceDigest;
   const artifactBoundInRun = Boolean(
@@ -1316,7 +1436,7 @@ export async function resolvePersonalMiniAppPreview(input: {
     factory?.artifacts.includes(`app-source:${currentSourceRef}`) &&
     factory?.artifacts.includes(`app-source-digest:${currentSourceDigest}`)
   );
-  if (app.visibility === "private" && app.ownerUserId === input.userId && app.deploymentVersion > 0 &&
+  if (!ledgerBindsCurrentArtifact && app.visibility === "private" && app.ownerUserId === input.userId && app.deploymentVersion > 0 &&
       factory?.runId && currentSourceRef && currentSourceDigest && artifactBoundInRun && sourceBoundInRun) {
     try {
       await ensureCurrentMiniAppDeploymentVersion({
@@ -1336,21 +1456,6 @@ export async function resolvePersonalMiniAppPreview(input: {
         appId: app.appId,
         deploymentVersion: app.deploymentVersion,
         code: error instanceof Error ? error.message.slice(0, 100) : "MINI_APP_VERSION_HISTORY_BACKFILL_FAILED",
-      });
-    }
-  }
-  let deploymentVersions: MiniAppDeploymentVersion[] = [];
-  if (app.visibility === "private" && app.ownerUserId === input.userId && input.tenantId) {
-    try {
-      deploymentVersions = await getDb().select().from(appDeploymentVersions).where(and(
-        eq(appDeploymentVersions.appId, app.appId),
-        eq(appDeploymentVersions.tenantId, input.tenantId),
-      )).orderBy(appDeploymentVersions.deploymentVersion) as MiniAppDeploymentVersion[];
-    } catch (error) {
-      // A missing/unavailable history ledger must not take down the current LKG preview.
-      console.warn("[MiniAppFactory] deployment history listing deferred", {
-        appId: app.appId,
-        code: error instanceof Error ? error.message.slice(0, 100) : "MINI_APP_VERSION_HISTORY_UNAVAILABLE",
       });
     }
   }

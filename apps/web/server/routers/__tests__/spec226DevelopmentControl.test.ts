@@ -24,7 +24,9 @@ const mocks = vi.hoisted(() => ({
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
   resolveOwnedMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.appId, tenantId: input.tenantId, ownerUserId: input.ownerUserId, visibility: "private" })),
   resolveMiniAppFactoryHome: vi.fn(),
-  importMiniAppGitRevisionCandidate: vi.fn(async () => ({ sourceRef: `r2://mini-app-sources/tenant-acme/app_candidate/sha256/${"c".repeat(64)}`, sourceDigest: "c".repeat(64), bundle: { parentRevision: "b".repeat(40), sourceTreeDigest: "d".repeat(64) } })),
+  importMiniAppGitRevisionCandidate: vi.fn(async (input: any) => ({ sourceRef: `r2://mini-app-sources/${input.tenantId}/${input.appId}/sha256/${"c".repeat(64)}`, sourceDigest: "c".repeat(64), bundle: { parentRevision: "b".repeat(40), sourceTreeDigest: "d".repeat(64) } })),
+  listMiniAppGitRevisionCandidates: vi.fn(async () => ({ defaultBranch: "main", candidates: [{ branch: "feature/dashboard", revision: "b".repeat(40), isDefault: false }] })),
+  restoreMiniAppDeploymentVersion: vi.fn(async (input: any) => ({ appId: input.appId, deploymentVersion: input.deploymentVersion, artifactRef: "r2://mini-app-previews/tenant-synthetic-two/app_synthetic_second/sha256/" + "a".repeat(64) })),
   getUserGitHubConnection: vi.fn(async () => ({ configured: false, githubLogin: null })),
   developmentRunService: {
     initialize: vi.fn(async (input: any) => ({ run: input.run, revision: 0, events: [] })),
@@ -107,6 +109,8 @@ vi.mock("../../services/appIdentityRepository", () => ({
 
 vi.mock("../../services/personalMiniAppPreview", () => ({
   importMiniAppGitRevisionCandidate: (...args: unknown[]) => mocks.importMiniAppGitRevisionCandidate(...args),
+  listMiniAppGitRevisionCandidates: (...args: unknown[]) => mocks.listMiniAppGitRevisionCandidates(...args),
+  restoreMiniAppDeploymentVersion: (...args: unknown[]) => mocks.restoreMiniAppDeploymentVersion(...args),
   resolvePersonalMiniAppFactoryHome: (...args: unknown[]) => mocks.resolveMiniAppFactoryHome(...args),
 }));
 
@@ -134,6 +138,28 @@ beforeEach(() => {
 });
 
 describe("spec226DevelopmentControlRouter", () => {
+  it("lists candidates for a different authorized owner and bound repository", async () => {
+    const appId = "app_synthetic_second";
+    const repository = { mode: "USER_OWNED", owner: "synthetic-owner", name: "another-private-app", url: "https://github.com/synthetic-owner/another-private-app", revision: "c".repeat(40) };
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId, tenantId: "tenant-synthetic-two", ownerUserId: 73, visibility: "private" });
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ repository, repositoryState: "BOUND", isInProgress: false });
+    const result = await (spec226DevelopmentControlRouter.listMiniAppGitCandidates as unknown as Function)({ ctx: { tenantId: "tenant-synthetic-two", user: { id: 73, role: "user" } }, input: { appId } });
+    expect(result).toMatchObject({ defaultBranch: "main", candidates: [{ branch: "feature/dashboard", revision: "b".repeat(40) }] });
+    expect(mocks.listMiniAppGitRevisionCandidates).toHaveBeenCalledWith({ tenantId: "tenant-synthetic-two", ownerUserId: 73, repository });
+  });
+
+  it("restores a selected immutable app version and refuses rollback during an active build", async () => {
+    const appId = "app_synthetic_second";
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId, tenantId: "tenant-synthetic-two", ownerUserId: 73, visibility: "private" });
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ isInProgress: false });
+    const context = { tenantId: "tenant-synthetic-two", user: { id: 73, role: "user" } };
+    await expect((spec226DevelopmentControlRouter.rollbackMiniAppVersion as unknown as Function)({ ctx: context, input: { appId, deploymentVersion: 1 } })).resolves.toMatchObject({ appId, deploymentVersion: 1 });
+    expect(mocks.restoreMiniAppDeploymentVersion).toHaveBeenCalledWith({ tenantId: "tenant-synthetic-two", actorId: 73, ownerUserId: 73, appId, deploymentVersion: 1 });
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId, tenantId: "tenant-synthetic-two", ownerUserId: 73, visibility: "private" });
+    mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ isInProgress: true });
+    await expect((spec226DevelopmentControlRouter.rollbackMiniAppVersion as unknown as Function)({ ctx: context, input: { appId, deploymentVersion: 1 } })).rejects.toMatchObject({ message: "MINI_APP_ROLLBACK_BUILD_IN_PROGRESS" });
+  });
+
   it("creates a scoped Developer Fast Lane Job from authenticated admin tenant and actor identity", async () => {
     mocks.createDeveloperFastLaneJob.mockResolvedValueOnce({ created: true, jobId: "job-fast-1", runId: "run-fast-1", workerJobId: "job-fast-1" });
     const input = {
@@ -329,26 +355,30 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
   });
 
-  it("adopts an exact candidate revision from the authenticated app's bound repository without generation", async () => {
-    const appId = "app_candidate";
-    const revision = "a".repeat(40);
-    const repository = { mode: "USER_OWNED", owner: "app-owner", name: "private-expense-app", url: "https://github.com/app-owner/private-expense-app", revision: "b".repeat(40) };
-    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId, tenantId: "tenant-acme", ownerUserId: 42, visibility: "private", runtimeDataMigrationStatus: "OWNER_CONFIRMED" });
+  it("dispatches a second synthetic owner's exact candidate to package without generation", async () => {
+    const appId = "app_synthetic_second";
+    const revision = "e".repeat(40);
+    const repository = { mode: "USER_OWNED", owner: "synthetic-owner", name: "another-private-app", url: "https://github.com/synthetic-owner/another-private-app", revision: "c".repeat(40) };
+    const context = { tenantId: "tenant-synthetic-two", user: { id: 73, role: "user" } };
+    mocks.resolveOwnedMiniAppIdentity.mockResolvedValueOnce({ appId, tenantId: "tenant-synthetic-two", ownerUserId: 73, visibility: "private", runtimeDataMigrationStatus: "OWNER_CONFIRMED" });
     mocks.resolveMiniAppFactoryHome.mockResolvedValueOnce({ runId: "run-v1", isInProgress: false, artifacts: [], repository, repositoryState: "BOUND" });
     mocks.enqueueMiniAppStage.mockResolvedValueOnce({ stageId: "package", jobId: "candidate-package-job", created: true, state: "ENQUEUED" });
 
-    const result = await (spec226DevelopmentControlRouter.adoptPreparedMiniAppCandidate as unknown as Function)({ ctx: CTX, input: { appId, branch: "feature/next-version", revision } });
+    const result = await (spec226DevelopmentControlRouter.adoptPreparedMiniAppCandidate as unknown as Function)({ ctx: context, input: { appId, branch: "release/thai-dashboard", revision } });
 
     expect(result).toMatchObject({ appId, jobId: "candidate-package-job", stageId: "package", sourceRevision: revision });
-    expect(mocks.importMiniAppGitRevisionCandidate).toHaveBeenCalledWith({ appId, tenantId: "tenant-acme", ownerUserId: 42, repository, branch: "feature/next-version", revision });
+    expect(mocks.importMiniAppGitRevisionCandidate).toHaveBeenCalledWith({ appId, tenantId: "tenant-synthetic-two", ownerUserId: 73, repository, branch: "release/thai-dashboard", revision });
     expect(mocks.developmentRunService.initialize).toHaveBeenCalledWith(expect.objectContaining({ run: expect.objectContaining({
-      actorId: 42,
-      repositoryRef: "repo:app-owner/private-expense-app",
+      tenantId: "tenant-synthetic-two",
+      actorId: 73,
+      repositoryRef: "repo:synthetic-owner/another-private-app",
       baseRevision: `git:${revision}`,
-      metadata: expect.objectContaining({ miniAppCandidateAdoption: expect.objectContaining({ revision, branch: "feature/next-version" }) }),
+      metadata: expect.objectContaining({ miniAppCandidateAdoption: expect.objectContaining({ revision, branch: "release/thai-dashboard", repository: "synthetic-owner/another-private-app" }) }),
       workUnit: expect.objectContaining({ progress: expect.objectContaining({ completedScope: ["ui_implementation", "source_repository"], remainingScope: ["package", "deploy", "smoke"] }) }),
     }) }));
-    expect(mocks.enqueueMiniAppStage).toHaveBeenCalledWith(expect.objectContaining({ run: expect.objectContaining({ tenantId: "tenant-acme", actorId: 42 }) }));
+    expect(mocks.enqueueMiniAppStage).toHaveBeenCalledWith(expect.objectContaining({ run: expect.objectContaining({ runId: result.runId, tenantId: "tenant-synthetic-two", actorId: 73 }) }));
+    expect(mocks.enqueueMiniAppStage).toHaveBeenCalledWith(expect.objectContaining({ pipeline: expect.any(Object) }));
+    expect(mocks.createMiniAppIdentity).not.toHaveBeenCalled();
   });
 
   it("refuses candidate adoption when the existing app has no bound dedicated repository", async () => {

@@ -22,6 +22,8 @@ const mocks = vi.hoisted(() => ({
   retryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
   continuationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
   adoptionMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null, data: null },
+  rollbackMutation: { mutate: vi.fn(), isPending: false, error: null },
+  gitCandidatesQuery: { data: undefined as any, isLoading: false, isFetching: false, error: null, refetch: vi.fn() },
   runtimeMutation: { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0, verified: 0, migrationStatus: "VERIFIED" })), isPending: false },
   confirmMigrationMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
   provisionRepositoryMutation: { mutate: vi.fn(), isPending: false, isSuccess: false, error: null },
@@ -63,6 +65,8 @@ vi.mock("@/lib/trpc", () => ({
       retryMiniAppFactoryStage: { useMutation: () => mocks.retryMutation },
       startWorkspaceRun: { useMutation: () => mocks.continuationMutation },
       adoptPreparedMiniAppCandidate: { useMutation: () => mocks.adoptionMutation },
+      rollbackMiniAppVersion: { useMutation: () => mocks.rollbackMutation },
+      listMiniAppGitCandidates: { useQuery: () => mocks.gitCandidatesQuery },
     },
   },
 }));
@@ -93,6 +97,8 @@ describe("MiniAppRoute", () => {
     mocks.retryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
     mocks.continuationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
     mocks.adoptionMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null, data: null };
+    mocks.rollbackMutation = { mutate: vi.fn(), isPending: false, error: null };
+    mocks.gitCandidatesQuery = { data: undefined, isLoading: false, isFetching: false, error: null, refetch: vi.fn() };
     mocks.runtimeMutation = { mutateAsync: vi.fn(async () => ({ appId: "app_private", deploymentVersion: 1, storageToken: "test-scoped-storage-token", imported: 0, preserved: 0, verified: 0, migrationStatus: "VERIFIED" })), isPending: false };
     mocks.confirmMigrationMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
     mocks.provisionRepositoryMutation = { mutate: vi.fn(), isPending: false, isSuccess: false, error: null };
@@ -233,7 +239,9 @@ describe("MiniAppRoute", () => {
       deploymentVersions: [{ deploymentVersion: 1, artifactDigest: "a".repeat(64), developmentRunId: "run-v1" }],
     };
     render(<MiniAppRoute />);
-    const button = await screen.findByRole("button", { name: "Use prepared Git revision" });
+    fireEvent.click(await screen.findByRole("tab", { name: "Progress" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced: enter branch and commit SHA" }));
+    const button = await screen.findByRole("button", { name: "Use prepared revision" });
     expect(button).toBeDisabled();
     fireEvent.change(screen.getByRole("textbox", { name: "Candidate branch" }), { target: { value: "feature/v2" } });
     fireEvent.change(screen.getByRole("textbox", { name: "Candidate commit SHA" }), { target: { value: "c".repeat(40) } });
@@ -242,6 +250,43 @@ describe("MiniAppRoute", () => {
     expect(mocks.adoptionMutation.mutate).toHaveBeenCalledWith({ appId: "app_e6f0be051fd22e09bc4c5dff", branch: "feature/v2", revision: "c".repeat(40) });
     expect(screen.getByRole("textbox", { name: "Continue development" })).toBeInTheDocument();
     expect(mocks.continuationMutation.mutate).not.toHaveBeenCalled();
+  });
+
+  it("lets the owner choose a repository revision without entering Git details", async () => {
+    mocks.routeMode = "status";
+    mocks.miniAppParams = { appId: "app_synthetic_second" };
+    mocks.gitCandidatesQuery.data = { defaultBranch: "main", candidates: [{ branch: "main", revision: "a".repeat(40), isDefault: true }, { branch: "feature/dashboard", revision: "b".repeat(40), isDefault: false }] };
+    mocks.appQuery.data = {
+      app: { appId: "app_synthetic_second", visibility: "private", deploymentVersion: 1, lastKnownGoodArtifactRef: "r2://preview", runtimeDataMigrationStatus: "OWNER_CONFIRMED" },
+      html: "<main>app</main>", artifactDigest: "a".repeat(64),
+      factory: { isInProgress: false, artifacts: [], repositoryState: "BOUND", repository: { owner: "synthetic-owner", name: "another-private-app", revision: "c".repeat(40) } },
+      deploymentVersions: [],
+    };
+    render(<MiniAppRoute />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Progress" }));
+    fireEvent.click(await screen.findByText("Choose a revision"));
+    fireEvent.click(await screen.findByText("Prepared update 2"));
+    expect(screen.queryByRole("textbox", { name: "Candidate commit SHA" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Use prepared revision" }));
+    expect(mocks.adoptionMutation.mutate).toHaveBeenCalledWith({ appId: "app_synthetic_second", branch: "feature/dashboard", revision: "b".repeat(40) });
+  });
+
+  it("offers a verified historical version as the current app", async () => {
+    mocks.routeMode = "status";
+    mocks.miniAppParams = { appId: "app_versioned" };
+    mocks.appQuery.data = {
+      app: { appId: "app_versioned", visibility: "private", deploymentVersion: 2, lastKnownGoodArtifactRef: "r2://v2" },
+      html: "<main>V2</main>", artifactDigest: "b".repeat(64),
+      factory: { isInProgress: false, artifacts: [] },
+      deploymentVersions: [
+        { deploymentVersion: 1, artifactRef: "r2://v1", artifactDigest: "a".repeat(64), developmentRunId: "run-v1" },
+        { deploymentVersion: 2, artifactRef: "r2://v2", artifactDigest: "b".repeat(64), developmentRunId: "run-v2" },
+      ],
+    };
+    render(<MiniAppRoute />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Builds" }));
+    fireEvent.click(screen.getByRole("button", { name: "Make current" }));
+    expect(mocks.rollbackMutation.mutate).toHaveBeenCalledWith({ appId: "app_versioned", deploymentVersion: 1 });
   });
 
   it("keeps refreshing progress and displays repository setup while a preview is already usable", async () => {
