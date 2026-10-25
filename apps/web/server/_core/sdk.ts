@@ -252,6 +252,10 @@ class SDKServer {
         return null;
       }
 
+      // Cookie sessions and legacy session-shaped bearer tokens must honor the
+      // same durable logout revocations as access tokens. The store fails closed.
+      if (typeof jti === "string" && await isJtiRevoked(jti)) return null;
+
       return {
         openId,
         appId,
