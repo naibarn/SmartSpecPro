@@ -64,9 +64,9 @@
     "section-08-generic-miniapp-continuous-delivery": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Deploy integrated shared runtime SHA 297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70 through the existing release control and verify runtime routes/API. Keep owner-authenticated V2 trial as separate pending evidence; do not repeat app generation or migrations.",
-      "checkpoint_sha": "297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70",
-      "merged_main_sha": "297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70"
+      "next_action": "Generic candidate-adoption runtime SHA a6748b9a58915f6a2b5704e62323d8e3b8b2e082 is deployed and verified as Linux release generation 107. Keep owner-authenticated V2 browser acceptance separate and pending; do not repeat app generation or migrations.",
+      "checkpoint_sha": "a6748b9a58915f6a2b5704e62323d8e3b8b2e082",
+      "merged_main_sha": "a6748b9a58915f6a2b5704e62323d8e3b8b2e082"
     }
   },
   "pre_commit": {
@@ -78,7 +78,7 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 36,
+  "generation": 37,
   "updated_at": "2026-10-25T12:03:17.100942+00:00",
   "progress": {
     "active_section": "section-08-generic-miniapp-continuous-delivery",
@@ -89,5 +89,6 @@
       "Owner-authenticated browser acceptance of the deployed V2 is not yet evidenced; retain the existing App and run, and record owner verification only after the owner opens the real URL."
     ],
     "merged_main_sha": "297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70"
-  }
+  },
+  "merged_main_sha": "a6748b9a58915f6a2b5704e62323d8e3b8b2e082"
 }

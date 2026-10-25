@@ -32,3 +32,11 @@ The original run anchor job `3d92ce3f-7475-40c3-9934-a6c4a6ebeac9` is retained i
 This record does **not** claim a new owner-authenticated browser acceptance. The real owner must verify the deployed V2 UI using their existing authenticated session. Existing app-level Playwright evidence is recorded separately; no owner session was created or copied for this check.
 
 This is a V1/V2 pilot evidence record only. It does not mark overall SPEC-224, protected Runner acceptance, or generic Mini-App readiness as complete.
+
+## Generic delivery runtime checkpoint
+
+- Generic candidate adoption and app-only package/deploy/smoke implementation is integrated at `a6748b9a58915f6a2b5704e62323d8e3b8b2e082` and deployed as Linux full-stack release generation 107 (`smartspec-web-a6748b9a58915f6a2b5704e62323d8e3b8b2e082-19aefa85d71e`).
+- Web and Node Worker both report runtime revision `a6748b9a58915f6a2b5704e62323d8e3b8b2e082`; release artifact digest is `sha256:7b6e42ddd3ba8e6af1c7c5ba9bcc553604421f0a3aca58dcb4da3b4a6aada69c`.
+- Release controller verification reported `DEPLOYED_VERIFIED`, service `HEALTHY`, and `/api/health` returned HTTP 200. The public `/miniapp/app_e6f0be051fd22e09bc4c5dff/status` route returned HTTP 200 with the SPA shell. This does not prove authenticated private data access or owner browser acceptance.
+- Focused Vitest verification for candidate import/adoption, durable state, pipeline/stage worker and Mini-App UI passed: 6 files, 81 tests. No migrations or Cloudflare activation/cutover were performed.
+- Generic behavior is implemented and deployed; production owner acceptance and arbitrary second-app end-to-end adoption remain unverified. Keep those distinct from pilot receipts and do not mark overall SPEC-224 acceptance complete.
