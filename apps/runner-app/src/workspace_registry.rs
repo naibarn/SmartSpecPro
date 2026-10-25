@@ -270,6 +270,54 @@ mod tests {
     }
 
     #[test]
+    fn fingerprints_clean_large_git_workspaces_from_the_immutable_tree() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("large-project");
+        let data_root = temp.path().join("runner-data");
+        fs::create_dir_all(&project).unwrap();
+        std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        fs::write(project.join("source.txt"), "tracked").unwrap();
+        let large = fs::File::create(project.join("large.bin")).unwrap();
+        large.set_len(512 * 1024 * 1024 + 1).unwrap();
+        #[cfg(unix)]
+        std::os::unix::fs::symlink("source.txt", project.join("source-link")).unwrap();
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.invalid",
+                "commit",
+                "-qm",
+                "large baseline",
+            ])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        let config = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        workspace_registry::register(&config, &project).unwrap();
+
+        let fingerprint = workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .content_fingerprint
+            .clone();
+        assert!(fingerprint
+            .as_deref()
+            .is_some_and(|value| value.len() == 64));
+    }
+
+    #[test]
     fn rejects_unbounded_git_fields_before_publishing() {
         assert!(workspace_registry::valid_git_head(&"a".repeat(40)));
         assert!(!workspace_registry::valid_git_head(
@@ -409,6 +457,9 @@ pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {
     if !workspace.is_dir() {
         return None;
     }
+    if let Some(tree) = git_output_bytes(workspace, &["rev-parse", "--verify", "HEAD^{tree}"]) {
+        return fingerprint_git_workspace(workspace, tree);
+    }
     let listed = background_command("git")
         .args([
             "ls-files",
@@ -495,6 +546,122 @@ pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {
         hasher.update(Sha256::digest(bytes));
     }
     Some(format!("{:x}", hasher.finalize()))
+}
+
+/// Fingerprint a Git workspace from its immutable tree and the bounded set of
+/// files that differ from that tree. This avoids reading every tracked byte on
+/// each Runner capability refresh, which made large clean repositories fail
+/// the legacy 512 MiB scan limit. Dirty regular files remain content-hashed;
+/// symlinks are hashed as link targets without following them. Submodules fail
+/// closed because their nested worktree needs its own explicit source binding.
+fn fingerprint_git_workspace(workspace: &Path, tree: Vec<u8>) -> Option<String> {
+    let tree = String::from_utf8(tree).ok()?.trim().to_string();
+    if !valid_git_head(&tree) {
+        return None;
+    }
+    let status = git_output_bytes(
+        workspace,
+        &["status", "--porcelain=v1", "--untracked-files=all", "-z"],
+    )?;
+
+    let mut hasher = Sha256::new();
+    hasher.update(b"smarthub-runner-workspace-fingerprint:v2\0");
+    hasher.update(tree.as_bytes());
+    if status.is_empty() {
+        return Some(format!("{:x}", hasher.finalize()));
+    }
+
+    // Include Git's status bytes so staged, unstaged, conflicted, and dirty
+    // submodule states cannot collide when their visible worktree bytes match.
+    hasher.update(b"\0git-status\0");
+    hasher.update(&status);
+
+    let tracked_changes = git_output_bytes(
+        workspace,
+        &["diff", "--name-only", "--no-renames", "-z", "HEAD", "--"],
+    )?;
+    let untracked = git_output_bytes(
+        workspace,
+        &["ls-files", "--others", "--exclude-standard", "-z"],
+    )?;
+    let mut paths = std::collections::BTreeSet::new();
+    for raw in tracked_changes
+        .split(|byte| *byte == 0)
+        .chain(untracked.split(|byte| *byte == 0))
+        .filter(|part| !part.is_empty())
+    {
+        paths.insert(path_from_git_bytes(raw)?);
+    }
+    if paths.len() > 50_000 {
+        return None;
+    }
+
+    let mut total = 0u64;
+    for relative in paths {
+        if relative.is_absolute()
+            || relative.components().any(|part| {
+                matches!(
+                    part,
+                    std::path::Component::ParentDir
+                        | std::path::Component::RootDir
+                        | std::path::Component::Prefix(_)
+                )
+            })
+        {
+            return None;
+        }
+        let path = workspace.join(&relative);
+        let relative_bytes = os_str_identity_bytes(relative.as_os_str());
+        hasher.update((relative_bytes.len() as u64).to_be_bytes());
+        hasher.update(relative_bytes.as_ref());
+
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(value) => value,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                hasher.update(b"\0deleted\0");
+                continue;
+            }
+            Err(_) => return None,
+        };
+        if metadata.file_type().is_symlink() {
+            let target = fs::read_link(&path).ok()?;
+            hasher.update(b"\0symlink\0");
+            hasher.update(os_str_identity_bytes(target.as_os_str()).as_ref());
+            continue;
+        }
+        if metadata.is_dir() {
+            // This is normally a changed submodule. Do not claim its nested
+            // contents are bound by the parent repository's tree SHA.
+            return None;
+        }
+        if !metadata.is_file() {
+            return None;
+        }
+        total = total.checked_add(metadata.len())?;
+        if total > 512 * 1024 * 1024 {
+            return None;
+        }
+        let bytes = fs::read(&path).ok()?;
+        hasher.update(b"\0file\0");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            hasher.update((metadata.permissions().mode() & 0o111).to_be_bytes());
+        }
+        #[cfg(not(unix))]
+        hasher.update(0u32.to_be_bytes());
+        hasher.update(Sha256::digest(bytes));
+    }
+    Some(format!("{:x}", hasher.finalize()))
+}
+
+fn git_output_bytes(workspace: &Path, args: &[&str]) -> Option<Vec<u8>> {
+    let output = background_command("git")
+        .args(args)
+        .current_dir(workspace)
+        .output()
+        .ok()?;
+    output.status.success().then_some(output.stdout)
 }
 
 #[cfg(unix)]
