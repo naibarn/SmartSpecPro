@@ -1,3 +1,5 @@
+import { PRODUCTION_INGRESS_CONTRACT } from "./cloudflareProductionIngressContract";
+import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT } from "./cloudflareProductionDeploymentContract";
 import { and, eq } from "drizzle-orm";
 
 import type { DispatchRef, DispatchRequest } from "./jobControlPlaneTypes";
@@ -39,6 +41,8 @@ const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   HTTP_IMAGE_PROVISION_CONTRACT,
   CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT,
   CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT,
+  CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT,
+  PRODUCTION_INGRESS_CONTRACT,
 ]);
 
 export type TransportObservation = "unknown" | "published" | "consumed" | "failed";

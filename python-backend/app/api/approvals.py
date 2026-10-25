@@ -332,6 +332,24 @@ class CloudflareProductionGrantIssue(BaseModel):
         return value
 
 
+class CloudflareProductionIngressGrantIssue(BaseModel):
+    """Explicit approval for reversible Linux-origin to Worker ingress, no native runtime claim."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    schema_version: Literal["cloudflare.production-ingress-grant.v1"] = Field(..., alias="schemaVersion")
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
+    executor_id: StrictStr = Field(..., alias="executorId", min_length=1, max_length=200)
+    target_id: Literal["smartspec-cloudflare-runtime"] = Field(..., alias="targetId")
+    environment: Literal["production"]
+    account_ref: StrictStr = Field(..., alias="accountRef", pattern=r"^[a-f0-9]{32}$")
+    job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[a-f0-9-]{36}$")
+    operation: dict
+    exposure: Literal["100-percent-http-origin-bridge"]
+    actions: list[Literal["deploy", "rollback"]] = Field(..., min_length=2, max_length=2)
+    max_duration_seconds: StrictInt = Field(..., alias="maxDurationSeconds", ge=1, le=900)
+    expires_at: datetime = Field(..., alias="expiresAt")
+
+
 def _cloudflare_authenticated_tenant(current_user: User, context_tenant: str | None) -> str:
     """Use the tenant validated by get_current_user, including internal delegation."""
     verified = getattr(current_user, "_media_auth_tenant_id", None) or getattr(current_user, "currentTenantId", None)
@@ -643,6 +661,17 @@ async def resolve_cloudflare_staging_grant(
         raise HTTPException(status_code=404, detail="CLOUDFLARE_STAGING_GRANT_NOT_FOUND_OR_INACTIVE")
     response.headers["Cache-Control"] = "no-store"
     return {"grant": grant}
+
+
+@router.get("/internal/cloudflare-production-capabilities")
+async def cloudflare_production_capabilities(
+    response: Response,
+    x_internal_token: Optional[str] = Header(None, alias="x-internal-token"),
+):
+    """Read-only serving-contract evidence; never grants deployment authority."""
+    _assert_cloudflare_staging_gateway_token(x_internal_token)
+    response.headers["Cache-Control"] = "no-store"
+    return {"grantSchemas": ["cloudflare.production-deployment-grant.v2", "cloudflare.production-ingress-grant.v1"]}
 
 
 @router.get("/internal/cloudflare-production-grants/{grant_ref}")
@@ -1555,7 +1584,7 @@ async def create_cloudflare_staging_grant_request(
 
 @router.post("/cloudflare-production-grants", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
 async def create_cloudflare_production_grant_request(
-    data: CloudflareProductionGrantIssue,
+    data: CloudflareProductionGrantIssue | CloudflareProductionIngressGrantIssue,
     current_user: User = Depends(get_current_user),
     tenant_id: str | None = Depends(get_current_tenant_id),
     db: AsyncSession = Depends(get_db_session),
@@ -1566,29 +1595,34 @@ async def create_cloudflare_production_grant_request(
     if data.expires_at.tzinfo is None:
         raise HTTPException(status_code=422, detail="CLOUDFLARE_PRODUCTION_GRANT_EXPIRY_INVALID")
     tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
-    grant_payload = {
-        "schemaVersion": "cloudflare.production-deployment-grant.v2",
-        "grantRef": "pending-idempotency-binding", "tenantId": tenant_id,
-        "requesterUserId": int(current_user.id), "projectId": data.project_id,
-        "executorId": data.executor_id, "targetId": data.target_id, "environment": data.environment,
-        "accountRef": data.account_ref, "zoneId": data.zone_id, "routePattern": data.route_pattern,
-        "expectedRouteId": data.expected_route_id, "expectedRouteScript": data.expected_route_script,
-        "rolloutStage": data.rollout_stage, "canaryGrantRef": data.canary_grant_ref,
-        "canaryDeploymentId": data.canary_deployment_id,
-        "canaryVerifiedAt": data.canary_verified_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z") if data.canary_verified_at else None,
-        "candidateVersionId": data.candidate_version_id,
-        "jobId": data.job_id, "artifactRef": data.artifact_ref,
-        "sourceSha": data.source_sha, "buildDigest": data.build_digest,
-        "configurationRef": data.configuration_ref, "configurationDigest": data.configuration_digest,
-        "actions": data.actions, "rollbackDeploymentId": data.rollback_deployment_id,
-        "rollbackArtifactRef": data.rollback_artifact_ref, "rollbackSourceSha": data.rollback_source_sha,
-        "rollbackBuildDigest": data.rollback_build_digest,
-        "rollbackConfigurationRef": data.rollback_configuration_ref,
-        "rollbackConfigurationDigest": data.rollback_configuration_digest,
-        "canaryRequired": data.canary_required, "maxDurationSeconds": data.max_duration_seconds,
-        "expiresAt": data.expires_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "revokedAt": None,
-    }
+    if isinstance(data, CloudflareProductionIngressGrantIssue):
+        grant_payload = data.model_dump(by_alias=True, mode="json", exclude={"idempotency_key"})
+        grant_payload.update({"grantRef": "pending-idempotency-binding", "tenantId": tenant_id,
+                              "requesterUserId": int(current_user.id), "revokedAt": None})
+    else:
+        grant_payload = {
+            "schemaVersion": "cloudflare.production-deployment-grant.v2",
+            "grantRef": "pending-idempotency-binding", "tenantId": tenant_id,
+            "requesterUserId": int(current_user.id), "projectId": data.project_id,
+            "executorId": data.executor_id, "targetId": data.target_id, "environment": data.environment,
+            "accountRef": data.account_ref, "zoneId": data.zone_id, "routePattern": data.route_pattern,
+            "expectedRouteId": data.expected_route_id, "expectedRouteScript": data.expected_route_script,
+            "rolloutStage": data.rollout_stage, "canaryGrantRef": data.canary_grant_ref,
+            "canaryDeploymentId": data.canary_deployment_id,
+            "canaryVerifiedAt": data.canary_verified_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z") if data.canary_verified_at else None,
+            "candidateVersionId": data.candidate_version_id,
+            "jobId": data.job_id, "artifactRef": data.artifact_ref,
+            "sourceSha": data.source_sha, "buildDigest": data.build_digest,
+            "configurationRef": data.configuration_ref, "configurationDigest": data.configuration_digest,
+            "actions": data.actions, "rollbackDeploymentId": data.rollback_deployment_id,
+            "rollbackArtifactRef": data.rollback_artifact_ref, "rollbackSourceSha": data.rollback_source_sha,
+            "rollbackBuildDigest": data.rollback_build_digest,
+            "rollbackConfigurationRef": data.rollback_configuration_ref,
+            "rollbackConfigurationDigest": data.rollback_configuration_digest,
+            "canaryRequired": data.canary_required, "maxDurationSeconds": data.max_duration_seconds,
+            "expiresAt": data.expires_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "revokedAt": None,
+        }
     try:
         return await ApprovalDBService(db).create_cloudflare_production_grant_request(
             tenant_id=tenant_id, requester_id=int(current_user.id), idempotency_key=data.idempotency_key,

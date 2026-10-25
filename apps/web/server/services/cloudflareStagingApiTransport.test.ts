@@ -70,7 +70,7 @@ describe("Cloudflare staging API transport", () => {
     };
     const configurationDigest = cloudflareOriginDescriptorDigest(descriptor);
     const originConfiguration = { descriptor, configurationDigest, configurationRef: `cf-origin:${configurationDigest}`,
-      secrets: { token: "t".repeat(32), clientId: "i".repeat(24), secret: "s".repeat(32) } };
+      secrets: { token: "t".repeat(32), clientId: "i".repeat(24), secret: "s".repeat(32), ...(ingressMode ? { applicationCanaryToken: "p".repeat(32) } : {}) } };
     const scopedTarget = { ...productionTarget, runtimePolicy: originConfiguration.configurationRef };
     const requests: Array<{ url: string; init: RequestInit }> = [];
     let uploadedMetadata: any;

@@ -1,3 +1,5 @@
+import { productionIngressGrantSchema } from "./cloudflareProductionIngressContract";
+import { createCloudflareProductionIngressTransport } from "./cloudflareProductionIngressTransport";
 import { createHash } from "node:crypto";
 import { getDb } from "../db";
 import { getAppRuntimeConfig } from "./appRuntimeConfig";
@@ -50,12 +52,7 @@ export function createCloudflareProductionDeploymentRuntime(input: { fetchImpl?:
   });
   const canaryTransport = createCloudflareProductionCanaryTransport({ fetchImpl });
 
-  return {
-    resolveExecutorId: () => process.env.CLOUDFLARE_PRODUCTION_EXECUTOR_ID?.trim() || null,
-    now: () => new Date(),
-    resolveArtifact: resolveCloudflareStagingArtifact,
-    resolveTarget: identity => resolveCloudflareProductionDeploymentTarget({ db, ...identity }),
-    resolveGrant: async grantRef => {
+  const readGrantDocument = async (grantRef: string): Promise<unknown> => {
       if (!/^[a-f0-9-]{36}$/i.test(grantRef)) return null;
       const config = await getAppRuntimeConfig();
       if (!config.webGatewayToken) throw new Error("CLOUDFLARE_PRODUCTION_GRANT_AUTH_UNAVAILABLE");
@@ -67,9 +64,23 @@ export function createCloudflareProductionDeploymentRuntime(input: { fetchImpl?:
       let envelope: unknown;
       try { envelope = await response.json(); } catch { throw new Error("CLOUDFLARE_PRODUCTION_GRANT_RESPONSE_INVALID"); }
       if (!envelope || typeof envelope !== "object" || Array.isArray(envelope)) return null;
-      const grant = parseGrant((envelope as { grant?: unknown }).grant);
+      return (envelope as { grant?: unknown }).grant;
+  };
+
+  return {
+    resolveExecutorId: () => process.env.CLOUDFLARE_PRODUCTION_EXECUTOR_ID?.trim() || null,
+    now: () => new Date(),
+    resolveArtifact: resolveCloudflareStagingArtifact,
+    resolveTarget: identity => resolveCloudflareProductionDeploymentTarget({ db, ...identity }),
+    resolveGrant: async grantRef => {
+      const grant = parseGrant(await readGrantDocument(grantRef));
       return grant?.grantRef === grantRef ? grant : null;
     },
+    resolveIngressGrant: async grantRef => {
+      const parsed = productionIngressGrantSchema.safeParse(await readGrantDocument(grantRef));
+      return parsed.success && parsed.data.grantRef === grantRef ? parsed.data : null;
+    },
+    ingress: createCloudflareProductionIngressTransport({ fetchImpl }),
     withOriginConfiguration: ({ target, configurationRef, configurationDigest, operation }) => withCloudflareOriginConfiguration(db, {
       identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "production", provider: "cloudflare" },
       configurationRef, configurationDigest,

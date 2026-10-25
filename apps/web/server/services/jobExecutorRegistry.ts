@@ -1,3 +1,5 @@
+import { PRODUCTION_INGRESS_CONTRACT } from "./cloudflareProductionIngressContract";
+import { createCloudflareProductionIngressExecutor } from "./cloudflareProductionIngressExecutor";
 import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB } from "./cloudflareNativeProvisionContract";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB } from "./cloudflarePrivateDatabaseContract";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
@@ -390,8 +392,10 @@ defaultJobExecutorRegistry.register({
 defaultJobExecutorRegistry.register({
   jobType: CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB,
   executionClass: "long",
-  contractVersions: new Set([CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT]),
-  executor: createCloudflareProductionDeploymentExecutor(createCloudflareProductionDeploymentRuntime),
+  contractVersions: new Set([CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT, PRODUCTION_INGRESS_CONTRACT]),
+  executor: input => input.context.contractVersion === PRODUCTION_INGRESS_CONTRACT
+    ? createCloudflareProductionIngressExecutor(createCloudflareProductionDeploymentRuntime)(input)
+    : createCloudflareProductionDeploymentExecutor(createCloudflareProductionDeploymentRuntime)(input),
 });
 
 defaultJobExecutorRegistry.register({

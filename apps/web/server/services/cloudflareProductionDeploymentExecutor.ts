@@ -1,3 +1,4 @@
+import type { ProductionIngressGrant } from "./cloudflareProductionIngressContract";
 import type { JobExecutor } from "./jobExecutor";
 import { withCloudflareStagingLeaseHeartbeat } from "./cloudflareStagingLeaseHeartbeat";
 import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
@@ -28,6 +29,9 @@ type CredentialStatus = "CONFIGURED" | "NOT_CONFIGURED" | "PERMISSION_DENIED" | 
 
 export type CloudflareProductionDeploymentRuntime = Readonly<{
   resolveExecutorId: () => string | null;
+  resolveIngressGrant?: (grantRef: string) => Promise<ProductionIngressGrant | null>;
+  ingress?: ReturnType<typeof import("./cloudflareProductionIngressTransport").createCloudflareProductionIngressTransport>;
+
   resolveGrant: (grantRef: string) => Promise<CloudflareProductionDeploymentGrant | null>;
   resolveTarget: (input: { tenantId: string; projectId: string }) => Promise<CloudflareProductionDeploymentTarget | null>;
   resolveArtifact: (artifactRef: string, sourceSha: string) => Promise<CloudflareStagingArtifact | null>;

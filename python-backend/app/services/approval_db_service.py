@@ -61,8 +61,71 @@ _CF_PRODUCTION_TARGET = "smartspec-cloudflare-runtime"
 _CF_PRODUCTION_SINGLE_ADMIN_ISSUER = "single_admin_owner_approval_v1"
 
 
+def normalize_cloudflare_production_ingress_grant(value: dict) -> dict:
+    """Exact origin-route transition through the existing production authority."""
+    required = {"schemaVersion", "grantRef", "jobId", "tenantId", "requesterUserId", "executorId", "accountRef",
+                "projectId", "targetId", "environment", "operation", "exposure", "actions", "maxDurationSeconds", "expiresAt", "revokedAt"}
+    fields = {"contractVersion", "grantRef", "projectId", "targetId", "environment", "zoneId", "routePattern", "action",
+              "runtimeBaselineDeploymentId", "runtimeBaselineVersionId", "previousRoute", "ingressReceipt", "artifactRef",
+              "sourceSha", "buildDigest", "configurationRef", "configurationDigest"}
+    def invalid():
+        raise ValueError("CLOUDFLARE_PRODUCTION_INGRESS_GRANT_INVALID")
+    if not isinstance(value, dict) or set(value) != required:
+        invalid()
+    op = value["operation"]
+    if not isinstance(op, dict) or set(op) != fields:
+        invalid()
+    if (value["schemaVersion"] != "cloudflare.production-ingress-grant.v1" or
+            op["contractVersion"] != "cloudflare-production-ingress-v1" or
+            value["targetId"] != _CF_PRODUCTION_TARGET or value["environment"] != "production" or
+            op["targetId"] != value["targetId"] or op["environment"] != value["environment"] or
+            op["projectId"] != value["projectId"] or op["grantRef"] != value["grantRef"] or
+            op["routePattern"] != "smartaihub.app/*" or op["previousRoute"] != {"state": "absent"} or
+            op["action"] not in ("ingress-canary", "ingress-rollback") or
+            value["exposure"] != "100-percent-http-origin-bridge" or value["actions"] != ["deploy", "rollback"] or
+            type(value["requesterUserId"]) is not int or value["requesterUserId"] <= 0 or
+            type(value["maxDurationSeconds"]) is not int or not 1 <= value["maxDurationSeconds"] <= 900):
+        invalid()
+    for field in ("tenantId", "projectId", "executorId"):
+        if not isinstance(value[field], str) or not value[field].strip() or len(value[field]) > (200 if field == "executorId" else 36):
+            invalid()
+    for field in ("grantRef", "jobId"):
+        if not isinstance(value[field], str) or not _SPEC224_CANONICAL_UUID.fullmatch(value[field]):
+            invalid()
+    for field in ("runtimeBaselineDeploymentId", "runtimeBaselineVersionId"):
+        if not isinstance(op[field], str) or not _SPEC224_CANONICAL_UUID.fullmatch(op[field]):
+            invalid()
+    for obj, field, pattern in ((value, "accountRef", r"[a-f0-9]{32}"), (op, "zoneId", r"[a-f0-9]{32}"),
+                                (op, "sourceSha", r"[a-f0-9]{40}"), (op, "buildDigest", r"[a-f0-9]{64}"),
+                                (op, "configurationDigest", r"[a-f0-9]{64}")):
+        if not isinstance(obj[field], str) or not re.fullmatch(pattern, obj[field]):
+            invalid()
+    if op["artifactRef"] != f"sha256:{op['buildDigest']}" or op["configurationRef"] != f"cf-origin:{op['configurationDigest']}":
+        invalid()
+    receipt = op["ingressReceipt"]
+    if (op["action"] == "ingress-rollback") != (receipt is not None):
+        invalid()
+    if receipt is not None:
+        if not isinstance(receipt, dict) or set(receipt) != {"grantRef", "deploymentId", "versionId", "routeId", "verifiedAt"}:
+            invalid()
+        for field in ("grantRef", "deploymentId", "versionId"):
+            if not isinstance(receipt[field], str) or not _SPEC224_CANONICAL_UUID.fullmatch(receipt[field]):
+                invalid()
+        if not isinstance(receipt["routeId"], str) or not re.fullmatch(r"[a-f0-9]{32}", receipt["routeId"]):
+            invalid()
+    for date in [value["expiresAt"]] + ([receipt["verifiedAt"]] if receipt else []) + ([value["revokedAt"]] if value["revokedAt"] is not None else []):
+        try:
+            if not isinstance(date, str) or datetime.fromisoformat(date.replace("Z", "+00:00")).tzinfo is None:
+                invalid()
+        except (ValueError, TypeError):
+            invalid()
+    return {**value, "operation": dict(op), "actions": list(value["actions"])}
+
+
 def normalize_cloudflare_production_grant_payload(value: dict) -> dict:
     """Validate a bounded production deployment grant without authorizing it."""
+    if isinstance(value, dict) and value.get("schemaVersion") == "cloudflare.production-ingress-grant.v1":
+        return normalize_cloudflare_production_ingress_grant(value)
     required = {
         "schemaVersion", "grantRef", "tenantId", "requesterUserId", "projectId", "executorId",
         "targetId", "environment", "accountRef", "zoneId", "routePattern", "expectedRouteId",
@@ -778,7 +841,10 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
             f"{tenant_id}:{idempotency_key}".encode("utf-8")
         ).hexdigest()
         grant_id = str(uuid5(NAMESPACE_URL, correlation_key))
-        grant = normalize_cloudflare_production_grant_payload({**payload, "grantRef": grant_id})
+        bound_payload = {**payload, "grantRef": grant_id}
+        if payload.get("schemaVersion") == "cloudflare.production-ingress-grant.v1":
+            bound_payload["operation"] = {**payload.get("operation", {}), "grantRef": grant_id}
+        grant = normalize_cloudflare_production_grant_payload(bound_payload)
         if grant["tenantId"] != tenant_id or grant["requesterUserId"] != requester_id:
             raise ValueError("CLOUDFLARE_PRODUCTION_GRANT_REQUEST_BINDING_INVALID")
         if grant["revokedAt"] is not None:

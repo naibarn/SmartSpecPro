@@ -1,3 +1,5 @@
+import { getProductionIngressPreflight, getProductionIngressRollbackPreflight, queueProductionIngress } from "../services/cloudflareProductionIngressAdmission";
+import { PRODUCTION_INGRESS_CONTRACT } from "../services/cloudflareProductionIngressContract";
 /**
  * Infrastructure Settings tRPC Router
  *
@@ -688,6 +690,54 @@ export const infrastructureRouter = router({
         url: typeof deployment?.url === "string" ? deployment.url : undefined,
         deploymentId: typeof deployment?.deploymentId === "string" ? deployment.deploymentId : undefined,
       });
+    }),
+
+  getCloudflareProductionIngressPreflight: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production") }).strict())
+    .query(async ({input,ctx}) => {
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(tenantId!==input.tenantId) throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_INGRESS_TENANT_MISMATCH"});
+      if(!ctx.userToken) return {ready:false as const,reason:"OWNER_SESSION_AUTHORITY_UNAVAILABLE"};
+      const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
+      return getProductionIngressPreflight(db,input);
+    }),
+
+  getCloudflareProductionIngressRollbackPreflight: exactAdminProcedure
+    .input(z.object({tenantId:deploymentTenantIdSchema,projectId:z.string().min(1).max(36),environment:z.literal("production"),jobId:z.string().uuid()}).strict())
+    .query(async({input,ctx})=>{
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_INGRESS_TENANT_MISMATCH"});
+      const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
+      return getProductionIngressRollbackPreflight(db,input,input.jobId);
+    }),
+
+  queueCloudflareProductionIngress: exactAdminProcedure
+    .input(z.object({tenantId:deploymentTenantIdSchema,projectId:z.string().min(1).max(36),environment:z.literal("production"),
+      submissionId:z.string().uuid(),planDigest:z.string().regex(/^[a-f0-9]{64}$/),
+      exposure:z.literal("100-percent-http-origin-bridge"),rollbackJobId:z.string().uuid().optional()}).strict())
+    .mutation(async({input,ctx})=>{
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_INGRESS_TENANT_MISMATCH"});
+      if(!ctx.userToken||!ctx.user?.id)throw new TRPCError({code:"UNAUTHORIZED",message:"OWNER_SESSION_AUTHORITY_UNAVAILABLE"});
+      const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
+      try {return await queueProductionIngress(db,{...input,actorUserId:ctx.user.id,userToken:ctx.userToken,
+        correlationId:ctx.req.requestId??input.submissionId});}
+      catch(error){const code=error instanceof Error&&/^[A-Z][A-Z0-9_:.-]{2,180}$/.test(error.message)
+        ?error.message:"PRODUCTION_INGRESS_ADMISSION_UNKNOWN";
+        throw new TRPCError({code:code==="PRODUCTION_INGRESS_ADMISSION_UNKNOWN"?"INTERNAL_SERVER_ERROR":"PRECONDITION_FAILED",message:code});}
+    }),
+
+  getLatestCloudflareProductionIngressJob: exactAdminProcedure
+    .input(z.object({tenantId:deploymentTenantIdSchema,projectId:z.string().min(1).max(36),environment:z.literal("production")}).strict())
+    .query(async({input,ctx})=>{
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_INGRESS_TENANT_MISMATCH"});
+      const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
+      const [job]=await db.select({jobId:workerJobs.id,status:workerJobs.status,errorCode:workerJobs.errorCode,
+        output:workerJobs.outputJson,input:workerJobs.inputJson}).from(workerJobs).where(and(eq(workerJobs.tenantId,input.tenantId),
+        eq(workerJobs.jobType,"cloudflare.production.deploy"),eq(workerJobs.contractVersion,PRODUCTION_INGRESS_CONTRACT),
+        sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`)).orderBy(desc(workerJobs.createdAt)).limit(1);
+      return job??null;
     }),
 
   getCloudflareProductionRuntimeReadiness: exactAdminProcedure

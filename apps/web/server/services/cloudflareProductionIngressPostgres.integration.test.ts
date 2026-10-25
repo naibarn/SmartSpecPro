@@ -1,0 +1,377 @@
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "node:crypto";
+const fixture = vi.hoisted(() => ({
+  beforeCommit: false,
+  afterCommit: false,
+  routeLive: false,
+  expiry: new Date(Date.now() + 3600000).toISOString(),
+}));
+vi.mock("./cloudflareProductionDeploymentContract", async original => ({
+  ...(await original<any>()),
+  resolveCloudflareProductionDeploymentTarget: async ({
+    tenantId,
+    projectId,
+  }: any) => ({
+    tenantId,
+    projectId,
+    targetId: "smartspec-cloudflare-runtime",
+    workerRef: "smartspec-cloudflare-runtime",
+    environment: "production",
+    enabled: true,
+    accountRef: "a".repeat(32),
+    credentialRef: "fixture",
+    runtimePolicy: `cf-origin:${"b".repeat(64)}`,
+  }),
+}));
+vi.mock("./cloudflareProductionProviderInventory", () => ({
+  probeCloudflareProductionProviderInventory: async () => ({
+    status: "CHECKED",
+    accessChecks: {
+      zone: { complete: true },
+      routes: { complete: true },
+      workerDeployments: { complete: true },
+      workerVersions: [{ complete: true }],
+    },
+    domainRoute: {
+      zoneId: "c".repeat(32),
+      inventoryComplete: true,
+      attached: fixture.routeLive,
+      conflicting: false,
+      routeId: fixture.routeLive ? "f".repeat(32) : null,
+      script: fixture.routeLive ? "smartspec-cloudflare-runtime" : null,
+    },
+    worker: {
+      activeDeploymentId: fixture.routeLive
+        ? "33333333-3333-4333-8333-333333333333"
+        : "11111111-1111-4111-8111-111111111111",
+      versions: [
+        {
+          versionId: fixture.routeLive
+            ? "44444444-4444-4444-8444-444444444444"
+            : "22222222-2222-4222-8222-222222222222",
+        },
+      ],
+    },
+  }),
+}));
+vi.mock("./cloudflareStagingArtifactAuthority", async original => ({
+  ...(await original<any>()),
+  resolveCloudflareStagingBundle: async () => ({
+    moduleFiles: {
+      "index.js": {
+        bytes: new TextEncoder().encode("/_ops/application-canary/ingress/"),
+      },
+    },
+  }),
+  resolveLatestPublishedCloudflareStagingArtifact: async () => ({
+    artifactRef: `sha256:${"d".repeat(64)}`,
+    buildDigest: "d".repeat(64),
+    sourceSha: "e".repeat(40),
+  }),
+}));
+vi.mock("./cloudflareOriginConfiguration", async original => ({
+  ...(await original<any>()),
+  getCloudflareOriginConfiguration: async () => ({
+    status: "STORED",
+    configurationDigest: "b".repeat(64),
+    descriptor: {
+      origin: "https://origin.fixture.invalid",
+      ingressMode: "production-origin-bridge-v1",
+      expiresAt: fixture.expiry,
+    },
+  }),
+  withCloudflareOriginConfiguration: async (
+    _db: any,
+    _scope: any,
+    operation: any
+  ) =>
+    operation({
+      secrets: {
+        token: "fixture-origin-credential",
+        clientId: "fixture-client-id",
+        secret: "fixture-client-secret",
+        applicationCanaryToken: "p".repeat(32),
+      },
+    }),
+}));
+vi.mock("./appRuntimeConfig", async original => ({
+  ...(await original<any>()),
+  getAppRuntimeConfig: async () => ({
+    pythonBackendUrl: "https://approval.fixture.invalid",
+    webGatewayToken: "fixture-gateway-token",
+  }),
+}));
+vi.mock("./jobControlPlaneGateway", async original => {
+  const actual = await original<any>();
+  return {
+    ...actual,
+    createControlPlaneJob: async (input: any) => {
+      if (fixture.beforeCommit) {
+        fixture.beforeCommit = false;
+        throw new Error("fixture admission unavailable");
+      }
+      const result = await actual.createControlPlaneJob(input);
+      if (fixture.afterCommit) {
+        fixture.afterCommit = false;
+        throw new Error("fixture response lost after commit");
+      }
+      return result;
+    },
+  };
+});
+const suite =
+  process.env.RUN_CLOUDFLARE_PRODUCTION_DB_INTEGRATION === "true"
+    ? describe
+    : describe.skip;
+suite(
+  "Production ingress authenticated canonical admission in disposable PostgreSQL",
+  () => {
+    let disposable: any, client: any, closeDb: any, caller: any;
+    let original: Record<string, string | undefined>;
+    const grants = new Map<string, any>(),
+      requests: any[] = [];
+    beforeAll(async () => {
+      original = Object.fromEntries(
+        [
+          "DATABASE_URL",
+          "NODE_ENV",
+          "CLOUDFLARE_PRODUCTION_EXECUTOR_ID",
+          "AUTH_ORIGIN_TOKEN",
+          "AUTH_ORIGIN_PRIVATE_HOST",
+          "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS",
+        ].map(k => [k, process.env[k]])
+      );
+      disposable = await (
+        await import("./__tests__/support/spec277DisposablePostgres")
+      ).createSpec277DisposablePostgres();
+      Object.assign(process.env, {
+        DATABASE_URL: disposable.databaseUrl,
+        NODE_ENV: "test",
+        CLOUDFLARE_PRODUCTION_EXECUTOR_ID: "fixture-executor",
+        AUTH_ORIGIN_TOKEN: "fixture-origin-credential",
+        AUTH_ORIGIN_PRIVATE_HOST: "origin.fixture.invalid",
+        AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify([
+          "https://smartaihub.app",
+          "https://runtime.smartaihub.app",
+        ]),
+      });
+      vi.resetModules();
+      client = (await import("postgres")).default(disposable.databaseUrl, {
+        max: 2,
+      });
+      const schema = await import("../../drizzle/schema");
+      await (
+        await import("./__tests__/support/spec277AutoTeamRuntimeSchema")
+      ).installSpec277AutoTeamRuntimeSchema(client, [
+        schema.systemSettings,
+        schema.users,
+        schema.tenants,
+        schema.tenantDataTransferPlans,
+        schema.tenantIdentityActions,
+      ]);
+      await client`INSERT INTO users(id,"openId",role) VALUES(17,'isolated-ingress-owner','admin')`;
+      ({ closeDb } = await import("../db"));
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async (url: any, init: any) => {
+          const parsed = new URL(String(url));
+          if (
+            parsed.pathname ===
+            "/api/v1/approvals/internal/cloudflare-production-capabilities"
+          )
+            return new Response(
+              JSON.stringify({
+                grantSchemas: ["cloudflare.production-ingress-grant.v1"],
+              }),
+              { status: 200 }
+            );
+          if (parsed.hostname === "origin.fixture.invalid")
+            return new Response(
+              JSON.stringify({ result: { data: { json: null } } }),
+              { status: 200, headers: { "content-type": "application/json" } }
+            );
+          if (
+            parsed.href !==
+              "https://approval.fixture.invalid/api/v1/approvals/cloudflare-production-grants" ||
+            init?.method !== "POST"
+          )
+            throw new Error("UNEXPECTED_FIXTURE_NETWORK_OPERATION");
+          const request = JSON.parse(init.body);
+          requests.push(request);
+          let grant = grants.get(request.idempotencyKey);
+          if (!grant) {
+            const grantRef = randomUUID();
+            const { idempotencyKey, ...document } = request;
+            grant = {
+              ...document,
+              grantRef,
+              tenantId: "tenant-ingress-fixture",
+              requesterUserId: 17,
+              revokedAt: null,
+              operation: { ...document.operation, grantRef },
+            };
+            grants.set(idempotencyKey, grant);
+          }
+          return new Response(
+            JSON.stringify({
+              id: grant.grantRef,
+              status: "approved",
+              payload: grant,
+            }),
+            { status: 201 }
+          );
+        })
+      );
+      const { infrastructureRouter } =
+        await import("../routers/infrastructure");
+      caller = infrastructureRouter.createCaller({
+        user: {
+          id: 17,
+          role: "admin",
+          currentTenantId: "tenant-ingress-fixture",
+        },
+        tenantId: "tenant-ingress-fixture",
+        userToken: "isolated-owner-token",
+        req: { requestId: "isolated-ingress-admission" },
+      } as any);
+    }, 30000);
+    afterAll(async () => {
+      vi.unstubAllGlobals();
+      if (closeDb) await closeDb();
+      if (client) await client.end({ timeout: 3 });
+      if (disposable) await disposable.close();
+      for (const [k, v] of Object.entries(original ?? {})) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }, 20000);
+    async function submission(projectId: string) {
+      const identity = {
+        tenantId: "tenant-ingress-fixture",
+        projectId,
+        environment: "production",
+      };
+      const preflight =
+        await caller.getCloudflareProductionIngressPreflight(identity);
+      expect(preflight.ready).toBe(true);
+      return {
+        ...identity,
+        submissionId: randomUUID(),
+        planDigest: preflight.planDigest,
+        exposure: "100-percent-http-origin-bridge",
+      };
+    }
+    it("reconciles a post-commit timeout and prevents duplicate grant/job/outbox", async () => {
+      const input = await submission("ingress-commit-fixture");
+      fixture.afterCommit = true;
+      await expect(
+        caller.queueCloudflareProductionIngress(input)
+      ).resolves.toMatchObject({ jobId: input.submissionId, status: "queued" });
+      await expect(
+        caller.queueCloudflareProductionIngress(input)
+      ).resolves.toMatchObject({ jobId: input.submissionId, status: "queued" });
+      expect(requests).toHaveLength(1);
+      expect(grants.size).toBe(1);
+      const [job] =
+        await client`SELECT status,attempt,"maxAttempts","contractVersion" FROM worker_jobs WHERE id=${input.submissionId}`;
+      expect(job).toMatchObject({
+        status: "queued",
+        attempt: 1,
+        maxAttempts: 1,
+        contractVersion: "cloudflare-production-ingress-v1",
+      });
+      expect(
+        (
+          await client`SELECT count(*)::int AS n FROM worker_job_outbox WHERE "workerJobId"=${input.submissionId}`
+        )[0].n
+      ).toBe(1);
+    });
+    it("retains exact approved scope on pre-commit failure and recovers the same Submission ID", async () => {
+      const input = await submission("ingress-retry-fixture");
+      fixture.beforeCommit = true;
+      await expect(
+        caller.queueCloudflareProductionIngress(input)
+      ).rejects.toMatchObject({
+        message: "PRODUCTION_INGRESS_ADMISSION_UNKNOWN",
+      });
+      const checkpoint =
+        await client`SELECT "valueJson" FROM system_settings WHERE category='cloudflare_production_ingress_submissions' AND key=${input.submissionId}`;
+      expect(checkpoint).toHaveLength(1);
+      await expect(
+        caller.queueCloudflareProductionIngress(input)
+      ).resolves.toMatchObject({ jobId: input.submissionId, status: "queued" });
+      expect(requests[1]).toEqual(requests[2]);
+      expect(grants.size).toBe(2);
+      expect(
+        (
+          await client`SELECT count(*)::int AS n FROM worker_jobs WHERE id=${input.submissionId}`
+        )[0].n
+      ).toBe(1);
+      await expect(
+        caller.queueCloudflareProductionIngress({
+          ...input,
+          tenantId: "foreign-tenant",
+        })
+      ).rejects.toMatchObject({ code: "FORBIDDEN" });
+      expect(requests).toHaveLength(3);
+    });
+    it("admits a new exact receipt-bound rollback through the same Owner/grant/job path", async () => {
+      const input = await submission("ingress-rollback-fixture");
+      await caller.queueCloudflareProductionIngress(input);
+      const sourceGrant = grants.get(
+        `cf-production-ingress:${input.submissionId}`
+      );
+      const receipt = {
+        grantRef: sourceGrant.grantRef,
+        routeId: "f".repeat(32),
+        deploymentId: "33333333-3333-4333-8333-333333333333",
+        versionId: "44444444-4444-4444-8444-444444444444",
+        verifiedAt: new Date().toISOString(),
+        productionTrafficShifted: true,
+      };
+      // Only this disposable fixture simulates an already accepted provider receipt.
+      await client`UPDATE worker_jobs SET status='succeeded',"activeDedupeKey"=NULL,"outputJson"=${client.json(receipt)} WHERE id=${input.submissionId}`;
+      fixture.routeLive = true;
+      const plan = await caller.getCloudflareProductionIngressRollbackPreflight(
+        {
+          tenantId: input.tenantId,
+          projectId: input.projectId,
+          environment: "production",
+          jobId: input.submissionId,
+        }
+      );
+      expect(plan.ready).toBe(true);
+      const rollbackId = randomUUID();
+      await expect(
+        caller.queueCloudflareProductionIngress({
+          ...input,
+          submissionId: rollbackId,
+          planDigest: plan.planDigest,
+          rollbackJobId: input.submissionId,
+        })
+      ).resolves.toMatchObject({ jobId: rollbackId, status: "queued" });
+      const [job] =
+        await client`SELECT "inputJson" FROM worker_jobs WHERE id=${rollbackId}`;
+      expect(job.inputJson).toMatchObject({
+        action: "ingress-rollback",
+        previousRoute: { state: "absent" },
+        ingressReceipt: {
+          routeId: receipt.routeId,
+          grantRef: sourceGrant.grantRef,
+        },
+      });
+      fixture.routeLive = false;
+      await expect(
+        caller.getCloudflareProductionIngressRollbackPreflight({
+          tenantId: input.tenantId,
+          projectId: input.projectId,
+          environment: "production",
+          jobId: input.submissionId,
+        })
+      ).resolves.toMatchObject({
+        ready: false,
+        reason: "INGRESS_ROLLBACK_PROVIDER_CHANGED",
+      });
+    });
+  }
+);

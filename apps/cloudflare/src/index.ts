@@ -1,3 +1,4 @@
+import { handleProductionOriginCanary, PRODUCTION_ORIGIN_CANARY_PREFIX } from "./productionOriginCanary";
 import { assertBindingReadiness, assertBindingSubset, inspectBindingReadiness } from "./bindings";
 import { createFailClosedConsumer, CloudflareQueueConsumer, parseCanonicalEnvelope } from "./queueConsumer";
 import { publishCanonicalQueueMessage } from "./nativeAdapters";
@@ -98,6 +99,7 @@ export function createCloudflareWorker(
         if (env.CLOUDFLARE_ENVIRONMENT !== "production" || env.CLOUDFLARE_INGRESS_MODE !== "production-origin-bridge-v1") {
           return json({ error: "PRODUCTION_INGRESS_MODE_INVALID" }, 503);
         }
+        if (url.pathname.startsWith(PRODUCTION_ORIGIN_CANARY_PREFIX)) return handleProductionOriginCanary(request, env);
         if (request.headers.get("upgrade")?.toLowerCase() === "websocket") return proxyWebSocketToOrigin(request, env);
         const upstream = await proxyAuthToOrigin(request, env);
         const headers = new Headers(upstream.headers);

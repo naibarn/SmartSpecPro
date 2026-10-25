@@ -67,3 +67,32 @@ describe("M2 production origin bridge without M1/M3 workload bindings", () => {
     expect(response.status).toBe(503); expect(fetchOrigin).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Bounded anonymous ingress probes before apex-route attachment",()=>{
+  const scoped={...env,CLOUDFLARE_APPLICATION_CANARY_TOKEN:"p".repeat(32)};
+  it.each(["web","auth"])("probes %s using the fixed apex tenant context without forwarding credentials",async route=>{
+    const fetchOrigin=vi.fn(async(request:Request)=>{
+      expect(request.headers.get("x-forwarded-host")).toBe("smartaihub.app");
+      expect(new URL(request.url).pathname).toBe(route==="web"?"/":"/trpc/auth.me");
+      expect(request.headers.get("authorization")).toBeNull();expect(request.headers.get("cookie")).toBeNull();
+      expect(request.headers.get("x-smartaihub-application-canary-token")).toBeNull();
+      return new Response("accepted",{headers:{"set-cookie":"unwanted=private; Path=/"}});
+    });vi.stubGlobal("fetch",fetchOrigin);
+    const result=await createCloudflareWorker().fetch(new Request(`https://runtime.smartaihub.app/_ops/application-canary/ingress/${route}`,{
+      headers:{"x-smartaihub-application-canary-token":"p".repeat(32),cookie:"app_session_id=private",authorization:"Bearer private"}}),scoped);
+    expect(result.status).toBe(200);expect(result.headers.get("set-cookie")).toBeNull();expect(fetchOrigin).toHaveBeenCalledOnce();
+  });
+  it.each([
+    ["https://runtime.smartaihub.app/_ops/application-canary/ingress/auth","GET",undefined,404],
+    ["https://runtime.smartaihub.app/_ops/application-canary/ingress/auth","GET","wrong",404],
+    ["https://runtime.smartaihub.app/_ops/application-canary/ingress/auth","POST","p".repeat(32),405],
+    ["https://smartaihub.app/_ops/application-canary/ingress/auth","GET","p".repeat(32),404],
+    ["https://runtime.smartaihub.app/_ops/application-canary/ingress/auth?tenant=foreign","GET","p".repeat(32),404],
+    ["https://runtime.smartaihub.app/_ops/application-canary/ingress/admin","GET","p".repeat(32),404],
+  ])("denies unscoped probe %s %s",async(url,method,token,status)=>{
+    const fetchOrigin=vi.fn();vi.stubGlobal("fetch",fetchOrigin);
+    const response=await createCloudflareWorker().fetch(new Request(url as string,{method:method as string,
+      headers:token?{"x-smartaihub-application-canary-token":token as string}:{}}),scoped);
+    expect(response.status).toBe(status);expect(fetchOrigin).not.toHaveBeenCalled();
+  });
+});

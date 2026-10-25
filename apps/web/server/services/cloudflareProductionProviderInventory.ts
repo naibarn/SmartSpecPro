@@ -38,8 +38,8 @@ export async function probeCloudflareProductionProviderInventory(input: {
   const target = await resolveCloudflareProductionDeploymentTarget(input);
   if (!target) return { status: "TARGET_NOT_CONFIGURED" as const, checkedAt: new Date().toISOString() };
   let originConfiguration: { status: "NOT_CONFIGURED" | "STORED" | "EXPIRED" | "REVOKED" | "INVALID";
-    applicationHttpConfigured: boolean; applicationHttpReadyForRequests: boolean; queueProfileConfigured: boolean } = {
-    status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false,
+    ingressModeConfigured: boolean; applicationHttpConfigured: boolean; applicationHttpReadyForRequests: boolean; queueProfileConfigured: boolean } = {
+    status: "NOT_CONFIGURED", ingressModeConfigured: false, applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false,
   };
   if (target.runtimePolicy) {
     try {
@@ -49,12 +49,13 @@ export async function probeCloudflareProductionProviderInventory(input: {
       });
       originConfiguration = {
         status: config.status,
+        ingressModeConfigured: config.descriptor.ingressMode === "production-origin-bridge-v1",
         applicationHttpConfigured: Boolean(config.descriptor.applicationHttp),
         applicationHttpReadyForRequests: Boolean(config.descriptor.applicationHttp && !config.descriptor.applicationHttpPhase),
         queueProfileConfigured: config.descriptor.jobTransport === "queues",
       };
     } catch {
-      originConfiguration = { status: "INVALID", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false };
+      originConfiguration = { status: "INVALID", ingressModeConfigured: false, applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false };
     }
   }
   const fetched = await withCloudflareDeploymentCredential(input.db, {
@@ -152,7 +153,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
           { scope: "Account", permission: "Containers Edit", operations: ["POST/PATCH /accounts/{account_id}/containers/applications for selected Node/Python production apps"] },
           { scope: "Zone", permission: "Zone Read", operations: ["GET /zones?name=smartaihub.app"] },
           { scope: "Zone", permission: "Workers Routes Read", operations: ["GET /zones/{zone_id}/workers/routes"] },
-          { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes for the exact smartaihub.app/* route during the authorized canary"] },
+          { scope: "Zone", permission: "Workers Routes Edit", operations: ["POST /zones/{zone_id}/workers/routes for the exact smartaihub.app/* route during the authorized canary", "DELETE /zones/{zone_id}/workers/routes/{exact_receipt_route_id} for authorized ingress rollback"] },
         ],
         conditionalPermissions: [
           { scope: "Account", permission: "SSL and Certificates Read + Write", condition: "only if migrating the existing direct-origin Staging Hyperdrive trust before rotating the shared PostgreSQL leaf certificate; Production VPC TLS is configured on the VPC Service and must not use Hyperdrive mtls settings" },
@@ -178,8 +179,11 @@ export async function probeCloudflareProductionProviderInventory(input: {
             ...(typeof row.host?.resolver_network?.tunnel_id === "string" && /^[a-f0-9-]{36}$/i.test(row.host.resolver_network.tunnel_id) ? { tunnelId: row.host.resolver_network.tunnel_id } : {}),
             environment: /(?:^|-)production(?:-|$)/i.test(row.name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(row.name) ? "staging" as const : "other" as const }] : []),
       domainRoute: { inventoryComplete: Boolean(routes?.complete), attached: matchingRoutes.length === 1 && matchingRoutes[0].script === target.targetId,
+        routeId: matchingRoutes.length === 1 && typeof matchingRoutes[0].id === "string" ? matchingRoutes[0].id : null,
+        script: matchingRoutes.length === 1 && typeof matchingRoutes[0].script === "string" ? matchingRoutes[0].script : null,
+        zoneId: zoneId ?? null,
         conflicting: matchingRoutes.length > 1 || (matchingRoutes.length === 1 && matchingRoutes[0].script !== target.targetId) },
-      worker: { deploymentInventoryComplete: deployments.complete && Array.isArray(deploymentRows), deploymentCount: records.length,
+      worker: { activeDeploymentId: typeof first?.id === "string" ? first.id : null, deploymentInventoryComplete: deployments.complete && Array.isArray(deploymentRows), deploymentCount: records.length,
         activeVersionCount: active.length, versions: versionDetails },
     };
   });

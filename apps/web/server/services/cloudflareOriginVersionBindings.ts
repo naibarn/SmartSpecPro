@@ -75,7 +75,7 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
       Boolean(settings.retentionSchedule) !== Boolean(secrets.retentionToken) ||
       (namespaceOnly && !settings.applicationHttp) ||
       Boolean(settings.applicationHttp && !namespaceOnly) !== Boolean(secrets.applicationHttp) ||
-      Boolean(settings.applicationHttp && !namespaceOnly) !== Boolean(secrets.applicationCanaryToken) ||
+      Boolean((settings.applicationHttp && !namespaceOnly) || settings.ingressMode) !== Boolean(secrets.applicationCanaryToken) ||
       (settings.applicationHttpPhase && (settings.applicationHttp?.traffic !== undefined || settings.applicationHttp?.realtime !== undefined)) ||
       (settings.applicationHttp && (settings.mediaProbe || Date.parse(settings.applicationHttp.expiresAt) > Date.parse(settings.expiresAt))) ||
       (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase?.plan.publicRunnerCatalogSourceJobId)) {
@@ -89,7 +89,8 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
   if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog && !value.descriptor.applicationHttp && !value.descriptor.ingressMode) return [];
   return [
-    ...(value.descriptor.ingressMode ? [{ name: "CLOUDFLARE_INGRESS_MODE", type: "plain_text", text: value.descriptor.ingressMode }] : []),
+    ...(value.descriptor.ingressMode ? [{ name: "CLOUDFLARE_INGRESS_MODE", type: "plain_text", text: value.descriptor.ingressMode },
+      { name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
       { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),

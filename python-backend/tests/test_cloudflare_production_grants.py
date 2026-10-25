@@ -206,3 +206,85 @@ async def test_production_grant_revoke_is_tenant_scoped_audited_and_idempotent()
     assert second is request
     assert db.add.call_count == 1
     assert db.commit.await_count == 2
+
+
+def _ingress_payload():
+    base = _grant_payload()
+    return {key: base[key] for key in ("grantRef", "jobId", "tenantId", "requesterUserId", "projectId", "executorId",
+                                      "targetId", "environment", "accountRef", "expiresAt", "revokedAt")} | {
+        "schemaVersion": "cloudflare.production-ingress-grant.v1", "exposure": "100-percent-http-origin-bridge",
+        "actions": ["deploy", "rollback"], "maxDurationSeconds": 900,
+        "operation": {key: base[key] for key in ("grantRef", "projectId", "targetId", "environment", "zoneId", "routePattern",
+                                                "artifactRef", "sourceSha", "buildDigest", "configurationRef", "configurationDigest")} | {
+            "contractVersion": "cloudflare-production-ingress-v1", "action": "ingress-canary",
+            "runtimeBaselineDeploymentId": base["rollbackDeploymentId"],
+            "runtimeBaselineVersionId": "44444444-4444-4444-8444-444444444444",
+            "previousRoute": {"state": "absent"}, "ingressReceipt": None,
+        },
+    }
+
+
+@pytest.mark.unit
+def test_origin_ingress_grant_preserves_exact_route_release_scope():
+    payload = _ingress_payload()
+    assert normalize_cloudflare_production_grant_payload(payload) == payload
+    for change in ({"exposure": "1-percent"}, {"actions": ["deploy"]}, {"maxDurationSeconds": 901},
+                   {"targetId": "foreign"}, {"unbounded": True}):
+        with pytest.raises(ValueError, match="INGRESS_GRANT_INVALID"):
+            normalize_cloudflare_production_grant_payload({**payload, **change})
+    for change in ({"grantRef": "55555555-5555-4555-8555-555555555555"}, {"previousRoute": {"state": "attached"}},
+                   {"routePattern": "*.smartaihub.app/*"}, {"action": "ingress-rollback"}):
+        with pytest.raises(ValueError, match="INGRESS_GRANT_INVALID"):
+            normalize_cloudflare_production_grant_payload({**payload, "operation": {**payload["operation"], **change}})
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_ingress_uses_existing_admin_approval_and_idempotent_grant_binding():
+    db = AsyncMock()
+    db.add = Mock()
+    db.execute.side_effect = [SimpleNamespace(scalar_one_or_none=Mock(return_value="admin")), SimpleNamespace()]
+    service = ApprovalDBService(db)
+    service.get_request_by_correlation = AsyncMock(return_value=None)
+    request = await service.create_cloudflare_production_grant_request(
+        tenant_id="tenant-1", requester_id=17, idempotency_key="production-ingress-001", payload=_ingress_payload(),
+    )
+    assert request.status == ApprovalStatus.APPROVED
+    assert request.payload["grantRef"] == request.payload["operation"]["grantRef"] == request.id
+    assert request.required_approvers == 1
+    assert request.payload["operation"]["previousRoute"] == {"state": "absent"}
+    assert db.add.call_count == 3
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_ingress_issue_endpoint_requires_authenticated_admin_and_tenant():
+    from app.api.approvals import CloudflareProductionIngressGrantIssue
+    payload = _ingress_payload()
+    issue = CloudflareProductionIngressGrantIssue.model_validate({
+        key: value for key, value in payload.items() if key not in ("grantRef", "requesterUserId", "tenantId", "revokedAt")
+    } | {"idempotencyKey": "production-ingress-001"})
+    db = AsyncMock()
+    for user, tenant in ((SimpleNamespace(id=17, role="user"), "tenant-1"),
+                         (SimpleNamespace(id=17, role="admin", currentTenantId="foreign"), "tenant-1")):
+        with pytest.raises(HTTPException) as raised:
+            await create_cloudflare_production_grant_request(issue, current_user=user, tenant_id=tenant, db=db)
+        assert raised.value.status_code == 403
+    db.execute.assert_not_awaited()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_serving_ingress_capability_requires_existing_gateway_authority(monkeypatch):
+    from fastapi import Response
+    from app.api.approvals import cloudflare_production_capabilities
+    checker = Mock()
+    monkeypatch.setattr("app.api.approvals._assert_cloudflare_staging_gateway_token", checker)
+    response = Response()
+    capabilities = await cloudflare_production_capabilities(response, x_internal_token="fixture-gateway-token")
+    checker.assert_called_once_with("fixture-gateway-token")
+    assert "cloudflare.production-ingress-grant.v1" in capabilities["grantSchemas"]
+    assert response.headers["Cache-Control"] == "no-store"
+    checker.side_effect = HTTPException(status_code=401, detail="UNAUTHORIZED")
+    with pytest.raises(HTTPException):
+        await cloudflare_production_capabilities(Response(), x_internal_token=None)

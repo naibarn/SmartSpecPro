@@ -61,6 +61,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   // Staging deployment authority is still enforced by the registered
   // executor's exact owner grant, target, artifact and rollback checks.
   "cloudflare.staging.deploy",
+  "cloudflare.production.deploy",
   // Production Queue preparation is a narrowly scoped, canonical provider
   // operation. Its executor revalidates the exact saved target and job lease;
   // it cannot bind a Worker or change traffic.

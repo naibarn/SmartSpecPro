@@ -1,7 +1,7 @@
 import { forwardApplicationHttpBridge, resolveApplicationHttpStub, type ApplicationHttpBindings } from "./applicationHttpBridge";
 
 export const APPLICATION_HTTP_CANARY_PREFIX = "/_ops/application-canary/";
-async function sameToken(actual: string | null, expected: string | undefined) {
+export async function sameToken(actual: string | null, expected: string | undefined) {
   if (!actual || !expected || actual.length > 4096 || expected.length < 32 || expected.length > 4096) return false;
   const hash = (value: string) => crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   const [left, right] = await Promise.all([hash(actual), hash(expected)]);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
@@ -497,6 +497,31 @@ export default function AdminDeploymentTargets() {
     productionDatabaseJobData.attempt === 2 && productionDatabaseJobData.maxAttempts === 2;
 
   const productionScopeKey = `${tenantId}:${projectId}:production`;
+  const productionIngressSubmissions=useRef(new Map<string,{submissionId:string;planDigest:string}>());
+  const ingressSubmission=(key:string,planDigest:string)=>{
+    let submission=productionIngressSubmissions.current.get(key);
+    if(!submission)try {const value=JSON.parse(sessionStorage.getItem(key)??"null");
+      if(value&&/^[a-f0-9-]{36}$/.test(value.submissionId)&&/^[a-f0-9]{64}$/.test(value.planDigest))submission=value;
+    }catch{/* In-memory continuity still works when browser storage is unavailable. */}
+    if(!submission)submission={submissionId:crypto.randomUUID(),planDigest};
+    productionIngressSubmissions.current.set(key,submission);
+    try{sessionStorage.setItem(key,JSON.stringify(submission));}catch{/* The canonical admission remains authoritative. */}
+    return submission;
+  };
+  const productionIngressPreflight = trpc.infrastructure.getCloudflareProductionIngressPreflight.useQuery(
+    {tenantId,projectId,environment:"production"}, {enabled:validScope&&environment==="production"});
+  const latestProductionIngressJob = trpc.infrastructure.getLatestCloudflareProductionIngressJob.useQuery(
+    {tenantId,projectId,environment:"production"}, {enabled:validScope&&environment==="production",refetchInterval:query=>
+      query.state.data&&! ["succeeded","failed","expired","cancelled"].includes(query.state.data.status)?2000:false});
+  const productionIngressRollback = trpc.infrastructure.getCloudflareProductionIngressRollbackPreflight.useQuery(
+    {tenantId,projectId,environment:"production",jobId:latestProductionIngressJob.data?.jobId??"00000000-0000-4000-8000-000000000000"},
+    {enabled:validScope&&environment==="production"&&latestProductionIngressJob.data?.status==="succeeded"&&
+      latestProductionIngressJob.data.output?.productionTrafficShifted===true});
+  const productionIngressMutation = trpc.infrastructure.queueCloudflareProductionIngress.useMutation({
+    onSuccess:async()=>{await latestProductionIngressJob.refetch();await productionProviderInventory.refetch();},
+    onError:()=>{void latestProductionIngressJob.refetch();},
+  });
+
   const targets = validScope ? (targetsQuery.data ?? []) as DeploymentTarget[] : [];
   const cloudflareTargets = targets.filter(target => target.provider === "cloudflare");
   const stagingCloudflareTargets = ((stagingTargetsQuery.data ?? []) as DeploymentTarget[])
@@ -622,6 +647,18 @@ export default function AdminDeploymentTargets() {
     },
   });
   const text = useText();
+  const ingressBlockerText=(reason:string)=>{
+    const messages:Record<string,[string,string]>={
+      PRODUCTION_APPROVAL_INGRESS_CONTRACT_NOT_SERVING:["The approval backend needs the ingress release before confirmation is available.","ต้องเผยแพร่ backend ที่รองรับการย้ายทางเข้าเว็บก่อน จึงจะแสดงปุ่มยืนยัน"],
+      PRODUCTION_APPROVAL_INGRESS_CONTRACT_UNAVAILABLE:["The approval service contract could not be verified.","ยังตรวจสอบความพร้อมของบริการอนุมัติไม่ได้"],
+      PUBLISHED_INGRESS_PROBE_ARTIFACT_REQUIRED:["The tested ingress Worker bundle must be published first.","ต้องเผยแพร่ Worker bundle ที่มีชุดตรวจ ingress ก่อน ยังไม่ต้องกดยืนยัน"],
+      LINUX_ORIGIN_PRODUCTION_TRUST_NOT_CONFIGURED:["The Worker-to-Linux production connection needs configuration.","ต้องตั้งค่าการยืนยันตัวตนระหว่าง Worker กับ Linux สำหรับ Production ให้ครบก่อน"],
+      RETAINED_ORIGIN_AUTH_PROBE_FAILED:["The existing Linux authentication endpoint failed its ingress probe.","การตรวจระบบยืนยันตัวตนผ่าน Linux origin ยังไม่ผ่าน ต้องแก้ก่อนเปิดทางเข้าเว็บ"],
+      INGRESS_ROUTE_ALREADY_EXISTS:["A production ingress route already exists; use its receipt and rollback controls.","มี route ของ Production แล้ว ให้ดูผลการย้ายและปุ่มคืนทางเข้าเดิมด้านล่าง"],
+      OWNER_SESSION_AUTHORITY_UNAVAILABLE:["The current session cannot submit approval to the authority service.","session ปัจจุบันยังส่งการยืนยันไปยังบริการอนุมัติไม่ได้ ต้องตรวจการเข้าสู่ระบบ"],
+    };
+    const pair=messages[reason];return pair?text(pair[0],pair[1]):text("Readiness checks must pass before the migration can start.","ต้องเตรียมระบบให้ผ่านการตรวจความพร้อมก่อนเริ่มย้าย");
+  };
   const setNewField = (key: keyof TargetFields) => (event: ChangeEvent<HTMLInputElement>) =>
     setFields(current => ({ ...current, [key]: event.target.value }));
 
@@ -630,8 +667,8 @@ export default function AdminDeploymentTargets() {
       <VStack gap={1}>
         <h2>{text("Deployment targets", "Deployment targets")}</h2>
         <p>{text(
-          "Manage Cloudflare target metadata for preview, staging, and production. This page does not deploy an app, enable traffic, change DNS/routes, or run migrations.",
-          "จัดการ metadata ของ Cloudflare target สำหรับ preview, staging และ production หน้านี้ไม่ได้ deploy แอป เปิด traffic เปลี่ยน DNS/routes หรือรัน migration",
+          "Prepare Cloudflare connections, check deployment readiness, and approve the exact production ingress operation shown below.",
+          "เตรียมการเชื่อมต่อ Cloudflare ตรวจความพร้อม และยืนยันการย้ายทางเข้าเว็บ Production ตามขอบเขตที่แสดงด้านล่าง",
         )}</p>
         <p>{text("Project ID and App ID are separate identities. The registry stores project/environment scope, not an App ID.", "Project ID และ App ID เป็นคนละ identity โดย registry เก็บ scope ของ project/environment และไม่ได้เก็บ App ID")}
           {" "}{text("Project Wiki package App ID:", "Project Wiki package App ID:")} <code>{PROJECT_WIKI_APP_ID}</code>
@@ -757,6 +794,7 @@ export default function AdminDeploymentTargets() {
             <h3>{text("Live Cloudflare production Worker readiness", "ความพร้อมของ Cloudflare production Worker ที่กำลังทำงาน")}</h3>
             <Button type="button" variant="outline" size="sm" onClick={() => void Promise.all([
               productionRuntimeReadiness.refetch(), productionProviderInventory.refetch(),
+              productionIngressPreflight.refetch(),latestProductionIngressJob.refetch(),
             ])} disabled={productionRuntimeReadiness.isFetching || productionProviderInventory.isFetching}>
               {text("Check now", "ตรวจสอบตอนนี้")}
             </Button>
@@ -810,6 +848,33 @@ export default function AdminDeploymentTargets() {
           })() : null}
           <Divider />
           <strong>{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
+          <VStack as="section" gap={2} role="group" aria-label={text("Cloudflare ingress migration", "ย้ายทางเข้าเว็บไป Cloudflare")}>
+            <h3>{text("Cloudflare ingress: web and API", "ทางเข้าเว็บและ API ผ่าน Cloudflare")}</h3>
+            {productionIngressPreflight.isLoading ? <p role="status">{text("Checking the exact route, runtime baseline, origin authentication and artifact…", "กำลังตรวจ route, baseline, ระบบยืนยันตัวตนของ origin และ artifact…")}</p> : null}
+            {productionIngressPreflight.isError ? <p role="alert">{text("Ingress readiness could not be checked. Use Check now to retry.","ตรวจความพร้อมทางเข้าเว็บไม่สำเร็จ ให้กดตรวจสอบตอนนี้อีกครั้ง")}</p> : null}
+            {productionIngressPreflight.data?.ready ? <>
+              <p>{text("This approval routes all smartaihub.app HTTP traffic through the Cloudflare Worker to the existing Linux application. Node/Python and PostgreSQL stay on Linux during this phase.", "การยืนยันนี้ให้ HTTP ทั้งหมดของ smartaihub.app ผ่าน Cloudflare Worker ไปยังแอป Linux เดิม ในขั้นนี้ Node/Python และ PostgreSQL ยังอยู่ Linux")}</p>
+              <p>{text("Origin", "Origin")}: <code>{productionIngressPreflight.data.origin}</code> · {text("Release", "รุ่น")}: <code>{productionIngressPreflight.data.artifact.sourceSha}</code></p>
+              <p>{text("The job tests the candidate through runtime.smartaihub.app before attaching smartaihub.app/*. If web/auth acceptance fails, it removes the exact created route and restores the previous Worker deployment. DNS stays on its current configuration.", "งานจะทดสอบ candidate ผ่าน runtime.smartaihub.app ก่อนผูก smartaihub.app/* หากตรวจเว็บหรือระบบยืนยันตัวตนไม่ผ่าน จะถอด route ที่สร้างและคืน Worker deployment เดิม โดยใช้ DNS ปัจจุบัน")}</p>
+              <Button type="button" disabled={productionIngressMutation.isPending||Boolean(latestProductionIngressJob.data)} onClick={()=>{
+                const key=`smartaihub-production-ingress:${productionScopeKey}`;
+                const submission=ingressSubmission(key,productionIngressPreflight.data!.ready?productionIngressPreflight.data!.planDigest:"");
+                productionIngressMutation.mutate({tenantId,projectId,environment:"production",...submission,exposure:"100-percent-http-origin-bridge"});
+              }}>{productionIngressMutation.isPending?text("Submitting the same ingress operation…", "กำลังส่งคำขอย้ายทางเข้าเว็บ…"):text("Approve Cloudflare ingress canary and start migration", "ยืนยัน canary ทางเข้าผ่าน Cloudflare และเริ่มย้าย")}</Button>
+            </> : productionIngressPreflight.data ? <VStack gap={1} role="status"><p>{ingressBlockerText(productionIngressPreflight.data.reason)}</p><details><summary>{text("Technical reason", "เหตุผลทางเทคนิค")}</summary><code>{productionIngressPreflight.data.reason}</code></details></VStack> : null}
+            {productionIngressRollback.data?.ready&&latestProductionIngressJob.data ? <Button type="button" disabled={productionIngressMutation.isPending} onClick={()=>{
+              const key=`smartaihub-production-ingress-rollback:${productionScopeKey}:${latestProductionIngressJob.data!.jobId}`;
+              const submission=ingressSubmission(key,productionIngressRollback.data!.ready?productionIngressRollback.data!.planDigest:"");
+              productionIngressMutation.mutate({tenantId,projectId,environment:"production",...submission,
+                rollbackJobId:latestProductionIngressJob.data!.jobId,exposure:"100-percent-http-origin-bridge"});
+            }}>{text("Restore the previous Linux ingress", "คืนทางเข้าเดิมบน Linux")}</Button> : null}
+            {productionIngressMutation.error ? <p role="alert"><code>{productionIngressMutation.error.message}</code> · {text("Retry reconciles the same stored Submission ID.", "การตรวจซ้ำใช้ Submission ID เดิม")}</p> : null}
+            {latestProductionIngressJob.data ? <VStack gap={1} role="status">
+              <p>{text("Ingress job", "งานย้ายทางเข้าเว็บ")}: <code>{latestProductionIngressJob.data.jobId}</code> · <strong>{latestProductionIngressJob.data.status}</strong></p>
+              {latestProductionIngressJob.data.errorCode ? <p role="alert"><code>{latestProductionIngressJob.data.errorCode}</code></p> : null}
+              {latestProductionIngressJob.data.output?.productionTrafficShifted===true ? <p>{text("Worker ingress receipt", "หลักฐานทางเข้าผ่าน Worker")}: <code>{String(latestProductionIngressJob.data.output.routeId)}</code> · {text("Application runtime: Linux", "แอปยังประมวลผลบน Linux")}</p> : null}
+            </VStack> : null}
+          </VStack>
           {productionProviderInventory.isLoading ? <p role="status">{text("Reading Production queues, Hyperdrive, VPC services, Worker versions, and domain route…", "กำลังตรวจ Queue, Hyperdrive, VPC service, Worker version และ route ของ Production…")}</p> : null}
           {productionProviderInventory.isError ? <p role="alert">{text("Cloudflare resource inventory could not be read. No provider changes were made.", "อ่าน inventory ของ Cloudflare ไม่สำเร็จ และไม่มีการเปลี่ยนแปลง resource")}</p> : null}
           {productionProviderInventory.data ? (() => {

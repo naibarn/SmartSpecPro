@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => ({
   prepareProductionQueue: vi.fn(),
   prepareProductionDatabase: vi.fn(),
   resumeProductionDatabase: vi.fn(),
+  ingressPreflight: null as any,
+  ingressJob: null as any,
+  queueProductionIngress: vi.fn(),
   databaseAdmissionUnknownOnce: false,
   activateStagingProfile: vi.fn(),
   activationError: null as string | null,
@@ -127,6 +130,10 @@ vi.mock("@/lib/trpc", () => ({
         },
         isPending: false, error: null,
       }) },
+      getCloudflareProductionIngressPreflight: {useQuery:()=>({data:mocks.ingressPreflight,isLoading:false,refetch:vi.fn()})},
+      getLatestCloudflareProductionIngressJob: {useQuery:()=>({data:mocks.ingressJob,refetch:vi.fn()})},
+      getCloudflareProductionIngressRollbackPreflight: {useQuery:()=>({data:null,refetch:vi.fn()})},
+      queueCloudflareProductionIngress: {useMutation:()=>({isPending:false,mutate:mocks.queueProductionIngress,error:null})},
       resumeExpiredCloudflareProductionDatabaseJob: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
         mutate: (input: unknown) => { mocks.resumeProductionDatabase(input); void options.onSuccess?.({ jobId: "b9ca8316-1604-4764-a769-d92f46e4c823" }); },
         isPending: false, error: null,
@@ -217,6 +224,8 @@ describe("AdminDeploymentTargets", () => {
     mocks.targetsError = false;
     mocks.latestProductionQueueJob = null;
     mocks.latestProductionDatabaseJob = null;
+    mocks.ingressPreflight = null;
+    mocks.ingressJob = null;
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
     mocks.productionTunnels = [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }];
@@ -743,6 +752,31 @@ describe("AdminDeploymentTargets", () => {
       ...(guardFailure ? { authorizeAdditionalAttempt: true } : {}),
     }));
     expect(mocks.prepareProductionDatabase).not.toHaveBeenCalled();
+  });
+
+  it("shows explicit full HTTP ingress scope and reuses the same Submission ID on retry", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime",runtimePolicy:null}];
+    mocks.ingressPreflight={ready:true,origin:"https://origin-staging.smartaihub.app",artifact:{sourceSha:"a".repeat(40)},planDigest:"b".repeat(64)};
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.getByText(/routes all smartaihub.app HTTP traffic/i)).toBeInTheDocument();
+    const button=screen.getByRole("button",{name:"Approve Cloudflare ingress canary and start migration"});
+    await user.click(button);await user.click(button);
+    expect(mocks.queueProductionIngress).toHaveBeenCalledTimes(2);
+    const first=mocks.queueProductionIngress.mock.calls[0][0];
+    expect(first).toMatchObject({tenantId,projectId,environment:"production",exposure:"100-percent-http-origin-bridge",planDigest:"b".repeat(64)});
+    expect(mocks.queueProductionIngress.mock.calls[1][0]).toEqual(first);
+  });
+
+  it("shows the serving ingress receipt separately from the retained Linux runtime", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime",runtimePolicy:null}];
+    mocks.ingressPreflight={ready:false,reason:"INGRESS_ROUTE_ALREADY_EXISTS"};
+    mocks.ingressJob={jobId:"11111111-1111-4111-8111-111111111111",status:"succeeded",output:{productionTrafficShifted:true,routeId:"f".repeat(32)}};
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.getByText(/Application runtime: Linux/i)).toBeInTheDocument();
+    expect(screen.getByText("f".repeat(32))).toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:"Approve Cloudflare ingress canary and start migration"})).not.toBeInTheDocument();
   });
 
   it("allows keyboard selection among multiple verified production Tunnels and keeps the choice on inventory refresh", async () => {
