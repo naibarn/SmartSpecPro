@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   appendJobEvent,
@@ -12,6 +12,7 @@ import {
 } from "../jobControlPlane";
 import { assertCanonicalJobTransition } from "../jobControlPlaneTypes";
 import type { JobControlPlaneRepository } from "../jobControlPlane";
+import { registerJobSettlementHook, resetJobSettlementHooksForTests } from "../jobSettlementHooks";
 
 function makeRepository() {
   const jobs = new Map<string, any>();
@@ -2187,6 +2188,25 @@ describe("job control plane", () => {
     expect(state.jobs.get(created.jobId).status).toBe("queued");
     expect(state.jobs.get(created.jobId).attempt).toBe(2);
     expect(state.transitions.slice(-1)).toEqual(["expired->queued"]);
+  });
+
+  it("runs the existing settlement hook after a deadline expiration", async () => {
+    resetJobSettlementHooksForTests();
+    const hook = vi.fn(async () => undefined);
+    registerJobSettlementHook("test.expiring_job", hook);
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "test.expiring_job",
+      idempotencyKey: undefined,
+      retryPolicy: { ...definition.retryPolicy, maxAttempts: 1, deadlineMs: 10, deadlineMode: "fixed" },
+    });
+    state.jobs.get(created.jobId).createdAt = new Date(Date.now() - 1000);
+
+    await expect(controlPlane.expireDeadline(created.jobId, new Date())).resolves.toBe("expired");
+    expect(hook).toHaveBeenCalledWith(created.jobId);
+    resetJobSettlementHooksForTests();
   });
 
   it("does not expire pre-policy queued backlog during the rollout", async () => {

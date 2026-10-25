@@ -6945,13 +6945,13 @@ export function createJobControlPlane(
       jobId: string,
       now = new Date()
     ): Promise<"expired" | "ignored"> {
-      return repository.transaction(async repo => {
+      const result = await repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         if (
           !job ||
           ["succeeded", "failed", "cancelled", "expired"].includes(job.status)
         )
-          return "ignored";
+          return { outcome: "ignored" as const, jobType: undefined };
         const externalWait =
           job.progressJson &&
           typeof job.progressJson === "object" &&
@@ -6965,12 +6965,12 @@ export function createJobControlPlane(
           job.status === "waiting_external" &&
           externalWait?.operationKey?.startsWith("storyboard.pause:")
         )
-          return "ignored";
+          return { outcome: "ignored" as const, jobType: undefined };
         const policy = (job.retryPolicyJson ?? {}) as Record<string, unknown>;
         // Keep pre-policy backlog untouched during rollout. Only jobs admitted
         // with an explicit deadline mode participate in automatic expiry.
         if (policy.deadlineMode !== "adaptive" && policy.deadlineMode !== "fixed")
-          return "ignored";
+          return { outcome: "ignored" as const, jobType: undefined };
         const deadlineMs = await getEffectiveWorkerJobDeadlineMs({
           jobType: job.jobType,
           contractVersion: job.contractVersion,
@@ -6983,7 +6983,7 @@ export function createJobControlPlane(
           timeoutSeconds: job.timeoutSeconds,
         });
         if (now.getTime() < job.createdAt.getTime() + deadlineMs)
-          return "ignored";
+          return { outcome: "ignored" as const, jobType: undefined };
         const updated = await repo.updateJob({
           jobId,
           expectedStatus: job.status,
@@ -6999,7 +6999,7 @@ export function createJobControlPlane(
             finishedAt: now,
           },
         });
-        if (!updated) return "ignored";
+        if (!updated) return { outcome: "ignored" as const, jobType: undefined };
         const currentAttempt = await repo.findAttempt(jobId, job.attempt);
         if (currentAttempt)
           await repo.updateAttempt({
@@ -7029,15 +7029,17 @@ export function createJobControlPlane(
           eventIdempotencyKey: `deadline-expired:${jobId}:${job.attempt}`,
           payloadJson: { reason: "job_deadline" },
         });
-        return "expired";
+        return { outcome: "expired" as const, jobType: job.jobType };
       });
+      if (result.outcome === "expired") await runExpiredJobSettlementHook(jobId, result.jobType);
+      return result.outcome;
     },
 
     async recoverExpiredLease(
       jobId: string,
       now = new Date()
     ): Promise<"recovered" | "ignored"> {
-      return repository.transaction(async repo => {
+      const result = await repository.transaction(async repo => {
         const job = await repo.findJob(jobId);
         if (
           !job ||
@@ -7045,12 +7047,12 @@ export function createJobControlPlane(
           !job.leaseExpiresAt ||
           job.leaseExpiresAt > now
         )
-          return "ignored";
+          return { outcome: "ignored" as const, jobType: undefined, status: undefined };
         const currentAttempt = await repo.findAttempt(jobId, job.attempt);
         const policy = (job.retryPolicyJson ?? {}) as Record<string, unknown>;
         // Legacy jobs remain reviewable and are not automatically requeued.
         if (policy.deadlineMode !== "adaptive" && policy.deadlineMode !== "fixed")
-          return "ignored";
+          return { outcome: "ignored" as const, jobType: undefined, status: undefined };
         const effectiveDeadlineMs = await getEffectiveWorkerJobDeadlineMs({
           jobType: job.jobType,
           contractVersion: job.contractVersion,
@@ -7107,7 +7109,7 @@ export function createJobControlPlane(
               "Execution lease expired before the attempt completed",
           },
         });
-        if (!updated) return "ignored";
+        if (!updated) return { outcome: "ignored" as const, jobType: undefined, status: undefined };
         if (currentAttempt)
           await repo.updateAttempt({
             attemptId: currentAttempt.id,
@@ -7169,8 +7171,12 @@ export function createJobControlPlane(
             jitter: shouldRetry ? jitter : undefined,
           },
         });
-        return "recovered";
+        return { outcome: "recovered" as const, jobType: job.jobType, status: nextStatus };
       });
+      if (result.outcome === "recovered" && result.status === "expired") {
+        await runExpiredJobSettlementHook(jobId, result.jobType);
+      }
+      return result.outcome;
     },
 
     async assertActive(lease: LeaseContext): Promise<void> {
@@ -7437,3 +7443,15 @@ export {
   validateJobDefinition,
   normalizeIdempotencyKey,
 };
+async function runExpiredJobSettlementHook(jobId: string, jobType: string | undefined): Promise<void> {
+  if (!jobType) return;
+  try {
+    await runJobSettlementHooks({ jobId, jobType });
+  } catch (error) {
+    console.error("[Feature186] post-expiry hook failed", {
+      jobId,
+      jobType,
+      error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
+    });
+  }
+}

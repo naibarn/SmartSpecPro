@@ -703,7 +703,7 @@ export async function resolvePersonalMiniAppFactoryHome(
   const remainingStages = workProgress && Array.isArray(workProgress.remainingScope)
     ? workProgress.remainingScope.filter((stage): stage is string => typeof stage === "string")
     : [];
-  let latestStage: { id: string; status: string; errorCode: string | null; errorMessage: string | null; inputJson: Record<string, unknown>; createdAt: Date; startedAt: Date | null; finishedAt: Date | null; heartbeatAt: Date | null } | null = null;
+  let latestStage: { id: string; status: string; errorCode: string | null; errorMessage: string | null; inputJson: Record<string, unknown>; createdAt: Date; startedAt: Date | null; finishedAt: Date | null; heartbeatAt: Date | null; leaseExpiresAt: Date | null } | null = null;
   if (run?.runId) {
     try {
       const [stage] = await getDb().select({
@@ -716,6 +716,7 @@ export async function resolvePersonalMiniAppFactoryHome(
         startedAt: workerJobs.startedAt,
         finishedAt: workerJobs.finishedAt,
         heartbeatAt: workerJobs.heartbeatAt,
+        leaseExpiresAt: workerJobs.leaseExpiresAt,
       }).from(workerJobs).where(and(
         eq(workerJobs.tenantId, input.tenantId),
         eq(workerJobs.requestedByUserId, input.userId),
@@ -730,25 +731,33 @@ export async function resolvePersonalMiniAppFactoryHome(
   const failureCode = factory.blockerState && typeof factory.blockerState === "object"
     ? (factory.blockerState as Record<string, unknown>).code
     : null;
-  const activeStage = Boolean(latestStage && ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled"].includes(latestStage.status));
-  const failureRecorded = latestStage?.status === "failed" || (!latestStage && root?.status === "failed") || (typeof failureCode === "string" && Boolean(failureCode));
-  const failed = failureRecorded && !activeStage;
-  const isInProgress = !failed && (activeStage || remainingStages.length > 0);
   const latestStageInput = latestStage?.inputJson && typeof latestStage.inputJson === "object" ? latestStage.inputJson : {};
+  const latestStageId = typeof latestStageInput.stageId === "string" ? latestStageInput.stageId : null;
+  const completedScope = workProgress && Array.isArray(workProgress.completedScope)
+    ? workProgress.completedScope.filter((stage): stage is string => typeof stage === "string")
+    : [];
+  const activeStageStatus = Boolean(latestStage && ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled"].includes(latestStage.status));
+  const orphanedStage = Boolean(activeStageStatus && latestStage?.leaseExpiresAt && latestStage.leaseExpiresAt.getTime() <= Date.now());
+  const activeStage = activeStageStatus && !orphanedStage;
+  const cancelledStage = latestStage?.status === "cancelled" || latestStage?.status === "canceled";
+  const latestFailureApplies = Boolean(latestStage && ["failed", "expired"].includes(latestStage.status) && latestStageId && remainingStages.includes(latestStageId));
+  const failureRecorded = !cancelledStage && (latestFailureApplies || (!latestStage && root?.status === "failed") || (typeof failureCode === "string" && Boolean(failureCode)));
+  const failed = failureRecorded && !activeStage;
+  const isInProgress = !failed && !cancelledStage && (activeStage || orphanedStage || remainingStages.length > 0);
   const immediatelyRunnable = workProgress && Array.isArray(workProgress.immediatelyRunnableScope)
     ? workProgress.immediatelyRunnableScope.filter((stage): stage is string => typeof stage === "string")
     : [];
-  const currentStage = typeof latestStageInput.stageId === "string"
-    ? latestStageInput.stageId
-    : typeof factory.currentStage === "string" ? factory.currentStage : immediatelyRunnable[0] ?? null;
-  const rawErrorMessage = latestStage?.status === "failed" ? latestStage.errorMessage : !latestStage && root?.status === "failed" ? root.errorMessage : null;
+  const currentStage = latestStageId && remainingStages.includes(latestStageId)
+    ? latestStageId
+    : immediatelyRunnable[0] ?? remainingStages[0] ?? (typeof factory.currentStage === "string" ? factory.currentStage : null);
+  const rawErrorMessage = latestFailureApplies ? latestStage?.errorMessage : !latestStage && root?.status === "failed" ? root.errorMessage : null;
   const errorMessage = rawErrorMessage
     ? rawErrorMessage
         .replace(/\b(?:sk-[A-Za-z0-9_-]{12,}|(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{12,})\b/g, "[redacted]")
         .replace(/\b(authorization|api[_-]?key|access[_-]?token)\s*[:=]\s*[^\s,;]+/gi, "$1=[redacted]")
         .slice(0, 600)
     : null;
-  const jobState = latestStage?.status ?? root?.status ?? "unknown";
+  const jobState = orphanedStage ? "orphaned" : latestStage?.status ?? root?.status ?? "unknown";
   const milestone = activeStage
     ? hasUsableArtifact ? "PREVIEW_AVAILABLE" : "BUILDING"
     : resolvePersonalMiniAppHomeMilestone({
@@ -771,13 +780,19 @@ export async function resolvePersonalMiniAppFactoryHome(
     latestStageStatus: latestStage?.status ?? null,
     latestStageUpdatedAt: (latestStage?.heartbeatAt ?? latestStage?.finishedAt ?? latestStage?.startedAt ?? latestStage?.createdAt)?.toISOString() ?? null,
     retryState: factory.retryState && typeof factory.retryState === "object" ? factory.retryState : { status: "READY", attempt: 0 },
-    retryable: Boolean(failed && (!latestStage || latestStage.status === "failed") && remainingStages.includes(currentStage ?? "")),
+    retryable: Boolean(failed && remainingStages.includes(currentStage ?? "")),
+    latestStageCheckpointed: Boolean(latestStageId && completedScope.includes(latestStageId)),
+    recoveryNeeded: Boolean(
+      !activeStage && !orphanedStage && currentStage && remainingStages.includes(currentStage) && (
+        latestFailureApplies || Boolean(latestStageId && completedScope.includes(latestStageId) && remainingStages.length > 0)
+      )
+    ),
     completedStages: Array.isArray(factory.completedStages) ? factory.completedStages : [],
     artifacts,
     appSourceDigest: typeof factory.appSourceDigest === "string" ? factory.appSourceDigest : null,
     repository: factory.repository && typeof factory.repository === "object" ? factory.repository : null,
     repositoryState: typeof repositoryState === "string" ? repositoryState.slice("app-repository-state:".length) : factory.repository ? "BOUND" : "PROVISIONING_PENDING",
     sourceSnapshotRef: typeof factory.sourceSnapshotRef === "string" ? factory.sourceSnapshotRef : typeof sourceSnapshot === "string" ? sourceSnapshot.slice("app-source:".length) : null,
-    error: failureRecorded && !activeStage ? { code: typeof failureCode === "string" ? failureCode : latestStage?.errorCode ?? root?.errorCode, message: errorMessage } : null,
+    error: failureRecorded && !activeStage ? { code: latestFailureApplies ? latestStage?.errorCode ?? failureCode : typeof failureCode === "string" ? failureCode : latestStage?.errorCode ?? root?.errorCode, message: errorMessage } : null,
   };
 }

@@ -8,6 +8,8 @@ import {
   buildMiniAppFactoryStageJobDefinition,
   createMiniAppFactoryStageJobExecutor,
   enqueueNextMiniAppFactoryStage,
+  isAutoRecoverableMiniAppFactoryError,
+  scheduleMiniAppFactoryStageRetry,
   MINI_APP_FACTORY_STAGE_CONTRACT,
   parseMiniAppFactoryStageJobInput,
 } from "./miniAppFactoryStageWorker";
@@ -72,6 +74,56 @@ describe("Mini App Factory worker_jobs binding", () => {
       context: expect.objectContaining({ tenantId: run.tenantId, actorType: "user", actorId: run.actorId }),
       definition: expect.objectContaining({ jobType: "mini_app_factory.stage", input: expect.objectContaining({ runId: run.runId, stageId: "SPEC" }) }),
     }));
+  });
+
+  it("schedules a bounded recovery attempt on the existing Personal Mini-App run", async () => {
+    const run = makeRun();
+    const createJob = vi.fn(async () => ({ jobId: "same-run-recovery-job", created: true }));
+    const service = {
+      get: vi.fn(async () => ({ run, revision: 1, events: [] })),
+      recordVerificationEvent: vi.fn(async () => ({ accepted: true })),
+    };
+    const recovered = await scheduleMiniAppFactoryStageRetry({
+      pipeline,
+      service: service as any,
+      run: { runId: run.runId, tenantId: run.tenantId, actorId: run.actorId },
+      appId: "app_test",
+      stageId: "SPEC",
+      createJob: createJob as any,
+    });
+
+    expect(recovered).toEqual({ jobId: "same-run-recovery-job", stageId: "SPEC", attempt: 1, created: true });
+    expect(service.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
+      runId: run.runId,
+      idempotencyKey: `miniapp-factory-retry:${run.runId}:SPEC:1`,
+      payload: expect.objectContaining({ outcome: "RETRY_SCHEDULED", attempt: 1 }),
+    }));
+    expect(createJob).toHaveBeenCalledWith(expect.objectContaining({
+      definition: expect.objectContaining({ input: expect.objectContaining({ runId: run.runId, stageId: "SPEC" }) }),
+    }));
+  });
+
+  it("bounds automatic repair to recoverable errors and three durable attempts", async () => {
+    expect(isAutoRecoverableMiniAppFactoryError("LLMStructuredOutputError")).toBe(true);
+    expect(isAutoRecoverableMiniAppFactoryError("ETIMEDOUT")).toBe(true);
+    expect(isAutoRecoverableMiniAppFactoryError("MINI_APP_OWNER_BINDING_NOT_FOUND")).toBe(false);
+    const run = makeRun();
+    const exhausted = {
+      ...run,
+      metadata: {
+        [MINI_APP_FACTORY_STATE_KEY]: {
+          ...run.metadata?.[MINI_APP_FACTORY_STATE_KEY],
+          retryState: { status: "READY", attempt: 3 },
+        },
+      },
+    };
+    await expect(scheduleMiniAppFactoryStageRetry({
+      pipeline,
+      service: { get: async () => ({ run: exhausted, revision: 1, events: [] }) } as any,
+      run: { runId: run.runId, tenantId: run.tenantId, actorId: run.actorId },
+      appId: "app_test",
+      stageId: "SPEC",
+    })).rejects.toThrow("MINI_APP_STAGE_RETRY_EXHAUSTED");
   });
 
   it("persists exactly the leased stage checkpoint before returning success and resumes duplicate delivery idempotently", async () => {

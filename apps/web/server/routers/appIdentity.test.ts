@@ -1,5 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ scheduleRetry: vi.fn(async () => ({ jobId: "recovery-job", created: true, attempt: 1, stageId: "ui_implementation" })) }));
 vi.mock("../services/personalMiniAppPreview", () => ({ resolvePersonalMiniAppPreview: vi.fn() }));
+vi.mock("../services/miniAppFactoryStageWorker", () => ({
+  isAutoRecoverableMiniAppFactoryError: (code: unknown) => code === "LLMStructuredOutputError",
+  scheduleMiniAppFactoryStageRetry: (...args: unknown[]) => mocks.scheduleRetry(...args),
+}));
+vi.mock("../services/miniAppFactoryPipeline", () => ({ loadMiniAppFactoryPipeline: () => ({ pipelineId: "test" }) }));
+vi.mock("../services/spec224DevelopmentRunPersistence", () => ({
+  createDevelopmentRunService: () => ({ get: vi.fn(), recordVerificationEvent: vi.fn() }),
+  defaultDevelopmentRunPersistenceAdapter: {},
+}));
 import { createAppIdentityRouter } from "./appIdentity";
 import * as appIdentityRepository from "../services/appIdentityRepository";
 
@@ -128,6 +138,40 @@ describe("appIdentity runtime router", () => {
       tenantId: "tenant-owner",
       userId: 91,
     });
+  });
+
+  it("automatically resumes a recoverable failed stage for the authenticated private owner", async () => {
+    mocks.scheduleRetry.mockClear();
+    const resolved = vi.fn()
+      .mockResolvedValueOnce({
+        app: { appId: "app_existing", tenantId: "tenant-owner", ownerUserId: 91, visibility: "private" },
+        html: null,
+        factory: {
+          recoveryNeeded: true,
+          retryable: true,
+          runId: "run-existing",
+          currentStage: "ui_implementation",
+          error: { code: "LLMStructuredOutputError" },
+        },
+      })
+      .mockResolvedValueOnce({
+        app: { appId: "app_existing", tenantId: "tenant-owner", ownerUserId: 91, visibility: "private" },
+        html: null,
+        factory: { jobState: "queued", isInProgress: true },
+      });
+    const service = {
+      resolveAppRouteForTenant: vi.fn(), resolveActiveAppByPublicId: vi.fn(), createPrivateMiniAppIdentity: vi.fn(),
+      resolveMiniAppForViewer: vi.fn(), setMiniAppVisibility: vi.fn(), resolvePersonalMiniAppPreview: resolved,
+    };
+    const owner = createAppIdentityRouter(service).createCaller({ user: { id: 91, currentTenantId: "tenant-owner" }, tenantId: "tenant-owner" } as any);
+
+    await expect(owner.resolveMiniApp({ appId: "app_existing" })).resolves.toMatchObject({ factory: { jobState: "queued" } });
+    expect(mocks.scheduleRetry).toHaveBeenCalledWith(expect.objectContaining({
+      appId: "app_existing",
+      run: { runId: "run-existing", tenantId: "tenant-owner", actorId: 91 },
+      stageId: "ui_implementation",
+    }));
+    expect(resolved).toHaveBeenCalledTimes(2);
   });
 
   it("returns private artifact bytes to the owner and no app data to another user", async () => {

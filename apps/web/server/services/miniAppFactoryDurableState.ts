@@ -173,6 +173,7 @@ export function failMiniAppFactoryDurableState(
     deliveryMilestone: state.profile === "PERSONAL_MINIAPP" && state.deliveryMilestone !== "PREVIEW_AVAILABLE" && state.deliveryMilestone !== "VERIFICATION_PENDING" && state.deliveryMilestone !== "USER_TRIAL_READY"
       ? "BUILD_FAILED"
       : state.deliveryMilestone,
+    retryState: { status: "READY", attempt: state.retryState.attempt },
     blockerState: { status: "NONE", code },
   };
 }

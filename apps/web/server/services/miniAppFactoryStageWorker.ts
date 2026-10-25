@@ -9,6 +9,10 @@ import type { JobExecutor } from "./jobExecutor";
 import type { JobDefinition } from "./jobControlPlaneTypes";
 import type { JobExecutorRegistry } from "./jobExecutorRegistry";
 import type { DevelopmentRunScope, createDevelopmentRunService } from "./spec224DevelopmentRunPersistence";
+import { registerJobSettlementHook } from "./jobSettlementHooks";
+import { getDb } from "../db";
+import { workerJobs } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 export const MINI_APP_FACTORY_STAGE_JOB_TYPE = "mini_app_factory.stage";
 export const MINI_APP_FACTORY_STAGE_CONTRACT = "mini-app-factory-stage-v1";
@@ -91,16 +95,83 @@ export function buildMiniAppFactoryStageJobDefinition(input: {
     idempotencyKey: `mini-app-factory-stage:${attemptDigest}`,
     activeDedupeKey: `mini-app-factory-stage:${digest}`,
     retryPolicy: {
-      maxAttempts: 3,
+      // The durable DevelopmentRun retryState owns the cross-job budget.
+      // Keep each business attempt single-shot so retries cannot multiply billing.
+      maxAttempts: 1,
       baseDelayMs: 1_000,
       maxDelayMs: 60_000,
       jitter: "bounded",
       deadlineMs: 24 * 60 * 60 * 1000,
-      allowedErrorClasses: ["retryable", "unknown"],
+      deadlineMode: "fixed",
+      allowedErrorClasses: ["retryable"],
     },
     timeoutPolicy: { softTimeoutMs: 15 * 60 * 1000, hardTimeoutMs: 20 * 60 * 1000 },
     requiredCapabilities: { miniAppFactory: true },
   };
+}
+
+const AUTO_RECOVERABLE_FACTORY_ERRORS = /^(?:LLMStructuredOutputError|PersonalMiniAppGenerationError|MINI_APP_FIELD_REPAIR_FAILED|MINI_APP_GENERATED_CONTENT_INVALID|JOB_DEADLINE_EXPIRED|JOB_HARD_TIMEOUT|WORKER_TIMEOUT|LEASE_EXPIRED|LEASE_EXPIRED_RETRYING|TimeoutError|AbortError|ETIMEDOUT|ECONNRESET|EAI_AGAIN|ECONNREFUSED|HTTP_?(?:408|429|5\d\d)|PROVIDER_(?:UNAVAILABLE|TIMEOUT|RATE_LIMITED)|GATEWAY_(?:UNAVAILABLE|TIMEOUT)|(?:08|40)[0-9A-Z]{3})$/i;
+
+export function isAutoRecoverableMiniAppFactoryError(code: unknown): boolean {
+  return typeof code === "string" && AUTO_RECOVERABLE_FACTORY_ERRORS.test(code.trim());
+}
+
+/** Enqueue a bounded, same-run attempt. Its active-dedupe key prevents parallel billing. */
+export async function scheduleMiniAppFactoryStageRetry(input: {
+  pipeline: MiniAppFactoryPipeline;
+  service: DevelopmentRunService;
+  run: MiniAppFactoryStageScope;
+  appId: string;
+  stageId: string;
+  retrySequence?: number;
+  createJob?: typeof createControlPlaneJob;
+}): Promise<{ jobId: string; stageId: string; attempt: number; created: boolean }> {
+  if (!/^app_[A-Za-z0-9_-]{1,120}$/.test(input.appId) || !stageIdPattern.test(input.stageId)) {
+    throw new Error("FACTORY_RETRY_BINDING_INVALID");
+  }
+  const current = await input.service.get(input.run);
+  if (!current.run.workUnit) throw new Error("DEVELOPMENT_WORK_UNIT_NOT_FOUND");
+  const state = parseMiniAppFactoryDurableState(current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
+  if (state.profile !== "PERSONAL_MINIAPP" || state.miniAppId !== input.appId) {
+    throw new Error("MINI_APP_RUN_BINDING_MISMATCH");
+  }
+  const eligible = selectReadyMiniAppFactoryStages(input.pipeline, current.run.workUnit, state.profile);
+  if (eligible[0] !== input.stageId || !current.run.workUnit.progress.remainingScope.includes(input.stageId)) {
+    throw new Error("MINI_APP_STAGE_NO_LONGER_ELIGIBLE");
+  }
+  let attempt = input.retrySequence ?? state.retryState.attempt + 1;
+  if (input.retrySequence === undefined && state.retryState.status === "RETRY_SCHEDULED") {
+    const priorDefinition = buildMiniAppFactoryStageJobDefinition({ ...input.run, stageId: input.stageId, retrySequence: state.retryState.attempt });
+    const [priorJob] = await getDb().select({ id: workerJobs.id, status: workerJobs.status })
+      .from(workerJobs).where(eq(workerJobs.idempotencyKey, priorDefinition.idempotencyKey)).limit(1);
+    if (!priorJob || ["pending", "queued", "leased", "running", "waiting_external", "retry_scheduled"].includes(priorJob.status)) {
+      attempt = state.retryState.attempt;
+    }
+  }
+  if (!Number.isSafeInteger(attempt) || attempt < 1 || attempt > 3) throw new Error("MINI_APP_STAGE_RETRY_EXHAUSTED");
+  const scheduledState = {
+    ...state,
+    retryState: { status: "RETRY_SCHEDULED" as const, attempt },
+    currentStage: input.stageId,
+    deliveryMilestone: state.appSourceDigest ? state.deliveryMilestone : "BUILDING" as const,
+    blockerState: { status: "NONE" as const, code: null },
+  };
+  await input.service.recordVerificationEvent({
+    ...input.run,
+    type: "VERIFICATION_OUTCOME",
+    idempotencyKey: `miniapp-factory-retry:${input.run.runId}:${input.stageId}:${attempt}`,
+    payload: { profile: "PERSONAL_MINIAPP", stageId: input.stageId, outcome: "RETRY_SCHEDULED", attempt },
+    runMetadata: { [MINI_APP_FACTORY_STATE_KEY]: scheduledState },
+  });
+  const queued = await enqueueNextMiniAppFactoryStage({
+    pipeline: input.pipeline,
+    service: input.service,
+    run: input.run,
+    retrySequence: attempt,
+    ...(input.createJob ? { createJob: input.createJob } : {}),
+  });
+  if (queued.stageId !== input.stageId || !queued.jobId) throw new Error("MINI_APP_STAGE_RETRY_ENQUEUE_FAILED");
+  return { jobId: queued.jobId, stageId: input.stageId, attempt, created: queued.created };
 }
 
 export async function enqueueNextMiniAppFactoryStage(input: {
@@ -252,6 +323,15 @@ export function createMiniAppFactoryStageJobExecutor(
         } catch {
           // The worker failure remains authoritative; the next durable attempt can repair a stale projection.
         }
+        const failure = error && typeof error === "object" ? error as Record<string, unknown> : {};
+        const recoveryCode = failure.code ?? failure.name ?? (error instanceof Error ? error.message.split(":", 1)[0] : null);
+        if (isAutoRecoverableMiniAppFactoryError(recoveryCode)) {
+          try {
+            Object.assign(error as object, { class: "retryable" });
+          } catch {
+            // The job's terminal settlement hook still schedules a fenced replacement if the error is immutable.
+          }
+        }
       }
       throw error;
     }
@@ -268,3 +348,42 @@ export function createMiniAppFactoryStageJobExecutor(
     } };
   };
 }
+
+registerJobSettlementHook(MINI_APP_FACTORY_STAGE_JOB_TYPE, async jobId => {
+  const [job] = await getDb().select({
+    tenantId: workerJobs.tenantId,
+    requestedByUserId: workerJobs.requestedByUserId,
+    status: workerJobs.status,
+    errorCode: workerJobs.errorCode,
+    inputJson: workerJobs.inputJson,
+  }).from(workerJobs).where(eq(workerJobs.id, jobId)).limit(1);
+  if (!job || !["failed", "expired"].includes(job.status) || !job.requestedByUserId) return;
+  const runtime = getConfiguredMiniAppFactoryStageWorkerRuntime();
+  if (!runtime) return;
+  const input = parseMiniAppFactoryStageJobInput(job.inputJson);
+  const run = { runId: input.runId, tenantId: job.tenantId, actorId: job.requestedByUserId };
+  const current = await runtime.service.get(run);
+  if (!current.run.workUnit) return;
+  const state = parseMiniAppFactoryDurableState(current.run.metadata?.[MINI_APP_FACTORY_STATE_KEY]);
+  if (state.profile !== "PERSONAL_MINIAPP") return;
+  const priorStageCheckpointed = current.run.workUnit.progress.completedScope.includes(input.stageId);
+  if (!priorStageCheckpointed && !isAutoRecoverableMiniAppFactoryError(job.errorCode)) return;
+  const ready = selectReadyMiniAppFactoryStages(runtime.pipeline, current.run.workUnit, state.profile);
+  const nextStageId = ready[0];
+  if (!nextStageId || state.retryState.attempt >= 3) return;
+  try {
+    await scheduleMiniAppFactoryStageRetry({
+      pipeline: runtime.pipeline,
+      service: runtime.service,
+      run,
+      appId: state.miniAppId,
+      stageId: nextStageId,
+    });
+  } catch (error) {
+    console.error("[MiniAppFactory] automatic stage recovery could not enqueue", {
+      jobId,
+      runId: input.runId,
+      errorCode: error instanceof Error ? error.message.slice(0, 120) : "FACTORY_AUTO_RECOVERY_FAILED",
+    });
+  }
+});

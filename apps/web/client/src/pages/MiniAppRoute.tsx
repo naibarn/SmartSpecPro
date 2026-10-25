@@ -31,6 +31,7 @@ function readableStatus(status?: string | null): string {
     waiting_external: "Waiting for provider",
     failed: "Failed",
     expired: "Timed out",
+    orphaned: "Worker stopped; checking recovery",
     cancelled: "Cancelled",
     completed: "Completed",
   };
@@ -102,7 +103,7 @@ function MiniAppHome({ appId, app, data, onChanged }: {
     : app?.appId ?? appId;
   const active = Boolean(factory?.isInProgress);
   const previewAvailable = Boolean(app?.lastKnownGoodArtifactRef && data.html);
-  const status = previewAvailable && !active ? "PREVIEW_AVAILABLE" : factory?.milestone ?? factory?.jobState ?? "BUILDING";
+  const status = previewAvailable && !active ? "PREVIEW_AVAILABLE" : ["orphaned", "expired", "cancelled", "canceled"].includes(factory?.jobState ?? "") ? factory?.jobState : factory?.milestone ?? factory?.jobState ?? "BUILDING";
   const statusVariant = active ? "accent" : factory?.jobState === "failed" || factory?.jobState === "expired" ? "error" : previewAvailable ? "success" : "warning";
   const artifactRefs = factory?.artifacts?.filter((value: string) => /^(?:app-source|app-artifact|app-candidate|package-digest|app-repository):/.test(value)) ?? [];
 
@@ -306,7 +307,13 @@ export default function MiniAppRoute() {
     {
       enabled: isMiniAppRoute,
       retry: false,
-      refetchInterval: query => query.state.data?.factory?.isInProgress || (!query.state.data?.app?.lastKnownGoodArtifactRef && !query.state.data?.factory?.error) ? 2_000 : false,
+      refetchInterval: query => {
+        const factory = query.state.data?.factory;
+        if (factory?.recoveryNeeded) return 5_000;
+        if (factory?.isInProgress) return 2_000;
+        const terminal = ["failed", "expired", "cancelled", "canceled"].includes(factory?.jobState ?? "");
+        return !terminal && !query.state.data?.app?.lastKnownGoodArtifactRef && !factory?.error ? 2_000 : false;
+      },
     },
   );
   const legacyQuery = trpc.appIdentity.resolvePublicApp.useQuery({ publicAppId }, { enabled: !isMiniAppRoute && Boolean(publicAppId), retry: false });

@@ -9,6 +9,11 @@ import {
   setMiniAppVisibility,
 } from "../services/appIdentityRepository";
 import { resolvePersonalMiniAppPreview } from "../services/personalMiniAppPreview";
+import { loadMiniAppFactoryPipeline } from "../services/miniAppFactoryPipeline";
+import { isAutoRecoverableMiniAppFactoryError, scheduleMiniAppFactoryStageRetry } from "../services/miniAppFactoryStageWorker";
+import { createDevelopmentRunService, defaultDevelopmentRunPersistenceAdapter } from "../services/spec224DevelopmentRunPersistence";
+
+const developmentRunService = createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter);
 
 type AppIdentityService = Pick<typeof import("../services/appIdentityRepository"), "resolveAppRouteForTenant" | "resolveActiveAppByPublicId" | "createPrivateMiniAppIdentity" | "resolveMiniAppForViewer" | "setMiniAppVisibility"> & {
   resolvePersonalMiniAppPreview?: typeof resolvePersonalMiniAppPreview;
@@ -72,10 +77,38 @@ export function createAppIdentityRouter(service: AppIdentityService = {
           tenantId: user?.currentTenantId == null ? null : String(user.currentTenantId),
           userId: user?.id == null ? null : Number(user.id),
         };
-        const app = service.resolvePersonalMiniAppPreview
+        let app = service.resolvePersonalMiniAppPreview
           ? await service.resolvePersonalMiniAppPreview(viewer)
           : await service.resolveMiniAppForViewer(viewer);
         if (!app) throw new TRPCError({ code: "NOT_FOUND", message: "Mini App unavailable" });
+        const preview = app as unknown as {
+          app?: { appId: string; ownerUserId: number | null; visibility: string };
+          factory?: { recoveryNeeded?: boolean; runId?: string | null; currentStage?: string | null; error?: { code?: string | null } | null; latestStageCheckpointed?: boolean } | null;
+        };
+        const recovery = preview.factory;
+        const recoveryAllowed = isAutoRecoverableMiniAppFactoryError(recovery?.error?.code) || recovery?.latestStageCheckpointed === true;
+        if (
+          service.resolvePersonalMiniAppPreview && preview.app?.visibility === "private" &&
+          preview.app.ownerUserId === viewer.userId && viewer.tenantId && viewer.userId &&
+          recovery?.recoveryNeeded && recoveryAllowed && recovery.runId && recovery.currentStage
+        ) {
+          try {
+            await scheduleMiniAppFactoryStageRetry({
+              pipeline: loadMiniAppFactoryPipeline(),
+              service: developmentRunService,
+              run: { runId: recovery.runId, tenantId: viewer.tenantId, actorId: viewer.userId },
+              appId: preview.app.appId,
+              stageId: recovery.currentStage,
+            });
+            app = await service.resolvePersonalMiniAppPreview(viewer) ?? app;
+          } catch (error) {
+            // Keep the durable App Home readable if queue recovery itself needs a later retry.
+            console.warn("[MiniAppFactory] App Home recovery enqueue deferred", {
+              appId: preview.app.appId,
+              code: error instanceof Error ? error.message.slice(0, 120) : "FACTORY_AUTO_RECOVERY_FAILED",
+            });
+          }
+        }
         return app;
       }),
     resolveRoute: protectedProcedure

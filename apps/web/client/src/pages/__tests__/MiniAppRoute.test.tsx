@@ -200,6 +200,20 @@ describe("MiniAppRoute", () => {
     expect(screen.getByText("Job: job-stage-1")).toBeInTheDocument();
   });
 
+  it("shows a cancelled run as terminal instead of polling forever as BUILDING", async () => {
+    mocks.miniAppParams = { appId: "app_cancelled" };
+    mocks.appQuery.data = {
+      app: { appId: "app_cancelled", visibility: "private", deploymentVersion: 0, lastKnownGoodArtifactRef: null },
+      html: null,
+      factory: { milestone: "BUILDING", jobState: "cancelled", isInProgress: false, remainingStages: ["ui_implementation"] },
+    };
+    render(<MiniAppRoute />);
+
+    expect(await screen.findByRole("heading", { name: "Cancelled" })).toBeInTheDocument();
+    const options = mocks.resolveMiniApp.mock.calls[0]?.[1] as { refetchInterval?: (query: any) => number | false };
+    expect(options.refetchInterval?.({ state: { data: mocks.appQuery.data } })).toBe(false);
+  });
+
   it("submits feedback as a continuation of the same App Workspace", async () => {
     mocks.miniAppParams = { appId: "app_existing" };
     mocks.appQuery.data = {
