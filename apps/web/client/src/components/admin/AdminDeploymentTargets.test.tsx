@@ -771,6 +771,33 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.queueProductionIngress.mock.calls[1][0]).toEqual(first);
   });
 
+  it.each(["failed", "expired", "cancelled"])("allows a fresh explicit Owner operation after %s while reconciling repeated clicks", async status => {
+    const user = userEvent.setup();
+    const previousJobId = "2d35afb4-3739-40b9-b67d-9dff04debfce";
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime", workerRef: "smartspec-cloudflare-runtime" }];
+    mocks.ingressPreflight = { ready: true, origin: "https://origin-staging.smartaihub.app", artifact: { sourceSha: "c".repeat(40) }, planDigest: "d".repeat(64) };
+    mocks.ingressJob = { jobId: previousJobId, status };
+    sessionStorage.setItem(`smartaihub-production-ingress:${tenantId}:${projectId}:production`, JSON.stringify({ submissionId: previousJobId, planDigest: "b".repeat(64) }));
+    render(<AdminDeploymentTargets />); await chooseProductionScope(user);
+    const button = screen.getByRole("button", { name: "Approve corrected Cloudflare ingress migration" });
+    expect(button).toBeEnabled(); expect(screen.getByText(/does not reuse the expired grant/)).toBeInTheDocument();
+    await user.click(button); await user.click(button);
+    const first = mocks.queueProductionIngress.mock.calls[0][0];
+    expect(first.submissionId).not.toBe(previousJobId);
+    expect(first.planDigest).toBe("d".repeat(64));
+    expect(mocks.queueProductionIngress.mock.calls[1][0]).toEqual(first);
+  });
+
+  it.each(["queued", "running", "succeeded", "review_required"])("blocks a duplicate ingress operation while the canonical job is %s", async status => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime", workerRef: "smartspec-cloudflare-runtime" }];
+    mocks.ingressPreflight = { ready: true, origin: "https://origin-staging.smartaihub.app", artifact: { sourceSha: "c".repeat(40) }, planDigest: "d".repeat(64) };
+    mocks.ingressJob = { jobId: "2d35afb4-3739-40b9-b67d-9dff04debfce", status };
+    render(<AdminDeploymentTargets />); await chooseProductionScope(user);
+    expect(screen.getByRole("button", { name: "Approve Cloudflare ingress canary and start migration" })).toBeDisabled();
+    expect(mocks.queueProductionIngress).not.toHaveBeenCalled();
+  });
+
   it("shows the serving ingress receipt separately from the retained Linux runtime", async () => {
     const user=userEvent.setup();
     mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime",runtimePolicy:null}];

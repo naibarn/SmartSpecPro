@@ -514,6 +514,9 @@ export default function AdminDeploymentTargets() {
   const latestProductionIngressJob = trpc.infrastructure.getLatestCloudflareProductionIngressJob.useQuery(
     {tenantId,projectId,environment:"production"}, {enabled:validScope&&environment==="production",refetchInterval:query=>
       query.state.data&&! ["succeeded","failed","expired","cancelled"].includes(query.state.data.status)?2000:false});
+  const previousIngressJob = latestProductionIngressJob.data;
+  const canReplaceTerminalIngressJob = Boolean(previousIngressJob &&
+    ["failed", "expired", "cancelled"].includes(previousIngressJob.status));
   const productionIngressRollback = trpc.infrastructure.getCloudflareProductionIngressRollbackPreflight.useQuery(
     {tenantId,projectId,environment:"production",jobId:latestProductionIngressJob.data?.jobId??"00000000-0000-4000-8000-000000000000"},
     {enabled:validScope&&environment==="production"&&latestProductionIngressJob.data?.status==="succeeded"&&
@@ -874,13 +877,17 @@ export default function AdminDeploymentTargets() {
             {productionIngressPreflight.data?.ready ? <>
               <p>{text("This approval routes all smartaihub.app HTTP traffic through the Cloudflare Worker to the existing Linux application. Node/Python and PostgreSQL stay on Linux during this phase.", "การยืนยันนี้ให้ HTTP ทั้งหมดของ smartaihub.app ผ่าน Cloudflare Worker ไปยังแอป Linux เดิม ในขั้นนี้ Node/Python และ PostgreSQL ยังอยู่ Linux")}</p>
               <p>{text("Origin", "Origin")}: <code>{productionIngressPreflight.data.origin}</code> · {text("Release", "รุ่น")}: <code>{productionIngressPreflight.data.artifact.sourceSha}</code></p>
+              <p>{text("Route", "Route")}: <code>{productionIngressPreflight.data.routePattern}</code> · {text("Immutable artifact", "Artifact ที่ตรวจสอบแล้ว")}: <code>{productionIngressPreflight.data.artifact.artifactRef}</code> · {text("Rollback version", "รุ่นสำหรับย้อนกลับ")}: <code>{productionIngressPreflight.data.runtimeBaselineVersionId}</code></p>
               <p>{text("The job tests the candidate through runtime.smartaihub.app before attaching smartaihub.app/*. If web/auth acceptance fails, it removes the exact created route and restores the previous Worker deployment. DNS stays on its current configuration.", "งานจะทดสอบ candidate ผ่าน runtime.smartaihub.app ก่อนผูก smartaihub.app/* หากตรวจเว็บหรือระบบยืนยันตัวตนไม่ผ่าน จะถอด route ที่สร้างและคืน Worker deployment เดิม โดยใช้ DNS ปัจจุบัน")}</p>
               <p>{text("Keep this Admin page open. After route attachment it automatically checks your existing session, tenant and authenticated API, then records the result through a protected write. Failure or no result within two minutes rolls back the route. This does not log you out or change your preferences.", "เปิดหน้า Admin นี้ไว้ หลังผูก route ระบบจะตรวจ session เดิม, tenant และ API ที่ต้องล็อกอิน แล้วบันทึกผลผ่านคำขอเขียนที่ตรวจสิทธิ์ หากไม่ผ่านหรือไม่มีผลภายใน 2 นาทีจะย้อน route กลับ โดยไม่ logout หรือเปลี่ยนการตั้งค่าของคุณ")}</p>
-              <Button type="button" disabled={productionIngressMutation.isPending||Boolean(latestProductionIngressJob.data)} onClick={()=>{
-                const key=`smartaihub-production-ingress:${productionScopeKey}`;
+              {canReplaceTerminalIngressJob ? <p>{text("The previous job ended. This confirmation authorizes the corrected release as a new operation; it does not reuse the expired grant or retry the old job.", "งานเดิมสิ้นสุดแล้ว การยืนยันนี้อนุมัติรุ่นที่แก้ไขเป็นคำขอใหม่ ไม่ใช้ grant ที่หมดอายุหรือลองงานเก่าซ้ำ")}</p> : null}
+              <Button type="button" disabled={productionIngressMutation.isPending||latestProductionIngressJob.isLoading||latestProductionIngressJob.isError||Boolean(previousIngressJob&&!canReplaceTerminalIngressJob)} onClick={()=>{
+                // A known terminal job permits a fresh Owner operation. Unknown
+                // admission outcomes keep their existing key for reconciliation.
+                const key=`smartaihub-production-ingress:${productionScopeKey}${canReplaceTerminalIngressJob?`:after:${previousIngressJob!.jobId}`:""}`;
                 const submission=ingressSubmission(key,productionIngressPreflight.data!.ready?productionIngressPreflight.data!.planDigest:"");
                 productionIngressMutation.mutate({tenantId,projectId,environment:"production",...submission,exposure:"100-percent-http-origin-bridge"});
-              }}>{productionIngressMutation.isPending?text("Submitting the same ingress operation…", "กำลังส่งคำขอย้ายทางเข้าเว็บ…"):text("Approve Cloudflare ingress canary and start migration", "ยืนยัน canary ทางเข้าผ่าน Cloudflare และเริ่มย้าย")}</Button>
+              }}>{productionIngressMutation.isPending?text("Submitting the same ingress operation…", "กำลังส่งคำขอย้ายทางเข้าเว็บ…"):canReplaceTerminalIngressJob?text("Approve corrected Cloudflare ingress migration", "ยืนยันย้ายทางเข้าเว็บด้วยรุ่นที่แก้ไขแล้ว"):text("Approve Cloudflare ingress canary and start migration", "ยืนยัน canary ทางเข้าผ่าน Cloudflare และเริ่มย้าย")}</Button>
             </> : productionIngressPreflight.data ? <VStack gap={1} role="status"><p>{ingressBlockerText(productionIngressPreflight.data.reason)}</p><details><summary>{text("Technical reason", "เหตุผลทางเทคนิค")}</summary><code>{productionIngressPreflight.data.reason}</code></details></VStack> : null}
             {productionIngressRollback.data?.ready&&latestProductionIngressJob.data ? <Button type="button" disabled={productionIngressMutation.isPending} onClick={()=>{
               const key=`smartaihub-production-ingress-rollback:${productionScopeKey}:${latestProductionIngressJob.data!.jobId}`;
