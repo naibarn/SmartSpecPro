@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use smartaihub_runner::{
     config::RunnerConfig,
     connection::{
-        connect_local_runner, load_connection, load_or_refresh, safe_refresh_error_code,
-        token_expiry_ms,
+        connect_local_runner, load_connection, load_or_refresh, safe_connect_error_code,
+        safe_refresh_error_code, token_expiry_ms,
     },
     diagnostics::{
         connection_status_cancellable, discover_local_tools,
@@ -89,6 +89,7 @@ struct RunnerState {
     readiness: Arc<Mutex<RunnerReadinessStatus>>,
     last_refresh_attempt: Mutex<Option<(Instant, &'static str)>>,
     last_refresh_error: Mutex<Option<String>>,
+    last_connect_error_code: Mutex<Option<String>>,
 }
 
 #[derive(Serialize)]
@@ -426,17 +427,10 @@ async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String>
     let result = tauri::async_runtime::spawn_blocking(move || connect_local_runner(&config))
         .await
         .map_err(|_| "RUNNER_CONNECT_TASK_FAILED".to_string())?
-        .map_err(|error| {
-            if error.contains("APPROVAL_TIMEOUT") {
-                "RUNNER_CONNECT_APPROVAL_TIMEOUT".into()
-            } else if error.contains("APPROVAL_FAILED") || error.contains("expired") {
-                "RUNNER_CONNECT_APPROVAL_FAILED".into()
-            } else if error.contains("open this URL") {
-                "RUNNER_CONNECT_BROWSER_OPEN_FAILED".into()
-            } else {
-                "RUNNER_CONNECT_FAILED".into()
-            }
-        });
+        .map_err(|error| safe_connect_error_code(&error));
+    if let Ok(mut last_error) = state.last_connect_error_code.lock() {
+        *last_error = result.as_ref().err().cloned();
+    }
     if result.is_ok() {
         if let Ok(mut last_attempt) = state.last_refresh_attempt.lock() {
             *last_attempt = None;
@@ -640,6 +634,11 @@ async fn export_runner_debug_report(
         .lock()
         .ok()
         .and_then(|value| value.clone());
+    let connect_error = state
+        .last_connect_error_code
+        .lock()
+        .ok()
+        .and_then(|value| value.clone());
     tauri::async_runtime::spawn_blocking(move || {
         let tools = discover_local_tools(&config);
         let path_entries = std::env::var_os("PATH")
@@ -696,6 +695,7 @@ async fn export_runner_debug_report(
                 "reauthRequiredByMs": refresh_token_expires_at_ms,
                 "running": running,
                 "lastErrorCode": safe_debug_code(last_error.as_deref()),
+                "lastConnectErrorCode": safe_debug_code(connect_error.as_deref()),
                 "credentialRefreshErrorCode": safe_debug_code(refresh_error.as_deref()),
                 "credentialRuntime": runner_credential_diagnostics(),
             },
@@ -1127,6 +1127,7 @@ fn main() {
                 readiness: Arc::new(Mutex::new(RunnerReadinessStatus::default())),
                 last_refresh_attempt: Mutex::new(None),
                 last_refresh_error: Mutex::new(None),
+                last_connect_error_code: Mutex::new(None),
             });
 
             let open =

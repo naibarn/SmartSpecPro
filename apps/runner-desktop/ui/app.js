@@ -97,6 +97,11 @@ function safeError(error) {
     RUNNER_CONNECT_APPROVAL_FAILED: "การอนุมัติไม่สำเร็จ กรุณาลองอีกครั้ง",
     RUNNER_CONNECT_CONTROL_TOKEN_MISSING: "SmartAIHub ยังไม่ส่งข้อมูลเชื่อมต่อกลับมา กรุณาลองใหม่",
     RUNNER_CONNECT_BROWSER_OPEN_FAILED: "เปิดเบราว์เซอร์เพื่อขออนุมัติไม่ได้ กรุณาเปิดเบราว์เซอร์เริ่มต้นแล้วลองใหม่",
+    RUNNER_PERMISSION_DENIED: "Runner นี้ผูกกับบัญชี SmartAIHub อื่นอยู่ เพื่อป้องกันการยึดอุปกรณ์ ระบบไม่ย้ายเจ้าของให้อัตโนมัติ ให้เจ้าของเดิมถอนการเชื่อมต่อก่อน หรือใช้บัญชีเดิม",
+    RUNNER_REVOKED: "Runner นี้ถูกเพิกถอนแล้ว ให้ผู้ดูแลตรวจสถานะอุปกรณ์ก่อนลงทะเบียนใหม่",
+    RUNNER_DEVICE_REQUIRED: "ข้อมูลอุปกรณ์ไม่ตรงกับ Runner ที่ลงทะเบียนไว้ ตรวจการติดตั้งแล้วเชื่อมต่อใหม่",
+    RUNNER_SESSION_MISMATCH: "SmartAIHub ส่ง session ของ Runner กลับมาไม่ตรงกับคำขอนี้ กรุณาลองเชื่อมต่อใหม่",
+    RUNNER_CONNECT_FAILED: "เชื่อมต่อไม่สำเร็จ ระบบบันทึกรหัสสาเหตุที่ปลอดภัยไว้ในไฟล์ Debug; ส่งไฟล์นี้ให้ผู้ดูแลตรวจสอบ",
     RUNNER_DEFAULT_WORKSPACE_REQUIRES_STOP: "หยุด Runner ก่อนเปลี่ยน workspace หลัก",
     RUNNER_WORKSPACE_BINDING_REQUIRES_STOP: "หยุด Runner ก่อนเปลี่ยน Project / Repository แล้วเริ่ม Runner อีกครั้งเพื่อส่งข้อมูลใหม่",
     RUNNER_WORKSPACE_IDENTITY_INVALID: "ใช้ ID จากงานที่ได้รับมอบหมาย ไม่ใช้ URL, token หรือข้อมูลเข้าสู่ระบบ",
@@ -136,6 +141,15 @@ function safeError(error) {
   };
   if (messages[code]) return messages[code];
   if (code.includes("BROWSER") || code.includes("OPEN_BROWSER")) return "เปิดหน้าขออนุมัติไม่ได้ กรุณาตรวจสอบเบราว์เซอร์เริ่มต้น";
+  const rejection = /^RUNNER_CONNECT_REQUEST_REJECTED_(\d{3})$/.exec(code);
+  if (rejection) {
+    const status = Number(rejection[1]);
+    if (status === 401 || status === 403) return "บัญชีที่เปิดหน้าขออนุมัติไม่มีสิทธิ์เชื่อมต่อ Runner นี้ กรุณาเข้าสู่ระบบด้วยบัญชีเจ้าของ Runner เดิม หรือให้เจ้าของเดิมถอนการเชื่อมต่อก่อน";
+    if (status === 409) return "SmartAIHub พบการลงทะเบียนหรือ pairing ที่ขัดแย้งกัน Runner เดิมยังไม่ถูกลบ; รีเฟรชสถานะ แล้วตรวจบัญชีเจ้าของและคำขออนุมัติที่เปิดค้างอยู่";
+    if (status === 429) return "ส่งคำขอเชื่อมต่อถี่เกินไป รอสักครู่แล้วลองใหม่";
+    if (status >= 500) return `SmartAIHub ขัดข้องชั่วคราว (${code}) รอสักครู่แล้วลองใหม่`;
+    return `SmartAIHub ปฏิเสธคำขอเชื่อมต่อ (${code})`;
+  }
   return "ดำเนินการไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองอีกครั้ง";
 }
 

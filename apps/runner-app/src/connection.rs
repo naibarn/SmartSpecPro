@@ -305,8 +305,8 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
 mod tests {
     use super::{
         load_connection, load_or_refresh, map_connect_request_error, request_json_with_agent,
-        safe_refresh_error_code, save_connection, validate_start_pairing_response,
-        StartPairingResponse, StoredRunnerConnection,
+        safe_connect_error_code, safe_refresh_error_code, save_connection,
+        validate_start_pairing_response, StartPairingResponse, StoredRunnerConnection,
     };
     use crate::{config::RunnerConfig, device_proof::generate_device_proof_material};
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -403,6 +403,22 @@ mod tests {
         ] {
             assert!(!safe.contains(secret));
         }
+    }
+
+    #[test]
+    fn connect_diagnostics_preserve_safe_pairing_failures_without_exposing_server_text() {
+        assert_eq!(
+            safe_connect_error_code("Runner is owned by another user"),
+            "RUNNER_PERMISSION_DENIED"
+        );
+        assert_eq!(
+            safe_connect_error_code("RUNNER_CONNECT_REQUEST_REJECTED_403"),
+            "RUNNER_CONNECT_REQUEST_REJECTED_403"
+        );
+        assert_eq!(
+            safe_connect_error_code("response included access-token-secret"),
+            "RUNNER_CONNECT_FAILED"
+        );
     }
 
     fn test_agent(timeout: Duration) -> ureq::Agent {
@@ -689,6 +705,81 @@ pub fn safe_refresh_error_code(error: &str) -> String {
         code.to_owned()
     } else {
         "RUNNER_CREDENTIAL_REFRESH_FAILED".into()
+    }
+}
+
+/// Exposes only stable, non-secret pairing error codes to the desktop UI.
+/// Server error messages are untrusted and may include implementation details.
+pub fn safe_connect_error_code(error: &str) -> String {
+    let trimmed = error.trim();
+    let normalized = trimmed.to_ascii_lowercase();
+    if normalized.contains("owned by another user")
+        || normalized.contains("owned by another account")
+    {
+        return "RUNNER_PERMISSION_DENIED".into();
+    }
+    if normalized.contains("runner is revoked") || normalized.contains("runner_revoked") {
+        return "RUNNER_REVOKED".into();
+    }
+    if normalized.contains("approval_timeout") {
+        return "RUNNER_CONNECT_APPROVAL_TIMEOUT".into();
+    }
+    if normalized.contains("approval_failed") || normalized.contains("expired") {
+        return "RUNNER_CONNECT_APPROVAL_FAILED".into();
+    }
+    if normalized.contains("open this url") {
+        return "RUNNER_CONNECT_BROWSER_OPEN_FAILED".into();
+    }
+
+    let code = trimmed
+        .split(|character: char| character.is_whitespace() || character == ':' || character == ';')
+        .next()
+        .unwrap_or_default();
+    const SAFE_CODES: &[&str] = &[
+        "RUNNER_CONNECT_APPROVAL_TIMEOUT",
+        "RUNNER_CONNECT_APPROVAL_FAILED",
+        "RUNNER_CONNECT_BROWSER_OPEN_FAILED",
+        "RUNNER_CONNECT_CONTROL_TOKEN_MISSING",
+        "RUNNER_CONNECT_REFRESH_TOKEN_MISSING",
+        "RUNNER_CONNECT_SCHEMA_INVALID",
+        "RUNNER_CONNECT_REQUIRES_LOCAL_DEVICE",
+        "RUNNER_CONTROL_URL_REQUIRED",
+        "RUNNER_CONNECT_DNS_FAILED",
+        "RUNNER_CONNECT_CONNECTION_FAILED",
+        "RUNNER_CONNECT_TLS_FAILED",
+        "RUNNER_CONNECT_TIMEOUT",
+        "RUNNER_CONNECT_HTTP_REDIRECT_FAILED",
+        "RUNNER_CONNECT_PROXY_INVALID",
+        "RUNNER_CONNECT_ENDPOINT_INVALID",
+        "RUNNER_CONNECT_REQUEST_BUILD_FAILED",
+        "RUNNER_CONNECT_REQUEST_FAILED",
+        "RUNNER_CONNECT_RESPONSE_READ_FAILED",
+        "RUNNER_CONNECT_RESPONSE_INVALID",
+        "RUNNER_PERMISSION_DENIED",
+        "RUNNER_REVOKED",
+        "RUNNER_DEVICE_REQUIRED",
+        "RUNNER_SESSION_MISMATCH",
+        "RUNNER_CONNECT_TENANT_REQUIRED",
+        "RUNNER_DEVICE_PROOF_KEY_PAIR_MISMATCH",
+        "UNSUPPORTED_RUNNER_CONTRACT",
+        "CONTROL_PLANE_TOO_OLD",
+        "RUNNER_UPGRADE_REQUIRED",
+        "RUNNER_CONNECTION_STORE_READ_FAILED",
+        "RUNNER_CONNECTION_STORE_INVALID",
+        "RUNNER_CONNECTION_STORE_CREATE_FAILED",
+        "RUNNER_CONNECTION_STORE_WRITE_FAILED",
+        "RUNNER_CONNECTION_STORE_SERIALIZE_FAILED",
+        "RUNNER_CONNECTION_STORE_REPLACE_FAILED",
+    ];
+    let is_http_rejection = code
+        .strip_prefix("RUNNER_CONNECT_REQUEST_REJECTED_")
+        .is_some_and(|status| {
+            status.len() == 3 && status.bytes().all(|byte| byte.is_ascii_digit())
+        });
+    if SAFE_CODES.contains(&code) || is_http_rejection {
+        code.to_owned()
+    } else {
+        "RUNNER_CONNECT_FAILED".into()
     }
 }
 
