@@ -20,7 +20,7 @@ export async function productionDatabaseDiagnostic(request: Request, env: Produc
   const expected = `Bearer ${env.PROBE_TOKEN}`;
   if (request.method !== "GET" || new URL(request.url).pathname !== "/__m1_sql_probe" ||
       !/^[a-f0-9]{64}$/.test(env.PROBE_TOKEN ?? "") || !Number.isFinite(expires) || expires <= Date.now() ||
-      expires > Date.now() + 15 * 60_000 || supplied.length !== expected.length ||
+      expires > Date.now() + 15 * 60_000 || Buffer.byteLength(supplied) !== Buffer.byteLength(expected) ||
       !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
     return new Response("Not found", { status: 404, headers });
   }

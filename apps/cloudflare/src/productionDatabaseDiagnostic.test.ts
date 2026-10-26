@@ -34,9 +34,10 @@ describe("isolated Cloudflare Production database diagnostic", () => {
     expect(mocks.unsafe.mock.calls.every(([q]) => /^(SELECT|SET (TRANSACTION READ ONLY|LOCAL statement_timeout))/.test(q))).toBe(true);
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
-  it.each(["anonymous", "expired", "excess_expiry", "wrong_path", "post", "malformed_scope", "local"])("rejects %s before SQL", async kind => {
+  it.each(["anonymous", "unicode_token", "expired", "excess_expiry", "wrong_path", "post", "malformed_scope", "local"])("rejects %s before SQL", async kind => {
     let req = request(); const config = { ...env };
     if (kind === "anonymous") req.headers.delete("authorization");
+    if (kind === "unicode_token") req.headers.set("authorization", `Bearer ${"é".repeat(64)}`);
     if (kind === "expired") config.PROBE_EXPIRES_AT = new Date(Date.now() - 1).toISOString();
     if (kind === "excess_expiry") config.PROBE_EXPIRES_AT = new Date(Date.now() + 16 * 60_000).toISOString();
     if (kind === "wrong_path") req = new Request("https://isolated.invalid/sql");
