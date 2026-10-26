@@ -7,7 +7,7 @@ import { readHttpImagePairSubmission } from "./cloudflareHttpImageAdmission";
 import { createHttpCandidateConfiguration } from "./cloudflareHttpCandidateConfiguration";
 import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 import { resolveCloudflareProductionDeploymentTarget } from "./cloudflareProductionDeploymentContract";
-import { resolveLatestPublishedCloudflareStagingArtifact, resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuthority";
+import { resolveLatestPublishedCloudflareStagingArtifact, resolveCloudflareStagingArtifact, resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuthority";
 import { CANDIDATE_MODULE, HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB } from "./cloudflareHttpCandidateContract";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { probeHttpCandidateProvider } from "./cloudflareHttpCandidateProvider";
@@ -47,11 +47,17 @@ export async function resolveHttpCandidatePackage(db: DrizzleDB, scope: Scope) {
   return { target, packet };
 }
 
-export async function getHttpCandidatePreparationPreflight(db: DrizzleDB, scope: Scope) {
+export async function getHttpCandidatePreparationPreflight(db: DrizzleDB, scope: Scope,
+  reviewedArtifact?: { artifactRef: string; workerSourceSha: string }) {
   await assertHttpCandidateOwner(db, scope);
   try {
     const { target, packet } = await resolveHttpCandidatePackage(db, scope);
-    const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
+    // A newer Admin build cannot replace the exact artifact reviewed by the
+    // Owner between the page read and submission. Existing receipt authority
+    // still rejects an unpublished/local/foreign digest.
+    const artifact = reviewedArtifact
+      ? await resolveCloudflareStagingArtifact(reviewedArtifact.artifactRef, reviewedArtifact.workerSourceSha)
+      : await resolveLatestPublishedCloudflareStagingArtifact();
     if (!artifact) throw Error("HTTP_CANDIDATE_CANONICAL_ARTIFACT_REQUIRED");
     const bundle = await resolveCloudflareStagingModules(artifact.artifactRef, artifact.sourceSha);
     if (!bundle?.moduleFiles[CANDIDATE_MODULE]) throw Error("HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED");
@@ -86,7 +92,8 @@ export async function readHttpCandidatePreparation(db: DrizzleDB, scope: Scope) 
 /** Authenticated Owner admission follows the existing Production Queue/DB
  * control-plane pattern. This exact intent authorizes metadata only, no VM
  * starts, application secrets, DNS, M2 updates, or production activation. */
-export async function prepareHttpCandidate(db: DrizzleDB, scope: Scope & { submissionId: string; planDigest: string; correlationId: string }) {
+export async function prepareHttpCandidate(db: DrizzleDB, scope: Scope & { submissionId: string; planDigest: string; correlationId: string;
+  artifactRef?: string; workerSourceSha?: string }) {
   await assertHttpCandidateOwner(db, scope);
   const intent = await db.transaction(async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`native-candidate:${scope.tenantId}:${scope.projectId}`}))`);
@@ -100,7 +107,9 @@ export async function prepareHttpCandidate(db: DrizzleDB, scope: Scope & { submi
     const existing = await tx.select().from(systemSettings).where(and(eq(systemSettings.category, CATEGORY),
       sql`${systemSettings.valueJson}->>'tenantId'=${scope.tenantId}`, sql`${systemSettings.valueJson}->>'projectId'=${scope.projectId}`)).limit(1);
     if (existing.length) throw Error("HTTP_CANDIDATE_EXISTING_SUBMISSION_RECONCILE_REQUIRED");
-    const preflight = await getHttpCandidatePreparationPreflight(db, scope);
+    if (Boolean(scope.artifactRef) !== Boolean(scope.workerSourceSha)) throw Error("HTTP_CANDIDATE_REVIEWED_ARTIFACT_REQUIRED");
+    const preflight = await getHttpCandidatePreparationPreflight(db, scope, scope.artifactRef && scope.workerSourceSha
+      ? { artifactRef: scope.artifactRef, workerSourceSha: scope.workerSourceSha } : undefined);
     if (!preflight.ready) throw Error(preflight.reason);
     if (preflight.planDigest !== scope.planDigest) throw Error("HTTP_CANDIDATE_PLAN_CHANGED");
     const value = { tenantId: scope.tenantId, projectId: scope.projectId, actorUserId: scope.actorUserId,

@@ -10,7 +10,7 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
   const { i18n } = useTranslation(), th = i18n.language?.startsWith("th");
   const text = (en: string, thai: string) => th ? thai : en;
   const key = `smartspec:native-candidate:${tenantId}:${projectId}`;
-  const [submission, setSubmission] = useState<{ id: string; digest: string } | null>(() => {
+  const [submission, setSubmission] = useState<{ id: string; digest: string; artifactRef?: string; workerSourceSha?: string } | null>(() => {
     try { return JSON.parse(sessionStorage.getItem(key) ?? "null"); } catch { return null; }
   });
   const busy = useRef(false);
@@ -20,10 +20,12 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
   const submit = async () => {
     if (busy.current || job || !preflight?.ready) return;
     busy.current = true;
-    const request = submission ?? { id: crypto.randomUUID(), digest: preflight.planDigest };
+    const request = submission ?? { id: crypto.randomUUID(), digest: preflight.planDigest,
+      artifactRef: preflight.plan.artifactRef, workerSourceSha: preflight.plan.workerSourceSha };
     setSubmission(request);
     try { sessionStorage.setItem(key, JSON.stringify(request)); } catch { /* Canonical intent is authoritative. */ }
-    try { await prepare.mutateAsync({ tenantId, projectId, submissionId: request.id, planDigest: request.digest }); }
+    try { await prepare.mutateAsync({ tenantId, projectId, submissionId: request.id, planDigest: request.digest,
+      artifactRef: request.artifactRef, workerSourceSha: request.workerSourceSha }); }
     catch { /* Display the precise error and reconcile the SAME submission. */ }
     finally { busy.current = false; void state.refetch(); }
   };

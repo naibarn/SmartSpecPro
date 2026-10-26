@@ -842,7 +842,9 @@ export const infrastructureRouter = router({
 
   prepareCloudflareHttpCandidate: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36),
-      submissionId: z.string().uuid(), planDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
+      submissionId: z.string().uuid(), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
+      artifactRef: z.string().regex(/^sha256:[a-f0-9]{64}$/).optional(), workerSourceSha: z.string().regex(/^[a-f0-9]{40}$/).optional(),
+    }).strict().refine(value => Boolean(value.artifactRef) === Boolean(value.workerSourceSha)))
     .mutation(async ({ input, ctx }) => {
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_CANDIDATE_AUTHENTICATED_TENANT_REQUIRED" });

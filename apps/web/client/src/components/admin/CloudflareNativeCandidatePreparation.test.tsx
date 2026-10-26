@@ -9,7 +9,8 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
   getCloudflareHttpCandidatePreparation: { useQuery: () => ({ isLoading: state.loading, error: state.error, refetch: state.refetch,
     data: { job: state.job, preflight: state.ready ? { ready: true, planDigest: "a".repeat(64),
-      plan: { workerName: "isolated-candidate", imageSourceSha: "b".repeat(40), images: ["node@sha256:fixture", "python@sha256:fixture"] } }
+      plan: { workerName: "isolated-candidate", imageSourceSha: "b".repeat(40), artifactRef: `sha256:${"c".repeat(64)}`,
+        workerSourceSha: "d".repeat(40), images: ["node@sha256:fixture", "python@sha256:fixture"] } }
       : { ready: false, reason: "HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED" } } }) },
   prepareCloudflareHttpCandidate: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.pending, error: state.mutationError }) },
 } } }));
@@ -23,7 +24,8 @@ describe("native metadata Owner action", () => {
     expect(screen.getByText(/DNS inventory permission is not required/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button"));
     expect(state.mutate).toHaveBeenCalledTimes(1);
-    expect(state.mutate.mock.calls[0][0]).toEqual({ ...props, submissionId: expect.any(String), planDigest: "a".repeat(64) });
+    expect(state.mutate.mock.calls[0][0]).toEqual({ ...props, submissionId: expect.any(String), planDigest: "a".repeat(64),
+      artifactRef: `sha256:${"c".repeat(64)}`, workerSourceSha: "d".repeat(40) });
     expect(screen.queryByText(/queued/)).not.toBeInTheDocument();
   });
   it("retains exactly the same submission after response loss and page reload", async () => {

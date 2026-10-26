@@ -2,11 +2,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { httpApplicationNamespace, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
-const state = vi.hoisted(() => ({ pair: null as any, target: null as any, module: true, responseLost: false, admissionDenied: false }));
+const state = vi.hoisted(() => ({ pair: null as any, target: null as any, module: true, responseLost: false, admissionDenied: false,
+  sourceSha: "8".repeat(40), artifactRef: `sha256:${"7".repeat(64)}` }));
 vi.mock("./cloudflareHttpImageAdmission", () => ({ readHttpImagePairSubmission: async () => state.pair }));
 vi.mock("./cloudflareProductionDeploymentContract", async original => ({ ...(await original<any>()), resolveCloudflareProductionDeploymentTarget: async () => state.target }));
 vi.mock("./cloudflareStagingArtifactAuthority", async original => ({ ...(await original<any>()),
-  resolveLatestPublishedCloudflareStagingArtifact: async () => ({ artifactRef: `sha256:${"7".repeat(64)}`, sourceSha: "8".repeat(40) }),
+  resolveLatestPublishedCloudflareStagingArtifact: async () => ({ artifactRef: state.artifactRef, sourceSha: state.sourceSha }),
+  resolveCloudflareStagingArtifact: async (ref: string, source: string) => ref === `sha256:${"7".repeat(64)}` && source === "8".repeat(40)
+    ? { artifactRef: ref, sourceSha: source } : null,
   resolveCloudflareStagingModules: async () => ({ moduleFiles: state.module ? { "applicationHttpCandidateEntrypoint.js": { bytes: new Uint8Array([1]) } } : {} }) }));
 vi.mock("./cloudflareCredentialCenter", async original => ({ ...(await original<any>()), withCloudflareDeploymentCredential: async (_db: any, _scope: any, operation: any) =>
   ({ status: "CONFIGURED", value: await operation("fixture-token") }) }));
@@ -79,7 +82,11 @@ suite("native candidate authenticated intent and real canonical admission", () =
   });
   it("retains a rejected exact admission intent and reconciles a lost successful response without duplicate jobs or outboxes", async () => {
     const p = await service.getHttpCandidatePreparationPreflight(db, scope); if (!p.ready) throw Error(p.reason);
-    const request = { ...scope, submissionId: randomUUID(), planDigest: p.planDigest, correlationId: 'fixture-stable-submission' };
+    const request = { ...scope, submissionId: randomUUID(), planDigest: p.planDigest, correlationId: 'fixture-stable-submission',
+      artifactRef: p.plan.artifactRef, workerSourceSha: p.plan.workerSourceSha };
+    // A later canonical Admin artifact must not spend an Owner attempt on a
+    // different build or force the same reviewed request to be approved again.
+    state.artifactRef = `sha256:${"9".repeat(64)}`; state.sourceSha = "a".repeat(40);
     state.admissionDenied = true;
     await expect(service.prepareHttpCandidate(db, request)).rejects.toThrow('FIXTURE_ADMISSION_REJECTED');
     expect(await client`SELECT * FROM system_settings WHERE category='cloudflare_production_native_preparations'`).toHaveLength(1);
