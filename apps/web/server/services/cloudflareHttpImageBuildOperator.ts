@@ -17,12 +17,14 @@ function operatorEnvironment() {
 export async function runHttpImageOperatorCommand(input: {
   command: string; args: string[]; cwd?: string; env: Record<string, string>; stdin?: string;
   timeoutMs: number; assertAuthorized(): Promise<void>;
+  /** Trusted operator-only parser. Raw stderr never leaves this process. */
+  classifyFailure?: (stdout: string, stderr: string) => string | undefined;
 }): Promise<string> {
   await input.assertAuthorized();
   return new Promise((accept, reject) => {
     const child = spawn(input.command, input.args, { cwd: input.cwd, env: input.env,
       detached: true, stdio: ["pipe", "pipe", "pipe"] });
-    let output = "", failure: unknown, verifying = false, finished = false;
+    let output = "", diagnosticOutput = "", failure: unknown, verifying = false, finished = false;
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     const kill = (signal: NodeJS.Signals) => { if (child.pid) { try { process.kill(-child.pid, signal); } catch { /* already exited */ } } };
     const abort = (error: unknown) => {
@@ -44,7 +46,11 @@ export async function runHttpImageOperatorCommand(input: {
     });
     // Provider and tool diagnostics may contain credentials. Never return them
     // through canonical error/status output. The fixed builder owns its log.
-    child.stderr.resume();
+    if (input.classifyFailure) child.stderr.on("data", data => {
+      diagnosticOutput += data.toString();
+      if (Buffer.byteLength(diagnosticOutput) > 65_536) diagnosticOutput = diagnosticOutput.slice(-32_768);
+    });
+    else child.stderr.resume();
     child.stdin.on("error", () => undefined);
     child.stdin.end(input.stdin);
     const finish = (error?: unknown) => {
@@ -55,6 +61,10 @@ export async function runHttpImageOperatorCommand(input: {
     child.once("error", () => finish(new HttpImageError("HTTP_IMAGE_OPERATOR_UNAVAILABLE")));
     child.once("close", code => {
       let diagnostic = "HTTP_IMAGE_OPERATOR_FAILED";
+      if (input.classifyFailure) {
+        const safe = input.classifyFailure(output, diagnosticOutput);
+        if (safe && /^[A-Z][A-Z0-9_]{4,120}$/.test(safe)) diagnostic = safe;
+      }
       if (input.command === "python3") {
         try {
           const value = JSON.parse(output);
@@ -62,7 +72,9 @@ export async function runHttpImageOperatorCommand(input: {
               /^HTTP_IMAGE_[A-Z_]{4,100}$/.test(value.diagnosticCode)) diagnostic = value.diagnosticCode;
         } catch { /* Never expose tool stderr or arbitrary stdout as a diagnostic. */ }
       }
-      finish(code === 0 ? undefined : new HttpImageError(diagnostic));
+      const error = new HttpImageError(diagnostic);
+      if (input.classifyFailure) Object.assign(error, { diagnosticCode: diagnostic });
+      finish(code === 0 ? undefined : error);
     });
   });
 }

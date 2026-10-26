@@ -9,6 +9,7 @@ import { resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuth
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { CANDIDATE_MODULE, HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB, httpCandidateJobSchema } from "./cloudflareHttpCandidateContract";
 import { assertHttpCandidateOwner, readHttpCandidateIntent, resolveHttpCandidatePackage } from "./cloudflareHttpCandidatePreparation";
+import { classifyHttpCandidateWranglerFailure } from "./cloudflareHttpCandidateDiagnostics";
 
 function fail(code: string): never { const diagnosticCode = `HTTP_CANDIDATE_${code}`;
   throw Object.assign(Error(diagnosticCode), { diagnosticCode, class: "permanent" }); }
@@ -76,11 +77,12 @@ export const createHttpCandidateExecutor = (): JobExecutor => withCloudflareStag
       // Fixed CLI/version/config only. No job-provided command, build, shell,
       // Docker operation, ambient credential, secret file, route or VM profile.
       await runHttpImageOperatorCommand({ command: "pnpm", args: ["dlx", "wrangler@4.151.1", "deploy", "--dry-run", "--config", configPath],
-        cwd: directory, env, timeoutMs: 60_000, assertAuthorized });
+        cwd: directory, env, timeoutMs: 60_000, assertAuthorized, classifyFailure: classifyHttpCandidateWranglerFailure });
       await reporter.progress(lease, { progress: 20, stage: "NATIVE_CANDIDATE_PROVIDER_WRITE_INTENT",
         measured: { workerName: packet.config.name, manifestDigest: packet.manifestDigest, containerStarts: 0 } });
       await runHttpImageOperatorCommand({ command: "pnpm", args: ["dlx", "wrangler@4.151.1", "deploy", "--config", configPath,
-        "--message", `canonical-native:${context.jobId}:${packet.manifestDigest}`], cwd: directory, env, timeoutMs: 8 * 60_000, assertAuthorized });
+        "--message", `canonical-native:${context.jobId}:${packet.manifestDigest}`], cwd: directory, env, timeoutMs: 8 * 60_000,
+        assertAuthorized, classifyFailure: classifyHttpCandidateWranglerFailure });
     } finally { await rm(directory, { recursive: true, force: true }); }
     const deployments = await get(`${script}/deployments`), active = deployments?.deployments?.[0];
     if (!active?.id || active.versions?.length !== 1 || active.versions[0].percentage !== 100) fail("DEPLOYMENT_RECEIPT_INVALID");
