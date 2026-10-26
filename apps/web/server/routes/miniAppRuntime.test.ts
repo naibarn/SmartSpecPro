@@ -76,6 +76,29 @@ describe("Mini-App isolated runtime routes", () => {
     expect(mocks.createContext).not.toHaveBeenCalled();
   });
 
+  it("serves an explicitly published artifact without any owner credential or storage token", async () => {
+    mocks.resolvePreview.mockResolvedValueOnce({ app: { visibility: "public" }, html: artifact, artifactDigest: "a".repeat(64) });
+    const response = await request(makeApp()).get(`/miniapp/${scope.appId}`);
+    expect(response.status).toBe(200);
+    expect(response.text).toBe(artifact);
+    expect(response.text).not.toContain("Bearer");
+    expect(response.headers["content-security-policy"]).toContain("sandbox allow-scripts allow-forms");
+    expect(response.headers["content-security-policy"]).toContain("connect-src 'none'");
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(mocks.resolvePreview).toHaveBeenCalledWith({ appId: scope.appId, tenantId: null, userId: null });
+    expect(mocks.createContext).not.toHaveBeenCalled();
+  });
+
+  it("rechecks public visibility and stops serving bytes immediately after unpublish", async () => {
+    mocks.resolvePreview.mockResolvedValueOnce({ app: { visibility: "public" }, html: artifact, artifactDigest: "a".repeat(64) });
+    const app = makeApp();
+    expect((await request(app).get(`/miniapp/${scope.appId}`)).status).toBe(200);
+    mocks.resolvePreview.mockResolvedValueOnce(null);
+    const denied = await request(app).get(`/miniapp/${scope.appId}`);
+    expect(denied.status).toBe(404);
+    expect(denied.text).not.toContain("expense app");
+  });
+
   it("requires the owner for runtime document delivery and denies anonymous private reads", async () => {
     mocks.createContext.mockResolvedValueOnce({ req: {}, res: {}, user: null, tenantId: null, publicUrl: null });
     const response = await request(makeApp())

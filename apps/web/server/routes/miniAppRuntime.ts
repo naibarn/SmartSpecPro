@@ -158,8 +158,28 @@ export function registerMiniAppRuntimeRoutes(app: Express): void {
   });
 
   app.get("/miniapp/:appId", async (req, res, next) => {
-    if (typeof req.cookies?.miniapp_runtime_ready !== "string") return next();
     const appId = String(req.params.appId ?? "");
+    if (!APP_ID_PATTERN.test(appId)) return next();
+    // Resolve anonymously on every request, including owner visits. Publishing
+    // exposes the artifact, never an owner's storage token or private data.
+    try {
+      const published = await resolvePersonalMiniAppPreview({ appId, tenantId: null, userId: null });
+      if (published?.app.visibility === "public" && published.html && published.artifactDigest) {
+        res.status(200).set({
+          "Content-Type": "text/html; charset=utf-8",
+          "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' data:; img-src data: blob:; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-scripts allow-forms",
+          "Cache-Control": "private, no-store",
+          "X-Content-Type-Options": "nosniff",
+          "Referrer-Policy": "no-referrer",
+          "X-Frame-Options": "DENY",
+        }).send(published.html);
+        return;
+      }
+    } catch {
+      res.status(503).type("text/plain").send("Mini App runtime is temporarily unavailable");
+      return;
+    }
+    if (typeof req.cookies?.miniapp_runtime_ready !== "string") return next();
     await serveRuntimeDocument(req, res, appId);
   });
 
