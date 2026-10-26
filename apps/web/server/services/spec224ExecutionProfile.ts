@@ -354,7 +354,6 @@ export function matchesSpec224WindowsRunnerTarget(
       tool.configurationState === "configured" && authenticated && tool.healthState === "healthy" &&
       tool.trustState === "ready" && tool.availabilityState === "available";
   });
-  const requiredToolsReady = windowsProfile.runnerTarget!.requiredTools.every(toolReady);
   const capabilities = new Set(Array.isArray(snapshot.capabilities)
     ? snapshot.capabilities.filter((value): value is string => typeof value === "string")
     : []);
@@ -364,8 +363,15 @@ export function matchesSpec224WindowsRunnerTarget(
     const workspace = record(value);
     return workspace?.workspaceId === expected.workspaceRef && workspace.gitHead === expected.sourceCommit &&
       workspace.dirty === false && typeof workspace.projectId === "string" && Boolean(workspace.projectId.trim()) &&
-      typeof workspace.repositoryId === "string" && Boolean(workspace.repositoryId.trim());
+      typeof workspace.repositoryId === "string" && Boolean(workspace.repositoryId.trim()) &&
+      typeof workspace.contentFingerprint === "string" && Boolean(workspace.contentFingerprint.trim());
   });
+  // Git is a workspace prerequisite, not one of the desktop's discovered
+  // agent tools. A successful source/fingerprint observation proves the Git
+  // workspace probe ran. Do not override an explicit unhealthy Git entry.
+  const requiredToolsReady = windowsProfile.runnerTarget!.requiredTools.every(tool =>
+    toolReady(tool) || (tool === "git" && workspaceBound &&
+      !toolInventory.some(entry => entry.toolId === "git" || entry.adapterId === "git.v1")));
   return Boolean(requiredToolsReady && requiredCapabilitiesPresent && workspaceBound);
 }
 

@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 import {
   economicHolds,
+  economicBudgets,
   workerJobAttempts,
   workerJobs,
 } from "../../drizzle/schema";
@@ -30,6 +31,7 @@ import { defaultRunnerGateway, type RunnerGatewayNode } from "./runnerGateway";
 import {
   canPersistSpec224PolicyBinding,
   evaluateSpec224Authorization,
+  evaluateSpec224RunnerReadiness,
   type Spec224ApprovalEvidence,
   type Spec224AuthorizationInput,
   type Spec224AuthorizationResult,
@@ -261,7 +263,8 @@ async function createPolicyDecision(
   profileId: string,
   deadline: string,
   budgetCapMinorUnits: number,
-  currency: string
+  currency: string,
+  policyId?: string
 ): Promise<Spec224ApprovalEvidence | null> {
   const projectId = loaded.run.metadata?.projectId;
   const persistedProfileId = loaded.run.metadata?.profileId;
@@ -316,6 +319,7 @@ async function createPolicyDecision(
         Authorization: `Bearer ${requiredToken(ctx)}`,
       },
       body: JSON.stringify({
+        ...(policyId ? { policyId } : {}),
         tenantId: ctx.tenantId,
         idempotencyKey,
         projectId,
@@ -339,7 +343,13 @@ async function createPolicyDecision(
       }),
     }
   );
-  if (response.status === 403 || response.status === 422) return null;
+  if (response.status === 403 || response.status === 422) {
+    if (!policyId) return null;
+    const body = await response.json().catch(() => ({}));
+    const code = typeof body.detail === "string" && /^SPEC224_POLICY_[A-Z0-9_]+$/.test(body.detail)
+      ? body.detail : "SPEC224_POLICY_SCOPE_DENIED";
+    throw new Spec224AuthorizationError(code);
+  }
   if (!response.ok)
     throw new Spec224AuthorizationError("POLICY_AUTHORITY_UNAVAILABLE");
   const data = (await response.json()) as Record<string, unknown>;
@@ -661,7 +671,104 @@ async function persistBinding(
 }
 
 export function createSpec224AuthorizationService() {
-  return {
+  const service = {
+    async runnerReadiness(input: {
+      context: Pick<Spec224AuthorizationContext, "tenantId" | "actorId">;
+      runnerId: string;
+      workspaceId: string;
+      sourceCommit?: string;
+    }) {
+      const node = await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId);
+      const readiness = evaluateSpec224RunnerReadiness({
+        ...input.context,
+        runner: mapRunner(node),
+        workspaceId: input.workspaceId,
+        sourceCommit: input.sourceCommit,
+      });
+      return { ...readiness,
+        projectId: node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === input.workspaceId)?.projectId ?? null,
+        profileId: node?.currentSnapshot?.platform?.os === "windows"
+          ? "spec224-recovery-windows-x64-codex-nonprod" : "spec224-recovery-registered-runner-nonprod",
+      };
+    },
+    /** Continue a single authenticated Start through existing approval and
+     * economic authorities. Never create a policy, fund a budget, or fall
+     * back to a new manual approval when the configured policy is denied. */
+    async advanceStart(input: {
+      context: Spec224AuthorizationContext;
+      runId: string;
+      runnerId: string;
+    }): Promise<Spec224AuthorizationResult> {
+      const status = () => service.status(input);
+      try {
+        let current = await status();
+        if (current.status === "NOT_CONFIGURED" && current.reasons.includes("RUN_CONFIGURATION_INCOMPLETE")) {
+          const interrupted = await loadRun(input.context, input.runId);
+          if (!interrupted.attemptId && interrupted.run.workerJobId) {
+            await createJobControlPlane().prepareAuthorizationAttempt({ jobId: interrupted.run.workerJobId,
+              tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
+            current = await status();
+          }
+        }
+        if (!["APPROVAL_REQUIRED", "BUDGET_REQUIRED"].includes(current.status)) return current;
+        const loaded = await loadRun(input.context, input.runId);
+        const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId,
+          sourceCommit: /^git:([a-f0-9]{40})$/i.exec(loaded.run.baseRevision)?.[1] });
+        if (!readiness.ready) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [readiness.code] };
+        const node = await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId);
+        const workspace = node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === loaded.run.workspaceId);
+        const projectId = workspace?.projectId;
+        const profileId = node?.currentSnapshot?.platform?.os === "windows"
+          ? "spec224-recovery-windows-x64-codex-nonprod" : "spec224-recovery-registered-runner-nonprod";
+        if (!projectId) throw new Spec224AuthorizationError("SPEC224_POLICY_PROJECT_REQUIRED");
+        const rows = await db.instance.execute(sql`
+          SELECT id, conditions->'definition' AS definition FROM approval_rules
+          WHERE tenant_id = ${input.context.tenantId} AND project_id = ${projectId}
+            AND is_active = true AND conditions->>'schemaVersion' = 'spec224.development-policy.v1'
+          ORDER BY priority DESC, id
+        `);
+        const selected = Array.from(rows as unknown as Array<{ id: string; definition: Record<string, any> }>).find(row => {
+          const value = row.definition;
+          return Array.isArray(value?.initiatorUserIds) && value.initiatorUserIds.includes(input.context.actorId) &&
+            Array.isArray(value.profileAllowlist) && value.profileAllowlist.includes(profileId) &&
+            Array.isArray(value.environmentAllowlist) && value.environmentAllowlist.includes("development") &&
+            Array.isArray(value.operations) && value.operations.includes("spec224.development.run") &&
+            Number.isSafeInteger(value.maxBudgetMinorUnits) && value.maxBudgetMinorUnits > 0 &&
+            Number.isSafeInteger(value.maxTtlSeconds) && value.maxTtlSeconds > 0 &&
+            typeof value.currency === "string" && /^[A-Za-z]{3}$/.test(value.currency) &&
+            Date.parse(value.expiresAt) > Date.now();
+        });
+        if (!selected) throw new Spec224AuthorizationError("SPEC224_NONPRODUCTION_POLICY_NOT_CONFIGURED");
+        const policy = selected.definition;
+        let approvalRef = current.references?.approvalRef;
+        if (current.status === "APPROVAL_REQUIRED") {
+          if (approvalRef) return current; // Pending/rejected decisions cannot be silently replaced.
+          const deadline = new Date(Math.min(Date.now() + Math.min(policy.maxTtlSeconds, 86_400) * 1000, Date.parse(policy.expiresAt))).toISOString();
+          const approval = await service.requestApproval({ ...input, provider: "codex", profileId,
+            deadline, budgetCapMinorUnits: policy.maxBudgetMinorUnits, currency: policy.currency,
+            policyId: selected.id, policyOnly: true });
+          approvalRef = approval.approvalRef;
+          current = await status();
+        }
+        if (current.status !== "BUDGET_REQUIRED" || !approvalRef) return current;
+        let reservation = current.references?.budgetReservationRef;
+        if (!reservation) {
+          const [budget] = await db.select({ id: economicBudgets.id }).from(economicBudgets).where(and(
+            eq(economicBudgets.tenantId, input.context.tenantId), eq(economicBudgets.scopeType, "project"),
+            eq(economicBudgets.scopeRef, projectId), eq(economicBudgets.currency, policy.currency.toUpperCase()),
+            eq(economicBudgets.status, "active"),
+          )).limit(1);
+          if (!budget) throw new Spec224AuthorizationError("SPEC224_PROJECT_BUDGET_NOT_CONFIGURED");
+          const hold = await service.reserveBudget({ ...input, approvalRef, budgetId: budget.id,
+            amountMinorUnits: policy.maxBudgetMinorUnits, currency: policy.currency });
+          reservation = hold.budgetReservationRef;
+        }
+        return await service.bind({ ...input, approvalRef, budgetReservationRef: reservation });
+      } catch (error) {
+        if (!(error instanceof Spec224AuthorizationError)) throw error;
+        return { version: "spec-224-authorization-binding-v1", status: "NOT_CONFIGURED", reasons: [error.code] };
+      }
+    },
     async status(input: {
       context: Spec224AuthorizationContext;
       runId: string;
@@ -739,6 +846,8 @@ export function createSpec224AuthorizationService() {
       budgetCapMinorUnits: number;
       currency: string;
       profileId: string;
+      policyId?: string;
+      policyOnly?: boolean;
     }): Promise<Spec224ApprovalEvidence> {
       if (
         !Number.isSafeInteger(input.budgetCapMinorUnits) ||
@@ -762,28 +871,18 @@ export function createSpec224AuthorizationService() {
       });
       if (check.status !== "APPROVAL_REQUIRED")
         throw new Spec224AuthorizationError(check.reasons[0] ?? check.status);
-      const created =
-        input.provider === "codex"
-          ? ((await createPolicyDecision(
+      const policyDecision = input.provider === "codex" ? await createPolicyDecision(
               input.context,
               loaded,
               runner,
               input.profileId,
               input.deadline,
               input.budgetCapMinorUnits,
-              input.currency
-            )) ??
-            (await createApproval(
-              input.context,
-              loaded,
-              runner,
-              input.provider,
-              input.profileId,
-              input.deadline,
-              input.budgetCapMinorUnits,
-              input.currency
-            )))
-          : await createApproval(
+              input.currency,
+              input.policyId
+            ) : null;
+      if (input.policyOnly && !policyDecision) throw new Spec224AuthorizationError("SPEC224_POLICY_BINDING_REQUIRED");
+      const created = policyDecision ?? await createApproval(
               input.context,
               loaded,
               runner,
@@ -1021,6 +1120,7 @@ export function createSpec224AuthorizationService() {
       return evaluated;
     },
   };
+  return service;
 }
 
 export const defaultSpec224AuthorizationService =

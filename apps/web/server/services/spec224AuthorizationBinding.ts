@@ -54,6 +54,76 @@ export type Spec224AuthorizationRunner = {
   snapshot: RunnerCapabilitySnapshot | null;
 };
 
+export type Spec224RunnerReadiness = {
+  ready: boolean;
+  code: string;
+  policyDecision: "pending" | "allowed" | "denied";
+  ownerAction: string | null;
+  runnerId: string | null;
+  runnerSessionId: string | null;
+  capabilitySnapshotId: string | null;
+  capabilitySnapshotRevision: string | null;
+};
+
+/** Readiness is observation, not a job grant. Only the requested adapter is
+ * checked; unavailable unrelated tools cannot block a Codex goal. */
+export function evaluateSpec224RunnerReadiness(input: {
+  runner: Spec224AuthorizationRunner | null;
+  tenantId: string;
+  actorId: number;
+  workspaceId: string;
+  sourceCommit?: string;
+  now?: Date;
+}): Spec224RunnerReadiness {
+  const { runner } = input;
+  const snapshot = runner?.snapshot;
+  const now = (input.now ?? new Date()).getTime();
+  const tool = snapshot?.toolInventory?.find(item => item.adapterId === "codex.v1");
+  const capability = snapshot?.capabilityInventory?.find(item => item.capabilityId === `tool.execute.${tool?.toolId}`);
+  const policyDecision = capability?.policyDecision ?? "pending";
+  const result = (code: string, ownerAction: string | null = null): Spec224RunnerReadiness => ({
+    ready: code === "RUNNER_READY",
+    code,
+    policyDecision,
+    ownerAction,
+    runnerId: runner?.runnerId ?? null,
+    runnerSessionId: runner?.activeSessionId ?? null,
+    capabilitySnapshotId: snapshot?.capabilitySnapshotId ?? null,
+    capabilitySnapshotRevision: snapshot?.revision ?? null,
+  });
+  if (!runner || runner.tenantId !== input.tenantId || runner.ownerUserId !== input.actorId)
+    return result("RUNNER_SCOPE_MISMATCH");
+  if (runner.trustState !== "trusted" || runner.status === "revoked") return result("RUNNER_NOT_TRUSTED");
+  if (runner.status !== "online") return result("RUNNER_OFFLINE", "เปิด SmartAIHub Runner บน Windows และเชื่อมต่อบัญชีเดิม");
+  if (!snapshot || !runner.activeSessionId || snapshot.runnerId !== runner.runnerId ||
+    snapshot.tenantId !== input.tenantId || snapshot.runnerSessionId !== runner.activeSessionId || !snapshot.capabilitySnapshotId)
+    return result("RUNNER_SESSION_OR_SNAPSHOT_MISMATCH");
+  const fresh = (observed: string, expires: string) => Date.parse(observed) <= now && Date.parse(expires) > now;
+  if (!fresh(snapshot.observedAt, snapshot.expiresAt)) return result("CAPABILITY_SNAPSHOT_EXPIRED");
+  if (policyDecision === "denied") return result("CODEX_CAPABILITY_POLICY_DENIED");
+  if (!tool || tool.installState !== "installed") return result("CODEX_NOT_INSTALLED");
+  if (tool.authState !== "authenticated") return result("CODEX_AUTHENTICATION_REQUIRED", "เข้าสู่ระบบ Codex บน Windows Runner ด้วยบัญชีของคุณ");
+  const probeAction = "SmartAIHub Runner บน Windows → Tools → Codex → ทดสอบสั่งงานจริง แล้วรอการเผยแพร่ capability สำเร็จ";
+  if (tool.taskProbeState === "not_run" || !tool.taskProbeState) return result("CODEX_TASK_PROBE_NOT_RUN", probeAction);
+  if (tool.taskProbeState === "failed") return result("CODEX_TASK_PROBE_FAILED", probeAction);
+  if (tool.taskProbeState !== "passed") return result("CODEX_TASK_PROBE_UNSUPPORTED");
+  if (!Number.isSafeInteger(tool.taskProbeObservedAtMs) || Number(tool.taskProbeObservedAtMs) > now ||
+    !Number.isSafeInteger(tool.taskProbeExpiresAtMs) || Number(tool.taskProbeExpiresAtMs) <= now)
+    return result("CODEX_TASK_PROBE_EXPIRED", probeAction);
+  if (!fresh(tool.observedAt, tool.expiresAt) || !tool.taskProbeEvidenceRef || !tool.authorizationEvidenceRef ||
+    tool.versionProbeState !== "passed" || tool.configurationState !== "configured" || tool.healthState !== "healthy" ||
+    tool.trustState !== "ready" || tool.availabilityState !== "available" || !snapshot.capabilities.includes("agent.external_task"))
+    return result("CODEX_READINESS_PUBLICATION_REQUIRED", "รอ Runner เผยแพร่และรับ acknowledgement ของผล Codex probe ล่าสุด");
+  if (capability && !fresh(capability.observedAt, capability.expiresAt)) return result("CODEX_CAPABILITY_EXPIRED");
+  const workspace = snapshot.workspaces?.find(item => item.workspaceId === input.workspaceId);
+  if (!snapshot.workspaceIds.includes(input.workspaceId) || !workspace) return result("WORKSPACE_BINDING_MISMATCH");
+  if (!workspace.gitHead || !workspace.contentFingerprint) return result("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
+  if (input.sourceCommit && workspace.gitHead !== input.sourceCommit) return result("WORKSPACE_SOURCE_REVISION_MISMATCH");
+  // Pending means this snapshot has not evaluated a particular run policy.
+  // The approval authority still evaluates and binds that policy at Start.
+  return result("RUNNER_READY");
+}
+
 export type Spec224ApprovalEvidence = {
   approvalRef: string;
   tenantId: string | null;

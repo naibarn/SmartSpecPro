@@ -1891,5 +1891,12 @@ export async function createPersistedDevelopmentRun(input: {
     eventIdempotencyKey: `run-created:${jobRef.jobId}`,
     scope: { tenantId: boundRun.tenantId, actorId: boundRun.actorId },
   });
+  if (input.deferredAdmission) {
+    await (input.controlPlane ?? createJobControlPlane()).prepareAuthorizationAttempt({
+      jobId: jobRef.jobId,
+      tenantId: boundRun.tenantId,
+      requestedByUserId: boundRun.actorId,
+    });
+  }
   return { run: record.run, jobRef };
 }

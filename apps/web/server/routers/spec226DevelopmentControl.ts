@@ -220,6 +220,21 @@ const authorizationContext = (ctx: {
   userToken: ctx.userToken,
 });
 
+async function advanceWorkspaceStartAuthorization(input: Parameters<typeof defaultSpec224AuthorizationService.advanceStart>[0]) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await defaultSpec224AuthorizationService.advanceStart(input);
+    } catch (error) {
+      auditLogger.log({ eventType: "spec226_development_authorization" as AuditEventType,
+        tenantId: input.context.tenantId, userId: input.context.actorId,
+        metadata: { runId: input.runId, action: "automatic_start_authorization", attempt,
+          errorCode: /^[A-Z][A-Z0-9_]{1,100}$/.test(errorCode(error)) ? errorCode(error) : "AUTHORITY_TRANSPORT_FAILURE" } });
+    }
+  }
+  return { version: "spec-224-authorization-binding-v1" as const, status: "NOT_CONFIGURED" as const,
+    reasons: ["START_AUTHORIZATION_RETRY_REQUIRED"] };
+}
+
 const providerInput = z.object({
   runId: runIdSchema,
   runnerId: z.string().trim().min(1).max(160),
@@ -453,6 +468,16 @@ export const spec226DevelopmentControlRouter = router({
       }
     }),
 
+  workspaceRunnerReadiness: protectedProcedure
+    .input(z.object({ conversationId: z.number().int().positive() }))
+    .query(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, ...input });
+      if (!binding?.workspace) return null;
+      return defaultSpec224AuthorizationService.runnerReadiness({ context: scope,
+        runnerId: binding.workspace.runnerId, workspaceId: binding.workspace.workspaceId });
+    }),
+
   prepareWorkspaceRun: protectedProcedure
     .input(z.object({
       conversationId: z.number().int().positive(),
@@ -465,7 +490,18 @@ export const spec226DevelopmentControlRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        return await defaultSpec224WorkspaceSpecSetService.prepareWorkspaceRun({ ...requireScope(ctx), ...input });
+        const scope = requireScope(ctx);
+        const prepared = await defaultSpec224WorkspaceSpecSetService.prepareWorkspaceRun({ ...scope, ...input });
+        const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
+          context: scope,
+          runnerId: prepared.workspace.runnerId,
+          workspaceId: prepared.workspace.workspaceId,
+        });
+        return {
+          ...prepared,
+          runnerReadiness,
+          blockers: [...new Set([...prepared.blockers, ...(runnerReadiness.ready ? [] : [runnerReadiness.code])])],
+        };
       } catch (error) {
         return asTrpcError(error);
       }
@@ -835,6 +871,40 @@ export const spec226DevelopmentControlRouter = router({
             workPackageId: "personal-miniapp",
           };
         }
+        const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId: input.conversationId });
+        if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
+          context: scope,
+          runnerId: binding.workspace.runnerId,
+          workspaceId: binding.workspace.workspaceId,
+        });
+        if (!runnerReadiness.ready) {
+          throw new TRPCError({
+            code: runnerReadiness.policyDecision === "denied" ? "FORBIDDEN" : "PRECONDITION_FAILED",
+            message: [runnerReadiness.code, runnerReadiness.ownerAction].filter(Boolean).join(": "),
+          });
+        }
+        const requestDigest = createHash("sha256").update(JSON.stringify({
+          conversationId: input.conversationId, mode: input.mode, prompt: input.prompt ?? null,
+          specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
+          provider: input.provider ?? "codex", visualReferences: input.visualReferences ?? [],
+          visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
+        })).digest("hex");
+        const existing = await developmentRunService.get({ ...scope, runId }).catch(error => {
+          if (errorCode(error) === "RUN_NOT_FOUND") return null;
+          throw error;
+        });
+        if (existing) {
+          if (existing.run.metadata?.spec224StartRequestDigest !== requestDigest || existing.run.workspaceId !== binding.workspace.workspaceId)
+            throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          const authorization = await advanceWorkspaceStartAuthorization({ context: authorizationContext(ctx), runId, runnerId: binding.workspace.runnerId });
+          const source = existing.run.metadata?.spec224Input as { inputDigest: string };
+          const workspace = existing.run.metadata?.spec224Workspace as { specSetRevision: number | null; workPackageId: string | null };
+          return { runId, jobId: existing.run.workerJobId, state: existing.run.state,
+            dispatchStatus: authorization.status === "READY_FOR_LIVE" ? "ENQUEUED" as const : "PENDING_AUTHORIZATION" as const,
+            authorization, inputDigest: source.inputDigest, specSetRevision: workspace.specSetRevision,
+            workPackageId: workspace.workPackageId, idempotent: true };
+        }
         const prepared = await defaultSpec224WorkspaceSpecSetService.resolveWorkspaceRunInput({
           ...scope,
           conversationId: input.conversationId,
@@ -982,6 +1052,10 @@ export const spec226DevelopmentControlRouter = router({
           workPackageId,
           ...(factoryWorkUnit ? { workUnit: factoryWorkUnit } : {}),
           metadata: {
+            projectId: runnerReadiness.projectId,
+            profileId: runnerReadiness.profileId,
+            environment: "development",
+            spec224StartRequestDigest: requestDigest,
             ...(factoryState ? { [MINI_APP_FACTORY_STATE_KEY]: factoryState } : {}),
             ...(factoryStageDocument && factoryPipeline && factoryState && firstFactoryStage ? {
               miniAppFactoryStage: {
@@ -1015,7 +1089,7 @@ export const spec226DevelopmentControlRouter = router({
           planId: prepared.planId,
           planRevision: prepared.planRevision,
           skillIds: [],
-          requestedCapabilities: [],
+          requestedCapabilities: ["agent.external_task"],
           deferredAdmission: true,
           authorizationScope: "spec226-development-control",
           correlationId: traceId,
@@ -1034,6 +1108,12 @@ export const spec226DevelopmentControlRouter = router({
           inputSourceRef: stagedSource.inputSourceRef,
           workerJobId: created.jobRef.jobId,
         });
+        const authorization = await advanceWorkspaceStartAuthorization({
+          context: authorizationContext(ctx),
+          runId,
+          runnerId: prepared.runner.runnerId,
+        });
+        const dispatchStatus = authorization.status === "READY_FOR_LIVE" ? "ENQUEUED" as const : "PENDING_AUTHORIZATION" as const;
         auditLogger.log({
           eventType: "spec226_development_control" as AuditEventType,
           traceId,
@@ -1042,7 +1122,8 @@ export const spec226DevelopmentControlRouter = router({
           metadata: {
             runId,
             jobId: created.jobRef.jobId,
-            status: "pending_authorization",
+            status: authorization.status,
+            reasons: authorization.reasons,
             workspaceId: prepared.workspace.workspaceId,
             specSetRevision: prepared.specSetRevision,
             workPackageId: prepared.workPackageId,
@@ -1059,7 +1140,8 @@ export const spec226DevelopmentControlRouter = router({
             previewUrl: `https://smartaihub.app/miniapp/${encodeURIComponent(miniAppIdentity.appId)}`,
           } : {}),
           state: created.run.state,
-          dispatchStatus: "PENDING_AUTHORIZATION" as const,
+          dispatchStatus,
+          authorization,
           inputDigest: stagedSource.inputDigest,
           specSetRevision: prepared.specSetRevision,
           workPackageId: prepared.workPackageId,

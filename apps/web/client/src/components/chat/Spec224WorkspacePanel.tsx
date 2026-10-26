@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import { Text } from "@/components/AppPage";
 
 type WorkspaceOption = {
   runnerId: string;
@@ -40,8 +41,8 @@ function developmentRunStateLabel(state: string): string {
     PLANNING: "กำลังวางแผน",
     PLAN_VERIFY: "กำลังตรวจแผน",
     IMPLEMENT: "กำลังพัฒนา",
-    BUILD: "รอผู้ใช้ build",
-    TEST: "รอผู้ใช้ทดสอบ",
+    BUILD: "กำลัง build",
+    TEST: "กำลังทดสอบ",
     REVIEW: "กำลัง review",
     VERIFY: "รอผลตรวจสอบ",
     FINAL_VERIFY: "รอ final verify",
@@ -129,6 +130,11 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const prepareMutation = trpc.spec226DevelopmentControl.prepareWorkspaceRun.useMutation();
   type Preparation = Awaited<ReturnType<typeof prepareMutation.mutateAsync>>;
   const [preparation, setPreparation] = useState<Preparation | null>(null);
+  const readinessQuery = trpc.spec226DevelopmentControl.workspaceRunnerReadiness.useQuery(
+    { conversationId: conversationId ?? 0 },
+    { enabled: conversationId !== null && preparation !== null, refetchInterval: 5_000 }
+  );
+  const runnerReadiness = readinessQuery.data ?? preparation?.runnerReadiness;
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const workspaces = workspacesQuery.data?.workspaces ?? [];
   const boundWorkspace = workspaceQuery.data?.workspace;
@@ -149,6 +155,13 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
     const bound = workspaceQuery.data?.workspace;
     if (bound) setSelected(JSON.stringify([bound.runnerId, bound.workspaceId]));
   }, [workspaceQuery.data?.workspace?.runnerId, workspaceQuery.data?.workspace?.workspaceId]);
+  useEffect(() => {
+    if (preparation && runnerReadiness?.ready && !preparation.runnerReadiness.ready && !prepareMutation.isPending) {
+      // Readiness refresh only. Re-prepare the same input after the owner's
+      // probe acknowledgement; this does not create or schedule a run.
+      void prepare();
+    }
+  }, [readinessQuery.data?.capabilitySnapshotRevision, preparation?.runnerReadiness?.ready]);
 
   async function bindWorkspace(value: string) {
     setSelected(value);
@@ -273,14 +286,19 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
         } : {}),
         idempotencyKey,
       });
-      setStartKeys(current => {
-        const next = { ...current };
-        delete next[key];
-        return next;
-      });
-      toast.success(requestKind === "mini_app"
-        ? `ส่ง Mini App Factory stage แรกแล้ว · ${result.dispatchStatus}`
-        : `สร้าง DevelopmentRun แล้ว · ${result.dispatchStatus}`);
+      if (result.dispatchStatus === "ENQUEUED") {
+        setStartKeys(current => {
+          const next = { ...current };
+          delete next[key];
+          return next;
+        });
+        toast.success(requestKind === "mini_app"
+          ? `ส่ง Mini App Factory stage แรกแล้ว · ${result.dispatchStatus}`
+          : "บันทึก DevelopmentRun และส่งเข้าคิวแล้ว");
+      } else {
+        const reasons = "authorization" in result ? result.authorization?.reasons.join(", ") : result.dispatchStatus;
+        toast.info(`DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "สั่งพัฒนาไม่สำเร็จ");
     }
@@ -462,19 +480,25 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
             <section className="mt-3 rounded-md border border-[var(--color-border)] p-2" aria-live="polite">
               <p className="text-xs font-semibold">ผลการเตรียม · plan r{preparation.planRevision}</p>
               <p className="mt-1 text-xs">ข้อกำหนด {preparation.requirementCount} · work packages ที่พร้อมเริ่ม {preparation.runnableWorkPackageIds.length}</p>
+              {runnerReadiness ? (
+                <Text role="status" type="supporting">
+                  Codex: {runnerReadiness.code} · นโยบาย: {runnerReadiness.policyDecision === "pending" ? "รอประเมินตามขอบเขตของ Start" : runnerReadiness.policyDecision}
+                  {runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}
+                </Text>
+              ) : null}
               {preparation.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
               {preparation.workPackages.map(workPackage => (
                 <section key={workPackage.id} className="mt-2 border-t border-[var(--color-border)] pt-2" aria-label={`Work package ${workPackage.externalId}`}>
                   <p className="text-xs font-medium">{workPackage.externalId} · {workPackage.readiness}</p>
                   {workPackage.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
                   {preparation.runnableWorkPackageIds.includes(workPackage.id) ? (
-                    <Button type="button" className="mt-2" disabled={startMutation.isPending} onClick={() => void startWorkPackage(workPackage.id)}>
+                    <Button type="button" className="mt-2" disabled={startMutation.isPending || !runnerReadiness?.ready || !preparation.runnerReadiness.ready} onClick={() => void startWorkPackage(workPackage.id)}>
                       {startMutation.isPending ? "กำลังส่งคำสั่ง…" : mode === "prompt" ? "สั่งพัฒนา" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}
                 </section>
               ))}
-              <p className="mt-2 text-xs text-[var(--color-text-secondary)]">การเตรียมไม่มี side effect; ปุ่มสั่งพัฒนาสร้าง DevelopmentRun ที่รอ authorization ส่วน build/test/application run ยังเป็น action แยก</p>
+              <p className="mt-2 text-xs text-[var(--color-text-secondary)]">Start ตรวจ Codex และ workspace ก่อนบันทึกงาน จากนั้นใช้ policy และ budget ที่ตั้งค่าไว้เพื่อส่งงานอัตโนมัติภายในขอบเขตเดิม</p>
             </section>
           ) : null}
         </>

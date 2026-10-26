@@ -73,10 +73,13 @@ describe("Spec 224 execution profile", () => {
         observedAt: "2026-10-17T11:59:00Z", expiresAt: "2026-10-17T12:04:00Z" },
       ],
       workspaces: [{ workspaceId: "ws-owned", gitHead: expected.sourceCommit, dirty: false,
-        projectId: "TEST_ONLY_PROJECT", repositoryId: "github.com/example/test-only" }],
+        projectId: "TEST_ONLY_PROJECT", repositoryId: "github.com/example/test-only", contentFingerprint: "b".repeat(64) }],
     };
     expect(matchesSpec224WindowsRunnerTarget(snapshot, expected, now)).toBe(true);
     expect(matchesSpec224WindowsRunnerTarget({ ...snapshot, runnerVersion: "0.10.0" }, expected, now)).toBe(true);
+    expect(matchesSpec224WindowsRunnerTarget({ ...snapshot,
+      toolInventory: snapshot.toolInventory.filter(tool => tool.adapterId !== "git.v1"),
+    }, expected, now)).toBe(true);
     for (const patch of [
       { runnerVersion: "0.2.30" }, { runnerVersion: "0.1.999" }, { runnerVersion: "unknown" },
       { platform: { ...snapshot.platform, os: "linux" } },
@@ -87,7 +90,6 @@ describe("Spec 224 execution profile", () => {
         ...(tool.adapterId === "codex.v1" ? { authorizationEvidenceRef: "" } : {}) })) },
       { toolInventory: snapshot.toolInventory!.map((tool: any) => ({ ...tool,
         ...(tool.adapterId === "codex.v1" ? { authState: "auth_required" } : {}) })) },
-      { toolInventory: snapshot.toolInventory!.filter((tool: any) => tool.adapterId !== "git.v1") },
       { toolInventory: snapshot.toolInventory!.map((tool: any) => ({ ...tool,
         ...(tool.adapterId === "codex.v1" ? { expiresAt: "2026-10-17T12:00:00Z" } : {}) })) },
       { toolInventory: snapshot.toolInventory!.map((tool: any) => ({ ...tool,
@@ -95,6 +97,7 @@ describe("Spec 224 execution profile", () => {
       { capabilities: [] },
       { workspaces: [{ ...snapshot.workspaces[0], dirty: true }] },
       { workspaces: [{ ...snapshot.workspaces[0], gitHead: null }] },
+      { workspaces: [{ ...snapshot.workspaces[0], contentFingerprint: null }] },
       { workspaces: [{ ...snapshot.workspaces[0], repositoryId: null }] },
       { workspaces: [{ ...snapshot.workspaces[0], projectId: "" }] },
     ]) expect(matchesSpec224WindowsRunnerTarget({ ...snapshot, ...patch }, expected, now)).toBe(false);

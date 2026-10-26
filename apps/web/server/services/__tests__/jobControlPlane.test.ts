@@ -305,12 +305,24 @@ describe("job control plane", () => {
     const job = state.jobs.get(created.jobId)!;
     expect(job.status).toBe("pending");
     expect(state.outbox).toHaveLength(0);
+    const reservation = { jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 };
+    const attemptId = await controlPlane.prepareAuthorizationAttempt(reservation);
+    expect(await controlPlane.prepareAuthorizationAttempt(reservation)).toBe(attemptId);
+    expect(state.attempts).toHaveLength(1);
+    expect(state.attempts[0]).toMatchObject({ id: attemptId, leaseGeneration: 0 });
+    expect(state.attempts[0].leaseTokenHash).toBeUndefined();
+    expect(state.outbox).toHaveLength(0);
+    await expect(controlPlane.prepareAuthorizationAttempt({ ...reservation, requestedByUserId: 2 })).rejects.toMatchObject({ code: "JOB_NOT_FOUND" });
+    await expect(controlPlane.prepareAuthorizationAttempt({ ...reservation, tenantId: "tenant-b" })).rejects.toMatchObject({ code: "JOB_NOT_FOUND" });
 
     job.inputJson.manifest.policyBinding = { runnerId: "r", runnerSessionId: "s", capabilitySnapshotId: "c", capabilitySnapshotRevision: "1", authorizationGrantRef: "g", approvalRef: "a", budgetReservationRef: "b", workspaceRef: "w", deadline: new Date(Date.now() + 60_000).toISOString() };
     job.progressJson.spec224Authorization = { status: "READY_FOR_LIVE", binding: job.inputJson.manifest.policyBinding };
     expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
     expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
-    expect(job.status).toBe("queued");
+    const lease = await controlPlane.claim({ jobId: job.id, runnerId: "r", adapter: "test" });
+    expect(lease).toMatchObject({ attemptId, fencingVersion: 1 });
+    expect(state.attempts).toHaveLength(1);
+    expect(job.status).toBe("leased");
     expect(state.outbox).toHaveLength(1);
   });
 

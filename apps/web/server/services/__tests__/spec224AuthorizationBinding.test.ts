@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   evaluateSpec224Authorization,
+  evaluateSpec224RunnerReadiness,
   canPersistSpec224PolicyBinding,
   isSameSpec224PolicyBinding,
   type Spec224AuthorizationInput,
@@ -90,6 +91,61 @@ const baseInput = (): Spec224AuthorizationInput => ({
     currency: "USD",
     expiresAt: "2026-09-23T10:30:00.000Z",
   },
+});
+
+describe("session-bound Codex Start readiness", () => {
+  function input() {
+    const value = baseInput();
+    const snapshot = value.runner!.snapshot!;
+    const tool = snapshot.toolInventory![0];
+    Object.assign(tool, { trustState: "ready", versionProbeState: "passed", taskProbeState: "passed",
+      taskProbeObservedAtMs: Date.parse("2026-09-23T09:59:00Z"), taskProbeExpiresAtMs: Date.parse("2026-09-23T10:30:00Z"),
+      taskProbeEvidenceRef: "runner-task-probe:sha256:actual-probe" });
+    snapshot.workspaces = [{ workspaceId: "workspace-a", projectId: "project-a", repositoryId: "repo-a",
+      displayName: "Project A", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "b".repeat(64) }];
+    snapshot.capabilityInventory = [{ capabilityId: "tool.execute.codex", contractVersion: "sah-cap-v1", implementationId: "codex.v1",
+      controlProfile: "runner_gateway", resourceProfile: "medium", maxConcurrency: 1, availabilityState: "available",
+      policyDecision: "pending", confidence: 1, observedAt: snapshot.observedAt, expiresAt: snapshot.expiresAt, reasonCodes: [] }];
+    return { runner: value.runner, tenantId: value.run.tenantId, actorId: value.run.actorId,
+      workspaceId: value.run.workspaceId, sourceCommit: "a".repeat(40), now: value.now };
+  }
+
+  it("accepts published Codex readiness with pending policy and ignores unrelated unavailable tools", () => {
+    const value = input();
+    value.runner!.snapshot!.toolInventory!.push({ ...value.runner!.snapshot!.toolInventory![0],
+      toolId: "claude", adapterId: "claude.v1", installState: "not_installed", authState: "unknown", taskProbeState: "not_run" });
+    expect(evaluateSpec224RunnerReadiness(value)).toMatchObject({ ready: true, code: "RUNNER_READY", policyDecision: "pending" });
+  });
+
+  it.each([['not_run', 'CODEX_TASK_PROBE_NOT_RUN'], ['failed', 'CODEX_TASK_PROBE_FAILED']] as const)("distinguishes %s from authentication or policy denial", (state, code) => {
+    const value = input();
+    value.runner!.snapshot!.toolInventory![0].taskProbeState = state;
+    expect(evaluateSpec224RunnerReadiness(value)).toMatchObject({ ready: false, code, ownerAction: expect.stringContaining("ทดสอบสั่งงานจริง") });
+  });
+
+  it("requires a fresh task probe even when authentication remains valid", () => {
+    const value = input();
+    value.runner!.snapshot!.toolInventory![0].taskProbeExpiresAtMs = value.now!.getTime();
+    expect(evaluateSpec224RunnerReadiness(value).code).toBe("CODEX_TASK_PROBE_EXPIRED");
+  });
+
+  it("never advances an explicitly denied capability", () => {
+    const value = input();
+    value.runner!.snapshot!.capabilityInventory![0].policyDecision = "denied";
+    expect(evaluateSpec224RunnerReadiness(value)).toMatchObject({ ready: false, code: "CODEX_CAPABILITY_POLICY_DENIED" });
+  });
+
+  it("fences readiness to the current tenant/session and exact workspace source", () => {
+    const value = input();
+    value.runner!.snapshot!.runnerSessionId = "old-session";
+    expect(evaluateSpec224RunnerReadiness(value).code).toBe("RUNNER_SESSION_OR_SNAPSHOT_MISMATCH");
+    value.runner!.snapshot!.runnerSessionId = value.runner!.activeSessionId;
+    value.sourceCommit = "c".repeat(40);
+    expect(evaluateSpec224RunnerReadiness(value).code).toBe("WORKSPACE_SOURCE_REVISION_MISMATCH");
+    value.sourceCommit = "a".repeat(40);
+    value.runner!.snapshot!.workspaces![0].contentFingerprint = null;
+    expect(evaluateSpec224RunnerReadiness(value).code).toBe("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
+  });
 });
 
 describe("Spec 224 owner authorization binding", () => {

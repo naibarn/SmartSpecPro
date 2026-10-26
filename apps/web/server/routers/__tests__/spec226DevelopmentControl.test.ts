@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createHash } from "node:crypto";
 
 const mocks = vi.hoisted(() => ({
   bridge: {
@@ -9,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   },
   auditLog: vi.fn(),
   createRun: vi.fn(),
+  runnerReadiness: vi.fn(),
+  advanceStart: vi.fn(),
   createDeveloperFastLaneJob: vi.fn(),
   requestFullVerification: vi.fn(),
   workspaceSpecSets: {
@@ -76,6 +79,13 @@ vi.mock("../../services/spec224BackendRuntimeIdentity", () => ({
   getSpec224BackendRuntimeIdentity: () => ({ environment: "test", runtimeRevision: "a".repeat(40), instanceId: "test" }),
 }));
 
+vi.mock("../../services/spec224AuthorizationService", () => ({
+  defaultSpec224AuthorizationService: {
+    runnerReadiness: (...args: unknown[]) => mocks.runnerReadiness(...args),
+    advanceStart: (...args: unknown[]) => mocks.advanceStart(...args),
+  },
+}));
+
 vi.mock("../../services/spec224DeveloperFastLane", () => ({
   DEVELOPER_FAST_LANE_JOB: "developer.fast_lane",
   DEVELOPER_FAST_LANE_CONTRACT: "developer-fast-lane-v1",
@@ -133,11 +143,46 @@ const CTX = { tenantId: "tenant-acme", user: { id: 42, role: "admin" } };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.developmentRunService.get.mockReset();
+  mocks.runnerReadiness.mockReset().mockResolvedValue({ ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null, projectId: "project-a", profileId: "spec224-recovery-windows-x64-codex-nonprod" });
+  mocks.advanceStart.mockReset().mockResolvedValue({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_PENDING"] });
+  mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({ workspace: { workspaceId: "workspace-a", runnerId: "runner-a" } });
+  mocks.developmentRunService.get.mockReset().mockRejectedValue(new Error("RUN_NOT_FOUND"));
   mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
 
 describe("spec226DevelopmentControlRouter", () => {
+  it("rejects a not-run Codex probe before source staging or job creation and exposes the exact owner action", async () => {
+    mocks.runnerReadiness.mockResolvedValueOnce({ ready: false, code: "CODEX_TASK_PROBE_NOT_RUN", policyDecision: "pending", ownerAction: "Runner → Tools → Codex → ทดสอบสั่งงานจริง" });
+    await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
+      conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "start-codex-probe-not-run",
+    } })).rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: expect.stringContaining("ทดสอบสั่งงานจริง") });
+    expect(mocks.createRun).not.toHaveBeenCalled();
+    expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+    expect(mocks.advanceStart).not.toHaveBeenCalled();
+  });
+
+  it("keeps an explicit Codex policy denial forbidden at Start", async () => {
+    mocks.runnerReadiness.mockResolvedValueOnce({ ready: false, code: "CODEX_CAPABILITY_POLICY_DENIED", policyDecision: "denied", ownerAction: null });
+    await expect((spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
+      conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "start-codex-policy-denied",
+    } })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.createRun).not.toHaveBeenCalled();
+  });
+
+  it("resumes authorization for the same Start key without restaging a changing heartbeat snapshot", async () => {
+    const input = { conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "repeat-same-owner-goal-key" };
+    const digest = createHash("sha256").update(JSON.stringify({ conversationId: 8, mode: "prompt", prompt: input.prompt,
+      specSetRevision: null, workPackageId: null, provider: "codex", visualReferences: [], visualFiles: [], designPreferences: {} })).digest("hex");
+    const runId = `run-${createHash("sha256").update(`${CTX.tenantId}:${CTX.user.id}:${input.idempotencyKey}`).digest("hex").slice(0, 40)}`;
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: { runId, workerJobId: "existing-job", state: "DISCOVERY", workspaceId: "workspace-a",
+      metadata: { spec224StartRequestDigest: digest, spec224Input: { inputDigest: "c".repeat(64) }, spec224Workspace: { specSetRevision: null, workPackageId: null } } } });
+    mocks.advanceStart.mockResolvedValueOnce({ version: "spec-224-authorization-binding-v1", status: "READY_FOR_LIVE", reasons: [] });
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input });
+    expect(result).toMatchObject({ runId, jobId: "existing-job", idempotent: true, dispatchStatus: "ENQUEUED" });
+    expect(mocks.createRun).not.toHaveBeenCalled();
+    expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
+    expect(mocks.advanceStart).toHaveBeenCalledWith(expect.objectContaining({ runId, runnerId: "runner-a" }));
+  });
   it("lists candidates for a different authorized owner and bound repository", async () => {
     const appId = "app_synthetic_second";
     const repository = { mode: "USER_OWNED", owner: "synthetic-owner", name: "another-private-app", url: "https://github.com/synthetic-owner/another-private-app", revision: "c".repeat(40) };
