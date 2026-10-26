@@ -31,7 +31,7 @@ describe("production candidate Wrangler packaging", () => {
     expect(config.name).toMatch(/^smartspec-production-[a-f0-9]{12}-candidate$/);
     expect(config.name).not.toBe("smartspec-cloudflare-runtime");
     expect(config.routes).toEqual([]); expect(config).not.toHaveProperty("queues"); expect(config).not.toHaveProperty("assets");
-    expect(config.containers.map(item => Object.values(item.images)[0])).toEqual([input.settings.node.image, input.settings.python.image]);
+    expect(config.containers.map(item => Object.values(item.images)[0].image)).toEqual([input.settings.node.image, input.settings.python.image]);
     expect(config.vars.CLOUDFLARE_ACTIVATION).toBe("disabled"); expect(trafficMutation || dnsMutation).toBe(false);
     expect(config).not.toHaveProperty("secrets");
   });

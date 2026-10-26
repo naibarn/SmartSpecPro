@@ -33,7 +33,7 @@ export function createHttpCandidateConfiguration(input: {
     migrations: [{ tag: "native-candidate-v1", new_sqlite_classes: classes }],
     containers: (["node", "python"] as const).map((runtime, index) => ({
       name: `${settings.namespace}-${runtime}-http`, class_name: classes[index], scheduling_policy: "durable_object",
-      images: { [runtime]: settings[runtime].image }, observability: { logs: { enabled: true } },
+      images: { [runtime]: { image: settings[runtime].image } }, observability: { logs: { enabled: true } },
     })),
   };
   return { config, manifestDigest: createHash("sha256").update(JSON.stringify(config)).digest("hex"),
