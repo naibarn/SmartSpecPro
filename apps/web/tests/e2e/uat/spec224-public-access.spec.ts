@@ -12,14 +12,15 @@ import { expect, readTrpc, test } from "./authenticated.fixture";
 // Access-control UAT uses non-sensitive deterministic source, not a claim of
 // live Gateway generation or protected Windows Runner execution.
 test.use({ uatRole: "owner" });
-test("Revision 24 owner publish, anonymous read, unpublish and tenant isolation", async ({ page }, testInfo) => {
+test("Revision 24 owner publish, anonymous read, unpublish and tenant isolation", async ({ page, baseURL }, testInfo) => {
+  const uatOrigin = new URL(baseURL!).origin;
   const owner = await readTrpc<{ id: number; currentTenantId: string }>(page, "auth.me");
   expect(owner.status).toBe(200);
   expect(owner.data?.currentTenantId).toMatch(/^tenant-codex-/);
   const tenantId = owner.data!.currentTenantId;
   const ownerUserId = owner.data!.id;
   const key = `rev24-access:${randomBytes(16).toString("hex")}`;
-  const mutate = async (procedure: string, input: unknown) => page.request.post(`/trpc/${procedure}`, { headers: { Origin: "https://smartaihub.app" }, data: { json: input } });
+  const mutate = async (procedure: string, input: unknown) => page.request.post(`/trpc/${procedure}`, { headers: { Origin: uatOrigin }, data: { json: input } });
   const created = await mutate("appIdentity.createMiniApp", { idempotencyKey: key });
   expect(created.status()).toBe(200);
   const appId: string = (await created.json()).result.data.json.appId;
@@ -39,16 +40,16 @@ test("Revision 24 owner publish, anonymous read, unpublish and tenant isolation"
     await bindPersonalMiniAppArtifact({ tenantId, ownerUserId, appId, developmentRunId: runId, ...built });
     results.sourceDigest = built.sourceDigest;
     results.artifactDigest = built.artifactDigest;
-    const anonymous = await request.newContext({ baseURL: "https://smartaihub.app" });
+    const anonymous = await request.newContext({ baseURL });
     contexts.push(anonymous);
     expect((await lookup(anonymous)).status()).toBe(404);
     for (const role of ["member", "restricted"] as const) {
       const session = await issueUatSession(role);
       sessions.push(session);
-      const context = await request.newContext({ baseURL: "https://smartaihub.app", extraHTTPHeaders: { Cookie: `${COOKIE_NAME}=${session.token}` } });
+      const context = await request.newContext({ baseURL, extraHTTPHeaders: { Cookie: `${COOKIE_NAME}=${session.token}` } });
       contexts.push(context);
       expect((await lookup(context)).status()).toBe(404);
-      const forbiddenPublish = await context.post("/trpc/appIdentity.publishMiniApp", { headers: { Origin: "https://smartaihub.app" }, data: { json: { appId } } });
+      const forbiddenPublish = await context.post("/trpc/appIdentity.publishMiniApp", { headers: { Origin: uatOrigin }, data: { json: { appId } } });
       expect(forbiddenPublish.status()).toBe(412);
       results[`${role}PrivateDenied`] = true;
     }
@@ -61,7 +62,7 @@ test("Revision 24 owner publish, anonymous read, unpublish and tenant isolation"
     expect(publicBody.html).toContain("Revision 24 access fixture");
     expect(publicBody.factory).toBeNull();
     results.anonymousPublicRead = publicRead.status();
-    const anonymousBrowser = await page.context().browser()!.newContext({ baseURL: "https://smartaihub.app", viewport: { width: 390, height: 844 } });
+    const anonymousBrowser = await page.context().browser()!.newContext({ baseURL, viewport: { width: 390, height: 844 } });
     try {
       const publicPage = await anonymousBrowser.newPage();
       const document = await publicPage.goto(`/miniapp/${appId}`);

@@ -130,20 +130,21 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
       throw error;
     }
     const context: BrowserContext = await browser.newContext({
-      baseURL: "https://smartaihub.app",
+      baseURL: process.env.SMARTSPEC_UAT_BASE_URL,
       viewport: { width: 1440, height: 1000 },
     });
     const page = await context.newPage();
+    const uatOrigin = new URL(process.env.SMARTSPEC_UAT_BASE_URL!);
     await context.addCookies([
       {
         name: COOKIE_NAME,
         value: session.token,
-        domain: ".smartaihub.app",
+        url: uatOrigin.origin,
         path: "/",
         expires: Math.floor(session.expiresAt / 1000),
         httpOnly: true,
-        secure: true,
-        sameSite: "None",
+        secure: uatOrigin.protocol === "https:",
+        sameSite: "Lax",
       },
     ]);
 

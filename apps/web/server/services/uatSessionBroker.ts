@@ -59,6 +59,8 @@ export type UatSession = {
 type BrokerEnvironment = {
   nodeEnv?: string;
   enabled?: string;
+  smartSpecEnvironment?: string;
+  databaseMode?: string;
   databaseUrl?: string;
 };
 
@@ -69,6 +71,13 @@ export function assertUatBrokerEnvironment(environment: BrokerEnvironment): void
   }
   if (environment.enabled !== "true") {
     throw new Error("UAT_BROKER_NOT_ENABLED");
+  }
+  if (
+    environment.nodeEnv !== "development" ||
+    environment.smartSpecEnvironment !== "development" ||
+    environment.databaseMode !== "development"
+  ) {
+    throw new Error("UAT_BROKER_DEVELOPMENT_ENVIRONMENT_REQUIRED");
   }
   if (!environment.databaseUrl) {
     throw new Error("UAT_BROKER_DATABASE_REQUIRED");
@@ -83,7 +92,11 @@ export function assertUatBrokerEnvironment(environment: BrokerEnvironment): void
 
   const localHosts = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
   const databaseName = databaseUrl.pathname.replace(/^\//, "");
-  if (!localHosts.has(databaseUrl.hostname) || databaseName !== "smartspec") {
+  if (
+    !localHosts.has(databaseUrl.hostname) ||
+    !databaseName.endsWith("_dev") ||
+    !databaseUrl.username.endsWith("_dev")
+  ) {
     throw new Error("UAT_BROKER_LOCAL_DEVELOPMENT_DATABASE_REQUIRED");
   }
 }
@@ -92,6 +105,8 @@ function assertConfiguredEnvironment(): void {
   assertUatBrokerEnvironment({
     nodeEnv: process.env.NODE_ENV,
     enabled: process.env.SMARTSPEC_UAT_SESSION_BROKER,
+    smartSpecEnvironment: process.env.SMARTSPEC_ENVIRONMENT,
+    databaseMode: process.env.SMARTSPEC_DEV_DATABASE_MODE,
     databaseUrl: process.env.DATABASE_URL,
   });
   if (!ENV.jwtSecret || !ENV.appId) {

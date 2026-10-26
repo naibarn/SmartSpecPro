@@ -58,7 +58,7 @@ test("authenticated UI request traverses the SmartAIHub Gateway and records scop
   expect(Number(usageMetadata?.tokensUsed), "provider token usage is recorded").toBeGreaterThan(0);
   const receiptPath = testInfo.outputPath("gateway-integration-receipt.json");
   await writeFile(receiptPath, JSON.stringify({
-      browserOrigin: "https://smartaihub.app",
+      browserOrigin: new URL(page.url()).origin,
       browserRoute: "/api/v1/chat/completions",
       gatewayRoute: "SmartAIHub Gateway",
       provider: usageMetadata?.provider,

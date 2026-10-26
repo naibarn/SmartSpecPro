@@ -4,12 +4,21 @@ import { assertUatBrokerEnvironment } from "./uatSessionBroker";
 const localDev = {
   nodeEnv: "development",
   enabled: "true",
-  databaseUrl: "postgresql://dev:ignored@127.0.0.1:5432/smartspec",
+  smartSpecEnvironment: "development",
+  databaseMode: "development",
+  databaseUrl: "postgresql://codex_dev:ignored@127.0.0.1:5432/smartspec_dev",
 };
 
 describe("Codex UAT session broker guard", () => {
   it("allows only explicitly enabled local development databases", () => {
     expect(() => assertUatBrokerEnvironment(localDev)).not.toThrow();
+  });
+
+  it("rejects the shared smartspec database even when it is local", () => {
+    expect(() => assertUatBrokerEnvironment({
+      ...localDev,
+      databaseUrl: "postgresql://dev:ignored@localhost:5432/smartspec",
+    })).toThrow("UAT_BROKER_LOCAL_DEVELOPMENT_DATABASE_REQUIRED");
   });
 
   it("cannot be enabled in production", () => {
@@ -31,5 +40,16 @@ describe("Codex UAT session broker guard", () => {
       ...localDev,
       databaseUrl: "postgresql://dev:ignored@localhost:5432/customer_data",
     })).toThrow("UAT_BROKER_LOCAL_DEVELOPMENT_DATABASE_REQUIRED");
+  });
+
+  it("requires explicit development environment markers", () => {
+    expect(() => assertUatBrokerEnvironment({
+      ...localDev,
+      smartSpecEnvironment: undefined,
+    })).toThrow("UAT_BROKER_DEVELOPMENT_ENVIRONMENT_REQUIRED");
+    expect(() => assertUatBrokerEnvironment({
+      ...localDev,
+      databaseMode: "production-readonly",
+    })).toThrow("UAT_BROKER_DEVELOPMENT_ENVIRONMENT_REQUIRED");
   });
 });

@@ -3,7 +3,10 @@ import { mkdir, readFile, writeFile, chmod, access } from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import type { FullConfig } from "@playwright/test";
-import { seedUatIdentities } from "../../../server/services/uatSessionBroker";
+import {
+  assertUatBrokerEnvironment,
+  seedUatIdentities,
+} from "../../../server/services/uatSessionBroker";
 import {
   assertMoliUatRuntimeIsolation,
   verifyMoliUatSystemdIsolation,
@@ -137,19 +140,28 @@ async function prepareMoliRootfs(
   return { version, rootfsDigest: provenance.rootfsDigest };
 }
 
-function assertTunnelRoute(
-  configText: string,
-  hostname: string,
-  target: string
-): void {
-  const escapedHost = hostname.replaceAll(".", "\\.");
-  const escapedTarget = target.replaceAll(".", "\\.");
-  const route = new RegExp(
-    `-\\s*hostname:\\s*${escapedHost}\\s*\\n\\s*service:\\s*${escapedTarget}(?:\\s|$)`
-  );
-  if (!route.test(configText)) {
-    throw new Error(`UAT_TUNNEL_ROUTE_NOT_CONFIRMED:${hostname}`);
+function assertLoopbackServiceUrl(
+  value: string | undefined,
+  service: "web" | "python"
+): URL {
+  let url: URL;
+  try {
+    url = new URL(value ?? "");
+  } catch {
+    throw new Error(`UAT_${service.toUpperCase()}_LOCAL_URL_REQUIRED`);
   }
+  const localHosts = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
+  if (
+    url.protocol !== "http:" ||
+    !localHosts.has(url.hostname) ||
+    url.username ||
+    url.password ||
+    (service === "web" && url.port === "3000") ||
+    (service === "python" && url.port === "8000")
+  ) {
+    throw new Error(`UAT_${service.toUpperCase()}_LOCAL_URL_REQUIRED`);
+  }
+  return url;
 }
 
 export default async function globalSetup(config: FullConfig): Promise<void> {
@@ -166,62 +178,42 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   await mkdir(outputDir, { recursive: true, mode: 0o700 });
   await chmod(outputDir, 0o700);
 
-  const tunnelConfigPath =
-    process.env.CLOUDFLARED_CONFIG || "/etc/cloudflared/config.yml";
-  const tunnelConfig = await readFile(tunnelConfigPath, "utf8");
-  assertTunnelRoute(tunnelConfig, "smartaihub.app", "http://localhost:3000");
-  assertTunnelRoute(
-    tunnelConfig,
-    "api.smartaihub.app",
-    "http://localhost:8000"
+  if (
+    process.env.NODE_ENV !== "development" ||
+    process.env.SMARTSPEC_ENVIRONMENT !== "development" ||
+    process.env.SMARTSPEC_DEV_DATABASE_MODE !== "development"
+  ) {
+    throw new Error("UAT_DEVELOPMENT_ENVIRONMENT_REQUIRED");
+  }
+  assertUatBrokerEnvironment({
+    nodeEnv: process.env.NODE_ENV,
+    enabled: process.env.SMARTSPEC_UAT_SESSION_BROKER,
+    smartSpecEnvironment: process.env.SMARTSPEC_ENVIRONMENT,
+    databaseMode: process.env.SMARTSPEC_DEV_DATABASE_MODE,
+    databaseUrl: process.env.DATABASE_URL,
+  });
+  const webOrigin = assertLoopbackServiceUrl(
+    process.env.SMARTSPEC_UAT_BASE_URL,
+    "web"
+  );
+  const pythonOrigin = assertLoopbackServiceUrl(
+    process.env.PYTHON_BACKEND_URL,
+    "python"
   );
 
-  const backendEnvPath =
-    process.env.SMARTSPEC_UAT_PYTHON_ENV_FILE ||
-    "/home/dev/projects/SmartSpecPro/python-backend/.env";
-  const backendEnv = await readFile(backendEnvPath, "utf8");
-  const backendSettings = new Map<string, string>();
-  for (const line of backendEnv.split(/\r?\n/)) {
-    const match = line.match(
-      /^\s*(SMARTSPEC_USE_WEB_GATEWAY|SMARTSPEC_WEB_GATEWAY_URL)=(.*)$/
-    );
-    if (match)
-      backendSettings.set(
-        match[1]!,
-        match[2]!.trim().replace(/^['"]|['"]$/g, "")
-      );
-  }
-  let webGatewayUrl: URL;
-  try {
-    webGatewayUrl = new URL(
-      backendSettings.get("SMARTSPEC_WEB_GATEWAY_URL") ?? ""
-    );
-  } catch {
-    throw new Error("UAT_SMARTAIHUB_GATEWAY_NOT_CONFIGURED");
-  }
-  if (
-    !new Set(["true", "1", "yes"]).has(
-      (backendSettings.get("SMARTSPEC_USE_WEB_GATEWAY") ?? "").toLowerCase()
-    ) ||
-    webGatewayUrl.hostname !== "smartaihub.app" ||
-    webGatewayUrl.protocol !== "https:"
-  ) {
-    throw new Error("UAT_SMARTAIHUB_GATEWAY_NOT_CONFIGURED");
-  }
-
-  // Public DNS is intentionally untouched. Cloudflare TLS routes the required
-  // hostname through the explicitly verified development tunnel.
+  // UAT uses dedicated local development services directly. It must never
+  // traverse the public SmartAIHub hostname or the production service ports.
   const [webResponse, apiResponse] = await Promise.all([
-    fetch("https://smartaihub.app/health", {
+    fetch(new URL("/health", webOrigin), {
       signal: AbortSignal.timeout(10_000),
     }),
-    fetch("https://api.smartaihub.app/health", {
+    fetch(new URL("/health", pythonOrigin), {
       signal: AbortSignal.timeout(10_000),
     }),
   ]);
   if (!webResponse.ok || !apiResponse.ok) {
     throw new Error(
-      `UAT_TUNNEL_HEALTH_FAILED:web=${webResponse.status}:api=${apiResponse.status}`
+      `UAT_LOCAL_HEALTH_FAILED:web=${webResponse.status}:python=${apiResponse.status}`
     );
   }
 
@@ -249,22 +241,17 @@ export default async function globalSetup(config: FullConfig): Promise<void> {
   await seedUatIdentities();
   const evidence = {
     route: {
-      browserOrigin: "https://smartaihub.app",
-      webTunnelTarget: "http://localhost:3000",
-      gatewayOrigin: "https://api.smartaihub.app",
-      gatewayTunnelTarget: "http://localhost:8000",
-      providerGatewayOrigin: webGatewayUrl.origin,
-      publicDnsModified: false,
-      tlsVerification:
-        "verified by Node HTTPS client; certificate errors are not ignored",
+      browserOrigin: webOrigin.origin,
+      webDevelopmentTarget: webOrigin.origin,
+      pythonDevelopmentTarget: pythonOrigin.origin,
+      networkBoundary: "loopback-only; public SmartAIHub origins are not used",
     },
     health: {
       webService: webHealth.service,
-      gatewayStatus: apiHealth.status,
-      gatewayVersion: apiHealth.version,
+      pythonStatus: apiHealth.status,
+      pythonVersion: apiHealth.version,
       webRequestId: webResponse.headers.get("x-request-id"),
-      gatewayRequestId: apiResponse.headers.get("x-request-id"),
-      cfRay: apiResponse.headers.get("cf-ray"),
+      pythonRequestId: apiResponse.headers.get("x-request-id"),
     },
     browser: moliRuntime
       ? {

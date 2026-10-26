@@ -41,7 +41,9 @@ test.describe("member tenant authorization", () => {
       headers: { "X-Tenant-Id": UAT_RESTRICTED_TENANT_ID },
     });
     expect(crossTenant.status()).toBe(403);
-    expect(baseURL).toBe("https://smartaihub.app");
+    const uatUrl = new URL(baseURL!);
+    expect(uatUrl.hostname).toBe("127.0.0.1");
+    expect(uatUrl.port).not.toBe("3000");
   });
 });
 

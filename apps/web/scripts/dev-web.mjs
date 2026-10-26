@@ -16,9 +16,16 @@ let config;
 try {
   config = parse(readFileSync(envFile));
   config = selectDevWebDatabase(config);
+  const requestedDevPort = process.env.SMARTSPEC_DEV_WEB_PORT;
+  if (requestedDevPort) {
+    const port = Number(requestedDevPort);
+    if (!Number.isInteger(port) || port < 1024 || port > 65535)
+      throw new Error("Invalid isolated dev web port");
+    config.PORT = String(port);
+  }
   if (!config.JWT_SECRET || !config.LLM_ENCRYPTION_KEY)
     throw new Error("Dev authentication/encryption keys are missing");
-  if (!config.PORT || config.PORT === "3000")
+  if (!config.PORT || config.PORT === "3000" || config.PORT === "8000")
     throw new Error("Use a separate dev port");
   if (!config.CONTROL_PLANE_API_KEY || config.CONTROL_PLANE_API_KEY.length < 24)
     throw new Error("A separate development control-plane key is missing");
