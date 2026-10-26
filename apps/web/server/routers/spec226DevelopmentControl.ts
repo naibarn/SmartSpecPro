@@ -42,6 +42,7 @@ import {
   type WorkspaceAuthorityAction,
 } from "../services/workspaceAuthoritySafeActions";
 import { getSpec224BackendRuntimeIdentity } from "../services/spec224BackendRuntimeIdentity";
+import { loadRepositoryFeatureSpec, listRepositoryFeatureSpecs } from "../services/spec224FeatureSpecCatalog";
 
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
@@ -415,6 +416,16 @@ export const spec226DevelopmentControlRouter = router({
       }
     }),
 
+  listFeatureSpecs: adminProcedure
+    .input(z.object({ search: z.string().trim().max(120).optional() }).optional())
+    .query(async ({ input }) => {
+      try {
+        return await listRepositoryFeatureSpecs({ search: input?.search });
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
   bindConversationWorkspace: protectedProcedure
     .input(z.object({
       conversationId: z.number().int().positive(),
@@ -472,6 +483,38 @@ export const spec226DevelopmentControlRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         return await defaultSpec224WorkspaceSpecSetService.ingestSpecSet({ ...requireScope(ctx), ...input });
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  ingestFeatureSpec: adminProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      specId: z.string().trim().min(1).max(160),
+      idempotencyKey: z.string().trim().min(1).max(120),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await requireDevelopmentBearerScope(ctx.req);
+        const scope = requireScope(ctx);
+        const spec = await loadRepositoryFeatureSpec({ specId: input.specId });
+        const safeName = spec.id
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "")
+          .slice(0, 72) || "feature";
+        const digestSuffix = createHash("sha256").update(spec.id).digest("hex").slice(0, 10);
+        const result = await defaultSpec224WorkspaceSpecSetService.ingestSpecSet({
+          ...scope,
+          conversationId: input.conversationId,
+          artifacts: [{
+            path: `feature-specs/${safeName}-${digestSuffix}.md`,
+            contentBase64: Buffer.from(spec.content, "utf8").toString("base64"),
+          }],
+          idempotencyKey: `feature-spec:${digestSuffix}:${input.idempotencyKey}`,
+        });
+        return { ...result, sourceSpec: { id: spec.id, title: spec.title, path: spec.path } };
       } catch (error) {
         return asTrpcError(error);
       }

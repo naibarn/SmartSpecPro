@@ -2,11 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), info: vi.fn(), readiness: undefined as any }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), info: vi.fn(), readiness: undefined as any, role: "admin", featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], ingestFeatureSpec: vi.fn() }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: (...args: unknown[]) => mocks.info(...args) } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { spec226DevelopmentControl: {
   availableWorkspaces: { useQuery: () => ({ data: { workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }] } }) },
   getConversationWorkspace: { useQuery: () => ({ data: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" } }, refetch: vi.fn() }) },
+  listFeatureSpecs: { useQuery: () => ({ data: { specs: mocks.featureSpecs }, isLoading: false, error: null }) },
+  ingestFeatureSpec: { useMutation: () => ({ mutateAsync: mocks.ingestFeatureSpec, isPending: false }) },
   workspaceRunnerReadiness: { useQuery: () => ({ data: mocks.readiness }) },
   bindConversationWorkspace: { useMutation: () => ({ mutateAsync: vi.fn() }) },
   ingestSpecSet: { useMutation: () => ({ mutateAsync: vi.fn() }) },
@@ -25,6 +28,8 @@ beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
   mocks.readiness = undefined;
+  mocks.role = "admin";
+  mocks.featureSpecs = [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }];
   mocks.prepare.mockResolvedValue(preparation(true));
   mocks.start.mockResolvedValue({ runId: "unit-run", jobId: "unit-job", dispatchStatus: "PENDING_AUTHORIZATION",
     authorization: { reasons: ["SPEC224_NONPRODUCTION_POLICY_NOT_CONFIGURED"] } });
@@ -45,6 +50,43 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByText(/CODEX_TASK_PROBE_NOT_RUN/).textContent).toContain("รอประเมินตามขอบเขตของ Start");
     expect(screen.getByRole("button", { name: "สั่งพัฒนา" })).toBeDisabled();
     expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it("lets an Admin select a repository Feature Spec and imports it into the current Spec Set", async () => {
+    mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
+    render(<Spec224WorkspacePanel conversationId={8} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    expect(screen.getByRole("radio", { name: "เลือก Feature Spec จากระบบ (specs/feature)" })).toBeInTheDocument();
+    expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), { target: { value: "224-example-feature" } });
+    fireEvent.click(screen.getByRole("button", { name: "เพิ่ม Spec ที่เลือกใน workspace" }));
+
+    await waitFor(() => expect(mocks.ingestFeatureSpec).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 8,
+      specId: "224-example-feature",
+      idempotencyKey: expect.any(String),
+    })));
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it("exposes the repository catalog only to Admins and keeps manual Spec upload available", async () => {
+    mocks.role = "user";
+    render(<Spec224WorkspacePanel conversationId={8} />);
+
+    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+
+    expect(screen.queryByRole("radio", { name: "เลือก Feature Spec จากระบบ (specs/feature)" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
+  });
+
+  it("switches from Mini-App mode to Spec development instead of disabling Spec work", async () => {
+    render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.click(screen.getByRole("radio", { name: "สร้าง Mini App" }));
+    const specMode = screen.getByRole("radio", { name: "พัฒนาตาม Spec file" });
+    expect(specMode).toBeEnabled();
+    fireEvent.click(specMode);
+    expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
   });
 
   it("preserves the Start key for pending authorization and displays the precise setup reason", async () => {

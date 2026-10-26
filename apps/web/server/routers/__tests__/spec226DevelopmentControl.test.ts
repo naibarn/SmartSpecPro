@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
     prepareWorkspaceRun: vi.fn(),
     resolveWorkspaceRunInput: vi.fn(),
   },
+  featureSpecCatalog: { list: vi.fn(), load: vi.fn() },
   runnerInputStaging: { preStageRunnerInput: vi.fn(), bindSourceToWorkerJob: vi.fn() },
   analyzeVisualReferences: vi.fn(),
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
@@ -103,6 +104,11 @@ vi.mock("../../services/spec224WorkspaceSpecSet", () => ({
   defaultSpec224WorkspaceSpecSetService: mocks.workspaceSpecSets,
 }));
 
+vi.mock("../../services/spec224FeatureSpecCatalog", () => ({
+  listRepositoryFeatureSpecs: (...args: unknown[]) => mocks.featureSpecCatalog.list(...args),
+  loadRepositoryFeatureSpec: (...args: unknown[]) => mocks.featureSpecCatalog.load(...args),
+}));
+
 vi.mock("../../services/spec224RunnerInputStaging", () => ({
   defaultSpec224RunnerInputStagingService: mocks.runnerInputStaging,
 }));
@@ -146,6 +152,8 @@ beforeEach(() => {
   mocks.runnerReadiness.mockReset().mockResolvedValue({ ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null, projectId: "project-a", profileId: "spec224-recovery-windows-x64-codex-nonprod" });
   mocks.advanceStart.mockReset().mockResolvedValue({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_PENDING"] });
   mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({ workspace: { workspaceId: "workspace-a", runnerId: "runner-a" } });
+  mocks.featureSpecCatalog.list.mockReset().mockResolvedValue({ specs: [{ id: "224-example", title: "Example", path: "specs/feature/224-example/spec.md", summary: "Example spec" }] });
+  mocks.featureSpecCatalog.load.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", content: "# Example\n" });
   mocks.developmentRunService.get.mockReset().mockRejectedValue(new Error("RUN_NOT_FOUND"));
   mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
@@ -351,6 +359,26 @@ describe("spec226DevelopmentControlRouter", () => {
 
     expect(mocks.workspaceSpecSets.bindConversationWorkspace).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "tenant-acme", actorId: 42, runnerId: "runner-a", workspaceId: "workspace-a" }));
     expect(mocks.workspaceSpecSets.prepareWorkspaceRun).toHaveBeenCalledWith(expect.objectContaining({ tenantId: "tenant-acme", actorId: 42, conversationId: 8, mode: "spec_set" }));
+  });
+
+  it("lists Admin feature specs and ingests selected source into the existing conversation Spec Set", async () => {
+    mocks.workspaceSpecSets.ingestSpecSet.mockResolvedValueOnce({ revision: 3, digest: "a".repeat(64), files: [{ path: "feature-specs/224-example-5c8fbd15e8.md" }], requirementCount: 2, runnableWorkPackageCount: 1, blockedWorkPackageCount: 0 });
+
+    await expect((spec226DevelopmentControlRouter.listFeatureSpecs as unknown as Function)({ ctx: CTX, input: { search: "Example" } })).resolves.toMatchObject({ specs: [{ id: "224-example" }] });
+    await expect((spec226DevelopmentControlRouter.ingestFeatureSpec as unknown as Function)({
+      ctx: CTX,
+      input: { conversationId: 8, specId: "224 Example Spec", idempotencyKey: "admin-spec-import-1" },
+    })).resolves.toMatchObject({ revision: 3, sourceSpec: { id: "224 Example Spec", path: "specs/feature/224 Example Spec/spec.md" } });
+
+    expect(mocks.featureSpecCatalog.list).toHaveBeenCalledWith({ search: "Example" });
+    expect(mocks.featureSpecCatalog.load).toHaveBeenCalledWith({ specId: "224 Example Spec" });
+    expect(mocks.workspaceSpecSets.ingestSpecSet).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: "tenant-acme",
+      actorId: 42,
+      conversationId: 8,
+      artifacts: [{ path: expect.stringMatching(/^feature-specs\/224-example-spec-[a-f0-9]{10}\.md$/), contentBase64: Buffer.from("# Example\n").toString("base64") }],
+      idempotencyKey: expect.stringMatching(/^feature-spec:[a-f0-9]{10}:admin-spec-import-1$/),
+    }));
   });
 
   it("starts a personal Mini-App on hosted worker_jobs without resolving a Runner workspace", async () => {

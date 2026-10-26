@@ -22,8 +22,10 @@ const mocks = vi.hoisted(() => ({
   availableWorkspacesQuery: vi.fn(),
   workspaceRunnerReadinessQuery: vi.fn(),
   conversationWorkspaceQuery: vi.fn(),
+  listFeatureSpecsQuery: vi.fn(),
   bindWorkspaceMutation: vi.fn(),
   ingestSpecSetMutation: vi.fn(),
+  ingestFeatureSpecMutation: vi.fn(),
   prepareWorkspaceMutation: vi.fn(),
   startWorkspaceMutation: vi.fn(),
   bindWorkspaceMutateAsync: vi.fn(),
@@ -31,6 +33,8 @@ const mocks = vi.hoisted(() => ({
   prepareWorkspaceMutateAsync: vi.fn(),
   startWorkspaceMutateAsync: vi.fn(),
 }));
+
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: "admin" } }) }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: {
@@ -64,6 +68,12 @@ vi.mock("@/lib/trpc", () => ({
       },
       getConversationWorkspace: {
         useQuery: (...args: unknown[]) => mocks.conversationWorkspaceQuery(...args),
+      },
+      listFeatureSpecs: {
+        useQuery: (...args: unknown[]) => mocks.listFeatureSpecsQuery(...args),
+      },
+      ingestFeatureSpec: {
+        useMutation: (...args: unknown[]) => mocks.ingestFeatureSpecMutation(...args),
       },
       bindConversationWorkspace: {
         useMutation: (...args: unknown[]) => mocks.bindWorkspaceMutation(...args),
@@ -212,6 +222,8 @@ beforeEach(() => {
   mocks.availableWorkspacesQuery.mockReturnValue({ ...emptyQuery, data: { workspaces: [] } });
   mocks.workspaceRunnerReadinessQuery.mockReturnValue(emptyQuery);
   mocks.conversationWorkspaceQuery.mockReturnValue({ ...emptyQuery, data: null });
+  mocks.listFeatureSpecsQuery.mockReturnValue({ ...emptyQuery, data: { specs: [] } });
+  mocks.ingestFeatureSpecMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
   mocks.bindWorkspaceMutateAsync.mockResolvedValue({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", revision: 1 });
   mocks.bindWorkspaceMutation.mockReturnValue({ mutateAsync: mocks.bindWorkspaceMutateAsync, isPending: false });
   mocks.ingestSpecSetMutateAsync.mockResolvedValue({ revision: 1, digest: "a".repeat(64), files: [], requirementCount: 1, runnableWorkPackageCount: 0, blockedWorkPackageCount: 1 });
@@ -364,7 +376,7 @@ describe("UniversalControlPlanePanel", () => {
       ],
     });
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
-    fireEvent.click(screen.getByRole("radio", { name: "แนบหรือเพิ่ม Spec files" }));
+    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
     fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
     await screen.findByRole("button", { name: "สั่งพัฒนา ready-api" });
     expect(screen.getByText(/future-ui/)).toBeTruthy();
@@ -388,7 +400,8 @@ describe("UniversalControlPlanePanel", () => {
       },
     });
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
-    fireEvent.click(screen.getByRole("radio", { name: "แนบหรือเพิ่ม Spec files" }));
+    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
     const files = [new File(["# One"], "one.md"), new File(["{\"requirements\": []}"], "two.json", { type: "application/json" })];
     fireEvent.change(screen.getByLabelText("แนบไฟล์ Spec 224"), { target: { files } });
     await waitFor(() => expect(mocks.ingestSpecSetMutateAsync).toHaveBeenCalled());

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 import { Text } from "@/components/AppPage";
 
@@ -83,6 +84,8 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
 export function Spec224WorkspacePanel({ conversationId }: { conversationId: number | null }) {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const fileInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState("");
   const [prompt, setPrompt] = useState("");
@@ -92,6 +95,9 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const [designNotes, setDesignNotes] = useState("");
   const [miniAppPreviewUrl, setMiniAppPreviewUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"prompt" | "spec_set">("prompt");
+  const [specSource, setSpecSource] = useState<"upload" | "catalog">("upload");
+  const [featureSpecSearch, setFeatureSpecSearch] = useState("");
+  const [selectedFeatureSpec, setSelectedFeatureSpec] = useState("");
   const [requestKind, setRequestKind] = useState<"development" | "mini_app">("development");
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
   const [uploading, setUploading] = useState(false);
@@ -128,6 +134,11 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   );
   const bindMutation = trpc.spec226DevelopmentControl.bindConversationWorkspace.useMutation();
   const ingestMutation = trpc.spec226DevelopmentControl.ingestSpecSet.useMutation();
+  const featureSpecsQuery = trpc.spec226DevelopmentControl.listFeatureSpecs.useQuery(
+    { search: featureSpecSearch.trim() || undefined },
+    { enabled: isAdmin && mode === "spec_set" && specSource === "catalog" }
+  );
+  const ingestFeatureSpecMutation = trpc.spec226DevelopmentControl.ingestFeatureSpec.useMutation();
   const prepareMutation = trpc.spec226DevelopmentControl.prepareWorkspaceRun.useMutation();
   type Preparation = Awaited<ReturnType<typeof prepareMutation.mutateAsync>>;
   const [preparation, setPreparation] = useState<Preparation | null>(null);
@@ -213,6 +224,25 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
     } finally {
       setUploading(false);
       if (fileInput.current) fileInput.current.value = "";
+    }
+  }
+
+  async function ingestSelectedFeatureSpec() {
+    if (!conversationId || !workspaceQuery.data?.workspace || !selectedFeatureSpec || !isAdmin) return;
+    setUploading(true);
+    setPreparation(null);
+    try {
+      const result = await ingestFeatureSpecMutation.mutateAsync({
+        conversationId,
+        specId: selectedFeatureSpec,
+        idempotencyKey: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+      });
+      await workspaceQuery.refetch();
+      toast.success(`เพิ่ม ${result.sourceSpec.title} ใน Spec Set revision ${result.revision} แล้ว`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "นำเข้า Feature Spec ไม่สำเร็จ");
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -450,13 +480,61 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
                 </fieldset> : null}
             </>
             <label className="flex items-center gap-2 text-xs">
-              <input type="radio" name="spec224-mode" checked={mode === "spec_set"} disabled={requestKind === "mini_app"} onChange={() => { setMode("spec_set"); setPreparation(null); }} />
-              แนบหรือเพิ่ม Spec files
+              <input type="radio" name="spec224-mode" checked={mode === "spec_set"} onChange={() => { setMode("spec_set"); setRequestKind("development"); setSpecSource(isAdmin ? "catalog" : "upload"); setPreparation(null); }} />
+              พัฒนาตาม Spec file
             </label>
             {mode === "spec_set" ? (
               <>
-                <input ref={fileInput} type="file" multiple accept=".md,.json,.zip" aria-label="แนบไฟล์ Spec 224" onChange={event => void ingestFiles(event.target.files)} />
-                <p className="text-xs text-[var(--color-text-secondary)]">รองรับหลายไฟล์ .md/.json หรือ .zip; สูงสุด 64 ไฟล์และ 2 MiB ต่อชุด ไฟล์ .md เดี่ยวประกาศ work package ได้ด้วย code fence `spec224-work-packages` ที่มี JSON `spec224.workPackages`; ถ้าไม่ประกาศ ระบบจะแสดง requirement แต่ยังไม่ให้เริ่ม package นั้น</p>
+                <fieldset className="space-y-2 rounded-md border border-[var(--color-border)] p-2" aria-label="Spec source">
+                  <legend className="px-1 text-xs font-medium">เลือกแหล่ง Spec</legend>
+                  <label className="flex items-center gap-2 text-xs">
+                    <input type="radio" name="spec224-source" checked={specSource === "upload"} onChange={() => setSpecSource("upload")} />
+                    อัปโหลด Spec files
+                  </label>
+                  {isAdmin ? (
+                    <label className="flex items-center gap-2 text-xs">
+                      <input type="radio" name="spec224-source" checked={specSource === "catalog"} onChange={() => setSpecSource("catalog")} />
+                      เลือก Feature Spec จากระบบ (specs/feature)
+                    </label>
+                  ) : null}
+                  {specSource === "upload" ? (
+                    <>
+                      <input ref={fileInput} type="file" multiple accept=".md,.json,.zip" aria-label="แนบไฟล์ Spec 224" onChange={event => void ingestFiles(event.target.files)} />
+                      <p className="text-xs text-[var(--color-text-secondary)]">รองรับหลายไฟล์ .md/.json หรือ .zip; สูงสุด 64 ไฟล์และ 2 MiB ต่อชุด ไฟล์ .md เดี่ยวประกาศ work package ได้ด้วย code fence `spec224-work-packages` ที่มี JSON `spec224.workPackages`; ถ้าไม่ประกาศ ระบบจะแสดง requirement แต่ยังไม่ให้เริ่ม package นั้น</p>
+                    </>
+                  ) : isAdmin ? (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-medium" htmlFor="feature-spec-search">ค้นหา Spec ในระบบ</label>
+                      <input
+                        id="feature-spec-search"
+                        type="search"
+                        value={featureSpecSearch}
+                        onChange={event => setFeatureSpecSearch(event.target.value)}
+                        placeholder="ค้นหาชื่อหรือรหัส Feature Spec"
+                        className="w-full rounded-md border border-[var(--color-border)] bg-background px-3 py-2 text-sm"
+                      />
+                      <label className="block text-xs font-medium" htmlFor="feature-spec-select">เลือกไฟล์ spec.md</label>
+                      <select
+                        id="feature-spec-select"
+                        value={selectedFeatureSpec}
+                        onChange={event => setSelectedFeatureSpec(event.target.value)}
+                        disabled={featureSpecsQuery.isLoading || !featureSpecsQuery.data?.specs.length}
+                        className="w-full rounded-md border border-[var(--color-border)] bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">เลือก Feature Spec</option>
+                        {featureSpecsQuery.data?.specs.map(spec => (
+                          <option key={spec.id} value={spec.id}>{spec.title} · {spec.id}</option>
+                        ))}
+                      </select>
+                      {featureSpecsQuery.isLoading ? <p role="status" className="text-xs text-[var(--color-text-secondary)]">กำลังโหลด Feature Specs…</p> : null}
+                      {featureSpecsQuery.error ? <p role="alert" className="text-xs text-rose-700">โหลดรายการ Spec ไม่สำเร็จ: {featureSpecsQuery.error.message}</p> : null}
+                      {selectedFeatureSpec ? <p className="break-all text-xs text-[var(--color-text-secondary)]">ต้นฉบับ: specs/feature/{selectedFeatureSpec}/spec.md</p> : null}
+                      <Button type="button" variant="outline" disabled={!workspaceQuery.data?.workspace || !selectedFeatureSpec || uploading || ingestFeatureSpecMutation.isPending} onClick={() => void ingestSelectedFeatureSpec()}>
+                        {uploading ? "กำลังเพิ่ม Spec ใน workspace…" : "เพิ่ม Spec ที่เลือกใน workspace"}
+                      </Button>
+                    </div>
+                  ) : null}
+                </fieldset>
               </>
             ) : null}
           </fieldset>
