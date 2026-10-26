@@ -27,6 +27,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   "auto-team.recovery.scan",
   "auto-team.recovery.evaluate",
   "workspace.authority.audit",
+  "workspace.authority.safe_action",
   "database.backup",
   "database.backup.maintenance",
   "worker.heartbeat_retention",
@@ -61,6 +62,7 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   // Staging deployment authority is still enforced by the registered
   // executor's exact owner grant, target, artifact and rollback checks.
   "cloudflare.staging.deploy",
+  "cloudflare.staging.http.image.provision",
   "cloudflare.production.deploy",
   // Production Queue preparation is a narrowly scoped, canonical provider
   // operation. Its executor revalidates the exact saved target and job lease;

@@ -7,6 +7,13 @@ import {
 import { defaultJobExecutorRegistry } from "../../services/jobExecutorRegistry";
 
 describe("Feature 195 PostgreSQL node worker admission", () => {
+  it.each([
+    ["workspace.authority.safe_action", "feature-186-v1"],
+    ["cloudflare.staging.http.image.provision", "cloudflare-staging-http-image-v1"],
+  ])("pulls the registered %s executor instead of leaving published jobs queued", (jobType, contract) => {
+    expect(isPostgresNodeJobType(jobType)).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(jobType, contract)).toBeDefined();
+  });
   it.each(["emergency.report.intake", "emergency.evidence.retention"])("retains canonical Node execution for %s", jobType => {
     expect(isPostgresNodeJobType(jobType)).toBe(true);
     expect(defaultJobExecutorRegistry.resolve(jobType, "feature-186-v1")).toBeDefined();
