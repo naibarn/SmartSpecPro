@@ -962,7 +962,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
+    "expected_canonical_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
@@ -1073,7 +1073,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 187,
+  "generation": 189,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1275,11 +1275,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
+    "canonical_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
     "integrated": true,
-    "integrated_at": "2026-10-26T06:51:26Z",
+    "integrated_at": "2026-10-26T10:06:49Z",
     "pull_request": null,
-    "source_sha": "457b10d3421fd60bc40ac3daf2afac8ef30f6a04"
+    "source_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3683,7 +3683,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T07:56:33.335451Z",
+  "updated_at": "2026-10-26T10:07:24.330817Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4036,13 +4036,20 @@
         "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
         "status": "PARTIAL"
       },
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md",
+      {
+        "kind": "RUNNER_TASK_PROBE_EXPIRY_CLASSIFICATION_FIX",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-probe-expiry-classification-20261026.json",
+        "scope": "Integrated at canonical SHA 93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a. Runner retains valid probe outcomes for up to 30 days after the one-hour authorization TTL so expired evidence remains distinguishable from never-run; protected authorization still rejects expired evidence. Focused Runner Rust tests passed 2/2. This is source/test evidence only, not a live Runner build, capability acknowledgement, protected DevelopmentRun, settlement or Final Verify.",
+        "source_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
+        "status": "PASS"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
+    "sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
     "status": "PARTIAL",
     "task_regressions": []
   }

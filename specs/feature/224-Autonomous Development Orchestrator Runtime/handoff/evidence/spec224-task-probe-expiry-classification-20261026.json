@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "spec224.runner-readiness-evidence.v1",
+  "kind": "RUNNER_TASK_PROBE_EXPIRY_CLASSIFICATION_FIX",
+  "sourceSha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
+  "observedAt": "2026-10-26",
+  "classification": {
+    "rootCause": "Runner diagnostics discarded task-probe evidence immediately after the one-hour authorization TTL. A later capability scan therefore represented an expired probe as not_run, losing the distinction between expired and never run.",
+    "fix": "Retain structurally valid probe outcomes for up to 30 days after expiry for diagnostics. Execution authorization still checks the original expiresAt timestamp and rejects expired evidence.",
+    "deviceConsent": "Independent authorization dimension; this change does not create or widen consent.",
+    "capabilityAcknowledgement": "Independent publication/acknowledgement dimension; this change does not mark capability as acknowledged."
+  },
+  "verification": {
+    "profile": "quick",
+    "command": "cargo test --manifest-path apps/runner-app/Cargo.toml --lib task_probe",
+    "result": "PASS",
+    "passed": 2,
+    "failed": 0,
+    "additionalChecks": [
+      "rustfmt --edition 2021 --check apps/runner-app/src/diagnostics.rs",
+      "git diff --check -- apps/runner-app/src/diagnostics.rs"
+    ],
+    "assertions": [
+      "Expired probe evidence remains available for diagnosis.",
+      "Expired probe evidence does not produce external-agent authorization."
+    ]
+  },
+  "runtimeAcceptance": {
+    "newRunnerBuild": false,
+    "newRunnerInstall": false,
+    "developmentRunCreated": false,
+    "reason": "This evidence is limited to the Runner source fix and focused tests; it is not live Runner or protected DevelopmentRun acceptance."
+  }
+}
