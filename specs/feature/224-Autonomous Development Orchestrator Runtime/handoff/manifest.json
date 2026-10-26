@@ -56,6 +56,13 @@
         "scope": "Captured at 2026-10-26T07:42:50Z (public endpoint checks completed 07:39Z): production health endpoints passed and the deployed JS bundle contained SPEC-224 workspace/Start wiring. Authenticated Runner and workspace tRPC queries returned 401 Please login; no Start was sent. Last Runner 0.2.41/Codex evidence is stale and expired, so current heartbeat, device consent, workspace SHA/fingerprint and owner USD 1.00 policy/budget are NOT VERIFIED. No dispatch, execution, settlement, audit event, recovery or independent Final Verify was produced.",
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_PLAYWRIGHT_AUTH_ENTRY_CHECK",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
+        "scope": "Playwright Chromium, fresh context without credentials/storage state: /chat returned 200 then client redirected to /login; Sign In page rendered, email/password form visible in screenshot, Google sign-in disabled by current admin OAuth configuration, no console/page errors. Anonymous auth.me bootstrap returned HTTP 200 and no authenticated owner/tenant was established. No UAT broker, Runner query or Start mutation was used. Owner identity and protected DevelopmentRun acceptance remain unverified.",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -959,7 +966,7 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Sign in at https://smartaihub.app/chat. Open a conversation and its Spec 224 workspace panel; select the already registered Windows Runner and existing SmartSpecPro workspace; leave the cap at USD 1.00 and Start a small reversible task. First inspect registered SHA, git status, branch ancestry to current origin/main, and accepted source policy. Fast-forward only if clean and provably safe; stop without edits if dirty or divergent. Capture the real DevelopmentRun ID and use that same run for protected dispatch, execution, authenticated audit, settlement, interruption/reconnect recovery and independent Final Verify receipts.",
+    "next_action": "At https://smartaihub.app/login, sign in with the existing owner account in the owner’s browser. Then open Chat → existing conversation → Spec 224 workspace; select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and submit a reversible goal that first reports the registered SHA, git status and branch ancestry. Fast-forward only if clean and safely permitted; otherwise stop unchanged. Provide the real DevelopmentRun ID and its existing supported status/receipt evidence so this same run can be verified through dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
     "reactivation_predicate": "A legitimate owner-authenticated Start Goal for the existing Windows Runner/workspace returns a real DevelopmentRun ID after current Runner/capability/device-consent and clean workspace source identity are verified; then complete and retain run-bound dispatch, execution, settlement, recovery and independent Final Verify evidence.",
     "resume_point": "Production Python/Web/Node Worker release source 08b508284eabe621292ab95a5b1cc6a63bca5fd1 remains deployed and public health is live. Deployed Chat bundle includes SPEC-224 Workspace/Start wiring. Resume only at authenticated owner Start after refreshing live Runner and workspace state; do not rebuild/redeploy or repeat Codex probe unless fresh readiness requires it.",
@@ -986,10 +993,16 @@
         "observed_at": "2026-10-26T07:42:50Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-start-access-recheck-20261026.md",
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-26T07:55:56Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
       }
     ],
-    "next_action": "Sign in at https://smartaihub.app/chat, open a conversation and its Spec 224 workspace panel, select the existing Windows Runner and SmartSpecPro workspace, leave the bounded cap at USD 1.00, and Start a small reversible task. First report the registered SHA, git status, current origin/main ancestry, and accepted source policy; fast-forward only if clean and provably safe, otherwise stop without changing files. Capture the returned DevelopmentRun ID and continue that same run through protected dispatch, Codex execution, durable audit, settlement, interruption/reconnect recovery, and independent Final Verify.",
-    "rationale": "Production remains healthy at the exact approved source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1; Python/Web/Node Worker identities and artifacts remain verified in the deployment receipt. Live public health and readiness returned 200 at 2026-10-26T07:39Z, and the served Chat bundle contains SPEC-224 Workspace/Start wiring. At 2026-10-26T07:42:50Z, Runner/workspace tRPC queries returned 401 Please login in this execution context; this does not prove the owner data is absent. The latest available Runner 0.2.41/Codex probe and workspace fingerprint are stale (probe expired at 02:13:44Z; old workspace SHA fbd7fd1bd8324973540664d7f7de2bd9e5844757 and policy pending). Current heartbeat, device consent, source cleanliness/fingerprint, and owner USD 1.00 policy/budget remain unverified. No Start mutation was submitted here; no new DevelopmentRun, protected dispatch, run-bound audit/usage/settlement, recovery, or independent Final Verify evidence was produced. CI runs 40282303999 failures in python/turbo_build/smartspecweb remain baseline-matching and separate from this live acceptance.",
+    "next_action": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
+    "rationale": "Production release source 08b508284eabe621292ab95a5b1cc6a63bca5fd1 remains verified at Web generation 128; public health/readiness is live. Playwright Chromium verified the unauthenticated /chat-to-/login flow and login UI in a fresh context; no owner session was available and no login was submitted. Existing repository UAT fixtures issue synthetic sessions and were not used against production. Authenticated Runner/workspace state, device consent, source cleanliness/fingerprint and run budget remain unverified. No DevelopmentRun, dispatch, settlement, recovery or independent Final Verify was created by this check.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1060,7 +1073,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 186,
+  "generation": 187,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2172,10 +2185,16 @@
           "observed_at": "2026-10-26T07:42:50Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-start-access-recheck-20261026.md",
           "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-26T07:55:56Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
+          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
         }
       ],
-      "next_action": "Sign in at https://smartaihub.app/chat, open a conversation and its Spec 224 workspace panel, select the existing Windows Runner and SmartSpecPro workspace, leave the bounded cap at USD 1.00, and Start a small reversible task. First report the registered SHA, git status, current origin/main ancestry, and accepted source policy; fast-forward only if clean and provably safe, otherwise stop without changing files. Capture the returned DevelopmentRun ID and continue that same run through protected dispatch, Codex execution, durable audit, settlement, interruption/reconnect recovery, and independent Final Verify.",
-      "rationale": "Production remains healthy at the exact approved source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1; Python/Web/Node Worker identities and artifacts remain verified in the deployment receipt. Live public health and readiness returned 200 at 2026-10-26T07:39Z, and the served Chat bundle contains SPEC-224 Workspace/Start wiring. At 2026-10-26T07:42:50Z, Runner/workspace tRPC queries returned 401 Please login in this execution context; this does not prove the owner data is absent. The latest available Runner 0.2.41/Codex probe and workspace fingerprint are stale (probe expired at 02:13:44Z; old workspace SHA fbd7fd1bd8324973540664d7f7de2bd9e5844757 and policy pending). Current heartbeat, device consent, source cleanliness/fingerprint, and owner USD 1.00 policy/budget remain unverified. No Start mutation was submitted here; no new DevelopmentRun, protected dispatch, run-bound audit/usage/settlement, recovery, or independent Final Verify evidence was produced. CI runs 40282303999 failures in python/turbo_build/smartspecweb remain baseline-matching and separate from this live acceptance.",
+      "next_action": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
+      "rationale": "Production release source 08b508284eabe621292ab95a5b1cc6a63bca5fd1 remains verified at Web generation 128; public health/readiness is live. Playwright Chromium verified the unauthenticated /chat-to-/login flow and login UI in a fresh context; no owner session was available and no login was submitted. Existing repository UAT fixtures issue synthetic sessions and were not used against production. Authenticated Runner/workspace state, device consent, source cleanliness/fingerprint and run budget remain unverified. No DevelopmentRun, dispatch, settlement, recovery or independent Final Verify was created by this check.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3664,7 +3683,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T07:43:04.806269Z",
+  "updated_at": "2026-10-26T07:56:33.335451Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
