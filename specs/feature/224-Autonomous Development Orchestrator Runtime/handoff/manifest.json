@@ -74,7 +74,7 @@
       {
         "kind": "SPEC224_LIVE_CAPABILITY_ACK_AND_EXECUTION_PENDING",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-capability-ack-runtime-20261027.json",
-        "scope": "Runner 0.2.45 and codex-cli 0.161.0 task probe are owner-reported as passed. No fresh server capability acknowledgement, correlation ID, ACK revision, current device consent/policy/budget, DevelopmentRun, Windows execution receipt, settlement, reconnect recovery or independent Final Verify was observed in this session. Do not repeat Codex task probe. The existing Runner button Tools > 'ตรวจเครื่องมืออีกครั้ง' invokes tool rescan and the authenticated capability publication path without executing a task probe. After ACK, verify consent/policy/budget and have the owner start one reversible USD 1.00 non-production goal in Chat.",
+        "scope": "Production RunnerControl journal at 2026-10-27T06:57:40+07:00 confirms stage=acknowledge_persisted_snapshot, ackState=applied, runnerId=local-runner, runnerSessionId=6ddda9fe-0845-44af-9b9f-1e1cb11e1e62, correlationId=runner:local-runner:capabilities:2026-10-26T23:57:40.469Z, snapshotRevision=snapshot:local-runner:2026-10-26T23:57:40.468Z, executionReadiness=capability_ready. This is a WSS acknowledgement (no HTTP status applies) after durable capability snapshot persistence. Capability readiness is not execution authorization. No current policy/device consent/budget decision, authenticated Start, DevelopmentRun, dispatch, Windows execution, audit/usage settlement, reconnect recovery or independent Final Verify is recorded. Runner 0.2.45/Codex task probe PASS is owner-reported; no probe was repeated.",
         "source_sha": "5859261fc7eb56880920477e92176a021778d144",
         "status": "PARTIAL"
       }
@@ -980,11 +980,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "In the existing Windows Runner 0.2.45, click Tools → 'ตรวจเครื่องมืออีกครั้ง' once. It republishes the capability snapshot without executing the Codex task probe. Return the resulting ACK state/revision and correlation ID, or the safe error code/status if it is rejected. Do not start a DevelopmentRun until fresh ACK and owner/tenant, device consent, policy and USD 1.00 budget are confirmed.",
+    "next_action": "Owner action: in the existing authenticated SmartAIHub session, open https://smartaihub.app/chat → the existing Spec 224 conversation/workspace; select the registered Windows Runner and SmartSpecPro workspace, verify the cap is USD 1.00, and submit once: 'Read-only: report the live Windows workspace branch, HEAD, git status, upstream and ancestry to origin/main. Do not modify files, commit, merge, push, deploy or run migrations.' Admission must independently verify owner/tenant, device consent, policy and budget. Return the actual DevelopmentRun ID or exact denial response; do not retry a denied Start.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "The current deployed Web/Node Worker includes the ACK fix. Reactivate after the existing Runner publishes a fresh capability snapshot and the server acknowledges its correlation/revision. Capability acknowledgement alone does not authorize execution; owner/tenant, device consent, policy, bounded budget and per-run admission must independently pass before Start.",
-    "resume_point": "Canonical main is 5859261fc7eb56880920477e92176a021778d144. Production Web generation 153 (9b48e5123f1272eb0dd598b07ec8a24cbe8551f9) and Node Worker, plus Python source 2382582a072e91c283ca2bf3513228c049ade574, include ACK fix e8e8245c6ba838194f4ef503bb37cc2fe43867a8; active release manifests and public /healthz 200 were verified. Owner reports Runner 0.2.45 Codex task probe passed, but no fresh capability ACK/correlation/revision, current owner consent/policy/budget, DevelopmentRun, Windows dispatch/execution receipt, settlement/recovery or independent Final Verify is available. Do not repeat the task probe. Next action is one Runner Tools → 'ตรวจเครื่องมืออีกครั้ง' capability publication.",
-    "waiting_predicate": "Waiting only for the existing Runner owner to trigger the capability rescan/publication once and return the resulting ACK correlation/revision (or safe rejection code). If acknowledged, proceed with a legitimate owner-authenticated Chat Start after verifying current device consent, policy and bounded USD 1.00 budget. No synthetic identity, grant, DevelopmentRun or receipt is allowed."
+    "reactivation_predicate": "Fresh production capability acknowledgement is confirmed as applied for runner local-runner session 6ddda9fe-0845-44af-9b9f-1e1cb11e1e62, revision snapshot:local-runner:2026-10-26T23:57:40.468Z, correlation runner:local-runner:capabilities:2026-10-26T23:57:40.469Z. Continue after an authenticated owner Start passes current owner/tenant, device consent, policy and USD 1.00 budget checks and creates one real DevelopmentRun.",
+    "resume_point": "Canonical main 5859261fc7eb56880920477e92176a021778d144. Production Web generation 153 (9b48e5123f1272eb0dd598b07ec8a24cbe8551f9), Node Worker and Python source 2382582a072e91c283ca2bf3513228c049ade574 include ACK fix e8e8245c6ba838194f4ef503bb37cc2fe43867a8; services active and public /healthz returned 200. Real RunnerControl journal confirms capability ACK applied for local-runner/session 6ddda9fe-0845-44af-9b9f-1e1cb11e1e62 at revision snapshot:local-runner:2026-10-26T23:57:40.468Z and correlation runner:local-runner:capabilities:2026-10-26T23:57:40.469Z; executionReadiness=capability_ready. No per-run authorization or Start exists. Next is one authenticated owner Start in existing Spec 224 Chat workspace at USD 1.00, read-only workspace status/ancestry goal.",
+    "waiting_predicate": "Waiting for one authenticated owner Start through the existing Spec 224 Chat workspace. Control Plane must verify tenant/user, device consent, development policy and USD 1.00 budget. If admitted, continue the returned DevelopmentRun through protected Windows dispatch and collect durable execution, audit, settlement, reconnect recovery and independent Final Verify receipts. If denied, repair only the exact denied admission component; do not duplicate Start."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1094,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 192,
+  "generation": 193,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -3704,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T23:57:36.811059Z",
+  "updated_at": "2026-10-26T23:59:11.322348Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

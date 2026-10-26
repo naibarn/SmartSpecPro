@@ -42,16 +42,21 @@
     "version": "0.2.45",
     "tool": "codex-cli 0.161.0",
     "taskProbe": "OWNER_REPORTED_PASSED",
-    "capabilityAcknowledgement": "NOT_VERIFIED",
-    "executionAuthorization": "NOT_VERIFIED",
-    "capabilityCorrelationId": null,
-    "capabilityAckRevision": null,
+    "capabilityAcknowledgement": "APPLIED",
+    "executionAuthorization": "NOT_ESTABLISHED_CAPABILITY_READY_ONLY",
+    "capabilityCorrelationId": "runner:local-runner:capabilities:2026-10-26T23:57:40.469Z",
+    "capabilityAckRevision": "snapshot:local-runner:2026-10-26T23:57:40.468Z",
     "capabilityHttpStatus": null,
     "developmentRunId": null,
     "windowsExecutionReceipt": null,
     "settlementReceipt": null,
     "recoveryReceipt": null,
-    "independentFinalVerify": null
+    "independentFinalVerify": null,
+    "capabilityRunnerSessionId": "6ddda9fe-0845-44af-9b9f-1e1cb11e1e62",
+    "capabilityAckStage": "acknowledge_persisted_snapshot",
+    "capabilityAckObservedAt": "2026-10-27T06:57:40+07:00",
+    "capabilityAckTransport": "WSS",
+    "capabilityAckErrorCode": null
   },
-  "result": "ACK_FIX_DEPLOYED_VERIFIED; LIVE_RUNNER_ACK_AND_PROTECTED_E2E_PENDING"
+  "result": "ACK_FIX_DEPLOYED_VERIFIED; FRESH_CAPABILITY_ACK_APPLIED; OWNER_START_AND_PROTECTED_E2E_PENDING"
 }
