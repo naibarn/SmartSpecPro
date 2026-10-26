@@ -321,6 +321,7 @@ describe("job control plane", () => {
     expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
     const lease = await controlPlane.claim({ jobId: job.id, runnerId: "r", adapter: "test" });
     expect(lease).toMatchObject({ attemptId, fencingVersion: 1 });
+    expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
     expect(state.attempts).toHaveLength(1);
     expect(job.status).toBe("leased");
     expect(state.outbox).toHaveLength(1);

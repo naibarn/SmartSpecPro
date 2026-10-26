@@ -791,6 +791,17 @@ export function createSpec224AuthorizationService() {
             current = await status();
           }
         }
+        if (current.status === "READY_FOR_LIVE") {
+          const loaded = await loadRun(input.context, input.runId);
+          if (!loaded.run.workerJobId) throw new Spec224AuthorizationError("RUN_JOB_REQUIRED");
+          const released = await createJobControlPlane(defaultJobControlPlaneRepository).releaseAuthorizationHold({
+            jobId: loaded.run.workerJobId,
+            tenantId: input.context.tenantId,
+            requestedByUserId: input.context.actorId,
+          });
+          if (!released) throw new Spec224AuthorizationError("HOLD_RELEASE_NOT_ALLOWED");
+          return current;
+        }
         if (!["APPROVAL_REQUIRED", "BUDGET_REQUIRED"].includes(current.status)) return current;
         const loaded = await loadRun(input.context, input.runId);
         const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId,

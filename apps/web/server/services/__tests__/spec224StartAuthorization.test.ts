@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ rows: [] as unknown[][], policyRows: [] as unknown[], node: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rows: [] as unknown[][], policyRows: [] as unknown[], node: vi.fn(), jobControlPlane: vi.fn() }));
 vi.mock("../../db", () => {
   const query: any = { from: () => query, where: () => query, orderBy: () => query, limit: async () => mocks.rows.shift() ?? [] };
   const database = { select: () => query, execute: async () => mocks.policyRows };
@@ -8,6 +8,11 @@ vi.mock("../../db", () => {
 });
 vi.mock("../runnerGateway", () => ({ defaultRunnerGateway: { getNode: (...args: unknown[]) => mocks.node(...args) } }));
 vi.mock("../economicProvisioningService", () => ({ provisionEconomicBudget: vi.fn(async () => ({ budgetId: "budget-created" })) }));
+vi.mock("../jobControlPlane", () => ({
+  appendJobEvent: vi.fn(),
+  createJobControlPlane: (...args: unknown[]) => mocks.jobControlPlane(...args),
+  defaultJobControlPlaneRepository: {},
+}));
 
 import { createSpec224AuthorizationService, Spec224AuthorizationError } from "../spec224AuthorizationService";
 import { provisionEconomicBudget } from "../economicProvisioningService";
@@ -130,5 +135,21 @@ describe("owner Start authorization continuation", () => {
     const approval = vi.spyOn(service, "requestApproval");
     await expect(service.advanceStart(request)).resolves.toMatchObject({ status: "APPROVAL_REQUIRED" });
     expect(approval).not.toHaveBeenCalled();
+  });
+
+  it("releases a previously bound authorization hold when Start is retried", async () => {
+    const run = { runId: "run-a", tenantId: "tenant-a", actorId: 7, workerJobId: "job-a", workspaceId: "workspace-a" };
+    mocks.rows = [
+      [{ id: "job-a", attempt: 1, inputJson: {}, progressJson: { spec224: run, spec224Authorization: { status: "READY_FOR_LIVE" } } }],
+      [{ id: "attempt-a" }],
+    ];
+    const releaseAuthorizationHold = vi.fn().mockResolvedValue(true);
+    mocks.jobControlPlane.mockReturnValue({ releaseAuthorizationHold });
+    const service = createService();
+    vi.spyOn(service, "status").mockResolvedValue({ ...approvalRequired, status: "READY_FOR_LIVE" });
+
+    await expect(service.advanceStart(request)).resolves.toMatchObject({ status: "READY_FOR_LIVE" });
+
+    expect(releaseAuthorizationHold).toHaveBeenCalledWith({ jobId: "job-a", tenantId: "tenant-a", requestedByUserId: 7 });
   });
 });

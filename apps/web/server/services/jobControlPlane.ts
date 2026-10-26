@@ -2279,9 +2279,10 @@ export function createJobControlPlane(
       return repository.transaction(async repo => {
         const job = await repo.findJob(input.jobId);
         if (!job || job.tenantId !== input.tenantId || job.requestedByUserId !== input.requestedByUserId) return false;
-        if (job.status === "queued") {
-          return Boolean(await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`));
-        }
+        // The hold release, queue transition and outbox insert commit together.
+        // Treat their durable release event as idempotent proof even if a later
+        // worker attempt has already leased or settled the job.
+        if (await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`)) return true;
         if (job.status !== "pending" || job.jobType !== "external_agent_task") return false;
         const jobInput = job.inputJson as Record<string, any>;
         const progress = job.progressJson as Record<string, any>;
