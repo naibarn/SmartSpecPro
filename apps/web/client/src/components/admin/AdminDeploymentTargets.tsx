@@ -497,6 +497,10 @@ export default function AdminDeploymentTargets() {
     productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE" &&
     productionDatabaseJobData.attempt === 2 && productionDatabaseJobData.maxAttempts === 2;
 
+  const productionDatabaseProviderRecovery = productionDatabaseJobData?.status === "failed" &&
+    productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015" &&
+    productionDatabaseJobData.attempt === 3 && productionDatabaseJobData.maxAttempts === 3;
+
   const productionScopeKey = `${tenantId}:${projectId}:production`;
   const productionIngressSubmissions=useRef(new Map<string,{submissionId:string;planDigest:string}>());
   const ingressSubmission=(key:string,planDigest:string)=>{
@@ -992,7 +996,7 @@ export default function AdminDeploymentTargets() {
             const submittedDatabaseJobId = productionDatabaseSubmissions[productionScopeKey] ?? "";
             const databaseAdmission = productionDatabaseAdmissions[productionScopeKey] ?? readStoredProductionDatabaseAdmission(productionScopeKey);
             const databaseJobAlreadySubmitted = Boolean(
-              productionDatabaseGuardRecovery ||
+              productionDatabaseGuardRecovery || productionDatabaseProviderRecovery ||
               ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing", "pending", "leased",
                 "waiting_external", "retry_scheduled", "succeeded", "completed", "expired"].includes(productionDatabaseJobData?.status ?? "") ||
               ["JOB_ACCEPTED", "RUNNING", "SUCCEEDED"].includes(databaseAdmission?.status ?? ""),
@@ -1120,8 +1124,11 @@ export default function AdminDeploymentTargets() {
                 {((productionDatabaseJobData?.status === "expired" &&
                   productionDatabaseJobData.errorCode === "JOB_DEADLINE_EXPIRED" &&
                   productionDatabaseJobData.operatorReviewRequired &&
-                  productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported") || productionDatabaseGuardRecovery) ? <VStack gap={1} role="group" aria-label={text("Resume the same Production database job", "กู้งานเตรียมฐานข้อมูล Production เดิม") }>
-                    <p role="alert">{productionDatabaseGuardRecovery ? text(
+                  productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported") || productionDatabaseGuardRecovery || productionDatabaseProviderRecovery) ? <VStack gap={1} role="group" aria-label={text("Resume the same Production database job", "กู้งานเตรียมฐานข้อมูล Production เดิม") }>
+                    <p role="alert">{productionDatabaseProviderRecovery ? text(
+                      "Hyperdrive connection failed (CF2015). This action checks the healthy Tunnel, original VPC and encrypted credential, then authorizes one bounded recovery of the SAME job. It creates no new VPC and does not change production traffic. Cloudflare SQL acceptance remains required.",
+                      "Hyperdrive เชื่อมต่อไม่สำเร็จ (CF2015) ระบบจะตรวจ Tunnel, VPC เดิมและ credential ที่เข้ารหัส ก่อนอนุมัติกู้งานเดิมเพิ่ม 1 ครั้ง ไม่สร้าง VPC ซ้ำและไม่เปลี่ยน traffic โดยยังต้องผ่านการทดสอบ SQL จาก Cloudflare",
+                    ) : productionDatabaseGuardRecovery ? text(
                       "The credential guard incorrectly rejected a successful authorization check. The two-attempt budget is exhausted. This action explicitly authorizes one additional attempt on the same job and resource plan after the fix. It does not authorize production traffic.",
                       "ระบบตรวจ credential ตีความผลตรวจสิทธิ์สำเร็จผิดพลาด และใช้สิทธิ์เดิมครบ 2 ครั้งแล้ว ปุ่มนี้อนุมัติเพิ่มเพียง 1 ครั้งให้งานและแผนเดิมหลังแก้ไข ไม่อนุมัติการเปลี่ยน traffic",
                     ) : text(
@@ -1133,10 +1140,12 @@ export default function AdminDeploymentTargets() {
                       selectedDatabaseTunnelId !== productionDatabaseJobData?.tunnelId}
                       onClick={() => resumeProductionDatabaseMutation.mutate({ tenantId, projectId,
                         jobId: productionDatabaseJobData!.jobId, tunnelId: productionDatabaseJobData!.tunnelId!, environment: "production",
-                        ...(productionDatabaseGuardRecovery ? { authorizeAdditionalAttempt: true as const } : {}) })}>
+                        ...((productionDatabaseGuardRecovery || productionDatabaseProviderRecovery) ? { authorizeAdditionalAttempt: true as const } : {}) })}>
                       {resumeProductionDatabaseMutation.isPending
                         ? text("Renewing and resuming the same job…", "กำลังต่ออายุสิทธิ์และกู้งานเดิม…")
-                        : productionDatabaseGuardRecovery
+                        : productionDatabaseProviderRecovery
+                          ? text("Authorize recovery of existing Hyperdrive job", "อนุมัติกู้คืน Hyperdrive โดยใช้งานและ VPC เดิม")
+                          : productionDatabaseGuardRecovery
                           ? text("Authorize one corrected attempt on this same job", "อนุมัติเพิ่ม 1 ครั้งให้งานเดิมหลังแก้ไข")
                           : text("Renew authorization and resume this same job", "ต่ออายุสิทธิ์และทำงานเดิมต่อ")}
                     </Button>

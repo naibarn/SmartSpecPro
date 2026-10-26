@@ -41,6 +41,21 @@ const hyperdrive = {
 const response = (result: unknown, status = 200) => new Response(JSON.stringify({ success: status < 400, result, errors: status < 400 ? [] : [{ code: 1000 }] }), { status });
 
 describe("Cloudflare production database resources", () => {
+  it("never recreates an owned VPC when provider inventory loses the checkpoint resource", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
+      .mockResolvedValueOnce(response([]));
+    const saveCheckpoint = vi.fn();
+    await expect(provisionCloudflareProductionDatabase({ jobId, accountRef, token, plan,
+      planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      checkpoint: { jobId, planDigest: productionDatabaseResourcePlanDigest(plan),
+        databasePasswordDigest: createHash("sha256").update(password).digest("hex"), vpcServiceId: serviceId, pending: "hyperdrive" },
+      saveCheckpoint, assertAuthorized: async () => undefined, fetchImpl,
+    })).rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_VPC_SERVICE_CHECKPOINT_RESOURCE_MISSING", class: "unknown" });
+    expect(saveCheckpoint).not.toHaveBeenCalled();
+    expect(fetchImpl.mock.calls.every(([, options]) => options?.method === "GET")).toBe(true);
+  });
+
   it("retains bounded provider failure details while redacting both credentials", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ success: false,
       errors: [{ code: 2015, message: `Connection failed ${token} ${password} postgresql://user:secret@host/db\nnext` }] }), { status: 400 }));

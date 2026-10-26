@@ -731,22 +731,22 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText("44444444-4444-4444-8444-444444444444")).toBeInTheDocument();
   });
 
-  it.each([false, true])("offers explicit same-job Owner recovery; exhausted credential-guard budget: %s", async guardFailure => {
+  it.each([false, true, "provider"])("offers explicit same-job Owner recovery; exhausted failure: %s", async guardFailure => {
     const user = userEvent.setup();
     mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
       workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
     mocks.productionTunnels = [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartspec", status: "healthy" }];
     mocks.latestProductionDatabaseJob = {
       jobId: "b9ca8316-1604-4764-a769-d92f46e4c823", status: guardFailure ? "failed" : "expired",
-      errorCode: guardFailure ? "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE" : "JOB_DEADLINE_EXPIRED",
-      attempt: guardFailure ? 2 : 1, maxAttempts: 2, operatorReviewRequired: !guardFailure,
+      errorCode: guardFailure === "provider" ? "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015" : guardFailure ? "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE" : "JOB_DEADLINE_EXPIRED",
+      attempt: guardFailure === "provider" ? 3 : guardFailure ? 2 : 1, maxAttempts: guardFailure === "provider" ? 3 : 2, operatorReviewRequired: !guardFailure,
       operatorReviewReason: "adapter_contract_unsupported", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6",
     };
     render(<AdminDeploymentTargets />);
     await chooseProductionScope(user);
 
-    const recoveryLabel = guardFailure ? "Authorize one corrected attempt on this same job" : "Renew authorization and resume this same job";
-    expect(await screen.findByText(guardFailure ? /two-attempt budget is exhausted/i : /expired before a worker claimed it/i)).toBeInTheDocument();
+    const recoveryLabel = guardFailure === "provider" ? "Authorize recovery of existing Hyperdrive job" : guardFailure ? "Authorize one corrected attempt on this same job" : "Renew authorization and resume this same job";
+    expect(await screen.findByText(guardFailure === "provider" ? /Hyperdrive connection failed/ : guardFailure ? /two-attempt budget is exhausted/i : /expired before a worker claimed it/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: recoveryLabel })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Production database job already exists" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: recoveryLabel }));

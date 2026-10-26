@@ -50,7 +50,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     }
   }, 20_000);
 
-  it.each([false, true])("executes real recovery, credentials and role SQL; recover corrected guard failure: %s", async recoverGuardFailure => {
+  it.each([false, true, "provider"])("executes real recovery, credentials and role SQL; recover corrected guard failure: %s", async recoverGuardFailure => {
     const { getDb } = await import("../db");
     const db = getDb();
     const executorModule = await import("./cloudflareProductionDatabaseExecutor");
@@ -105,6 +105,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     let [outbox] = await client`SELECT * FROM worker_job_outbox WHERE "workerJobId"=${jobId} AND id<>${originalOutbox.id}`;
     await expect(publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter())).resolves.toMatchObject({ state: "published" });
     let service: any, hyperdrive: any;
+    let rejectHyperdrive = recoverGuardFailure === "provider";
     const providerWrites: string[] = [];
     const fetchImpl = vi.fn<typeof fetch>(async (url, init) => {
       const path = new URL(String(url)).pathname;
@@ -113,10 +114,17 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
         providerWrites.push(path);
         const body = JSON.parse(String(init.body));
         if (path.endsWith("/services")) result = service = { ...body, service_id: randomUUID() };
-        else if (path.endsWith("/configs")) result = hyperdrive = { ...body, id: "b".repeat(32) };
+        else if (path.endsWith("/configs")) {
+          if (rejectHyperdrive) {
+            rejectHyperdrive = false;
+            return new Response(JSON.stringify({ success: false, errors: [{ code: 2015, message: "Generic connection failure" }] }), { status: 400 });
+          }
+          result = hyperdrive = { ...body, id: "b".repeat(32) };
+        }
         else throw new Error("UNEXPECTED_FIXTURE_PROVIDER_WRITE");
       } else if (path.endsWith(tunnelId)) result = { id: tunnelId, status: "healthy" };
-      else if (path.endsWith("/services") || path.endsWith("/configs")) result = [];
+      else if (path.endsWith("/services")) result = service ? [service] : [];
+      else if (path.endsWith("/configs")) result = hyperdrive ? [hyperdrive] : [];
       else if (service && path.endsWith(service.service_id)) result = service;
       else if (hyperdrive && path.endsWith(hyperdrive.id)) result = hyperdrive;
       else throw new Error("UNEXPECTED_FIXTURE_PROVIDER_READ");
@@ -146,16 +154,44 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
       await publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter());
       runtime.withCredential = fixedCredential;
     }
+    if (recoverGuardFailure === "provider") {
+      await expect(executeCanonicalJobEnvelope(outbox.envelopeJson, { controlPlane, executorRegistry: registry,
+        runnerId: "provider-rejection-worker", adapter: "postgres-pull" })).rejects.toThrow("CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015");
+      const checkpoint = await runtime.checkpoint(jobId, 17, grant.planDigest);
+      expect(checkpoint).toMatchObject({ pending: "hyperdrive", vpcServiceId: service.service_id });
+      const before = await runtime.resolveGrant(jobId);
+      const { inspectProductionDatabaseRecovery } = await import("./cloudflareProductionDatabaseRecovery");
+      const readback = await inspectProductionDatabaseRecovery({ runtime, jobId, tenantId, projectId, requesterUserId: 17, planDigest: grant.planDigest });
+      expect(readback).toMatchObject({ vpcServiceId: service.service_id, providerReadbackVerified: true, databaseConnectionVerified: false });
+      await expect(caller.resumeExpiredCloudflareProductionDatabaseJob({ tenantId, projectId, environment: "production", jobId, tunnelId }))
+        .rejects.toMatchObject({ message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_NOT_RECOVERABLE" });
+      // The live router uses the same credential port; only provider HTTP is
+      // substituted here. The grant, checkpoint, admission and SQL are real PG.
+      const realFactory = executorModule.createCloudflareProductionDatabaseRuntime;
+      const spy = vi.spyOn(executorModule, "createCloudflareProductionDatabaseRuntime").mockImplementation(options => realFactory({ ...options, fetchImpl }));
+      try {
+        await expect(caller.resumeExpiredCloudflareProductionDatabaseJob({ tenantId, projectId, environment: "production", jobId, tunnelId,
+          authorizeAdditionalAttempt: true })).resolves.toMatchObject({ jobId, attempt: 4, status: "queued" });
+        // Response loss reuses the accepted canonical attempt and grant.
+        await expect(caller.resumeExpiredCloudflareProductionDatabaseJob({ tenantId, projectId, environment: "production", jobId, tunnelId,
+          authorizeAdditionalAttempt: true })).resolves.toMatchObject({ jobId, attempt: 4, status: "queued" });
+        expect((await client`SELECT count(*)::int AS n FROM worker_job_outbox WHERE "workerJobId"=${jobId} AND "publishedAt" IS NULL AND "cancelledAt" IS NULL`)[0].n).toBe(1);
+      } finally { spy.mockRestore(); }
+      expect((await runtime.resolveGrant(jobId))!.databasePassword).toBe(before!.databasePassword);
+      expect(await runtime.checkpoint(jobId, 17, grant.planDigest)).toEqual(checkpoint);
+      [outbox] = await client`SELECT * FROM worker_job_outbox WHERE "workerJobId"=${jobId} AND "publishedAt" IS NULL AND "cancelledAt" IS NULL`;
+      await publishJobOutboxRow(outbox.id, new PostgresPullJobTransportAdapter());
+    }
     await expect(executeCanonicalJobEnvelope(outbox.envelopeJson, { controlPlane, executorRegistry: registry,
       runnerId: "production-db-isolated-worker", adapter: "postgres-pull" })).resolves.toMatchObject({ state: "succeeded", jobId });
     const [completed] = await client`SELECT status,attempt,"fencingVersion","outputJson","createdAt" FROM worker_jobs WHERE id=${jobId}`;
-    expect(completed).toMatchObject({ status: "succeeded", attempt: recoverGuardFailure ? 3 : 2, fencingVersion: recoverGuardFailure ? 2 : 1,
+    expect(completed).toMatchObject({ status: "succeeded", attempt: recoverGuardFailure === "provider" ? 4 : recoverGuardFailure ? 3 : 2, fencingVersion: recoverGuardFailure === "provider" ? 3 : recoverGuardFailure ? 2 : 1,
       outputJson: { providerConfigurationVerified: true, runtimeRolePrepared: true, databaseConnectionVerified: false } });
     expect(new Date(completed.createdAt).getTime()).toBeLessThan(Date.now() - 4 * 86400_000);
-    expect(providerWrites).toHaveLength(2);
+    expect(providerWrites).toHaveLength(recoverGuardFailure === "provider" ? 3 : 2);
     await expect(executeCanonicalJobEnvelope(outbox.envelopeJson, { controlPlane, executorRegistry: registry,
       runnerId: "duplicate-delivery", adapter: "postgres-pull" })).resolves.toMatchObject({ state: "ignored" });
-    expect(providerWrites).toHaveLength(2);
+    expect(providerWrites).toHaveLength(recoverGuardFailure === "provider" ? 3 : 2);
     expect((await client`SELECT count(*)::int AS n FROM worker_jobs WHERE "jobType"=${jobType}`)[0].n).toBe(1);
     const readerUrl = new URL(disposable.databaseUrl); readerUrl.username = plan.databaseUser; readerUrl.password = databasePassword;
     const reader = (await import("postgres")).default(readerUrl.toString(), { max: 1 });

@@ -105,8 +105,30 @@ export async function ensureHttpApplications(settings: HttpApplicationSettings, 
     const namespaceId = matches[0].namespace_id, name = `${settings.namespace}-${runtime}-http`;
     let state = await ports.load(runtime, namespaceId);
     if (state && (state.tenantId !== scope.tenantId || state.projectId !== scope.projectId || state.accountRef !== scope.accountRef ||
+        (state.environment ?? "staging") !== (scope.environment ?? "staging") ||
         state.actorUserId !== scope.actorUserId || state.namespaceId !== namespaceId || state.runtime !== runtime || state.name !== name)) fail("CHECKPOINT_SCOPE_DENIED");
-    if (state?.pending) fail("UNCERTAIN_CREATE_RECONCILIATION_REQUIRED");
+    if (state?.pending) {
+      // The durable intent belongs to this exact authorized operation. A lost
+      // create response can be reconciled by reads; absence never permits a
+      // second create, and a later unrelated operation cannot adopt the intent.
+      if (state.operationRef !== operationRef || state.applicationId !== undefined)
+        fail("CHECKPOINT_SCOPE_DENIED");
+      await ports.assertAuthorized();
+      const inventory = await ports.request("/applications");
+      if (!Array.isArray(inventory) || inventory.length > 1000) fail("INVENTORY_INVALID");
+      const candidates = inventory.filter(item => item?.name === name || item?.durable_objects?.namespace_id === namespaceId);
+      if (candidates.length !== 1) fail("UNCERTAIN_CREATE_RECONCILIATION_REQUIRED");
+      const observed = candidates[0];
+      if (typeof observed.id !== "string" || !/^[a-f0-9-]{32,36}$/.test(observed.id) || observed.name !== name ||
+          observed.scheduling_policy !== "durable_object" || observed.durable_objects?.namespace_id !== namespaceId)
+        fail("UNCERTAIN_CREATE_RECEIPT_INVALID");
+      const readback = await ports.request(`/applications/${observed.id}`);
+      if (readback?.id !== observed.id || readback.name !== name || readback.scheduling_policy !== "durable_object" ||
+          readback.durable_objects?.namespace_id !== namespaceId) fail("PROVIDER_READBACK_MISMATCH");
+      const reconciled = { ...state, pending: false, applicationId: observed.id };
+      await ports.assertAuthorized(); await ports.save(reconciled, state);
+      state = reconciled;
+    }
     if (!state?.applicationId) {
       const inventory = await ports.request("/applications");
       if (!Array.isArray(inventory) || inventory.length > 1000) fail("INVENTORY_INVALID");

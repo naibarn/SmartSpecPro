@@ -163,6 +163,9 @@ export async function provisionCloudflareProductionDatabase(input: {
     if (!checkpoint.vpcServiceId && checkpoint.pending !== "vpc_service") fail("CLOUDFLARE_PRODUCTION_VPC_SERVICE_OWNERSHIP_UNVERIFIED", "unknown");
   }
   else {
+    // Never replace a resource already owned by this checkpoint when inventory
+    // disappears or becomes inconsistent between preflight and execution.
+    if (checkpoint.vpcServiceId) fail("CLOUDFLARE_PRODUCTION_VPC_SERVICE_CHECKPOINT_RESOURCE_MISSING", "unknown");
     await saveCheckpoint({ ...checkpoint, pending: "vpc_service" });
     const created = await request(servicesPath, "POST", {
       name: serviceName,
@@ -194,6 +197,7 @@ export async function provisionCloudflareProductionDatabase(input: {
     if (!checkpoint.hyperdriveId && checkpoint.pending !== "hyperdrive") fail("CLOUDFLARE_PRODUCTION_HYPERDRIVE_OWNERSHIP_UNVERIFIED", "unknown");
   }
   else {
+    if (checkpoint.hyperdriveId) fail("CLOUDFLARE_PRODUCTION_HYPERDRIVE_CHECKPOINT_RESOURCE_MISSING", "unknown");
     await saveCheckpoint({ ...checkpoint, pending: "hyperdrive" });
     const created = await request(hyperdrivePath, "POST", {
       name: hyperdriveName,

@@ -2,12 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { prepareHttpApplicationImages, ensureHttpApplications, createHttpApplicationProvisionPorts, httpApplicationCredentialRef, assertHttpApplicationVersionMetadata } from "./cloudflareHttpApplicationProvision";
 import { encrypt } from "./crypto";
 import { providerDeploymentCredentials } from "../../drizzle/schema";
-import { httpApplicationWorkerMetadata, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
+import { httpApplicationNamespace, httpApplicationWorkerMetadata, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
-function fixture() {
-  const scope = { tenantId: "t", projectId: "p", accountRef: "a".repeat(32), actorUserId: 1 };
+function fixture(environment?: "staging" | "production") {
+  const scope = { tenantId: "t", projectId: "p", accountRef: "a".repeat(32), actorUserId: 1, ...(environment ? { environment } : {}) };
   const namespace = nativeProvisionNamespace("t", "p");
-  const settings: HttpApplicationSettings = { mode: "private-canary", namespace, sourceSha: "a".repeat(40),
+  const settings: HttpApplicationSettings = { mode: "private-canary", namespace: httpApplicationNamespace("t", "p", environment), sourceSha: "a".repeat(40),
     node: { provisionJobId: "11111111-1111-4111-8111-111111111111", planDigest: "b".repeat(64), image: `registry.cloudflare.com/${scope.accountRef}/${namespace}-node-http@sha256:${"c".repeat(64)}` },
     python: { provisionJobId: "22222222-2222-4222-8222-222222222222", planDigest: "d".repeat(64), image: `registry.cloudflare.com/${scope.accountRef}/${namespace}-python-http@sha256:${"e".repeat(64)}` },
     issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 600000).toISOString(),
@@ -174,7 +174,87 @@ describe("private HTTP application metadata preparation", () => {
     await expect(ensureHttpApplications(f.settings, f.scope, f.version, "f".repeat(64), f.ports)).rejects.toThrow("response lost");
     const calls = f.ports.request.mock.calls.length;
     await expect(ensureHttpApplications(f.settings, f.scope, f.version, "f".repeat(64), f.ports)).rejects.toThrow("UNCERTAIN_CREATE");
-    expect(f.ports.request).toHaveBeenCalledTimes(calls);
+    expect(f.ports.request).toHaveBeenCalledTimes(calls + 1);
+    expect(f.ports.request.mock.calls.at(-1)).toEqual(["/applications"]);
+  });
+  it.each(["staging", "production"] as const)("reconciles an owned %s create after a lost response without creating it again", async environment => {
+    const f = fixture(environment), operationRef = "f".repeat(64), request = f.ports.request.getMockImplementation()!;
+    let loseResponse = true;
+    f.ports.request.mockImplementation(async (path, body, method) => {
+      const result = await request(path, body, method);
+      if (path === "/applications" && body && loseResponse) { loseResponse = false; throw Error("response lost"); }
+      return result;
+    });
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports)).rejects.toThrow("response lost");
+    expect(f.states.get("node").pending).toBe(true);
+    const output = await ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports);
+    expect(output).toMatchObject({ containerStarts: 0, publicIngressEnabled: false });
+    expect(f.applications).toHaveLength(2);
+    expect(f.states.get("node")).toMatchObject({ pending: false, applicationId: f.applications[0].id, operationRef });
+    expect(f.ports.request.mock.calls.filter(([path, body]) => path === "/applications" && body?.name?.endsWith("node-http"))).toHaveLength(1);
+    const writes = f.ports.request.mock.calls.filter(([, body]) => body).length;
+    await ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports);
+    expect(f.ports.request.mock.calls.filter(([, body]) => body)).toHaveLength(writes);
+  });
+  it.each(["operation", "tenant", "project", "actor", "account", "environment"])("denies a pending checkpoint with foreign %s before provider access", async mode => {
+    const f = fixture("production"), operationRef = "f".repeat(64), request = f.ports.request.getMockImplementation()!;
+    f.ports.request.mockImplementation(async (path, body, method) => {
+      const result = await request(path, body, method);
+      if (body && path === "/applications") throw Error("response lost");
+      return result;
+    });
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports)).rejects.toThrow("response lost");
+    const state = f.states.get("node");
+    if (mode === "tenant") state.tenantId = "foreign";
+    if (mode === "project") state.projectId = "foreign";
+    if (mode === "actor") state.actorUserId = 2;
+    if (mode === "account") state.accountRef = "b".repeat(32);
+    if (mode === "environment") state.environment = "staging";
+    const count = f.ports.request.mock.calls.length;
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, mode === "operation" ? "e".repeat(64) : operationRef, f.ports))
+      .rejects.toThrow("CHECKPOINT_SCOPE_DENIED");
+    expect(f.ports.request).toHaveBeenCalledTimes(count);
+  });
+  it.each(["missing", "duplicate", "name", "namespace", "policy", "id", "readback"])("keeps an uncertain create pending when %s evidence cannot verify the exact application", async mode => {
+    const f = fixture("production"), operationRef = "f".repeat(64), request = f.ports.request.getMockImplementation()!;
+    f.ports.request.mockImplementation(async (path, body, method) => {
+      const result = await request(path, body, method);
+      if (body && path === "/applications") throw Error("response lost");
+      return result;
+    });
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports)).rejects.toThrow("response lost");
+    const created = f.applications[0];
+    if (mode === "missing") f.applications.length = 0;
+    if (mode === "duplicate") f.applications.push({ ...created, id: "3".repeat(32) });
+    if (mode === "name") created.name = "foreign";
+    if (mode === "namespace") created.durable_objects.namespace_id = "3".repeat(32);
+    if (mode === "policy") created.scheduling_policy = "other";
+    if (mode === "id") created.id = "invalid";
+    if (mode === "readback") f.ports.request.mockImplementation(async (path, body, method) =>
+      path.startsWith("/applications/") ? { ...created, name: "foreign" } : request(path, body, method));
+    const writes = f.ports.request.mock.calls.filter(([, body]) => body).length;
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports)).rejects.toThrow(/UNCERTAIN_CREATE|READBACK_MISMATCH/);
+    expect(f.states.get("node").pending).toBe(true);
+    expect(f.ports.request.mock.calls.filter(([, body]) => body)).toHaveLength(writes);
+  });
+  it("retains the pending intent when authority is revoked during reconciliation readback", async () => {
+    const f = fixture("production"), operationRef = "f".repeat(64), request = f.ports.request.getMockImplementation()!;
+    f.ports.request.mockImplementation(async (path, body, method) => {
+      const result = await request(path, body, method);
+      if (body && path === "/applications") throw Error("response lost");
+      return result;
+    });
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports)).rejects.toThrow("response lost");
+    f.ports.request.mockImplementation(async (path, body, method) => {
+      const result = await request(path, body, method);
+      if (path.startsWith("/applications/")) f.ports.assertAuthorized.mockRejectedValue(Error("revoked"));
+      return result;
+    });
+    const saves = f.ports.save.mock.calls.length;
+    await expect(ensureHttpApplications(f.settings, f.scope, f.version, operationRef, f.ports)).rejects.toThrow("revoked");
+    expect(f.states.get("node").pending).toBe(true);
+    expect(f.ports.save).toHaveBeenCalledTimes(saves);
+    expect(f.applications).toHaveLength(1);
   });
   it("checks revoked authority between image preparations and before app creation", async () => {
     const f = fixture(); f.ports.request.mockImplementation(async () => { f.ports.assertAuthorized.mockRejectedValue(Error("revoked")); return { status: "ready" }; });
