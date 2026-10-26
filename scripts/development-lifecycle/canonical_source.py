@@ -567,7 +567,8 @@ def _sync_published_build_receipt(repo: Path, policy: dict[str, Any], result_pat
     receipt = json.loads(receipt_bytes)
     revision = receipt.get("source_revision", "")
     bundle = receipt.get("cloudflare_staging_artifact", {})
-    source_root = source.parents[2]
+    receipt_store_root = source.parents[2]
+    isolated_workspace = Path(str(receipt.get("isolated_workspace", "")))
     if (
         receipt.get("status") != "BUILD_PASSED"
         or receipt.get("source_verified") is not True
@@ -575,7 +576,7 @@ def _sync_published_build_receipt(repo: Path, policy: dict[str, Any], result_pat
         or not re.fullmatch(r"[a-f0-9]{40}", revision)
         or not source.name.startswith(revision + "-")
         or receipt.get("result_file") != str(source)
-        or receipt.get("isolated_workspace") != str(source_root / repository_key / f"{revision}-build")
+        or receipt.get("isolated_workspace") != str(receipt_store_root / repository_key / f"{revision}-build")
         or bundle.get("status") != "PUBLISHED"
         or bundle.get("source_sha") != revision
         or not re.fullmatch(r"[a-f0-9]{64}", bundle.get("build_digest", ""))
@@ -583,12 +584,12 @@ def _sync_published_build_receipt(repo: Path, policy: dict[str, Any], result_pat
     ):
         raise LifecycleError("CANONICAL_PUBLISHED_RECEIPT_REQUIRED")
     source_policy = (
-        load_policy(source_root)
-        if (source_root / ".development-repository.toml").is_file()
+        load_policy(isolated_workspace)
+        if (isolated_workspace / ".development-repository.toml").is_file()
         else authoritative
     )
     if not source_candidate_is_eligible(
-        source_root, revision, str(receipt.get("canonical_tip_after_build", "")),
+        isolated_workspace, revision, str(receipt.get("canonical_tip_after_build", "")),
         source_policy.get("release", {}), source_policy["remote"], source_policy["canonical_ref"],
     ):
         raise LifecycleError("CANONICAL_PUBLISHED_RECEIPT_REQUIRED")

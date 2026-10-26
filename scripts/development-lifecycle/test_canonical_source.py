@@ -137,6 +137,19 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(source.read_bytes(), original)
         self.assertEqual(_sync_published_build_receipt(self.shared, policy, source), destination)
 
+    def test_published_receipt_checks_candidate_ancestry_in_its_git_workspace(self) -> None:
+        import canonical_source
+
+        policy, source = self.published_fallback_receipt()
+        policy["source_root"] = str(self.fallback_root)
+        workspace = Path(json.loads(source.read_text(encoding="utf-8"))["isolated_workspace"])
+        with mock.patch.object(canonical_source, "source_candidate_is_eligible", return_value=True) as eligible:
+            canonical_source._sync_published_build_receipt(self.shared, policy, source)
+
+        self.assertEqual(eligible.call_args.args[0], workspace)
+        self.assertEqual(eligible.call_args.args[1], self.revision)
+        self.assertEqual(eligible.call_args.args[2], self.revision)
+
     def test_fallback_receipt_replication_preserves_a_conflicting_primary_receipt(self) -> None:
         from canonical_source import LifecycleError, _sync_published_build_receipt
 
