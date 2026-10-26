@@ -50,7 +50,8 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
   await assertAuthorized();
   const plan = (await getHttpRuntimePlan(db, scope, input.candidateJobId, intent.plan)).plan;
   if (hash(plan) !== input.planDigest) fail("PLAN_CHANGED");
-  const { target, packet, settings: originalSettings } = await resolveHttpCandidatePackage(db, scope);
+  const { target, packet, settings: originalSettings } = await resolveHttpCandidatePackage(db, scope,
+    { imageSourceSha: plan.publication.sourceSha });
   const bundle = await resolveCloudflareStagingModules(plan.artifactRef, plan.workerSourceSha);
   if (!bundle?.moduleFiles[CANDIDATE_MODULE]) fail("CANONICAL_MODULE_REQUIRED");
   const checkpointWhere = and(eq(systemSettings.category, CHECKPOINT), eq(systemSettings.key, context.jobId));
@@ -147,7 +148,7 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       const rolePlan = { tenantId: scope.tenantId, projectId: scope.projectId, databaseName: plan.network.databaseName,
         tables: relations.tables, sequences: relations.sequences, connectionLimit: 10 as const,
         expiresAt: new Date(Math.min(Date.now() + 40 * 60_000, Date.parse(intent.expiresAt))).toISOString() };
-      roleReceipt = await prepareApplicationDatabaseRole(db, { plan: rolePlan, assertAuthorized,
+      roleReceipt = await prepareApplicationDatabaseRole(db, { plan: rolePlan, reuse: plan.previousRuntime?.rolePlan, assertAuthorized,
         saveSecret: async (tx, secret) => { Object.assign(state, { rolePrepared: true, rolePlan, roleSecret: secret, stage: "ROLE_PREPARED" }); await persist(tx); } });
       await reporter.progress(lease, { progress: 15, stage: "NATIVE_RUNTIME_ROLE_PREPARED", measured: { role: plan.role, policiesChanged: false } });
       const settings = { ...originalSettings, issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 9 * 60_000).toISOString() };
@@ -168,15 +169,16 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         const destination = join(directory, name); await mkdir(join(destination, ".."), { recursive: true }); await writeFile(destination, file.bytes, { mode: 0o600 });
       }
       const configPath = join(directory, "wrangler.json"), secretsPath = join(directory, "runtime-secrets.json");
-      // Containers already exist. No migration/new namespace or container
-      // rollout is allowed; only the current DO/image bindings are retained.
+      // Same durable_object applications/namespaces; update the named image
+      // map too. `--containers-rollout none` skips that update. DO-managed
+      // instances start through the bounded lifecycle, never a rollout/prewarm.
       const { migrations: _migrations, ...config } = packet.config;
       await writeFile(configPath, JSON.stringify({ ...config, main: `./${CANDIDATE_MODULE}`, no_bundle: true,
         vars, vpc_networks: composition.vpcNetworks }), { mode: 0o600 });
       await writeFile(secretsPath, JSON.stringify(secrets), { mode: 0o600 });
       const env = { PATH: process.env.PATH ?? "/usr/local/bin:/usr/bin:/bin", HOME: process.env.HOME ?? directory,
         CLOUDFLARE_API_TOKEN: token, CLOUDFLARE_ACCOUNT_ID: target.accountRef, WRANGLER_SEND_METRICS: "false", CI: "true" };
-      const args = ["dlx", "wrangler@4.151.1", "deploy", "--config", configPath, "--secrets-file", secretsPath, "--containers-rollout", "none"];
+      const args = ["dlx", "wrangler@4.151.1", "deploy", "--config", configPath, "--secrets-file", secretsPath];
       await runHttpImageOperatorCommand({ command: "pnpm", args: [...args, "--dry-run"], cwd: directory, env, timeoutMs: 60_000,
         assertAuthorized, classifyFailure: classifyHttpCandidateWranglerFailure });
       state.stage = "PROVIDER_WRITE_INTENT"; state.providerWriteIntent = true; await persist();
@@ -190,9 +192,13 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       if (!Array.isArray(bindings) || !bindings.some(b => b.name === "DATABASE_NETWORK" && b.type === "vpc_network" && b.tunnel_id === plan.network.tunnelId) ||
           !composition.bindings.every(b => bindings.some(p => p.name === b.name && p.type === b.type && (b.type !== "plain_text" || p.text === b.text))))
         fail("RUNTIME_BINDINGS_READBACK_MISMATCH");
+      const metadata = version?.resources?.script_runtime?.containers;
+      if (!Array.isArray(metadata) || !packet.config.containers.every(expected => metadata.some(m => m.class_name === expected.class_name &&
+        Object.entries(expected.images).every(([alias, image]) => m.images?.[alias] === image.image))))
+        fail("IMAGE_REFERENCE_TRANSITION_READBACK_MISMATCH");
       const apps = await api(`${root}/containers/applications?per_page=100`);
       if (!Array.isArray(apps) || !plan.candidate.applications.every(expected => apps.some(a => a.id === expected.applicationId && a.name === expected.name &&
-        a.durable_objects?.namespace_id === expected.namespaceId) && bindings.some(b => b.type === "durable_object_namespace" && b.namespace_id === expected.namespaceId)))
+        a.scheduling_policy === "durable_object" && a.durable_objects?.namespace_id === expected.namespaceId) && bindings.some(b => b.type === "durable_object_namespace" && b.namespace_id === expected.namespaceId)))
         fail("EXISTING_APPLICATION_IDS_CHANGED");
       state.deploymentId = deployment.id; state.versionId = versionId; state.stage = "DEPLOYED"; await persist();
       await reporter.progress(lease, { progress: 45, stage: "NATIVE_RUNTIME_TESTING", measured: { deploymentId: deployment.id, versionId } });
@@ -207,12 +213,15 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       const diagnostics: Record<string, any> = {};
       for (const runtime of ["node", "python"]) {
         const result = await probe(`${runtime}/status`), d = result.json;
-        if (result.status !== 200 || d?.running !== true || d.configurationMatches !== true || d.starts < 1 || d.starts > 2 || d.reservedSeconds > 1200 || d.failure)
+        const expectedImage = originalSettings[runtime as "node" | "python"].image;
+        if (result.status !== 200 || d?.running !== true || d.configurationMatches !== true || d.image !== expectedImage ||
+            d.starts < 1 || d.starts > 2 || d.reservedSeconds > 1200 || d.failure)
           fail(`${runtime.toUpperCase()}_RUNNING_RECEIPT_DENIED`);
-        diagnostics[runtime] = { running: d.running, starts: d.starts, reservedSeconds: d.reservedSeconds, activeUntil: d.activeUntil };
+        diagnostics[runtime] = { running: d.running, image: d.image, starts: d.starts, reservedSeconds: d.reservedSeconds, activeUntil: d.activeUntil };
       }
       runtimeReceipt = { schemaVersion: "cloudflare-native-runtime-test-receipt-v1", jobId: context.jobId, candidateJobId: input.candidateJobId,
         workerName: plan.candidate.workerName, deploymentId: deployment.id, versionId, applications: plan.candidate.applications,
+        publication: plan.publication, imageReferencesVerified: true,
         role: plan.role, databaseRoleReceipt: roleReceipt, transport: plan.network.transport, configurationRef,
         probes: results, diagnostics, runtimeBootVerified: true, authenticatedApplicationAcceptance: false, runtimeAcceptance: false,
         pending: ["authenticated-positive-and-cross-tenant-API", "Gateway-billing-jobs-recovery", "independent-native-activation"],

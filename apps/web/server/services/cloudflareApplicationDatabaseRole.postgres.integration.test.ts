@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, applicationDatabaseRolePlanSchema, prepareApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
+import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, applicationDatabaseRolePlanSchema, prepareApplicationDatabaseRole, assertReusableApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
 const suite = process.env.RUN_CLOUDFLARE_PRODUCTION_DB_INTEGRATION === "true" ? describe : describe.skip;
 suite("native application role with real PostgreSQL and synthetic tenant RLS", () => {
   let disposable: any, client: any, db: any, closeDb: any, app: any;
@@ -99,5 +99,25 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
       expect(await mixed.unsafe('INSERT INTO runtime_mixed_fixture DEFAULT VALUES RETURNING "fencingToken"')).toEqual([{ fencingToken: 1 }]);
       await expect(mixed.unsafe("SELECT nextval('runtime_role_fixture_id_seq')")).rejects.toMatchObject({ code: "42501" });
     } finally { await mixed.end({ timeout: 2 }); }
+  });
+  it("rotates only a disabled exact checkpoint-owned role under fresh authority and rolls failures back", async () => {
+    const p = { ...plan(), projectId: "project-role-reuse" }, role = applicationDatabaseRoleName(p);
+    let first: any, rotated: any;
+    await prepareApplicationDatabaseRole(db, { plan: p, assertAuthorized: async () => {}, saveSecret: async (_tx, secret) => { first = secret; } });
+    await expect(assertReusableApplicationDatabaseRole(db, p)).rejects.toThrow("PREPARATION_DENIED");
+    await client.unsafe(`ALTER ROLE "${role}" NOLOGIN`);
+    await expect(assertReusableApplicationDatabaseRole(db, p)).resolves.toBeUndefined();
+    await client.unsafe(`GRANT SELECT ON runtime_unselected_fixture TO "${role}"`);
+    await expect(assertReusableApplicationDatabaseRole(db, p)).rejects.toThrow("PREPARATION_DENIED");
+    await client.unsafe(`REVOKE SELECT ON runtime_unselected_fixture FROM "${role}"`);
+    await expect(prepareApplicationDatabaseRole(db, { plan: p, reuse: p, assertAuthorized: async () => {},
+      saveSecret: async () => { throw Error("FIXTURE_CHECKPOINT_FAILED"); } })).rejects.toThrow("PREPARATION_DENIED");
+    expect((await client`SELECT rolcanlogin FROM pg_roles WHERE rolname=${role}`)[0].rolcanlogin).toBe(false);
+    const receipt = await prepareApplicationDatabaseRole(db, { plan: p, reuse: p, assertAuthorized: async () => {}, saveSecret: async (_tx, secret) => { rotated = secret; } });
+    expect(rotated.password).not.toBe(first.password); expect(receipt.role).toBe(role);
+    const url = new URL(disposable.databaseUrl); url.username = role; url.password = rotated.password;
+    const connection = (await import("postgres")).default(url.toString(), { max: 1 });
+    try { expect((await connection`SELECT current_user AS role`)[0].role).toBe(role); }
+    finally { await connection.end({ timeout: 2 }); }
   });
 });

@@ -1,11 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createHash, randomUUID } from "node:crypto";
 const state = vi.hoisted(() => ({ preflightDenied: false, admissionDenied: false, responseLost: false,
-  planDigest: "a".repeat(64), artifactRef: `sha256:${"b".repeat(64)}`, workerSourceSha: "c".repeat(40) }));
+  recoveryId: null as string | null, planDigest: "a".repeat(64), artifactRef: `sha256:${"b".repeat(64)}`, workerSourceSha: "c".repeat(40) }));
 vi.mock("./cloudflareHttpRuntimePlan", () => ({ getHttpRuntimePlan: async (_db: any, scope: any, candidateJobId: string, reviewed: any) => {
   if (state.preflightDenied) throw Error("HTTP_RUNTIME_VPC_ARTIFACT_REQUIRED");
   if (reviewed.artifactRef !== state.artifactRef || reviewed.workerSourceSha !== state.workerSourceSha) throw Error("HTTP_RUNTIME_ARTIFACT_CHANGED");
   return { ready: true, planDigest: state.planDigest, plan: { candidateJobId, artifactRef: state.artifactRef, workerSourceSha: state.workerSourceSha,
+    previousRuntime: state.recoveryId ? { jobId: state.recoveryId } : null,
     role: "sah_cf_app_abcdef012345", maxStartsPerRuntime: 2, maxComputeSecondsPerRuntime: 1200, trafficMutation: false } };
 } }));
 vi.mock("./jobControlPlaneGateway", async original => { const actual = await original<any>(); return { ...actual, createControlPlaneJob: async (input: any) => {
@@ -72,8 +73,20 @@ suite("Owner bounded runtime admission with real canonical PostgreSQL/outbox", (
     const [intent] = await client`SELECT "valueJson" FROM system_settings WHERE category='cloudflare_production_native_runtime' AND key=${input.submissionId}`;
     expect(intent.valueJson).toMatchObject({ trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false });
   });
+  it("admits a fresh exact Owner-reviewed corrected plan once while leaving the exhausted historical job unchanged", async () => {
+    const [old] = await client`SELECT id,attempt,"maxAttempts" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB} LIMIT 1`;
+    await client`UPDATE worker_jobs SET status='failed',"finishedAt"=now() WHERE id=${old.id}`;
+    state.recoveryId = old.id;
+    const input = request();
+    expect((await service.prepareHttpRuntime(db, input)).jobId).toBe(input.submissionId);
+    expect((await service.prepareHttpRuntime(db, input)).jobId).toBe(input.submissionId);
+    expect(await client`SELECT 1 FROM worker_job_outbox WHERE "workerJobId"=${input.submissionId}`).toHaveLength(1);
+    expect((await client`SELECT status,attempt,"maxAttempts" FROM worker_jobs WHERE id=${old.id}`)[0]).toEqual({ status: 'failed', attempt: old.attempt, maxAttempts: old.maxAttempts });
+    await expect(service.prepareHttpRuntime(db, request())).rejects.toThrow("EXISTING_SUBMISSION_RECONCILE_REQUIRED");
+    state.recoveryId = null;
+  });
   it("exposes the known immutable Node incompatibility only from the matching canonical failed intent", async () => {
-    const [row] = await client`SELECT id,"inputJson" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB} LIMIT 1`;
+    const [row] = await client`SELECT id,"inputJson" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB} ORDER BY "createdAt" DESC LIMIT 1`;
     const [saved] = await client`SELECT "valueJson" FROM system_settings WHERE category='cloudflare_production_native_runtime' AND key=${row.id}`;
     const plan = { ...saved.valueJson.plan, candidate: { imageSourceSha: "d".repeat(40), applications: [{ images: {
       node: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-abcdef012345-node-http@sha256:d8d5b38fca643300119684f11576b4b94c5bfa6e043f75e6a3bf7f471690140f` } }] } };

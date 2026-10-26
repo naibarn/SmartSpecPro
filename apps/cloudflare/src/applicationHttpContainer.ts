@@ -177,9 +177,19 @@ export class ApplicationHttpContainerController {
   /** No start, forwarding, secret, command or environment inspection. */
   async diagnostics() {
     const scope = await this.scope();
+    // Inspect an already running instance only. Named image metadata alone
+    // does not prove that an existing DO-managed VM uses the updated image.
+    let observed: Awaited<ReturnType<NativeContainer["inspect"]>> | null = null;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      if (this.container.running) observed = await Promise.race([this.container.inspect(),
+        new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), 1_000); })]);
+    } catch { /* Missing image readback remains unverified, never a start. */ }
+    finally { if (timer) clearTimeout(timer); }
     const state = await this.storage.get<LifecycleState>(KEY);
     const failure = await this.storage.get<{ code: string; kind: string; phase: string; at: number; exitCode?: number }>(DIAGNOSTIC_KEY);
     return { runtime: this.profile.runtime, running: this.container.running,
+      image: observed?.image === this.profile.image ? this.profile.image : null,
       starts: state?.starts ?? 0, reservedSeconds: state?.reservedSeconds ?? 0,
       activeUntil: state?.activeUntil ?? null,
       maxStarts: this.profile.maxStarts, maxComputeSeconds: this.profile.maxComputeSeconds,
@@ -336,6 +346,9 @@ export class ApplicationHttpContainerController {
       }
       throw new Error("APPLICATION_HTTP_READINESS_UNAVAILABLE");
     }
+    // A compensated failure from an older image must not make a healthy
+    // corrected boot fail its receipt. Never clear the lifecycle usage ledger.
+    await this.storage.put(DIAGNOSTIC_KEY, null);
     this.phase = "forward";
     // A successfully upgraded socket is bounded by the existing hard Container
     // deadline/alarm. A normal HTTP response-header timeout would incorrectly

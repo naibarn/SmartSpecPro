@@ -22,10 +22,12 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     { refetchInterval: query => ["queued", "running", "retry_wait"].includes(query.state.data?.job?.status ?? "") ? 5000 : 30_000, retry: false });
   const mutation = trpc.infrastructure.prepareCloudflareHttpRuntime.useMutation();
   const preflight = state.data?.preflight, job = state.data?.job, pending = state.data?.pending;
+  const continuation = job?.status === "failed" && preflight?.ready && preflight.plan.previousRuntime?.jobId === job.jobId;
   const submit = async () => {
-    if (busy.current || job || !preflight?.ready || pending?.revoked || pending && Date.parse(pending.expiresAt) <= Date.now()) return;
+    if (busy.current || job && !continuation || !preflight?.ready || pending?.revoked || pending && Date.parse(pending.expiresAt) <= Date.now()) return;
     busy.current = true;
-    const request: ReviewedSubmission = pending ?? submission ?? { submissionId: crypto.randomUUID(), planDigest: preflight.planDigest,
+    const retained = submission?.submissionId === job?.jobId ? null : submission;
+    const request: ReviewedSubmission = pending ?? retained ?? { submissionId: crypto.randomUUID(), planDigest: preflight.planDigest,
       candidateJobId, artifactRef: preflight.plan.artifactRef, workerSourceSha: preflight.plan.workerSourceSha };
     setSubmission(request);
     try { sessionStorage.setItem(key, JSON.stringify(request)); } catch { /* Server intent remains authoritative. */ }
@@ -47,9 +49,12 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
         "เริ่มได้ไม่เกิน 2 ครั้ง และจอง compute ไม่เกิน 1,200 วินาทีต่อ runtime แต่ละ process หยุดภายใน 10 นาที")}</Text>
       <Text>{text("Reviewed source", "Source ที่ตรวจแล้ว")}: {preflight.plan.workerSourceSha} · {preflight.planDigest}</Text>
     </> : preflight ? <Text role="status">{preflight.reason}</Text> : null}
-    <Button type="button" onClick={() => void submit()} disabled={state.isLoading || Boolean(state.error) || !preflight?.ready || Boolean(job) || mutation.isPending ||
+    {continuation ? <Text role="status">{text("The previous test is fully compensated. This reviews the verified corrected images for the same applications, rotates the disabled application login, and performs a new bounded test. The historical job and its expired authority stay unchanged.",
+      "งานเดิมคืนค่าเรียบร้อยแล้ว รอบนี้ใช้ image รุ่นแก้ไขกับ Container เดิม เปลี่ยนรหัส role ที่ปิด login และทดสอบแบบจำกัดขอบเขต โดยไม่แก้งานหรือสิทธิ์ที่หมดอายุของรอบเก่า")}</Text> : null}
+    <Button type="button" onClick={() => void submit()} disabled={state.isLoading || Boolean(state.error) || !preflight?.ready || Boolean(job && !continuation) || mutation.isPending ||
       Boolean(pending && (pending.revoked || Date.parse(pending.expiresAt) <= Date.now()))}>
-      {job ? text("Tracking the existing runtime test", "กำลังติดตามงานทดสอบเดิม") : mutation.isPending ? text("Submitting…", "กำลังส่งงาน…")
+      {job && !continuation ? text("Tracking the existing runtime test", "กำลังติดตามงานทดสอบเดิม") : mutation.isPending ? text("Submitting…", "กำลังส่งงาน…")
+        : continuation && !pending && (!submission || submission.submissionId === job.jobId) ? text("Authorize corrected images and bounded runtime test", "อนุมัติใช้ image รุ่นแก้ไขและทดสอบ runtime")
         : pending || submission ? text("Reconcile the same runtime test", "ตรวจและดำเนินงานทดสอบเดิม")
           : text("Authorize and test Node/Python on Cloudflare", "อนุมัติและทดสอบ Node/Python บน Cloudflare")}
     </Button>

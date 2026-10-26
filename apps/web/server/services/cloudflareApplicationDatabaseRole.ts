@@ -26,12 +26,48 @@ export function applicationDatabaseRolePlanDigest(value: ApplicationDatabaseRole
 const quote = (name: string) => `"${identifier.parse(name)}"`;
 const deny = (): never => { throw Error("APPLICATION_DATABASE_ROLE_PREPARATION_DENIED"); };
 
+/** Only a disabled, checkpoint-owned role with the exact original privileges
+ * can be reused. Checking effective SELECT alone would miss extra grants,
+ * ownership, memberships or default privileges. This function never mutates. */
+export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value: ApplicationDatabaseRolePlan) {
+  const plan = applicationDatabaseRolePlanSchema.parse(value), role = applicationDatabaseRoleName(plan);
+  const [identity] = await db.execute(sql`SELECT current_database() AS name`);
+  const [observed] = await db.execute(sql`SELECT oid,rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolreplication,rolbypassrls,rolconnlimit
+    FROM pg_roles WHERE rolname=${role}`);
+  if (identity?.name !== plan.databaseName || !observed || observed.rolcanlogin || observed.rolsuper || observed.rolcreatedb || observed.rolcreaterole ||
+      observed.rolinherit || observed.rolreplication || observed.rolbypassrls || observed.rolconnlimit !== 10) deny();
+  const unexpected = await db.execute(sql`SELECT 1 FROM pg_auth_members WHERE roleid=${observed.oid} OR member=${observed.oid}
+    UNION ALL SELECT 1 FROM pg_default_acl d,aclexplode(d.defaclacl) a WHERE d.defaclrole=${observed.oid} OR a.grantee=${observed.oid}
+    UNION ALL SELECT 1 FROM pg_shdepend WHERE refclassid='pg_authid'::regclass AND refobjid=${observed.oid} AND deptype='o'
+    UNION ALL SELECT 1 FROM pg_shdepend WHERE refclassid='pg_authid'::regclass AND refobjid=${observed.oid}
+      AND (classid NOT IN ('pg_class'::regclass,'pg_namespace'::regclass,'pg_database'::regclass) OR
+        dbid NOT IN (0,(SELECT oid FROM pg_database WHERE datname=current_database())))
+    UNION ALL SELECT 1 FROM pg_stat_activity WHERE usename=${role}`);
+  if (unexpected.length) deny();
+  const grants = await db.execute(sql`SELECT n.nspname,c.relname,c.relkind,a.privilege_type,a.is_grantable
+    FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(c.relacl) a
+    WHERE a.grantee=${observed.oid} ORDER BY n.nspname,c.relname,a.privilege_type`);
+  const expected = [...plan.tables.flatMap(name => ["SELECT", "INSERT", "UPDATE", "DELETE"].map(privilege => `${name}:${privilege}`)),
+    ...plan.sequences.flatMap(name => ["USAGE", "SELECT"].map(privilege => `${name}:${privilege}`))].sort();
+  if (grants.some(g => g.nspname !== "public" || g.is_grantable || !["r", "p", "S"].includes(String(g.relkind))) ||
+      JSON.stringify(grants.map(g => `${g.relname}:${g.privilege_type}`).sort()) !== JSON.stringify(expected)) deny();
+  const schemas = await db.execute(sql`SELECT n.nspname,a.privilege_type,a.is_grantable FROM pg_namespace n,
+    LATERAL aclexplode(n.nspacl) a WHERE a.grantee=${observed.oid}`);
+  const databases = await db.execute(sql`SELECT d.datname,a.privilege_type,a.is_grantable FROM pg_database d,
+    LATERAL aclexplode(d.datacl) a WHERE a.grantee=${observed.oid}`);
+  const functions = await db.execute(sql`SELECT 1 FROM pg_proc p,LATERAL aclexplode(p.proacl) a WHERE a.grantee=${observed.oid}`);
+  if (schemas.length !== 1 || schemas[0].nspname !== "public" || schemas[0].privilege_type !== "USAGE" || schemas[0].is_grantable ||
+      databases.length !== 1 || databases[0].datname !== plan.databaseName || databases[0].privilege_type !== "CONNECT" || databases[0].is_grantable || functions.length) deny();
+}
+
 /** A trusted canonical runtime executor supplies BOTH checks and checkpoint
  * persistence. A successful Candidate METADATA job is not this authority.
  * All role DDL and the encrypted checkpoint commit atomically; failures never
  * leave an unowned login, and no password appears in a job receipt or error. */
 export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
   plan: ApplicationDatabaseRolePlan;
+  /** Trusted canonical compensation evidence; never supplied by an API caller. */
+  reuse?: ApplicationDatabaseRolePlan;
   assertAuthorized(): Promise<void>;
   saveSecret(tx: DrizzleDB, secret: { role: string; password: string; planDigest: string }): Promise<void>;
 }) {
@@ -48,7 +84,13 @@ export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
       await input.assertAuthorized();
       const identity = await tx.execute(sql`SELECT current_database() AS name`);
       if (identity.length !== 1 || identity[0].name !== plan.databaseName) deny();
-      if ((await tx.execute(sql`SELECT 1 FROM pg_roles WHERE rolname=${role}`)).length) deny();
+      if (input.reuse) {
+        const prior = applicationDatabaseRolePlanSchema.parse(input.reuse);
+        if (applicationDatabaseRoleName(prior) !== role || prior.databaseName !== plan.databaseName ||
+            JSON.stringify([...prior.tables].sort()) !== JSON.stringify([...plan.tables].sort()) ||
+            JSON.stringify([...prior.sequences].sort()) !== JSON.stringify([...plan.sequences].sort())) deny();
+        await assertReusableApplicationDatabaseRole(tx, prior);
+      } else if ((await tx.execute(sql`SELECT 1 FROM pg_roles WHERE rolname=${role}`)).length) deny();
       // Pin every selected existing relation; never ALL TABLES, default future
       // grants, ownership, role membership, RLS bypass or policy changes.
       for (const name of plan.tables) {
@@ -63,7 +105,7 @@ export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
       }
       // Interpolated values below have strict identifier/hex/ISO validation.
       // Catch raw driver failures here: their query text may contain a password.
-      await tx.execute(sql.raw(`CREATE ROLE ${quote(role)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 10 PASSWORD '${password}' VALID UNTIL '${new Date(expires).toISOString()}'`));
+      await tx.execute(sql.raw(`${input.reuse ? "ALTER" : "CREATE"} ROLE ${quote(role)} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS CONNECTION LIMIT 10 PASSWORD '${password}' VALID UNTIL '${new Date(expires).toISOString()}'`));
       await tx.execute(sql.raw(`GRANT CONNECT ON DATABASE ${quote(plan.databaseName)} TO ${quote(role)}`));
       await tx.execute(sql.raw(`GRANT USAGE ON SCHEMA public TO ${quote(role)}`));
       await tx.execute(sql.raw(`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE ${plan.tables.map(quote).join(",")} TO ${quote(role)}`));

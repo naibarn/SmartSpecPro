@@ -32,6 +32,16 @@ function fixture() {
 }
 
 describe("bounded private application HTTP compute", () => {
+  it("verifies the actual running image after a corrected boot and clears only the obsolete failure", async () => {
+    const f = fixture();
+    await f.controller.recordFailure(new Error("APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY"));
+    const deadline = await f.controller.ensureRunning(); f.markObserved();
+    await f.controller.forward(new Request("http://application.internal/healthz"), deadline);
+    expect(await f.controller.diagnostics()).toMatchObject({ image: f.profile.image, running: true, starts: 1, reservedSeconds: 60, failure: null });
+    f.container.inspect.mockResolvedValueOnce({ image: "different-image", labels: {} });
+    expect((await f.controller.diagnostics()).image).toBeNull();
+    expect(f.container.start).toHaveBeenCalledOnce();
+  });
   it("uses the fixed private VPC startup program with the same immutable image and exact application role", async () => {
     const f = fixture();
     Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345", instance: "basic" });

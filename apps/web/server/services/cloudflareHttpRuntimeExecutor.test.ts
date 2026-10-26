@@ -2,7 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 const state = vi.hoisted(() => ({ plan: null as any, intent: null as any, package: null as any, checkpoint: null as any,
-  bindings: [] as any[], phase: "baseline", expired: false, revoked: false, probeFailure: false, uncertainWrite: false, paginatedHistory: false, paginatedApps: false,
+  bindings: [] as any[], phase: "baseline", expired: false, revoked: false, probeFailure: false, uncertainWrite: false, paginatedHistory: false, paginatedApps: false, imageMismatch: false,
   commands: vi.fn(), role: vi.fn(), owner: vi.fn(), assertActive: vi.fn(), updates: vi.fn() }));
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const db: any = { execute: vi.fn(async () => []), transaction: async (fn: any) => fn(db),
@@ -30,7 +30,7 @@ vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredent
 vi.mock("./crypto", () => ({ encrypt: (value: string) => `encrypted:${value}`, decrypt: (value: string) => value.slice("encrypted:".length) }));
 vi.mock("./cloudflareHttpImageBuildOperator", () => ({ runHttpImageOperatorCommand: async (input: any) => {
   await input.assertAuthorized(); state.commands(input.args);
-  expect(input.args).toContain("--containers-rollout"); expect(input.args).toContain("none");
+  expect(input.args).not.toContain("--containers-rollout");
   const config = JSON.parse(await readFile(input.args[input.args.indexOf("--config") + 1], "utf8"));
   const secretsPath = input.args[input.args.indexOf("--secrets-file") + 1], secrets = JSON.parse(await readFile(secretsPath, "utf8"));
   expect((await stat(secretsPath)).mode & 0o777).toBe(0o600);
@@ -45,18 +45,18 @@ import { createHttpRuntimeExecutor } from "./cloudflareHttpRuntimeExecutor";
 import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT } from "./cloudflareHttpRuntimeContract";
 beforeEach(() => {
   vi.clearAllMocks(); state.phase = "baseline"; state.expired = false; state.revoked = false; state.probeFailure = false; state.uncertainWrite = false; state.checkpoint = null;
-  state.paginatedHistory = false; state.paginatedApps = false;
+  state.paginatedHistory = false; state.paginatedApps = false; state.imageMismatch = false;
   process.env.CLOUDFLARE_PRODUCTION_EXECUTOR_ID = "fixture-executor";
   state.bindings = [{ name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "production" },
     { name: "CLOUDFLARE_NODE_HTTP_SECRETS", type: "secret_text", text: "never-log-runtime-password" }];
-  state.plan = { candidateJobId: "22222222-2222-4222-8222-222222222222", role: "sah_cf_app_abcdef012345",
+  state.plan = { publication: { sourceSha: "c".repeat(40) }, candidateJobId: "22222222-2222-4222-8222-222222222222", role: "sah_cf_app_abcdef012345",
     network: { tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", databaseName: "fixture", transport: "private-vpc-websocket-v1" },
     candidate: { workerName: "smartspec-production-abcdef012345-candidate", deploymentId: "baseline-deployment", versionId: "baseline-version",
       applications: [{ applicationId: "node-app", namespaceId: "node-ns", name: "node-app" }, { applicationId: "python-app", namespaceId: "python-ns", name: "python-app" }] },
     relations: { tables: ["users"], sequences: [], rlsBaselineDigest: "baseline", rlsMutations: false },
     artifactRef: `sha256:${"a".repeat(64)}`, workerSourceSha: "b".repeat(40), executorId: "fixture-executor" };
-  state.package = { target: { accountRef: "a".repeat(32), credentialRef: "fixture-credential" }, settings: {}, packet: {
-    config: { name: state.plan.candidate.workerName, routes: [], migrations: [{ tag: "never-recreate" }], containers: [] } } };
+  state.package = { target: { accountRef: "a".repeat(32), credentialRef: "fixture-credential" }, settings: { node: { image: "node-image" }, python: { image: "python-image" } }, packet: {
+    config: { name: state.plan.candidate.workerName, routes: [], migrations: [{ tag: "never-recreate" }], containers: ["node", "python"].map(runtime => ({ class_name: runtime + "-class", images: { [runtime]: { image: runtime + "-image" } } })) } } };
   state.intent = { tenantId: "tenant-fixture", projectId: "project-fixture", actorUserId: 17, submissionId: "11111111-1111-4111-8111-111111111111",
     plan: state.plan, planDigest: hash(state.plan), expiresAt: new Date(Date.now() + 2_700_000).toISOString(), revokedAt: null,
     authority: "existing-candidate-bounded-runtime-test-v1", trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false, fixtureCreation: false };
@@ -66,7 +66,7 @@ beforeEach(() => {
     if (path.includes("application-canary")) {
       expect(init.headers["x-smartaihub-application-canary-token"]).toHaveLength(64);
       if (path.endsWith("/stop")) return Response.json({ stopped: true });
-      if (path.endsWith("/status")) return Response.json({ running: !state.probeFailure, starts: 1, reservedSeconds: 600, configurationMatches: true,
+      if (path.endsWith("/status")) return Response.json({ running: !state.probeFailure, starts: 1, reservedSeconds: 600, configurationMatches: true, image: path.endsWith("node/status") ? "node-image" : "python-image",
         failure: state.probeFailure ? { code: "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY", kind: "Error", phase: "readiness", at: Date.now(), exitCode: 1 } : null,
         token: "never-log-provider-token", environment: { PASSWORD: "never-log-runtime-password" } });
       if (path.endsWith("node/auth")) return Response.json({ result: { data: { json: null } } });
@@ -82,11 +82,11 @@ beforeEach(() => {
       return success({ deployments: [{ id: `${state.phase}-deployment`, versions: [{ version_id: `${state.phase}-version`, percentage: 100 }] }] });
     }
     if (path.endsWith("/versions/runtime-version")) return success({ annotations: { "workers/message": `canonical-native-runtime:${state.intent.submissionId}:${state.intent.planDigest}` }, resources: {
-      bindings: [...state.bindings.map(({ text, ...b }) => b.type === "plain_text" ? { ...b, text } : b),
+      script_runtime: { containers: ["node", "python"].map(runtime => ({ class_name: runtime + "-class", images: { [runtime]: state.imageMismatch ? "stale-image" : runtime + "-image" } })) }, bindings: [...state.bindings.map(({ text, ...b }) => b.type === "plain_text" ? { ...b, text } : b),
         { name: "DATABASE_NETWORK", type: "vpc_network", tunnel_id: state.plan.network.tunnelId },
         ...state.plan.candidate.applications.map((a: any) => ({ type: "durable_object_namespace", namespace_id: a.namespaceId }))] } });
     if (path.endsWith("containers/applications")) return Response.json({ success: true, result_info: { total_pages: state.paginatedApps ? 2 : 1 },
-      result: state.plan.candidate.applications.map((a: any) => ({ id: a.applicationId, name: a.name, durable_objects: { namespace_id: a.namespaceId } })) });
+      result: state.plan.candidate.applications.map((a: any) => ({ id: a.applicationId, name: a.name, scheduling_policy: "durable_object", durable_objects: { namespace_id: a.namespaceId } })) });
     throw Error("UNEXPECTED_PROVIDER_CALL");
   }));
 });
@@ -118,6 +118,12 @@ describe("canonical bounded existing-Candidate runtime executor", () => {
   });
   it("keeps genuinely incomplete application inventory fail-closed and compensates", async () => {
     state.paginatedApps = true; await expect(run()).rejects.toThrow("PROVIDER_INVENTORY_INCOMPLETE"); expect(state.phase).toBe("baseline");
+  });
+  it("rejects stale named image metadata before starting a Container and compensates the existing Candidate", async () => {
+    state.imageMismatch = true;
+    await expect(run()).rejects.toThrow("IMAGE_REFERENCE_TRANSITION_READBACK_MISMATCH");
+    expect(state.phase).toBe("baseline");
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith("node/health"))).toBe(false);
   });
   it("tests actual runtime endpoints and compensates without claiming full application acceptance", async () => {
     const result = (await run()).output as any;

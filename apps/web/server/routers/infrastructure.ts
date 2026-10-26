@@ -752,14 +752,21 @@ export const infrastructureRouter = router({
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), submissionId: z.string().uuid(),
       planDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
     .mutation(async ({ input, ctx }) => {
+      const trace = { submissionId: input.submissionId, tenantId: input.tenantId, projectId: input.projectId,
+        actorUserId: ctx.user.id, requestId: ctx.req.requestId ?? input.submissionId };
+      console.info("[CloudflareHttpImageAdmission]", { ...trace, stage: "AUTHENTICATED_REQUEST" });
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_IMAGE_TENANT_MISMATCH" });
       if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "HTTP_IMAGE_OWNER_SESSION_REQUIRED" });
       try {
-        return await queueHttpImagePair(await getDb(), { ...input, actorUserId: ctx.user.id, userToken: ctx.userToken,
+        const result = await queueHttpImagePair(await getDb(), { ...input, actorUserId: ctx.user.id, userToken: ctx.userToken,
           correlationId: ctx.req.requestId ?? input.submissionId });
+        console.info("[CloudflareHttpImageAdmission]", { ...trace, stage: "CANONICAL_RECONCILIATION_RETURNED",
+          canonicalSubmissionId: result?.submissionId, jobs: result?.jobs.map(job => ({ jobId: job.jobId, status: job.status })) });
+        return result;
       } catch (error) {
         const code = error instanceof Error && /^[A-Z][A-Z0-9_:]{3,220}$/.test(error.message) ? error.message : "HTTP_IMAGE_ADMISSION_UNKNOWN";
+        console.info("[CloudflareHttpImageAdmission]", { ...trace, stage: "ADMISSION_ERROR", code });
         throw new TRPCError({ code: code.endsWith("UNKNOWN") ? "INTERNAL_SERVER_ERROR" : "PRECONDITION_FAILED", message: code });
       }
     }),
@@ -860,10 +867,10 @@ export const infrastructureRouter = router({
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_RUNTIME_AUTHENTICATED_TENANT_REQUIRED" });
       const db = getDb(), scope = { ...input, actorUserId: ctx.user.id }, job = await readHttpRuntimeOperation(db, scope);
-      if (job) return { job, preflight: null, pending: null };
-      const pending = await readPendingHttpRuntimeIntent(db, scope);
-      try { return { job: null, pending, preflight: await getHttpRuntimePlan(db, scope, input.candidateJobId, pending ?? undefined) }; }
-      catch (error) { return { job: null, pending, preflight: { ready: false as const, reason: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
+      if (job && job.status !== "failed") return { job, preflight: null, pending: null };
+      const retained = await readPendingHttpRuntimeIntent(db, scope), pending = retained?.submissionId === job?.jobId ? null : retained;
+      try { return { job, pending, preflight: await getHttpRuntimePlan(db, scope, input.candidateJobId, pending ?? undefined) }; }
+      catch (error) { return { job, pending, preflight: { ready: false as const, reason: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
         ? error.message : "HTTP_RUNTIME_PREFLIGHT_UNAVAILABLE" } }; }
     }),
 

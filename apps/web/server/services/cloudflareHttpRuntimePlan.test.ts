@@ -1,26 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 const state = vi.hoisted(() => ({ job: null as any, packet: null as any, target: null as any, settings: null as any,
-  module: true, verified: true, unsafe: false, oldRole: false }));
+  module: true, verified: true, unsafe: false, oldRole: false, prior: null as any, desired: null as any }));
 const scope = { tenantId: "tenant-fixture", projectId: "project-fixture", actorUserId: 17 };
 const secret = "fixture-application-secret-with-at-least-32-characters";
 vi.mock("node:fs/promises", async original => ({ ...(await original<any>()), readFile: async () =>
   `JWT_SECRET=${secret}\nSECRET_KEY=${secret}\nENCRYPTION_MASTER_KEY=${secret}\nSMARTSPEC_WEB_GATEWAY_TOKEN=${secret}\n` }));
 vi.mock("./cloudflareHttpCandidatePreparation", () => ({ assertHttpCandidateOwner: async (_db: any, s: any) => {
   if (s.tenantId !== "tenant-fixture" || s.actorUserId !== 17) throw Error("OWNER_SCOPE_DENIED"); },
-  resolveHttpCandidatePackage: async () => ({ packet: state.packet, target: state.target, settings: state.settings }) }));
+  resolveHttpCandidatePackage: async (_db: any, _scope: any, baseline: any) => baseline ? ({ packet: state.packet, target: state.target, settings: state.settings }) : state.desired ?? ({ packet: state.packet, target: state.target, settings: state.settings, publishedPair: { sourceSha: state.settings.sourceSha } }) }));
 vi.mock("./cloudflareHttpDatabaseNetwork", () => ({ readHttpDatabaseNetwork: async () => ({ transport: "private-vpc-websocket-v1",
   providerReadbackVerified: true, m1Preserved: true, tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", hostname: "db.smartaihub.app", port: 5433, databaseName: "fixture" }) }));
 vi.mock("./cloudflareStagingArtifactAuthority", () => ({ resolveLatestPublishedCloudflareStagingArtifact: async () => ({ artifactRef: `sha256:${"a".repeat(64)}`, sourceSha: "b".repeat(40) }),
   resolveCloudflareStagingArtifact: async (ref: string, sha: string) => ({ artifactRef: ref, sourceSha: sha }),
   resolveCloudflareStagingModules: async () => ({ moduleFiles: state.module ? { "applicationHttpCandidateEntrypoint.js": { bytes: Buffer.from("export class ApplicationDatabaseBridge {}") } } : {} }) }));
 vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: async () => ({ status: "CONFIGURED", value: { verified: state.verified } }) }));
+vi.mock("./cloudflareHttpRuntimeContinuation", () => ({ readCompensatedHttpRuntime: async () => state.prior }));
+vi.mock("./cloudflareApplicationDatabaseRole", async original => ({ ...(await original<any>()), assertReusableApplicationDatabaseRole: async () => {} }));
 import { getHttpRuntimePlan } from "./cloudflareHttpRuntimePlan";
 import { HTTP_CANDIDATE_JOB, HTTP_CANDIDATE_CONTRACT } from "./cloudflareHttpCandidateContract";
 beforeEach(() => {
   Object.assign(process.env, { JWT_SECRET: secret, API_KEY_HMAC_SECRET: secret, LLM_ENCRYPTION_KEY: secret, CONTROL_PLANE_API_KEY: secret,
     CLOUDFLARE_PRODUCTION_EXECUTOR_ID: "fixture-executor" });
-  state.module = true; state.verified = true; state.unsafe = false; state.oldRole = false;
+  state.module = true; state.verified = true; state.unsafe = false; state.oldRole = false; state.prior = null; state.desired = null;
   const namespace = httpApplicationNamespace(scope.tenantId, scope.projectId), prod = httpApplicationNamespace(scope.tenantId, scope.projectId, "production");
   const account = "a".repeat(32), image = (runtime: string) => `registry.cloudflare.com/${account}/${namespace}-${runtime}-http@sha256:${"d".repeat(64)}`;
   state.settings = { mode: "private-canary", namespace: prod, sourceSha: "c".repeat(40), issuedAt: new Date(Date.now()-1000).toISOString(),
@@ -56,6 +58,27 @@ describe("non-mutating exact native runtime review", () => {
     expect(first.plan).toMatchObject({ trafficMutation: false, dnsMutation: false, imagePublication: false, fixtureCreation: false });
     expect(first.plan.relations.sequences).toContain("delegated_worker_concurrency_leases_fencingToken_seq");
     expect(JSON.stringify(first)).not.toContain(secret); expect(first.runtimeAcceptance).toBe(false);
+  });
+  it("selects the corrected verified pair while preserving the existing Candidate and compensated role baseline", async () => {
+    state.oldRole = true;
+    const database = db();
+    state.prior = { jobId: "66666666-6666-4666-8666-666666666666", rolePlan: {
+      tables: ["users", "tenants", "system_settings", "worker_jobs", "credit_transactions", "model_provider_map"],
+      sequences: ["delegated_worker_concurrency_leases_fencingToken_seq"] }, restoredBaseline: { deploymentId: "restored", versionId: state.job.outputJson.versionId } };
+    state.desired = { target: state.target, packet: state.packet, settings: { ...state.settings, sourceSha: "f".repeat(40), node: { ...state.settings.node, image: state.settings.node.image.replace("d".repeat(64), "e".repeat(64)) } },
+      publishedPair: { submissionId: "new-pair", sourceSha: "f".repeat(40), verified: true } };
+    state.prior.relationsDigest = (await import("node:crypto")).createHash("sha256").update(JSON.stringify({
+      tables: state.prior.rolePlan.tables, sequences: state.prior.rolePlan.sequences,
+      rlsBaselineDigest: (await import("node:crypto")).createHash("sha256").update(JSON.stringify([])).digest("hex"), rlsPolicyCount: 0, rlsMutations: false })).digest("hex");
+    const result = await getHttpRuntimePlan(database, scope, state.job.id);
+    expect(result.plan.previousRuntime?.jobId).toBe(state.prior.jobId);
+    expect(result.plan.candidate).toEqual(state.job.outputJson);
+    expect(result.plan.publication).toEqual(state.desired.publishedPair);
+    expect(result.plan.trafficMutation).toBe(false);
+  });
+  it("rejects a known incompatible published image before spending another runtime attempt", async () => {
+    state.settings.node.image = state.settings.node.image.replace("d".repeat(64), "d8d5b38fca643300119684f11576b4b94c5bfa6e043f75e6a3bf7f471690140f");
+    await expect(getHttpRuntimePlan(db(), scope, state.job.id)).rejects.toThrow("CORRECTED_PUBLISHED_IMAGES_REQUIRED");
   });
   it.each(["artifact", "provider", "public-privileges", "existing-role", "foreign-owner", "foreign-job"])("rejects %s before any runtime authority", async mode => {
     if (mode === "artifact") state.module = false;

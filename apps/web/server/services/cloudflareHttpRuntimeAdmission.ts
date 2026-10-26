@@ -57,6 +57,8 @@ export async function readPendingHttpRuntimeIntent(db: DrizzleDB, scope: Scope) 
   if (!value || value.actorUserId !== scope.actorUserId) return null;
   return { submissionId: row.key, planDigest: String(value.planDigest), candidateJobId: String(value.plan.candidateJobId),
     artifactRef: String(value.plan.artifactRef), workerSourceSha: String(value.plan.workerSourceSha),
+    ...(value.plan.publication?.sourceSha ? { publication: { sourceSha: String(value.plan.publication.sourceSha) } } : {}),
+    ...(value.plan.previousRuntime?.jobId ? { previousRuntime: { jobId: String(value.plan.previousRuntime.jobId) } } : {}),
     expiresAt: String(value.expiresAt), revoked: value.revokedAt !== null };
 }
 
@@ -78,9 +80,13 @@ export async function prepareHttpRuntime(db: DrizzleDB, input: Scope & { candida
       return value;
     }
     const [previous] = await tx.select().from(systemSettings).where(and(eq(systemSettings.category, HTTP_RUNTIME_CATEGORY),
-      sql`${systemSettings.valueJson}->>'tenantId'=${input.tenantId}`, sql`${systemSettings.valueJson}->>'projectId'=${input.projectId}`)).limit(1);
-    if (previous) throw Error("HTTP_RUNTIME_EXISTING_SUBMISSION_RECONCILE_REQUIRED");
+      sql`${systemSettings.valueJson}->>'tenantId'=${input.tenantId}`, sql`${systemSettings.valueJson}->>'projectId'=${input.projectId}`))
+      .orderBy(sql`${systemSettings.createdAt} DESC`).limit(1);
     const preflight = await getHttpRuntimePlan(db, input, input.candidateJobId, input);
+    // Fresh Owner-reviewed corrected images, never an extension of an expired
+    // intent or terminal attempt budget. Reconcile pending submissions first.
+    if (previous && (previous.updatedBy !== input.actorUserId || preflight.plan.previousRuntime?.jobId !== previous.key))
+      throw Error("HTTP_RUNTIME_EXISTING_SUBMISSION_RECONCILE_REQUIRED");
     if (preflight.planDigest !== input.planDigest) throw Error("HTTP_RUNTIME_REVIEWED_PLAN_CHANGED");
     const value = { tenantId: input.tenantId, projectId: input.projectId, actorUserId: input.actorUserId,
       submissionId: input.submissionId, planDigest: preflight.planDigest, plan: preflight.plan,

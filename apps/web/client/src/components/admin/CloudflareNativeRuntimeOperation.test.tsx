@@ -4,18 +4,18 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareNativeRuntimeOperation } from "./CloudflareNativeRuntimeOperation";
 vi.mock("./CloudflareImagePublication", () => ({ CloudflareImagePublication: ({ replacementForSourceSha }: any) => <p>corrected-images:{replacementForSourceSha}</p> }));
-const state = vi.hoisted(() => ({ ready: true, job: null as any, pending: null as any, error: null as any, mutationError: null as any,
+const state = vi.hoisted(() => ({ continuation: false, ready: true, job: null as any, pending: null as any, error: null as any, mutationError: null as any,
   loading: false, busy: false, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
   getCloudflareHttpRuntimeOperation: { useQuery: () => ({ isLoading: state.loading, error: state.error, refetch: state.refetch,
-    data: { job: state.job, pending: state.pending, preflight: state.job ? null : state.ready ? { ready: true, planDigest: "a".repeat(64),
-      plan: { candidate: { workerName: "existing-candidate" }, role: "sah_cf_app_fixture", relations: { tables: ["users", "worker_jobs"], rlsPolicyCount: 17 },
+    data: { job: state.job, pending: state.pending, preflight: state.job && !state.continuation ? null : state.ready ? { ready: true, planDigest: "a".repeat(64),
+      plan: { previousRuntime: state.continuation ? { jobId: state.job?.jobId } : null, candidate: { workerName: "existing-candidate" }, role: "sah_cf_app_fixture", relations: { tables: ["users", "worker_jobs"], rlsPolicyCount: 17 },
         artifactRef: `sha256:${"b".repeat(64)}`, workerSourceSha: "c".repeat(40) } } : { ready: false, reason: "HTTP_RUNTIME_VPC_ARTIFACT_REQUIRED" } } }) },
   prepareCloudflareHttpRuntime: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.busy, error: state.mutationError }) },
 } } }));
 const props = { tenantId: "tenant-fixture", projectId: "project-fixture", candidateJobId: "22222222-2222-4222-8222-222222222222" };
-beforeEach(() => { sessionStorage.clear(); state.ready = true; state.job = null; state.pending = null; state.error = null; state.mutationError = null;
+beforeEach(() => { sessionStorage.clear(); state.ready = true; state.continuation = false; state.job = null; state.pending = null; state.error = null; state.mutationError = null;
   state.loading = false; state.busy = false; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted-runtime" }); state.refetch.mockClear(); });
 describe("bounded native runtime Owner operation", () => {
   it("reviews role, budgets, no traffic changes and incomplete full acceptance before one exact action", async () => {
@@ -55,6 +55,17 @@ describe("bounded native runtime Owner operation", () => {
     view.rerender(<CloudflareNativeRuntimeOperation {...props} />);
     expect(screen.getByRole("button")).toBeDisabled(); expect(screen.getByRole("status")).toHaveTextContent("canonical-runtime-job · running");
     expect(screen.getByText(/actual-deployment/)).toBeInTheDocument(); expect(state.mutate).not.toHaveBeenCalled();
+  });
+  it("reviews a fresh corrected plan without reusing the expired job ID and reconciles a lost response", async () => {
+    state.continuation = true; state.job = { jobId: "old-exhausted-runtime", status: "failed", attempt: 2, maxAttempts: 2 };
+    sessionStorage.setItem(`smartspec:native-runtime:${props.tenantId}:${props.projectId}:${props.candidateJobId}`, JSON.stringify({ submissionId: state.job.jobId, planDigest: "old" }));
+    state.mutate.mockRejectedValueOnce(Error("response lost"));
+    const view = render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Authorize corrected images and bounded runtime test" }));
+    const input = state.mutate.mock.calls[0][0]; expect(input.submissionId).not.toBe(state.job.jobId);
+    view.unmount(); render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Reconcile the same runtime test" }));
+    expect(state.mutate.mock.calls[1][0]).toEqual(input);
   });
   it("never describes a successful boot job as M3 acceptance", () => {
     state.job = { jobId: "canonical-runtime-job", status: "succeeded", attempt: 1, maxAttempts: 1, receipt: { runtimeBootVerified: true, m3Accepted: false } };

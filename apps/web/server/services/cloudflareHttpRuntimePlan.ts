@@ -7,7 +7,9 @@ import * as schema from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
 import { assertHttpCandidateOwner, resolveHttpCandidatePackage } from "./cloudflareHttpCandidatePreparation";
 import { readHttpDatabaseNetwork } from "./cloudflareHttpDatabaseNetwork";
-import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest } from "./cloudflareApplicationDatabaseRole";
+import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, assertReusableApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
+import { readCompensatedHttpRuntime } from "./cloudflareHttpRuntimeContinuation";
+import { knownHttpNodeImageFailure } from "./cloudflareHttpImageCompatibility";
 import { composeHttpRuntime } from "./cloudflareHttpRuntimeComposition";
 import { httpCandidateReceiptSchema, verifyHttpCandidateProviderReceipt } from "./cloudflareHttpCandidateReadback";
 import { HTTP_CANDIDATE_JOB, HTTP_CANDIDATE_CONTRACT, CANDIDATE_MODULE } from "./cloudflareHttpCandidateContract";
@@ -53,7 +55,7 @@ export async function planHttpApplicationRelations(db: DrizzleDB) {
  * by the eventual canonical operation, not regenerated into the review digest.
  * A new Admin release cannot silently replace the reviewed immutable artifact. */
 export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJobId: string,
-  reviewed?: { artifactRef: string; workerSourceSha: string }) {
+  reviewed?: { artifactRef: string; workerSourceSha: string; previousRuntime?: { jobId: string } | null; publication?: { sourceSha: string } }) {
   await assertHttpCandidateOwner(db, scope);
   const [job] = await db.execute(sql`SELECT id,"tenantId","requestedByUserId","jobType","contractVersion",status,"inputJson","outputJson","operatorReviewRequired"
     FROM worker_jobs WHERE id=${candidateJobId}`);
@@ -72,11 +74,23 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
     AND EXISTS(SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE')`);
   if (unsafeSchemas.length || unsafeDefiners.length) throw Error("HTTP_RUNTIME_PUBLIC_PRIVILEGE_BASELINE_DENIED");
   const oldRole = await db.execute(sql`SELECT 1 FROM pg_roles WHERE rolname=${applicationDatabaseRoleName(scope)}`);
-  if (oldRole.length) throw Error("HTTP_RUNTIME_EXISTING_APPLICATION_ROLE_RECONCILE_REQUIRED");
+  const previousRuntime = oldRole.length ? await readCompensatedHttpRuntime(db, scope, candidateJobId, reviewed?.previousRuntime?.jobId) : null;
+  if (oldRole.length && !previousRuntime) throw Error("HTTP_RUNTIME_EXISTING_APPLICATION_ROLE_RECONCILE_REQUIRED");
+  if (previousRuntime) {
+    if (previousRuntime.relationsDigest !== hash(relations) || JSON.stringify(previousRuntime.rolePlan.tables) !== JSON.stringify(relations.tables) ||
+        JSON.stringify(previousRuntime.rolePlan.sequences) !== JSON.stringify(relations.sequences)) throw Error("HTTP_RUNTIME_ROLE_RELATIONS_CHANGED");
+    await assertReusableApplicationDatabaseRole(db, previousRuntime.rolePlan);
+  }
+  const desired = await resolveHttpCandidatePackage(db, scope, reviewed?.publication ? { imageSourceSha: reviewed.publication.sourceSha } : undefined);
+  if (desired.target.accountRef !== pkg.target.accountRef || desired.packet.config.name !== candidate.workerName)
+    throw Error("HTTP_RUNTIME_IMAGE_TARGET_CHANGED");
+  if (knownHttpNodeImageFailure(desired.settings.node.image)) throw Error("HTTP_RUNTIME_CORRECTED_PUBLISHED_IMAGES_REQUIRED");
+  if (previousRuntime && desired.settings.node.image === pkg.settings.node.image)
+    throw Error("HTTP_RUNTIME_CORRECTED_PUBLISHED_IMAGES_REQUIRED");
   const environments = await loadHttpRuntimeEnvironments();
   const rolePlan = { tenantId: scope.tenantId, projectId: scope.projectId, databaseName: network.databaseName, tables: relations.tables, sequences: relations.sequences,
     connectionLimit: 10 as const, expiresAt: new Date(Date.now() + 45 * 60_000).toISOString() };
-  const settings = { ...pkg.settings, expiresAt: new Date(Date.now() + 9 * 60_000).toISOString() };
+  const settings = { ...desired.settings, expiresAt: new Date(Date.now() + 9 * 60_000).toISOString() };
   const composition = composeHttpRuntime({ scope: { ...scope, accountRef: pkg.target.accountRef, environment: "production" },
     configurationRef: `cf-origin:${"0".repeat(64)}`, settings, network, rolePlan,
     roleSecret: { role: applicationDatabaseRoleName(scope), password: "0".repeat(64), planDigest: applicationDatabaseRolePlanDigest(rolePlan) },
@@ -88,13 +102,16 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
   const artifact = reviewed ? await resolveCloudflareStagingArtifact(reviewed.artifactRef, reviewed.workerSourceSha)
     : await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) throw Error("HTTP_RUNTIME_ARTIFACT_REQUIRED");
+  if (previousRuntime && previousRuntime.imageSourceSha === desired.settings.sourceSha && previousRuntime.workerSourceSha === artifact.sourceSha)
+    throw Error("HTTP_RUNTIME_UNCHANGED_FAILED_PLAN_RECONCILE_REQUIRED");
   const bundle = await resolveCloudflareStagingModules(artifact.artifactRef, artifact.sourceSha);
   const module = bundle?.moduleFiles[CANDIDATE_MODULE];
   if (!module || !Buffer.from(module.bytes).includes(Buffer.from("ApplicationDatabaseBridge"))) throw Error("HTTP_RUNTIME_VPC_ARTIFACT_REQUIRED");
   const access = await withCloudflareDeploymentCredential(db, { identity: { ...scope, provider: "cloudflare", environment: "production" },
-    credentialRef: pkg.target.credentialRef }, token => verifyHttpCandidateProviderReceipt({ receipt: candidate, accountRef: pkg.target.accountRef, token }));
+    credentialRef: pkg.target.credentialRef }, token => verifyHttpCandidateProviderReceipt({ receipt: candidate, accountRef: pkg.target.accountRef, token,
+      restoredBaseline: previousRuntime?.restoredBaseline }));
   if (access.status !== "CONFIGURED" || !access.value?.verified) throw Error("HTTP_RUNTIME_CANDIDATE_READBACK_REQUIRED");
-  const plan = { candidateJobId, candidate, network, relations, role: applicationDatabaseRoleName(scope), roleLifetimeSeconds: 2700,
+  const plan = { candidateJobId, candidate, previousRuntime, publication: desired.publishedPair, network, relations, role: applicationDatabaseRoleName(scope), roleLifetimeSeconds: 2700,
     maxStartsPerRuntime: 2, maxComputeSecondsPerRuntime: 1200, hardLifetimeSeconds: 600, instance: "basic",
     secretFingerprint: hash({ node, python }), artifactRef: artifact.artifactRef, workerSourceSha: artifact.sourceSha,
     credentialRef: pkg.target.credentialRef, executorId: process.env.CLOUDFLARE_PRODUCTION_EXECUTOR_ID?.trim(),
