@@ -130,6 +130,9 @@ describe("canonical bounded existing-Candidate runtime executor", () => {
     expect(result).toMatchObject({ runtimeBootVerified: true, runtimeAcceptance: false, m3Accepted: false, trafficMutation: false,
       cleanup: { nodeStopped: true, pythonStopped: true, candidateRestored: true, roleLoginRevoked: true, m2Preserved: true } });
     expect(result.probes).toHaveLength(6); expect(state.role).toHaveBeenCalledOnce(); expect(state.commands).toHaveBeenCalledTimes(2);
+    const probes = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)).pathname).filter(path => path.includes("application-canary") && !path.endsWith("/stop"));
+    expect(probes.map(path => path.split("application-canary/")[1])).toEqual([
+      "node/health", "node/database", "node/auth", "node/status", "python/health", "python/database", "python/auth", "python/status"]);
     expect(JSON.stringify(result)).not.toContain("never-log"); expect(state.phase).toBe("baseline");
   });
   it.each(["expired", "revoked"] as const)("rejects %s intent before role or provider mutation", async mode => {

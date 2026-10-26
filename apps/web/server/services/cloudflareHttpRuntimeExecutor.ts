@@ -203,15 +203,19 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       state.deploymentId = deployment.id; state.versionId = versionId; state.stage = "DEPLOYED"; await persist();
       await reporter.progress(lease, { progress: 45, stage: "NATIVE_RUNTIME_TESTING", measured: { deploymentId: deployment.id, versionId } });
       const results: Array<{ probe: string; status: number; colo?: string }> = [];
-      for (const path of ["node/health", "node/database", "python/health", "python/database", "node/auth", "python/auth"]) {
-        const result = await probe(path); results.push({ probe: path, status: result.status, colo: result.colo });
-        state.probes = results; await persist();
-        if (path.endsWith("/auth") ? ![401, 403].includes(result.status) && !(path === "node/auth" && result.status === 200 &&
-          (result.json?.result?.data?.json === null || result.json?.result?.data === null)) : result.status !== 200)
-          fail(`PROBE_${path.replace("/", "_").toUpperCase()}_HTTP_${result.status}`);
-      }
       const diagnostics: Record<string, any> = {};
       for (const runtime of ["node", "python"]) {
+        // Finish one runtime's receipt before the other cold start. Returning
+        // to an idle-stopped Node would consume another paid start; keeping it
+        // warm would defeat the explicit on-demand policy.
+        for (const check of ["health", "database", "auth"]) {
+          const path = `${runtime}/${check}`, result = await probe(path);
+          results.push({ probe: path, status: result.status, colo: result.colo });
+          state.probes = results; await persist();
+          if (check === "auth" ? ![401, 403].includes(result.status) && !(runtime === "node" && result.status === 200 &&
+            (result.json?.result?.data?.json === null || result.json?.result?.data === null)) : result.status !== 200)
+            fail(`PROBE_${path.replace("/", "_").toUpperCase()}_HTTP_${result.status}`);
+        }
         const result = await probe(`${runtime}/status`), d = result.json;
         const expectedImage = originalSettings[runtime as "node" | "python"].image;
         if (result.status !== 200 || d?.running !== true || d.configurationMatches !== true || d.image !== expectedImage ||
