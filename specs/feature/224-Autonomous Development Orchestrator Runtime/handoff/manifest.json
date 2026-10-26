@@ -63,6 +63,13 @@
         "scope": "Playwright Chromium, fresh context without credentials/storage state: /chat returned 200 then client redirected to /login; Sign In page rendered, email/password form visible in screenshot, Google sign-in disabled by current admin OAuth configuration, no console/page errors. Anonymous auth.me bootstrap returned HTTP 200 and no authenticated owner/tenant was established. No UAT broker, Runner query or Start mutation was used. Owner identity and protected DevelopmentRun acceptance remain unverified.",
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_START_AUTHORIZATION_RETRY_REPAIR",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-dispatch-retry-720b1ac-20261026.md",
+        "scope": "Integrated on exact origin/main SHA 720b1ac6daaee8bfba9d9d7856a8b2562516a88b: authorization retry now re-attempts the existing idempotent Job Control hold release after READY_FOR_LIVE; durable release evidence remains valid after queue/lease/settlement. Focused Start, authorization binding, route, and Job Control suites passed 144/144. Read-only dev control-plane snapshot at 2026-10-26T15:15:42Z reported Runner 0.2.41 online but Codex taskProbeState=not_run, policy pending, workspace branch null and SHA fbd7fd1...; no owner Start or protected dispatch was performed. This is implementation and snapshot evidence only, not live E2E acceptance.",
+        "source_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -962,15 +969,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
+    "expected_canonical_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "At https://smartaihub.app/login, sign in with the existing owner account in the owner’s browser. Then open Chat → existing conversation → Spec 224 workspace; select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and submit a reversible goal that first reports the registered SHA, git status and branch ancestry. Fast-forward only if clean and safely permitted; otherwise stop unchanged. Provide the real DevelopmentRun ID and its existing supported status/receipt evidence so this same run can be verified through dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
+    "next_action": "On the existing Windows Runner, select SmartAIHub Runner → Tools → Codex → Test real task because the latest published snapshot is not_run; wait until the fresh capability is published and acknowledged. Then sign in as the existing owner at https://smartaihub.app/chat, open the existing conversation → Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and Start one reversible task to report live branch/HEAD/status and ancestry. Synchronize only through the existing safe workspace operation if a fresh Windows command confirms the tree is clean and fast-forward is valid. Use the returned DevelopmentRun ID to collect protected dispatch, execution/audit, settlement, recovery and independent Final Verify receipts.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "A legitimate owner-authenticated Start Goal for the existing Windows Runner/workspace returns a real DevelopmentRun ID after current Runner/capability/device-consent and clean workspace source identity are verified; then complete and retain run-bound dispatch, execution, settlement, recovery and independent Final Verify evidence.",
-    "resume_point": "Production Python/Web/Node Worker release source 08b508284eabe621292ab95a5b1cc6a63bca5fd1 remains deployed and public health is live. Deployed Chat bundle includes SPEC-224 Workspace/Start wiring. Resume only at authenticated owner Start after refreshing live Runner and workspace state; do not rebuild/redeploy or repeat Codex probe unless fresh readiness requires it.",
-    "waiting_predicate": "A legitimate owner-authenticated Start Goal is submitted after the live Runner 0.2.41 heartbeat, capability/device-consent state, and existing workspace source identity are refreshed. The workspace must be clean and safely fast-forwardable under accepted source policy, or left untouched if dirty/divergent. Use the real Start response DevelopmentRun ID to collect all mandatory run-bound receipts and independent Final Verify."
+    "reactivation_predicate": "A fresh current Runner snapshot publishes Codex taskProbeState=passed with unexpired evidence and acknowledgement; the authenticated owner then starts the existing Spec 224 workspace goal, after which the real DevelopmentRun and run-bound receipts become available. If live workspace inspection reports dirty or divergent state, do not synchronize it and record the exact result.",
+    "resume_point": "Authorization hold-release retry repair is integrated at 720b1ac6daaee8bfba9d9d7856a8b2562516a88b and focused tests pass 144/144. Current dev-control-plane snapshot (2026-10-26T15:15:42Z) reports Runner 0.2.41 online/trusted, Codex taskProbeState=not_run and policy decision pending. Workspace snapshot reports clean at fbd7fd1... with no branch name; no fresh Windows Git command exists. No owner-authenticated Start, DevelopmentRun, dispatch or settlement has been recorded. Continue at the required fresh Codex probe and owner-authenticated Start; do not repeat builds or migrations.",
+    "waiting_predicate": "Waiting until the existing Windows Runner publishes acknowledged, unexpired Codex task-probe evidence and an existing owner-authenticated SmartAIHub Chat session submits the scoped USD 1.00 Start for the existing Windows Runner/workspace. No Start or source synchronization is claimed before these conditions."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1073,7 +1080,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 189,
+  "generation": 190,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1275,11 +1282,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
+    "canonical_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b",
     "integrated": true,
-    "integrated_at": "2026-10-26T10:06:49Z",
+    "integrated_at": "2026-10-26T22:14:35+07:00",
     "pull_request": null,
-    "source_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a"
+    "source_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3683,7 +3690,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T10:07:24.330817Z",
+  "updated_at": "2026-10-26T15:17:18.199533Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
