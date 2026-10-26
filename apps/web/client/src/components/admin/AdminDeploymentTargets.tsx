@@ -17,6 +17,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Selector } from "@astryxdesign/core/Selector";
+import { CloudflareImagePublication } from "./CloudflareImagePublication";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
 const ENVIRONMENTS = ["preview", "staging", "production"] as const;
@@ -897,6 +898,7 @@ export default function AdminDeploymentTargets() {
           })() : null}
           <Divider />
           <strong>{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
+          <CloudflareImagePublication key={`${scope.tenantId}:${scope.projectId}`} tenantId={scope.tenantId} projectId={scope.projectId} />
           {productionDatabaseObservation?.providerReadbackVerified ? <VStack gap={1} role="status" aria-label={text("Production database verification", "ผลตรวจฐานข้อมูล Production")}>
             <strong>{text("Existing VPC and Hyperdrive verified", "ตรวจยืนยัน VPC และ Hyperdrive เดิมแล้ว")}</strong>
             <p>{text("Cloudflare SQL", "SQL จาก Cloudflare")}: {productionDatabaseObservation.databaseConnectionVerified ? "PASS" : "NOT_EXECUTED"}</p>

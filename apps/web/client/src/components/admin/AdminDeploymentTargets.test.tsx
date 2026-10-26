@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminDeploymentTargets from "./AdminDeploymentTargets";
 import { cloudflareStagingActivationInputSchema } from "@shared/cloudflareOriginIdentity";
+vi.mock("./CloudflareImagePublication", () => ({ CloudflareImagePublication: () => null }));
 
 const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),

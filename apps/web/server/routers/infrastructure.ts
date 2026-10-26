@@ -3,6 +3,7 @@ import { PRODUCTION_INGRESS_CONTRACT } from "../services/cloudflareProductionIng
 import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../services/cloudflareProductionIngressAcceptance";
 import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMiddleware";
 import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLifecycle";
+import { getHttpImagePairPreflight, queueHttpImagePair, readHttpImagePairSubmission } from "../services/cloudflareHttpImageAdmission";
 /**
  * Infrastructure Settings tRPC Router
  *
@@ -701,6 +702,38 @@ export const infrastructureRouter = router({
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
       if (tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "MIGRATION_TENANT_MISMATCH" });
       return getCloudflareMigrationMission(await getDb(), input);
+    }),
+
+  getCloudflareHttpImagePairPreflight: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36) }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_IMAGE_TENANT_MISMATCH" });
+      return getHttpImagePairPreflight(await getDb(), { ...input, actorUserId: ctx.user.id });
+    }),
+
+  getCloudflareHttpImagePairSubmission: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), submissionId: z.string().uuid() }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_IMAGE_TENANT_MISMATCH" });
+      return readHttpImagePairSubmission(await getDb(), { ...input, actorUserId: ctx.user.id });
+    }),
+
+  queueCloudflareHttpImagePair: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), submissionId: z.string().uuid(),
+      planDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_IMAGE_TENANT_MISMATCH" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "HTTP_IMAGE_OWNER_SESSION_REQUIRED" });
+      try {
+        return await queueHttpImagePair(await getDb(), { ...input, actorUserId: ctx.user.id, userToken: ctx.userToken,
+          correlationId: ctx.req.requestId ?? input.submissionId });
+      } catch (error) {
+        const code = error instanceof Error && /^[A-Z][A-Z0-9_:]{3,220}$/.test(error.message) ? error.message : "HTTP_IMAGE_ADMISSION_UNKNOWN";
+        throw new TRPCError({ code: code.endsWith("UNKNOWN") ? "INTERNAL_SERVER_ERROR" : "PRECONDITION_FAILED", message: code });
+      }
     }),
 
   getCloudflareProductionIngressPreflight: exactAdminProcedure

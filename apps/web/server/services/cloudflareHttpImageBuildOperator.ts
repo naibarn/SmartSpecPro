@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdtemp, readFile, realpath, rm, chmod } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, realpath, rm, chmod } from "node:fs/promises";
 import { join, resolve, relative, isAbsolute } from "node:path";
 import { tmpdir } from "node:os";
 import { HttpImageError, assertHttpImageBuild, httpImageLocalTag, type HttpImageBuild, type RegistryCredential } from "./cloudflareHttpImagePublication";
@@ -130,4 +130,39 @@ export function createHttpImageBuildOperator(assertAuthorized: () => Promise<voi
       }
     },
   };
+}
+
+/** Read-only publication preflight. Select a real canonical receipt, never an
+ * engineering image tag or a request-supplied filesystem path. The executor
+ * independently rechecks the receipt, workspace and all packaged artifacts. */
+export async function resolveHttpImageCanonicalSource() {
+  const configured = process.env.SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT?.trim();
+  if (!configured || !isAbsolute(configured)) throw new HttpImageError("HTTP_IMAGE_CANONICAL_STORE_REQUIRED");
+  const root = await realpath(configured);
+  const candidates: Array<{ sourceSha: string; buildId: string; completedAt: number }> = [];
+  for (const name of await readdir(root)) {
+    if (!/^[a-f0-9]{40}-[a-f0-9-]{36}\.json$/.test(name)) continue;
+    const path = join(root, name);
+    try {
+      if (await realpath(path) !== path) continue;
+      const record = JSON.parse(await readFile(path, "utf8"));
+      if (record.status !== "BUILD_PASSED" || record.canonical_ref !== "refs/heads/main" || record.source_verified !== true ||
+          record.canonical_tip_after_build !== record.source_revision || record.result_file !== path ||
+          !name.startsWith(record.source_revision + "-") || !isAbsolute(record.isolated_workspace)) continue;
+      const workspace = await realpath(record.isolated_workspace), sourceRoot = resolve(root, "../..");
+      const relation = relative(sourceRoot, workspace);
+      if (!relation || relation.startsWith("..")) continue;
+      const revision = (await runHttpImageOperatorCommand({ command: "git", args: ["-C", workspace, "rev-parse", "HEAD"],
+        env: operatorEnvironment(), assertAuthorized: async () => undefined, timeoutMs: 5000 })).trim();
+      if (revision !== record.source_revision) continue;
+      const dirty = await runHttpImageOperatorCommand({ command: "git", args: ["-C", workspace, "status", "--porcelain=v1", "--untracked-files=all", "--",
+        ".", ":(exclude)apps/web/dist", ":(exclude)apps/web/dist/**", ":(exclude)apps/cloudflare/.staging-artifact", ":(exclude)apps/cloudflare/.staging-artifact/**"],
+        env: operatorEnvironment(), assertAuthorized: async () => undefined, timeoutMs: 5000 });
+      if (dirty.trim()) continue;
+      candidates.push({ sourceSha: revision, buildId: name.slice(0, -5), completedAt: Number(record.completed_at) || 0 });
+    } catch { /* An incomplete/unavailable receipt cannot authorize publication. */ }
+  }
+  candidates.sort((a, b) => b.completedAt - a.completedAt || a.buildId.localeCompare(b.buildId));
+  if (!candidates[0]) throw new HttpImageError("HTTP_IMAGE_CANONICAL_RECEIPT_UNAVAILABLE");
+  return { sourceSha: candidates[0].sourceSha, buildId: candidates[0].buildId };
 }
