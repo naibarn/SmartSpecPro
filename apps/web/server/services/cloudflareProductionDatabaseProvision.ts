@@ -37,8 +37,9 @@ export function productionDatabaseResourcePlanDigest(plan: ProductionDatabaseRes
 
 export class ProductionDatabaseProvisionError extends Error {
   readonly class: "permanent" | "retryable" | "unknown";
-  constructor(readonly diagnosticCode: string, readonly errorClass: "permanent" | "retryable" | "unknown" = "permanent", readonly providerMessage?: string) {
-    super(providerMessage ? `${diagnosticCode}: ${providerMessage}` : diagnosticCode);
+  constructor(readonly diagnosticCode: string, readonly errorClass: "permanent" | "retryable" | "unknown" = "permanent", readonly providerMessage?: string,
+    readonly providerDiagnostic?: { method: "GET" | "POST"; path: string; status: number; timestamp: string; cfRay: string | null }) {
+    super([diagnosticCode, providerMessage, providerDiagnostic ? `provider=${JSON.stringify(providerDiagnostic)}` : undefined].filter(Boolean).join(": "));
     this.name = "ProductionDatabaseProvisionError";
     this.class = errorClass;
   }
@@ -128,8 +129,13 @@ export async function provisionCloudflareProductionDatabase(input: {
       let message = String(envelope.errors?.[0]?.message ?? "");
       for (const secret of [input.token, input.databasePassword]) message = message.split(secret).join("[REDACTED]");
       message = message.replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, "$1[REDACTED]@").replace(/[\r\n\x00-\x1f]/g, " ").slice(0, 400);
+      // Keep the provider correlation evidence in the canonical failure, not
+      // only transient stdout. No request body, headers or credential is kept.
+      const ray = response.headers.get("cf-ray");
+      const cfRay = ray && /^[a-f0-9]{16,32}(?:-[a-z]{3})?$/i.test(ray) ? ray : null;
       throw new ProductionDatabaseProvisionError(`CLOUDFLARE_PRODUCTION_DATABASE_HTTP_${response.status}${code}`,
-        response.status >= 500 ? "retryable" : "permanent", message || undefined);
+        response.status >= 500 ? "retryable" : "permanent", message || undefined,
+        { method, path, status: response.status, timestamp: new Date().toISOString(), cfRay });
     }
     return envelope;
   }

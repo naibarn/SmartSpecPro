@@ -117,7 +117,7 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
         else if (path.endsWith("/configs")) {
           if (rejectHyperdrive) {
             rejectHyperdrive = false;
-            return new Response(JSON.stringify({ success: false, errors: [{ code: 2015, message: "Generic connection failure" }] }), { status: 400 });
+            return new Response(JSON.stringify({ success: false, errors: [{ code: 2015, message: "Generic connection failure" }] }), { status: 400, headers: { "cf-ray": "a5063798ebf27b4c-BKK" } });
           }
           result = hyperdrive = { ...body, id: "b".repeat(32) };
         }
@@ -157,6 +157,9 @@ suite("Production DB dispatch and same-job recovery in disposable PostgreSQL", (
     if (recoverGuardFailure === "provider") {
       await expect(executeCanonicalJobEnvelope(outbox.envelopeJson, { controlPlane, executorRegistry: registry,
         runnerId: "provider-rejection-worker", adapter: "postgres-pull" })).rejects.toThrow("CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015");
+      const [providerFailure] = await client`SELECT "errorMessage" FROM worker_jobs WHERE id=${jobId}`;
+      expect(providerFailure.errorMessage).toContain("a5063798ebf27b4c-BKK");
+      expect(providerFailure.errorMessage).not.toContain(databasePassword);
       const checkpoint = await runtime.checkpoint(jobId, 17, grant.planDigest);
       expect(checkpoint).toMatchObject({ pending: "hyperdrive", vpcServiceId: service.service_id });
       const before = await runtime.resolveGrant(jobId);

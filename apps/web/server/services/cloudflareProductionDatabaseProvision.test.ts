@@ -65,6 +65,18 @@ describe("Cloudflare production database resources", () => {
     })).rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015",
       providerMessage: "Connection failed [REDACTED] [REDACTED] postgresql://[REDACTED]@host/db next" });
   });
+  it("retains provider correlation evidence without recording request secrets", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ success: false,
+      errors: [{ code: 2015, message: "Generic connection failure" }] }), { status: 400, headers: { "cf-ray": "a5063798ebf27b4c-BKK" } }));
+    const error = await provisionCloudflareProductionDatabase({ jobId, accountRef, token, plan,
+      planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
+    }).catch(error => error);
+    expect(error.providerDiagnostic).toMatchObject({ method: "GET", status: 400, cfRay: "a5063798ebf27b4c-BKK" });
+    expect(error.message).toContain("a5063798ebf27b4c-BKK");
+    expect(error.message).not.toContain(token);
+    expect(error.message).not.toContain(password);
+  });
   it("creates and reads back a private VPC PostgreSQL service and uncached Hyperdrive config", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
