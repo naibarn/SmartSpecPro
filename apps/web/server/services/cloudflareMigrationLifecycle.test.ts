@@ -21,6 +21,12 @@ describe("First migration continuation over the existing canonical job authoriti
   it("lets authorized backend work continue when engineering agent capacity is absent", () => {
     expect(projectCloudflareMigration(scope, { ...continuation, agentCapacity: "WAITING_AGENT_CAPACITY" }, [{ ...base, status: "queued" }]).state).toBe("AUTHORIZED");
   });
+  it("preserves the nearest engineering checkpoint while agent capacity changes", () => {
+    const value = projectCloudflareMigration(scope, { ...continuation,
+      engineeringCheckpoint: "READY_FOR_EXECUTION", agentCapacity: "WAITING_AGENT_CAPACITY" }, []);
+    expect(value.state).toBe("WAITING_AGENT_CAPACITY");
+    expect(value.engineeringCheckpoint).toBe("READY_FOR_EXECUTION");
+  });
   it("reconciles a crashed worker lease instead of authorizing a duplicate job", () => {
     expect(projectCloudflareMigration(scope, continuation, [{ ...base, status: "running", leaseExpiresAt: new Date(0) }])).toMatchObject({ state: "REPAIR_REQUIRED", nextOperation: "RECONCILE_CANONICAL_LEASE", activeJobId: base.id });
   });

@@ -58,6 +58,7 @@ export function projectCloudflareMigration(scope: Scope, continuation: Migration
     // No mission expiry, operation-budget reset, or inferred delegation.
     missionExpiresAt: null, campaignAuthority: "NOT_AUTHORIZED" as const,
     agentCapacity: continuation?.agentCapacity ?? "AVAILABLE", handoffRef: continuation?.handoffRef ?? null,
+    engineeringCheckpoint: continuation?.engineeringCheckpoint ?? "ENGINEERING",
     completedCheckpoints: [acceptedIngress && "M2_ACCEPTED", acceptedDatabase && "M1_ACCEPTED"].filter(Boolean),
     currentMilestone: !acceptedIngress || ingressRolledBack ? "M2" : !acceptedDatabase ? "M1" : "M3",
     nextOperation: staleLease ? "RECONCILE_CANONICAL_LEASE" : active ? "MONITOR_EXISTING_CANONICAL_JOB" :

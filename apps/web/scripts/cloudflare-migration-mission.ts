@@ -19,7 +19,7 @@ try {
     await recordMigrationContinuation(db, scope, {
       migrationMode: "FIRST_MIGRATION", architecture: "HYBRID_INGRESS",
       agentCapacity: values["agent-capacity"] as "AVAILABLE" | "WAITING_AGENT_CAPACITY",
-      engineeringCheckpoint: "ENGINEERING", handoffRef: existing.handoffRef,
+      engineeringCheckpoint: existing.engineeringCheckpoint, handoffRef: existing.handoffRef,
     });
   }
   console.log(JSON.stringify(await getCloudflareMigrationMission(db, scope), null, 2));
