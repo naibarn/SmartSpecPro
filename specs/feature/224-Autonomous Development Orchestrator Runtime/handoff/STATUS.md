@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Deploy the integrated Start admission through its existing authorized runtime release, then the owner starts one reversible non-production task in Chat under the displayed USD 1.00 cap. Capture protected dispatch, settlement, recovery, and independent Final Verify; do not repeat the Codex probe or Runner install.
-- Manifest generation: 179
+- Next action: Obtain explicit production approval for exact source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1 and the prepared Web/Python artifact digests. Then promote Python followed by Web using the existing controllers, without migrations or Cloudflare deployment. Verify active source SHAs and health; then complete one fresh authenticated USD 1.00 bounded Windows Runner DevelopmentRun with protected execution, settlement, recovery and independent Final Verify receipts.
+- Manifest generation: 181
 
 ## Source-declared status and relationship claims
 
