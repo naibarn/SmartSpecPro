@@ -4,6 +4,7 @@ SmartSpec Pro - Health Check API
 
 from datetime import datetime
 
+import httpx
 import structlog
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.responses import JSONResponse
@@ -82,6 +83,29 @@ async def check_worker_jobs(db: AsyncSession) -> ServiceStatus:
 async def check_llm_proxy() -> ServiceStatus:
     """Check LLM Proxy status"""
     try:
+        if settings.SMARTSPEC_USE_WEB_GATEWAY:
+            gateway_url = settings.SMARTSPEC_WEB_GATEWAY_URL.strip().rstrip("/")
+            if not gateway_url or not settings.SMARTSPEC_WEB_GATEWAY_TOKEN:
+                return ServiceStatus(
+                    name="llm_proxy",
+                    status="unhealthy",
+                    message="SmartAIHub Web Gateway configuration is incomplete",
+                )
+
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                response = await client.get(f"{gateway_url}/healthz")
+            if 200 <= response.status_code < 300:
+                return ServiceStatus(
+                    name="llm_proxy",
+                    status="healthy",
+                    message="SmartAIHub Web Gateway is reachable",
+                )
+            return ServiceStatus(
+                name="llm_proxy",
+                status="unhealthy",
+                message="SmartAIHub Web Gateway is unavailable",
+            )
+
         if not unified_client._initialized:
             return ServiceStatus(
                 name="llm_proxy",
@@ -111,7 +135,13 @@ async def check_llm_proxy() -> ServiceStatus:
                 message="No providers available"
             )
     except Exception as e:
-        logger.error("llm_proxy_health_check_failed", error=str(e))
+        logger.error("llm_proxy_health_check_failed", error_type=type(e).__name__)
+        if settings.SMARTSPEC_USE_WEB_GATEWAY:
+            return ServiceStatus(
+                name="llm_proxy",
+                status="unhealthy",
+                message="SmartAIHub Web Gateway is unavailable",
+            )
         return ServiceStatus(
             name="llm_proxy",
             status="unhealthy",

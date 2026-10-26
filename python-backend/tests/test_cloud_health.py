@@ -1,9 +1,12 @@
 """
 Tests for Cloud Run health and readiness endpoints.
 """
+from types import SimpleNamespace
+
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api import health
 from app.llm_proxy.unified_client import unified_client
 
 
@@ -45,6 +48,78 @@ class TestCloudHealth:
         response = client.get("/health/ready")
         assert response.status_code == 503
         assert response.json()["status"] == "not_ready"
+
+    async def test_llm_proxy_health_accepts_reachable_configured_web_gateway(
+        self, monkeypatch
+    ):
+        class GatewayResponse:
+            status_code = 200
+
+        class GatewayClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *_args):
+                return None
+
+            async def get(self, _url):
+                return GatewayResponse()
+
+        monkeypatch.setattr(health.settings, "SMARTSPEC_USE_WEB_GATEWAY", True)
+        monkeypatch.setattr(
+            health.settings, "SMARTSPEC_WEB_GATEWAY_URL", "http://127.0.0.1:3100"
+        )
+        monkeypatch.setattr(health.settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "dev-token")
+        monkeypatch.setattr(
+            health,
+            "httpx",
+            SimpleNamespace(AsyncClient=lambda **_kwargs: GatewayClient()),
+            raising=False,
+        )
+        monkeypatch.setattr(unified_client, "_initialized", True)
+        monkeypatch.setattr(unified_client, "openrouter_client", None)
+        monkeypatch.setattr(unified_client, "direct_providers", {})
+
+        result = await health.check_llm_proxy()
+
+        assert result.status == "healthy"
+        assert result.message == "SmartAIHub Web Gateway is reachable"
+
+    async def test_llm_proxy_health_rejects_unreachable_configured_web_gateway(
+        self, monkeypatch
+    ):
+        class GatewayResponse:
+            status_code = 503
+
+        class GatewayClient:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *_args):
+                return None
+
+            async def get(self, _url):
+                return GatewayResponse()
+
+        monkeypatch.setattr(health.settings, "SMARTSPEC_USE_WEB_GATEWAY", True)
+        monkeypatch.setattr(
+            health.settings, "SMARTSPEC_WEB_GATEWAY_URL", "http://127.0.0.1:3100"
+        )
+        monkeypatch.setattr(health.settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "dev-token")
+        monkeypatch.setattr(
+            health,
+            "httpx",
+            SimpleNamespace(AsyncClient=lambda **_kwargs: GatewayClient()),
+            raising=False,
+        )
+        monkeypatch.setattr(unified_client, "_initialized", True)
+        monkeypatch.setattr(unified_client, "openrouter_client", None)
+        monkeypatch.setattr(unified_client, "direct_providers", {})
+
+        result = await health.check_llm_proxy()
+
+        assert result.status == "unhealthy"
+        assert result.message == "SmartAIHub Web Gateway is unavailable"
 
 
 @pytest.mark.asyncio
