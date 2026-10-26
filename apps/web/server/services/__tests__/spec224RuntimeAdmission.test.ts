@@ -160,7 +160,8 @@ describe("Windows profile binding at canonical admission", () => {
           healthState: "healthy", trustState: "ready", availabilityState: "available",
           authorizationEvidenceRef: "TEST_ONLY" },
       ],
-      workspaces: [{ workspaceId: "ws-owned", gitHead: source, dirty: false, projectId: "TEST_ONLY", repositoryId: "TEST_ONLY" }],
+      workspaces: [{ workspaceId: "ws-owned", gitHead: source, dirty: false, projectId: "TEST_ONLY", repositoryId: "TEST_ONLY",
+        contentFingerprint: `sha256:${"c".repeat(64)}` }],
     };
     const input = { profileId: "spec224-recovery-windows-x64-codex-nonprod", sourceCommit: source,
       canonicalInputJson: { manifest: { provider: "codex", runtime: "local_runner", policyBinding: { workspaceRef: "ws-owned" } } }, capabilitySnapshot: capability, now };
@@ -177,6 +178,12 @@ describe("Windows profile binding at canonical admission", () => {
     } })).toBe(false);
     expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: {
       ...capability, toolInventory: capability.toolInventory.slice(1),
+    } })).toBe(true);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: {
+      ...capability, workspaces: [{ ...capability.workspaces[0], contentFingerprint: null }],
+    } })).toBe(false);
+    expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: {
+      ...capability, toolInventory: [{ ...capability.toolInventory[0], healthState: "unhealthy" }, capability.toolInventory[1]],
     } })).toBe(false);
     expect(spec224ProfileRunnerTargetMatches({ ...input, capabilitySnapshot: { ...capability,
       platform: { ...capability.platform, os: "linux" } } })).toBe(false);
