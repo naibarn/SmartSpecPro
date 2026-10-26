@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 import {
   economicHolds,
@@ -754,11 +754,16 @@ export function createSpec224AuthorizationService() {
         let reservation = current.references?.budgetReservationRef;
         if (!reservation) {
           const [budget] = await db.select({ id: economicBudgets.id }).from(economicBudgets).where(and(
-            eq(economicBudgets.tenantId, input.context.tenantId), eq(economicBudgets.scopeType, "project"),
-            eq(economicBudgets.scopeRef, projectId), eq(economicBudgets.currency, policy.currency.toUpperCase()),
+            eq(economicBudgets.tenantId, input.context.tenantId), eq(economicBudgets.currency, policy.currency.toUpperCase()),
             eq(economicBudgets.status, "active"),
-          )).limit(1);
-          if (!budget) throw new Spec224AuthorizationError("SPEC224_PROJECT_BUDGET_NOT_CONFIGURED");
+            or(
+              and(eq(economicBudgets.scopeType, "worker_job"), eq(economicBudgets.scopeRef, loaded.run.workerJobId!)),
+              and(eq(economicBudgets.scopeType, "user"), eq(economicBudgets.scopeRef, String(input.context.actorId))),
+              and(eq(economicBudgets.scopeType, "tenant"), eq(economicBudgets.scopeRef, input.context.tenantId)),
+              and(eq(economicBudgets.scopeType, "project"), eq(economicBudgets.scopeRef, projectId)),
+            ),
+          )).orderBy(sql`CASE ${economicBudgets.scopeType} WHEN 'worker_job' THEN 0 WHEN 'user' THEN 1 WHEN 'project' THEN 2 ELSE 3 END`, economicBudgets.id).limit(1);
+          if (!budget) throw new Spec224AuthorizationError("SPEC224_AUTHORIZED_BUDGET_NOT_CONFIGURED");
           const hold = await service.reserveBudget({ ...input, approvalRef, budgetId: budget.id,
             amountMinorUnits: policy.maxBudgetMinorUnits, currency: policy.currency });
           reservation = hold.budgetReservationRef;

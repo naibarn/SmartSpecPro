@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({ rows: [] as unknown[][], policyRows: [] as unknown[], node: vi.fn() }));
 vi.mock("../../db", () => {
-  const query: any = { from: () => query, where: () => query, limit: async () => mocks.rows.shift() ?? [] };
+  const query: any = { from: () => query, where: () => query, orderBy: () => query, limit: async () => mocks.rows.shift() ?? [] };
   const database = { select: () => query, execute: async () => mocks.policyRows };
   return { db: { ...database, instance: database }, getDb: () => database };
 });
