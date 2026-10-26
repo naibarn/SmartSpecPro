@@ -5,6 +5,7 @@ import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMidd
 import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLifecycle";
 import { getHttpImagePairPreflight, queueHttpImagePair, readHttpImagePairSubmission } from "../services/cloudflareHttpImageAdmission";
 import { getProductionTenantIsolationPreflight, prepareProductionTenantIsolation } from "../services/cloudflareProductionTenantIsolation";
+import { getHttpCandidatePreparationPreflight, prepareHttpCandidate, readHttpCandidatePreparation } from "../services/cloudflareHttpCandidatePreparation";
 /**
  * Infrastructure Settings tRPC Router
  *
@@ -828,6 +829,30 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       return probeCloudflareProductionProviderInventory({ db, tenantId: input.tenantId, projectId: input.projectId });
+    }),
+
+  getCloudflareHttpCandidatePreparation: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36) }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_CANDIDATE_AUTHENTICATED_TENANT_REQUIRED" });
+      const scope = { ...input, actorUserId: ctx.user.id }, db = getDb();
+      return { preflight: await getHttpCandidatePreparationPreflight(db, scope), job: await readHttpCandidatePreparation(db, scope) };
+    }),
+
+  prepareCloudflareHttpCandidate: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36),
+      submissionId: z.string().uuid(), planDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_CANDIDATE_AUTHENTICATED_TENANT_REQUIRED" });
+      try {
+        const result = await prepareHttpCandidate(getDb(), { ...input, actorUserId: ctx.user.id, correlationId: ctx.req.requestId ?? input.submissionId });
+        return { jobId: result.jobId };
+      } catch (error) {
+        const reason = error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message) ? error.message : "HTTP_CANDIDATE_ADMISSION_UNKNOWN";
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: reason });
+      }
     }),
 
   prepareCloudflareProductionQueue: exactAdminProcedure

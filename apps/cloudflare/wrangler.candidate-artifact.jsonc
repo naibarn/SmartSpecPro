@@ -1,0 +1,8 @@
+{
+  "name": "smartspec-native-candidate-artifact",
+  "main": "src/applicationHttpCandidateEntrypoint.ts",
+  "compatibility_date": "2026-10-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": false,
+  "preview_urls": false
+}

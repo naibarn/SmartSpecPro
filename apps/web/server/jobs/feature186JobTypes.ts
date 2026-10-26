@@ -72,6 +72,9 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   // The executor revalidates the encrypted grant and exact job lease before
   // creating VPC/Hyperdrive resources.
   "cloudflare.production.database.provision",
+  // Isolated metadata-only Worker/Container setup. Owner canonical admission,
+  // immutable images, lease and expiry are checked before each provider write.
+  "cloudflare.production.native.prepare",
   // Feature 195 is the sole durable execution authority for the
   // provider-neutral external-agent handoff. Provider selection remains in
   // the governed job manifest; it must not create a second queue or worker.

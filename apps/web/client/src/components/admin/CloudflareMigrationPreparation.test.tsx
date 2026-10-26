@@ -7,6 +7,7 @@ const state=vi.hoisted(()=>({databaseReady:true,prepared:false,imageReady:true,i
 vi.mock("react-i18next",()=>({useTranslation:()=>({i18n:{language:"en"}})}));
 vi.mock("./CloudflareTenantIsolation",()=>({CloudflareTenantIsolation:()=>null}));
 vi.mock("./CloudflareImagePublication",()=>({CloudflareImagePublication:()=>null}));
+vi.mock("./CloudflareNativeCandidatePreparation",()=>({CloudflareNativeCandidatePreparation:()=>null}));
 vi.mock("@/lib/trpc",()=>({trpc:{infrastructure:{
   getCloudflareProductionTenantIsolationPreflight:{useQuery:()=>({data:{ready:state.databaseReady,prepared:state.prepared,actionDigest:"a".repeat(64)},refetch:state.refetch})},
   getCloudflareHttpImagePairPreflight:{useQuery:()=>({data:{ready:state.imageReady,planDigest:"b".repeat(64)}})},

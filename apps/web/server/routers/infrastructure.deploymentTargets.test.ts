@@ -14,6 +14,17 @@ describe("infrastructure deployment target project selector", () => {
   beforeEach(() => getDbMock.mockReset());
   afterEach(() => vi.restoreAllMocks());
 
+  it("keeps native candidate preparation behind exact Admin and matching active tenant", async () => {
+    const request = { tenantId: "tenant-ZCSKEM9s", projectId, submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "a".repeat(64) };
+    for (const user of [null, { id: 2, role: "user" }, { id: 3, role: "system_agent" }]) {
+      const caller = infrastructureRouter.createCaller({ user, tenantId: request.tenantId } as any);
+      await expect(caller.prepareCloudflareHttpCandidate(request)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+    const otherTenant = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-other" }, tenantId: "tenant-other" } as any);
+    await expect(otherTenant.prepareCloudflareHttpCandidate(request)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it("accepts the complete automatic activation request through the serving API parser", async () => {
     getDbMock.mockResolvedValue(null);
     const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },

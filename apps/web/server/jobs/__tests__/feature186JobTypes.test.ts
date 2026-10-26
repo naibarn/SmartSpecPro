@@ -36,6 +36,11 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
       "cloudflare-production-queue-provision-v1",
     )).toBeDefined();
   });
+  it("admits isolated Production native preparation without using the M2 deployment contract", () => {
+    expect(isPostgresNodeJobType("cloudflare.production.native.prepare")).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve("cloudflare.production.native.prepare", "cloudflare-production-native-prepare-v1")).toBeDefined();
+    expect(defaultJobExecutorRegistry.resolve("cloudflare.production.native.prepare", "cloudflare-production-ingress-v1")).toBeUndefined();
+  });
   it("admits the exact grant-bound Production Database provisioning executor", () => {
     expect(isPostgresNodeJobType("cloudflare.production.database.provision")).toBe(true);
     expect(defaultJobExecutorRegistry.resolve(

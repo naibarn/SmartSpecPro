@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 import { CloudflareImagePublication } from "./CloudflareImagePublication";
 import { CloudflareTenantIsolation } from "./CloudflareTenantIsolation";
+import { CloudflareNativeCandidatePreparation } from "./CloudflareNativeCandidatePreparation";
 
 /** One Owner confirmation fans out to the EXISTING two scoped operations.
  * Each retains its own atomic/idempotent admission and canonical evidence.
@@ -71,5 +72,6 @@ export function CloudflareMigrationPreparation({ tenantId, projectId, jobId, dat
     </Button>
     {prepare.error ? <Text role="alert">{prepare.error.message}</Text> : null}
     {publish.error ? <Text role="alert">{publish.error.message}</Text> : null}
+    <CloudflareNativeCandidatePreparation key={`${tenantId}:${projectId}`} {...scope} />
   </VStack>;
 }
