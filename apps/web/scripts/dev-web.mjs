@@ -66,6 +66,18 @@ if (shouldRunDevSchemaMigrations(config)) {
       SMARTSPEC_DEV_DATABASE_MODE: "development",
     },
   });
+  console.log("[dev:web] Verifying the active development schema contract...");
+  execFileSync(process.execPath, ["--import", "tsx", "scripts/audit-drizzle-catalog.ts", "--strict"], {
+    cwd: appRoot,
+    stdio: "inherit",
+    env: {
+      ...hostRuntimeEnv,
+      ...config,
+      NODE_ENV: "development",
+      SMARTSPEC_ENVIRONMENT: "development",
+      SMARTSPEC_DEV_DATABASE_MODE: "development",
+    },
+  });
 }
 const child = spawn(
   process.execPath,
