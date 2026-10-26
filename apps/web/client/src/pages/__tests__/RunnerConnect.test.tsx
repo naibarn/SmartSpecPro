@@ -5,6 +5,11 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 
+const { mockLogout, mockNavigate } = vi.hoisted(() => ({
+  mockLogout: vi.fn(),
+  mockNavigate: vi.fn(),
+}));
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     i18n: { language: "en", resolvedLanguage: "en" },
@@ -20,7 +25,12 @@ vi.mock("@/components/help/HelpButton", () => ({
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => ({
     user: { id: 7, email: "owner@example.com", name: "Owner" },
+    logout: mockLogout,
   }),
+}));
+
+vi.mock("wouter", () => ({
+  useLocation: () => ["/runners/connect", mockNavigate],
 }));
 
 vi.mock("@/contexts/TenantContext", () => ({
@@ -55,6 +65,8 @@ const pendingSession = {
 
 describe("RunnerConnect", () => {
   beforeEach(() => {
+    mockLogout.mockReset().mockResolvedValue(undefined);
+    mockNavigate.mockReset();
     window.history.replaceState({}, "", "/runners/connect?code=RUNNER01");
     vi.stubGlobal(
       "fetch",
@@ -131,6 +143,16 @@ describe("RunnerConnect", () => {
     expect(screen.getByRole("link", { name: /task control/i })).toHaveAttribute(
       "href",
       "/chat",
+    );
+  });
+
+  it("lets a user switch the authenticated browser account and return to the same pairing request", async () => {
+    render(<RunnerConnect />);
+    fireEvent.click(await screen.findByRole("button", { name: "ใช้บัญชีอื่น" }));
+
+    await waitFor(() => expect(mockLogout).toHaveBeenCalledOnce());
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/login?returnUrl=%2Frunners%2Fconnect%3Fcode%3DRUNNER01"
     );
   });
 });

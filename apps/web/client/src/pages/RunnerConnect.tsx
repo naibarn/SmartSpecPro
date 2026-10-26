@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { HelpButton } from "@/components/help/HelpButton";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTenant } from "@/contexts/TenantContext";
+import { useLocation } from "wouter";
 
 type RunnerConnectStatus = "pending" | "approved" | "expired" | "error";
 
@@ -69,13 +70,15 @@ export default function RunnerConnect() {
   const { i18n } = useTranslation();
   const isThai =
     i18n.resolvedLanguage?.startsWith("th") || i18n.language?.startsWith("th");
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const [, navigate] = useLocation();
   const { tenant, isLoading: tenantLoading } = useTenant();
   const [session, setSession] = useState<RunnerConnectSession | null>(null);
   const [connectCode] = useState(() => getConnectCode());
   const [sessionLoading, setSessionLoading] = useState(Boolean(connectCode));
   const [sessionError, setSessionError] = useState("");
   const [approving, setApproving] = useState(false);
+  const [switchingAccount, setSwitchingAccount] = useState(false);
 
   const accountLabel = user?.email || user?.name || "บัญชีที่ login อยู่";
   const expiresLabel = useMemo(
@@ -138,6 +141,20 @@ export default function RunnerConnect() {
     }
   }
 
+  async function switchApprovalAccount() {
+    if (switchingAccount) return;
+    setSwitchingAccount(true);
+    try {
+      await logout();
+      const returnUrl = `/runners/connect?code=${encodeURIComponent(connectCode)}`;
+      navigate(`/login?returnUrl=${encodeURIComponent(returnUrl)}`);
+    } catch {
+      toast.error("ออกจากบัญชีปัจจุบันไม่สำเร็จ กรุณาลองอีกครั้ง");
+    } finally {
+      setSwitchingAccount(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-slate-50 px-5 py-8 text-slate-900">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
@@ -176,6 +193,18 @@ export default function RunnerConnect() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               <div className="font-medium text-slate-900">{accountLabel}</div>
               <div>{tenant?.name || "Smart AI Hub"}</div>
+              {user && connectCode ? (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="mt-2 h-auto p-0 text-sky-700"
+                  disabled={switchingAccount}
+                  onClick={() => void switchApprovalAccount()}
+                >
+                  {switchingAccount ? "กำลังเปลี่ยนบัญชี…" : "ใช้บัญชีอื่น"}
+                </Button>
+              ) : null}
             </div>
           </div>
         </section>

@@ -92,6 +92,14 @@ struct RunnerState {
     last_connect_error_code: Mutex<Option<String>>,
 }
 
+const RUNNER_CREDENTIAL_REFRESH_LEAD_MS: u64 = 15 * 60 * 1000;
+
+fn access_token_needs_refresh(expires_at_ms: Option<u64>, now_ms: u64) -> bool {
+    expires_at_ms.is_some_and(|expires_at| {
+        expires_at <= now_ms.saturating_add(RUNNER_CREDENTIAL_REFRESH_LEAD_MS)
+    })
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RunnerStatus {
@@ -255,8 +263,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         .as_millis()
         .min(u128::from(u64::MAX)) as u64;
     let needs_refresh = connection.as_ref().is_some_and(|saved| {
-        token_expiry_ms(&saved.control_token)
-            .is_some_and(|expires_at| expires_at <= now_ms.saturating_add(60_000))
+        access_token_needs_refresh(token_expiry_ms(&saved.control_token), now_ms)
     });
     if needs_refresh {
         let should_attempt = {
@@ -1254,7 +1261,10 @@ mod debug_report_tests {
 
 #[cfg(test)]
 mod credential_retry_tests {
-    use super::{refresh_requires_browser_reauthorization, reset_refresh_backoff_for_manual_retry};
+    use super::{
+        access_token_needs_refresh, refresh_requires_browser_reauthorization,
+        reset_refresh_backoff_for_manual_retry, RUNNER_CREDENTIAL_REFRESH_LEAD_MS,
+    };
     use std::time::{Duration, Instant};
 
     #[test]
@@ -1296,6 +1306,21 @@ mod credential_retry_tests {
             last_attempt.map(|(at, state)| (at, state)),
             Some((attempt, "renewing"))
         );
+    }
+
+    #[test]
+    fn access_token_refresh_starts_fifteen_minutes_before_expiry() {
+        let now = 1_000_000;
+        assert!(!access_token_needs_refresh(
+            Some(now + RUNNER_CREDENTIAL_REFRESH_LEAD_MS + 1),
+            now
+        ));
+        assert!(access_token_needs_refresh(
+            Some(now + RUNNER_CREDENTIAL_REFRESH_LEAD_MS),
+            now
+        ));
+        assert!(access_token_needs_refresh(Some(now + 1), now));
+        assert!(!access_token_needs_refresh(None, now));
     }
 }
 

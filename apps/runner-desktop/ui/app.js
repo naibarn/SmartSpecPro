@@ -97,6 +97,9 @@ function safeError(error) {
     RUNNER_CONNECT_APPROVAL_FAILED: "การอนุมัติไม่สำเร็จ กรุณาลองอีกครั้ง",
     RUNNER_CONNECT_CONTROL_TOKEN_MISSING: "SmartAIHub ยังไม่ส่งข้อมูลเชื่อมต่อกลับมา กรุณาลองใหม่",
     RUNNER_CONNECT_BROWSER_OPEN_FAILED: "เปิดเบราว์เซอร์เพื่อขออนุมัติไม่ได้ กรุณาเปิดเบราว์เซอร์เริ่มต้นแล้วลองใหม่",
+    RUNNER_CONNECT_START_REJECTED_401: "SmartAIHub ปฏิเสธคำขอเริ่มเชื่อมต่อก่อนถึงหน้าอนุมัติ ยังระบุไม่ได้ว่าเป็นปัญหาบัญชีใด ตรวจไฟล์ Debug และลองเชื่อมต่อใหม่",
+    RUNNER_CONNECT_START_REJECTED_403: "คำขอเริ่มเชื่อมต่อถูกปฏิเสธก่อนถึงหน้าอนุมัติ (403) ข้อความนี้ยังไม่ยืนยันว่าบัญชีใดไม่มีสิทธิ์ ตรวจไฟล์ Debug หรือเครือข่ายที่ใช้งาน",
+    RUNNER_CONNECT_TOKEN_REJECTED_403: "ข้อมูลยืนยันคำขอจับคู่ Runner ไม่ตรงหรือหมดอายุ กรุณาปิดหน้าคำขอเดิมแล้วเริ่มเชื่อมต่อใหม่",
     RUNNER_PERMISSION_DENIED: "Runner นี้ผูกกับบัญชี SmartAIHub อื่นอยู่ เพื่อป้องกันการยึดอุปกรณ์ ระบบไม่ย้ายเจ้าของให้อัตโนมัติ ให้เจ้าของเดิมถอนการเชื่อมต่อก่อน หรือใช้บัญชีเดิม",
     RUNNER_REVOKED: "Runner นี้ถูกเพิกถอนแล้ว ให้ผู้ดูแลตรวจสถานะอุปกรณ์ก่อนลงทะเบียนใหม่",
     RUNNER_DEVICE_REQUIRED: "ข้อมูลอุปกรณ์ไม่ตรงกับ Runner ที่ลงทะเบียนไว้ ตรวจการติดตั้งแล้วเชื่อมต่อใหม่",
@@ -144,7 +147,7 @@ function safeError(error) {
   const rejection = /^RUNNER_CONNECT_REQUEST_REJECTED_(\d{3})$/.exec(code);
   if (rejection) {
     const status = Number(rejection[1]);
-    if (status === 401 || status === 403) return "บัญชีที่เปิดหน้าขออนุมัติไม่มีสิทธิ์เชื่อมต่อ Runner นี้ กรุณาเข้าสู่ระบบด้วยบัญชีเจ้าของ Runner เดิม หรือให้เจ้าของเดิมถอนการเชื่อมต่อก่อน";
+    if (status === 401 || status === 403) return `คำขอเชื่อมต่อถูกปฏิเสธ (HTTP ${status}) ก่อนยืนยันได้ว่าเป็นปัญหาบัญชีใด กรุณาตรวจไฟล์ Debug`;
     if (status === 409) return "SmartAIHub พบการลงทะเบียนหรือ pairing ที่ขัดแย้งกัน Runner เดิมยังไม่ถูกลบ; รีเฟรชสถานะ แล้วตรวจบัญชีเจ้าของและคำขออนุมัติที่เปิดค้างอยู่";
     if (status === 429) return "ส่งคำขอเชื่อมต่อถี่เกินไป รอสักครู่แล้วลองใหม่";
     if (status >= 500) return `SmartAIHub ขัดข้องชั่วคราว (${code}) รอสักครู่แล้วลองใหม่`;

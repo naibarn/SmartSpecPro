@@ -304,8 +304,8 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        load_connection, load_or_refresh, map_connect_request_error, request_json_with_agent,
-        safe_connect_error_code, safe_refresh_error_code, save_connection,
+        connect_http_rejection_code, load_connection, load_or_refresh, map_connect_request_error,
+        request_json_with_agent, safe_connect_error_code, safe_refresh_error_code, save_connection,
         validate_start_pairing_response, StartPairingResponse, StoredRunnerConnection,
     };
     use crate::{config::RunnerConfig, device_proof::generate_device_proof_material};
@@ -416,6 +416,14 @@ mod tests {
             "RUNNER_CONNECT_REQUEST_REJECTED_403"
         );
         assert_eq!(
+            safe_connect_error_code("RUNNER_CONNECT_START_REJECTED_403"),
+            "RUNNER_CONNECT_START_REJECTED_403"
+        );
+        assert_eq!(
+            safe_connect_error_code("RUNNER_CONNECT_TOKEN_REJECTED_403"),
+            "RUNNER_CONNECT_TOKEN_REJECTED_403"
+        );
+        assert_eq!(
             safe_connect_error_code("response included access-token-secret"),
             "RUNNER_CONNECT_FAILED"
         );
@@ -485,6 +493,22 @@ mod tests {
             );
             server.join().unwrap();
         }
+    }
+
+    #[test]
+    fn connection_rejection_codes_identify_pairing_phase_without_account_guessing() {
+        assert_eq!(
+            connect_http_rejection_code("/api/runners/connect/start", 403),
+            "RUNNER_CONNECT_START_REJECTED_403"
+        );
+        assert_eq!(
+            connect_http_rejection_code("/api/runners/connect/token", 403),
+            "RUNNER_CONNECT_TOKEN_REJECTED_403"
+        );
+        assert_eq!(
+            connect_http_rejection_code("/api/runners/runner/access/refresh", 403),
+            "RUNNER_CONNECT_REQUEST_REJECTED_403"
+        );
     }
 
     #[test]
@@ -771,11 +795,17 @@ pub fn safe_connect_error_code(error: &str) -> String {
         "RUNNER_CONNECTION_STORE_SERIALIZE_FAILED",
         "RUNNER_CONNECTION_STORE_REPLACE_FAILED",
     ];
-    let is_http_rejection = code
-        .strip_prefix("RUNNER_CONNECT_REQUEST_REJECTED_")
-        .is_some_and(|status| {
+    let is_http_rejection = [
+        "RUNNER_CONNECT_REQUEST_REJECTED_",
+        "RUNNER_CONNECT_START_REJECTED_",
+        "RUNNER_CONNECT_TOKEN_REJECTED_",
+    ]
+    .iter()
+    .any(|prefix| {
+        code.strip_prefix(prefix).is_some_and(|status| {
             status.len() == 3 && status.bytes().all(|byte| byte.is_ascii_digit())
-        });
+        })
+    });
     if SAFE_CODES.contains(&code) || is_http_rejection {
         code.to_owned()
     } else {
@@ -865,11 +895,17 @@ fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
     let request = request_builder
         .body(body.to_vec())
         .map_err(|_| "RUNNER_CONNECT_REQUEST_BUILD_FAILED")?;
-    let response = agent.run(request).map_err(map_connect_request_error)?;
+    use ureq::RequestExt;
+    let response = request
+        .with_agent(agent)
+        .configure()
+        .http_status_as_error(false)
+        .run()
+        .map_err(map_connect_request_error)?;
     if !response.status().is_success() {
-        return Err(format!(
-            "RUNNER_CONNECT_REQUEST_REJECTED_{}",
-            response.status().as_u16()
+        return Err(connect_http_rejection_code(
+            &path,
+            response.status().as_u16(),
         ));
     }
     let bytes = response
@@ -879,6 +915,18 @@ fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
         .read_to_vec()
         .map_err(map_connect_response_read_error)?;
     serde_json::from_slice(&bytes).map_err(|_| "RUNNER_CONNECT_RESPONSE_INVALID".into())
+}
+
+fn connect_http_rejection_code(path: &str, status: u16) -> String {
+    let phase = match path {
+        "/api/runners/connect/start" => Some("START"),
+        "/api/runners/connect/token" => Some("TOKEN"),
+        _ => None,
+    };
+    match phase {
+        Some(phase) => format!("RUNNER_CONNECT_{phase}_REJECTED_{status}"),
+        None => format!("RUNNER_CONNECT_REQUEST_REJECTED_{status}"),
+    }
 }
 
 fn map_connect_request_error(error: ureq::Error) -> String {
