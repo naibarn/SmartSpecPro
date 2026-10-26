@@ -952,11 +952,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Obtain explicit production approval for exact candidate 08b508284eabe621292ab95a5b1cc6a63bca5fd1 and its Web/Python/Worker digests; then promote Python and Web through existing controllers without migrations or Cloudflare deployment. Verify runtime SHAs/health, refresh Runner readiness and complete one USD 1.00 bounded authenticated SPEC-224 DevelopmentRun with protected receipts and independent Final Verify.",
+    "next_action": "The owner must sign in at https://smartaihub.app/chat, open the existing SPEC-224 Workspace for the enrolled SmartSpecPro Runner, set/confirm USD 1.00 and press Start Goal. Then resume that same DevelopmentRun and collect protected dispatch, execution, settlement, recovery and independent Final Verify receipts.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "Explicit production approval names source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1 and the prepared Web/Python artifacts; after deployment is verified, a fresh authenticated Runner readiness snapshot and owner Start are available.",
-    "resume_point": "Prepared exact candidate 08b508284eabe621292ab95a5b1cc6a63bca5fd1. Web release smartspec-web-08b508284eabe621292ab95a5b1cc6a63bca5fd1-d37bc62741b4; Python release smartspec-python-08b508284eabe621292ab95a5b1cc6a63bca5fd1-c77fa0f70924; evidence: handoff/evidence/spec224-release-candidate-08b5082-20261026.md. Do not rebuild this candidate solely for documentation-only main advances.",
-    "waiting_predicate": "No production approval exists for exact candidate 08b508284eabe621292ab95a5b1cc6a63bca5fd1; prior authorization for 28c6a13f… does not apply. CI run 40282303999 is in progress. No live DevelopmentRun or independent Final Verify receipt exists."
+    "reactivation_predicate": "A fresh owner-authenticated Start Goal is submitted for the already-enrolled SmartSpecPro Runner with the USD 1.00 cap; use the returned DevelopmentRun ID and fresh readiness/workspace binding evidence.",
+    "resume_point": "Production Python/Web/Node Worker candidate 08b508284eabe621292ab95a5b1cc6a63bca5fd1 is deployed and healthy. Resume at authenticated SPEC-224 Start Goal; do not rebuild or reinstall the Runner.",
+    "waiting_predicate": "No current authenticated SmartAIHub owner session is available here. The last Runner 0.2.41 Codex task-probe evidence expired at 2026-10-26T02:13:44Z, its workspace SHA fbd7fd1bd8324973540664d7f7de2bd9e5844757 is not bound to candidate 08b508284eabe621292ab95a5b1cc6a63bca5fd1, and the policy decision was pending. No DevelopmentRun has been created."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -967,10 +967,16 @@
         "observed_at": "2026-10-26T07:00:00Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md",
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+      },
+      {
+        "kind": "DEPLOYMENT",
+        "observed_at": "2026-10-26T07:27:03Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-approved-release-deployment-20261026.md",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
       }
     ],
-    "next_action": "Obtain explicit production approval for exact source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1 and the prepared Web/Python artifact digests. Then promote Python followed by Web using the existing controllers, without migrations or Cloudflare deployment. Verify active source SHAs and health; then complete one fresh authenticated USD 1.00 bounded Windows Runner DevelopmentRun with protected execution, settlement, recovery and independent Final Verify receipts.",
-    "rationale": "Candidate 08b508284eabe621292ab95a5b1cc6a63bca5fd1 includes the required d7f19629 execution-authority floor and later worker/workspace/release fixes. Matching Web, Python and Worker artifacts are prepared and verified, but previous SHA approval does not transfer. Production remains Web d7f19629 generation 125 and Python 9e10df36; no exact candidate deployment or live protected DevelopmentRun has occurred. CI run 40282303999 is still in progress; SPEC-224 remains partial.",
+    "next_action": "Sign in at https://smartaihub.app/chat, open the existing SPEC-224 Workspace for the enrolled SmartSpecPro Runner, confirm the USD 1.00 cap, and press Start Goal. Then resume the returned DevelopmentRun and capture protected dispatch, execution, settlement, reconnect recovery, and independent Final Verify receipts.",
+    "rationale": "The exact approved immutable source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1 is now deployed: Python artifact sha256:c77fa0f709249628426a676d78eaba95ecf5215320a7782d9d042f2c9bdaf5d9, Web release artifact sha256:d37bc62741b41ac616f780e1ea5ed193e84dc8aa8aab17167575644220d9b9f9, and Node Worker runtime revision 08b508284eabe621292ab95a5b1cc6a63bca5fd1. Health/readiness passed; no migration or Cloudflare deployment occurred. CI run 40282303999 failed in python, turbo_build and smartspecweb, matching baseline run 40279343767 (same 390/2417/55 Web test totals and no new failed-test signature; Python source unchanged; identical turbo annotations). No branch protection/ruleset requires those checks; SPEC-224 PostgreSQL acceptance passed. A fresh owner-authenticated Start is still unavailable here; the last Runner task-probe evidence expired at 02:13:44Z, and its workspace SHA fbd7fd1bd8324973540664d7f7de2bd9e5844757 is not bound to the deployed source. No DevelopmentRun, settlement, recovery or independent Final Verify has been created.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1017,11 +1023,18 @@
         "scope": "Exact source 08b508284eabe621292ab95a5b1cc6a63bca5fd1; Web, Python and Worker artifact identities verified. Production approval not granted, no deployment or migration, and live SPEC-224 E2E remains unrun.",
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_APPROVED_PYTHON_WEB_NODE_RELEASE_DEPLOYED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-approved-release-deployment-20261026.md",
+        "scope": "Exact approved candidate deployed via existing Python and Web release controllers; Python/Web/Node Worker runtime SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1. Health and readiness verified; no migration or Cloudflare deploy. Live DevelopmentRun acceptance remains partial.",
+        "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
+        "status": "PASS"
       }
     ],
     "required": false,
     "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
-    "status": "PARTIAL"
+    "status": "PASS"
   },
   "disposition": {
     "confidence": "HIGH",
@@ -1034,7 +1047,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 181,
+  "generation": 183,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2134,10 +2147,16 @@
           "observed_at": "2026-10-26T07:00:00Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-release-candidate-08b5082-20261026.md",
           "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+        },
+        {
+          "kind": "DEPLOYMENT",
+          "observed_at": "2026-10-26T07:27:03Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-approved-release-deployment-20261026.md",
+          "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
         }
       ],
-      "next_action": "Obtain explicit production approval for exact source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1 and the prepared Web/Python artifact digests. Then promote Python followed by Web using the existing controllers, without migrations or Cloudflare deployment. Verify active source SHAs and health; then complete one fresh authenticated USD 1.00 bounded Windows Runner DevelopmentRun with protected execution, settlement, recovery and independent Final Verify receipts.",
-      "rationale": "Candidate 08b508284eabe621292ab95a5b1cc6a63bca5fd1 includes the required d7f19629 execution-authority floor and later worker/workspace/release fixes. Matching Web, Python and Worker artifacts are prepared and verified, but previous SHA approval does not transfer. Production remains Web d7f19629 generation 125 and Python 9e10df36; no exact candidate deployment or live protected DevelopmentRun has occurred. CI run 40282303999 is still in progress; SPEC-224 remains partial.",
+      "next_action": "Sign in at https://smartaihub.app/chat, open the existing SPEC-224 Workspace for the enrolled SmartSpecPro Runner, confirm the USD 1.00 cap, and press Start Goal. Then resume the returned DevelopmentRun and capture protected dispatch, execution, settlement, reconnect recovery, and independent Final Verify receipts.",
+      "rationale": "The exact approved immutable source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1 is now deployed: Python artifact sha256:c77fa0f709249628426a676d78eaba95ecf5215320a7782d9d042f2c9bdaf5d9, Web release artifact sha256:d37bc62741b41ac616f780e1ea5ed193e84dc8aa8aab17167575644220d9b9f9, and Node Worker runtime revision 08b508284eabe621292ab95a5b1cc6a63bca5fd1. Health/readiness passed; no migration or Cloudflare deployment occurred. CI run 40282303999 failed in python, turbo_build and smartspecweb, matching baseline run 40279343767 (same 390/2417/55 Web test totals and no new failed-test signature; Python source unchanged; identical turbo annotations). No branch protection/ruleset requires those checks; SPEC-224 PostgreSQL acceptance passed. A fresh owner-authenticated Start is still unavailable here; the last Runner task-probe evidence expired at 02:13:44Z, and its workspace SHA fbd7fd1bd8324973540664d7f7de2bd9e5844757 is not bound to the deployed source. No DevelopmentRun, settlement, recovery or independent Final Verify has been created.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3626,7 +3645,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T07:01:12.967563Z",
+  "updated_at": "2026-10-26T07:28:45.439260Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

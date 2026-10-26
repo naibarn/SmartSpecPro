@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Obtain explicit production approval for exact source SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1 and the prepared Web/Python artifact digests. Then promote Python followed by Web using the existing controllers, without migrations or Cloudflare deployment. Verify active source SHAs and health; then complete one fresh authenticated USD 1.00 bounded Windows Runner DevelopmentRun with protected execution, settlement, recovery and independent Final Verify receipts.
-- Manifest generation: 181
+- Next action: Sign in at https://smartaihub.app/chat, open the existing SPEC-224 Workspace for the enrolled SmartSpecPro Runner, confirm the USD 1.00 cap, and press Start Goal. Then resume the returned DevelopmentRun and capture protected dispatch, execution, settlement, reconnect recovery, and independent Final Verify receipts.
+- Manifest generation: 183
 
 ## Source-declared status and relationship claims
 
