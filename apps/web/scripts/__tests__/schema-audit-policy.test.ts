@@ -7,15 +7,18 @@ describe("active schema audit boundary", () => {
       "public.agencies": { name: "agencies", columns: { state: { type: "retired_state" } } },
       "public.workflows": { name: "workflows" },
       "public.sandbox_jobs": { name: "sandbox_jobs" },
+      "public.workpack_records": { name: "workpack_records", columns: { record_type: { type: "workpack_record_type" } } },
+      "public.role_workpack_binding": { name: "role_workpack_binding" },
       "public.workflow_studio_runs": { name: "workflow_studio_runs", columns: { state: { type: "state" } } },
       "public.worker_jobs": { name: "worker_jobs", foreignKeys: { old_fk: { tableTo: "agencies" }, active_fk: { tableTo: "workflow_studio_runs" } } },
       "public.extension_data": { name: "extension_data" },
-    }, enums: { "public.state": { name: "state" }, "public.retired_state": { name: "retired_state" } } };
+    }, enums: { "public.state": { name: "state" }, "public.retired_state": { name: "retired_state" }, "public.workpack_record_type": { name: "workpack_record_type" } } };
     const result = activeSchemaContract(source);
     expect(Object.keys(result.contract.tables)).toEqual(["public.workflow_studio_runs", "public.worker_jobs", "public.extension_data"]);
     expect(result.retiredReferences).toEqual(["worker_jobs.old_fk"]);
     expect(result.contract.enums).toHaveProperty("public.state");
-    expect(result.unusedEnums).toEqual(["retired_state"]);
+    expect(result.contract.enums).not.toHaveProperty("public.workpack_record_type");
+    expect(result.unusedEnums).toEqual(["retired_state", "workpack_record_type"]);
     expect(source.tables["public.worker_jobs"].foreignKeys).toHaveProperty("old_fk");
   });
 

@@ -8,7 +8,8 @@ const retiredWorkflowTables = new Set([
 
 export function isRetiredSchemaTable(name: string): boolean {
   return name === "agencies" || name.startsWith("agency_") || name.startsWith("sandbox_") ||
-    name === "tenant_sandbox_policies" || retiredWorkflowTables.has(name);
+    name === "tenant_sandbox_policies" || name.startsWith("workpack_") ||
+    name === "role_workpack_binding" || retiredWorkflowTables.has(name);
 }
 
 export function activeSchemaContract<T extends {
