@@ -936,14 +936,15 @@
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
         "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json",
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-0241-readiness-received-20261026.json"
       ],
       "evidence_freshness": "FRESH",
       "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-      "next_action": "Exit the old Runner through its tray/menu Exit action (window close hides it), then open the already-installed 0.2.39 Runner using the existing enrollment. Retain the current session-bound probe evidence; do not click task probe again while it remains valid. Then reconcile source/workspace identity and existing owner/admin policy/budget configuration before the same scoped owner Start.",
+      "next_action": "Preserve passed probe and fingerprint; do not reinstall or repeat task probe. Reconcile canonical source and existing policy/budget through legitimate owner/admin APIs, then execute the scoped owner Start. If local GUI still reports no heartbeat, use its redacted Debug report to compare actual transport acknowledgement.",
       "owner": "Registered Windows Runner owner and authenticated non-production tenant owner",
-      "reactivation_predicate": "Current session-bound Codex task probe remains passed; the existing workspace publishes a valid source fingerprint and policy/budget configuration supports the real authenticated owner Start.",
-      "root_cause": "Owner-authorized Codex task probe is now PASSED and stored on the real registered Runner snapshot. Remaining admission prerequisites are missing workspace fingerprint/canonical source synchronization and zero configured SPEC224 development policies/economic budgets. The registered runtime still reports 0.2.38 despite owner-reported installed 0.2.39. No protected live DevelopmentRun exists."
+      "reactivation_predicate": "RUNNER_READY remains current; canonical source/workspace and configured policy/budget satisfy the real authenticated owner Start and protected dispatch.",
+      "root_cause": "Existing Windows Runner 0.2.41 now publishes a passed authenticated Codex task probe and nonempty workspace fingerprint. Current readiness evaluator returns RUNNER_READY with policy pending, not denied. Remaining protected execution prerequisites are canonical source synchronization, configured bounded development policy/economic budget and real owner Start/run-bound authority. Local GUI acknowledgement discrepancy still needs local diagnostics if persistent."
     }
   ],
   "concurrency": {
@@ -951,11 +952,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Exit the old Runner through its tray/menu Exit action (window close hides it), then open the already-installed 0.2.39 Runner using the existing enrollment. Retain the current session-bound probe evidence; do not click task probe again while it remains valid. Continue source fingerprint synchronization, bounded existing policy/budget setup and the real protected owner Start. Do not repeat the successful Codex probe or closed Mini-App pilot.",
+    "next_action": "Runner readiness now passes on 0.2.41. Do not reinstall or re-probe. Reconcile canonical workspace source, existing scoped policy/budget and real owner Start for protected dispatch; local GUI acknowledgement is a distinct diagnostic issue if it persists.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "Current session-bound Codex task probe remains passed; the existing workspace publishes a valid source fingerprint and policy/budget configuration supports the real authenticated owner Start.",
-    "resume_point": "Owner Codex probe received in capability:local-runner:2026-10-26T00:54:28.394Z on existing session. Task probe passed, trust ready, auth authenticated; capability policy still pending and workspace fingerprint null. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
-    "waiting_predicate": "Codex task-probe prerequisite is satisfied. Workspace fingerprint/source and existing policy/budget configuration remain missing; the connected runtime reports 0.2.38 while 0.2.39 is reportedly installed."
+    "reactivation_predicate": "Current RUNNER_READY snapshot plus exact canonical source and existing scoped policy/budget enable protected owner Start.",
+    "resume_point": "Received capability:local-runner:2026-10-26T02:08:44.133Z, version 0.2.41, Codex taskProbeState passed, trust ready, nonempty workspace fingerprint. Evaluator RUNNER_READY. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-0241-readiness-received-20261026.json",
+    "waiting_predicate": "Codex readiness and workspace fingerprint are satisfied. Canonical source synchronization and legitimate configured policy/budget plus real owner Start remain."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -974,7 +975,7 @@
         "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
       }
     ],
-    "next_action": "Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.",
+    "next_action": "Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.",
     "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -1032,7 +1033,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 176,
+  "generation": 177,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2140,7 +2141,7 @@
           "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
         }
       ],
-      "next_action": "Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.",
+      "next_action": "Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.",
       "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -3630,7 +3631,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T00:55:59.869429Z",
+  "updated_at": "2026-10-26T02:09:34.143753Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3973,6 +3974,13 @@
         "kind": "REAL_OWNER_CODEX_PROBE_RECEIVED",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
         "scope": "Actual owner local greeting task passed and registered Runner snapshot now includes taskProbeEvidenceRef and authorizationEvidenceRef. Not a protected DevelopmentRun, usage settlement or Final Verify.",
+        "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "WINDOWS_RUNNER_0241_READY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-0241-readiness-received-20261026.json",
+        "scope": "Actual registered Windows 0.2.41 Codex task probe passed, workspace fingerprint present; current readiness evaluator returns RUNNER_READY. No protected job, settlement or Final Verify claim.",
         "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
         "status": "PARTIAL"
       }

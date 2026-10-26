@@ -1,0 +1,65 @@
+{
+  "observedAt": "2026-10-26T02:09:34.139897+00:00",
+  "environment": "existing SmartAIHub development control plane",
+  "runnerId": "local-runner",
+  "runnerSessionId": "6ddda9fe-0845-44af-9b9f-1e1cb11e1e62",
+  "runnerVersion": "0.2.41",
+  "capabilitySnapshotId": "capability:local-runner:2026-10-26T02:08:44.133Z",
+  "codex": {
+    "kind": "agent_cli",
+    "toolId": "codex",
+    "version": "codex-cli 0.161.0",
+    "adapterId": "codex.v1",
+    "authState": "authenticated",
+    "expiresAt": "2026-10-26T02:13:44.133Z",
+    "observedAt": "2026-10-26T02:08:44.133Z",
+    "trustState": "ready",
+    "displayName": "codex",
+    "fingerprint": "sha256:a05426e84dff3ed0f20463b42b6f80e931b386dc499114e0ae43fa2b5bb30002",
+    "healthState": "healthy",
+    "reasonCodes": [
+      "version_probe_ok",
+      "auth_status_ok",
+      "task_probe_ok"
+    ],
+    "installState": "installed",
+    "adapterVersion": null,
+    "taskProbeState": "passed",
+    "discoverySource": "path",
+    "availabilityState": "available",
+    "versionProbeState": "passed",
+    "configurationState": "configured",
+    "taskProbeEvidenceRef": "runner-task-probe:sha256:b105577ba304cf4eec9287e2542c96e284284c95e1bfd65a234d139370feca1f",
+    "taskProbeExpiresAtMs": 1792984072110,
+    "taskProbeObservedAtMs": 1792980472110,
+    "authorizationEvidenceRef": "runner-agent-auth:sha256:5c7841c68b758e5b66c08440d8c3a68b548c841e62cdf1e7e778fe9bfa89cb34"
+  },
+  "workspaces": [
+    {
+      "dirty": false,
+      "taskId": null,
+      "gitHead": "fbd7fd1bd8324973540664d7f7de2bd9e5844757",
+      "gitBranch": null,
+      "projectId": "smartspecpro",
+      "displayName": "SmartSpecPro",
+      "workspaceId": "ws-smartspecpro-12883242a753",
+      "repositoryId": "smartspecpro",
+      "convergenceState": "NOT_REPORTED",
+      "contentFingerprint": "0f2eeb70d5767268e5170defcaaf8e4f7182ce6de91a4d21019b0d0ade0cbce1",
+      "convergenceCanonicalSha": null
+    }
+  ],
+  "readinessEvaluation": {
+    "code": "RUNNER_READY",
+    "ready": true,
+    "policyDecision": "pending",
+    "ownerAction": null
+  },
+  "limits": [
+    "Readiness is not a scoped dispatch grant.",
+    "Workspace remains at fbd7fd1bd8324973540664d7f7de2bd9e5844757; canonical source synchronization is not proven.",
+    "Local GUI acknowledgement state cannot be inferred from a server snapshot.",
+    "Existing development policy/budget configuration and a legitimately authenticated Start remain required; no production user session was fabricated."
+  ],
+  "recovery": "No reinstall, repeated probe, Runner build or Core deployment performed."
+}

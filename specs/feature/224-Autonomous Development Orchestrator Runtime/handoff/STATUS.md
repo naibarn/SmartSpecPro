@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.
-- Manifest generation: 176
+- Next action: Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.
+- Manifest generation: 177
 
 ## Source-declared status and relationship claims
 

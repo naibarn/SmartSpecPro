@@ -3009,7 +3009,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 4,
-      "next_action": "Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.",
+      "next_action": "Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -4947,7 +4947,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "P1",
-      "rationale": "Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.",
+      "rationale": "Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
       "spec_id": "224"
     },
