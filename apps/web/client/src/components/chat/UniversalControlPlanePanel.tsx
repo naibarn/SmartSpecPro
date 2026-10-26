@@ -25,6 +25,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Spec224WorkspacePanel } from "@/components/chat/Spec224WorkspacePanel";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 export interface UniversalControlPlanePanelProps {
   conversationId: number | null;
@@ -301,6 +302,7 @@ export function UniversalControlPlanePanel({
   onClose,
   onOpenPrompt,
 }: UniversalControlPlanePanelProps) {
+  const { t } = useScopedTranslation("chat");
   const [prompt, setPrompt] = useState("");
   const [taskOffset, setTaskOffset] = useState(0);
   const [taskGroups, setTaskGroups] = useState<TaskGroupView[]>([]);
@@ -737,30 +739,29 @@ export function UniversalControlPlanePanel({
     <aside
       data-testid="control-plane-panel"
       className="flex h-full min-h-0 flex-col bg-[var(--color-background-surface)]"
-      aria-label="Task Control Center panel"
+      aria-label={t("taskControl.panelLabel")}
     >
-      <header className="flex shrink-0 items-start justify-between gap-3 border-b border-[var(--color-border)] px-4 py-3">
-        <section className="min-w-0">
-          <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-sky-700">
+      <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--color-border)] px-4 py-4 sm:px-6 sm:py-5">
+        <section className="min-w-0 flex-1">
+          <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-sky-700 sm:text-sm">
             <Network className="h-3.5 w-3.5" aria-hidden="true" />
-            Task control center
+            {t("taskControl.kicker")}
           </p>
-          <h2 className="mt-1 truncate text-base font-semibold text-[var(--color-text-primary)]">
-            Task Control Center
+          <h2 className="mt-1 text-lg font-semibold text-[var(--color-text-primary)] sm:text-xl">
+            {t("taskControl.title")}
           </h2>
-          <p className="mt-1 text-xs leading-5 text-[var(--color-text-secondary)]">
-            Chat composer → approval → canonical worker job → Runner/MCP →
-            verified result
+          <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base">
+            {t("taskControl.description")}
           </p>
           {conversationId ? (
-            <section className="mt-2 space-y-2" aria-label="Chat task evidence">
-              <section className="rounded-md border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground" aria-live="polite">
-                <p className="font-medium text-foreground">Chat model and usage snapshot</p>
-                {taskObservabilityQuery.isLoading ? <p>Loading linked task evidence…</p> : null}
-                {taskObservabilityQuery.error ? <p>Chat task evidence is unavailable. Check access and refresh the panel.</p> : null}
-                {!taskObservabilityQuery.isLoading && !taskObservabilityQuery.error && !latestConversationJob ? <p>No canonical worker task is linked to this Chat.</p> : null}
-                {latestConversationJob && conversationTaskDetailQuery.isLoading ? <p>Loading the latest linked task…</p> : null}
-                {latestConversationJob && conversationTaskDetailQuery.error ? <p>Latest task detail is unavailable; token and model values remain unknown.</p> : null}
+            <section className="mt-4 w-full space-y-3" aria-label={t("taskControl.evidenceLabel")}>
+              <section className="w-full min-w-0 rounded-xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground sm:p-5" aria-live="polite">
+                <p className="font-semibold text-foreground">{t("taskControl.snapshotTitle")}</p>
+                {taskObservabilityQuery.isLoading ? <p>{t("taskControl.loadingEvidence")}</p> : null}
+                {taskObservabilityQuery.error ? <p>{t("taskControl.evidenceUnavailable")}</p> : null}
+                {!taskObservabilityQuery.isLoading && !taskObservabilityQuery.error && !latestConversationJob ? <p>{t("taskControl.noLinkedTask")}</p> : null}
+                {latestConversationJob && conversationTaskDetailQuery.isLoading ? <p>{t("taskControl.loadingLatestTask")}</p> : null}
+                {latestConversationJob && conversationTaskDetailQuery.error ? <p>{t("taskControl.latestTaskUnavailable")}</p> : null}
                 {conversationTaskDetail ? (
                   <section className="mt-1 space-y-1">
                     <p>Latest linked task {conversationTaskDetail.id} · {conversationTaskDetail.status} · snapshot {taskObservabilityQuery.data?.snapshot.asOf ?? "unknown"}</p>
@@ -775,7 +776,7 @@ export function UniversalControlPlanePanel({
                 href={taskMonitorHref}
                 className="inline-flex items-center gap-1 text-xs font-medium text-sky-700 hover:underline"
               >
-                Inspect this Chat’s model, usage, and Runner evidence
+                {t("taskControl.inspectEvidence")}
                 <ExternalLink className="h-3 w-3" aria-hidden="true" />
               </Link>
             </section>
@@ -786,36 +787,35 @@ export function UniversalControlPlanePanel({
           size="icon"
           className="h-9 w-9 shrink-0"
           onClick={onClose}
-          aria-label="Close Task Control Center"
+          aria-label={t("taskControl.close")}
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </Button>
       </header>
 
       <section
-        className="shrink-0 border-b border-[var(--color-border)] bg-sky-50/50 px-4 py-3"
+        className="shrink-0 border-b border-[var(--color-border)] bg-sky-50/50 px-4 py-4 sm:px-6 sm:py-5"
         aria-labelledby="control-plane-task-heading"
       >
         <h3
           id="control-plane-task-heading"
-          className="text-sm font-semibold text-slate-900"
+          className="text-base font-semibold text-slate-900 sm:text-lg"
         >
-          Start a task in Chat
+          {t("taskControl.startHeading")}
         </h3>
-        <p className="mt-1 text-xs leading-5 text-slate-600">
-          The task is placed in the existing Chat composer so the normal plan,
-          approval, streaming, and billing safeguards remain in one path.
+        <p className="mt-1 text-sm leading-6 text-slate-600 sm:text-base">
+          {t("taskControl.startDescription")}
         </p>
         <Textarea
-          aria-label="Task to run"
+          aria-label={t("taskControl.promptLabel")}
           value={prompt}
           onChange={event => setPrompt(event.target.value)}
-          placeholder="Describe what you want the agent to do..."
-          className="mt-3 min-h-20 resize-none bg-white text-sm"
+          placeholder={t("taskControl.promptPlaceholder")}
+          className="mt-4 min-h-24 resize-y bg-white text-base sm:min-h-28"
         />
         {!conversationId ? (
           <p className="mt-2 text-xs text-amber-700">
-            A new Chat conversation will be created when you continue.
+            {t("taskControl.newConversationNotice")}
           </p>
         ) : null}
         <Button
@@ -825,7 +825,7 @@ export function UniversalControlPlanePanel({
           disabled={!prompt.trim()}
         >
           <Activity className="h-4 w-4" aria-hidden="true" />
-          Add to chat composer
+          {t("taskControl.addToComposer")}
         </Button>
       </section>
 
@@ -838,7 +838,7 @@ export function UniversalControlPlanePanel({
           >
             <p className="flex items-center gap-2 font-semibold">
               <TriangleAlert className="h-4 w-4" aria-hidden="true" />
-              Some readiness data is unavailable
+              {t("taskControl.readinessUnavailable")}
             </p>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               {Array.from(new Set(queryErrors)).map(message => (
@@ -855,10 +855,10 @@ export function UniversalControlPlanePanel({
                 id="control-plane-readiness-heading"
                 className="text-sm font-semibold text-slate-900"
               >
-                Execution readiness
+                {t("taskControl.readinessHeading")}
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                Tenant-scoped live state from the control-plane APIs
+                {t("taskControl.readinessDescription")}
               </p>
             </section>
             <Button
@@ -868,7 +868,7 @@ export function UniversalControlPlanePanel({
               className="h-8 w-8"
               onClick={() => void refresh()}
               disabled={hasLoadingState}
-              aria-label="Refresh Task Control Center"
+              aria-label={t("taskControl.refresh")}
             >
               <RefreshCw
                 className={cn("h-4 w-4", hasLoadingState && "animate-spin")}
@@ -884,7 +884,7 @@ export function UniversalControlPlanePanel({
               aria-live="polite"
             >
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-              Checking execution readiness...
+              {t("taskControl.checkingReadiness")}
             </p>
           ) : null}
 

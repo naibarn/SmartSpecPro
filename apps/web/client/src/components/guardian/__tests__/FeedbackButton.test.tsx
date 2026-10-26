@@ -503,7 +503,7 @@ describe("FeedbackButton placement", () => {
     );
     expect(screen.getByRole("dialog")).toHaveClass(
       "h-dvh",
-      "sm:h-[min(88vh,760px)]",
+      "sm:h-[min(94dvh,960px)]",
     );
     expect(feedbackMocks.createChat).toHaveBeenCalledWith({
       title: "AI Chat Assistant",

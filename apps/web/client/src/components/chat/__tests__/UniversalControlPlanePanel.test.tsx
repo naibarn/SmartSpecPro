@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   fetchDevelopmentRun: vi.fn(),
   refetch: vi.fn(),
   availableWorkspacesQuery: vi.fn(),
+  workspaceRunnerReadinessQuery: vi.fn(),
   conversationWorkspaceQuery: vi.fn(),
   bindWorkspaceMutation: vi.fn(),
   ingestSpecSetMutation: vi.fn(),
@@ -73,6 +74,9 @@ vi.mock("@/lib/trpc", () => ({
       prepareWorkspaceRun: {
         useMutation: (...args: unknown[]) => mocks.prepareWorkspaceMutation(...args),
       },
+      workspaceRunnerReadiness: {
+        useQuery: (...args: unknown[]) => mocks.workspaceRunnerReadinessQuery(...args),
+      },
       startWorkspaceRun: {
         useMutation: (...args: unknown[]) => mocks.startWorkspaceMutation(...args),
       },
@@ -106,6 +110,28 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
   },
+}));
+
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    t: (key: string) => ({
+      "taskControl.panelLabel": "Task Control Center panel",
+      "taskControl.kicker": "Task control center",
+      "taskControl.title": "Task Control Center",
+      "taskControl.description": "Chat composer → approval → canonical worker job → Runner/MCP → verified result",
+      "taskControl.evidenceLabel": "Chat task evidence",
+      "taskControl.snapshotTitle": "Chat model and usage snapshot",
+      "taskControl.inspectEvidence": "Inspect this Chat’s model, usage, and Runner evidence",
+      "taskControl.close": "Close Task Control Center",
+      "taskControl.startHeading": "Start a task in Chat",
+      "taskControl.startDescription": "The task is placed in the existing Chat composer so the normal plan, approval, streaming, and billing safeguards remain in one path.",
+      "taskControl.promptLabel": "Task to run",
+      "taskControl.promptPlaceholder": "Describe what you want the agent to do...",
+      "taskControl.newConversationNotice": "A new Chat conversation will be created when you continue.",
+      "taskControl.addToComposer": "Add to chat composer",
+      "taskControl.checkingReadiness": "Checking execution readiness...",
+    }[key] ?? key),
+  }),
 }));
 
 vi.mock("wouter", () => ({
@@ -183,6 +209,7 @@ beforeEach(() => {
     actions: { pause: true, cancel: true },
   });
   mocks.availableWorkspacesQuery.mockReturnValue({ ...emptyQuery, data: { workspaces: [] } });
+  mocks.workspaceRunnerReadinessQuery.mockReturnValue(emptyQuery);
   mocks.conversationWorkspaceQuery.mockReturnValue({ ...emptyQuery, data: null });
   mocks.bindWorkspaceMutateAsync.mockResolvedValue({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", revision: 1 });
   mocks.bindWorkspaceMutation.mockReturnValue({ mutateAsync: mocks.bindWorkspaceMutateAsync, isPending: false });
@@ -259,6 +286,7 @@ describe("UniversalControlPlanePanel", () => {
     mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
       planId: "plan-1", planRevision: 1, requirementCount: 0,
       runnableWorkPackageIds: ["prompt"], blockers: [],
+      runnerReadiness: { ready: true, code: "ready", policyDecision: "authorized", ownerAction: null },
       workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [] }],
     });
     mocks.conversationWorkspaceQuery.mockReturnValue({
@@ -323,6 +351,7 @@ describe("UniversalControlPlanePanel", () => {
     mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
       planId: "plan-4", planRevision: 4, requirementCount: 2,
       runnableWorkPackageIds: ["wp:ready"], blockers: [],
+      runnerReadiness: { ready: true, code: "ready", policyDecision: "authorized", ownerAction: null },
       workPackages: [
         { id: "wp:ready", externalId: "ready-api", readiness: "READY", blockers: [] },
         { id: "wp:blocked", externalId: "future-ui", readiness: "BLOCKED", blockers: ["DEPENDENCY_BLOCKED"] },

@@ -1415,7 +1415,7 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
           activePanel === "chat" && (authLoading || !user)
             ? "flex max-h-[80dvh] w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden p-0 sm:rounded-2xl sm:border"
             : activePanel === "chat" || activePanel === "control-plane"
-            ? "flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none border-0 p-0 sm:h-[min(88vh,760px)] sm:max-h-[90vh] sm:w-[calc(100vw-2rem)] sm:max-w-5xl sm:rounded-2xl sm:border"
+            ? "flex h-dvh max-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none border-0 p-0 sm:h-[min(94dvh,960px)] sm:max-h-[94dvh] sm:w-[calc(100vw-2rem)] sm:max-w-[min(94vw,1440px)] sm:rounded-2xl sm:border"
             : "max-h-[90vh] w-[calc(100vw-2rem)] max-w-md overflow-y-auto"
         }
         onPaste={handleDialogPaste}
