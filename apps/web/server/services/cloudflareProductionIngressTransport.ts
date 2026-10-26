@@ -137,7 +137,7 @@ export function createCloudflareProductionIngressTransport(
       await api(`${routePath}/${encodeURIComponent(expected.id)}`, "DELETE");
       if (await route()) deny("ROLLBACK_READBACK_MISMATCH");
     }
-    async function probe(
+    async function probeOnce(
       origin: "https://runtime.smartaihub.app" | "https://smartaihub.app",
       versionId: string
     ) {
@@ -179,6 +179,18 @@ export function createCloudflareProductionIngressTransport(
         }
       }
     }
+    async function probe(origin:"https://runtime.smartaihub.app"|"https://smartaihub.app",versionId:string){
+      // A read-after-write deployment receipt can precede global edge
+      // propagation. Retry only anonymous runtime GET probes, never writes.
+      for(let attempt=0;;attempt++){
+        try{return await probeOnce(origin,versionId);}
+        catch(error){
+          if(origin!=="https://runtime.smartaihub.app"||attempt>=5)throw error;
+          await assertMutationAuthorized();
+          await new Promise(resolve=>setTimeout(resolve,2000));
+        }
+      }
+    }
     const currentRoute = await route();
     const baseline = await active();
     if (job.action === "ingress-rollback") {
@@ -209,7 +221,7 @@ export function createCloudflareProductionIngressTransport(
     }
     if (
       currentRoute ||
-      baseline.id !== job.runtimeBaselineDeploymentId ||
+      (baseline.id !== job.runtimeBaselineDeploymentId && baseline.annotations?.["workers/message"]!==`SmartAIHub ingress compensate grant ${grant.grantRef}`) ||
       baseline.versions.length !== 1 ||
       baseline.versions[0]?.version_id !== job.runtimeBaselineVersionId ||
       baseline.versions[0]?.percentage !== 100

@@ -2255,6 +2255,26 @@ export function createJobControlPlane(
   repository: JobControlPlaneRepository = defaultJobControlPlaneRepository
 ) {
   return {
+    /** Reserve an identity for approval/budget binding without a lease or an
+     * outbox delivery. claim() reuses this attempt after authorization. */
+    async prepareAuthorizationAttempt(input: { jobId: string; tenantId: string; requestedByUserId: number }): Promise<string> {
+      return repository.transaction(async repo => {
+        const job = await (repo.findJobForUpdate?.(input.jobId) ?? repo.findJob(input.jobId));
+        if (!job || job.tenantId !== input.tenantId || job.requestedByUserId !== input.requestedByUserId)
+          throw new JobControlPlaneError("JOB_NOT_FOUND", "Job was not found");
+        if (job.jobType !== "external_agent_task")
+          throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Only an external task can reserve authorization");
+        const existing = await repo.findAttempt(job.id, job.attempt);
+        if (existing) return existing.id;
+        if (job.status !== "pending")
+          throw new JobControlPlaneError("JOB_STATE_CONFLICT", "Only a pending external task can reserve authorization");
+        const attemptId = randomUUID();
+        await repo.insertAttempt({ id: attemptId, workerJobId: job.id, attempt: job.attempt, leaseGeneration: 0 });
+        await repo.insertEvent({ workerJobId: job.id, attemptId, eventType: "AUTHORIZATION_ATTEMPT_RESERVED",
+          eventIdempotencyKey: `authorization-attempt:${job.id}:${job.attempt}`, payloadJson: { attempt: job.attempt } });
+        return attemptId;
+      });
+    },
     async releaseAuthorizationHold(input: { jobId: string; tenantId: string; requestedByUserId: number }): Promise<boolean> {
       return repository.transaction(async repo => {
         const job = await repo.findJob(input.jobId);
@@ -4881,11 +4901,11 @@ export function createJobControlPlane(
         // definite pre-provider wiring failure may resume under that SAME live
         // grant/deadline; no replacement authority or traffic scope is created.
         const knownIngressOriginBinding = evidence.knownRuntime === "cloudflare_production_ingress_origin_binding" &&
-          evidence.disposition === "pre_submission_failure" && scope?.authorizationScope === "infrastructure.cloudflare_production_ingress_technical_recovery" &&
+          ["pre_submission_failure","provider_operation_resolved"].includes(evidence.disposition) && scope?.authorizationScope === "infrastructure.cloudflare_production_ingress_technical_recovery" &&
           actorId == null && scope.requestedByUserId === job?.requestedByUserId &&
           job?.jobType === "cloudflare.production.deploy" && job.contractVersion === "cloudflare-production-ingress-v1" &&
-          job.status === "failed" && job.errorCode === "CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED" &&
-          [1,2].includes(job.attempt) && job.maxAttempts === job.attempt && job.fencingVersion === job.attempt && job.leaseOwnerToken == null &&
+          job.status === "failed" && (([1,2].includes(job.attempt) && job.errorCode === "CLOUDFLARE_PRODUCTION_ORIGIN_GRANT_REQUIRED" && evidence.disposition === "pre_submission_failure") ||
+            (job.attempt === 3 && job.errorCode === "CLOUDFLARE_PRODUCTION_INGRESS_APPLICATION_PROBE_FAILED" && evidence.disposition === "provider_operation_resolved")) && job.maxAttempts === job.attempt && job.fencingVersion === job.attempt && job.leaseOwnerToken == null &&
           job.inputJson?.action === "ingress-canary" && evidence.replacementGrantRef === job.inputJson.grantRef &&
           typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now()+300000 &&
           new Date(job.createdAt).getTime()+900000 > Date.now()+300000 &&
