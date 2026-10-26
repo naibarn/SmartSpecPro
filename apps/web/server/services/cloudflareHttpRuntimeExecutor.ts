@@ -18,7 +18,7 @@ import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter
 import { resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuthority";
 import { runHttpImageOperatorCommand } from "./cloudflareHttpImageBuildOperator";
 import { classifyHttpCandidateWranglerFailure } from "./cloudflareHttpCandidateDiagnostics";
-import { encrypt } from "./crypto";
+import { encrypt, decrypt } from "./crypto";
 
 const CHECKPOINT = "cloudflare_production_native_runtime_checkpoints";
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -71,8 +71,18 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         description: "Encrypted canonical native runtime execution checkpoint" });
     });
   };
-  if ((await db.select({ id: systemSettings.id }).from(systemSettings).where(checkpointWhere).limit(1)).length)
-    fail("CHECKPOINT_RECONCILE_REQUIRED");
+  const [previous] = await db.select().from(systemSettings).where(checkpointWhere).limit(1);
+  if (previous) {
+    const recovery = (context.retryPolicy as Record<string, any>)?.httpRuntimePrewriteRecovery;
+    let old: Record<string, any> | undefined;
+    try { if (previous.isSensitive && previous.updatedBy === scope.actorUserId && previous.value) old = JSON.parse(decrypt(previous.value)); } catch { /* fail closed */ }
+    if (context.attempt !== 2 || context.maxAttempts !== 2 || recovery?.attempt !== 2 || recovery.intentId !== context.jobId ||
+        recovery.planDigest !== input.planDigest || !Number.isFinite(Date.parse(recovery.expiresAt)) || Date.parse(recovery.expiresAt) <= Date.now() ||
+        !old || old.jobId !== context.jobId || old.tenantId !== scope.tenantId || old.projectId !== scope.projectId ||
+        old.actorUserId !== scope.actorUserId || old.planDigest !== input.planDigest || old.stage !== "PREPARING" ||
+        old.rolePrepared !== false || old.providerWriteIntent !== false || old.roleSecret || old.deploymentId || old.configurationRef)
+      fail("CHECKPOINT_RECONCILE_REQUIRED");
+  }
   await persist();
   const access = await withCloudflareDeploymentCredential(db, { identity: { ...scope, provider: "cloudflare", environment: "production" },
     credentialRef: target.credentialRef }, async token => {
@@ -83,10 +93,15 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         headers: { authorization: `Bearer ${token}`, ...(body ? { "content-type": "application/json" } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}), redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15_000) });
       const data = await response.json();
-      if (!response.ok || data.success !== true || (data.result_info?.total_pages ?? 1) > 1) {
+      if (!response.ok || data.success !== true) {
         const code = data.errors?.find((e: any) => Number.isSafeInteger(e.code))?.code;
         fail(`PROVIDER_HTTP_${response.status}${code ? `_CF_${code}` : ""}`);
       }
+      // The first deployment is the active version, per Cloudflare's API.
+      // Older history pages are irrelevant to that exact baseline. Inventories
+      // used to prove resource absence still require a complete response.
+      const activeDeploymentRead = method === "GET" && /^\/accounts\/[a-f0-9]{32}\/workers\/scripts\/[a-z0-9-]+\/deployments$/.test(path);
+      if (!activeDeploymentRead && (data.result_info?.total_pages ?? 1) > 1) fail("PROVIDER_INVENTORY_INCOMPLETE");
       return data.result;
     };
     const root = `/accounts/${target.accountRef}`, script = `${root}/workers/scripts/${plan.candidate.workerName}`;

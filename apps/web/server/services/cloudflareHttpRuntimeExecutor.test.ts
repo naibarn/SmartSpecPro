@@ -2,7 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 import { readFile, stat } from "node:fs/promises";
 const state = vi.hoisted(() => ({ plan: null as any, intent: null as any, package: null as any, checkpoint: null as any,
-  bindings: [] as any[], phase: "baseline", expired: false, revoked: false, probeFailure: false, uncertainWrite: false,
+  bindings: [] as any[], phase: "baseline", expired: false, revoked: false, probeFailure: false, uncertainWrite: false, paginatedHistory: false, paginatedApps: false,
   commands: vi.fn(), role: vi.fn(), owner: vi.fn(), assertActive: vi.fn(), updates: vi.fn() }));
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 const db: any = { execute: vi.fn(async () => []), transaction: async (fn: any) => fn(db),
@@ -27,7 +27,7 @@ vi.mock("./cloudflareStagingArtifactAuthority", () => ({ resolveCloudflareStagin
   moduleFiles: { "applicationHttpCandidateEntrypoint.js": { bytes: new TextEncoder().encode("export default {}") } } }) }));
 vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: async (_db: any, _scope: any, fn: any) =>
   ({ status: "CONFIGURED", value: await fn("never-log-provider-token") }) }));
-vi.mock("./crypto", () => ({ encrypt: (value: string) => `encrypted:${value}` }));
+vi.mock("./crypto", () => ({ encrypt: (value: string) => `encrypted:${value}`, decrypt: (value: string) => value.slice("encrypted:".length) }));
 vi.mock("./cloudflareHttpImageBuildOperator", () => ({ runHttpImageOperatorCommand: async (input: any) => {
   await input.assertAuthorized(); state.commands(input.args);
   expect(input.args).toContain("--containers-rollout"); expect(input.args).toContain("none");
@@ -45,6 +45,7 @@ import { createHttpRuntimeExecutor } from "./cloudflareHttpRuntimeExecutor";
 import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT } from "./cloudflareHttpRuntimeContract";
 beforeEach(() => {
   vi.clearAllMocks(); state.phase = "baseline"; state.expired = false; state.revoked = false; state.probeFailure = false; state.uncertainWrite = false; state.checkpoint = null;
+  state.paginatedHistory = false; state.paginatedApps = false;
   process.env.CLOUDFLARE_PRODUCTION_EXECUTOR_ID = "fixture-executor";
   state.bindings = [{ name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "production" },
     { name: "CLOUDFLARE_NODE_HTTP_SECRETS", type: "secret_text", text: "never-log-runtime-password" }];
@@ -71,7 +72,8 @@ beforeEach(() => {
       return Response.json({ status: "ready" }, { status: state.probeFailure ? 503 : 200, headers: { "cf-ray": "fixture-SIN" } });
     }
     if (path.endsWith("workers/routes")) return success([{ id: "accepted-route", pattern: "smartaihub.app/*", script: "smartspec-cloudflare-runtime" }]);
-    if (path.endsWith("smartspec-cloudflare-runtime/deployments")) return success({ deployments: [{ id: "m2-accepted", versions: [{ version_id: "m2-version", percentage: 100 }] }] });
+    if (path.endsWith("smartspec-cloudflare-runtime/deployments")) return Response.json({ success: true,
+      result_info: { page: 1, total_pages: state.paginatedHistory ? 2 : 1 }, result: { deployments: [{ id: "m2-accepted", versions: [{ version_id: "m2-version", percentage: 100 }] }] } });
     if (path.endsWith("workers/subdomain")) return success({ subdomain: "fixture" });
     if (path.endsWith("/deployments")) {
       if (init.method === "POST") { expect(JSON.parse(init.body).versions).toEqual([{ version_id: "baseline-version", percentage: 100 }]); state.phase = "baseline"; }
@@ -81,16 +83,40 @@ beforeEach(() => {
       bindings: [...state.bindings.map(({ text, ...b }) => b.type === "plain_text" ? { ...b, text } : b),
         { name: "DATABASE_NETWORK", type: "vpc_network", tunnel_id: state.plan.network.tunnelId },
         ...state.plan.candidate.applications.map((a: any) => ({ type: "durable_object_namespace", namespace_id: a.namespaceId }))] } });
-    if (path.endsWith("containers/applications")) return success(state.plan.candidate.applications.map((a: any) => ({ id: a.applicationId, name: a.name, durable_objects: { namespace_id: a.namespaceId } })));
+    if (path.endsWith("containers/applications")) return Response.json({ success: true, result_info: { total_pages: state.paginatedApps ? 2 : 1 },
+      result: state.plan.candidate.applications.map((a: any) => ({ id: a.applicationId, name: a.name, durable_objects: { namespace_id: a.namespaceId } })) });
     throw Error("UNEXPECTED_PROVIDER_CALL");
   }));
 });
 afterEach(() => { vi.unstubAllGlobals(); delete process.env.CLOUDFLARE_PRODUCTION_EXECUTOR_ID; });
-const run = () => createHttpRuntimeExecutor()({ context: { jobId: state.intent.submissionId, tenantId: "tenant-fixture", requestedByUserId: 17,
+const run = (overrides: Record<string, unknown> = {}) => createHttpRuntimeExecutor()({ context: { jobId: state.intent.submissionId, tenantId: "tenant-fixture", requestedByUserId: 17,
   jobType: HTTP_RUNTIME_JOB, contractVersion: HTTP_RUNTIME_CONTRACT, executionClass: "long", input: { contractVersion: HTTP_RUNTIME_CONTRACT,
-    projectId: "project-fixture", candidateJobId: state.plan.candidateJobId, submissionId: state.intent.submissionId, planDigest: state.intent.planDigest } },
+    projectId: "project-fixture", candidateJobId: state.plan.candidateJobId, submissionId: state.intent.submissionId, planDigest: state.intent.planDigest }, ...overrides },
   lease: { expiresAt: new Date(Date.now() + 60_000).toISOString() }, reporter: { assertActive: state.assertActive, heartbeat: vi.fn(), progress: vi.fn() } } as never);
 describe("canonical bounded existing-Candidate runtime executor", () => {
+  it("resumes only a proven pre-write checkpoint using the canonical same-intent recovery contract", async () => {
+    state.checkpoint = { id: 1, isSensitive: true, updatedBy: 17, value: "encrypted:" + JSON.stringify({
+      jobId: state.intent.submissionId, tenantId: state.intent.tenantId, projectId: state.intent.projectId, actorUserId: 17,
+      planDigest: state.intent.planDigest, stage: "PREPARING", rolePrepared: false, providerWriteIntent: false }) };
+    await expect(run()).rejects.toThrow("CHECKPOINT_RECONCILE_REQUIRED");
+    const result = await run({ attempt: 2, maxAttempts: 2, retryPolicy: { httpRuntimePrewriteRecovery: { attempt: 2,
+      intentId: state.intent.submissionId, planDigest: state.intent.planDigest, expiresAt: state.intent.expiresAt } } });
+    expect((result.output as any).runtimeBootVerified).toBe(true); expect(state.role).toHaveBeenCalledOnce();
+  });
+  it.each(["rolePrepared", "providerWriteIntent", "configurationRef"])("refuses recovery of an uncertain %s checkpoint", async key => {
+    state.checkpoint = { id: 1, isSensitive: true, updatedBy: 17, value: "encrypted:" + JSON.stringify({
+      jobId: state.intent.submissionId, tenantId: state.intent.tenantId, projectId: state.intent.projectId, actorUserId: 17,
+      planDigest: state.intent.planDigest, stage: "PREPARING", rolePrepared: false, providerWriteIntent: false, [key]: true }) };
+    await expect(run({ attempt: 2, maxAttempts: 2, retryPolicy: { httpRuntimePrewriteRecovery: { attempt: 2,
+      intentId: state.intent.submissionId, planDigest: state.intent.planDigest, expiresAt: state.intent.expiresAt } } })).rejects.toThrow("CHECKPOINT_RECONCILE_REQUIRED");
+    expect(state.role).not.toHaveBeenCalled();
+  });
+  it("reads the active M2 deployment from paginated history without requiring unrelated older pages", async () => {
+    state.paginatedHistory = true; expect(((await run()).output as any).cleanup.m2Preserved).toBe(true);
+  });
+  it("keeps genuinely incomplete application inventory fail-closed and compensates", async () => {
+    state.paginatedApps = true; await expect(run()).rejects.toThrow("PROVIDER_INVENTORY_INCOMPLETE"); expect(state.phase).toBe("baseline");
+  });
   it("tests actual runtime endpoints and compensates without claiming full application acceptance", async () => {
     const result = (await run()).output as any;
     expect(result).toMatchObject({ runtimeBootVerified: true, runtimeAcceptance: false, m3Accepted: false, trafficMutation: false,

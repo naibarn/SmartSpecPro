@@ -4736,7 +4736,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_database_readback_recovery" | "cloudflare_production_ingress_origin_binding" | "cloudflare_http_image_prebuild_rate_limit";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_database_readback_recovery" | "cloudflare_production_ingress_origin_binding" | "cloudflare_http_image_prebuild_rate_limit" | "cloudflare_native_runtime_prewrite";
         replacementGrantRef?: string;
         replacementGrantExpiresAt?: string;
       },
@@ -4768,7 +4768,8 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "cloudflare_production_database_provider_recovery" &&
           evidence.knownRuntime !== "cloudflare_production_database_readback_recovery" &&
           evidence.knownRuntime !== "cloudflare_production_ingress_origin_binding" &&
-          evidence.knownRuntime !== "cloudflare_http_image_prebuild_rate_limit") ||
+          evidence.knownRuntime !== "cloudflare_http_image_prebuild_rate_limit" &&
+          evidence.knownRuntime !== "cloudflare_native_runtime_prewrite") ||
         (evidence.replacementGrantRef !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence.replacementGrantRef)) ||
         (evidence.replacementGrantExpiresAt !== undefined && !Number.isFinite(Date.parse(evidence.replacementGrantExpiresAt)))
       ) {
@@ -4960,9 +4961,26 @@ export function createJobControlPlane(
           evidence.replacementGrantRef === job.inputJson?.grantRef &&
           typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now()+480000 &&
           evidence.operationKey === `http-image-prebuild:${job.id}:${job.inputJson?.planDigest}`;
+        // One technical recovery before any role/provider/compute mutation.
+        // The trusted runtime service verifies the original live Owner intent,
+        // encrypted PREPARING checkpoint and unchanged reviewed plan. No new
+        // intent, deadline, image, paid-start budget or traffic scope is issued.
+        const knownNativeRuntimePrewrite = evidence.knownRuntime === "cloudflare_native_runtime_prewrite" &&
+          evidence.disposition === "pre_submission_failure" && actorId == null &&
+          scope?.authorizationScope === "infrastructure.cloudflare_native_runtime_technical_recovery" &&
+          scope.requestedByUserId === job?.requestedByUserId && job?.jobType === "cloudflare.production.native.runtime.verify" &&
+          job.contractVersion === "cloudflare-native-runtime-verify-v1" && job.status === "failed" &&
+          job.errorCode === "HTTP_RUNTIME_PROVIDER_HTTP_200" && job.attempt === 1 && job.maxAttempts === 1 &&
+          job.fencingVersion === 1 && job.leaseOwnerToken == null && job.leaseExpiresAt == null &&
+          evidence.replacementGrantRef === job.id && typeof evidence.replacementGrantExpiresAt === "string" &&
+          Date.parse(evidence.replacementGrantExpiresAt) > Date.now() + 15 * 60_000 &&
+          new Date(job.createdAt).getTime() + 30 * 60_000 > Date.now() + 15 * 60_000 &&
+          evidence.operationKey === `native-runtime-prewrite:${job.id}:${job.inputJson?.planDigest}`;
         if (
           !job ||
           (evidence.knownRuntime === "cloudflare_http_image_prebuild_rate_limit" && !knownImagePrebuildRateLimit) ||
+          (evidence.knownRuntime === "cloudflare_native_runtime_prewrite" && !knownNativeRuntimePrewrite) ||
+          (job.jobType === "cloudflare.production.native.runtime.verify" && !knownNativeRuntimePrewrite) ||
           (job.jobType === "cloudflare.production.database.provision" && !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery) ||
           !["failed", "expired"].includes(job.status) ||
           (!job.operatorReviewRequired &&
@@ -4972,8 +4990,8 @@ export function createJobControlPlane(
             !knownCloudflareBootstrapReceipt &&
             !knownNativeReadbackFailure &&
             !knownPrivateDatabaseRejection &&
-            !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding) ||
-          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding)
+            !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding && !knownNativeRuntimePrewrite) ||
+          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding && !knownNativeRuntimePrewrite)
         )
           return false;
 
@@ -5015,7 +5033,11 @@ export function createJobControlPlane(
                     expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime() + 12 * 60_000)).toISOString(),
                   } } }
               : {}),
-            ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery || knownIngressOriginBinding) ? { maxAttempts: nextAttempt } : {}),
+            ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery || knownIngressOriginBinding || knownNativeRuntimePrewrite) ? { maxAttempts: nextAttempt } : {}),
+            ...(knownNativeRuntimePrewrite ? { retryPolicyJson: { ...job.retryPolicyJson, httpRuntimePrewriteRecovery: {
+              attempt: nextAttempt, intentId: job.id, planDigest: job.inputJson.planDigest,
+              authorizedAt: now.toISOString(), expiresAt: evidence.replacementGrantExpiresAt,
+            } } } : {}),
             ...(knownImagePrebuildRateLimit ? { retryPolicyJson: { ...job.retryPolicyJson, httpImagePrebuildRecovery: {
               attempt: nextAttempt, grantRef: evidence.replacementGrantRef, authorizedAt: now.toISOString(),
               expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime()+10*60_000)).toISOString(),
