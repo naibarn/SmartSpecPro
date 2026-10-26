@@ -12,7 +12,21 @@ export type RepositoryFeatureSpec = {
 };
 
 async function resolveFeatureRoot(repositoryRoot?: string): Promise<string> {
-  if (repositoryRoot) return realpath(join(resolve(repositoryRoot), "specs", "feature"));
+  const rootsToCheck = repositoryRoot
+    ? [
+      join(resolve(repositoryRoot), "server", "feature-spec-catalog"),
+      join(resolve(repositoryRoot), "specs", "feature"),
+    ]
+    : [join(process.cwd(), "server", "feature-spec-catalog")];
+  for (const root of rootsToCheck) {
+    try {
+      const resolved = await realpath(root);
+      if ((await lstat(resolved)).isDirectory()) return resolved;
+    } catch {
+      // Development runs resolve the canonical repository catalog below.
+    }
+  }
+  if (repositoryRoot) throw new Error("FEATURE_SPEC_CATALOG_UNAVAILABLE");
 
   let current = resolve(process.cwd());
   let bestRoot: string | null = null;

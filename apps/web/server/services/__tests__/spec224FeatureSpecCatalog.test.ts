@@ -54,4 +54,20 @@ describe("repository feature spec catalog", () => {
     await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "../outside" })).rejects.toThrow("FEATURE_SPEC_ID_INVALID");
     await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "103-linked" })).rejects.toThrow("FEATURE_SPEC_NOT_FOUND");
   });
+
+  it("reads the packaged private runtime catalog used by Linux releases", async () => {
+    const { root } = await createFeatureRoot();
+    await mkdir(join(root, "server", "feature-spec-catalog", "224-runtime-example"), { recursive: true });
+    await writeFile(
+      join(root, "server", "feature-spec-catalog", "224-runtime-example", "spec.md"),
+      "# Packaged Runtime Spec\n\nAvailable inside the immutable server release.\n",
+    );
+
+    await expect(listRepositoryFeatureSpecs({ repositoryRoot: root })).resolves.toMatchObject({
+      specs: [{ id: "224-runtime-example", title: "Packaged Runtime Spec" }],
+    });
+    await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "224-runtime-example" })).resolves.toMatchObject({
+      content: expect.stringContaining("immutable server release"),
+    });
+  });
 });

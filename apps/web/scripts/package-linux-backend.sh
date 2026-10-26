@@ -65,6 +65,25 @@ if [[ ! -f "$FACTORY_PIPELINE_SOURCE" ]]; then
   exit 2
 fi
 cp -- "$FACTORY_PIPELINE_SOURCE" "$PACKAGE_ROOT/server/services/mini-app-factory-pipeline.v1.json"
+# The Admin Feature Spec picker reads an immutable server-side catalog. The
+# specs are never exposed as static public assets; only spec.md is packaged.
+FEATURE_SPEC_SOURCE="$REPO_ROOT/specs/feature"
+if [[ ! -d "$FEATURE_SPEC_SOURCE" || -L "$FEATURE_SPEC_SOURCE" ]]; then
+  echo "Canonical Feature Spec catalog is missing or unsafe" >&2
+  exit 2
+fi
+FEATURE_SPEC_DESTINATION="$PACKAGE_ROOT/server/feature-spec-catalog"
+mkdir -p "$FEATURE_SPEC_DESTINATION"
+while IFS= read -r -d '' SPEC_FILE; do
+  RELATIVE_SPEC="${SPEC_FILE#"$FEATURE_SPEC_SOURCE"/}"
+  DESTINATION="$FEATURE_SPEC_DESTINATION/$RELATIVE_SPEC"
+  mkdir -p "$(dirname "$DESTINATION")"
+  install -m 0444 -- "$SPEC_FILE" "$DESTINATION"
+done < <(find "$FEATURE_SPEC_SOURCE" -mindepth 2 -maxdepth 2 -type f -name spec.md -print0)
+if [[ -z "$(find "$FEATURE_SPEC_DESTINATION" -mindepth 2 -maxdepth 2 -type f -name spec.md -print -quit)" ]]; then
+  echo "Canonical Feature Spec catalog contains no spec.md files" >&2
+  exit 2
+fi
 # Some npm packages ship their own test .env (for example Bottleneck's Redis
 # fixture). Runtime environments are supplied outside the immutable artifact.
 # find does not follow pnpm symlinks; deletion affects only this owned staging tree.
