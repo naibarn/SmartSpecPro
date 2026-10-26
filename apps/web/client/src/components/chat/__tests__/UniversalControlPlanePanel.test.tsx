@@ -122,6 +122,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "taskControl.evidenceLabel": "Chat task evidence",
       "taskControl.snapshotTitle": "Chat model and usage snapshot",
       "taskControl.inspectEvidence": "Inspect this Chat’s model, usage, and Runner evidence",
+      "taskControl.openFullPage": "Open full workspace",
       "taskControl.close": "Close Task Control Center",
       "taskControl.startHeading": "Start a task in Chat",
       "taskControl.startDescription": "The task is placed in the existing Chat composer so the normal plan, approval, streaming, and billing safeguards remain in one path.",
@@ -228,6 +229,11 @@ describe("UniversalControlPlanePanel", () => {
       data: { workspaces: [{ runnerId: "runner-1", workspaceId: "workspace-1", displayName: "Dev machine", status: "online", snapshotRevision: "r1" }] },
     });
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute(
+      "href",
+      "/chat?panel=control-plane&view=full&c=42",
+    );
+    expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ })).toHaveAttribute("href", "/agent-monitor?conversationId=42");
     fireEvent.change(screen.getByRole("combobox", { name: "Workspace" }), { target: { value: '["runner-1","workspace-1"]' } });
     await waitFor(() => expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1" }));

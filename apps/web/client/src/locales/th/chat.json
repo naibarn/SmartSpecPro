@@ -52,6 +52,8 @@
   "taskControl.readinessHeading": "ความพร้อมในการทำงาน",
   "taskControl.readinessDescription": "สถานะล่าสุดของผู้ใช้รายนี้จากระบบควบคุมงาน",
   "taskControl.refresh": "รีเฟรชศูนย์ควบคุมงาน",
+  "taskControl.openFullPage": "เปิดพื้นที่ทำงานเต็มหน้า",
+  "taskControl.openButton": "ควบคุมงาน",
   "feedback.types.bug": "รายงานข้อผิดพลาด",
   "feedback.types.featureRequest": "ขอเสนอฟีเจอร์",
   "feedback.types.observation": "ข้อสังเกต",

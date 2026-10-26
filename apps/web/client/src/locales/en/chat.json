@@ -52,6 +52,8 @@
   "taskControl.readinessHeading": "Execution readiness",
   "taskControl.readinessDescription": "Live status for this tenant from the control plane",
   "taskControl.refresh": "Refresh Task Control Center",
+  "taskControl.openFullPage": "Open full workspace",
+  "taskControl.openButton": "Task Control",
   "feedback.types.bug": "Bug Report",
   "feedback.types.featureRequest": "Feature Request",
   "feedback.types.observation": "Observation",

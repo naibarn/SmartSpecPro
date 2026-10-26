@@ -31,6 +31,7 @@ export interface UniversalControlPlanePanelProps {
   conversationId: number | null;
   onClose: () => void;
   onOpenPrompt: (prompt: string) => void;
+  fullPage?: boolean;
 }
 
 type TaskGroupView = {
@@ -301,6 +302,7 @@ export function UniversalControlPlanePanel({
   conversationId,
   onClose,
   onOpenPrompt,
+  fullPage = false,
 }: UniversalControlPlanePanelProps) {
   const { t } = useScopedTranslation("chat");
   const [prompt, setPrompt] = useState("");
@@ -782,15 +784,28 @@ export function UniversalControlPlanePanel({
             </section>
           ) : null}
         </section>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          onClick={onClose}
-          aria-label={t("taskControl.close")}
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </Button>
+        <section className="flex shrink-0 items-center gap-2">
+          {!fullPage ? (
+            <Link
+              href={`/chat?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm hover:bg-accent"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              {t("taskControl.openFullPage")}
+            </Link>
+          ) : null}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-9 w-9 shrink-0"
+            onClick={onClose}
+            aria-label={t("taskControl.close")}
+          >
+            <X className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </section>
       </header>
 
       <section

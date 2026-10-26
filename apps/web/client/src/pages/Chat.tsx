@@ -98,6 +98,7 @@ export default function Chat() {
     () => window.innerWidth >= 1024
   );
   const [rightPanel, setRightPanel] = useState<RightPanel>("none");
+  const [fullControlPlane, setFullControlPlane] = useState(false);
   const [chatPromptRequest, setChatPromptRequest] = useState<{
     id: number;
     text: string;
@@ -229,10 +230,20 @@ export default function Chat() {
     const dm = params.get("dm");
     const dmName = params.get("dmName");
     const panel = params.get("panel");
+    const view = params.get("view");
 
     const alertId = params.get("alertId");
     const conversationId = params.get("c");
     const browserSessionId = params.get("browserSessionId");
+
+    if (panel === "control-plane" && view === "full") {
+      setFullControlPlane(true);
+      setRightPanel("control-plane");
+      if (conversationId) setSelectedConversationId(Number(conversationId));
+      return;
+    }
+
+    setFullControlPlane(false);
 
     if (conversationId) {
       setSelectedConversationId(Number(conversationId));
@@ -421,9 +432,11 @@ export default function Chat() {
 
   const handleOpenControlPlanePrompt = async (prompt: string) => {
     try {
-      await ensureConversationId();
+      const conversationId = await ensureConversationId();
       setChatPromptRequest({ id: Date.now(), text: prompt });
+      setFullControlPlane(false);
       setRightPanel("none");
+      if (fullControlPlane) setLocation(`/chat?c=${conversationId}`);
       toast.success("เพิ่มงานใน Chat composer แล้ว ตรวจสอบก่อนส่งได้เลย");
     } catch (error) {
       toast.error(
@@ -706,7 +719,15 @@ export default function Chat() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setLocation("/dashboard")}
+            onClick={() => {
+              if (fullControlPlane) {
+                setFullControlPlane(false);
+                setRightPanel("none");
+                setLocation("/chat");
+              } else {
+                setLocation("/dashboard");
+              }
+            }}
             className="h-9 shrink-0 gap-1 px-2 sm:px-3"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -716,7 +737,7 @@ export default function Chat() {
             variant="outline"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="h-9 w-9 shrink-0 lg:hidden"
+            className={cn("h-9 w-9 shrink-0 lg:hidden", fullControlPlane && "hidden")}
             aria-label={
               sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")
             }
@@ -728,10 +749,10 @@ export default function Chat() {
             )}
           </Button>
           <h1 className="hidden truncate text-base font-semibold sm:block sm:text-lg">
-            {t("chat.title")}
+            {fullControlPlane ? t("taskControl.title") : t("chat.title")}
           </h1>
         </div>
-        <div className="flex min-w-0 flex-1 basis-0 items-center justify-start gap-1 overflow-x-auto pl-2 md:justify-end [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className={cn("flex min-w-0 flex-1 basis-0 items-center justify-start gap-1 overflow-x-auto pl-2 md:justify-end [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", fullControlPlane && "hidden")}>
           <LocaleToggle className="hidden xl:inline-flex" />
           <HelpButton page="/chat" variant="ghost" size="sm" />
           <Button
@@ -743,10 +764,10 @@ export default function Chat() {
               )
             }
             className="h-9 shrink-0 gap-2"
-            aria-label="Open Task Control Center"
+            aria-label={t("taskControl.openButton")}
           >
             <Network className="h-4 w-4" />
-            <span className="hidden md:inline">Task Control</span>
+            <span className="hidden md:inline">{t("taskControl.openButton")}</span>
           </Button>
           <Button
             variant={rightPanel === "skills" ? "secondary" : "ghost"}
@@ -841,7 +862,7 @@ export default function Chat() {
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Sidebar - mobile: overlay drawer, desktop: inline */}
         {/* Mobile backdrop */}
-        {sidebarOpen && (
+        {!fullControlPlane && sidebarOpen && (
           <button
             type="button"
             aria-label={t("chat.hideSidebar")}
@@ -850,7 +871,7 @@ export default function Chat() {
           />
         )}
         {/* Mobile sidebar drawer — always in DOM, slides in/out via CSS */}
-        <div
+        {!fullControlPlane ? <div
           className={cn(
             "fixed bottom-2 left-2 top-16 z-40 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-[var(--radius-container)] border border-[var(--color-border)] bg-[var(--color-background-surface)] shadow-[var(--shadow-high)] transition-transform duration-300 ease-in-out lg:hidden",
             sidebarOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)]"
@@ -866,9 +887,9 @@ export default function Chat() {
             onNewPersonalChat={handleNewPersonalChat}
             onOpenTeamRoom={handleOpenTeamRoom}
           />
-        </div>
+        </div> : null}
         {/* Desktop sidebar inline */}
-        <div
+        {!fullControlPlane ? <div
           className={cn(
             "hidden flex-shrink-0 overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-background-surface)] transition-all duration-200 lg:block",
             sidebarOpen && "w-80 xl:w-[22rem]",
@@ -886,10 +907,10 @@ export default function Chat() {
               onOpenTeamRoom={handleOpenTeamRoom}
             />
           )}
-        </div>
+        </div> : null}
 
         {/* Sidebar Toggle for Desktop */}
-        <button
+        {!fullControlPlane ? <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="group hidden h-full w-5 shrink-0 items-center justify-center border-r border-[var(--color-border)] transition-colors hover:bg-[var(--color-overlay-hover)] lg:flex"
           title={sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")}
@@ -898,10 +919,10 @@ export default function Chat() {
           }
         >
           <div className="h-8 w-1.5 rounded-full bg-[var(--color-border-emphasized)] transition-colors group-hover:bg-[var(--color-accent-muted)]" />
-        </button>
+        </button> : null}
 
         {/* Chat View */}
-        <div className="min-w-0 flex-1 overflow-hidden bg-background">
+        <div data-testid="chat-primary-content" aria-hidden={fullControlPlane} className={cn("min-w-0 flex-1 overflow-hidden bg-background", fullControlPlane && "hidden")}>
           {selectedConversationId ? (
             <div className="flex h-full flex-col">
               {chatBrowserSessionEnabled && !activeBrowserSessionArtifact ? (
@@ -1092,7 +1113,7 @@ export default function Chat() {
         </div>
 
         {/* Right Panel (Memory or Skills) */}
-        {rightPanel !== "none" ? (
+        {rightPanel !== "none" && !fullControlPlane ? (
           <button
             type="button"
             aria-label={t("chat.dismiss")}
@@ -1104,9 +1125,11 @@ export default function Chat() {
           data-testid="chat-right-panel"
           aria-hidden={rightPanel === "none"}
           className={cn(
-            "min-h-0 flex-shrink-0 flex-col overflow-hidden bg-[var(--color-background-surface)] transition-all duration-200",
-            rightPanel !== "none"
-              ? "fixed bottom-2 left-2 right-2 top-16 z-[60] flex rounded-[var(--radius-container)] border border-[var(--color-border)] shadow-[var(--shadow-high)] lg:relative lg:h-full lg:w-[32rem] lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l xl:w-[38rem]"
+            "min-h-0 flex-col overflow-hidden bg-[var(--color-background-surface)] transition-all duration-200",
+            fullControlPlane
+              ? "fixed inset-x-0 bottom-0 top-14 z-[60] flex min-w-0 bg-[var(--color-background-surface)] lg:relative lg:inset-auto lg:h-full lg:flex-1"
+              : rightPanel !== "none"
+              ? "fixed bottom-2 left-2 right-2 top-16 z-[60] flex-shrink-0 flex rounded-[var(--radius-container)] border border-[var(--color-border)] shadow-[var(--shadow-high)] lg:relative lg:h-full lg:w-[32rem] lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l xl:w-[38rem]"
               : "pointer-events-none hidden w-0 translate-x-full border-l-0 lg:flex"
           )}
         >
@@ -1171,7 +1194,16 @@ export default function Chat() {
           {rightPanel === "control-plane" && (
             <UniversalControlPlanePanel
               conversationId={selectedConversationId}
-              onClose={() => setRightPanel("none")}
+              fullPage={fullControlPlane}
+              onClose={() => {
+                if (fullControlPlane) {
+                  setFullControlPlane(false);
+                  setRightPanel("none");
+                  setLocation(selectedConversationId ? `/chat?c=${selectedConversationId}` : "/chat");
+                } else {
+                  setRightPanel("none");
+                }
+              }}
               onOpenPrompt={prompt => void handleOpenControlPlanePrompt(prompt)}
             />
           )}

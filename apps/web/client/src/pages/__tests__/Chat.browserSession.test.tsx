@@ -56,6 +56,8 @@ const translationMap: Record<string, string> = {
   "chat.startNewChat": "Start New Chat",
   "chat.title": "AI Chat",
   "chat.useAgency": "Use Agency",
+  "taskControl.title": "Task Control Center",
+  "taskControl.openButton": "Task Control",
 };
 
 function translate(key: string, params?: Record<string, string | number>) {
@@ -382,7 +384,7 @@ describe("Chat Browser Session entry", () => {
   it("opens the Task Control Center from the Chat toolbar", () => {
     render(<Chat />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Task Control Center" }));
+    fireEvent.click(screen.getByRole("button", { name: "Task Control" }));
 
     expect(screen.getByTestId("mock-control-plane")).toBeInTheDocument();
     expect(screen.getByTestId("chat-right-panel")).toHaveAttribute("aria-hidden", "false");
@@ -394,6 +396,17 @@ describe("Chat Browser Session entry", () => {
     render(<Chat />);
 
     expect(screen.getByTestId("mock-control-plane")).toBeInTheDocument();
+  });
+
+  it("opens the full-page Task Control workspace from its deep link", () => {
+    window.history.replaceState({}, "", "/chat?panel=control-plane&view=full&c=42");
+
+    render(<Chat />);
+
+    expect(screen.getByTestId("mock-control-plane")).toBeInTheDocument();
+    expect(screen.getByTestId("chat-right-panel")).toHaveClass("lg:flex-1");
+    expect(screen.getByTestId("chat-right-panel")).not.toHaveClass("lg:w-[32rem]");
+    expect(screen.getByTestId("chat-primary-content")).toHaveClass("hidden");
   });
 
   it("opens the finance panel from the chat toolbar", () => {
