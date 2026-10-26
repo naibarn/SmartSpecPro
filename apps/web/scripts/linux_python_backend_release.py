@@ -108,6 +108,21 @@ def source_candidate_is_eligible(source_root: Path, source_sha: str, canonical_s
         return False
     if source_sha == canonical_sha:
         return True
+    available = subprocess.run([*git, "cat-file", "-e", f"{canonical_sha}^{{commit}}"], capture_output=True, check=False)
+    if available.returncode != 0:
+        config_path = source_root / ".development-repository.toml"
+        try:
+            import tomllib
+            config = tomllib.loads(config_path.read_text(encoding="utf-8"))["repository"]
+            remote = str(config.get("remote", "origin"))
+            ref = str(config.get("canonical_ref", "refs/heads/main"))
+        except (OSError, KeyError, ValueError):
+            return False
+        fetched = subprocess.run([*git, "fetch", "--no-tags", remote, ref], capture_output=True, check=False)
+        if fetched.returncode or subprocess.run(
+            [*git, "cat-file", "-e", f"{canonical_sha}^{{commit}}"], capture_output=True, check=False
+        ).returncode != 0:
+            return False
     if not ancestor(source_sha, canonical_sha):
         return False
     return release_policy.get("allow_approved_immutable_candidates") is True
