@@ -65,6 +65,22 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
       expect(await client`SELECT 1 FROM pg_roles WHERE rolname=${role}`).toHaveLength(0);
     }
   });
+  it("rejects inherited PUBLIC schema creation and security-definer access before persisting a secret", async () => {
+    for (const mode of ["schema", "definer"]) {
+      const p = { ...plan(), projectId: `project-public-${mode}` }, role = applicationDatabaseRoleName(p);
+      let saved = false;
+      try {
+        if (mode === "schema") await client.unsafe('CREATE SCHEMA runtime_public_fixture; GRANT CREATE ON SCHEMA runtime_public_fixture TO PUBLIC');
+        else await client.unsafe("CREATE FUNCTION public.runtime_definer_fixture() RETURNS int LANGUAGE sql SECURITY DEFINER AS 'SELECT 1'");
+        await expect(prepareApplicationDatabaseRole(db, { plan: p, assertAuthorized: async () => {}, saveSecret: async () => { saved = true; } })).rejects.toThrow("PREPARATION_DENIED");
+        expect(saved).toBe(false);
+        expect(await client`SELECT 1 FROM pg_roles WHERE rolname=${role}`).toHaveLength(0);
+      } finally {
+        if (mode === "schema") await client.unsafe('DROP SCHEMA runtime_public_fixture');
+        else await client.unsafe('DROP FUNCTION public.runtime_definer_fixture()');
+      }
+    }
+  });
   it("rejects retired/injected relations, missing tables, wrong database and expired or unbounded plans", async () => {
     for (const tables of [['agency_retired_fixture'],['workflows'],['runtime_role_fixture;DROP TABLE users'],['runtime_role_fixture','runtime_role_fixture']])
       expect(applicationDatabaseRolePlanSchema.safeParse({...plan(),tables}).success).toBe(false);

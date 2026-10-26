@@ -4,7 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareNativeCandidatePreparation } from "./CloudflareNativeCandidatePreparation";
 const state = vi.hoisted(() => ({ ready: true, job: null as any, error: null as any, loading: false,
-  pairDiagnostics: [] as any[], pending: false, mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
+  runtime: null as any, runtimeError: null as any, pairDiagnostics: [] as any[], pending: false, mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
   getCloudflareHttpCandidatePreparation: { useQuery: () => ({ isLoading: state.loading, error: state.error, refetch: state.refetch,
@@ -12,11 +12,12 @@ vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
       plan: { workerName: "isolated-candidate", imageSourceSha: "b".repeat(40), artifactRef: `sha256:${"c".repeat(64)}`,
         workerSourceSha: "d".repeat(40), images: ["node@sha256:fixture", "python@sha256:fixture"] } }
       : { ready: false, reason: "HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED", pairDiagnostics: state.pairDiagnostics } } }) },
+  getCloudflareHttpRuntimeReadiness: { useQuery: () => ({ data: state.runtime, error: state.runtimeError, isLoading: false }) },
   prepareCloudflareHttpCandidate: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.pending, error: state.mutationError }) },
 } } }));
 const props = { tenantId: "tenant-fixture", projectId: "project-fixture" };
 beforeEach(() => { sessionStorage.clear(); state.ready = true; state.job = null; state.error = null; state.loading = false;
-  state.pairDiagnostics = []; state.pending = false; state.mutationError = null; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted" }); });
+  state.runtime = null; state.runtimeError = null; state.pairDiagnostics = []; state.pending = false; state.mutationError = null; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted" }); });
 describe("native metadata Owner action", () => {
   it("shows exact independent scope without claiming runtime or DNS readiness", async () => {
     render(<CloudflareNativeCandidatePreparation {...props} />);
@@ -58,6 +59,25 @@ describe("native metadata Owner action", () => {
     state.pairDiagnostics = [{ submissionId: "bad-pair", runtime: "python-http", jobId: "bad-job", code: "HTTP_IMAGE_REGISTRY_RECEIPT_DENIED" }];
     view.rerender(<CloudflareNativeCandidatePreparation {...props} />);
     expect(screen.getByText(/HTTP_IMAGE_REGISTRY_RECEIPT_DENIED/)).toHaveTextContent("bad-pair · python-http · bad-job");
+    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+  });
+
+  it("shows actual successful Candidate resource IDs and actionable runtime blockers without another prepare action", () => {
+    state.job = { jobId: "canonical-job", status: "succeeded", attempt: 1, maxAttempts: 1 };
+    state.ready = false;
+    state.runtime = { metadata: { workerName: "actual-candidate", deploymentId: "deployment-receipt", versionId: "version-receipt",
+      applications: [{ runtime: "node", applicationId: "node-app", namespaceId: "node-ns" }, { runtime: "python", applicationId: "python-app", namespaceId: "python-ns" }] },
+      checks: [{ code: "PRODUCTION_DATABASE_DNS", status: "UNVERIFIED", http: 403, providerCodes: [10000],
+        permission: "Zone · DNS · Edit — smartaihub.app", nextAction: "Update the exact production token." }] };
+    render(<CloudflareNativeCandidatePreparation {...props} />);
+    expect(screen.getByText(/actual-candidate/)).toHaveTextContent("VERIFIED");
+    expect(screen.getByText(/Deployment: deployment-receipt/)).toBeInTheDocument();
+    expect(screen.getByText(/node-app/)).toHaveTextContent("node-ns");
+    expect(screen.getByText(/python-app/)).toHaveTextContent("python-ns");
+    expect(screen.getByText(/HTTP 403/)).toHaveTextContent("CF 10000");
+    expect(screen.getByRole("link", { name: "Cloudflare API Tokens" })).toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
+    expect(screen.getByText(/Runtime acceptance: NOT VERIFIED/)).toBeInTheDocument();
+    expect(screen.queryByText("HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED")).not.toBeInTheDocument();
     expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
   });
 

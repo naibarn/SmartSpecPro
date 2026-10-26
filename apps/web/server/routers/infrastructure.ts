@@ -6,6 +6,7 @@ import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLi
 import { readHttpImagePublication } from "../services/cloudflareHttpPublishedPair";
 import { getHttpImagePairPreflight, queueHttpImagePair } from "../services/cloudflareHttpImageAdmission";
 import { getProductionTenantIsolationPreflight, prepareProductionTenantIsolation } from "../services/cloudflareProductionTenantIsolation";
+import { getHttpRuntimeReadiness } from "../services/cloudflareHttpRuntimeReadiness";
 import { getHttpCandidatePreparationPreflight, prepareHttpCandidate, readHttpCandidatePreparation } from "../services/cloudflareHttpCandidatePreparation";
 /**
  * Infrastructure Settings tRPC Router
@@ -839,6 +840,16 @@ export const infrastructureRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_CANDIDATE_AUTHENTICATED_TENANT_REQUIRED" });
       const scope = { ...input, actorUserId: ctx.user.id }, db = getDb();
       return { preflight: await getHttpCandidatePreparationPreflight(db, scope), job: await readHttpCandidatePreparation(db, scope) };
+    }),
+
+  getCloudflareHttpRuntimeReadiness: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), jobId: z.string().uuid() }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_RUNTIME_AUTHENTICATED_TENANT_REQUIRED" });
+      try { return await getHttpRuntimeReadiness(getDb(), { ...input, actorUserId: ctx.user.id }, input.jobId); }
+      catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
+        ? error.message : "HTTP_RUNTIME_READBACK_UNAVAILABLE" }); }
     }),
 
   prepareCloudflareHttpCandidate: exactAdminProcedure

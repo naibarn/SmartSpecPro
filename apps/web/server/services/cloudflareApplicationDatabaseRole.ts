@@ -74,6 +74,11 @@ export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
         FROM pg_roles WHERE rolname=${role}`);
       if (!observed?.rolcanlogin || observed.rolsuper || observed.rolcreatedb || observed.rolcreaterole || observed.rolinherit ||
           observed.rolreplication || observed.rolbypassrls || observed.rolconnlimit !== 10) deny();
+      const unsafeSchemas = await tx.execute(sql`SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%'
+        AND nspname<>'information_schema' AND has_schema_privilege(${role},oid,'CREATE')`);
+      const definers = await tx.execute(sql`SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+        WHERE p.prosecdef AND n.nspname NOT IN ('pg_catalog','information_schema') AND has_function_privilege(${role},p.oid,'EXECUTE')`);
+      if (unsafeSchemas.length || definers.length) deny();
       await input.saveSecret(tx, { role, password, planDigest });
       await input.assertAuthorized();
       return { schemaVersion: "cloudflare-application-database-role-v1", role, planDigest,
