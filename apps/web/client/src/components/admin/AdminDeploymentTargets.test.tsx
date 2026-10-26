@@ -41,6 +41,13 @@ const mocks = vi.hoisted(() => ({
   productionHyperdrives: [] as Array<Record<string, unknown>>,
   productionTunnels: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }] as Array<Record<string, unknown>>,
   tunnelInventoryComplete: true,
+  productionInventoryStatus: "CHECKED" as "CHECKED" | "PARTIAL",
+  workerDeploymentsComplete: true,
+  workerVersionChecks: [] as Array<{ httpStatus: number | null; complete: boolean }>,
+  databaseHyperdriveReadable: true,
+  databaseTunnelReadable: true,
+  databaseVpcReadable: false,
+  databaseVpcs: [] as Array<Record<string, unknown>>,
   saveCredential: vi.fn(),
   revokeCredential: vi.fn(),
   probeCredential: vi.fn(),
@@ -80,15 +87,15 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareOriginConfiguration: { useQuery: () => ({ data: mocks.originConfiguration, isLoading: false, isError: mocks.originConfigurationError, refetch: mocks.refetchStagingOriginConfiguration }) },
       getCloudflareStagingRuntimeReadiness: { useQuery: () => ({ data: mocks.stagingRuntime, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchStagingRuntimeReadiness }) },
       getCloudflareProductionRuntimeReadiness: { useQuery: () => ({ data: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", environment: "production", activation: "disabled", transport: "queues", missing: ["HYPERDRIVE", "JOB_QUEUE"], unconfigured: ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"], applicationIngress: { enabled: false, ready: false, missing: ["CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", "NODE_HTTP", "PYTHON_HTTP"] }, jobHandlerConfigured: false, reason: "CLOUDFLARE_PRODUCTION_WORKER_RUNTIME_NOT_READY" }, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionRuntimeReadiness }) },
-      getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: "CHECKED", checkedAt: "2026-10-24T00:00:00.000Z",
+      getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: mocks.productionInventoryStatus, checkedAt: "2026-10-24T00:00:00.000Z",
         accountRef: "f3fb0b6858e186fcc36be105bfa00243",
-        accessChecks: { queues: { httpStatus: 200, complete: true }, hyperdrive: { httpStatus: 200, complete: true }, zone: { httpStatus: 200, complete: true },
-          routes: { httpStatus: 200, complete: true }, workerDeployments: { httpStatus: 200, complete: true }, workerVersions: [],
-          tunnels: { httpStatus: 200, complete: mocks.tunnelInventoryComplete }, vpcServices: { httpStatus: 403, complete: false } },
+        accessChecks: { queues: { httpStatus: 200, complete: true }, hyperdrive: { httpStatus: mocks.databaseHyperdriveReadable ? 200 : 403, complete: mocks.databaseHyperdriveReadable }, zone: { httpStatus: 200, complete: true },
+          routes: { httpStatus: 200, complete: true }, workerDeployments: { httpStatus: mocks.workerDeploymentsComplete ? 200 : null, complete: mocks.workerDeploymentsComplete }, workerVersions: mocks.workerVersionChecks,
+          tunnels: { httpStatus: mocks.databaseTunnelReadable && mocks.tunnelInventoryComplete ? 200 : 403, complete: mocks.databaseTunnelReadable && mocks.tunnelInventoryComplete }, vpcServices: { httpStatus: mocks.databaseVpcReadable ? 200 : 403, complete: mocks.databaseVpcReadable } },
         originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false, queueProfileConfigured: false },
         productionDatabaseProvisioning: { checks: {
-          hyperdrive: { httpStatus: 200, readable: true }, tunnel: { httpStatus: 200, readable: true },
-          vpcServices: { httpStatus: 403, readable: false },
+          hyperdrive: { httpStatus: mocks.databaseHyperdriveReadable ? 200 : 403, readable: mocks.databaseHyperdriveReadable }, tunnel: { httpStatus: mocks.databaseTunnelReadable ? 200 : 403, readable: mocks.databaseTunnelReadable },
+          vpcServices: { httpStatus: mocks.databaseVpcReadable ? 200 : 403, readable: mocks.databaseVpcReadable },
           containers: { httpStatus: 200, readable: true },
         }, permissionPacket: [
           { scope: "Account", permission: "Hyperdrive Edit", operations: ["POST /accounts/{account_id}/hyperdrive/configs"] },
@@ -99,8 +106,8 @@ vi.mock("@/lib/trpc", () => ({
         queueInventoryComplete: true, queues: [...mocks.productionQueues, { name: "smartspec-staging-project-jobs", environment: "staging" }],
         tunnelInventoryComplete: mocks.tunnelInventoryComplete,
         tunnels: mocks.productionTunnels,
-        hyperdriveInventoryComplete: true, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
-        vpcServiceInventoryComplete: true, vpcServices: [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartspec-staging-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "staging" }],
+        hyperdriveInventoryComplete: mocks.databaseHyperdriveReadable, hyperdrives: [...mocks.productionHyperdrives, { name: "smartspec-staging-project-db", environment: "staging" }],
+        vpcServiceInventoryComplete: mocks.databaseVpcReadable, vpcServices: [...mocks.databaseVpcs, { id: "87654321-4321-4321-8321-cba987654321", name: "smartspec-staging-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "staging" }],
         domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
         worker: { deploymentInventoryComplete: true, deploymentCount: 1, activeVersionCount: 1,
           versions: [{ versionId: "11111111-1111-4111-8111-111111111111", percentage: 100, bindingNames: ["CLOUDFLARE_ACTIVATION"], containerNames: [], hasVerifiedReleaseIdentity: false, checked: true }] } },
@@ -234,6 +241,13 @@ describe("AdminDeploymentTargets", () => {
     mocks.productionHyperdrives = [];
     mocks.productionTunnels = [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }];
     mocks.tunnelInventoryComplete = true;
+    mocks.productionInventoryStatus = "CHECKED";
+    mocks.workerDeploymentsComplete = true;
+    mocks.workerVersionChecks = [];
+    mocks.databaseHyperdriveReadable = true;
+    mocks.databaseTunnelReadable = true;
+    mocks.databaseVpcReadable = false;
+    mocks.databaseVpcs = [];
     mocks.databaseAdmissionUnknownOnce = false;
     mocks.activationError = null;
     mocks.activationSucceeds = false;
@@ -757,6 +771,64 @@ describe("AdminDeploymentTargets", () => {
     }));
     expect(mocks.prepareProductionDatabase).not.toHaveBeenCalled();
   });
+
+  it("shows the same-job Hyperdrive recovery when unrelated Worker inventory is partial", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+      workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+    mocks.productionInventoryStatus = "PARTIAL";
+    mocks.workerDeploymentsComplete = false;
+    mocks.workerVersionChecks = [{ httpStatus: null, complete: false }];
+    mocks.productionTunnels = [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartspec", status: "healthy" }];
+    mocks.databaseVpcReadable = true;
+    mocks.databaseVpcs = [{ id: "01a175b0-3c44-7131-8805-2cd56db223ac", name: "smartspec-postgres-production",
+      type: "tcp", appProtocol: "postgresql", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", environment: "production" }];
+    mocks.latestProductionDatabaseJob = { jobId: "b9ca8316-1604-4764-a769-d92f46e4c823", status: "failed",
+      errorCode: "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015", attempt: 3, maxAttempts: 3,
+      tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", planDigest: "a".repeat(64) };
+
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+
+    expect(await screen.findByText(/Production inventory is incomplete \(PARTIAL\)/)).toBeInTheDocument();
+    expect(screen.getByText("b9ca8316-1604-4764-a769-d92f46e4c823")).toBeInTheDocument();
+    expect(screen.getByText(/Worker versions/)).toBeInTheDocument();
+    expect(screen.queryByText(/HTTP undefined/)).not.toBeInTheDocument();
+    const recover = screen.getByRole("button", { name: "Authorize recovery of existing Hyperdrive job" });
+    expect(recover).toBeEnabled();
+    await user.click(recover);
+    expect(mocks.resumeProductionDatabase).toHaveBeenCalledWith({ tenantId, projectId,
+      jobId: "b9ca8316-1604-4764-a769-d92f46e4c823", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6",
+      environment: "production", authorizeAdditionalAttempt: true });
+  });
+
+  it.each(["missing-vpc", "incomplete-hyperdrive", "invalid-tunnel", "nonrecoverable-job"])(
+    "keeps same-job recovery unavailable when its database prerequisite is %s", async blocker => {
+      const user = userEvent.setup();
+      mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime",
+        workerRef: "smartspec-cloudflare-runtime", runtimePolicy: null }];
+      mocks.productionInventoryStatus = "PARTIAL";
+      mocks.workerDeploymentsComplete = false;
+      mocks.workerVersionChecks = [{ httpStatus: null, complete: false }];
+      mocks.productionTunnels = [{ id: blocker === "invalid-tunnel" ? "bad-id" : "191d047e-674a-48f4-b105-b37269c2dad6",
+        name: "smartspec", status: "healthy" }];
+      mocks.databaseVpcReadable = blocker !== "missing-vpc";
+      mocks.databaseVpcs = blocker === "missing-vpc" ? [] : [{ id: "01a175b0-3c44-7131-8805-2cd56db223ac",
+        name: "smartspec-postgres-production", type: "tcp", appProtocol: "postgresql",
+        tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", environment: "production" }];
+      mocks.databaseHyperdriveReadable = blocker !== "incomplete-hyperdrive";
+      mocks.latestProductionDatabaseJob = { jobId: "b9ca8316-1604-4764-a769-d92f46e4c823",
+        status: blocker === "nonrecoverable-job" ? "failed" : "failed",
+        errorCode: blocker === "nonrecoverable-job" ? "UNRELATED_FAILURE" : "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015",
+        attempt: 3, maxAttempts: 3, tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", planDigest: "a".repeat(64) };
+      render(<AdminDeploymentTargets />);
+      await chooseProductionScope(user);
+      expect(await screen.findByText(/Production inventory is incomplete \(PARTIAL\)/)).toBeInTheDocument();
+      expect(screen.getByText("b9ca8316-1604-4764-a769-d92f46e4c823")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Authorize recovery of existing Hyperdrive job" })).not.toBeInTheDocument();
+      expect(mocks.resumeProductionDatabase).not.toHaveBeenCalled();
+    },
+  );
 
   it("shows explicit full HTTP ingress scope and reuses the same Submission ID on retry", async () => {
     const user=userEvent.setup();

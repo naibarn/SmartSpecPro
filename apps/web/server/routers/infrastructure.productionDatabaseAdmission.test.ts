@@ -250,4 +250,21 @@ describe("Production database canonical admission", () => {
     }), 91, expect.objectContaining({ authorizationScope: "infrastructure.cloudflare_production_database_recover" }));
     expect(mocks.createJob).not.toHaveBeenCalled();
   });
+
+  it("rejects existing-job recovery when the authenticated tenant does not match", async () => {
+    const f = setup();
+    const caller = infrastructureRouter.createCaller({
+      user: { id: 91, role: "admin", currentTenantId: "tenant-other" },
+      tenantId: "tenant-other",
+      req: { requestId: "wrong-tenant-database-recovery" },
+    } as any);
+
+    await expect(caller.resumeExpiredCloudflareProductionDatabaseJob({
+      tenantId, projectId, jobId: "b9ca8316-1604-4764-a769-d92f46e4c823", tunnelId, environment: "production",
+      authorizeAdditionalAttempt: true,
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(mocks.getDb).not.toHaveBeenCalled();
+    expect(mocks.recoverJob).not.toHaveBeenCalled();
+    expect(f.jobs.size).toBe(0);
+  });
 });

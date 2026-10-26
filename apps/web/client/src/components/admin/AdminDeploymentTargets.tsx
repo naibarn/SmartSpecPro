@@ -947,6 +947,38 @@ export default function AdminDeploymentTargets() {
                 containers: { en: "Cloudflare Containers inventory", th: "รายการ Cloudflare Containers", permission: "Account → Containers → Read" },
                 mtlsCertificates: { en: "Legacy Staging Hyperdrive trust inventory (optional for Production VPC)", th: "รายการ trust ของ Staging Hyperdrive เดิม (ไม่จำเป็นต่อ Production VPC)", permission: "Account → SSL and Certificates → Read; Write only if migrating the existing Staging trust" },
               };
+              const accessCheckRows = Object.entries(inventory.accessChecks).flatMap(([key, value]) =>
+                Array.isArray(value)
+                  ? value.map((check, index) => [`${key}:${index + 1}`, key, check] as const)
+                  : [[key, key, value] as const],
+              );
+              const databaseChecks = inventory.productionDatabaseProvisioning?.checks;
+              const databaseTunnelInventoryComplete = inventory.tunnelInventoryComplete === true &&
+                inventory.accessChecks.tunnels?.complete === true && databaseChecks?.tunnel?.readable === true;
+              const databaseHyperdriveInventoryComplete = inventory.hyperdriveInventoryComplete === true &&
+                inventory.accessChecks.hyperdrive?.complete === true && databaseChecks?.hyperdrive?.readable === true;
+              const databaseVpcInventoryComplete = inventory.vpcServiceInventoryComplete === true &&
+                inventory.accessChecks.vpcServices?.complete === true && databaseChecks?.vpcServices?.readable === true;
+              const allDatabaseTunnels = inventory.tunnels as CloudflareTunnelOption[];
+              const verifiedDatabaseTunnels = databaseTunnelInventoryComplete
+                ? allDatabaseTunnels.filter(tunnel => productionDatabaseTunnelBlocker(tunnel) === null)
+                : [];
+              const recoveryTunnelId = productionDatabaseJobData?.tunnelId ?? "";
+              const recoveryTunnel = verifiedDatabaseTunnels.find(tunnel => tunnel.id === recoveryTunnelId);
+              const selectedTunnelId = recoveryTunnel
+                ? recoveryTunnel.id
+                : verifiedDatabaseTunnels.length === 1 ? verifiedDatabaseTunnels[0].id : "";
+              const recoveryVpcVerified = databaseVpcInventoryComplete && Boolean(recoveryTunnelId) &&
+                inventory.vpcServices.some(service => service.environment === "production" && service.type === "tcp" &&
+                  service.appProtocol === "postgresql" && service.tunnelId === recoveryTunnelId);
+              const recoveryJobEligible = Boolean(productionDatabaseJobData?.jobId === "b9ca8316-1604-4764-a769-d92f46e4c823" &&
+                productionDatabaseJobData.planDigest && /^[a-f0-9]{64}$/i.test(productionDatabaseJobData.planDigest) &&
+                productionDatabaseJobData.tunnelId && (productionDatabaseProviderRecovery || productionDatabaseGuardRecovery ||
+                  (productionDatabaseJobData.status === "expired" && productionDatabaseJobData.operatorReviewRequired &&
+                    productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported")));
+              const recoveryReady = validScope && environment === "production" && recoveryJobEligible &&
+                databaseTunnelInventoryComplete && databaseHyperdriveInventoryComplete && recoveryVpcVerified &&
+                selectedTunnelId === recoveryTunnelId;
               return <VStack gap={1} role="alert">
               <p>{text(
                 `Production inventory is incomplete (${inventory.status}); an empty result does not prove that a resource is absent.`,
@@ -954,8 +986,8 @@ export default function AdminDeploymentTargets() {
               )}</p>
               <p>{text("Read-only Cloudflare API results (HTTP 200 means readable only):", "ผล API ของ Cloudflare แบบอ่านอย่างเดียว (HTTP 200 ยืนยันเฉพาะสิทธิ์อ่าน):")}</p>
               <VStack as="ul" gap={1}>
-                {(Object.entries(inventory.accessChecks) as Array<[string, { httpStatus: number | null; complete: boolean }]>).map(([key, check]) => <li key={key}>
-                  <strong>{text(checkLabels[key]?.en ?? key, checkLabels[key]?.th ?? key)}</strong>: {check.httpStatus === null ? text("not checked", "ยังไม่ได้ตรวจ") : `HTTP ${check.httpStatus}`}
+                {accessCheckRows.map(([rowKey, key, check]) => <li key={rowKey}>
+                  <strong>{text(checkLabels[key]?.en ?? key, checkLabels[key]?.th ?? key)}{rowKey !== key ? ` ${rowKey.slice(key.length + 1)}` : ""}</strong>: {check.httpStatus === null ? text("not checked", "ยังไม่ได้ตรวจ") : `HTTP ${check.httpStatus}`}
                   {check.complete ? text(" · readable", " · อ่านได้") : text(" · incomplete or denied", " · ตรวจไม่ครบหรือถูกปฏิเสธ")}
                   {!check.complete && checkLabels[key] ? <> · {key === "mtlsCertificates"
                     ? text("optional; needed only for Staging trust migration", "เป็นทางเลือก ใช้เฉพาะเมื่อย้าย trust ของ Staging")
@@ -963,6 +995,29 @@ export default function AdminDeploymentTargets() {
                 </li>)}
               </VStack>
               {inventory.productionDatabaseProvisioning ? <>
+                <VStack as="section" gap={1} role="group" aria-label={text("Production database recovery", "การกู้คืนฐานข้อมูล Production")}>
+                  <p><strong>{text("Existing Production database job", "งานฐานข้อมูล Production เดิม")}</strong>: {productionDatabaseJobData
+                    ? <><code>{productionDatabaseJobData.jobId}</code> · {productionDatabaseJobData.status} · {text("attempt", "ครั้งที่")} {productionDatabaseJobData.attempt}/{productionDatabaseJobData.maxAttempts}</>
+                    : text("No canonical Production database job was found for this tenant and project.", "ไม่พบ canonical job ฐานข้อมูล Production สำหรับ tenant และ project นี้")}</p>
+                  {productionDatabaseJobData?.errorCode ? <p role="alert"><code>{productionDatabaseJobData.errorCode}</code></p> : null}
+                  {productionDatabaseJobData?.planDigest ? <p>{text("Original immutable plan", "แผน immutable เดิม")}: <code>{productionDatabaseJobData.planDigest}</code></p> : null}
+                  {productionDatabaseProviderRecovery ? <p>{text("CF2015 recovery reuses the same failed Job, plan, verified VPC, and healthy production Tunnel. Worker deployment/version inventory is unrelated to this database operation.", "การกู้ CF2015 ใช้งานเดิม แผนเดิม VPC ที่ตรวจแล้ว และ Tunnel Production ที่ healthy โดย inventory ของ Worker deployment/version ไม่เกี่ยวกับงานฐานข้อมูลนี้")}</p> : null}
+                  {recoveryJobEligible ? <>
+                    {!databaseHyperdriveInventoryComplete ? <p role="alert">{text("Hyperdrive inventory is incomplete; recovery remains disabled until it can be reconciled.", "ตรวจรายการ Hyperdrive ไม่ครบ จึงปิดการกู้คืนจนกว่าจะตรวจสอบได้")}</p> : null}
+                    {!databaseVpcInventoryComplete || !recoveryVpcVerified ? <p role="alert">{text("The existing Production PostgreSQL VPC service bound to this job's Tunnel is not verified.", "ยังยืนยัน Workers VPC service ของ PostgreSQL Production ที่ผูกกับ Tunnel ของงานนี้ไม่ได้")}</p> : null}
+                    {!recoveryTunnel ? <p role="alert">{text("The job's original Tunnel is missing, unhealthy, or not verified as production-capable.", "Tunnel เดิมของงานหายไป ไม่ healthy หรือยังยืนยันว่าใช้กับ Production ไม่ได้")}</p> : null}
+                    {recoveryReady ? <Button type="button" disabled={resumeProductionDatabaseMutation.isPending} onClick={() => resumeProductionDatabaseMutation.mutate({
+                      tenantId, projectId, jobId: productionDatabaseJobData!.jobId, tunnelId: productionDatabaseJobData!.tunnelId!, environment: "production",
+                      ...((productionDatabaseGuardRecovery || productionDatabaseProviderRecovery) ? { authorizeAdditionalAttempt: true as const } : {}),
+                    })}>{productionDatabaseProviderRecovery
+                      ? text("Authorize recovery of existing Hyperdrive job", "อนุมัติกู้คืน Hyperdrive โดยใช้งานและ VPC เดิม")
+                      : productionDatabaseGuardRecovery
+                        ? text("Authorize one corrected attempt on this same job", "อนุมัติเพิ่ม 1 ครั้งให้งานเดิมหลังแก้ไข")
+                        : text("Renew authorization and resume this same job", "ต่ออายุสิทธิ์และทำงานเดิมต่อ")}</Button>
+                      : <p role="status">{text("Recovery is shown but disabled until the database-specific prerequisites above are verified.", "แสดงข้อมูลกู้คืนแล้ว แต่ยังปิดปุ่มจนกว่าจะยืนยันเงื่อนไขเฉพาะฐานข้อมูลด้านบนครบ")}</p>}
+                  </> : null}
+                  {resumeProductionDatabaseMutation.error ? <p role="alert"><code>{resumeProductionDatabaseMutation.error.message}</code></p> : null}
+                </VStack>
                 <p>{text("The list below is the complete scope packet for the planned production steps. Apply it in one token update; the missing read checks above are only the scopes needed to inspect those inventories. No provider changes were made by this check.", "รายการด้านล่างคือ permission ทั้งหมดสำหรับขั้นตอน production ที่วางไว้ ให้เพิ่มทั้งหมดในการแก้ token ครั้งเดียว ส่วน read ที่ขาดด้านบนมีไว้ตรวจ inventory เท่านั้น การตรวจนี้ไม่ได้เปลี่ยน resource บน Cloudflare")}</p>
                 <VStack as="ul" gap={1}>{inventory.productionDatabaseProvisioning.permissionPacket.map(item => <li key={`${item.scope}:${item.permission}`}>
                   <strong>{item.scope} · <code>{item.permission}</code></strong>
