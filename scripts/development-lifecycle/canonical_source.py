@@ -136,6 +136,20 @@ def load_policy(repo: Path, policy_path: Path | None = None) -> dict[str, Any]:
             "canonical_user_workspace": str(values.get("canonical_user_workspace", "")).strip(),
             "source_fallback_roots": [str(item).strip() for item in values.get("source_fallback_roots", [])],
         }
+        release = values.get("release", {})
+        if not isinstance(release, dict):
+            raise LifecycleError("REPOSITORY_POLICY_INVALID: repository.release must be a table")
+        allow_immutable = release.get("allow_approved_immutable_candidates", False)
+        required_ancestors = release.get("required_source_ancestors", [])
+        if not isinstance(allow_immutable, bool) or not isinstance(required_ancestors, list) or any(
+            not isinstance(revision, str) or not re.fullmatch(r"[a-f0-9]{40,64}", revision)
+            for revision in required_ancestors
+        ):
+            raise LifecycleError("REPOSITORY_POLICY_INVALID: repository.release candidate policy is malformed")
+        policy["release"] = {
+            "allow_approved_immutable_candidates": allow_immutable,
+            "required_source_ancestors": required_ancestors,
+        }
     except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as exc:
         raise LifecycleError(f"REPOSITORY_POLICY_INVALID: {path}: {exc}") from exc
     if not isinstance(values.get("source_fallback_roots", []), list):
@@ -558,7 +572,6 @@ def _sync_published_build_receipt(repo: Path, policy: dict[str, Any], result_pat
         receipt.get("status") != "BUILD_PASSED"
         or receipt.get("source_verified") is not True
         or receipt.get("canonical_ref") != authoritative["canonical_ref"]
-        or receipt.get("canonical_tip_after_build") != revision
         or not re.fullmatch(r"[a-f0-9]{40}", revision)
         or not source.name.startswith(revision + "-")
         or receipt.get("result_file") != str(source)
@@ -567,6 +580,16 @@ def _sync_published_build_receipt(repo: Path, policy: dict[str, Any], result_pat
         or bundle.get("source_sha") != revision
         or not re.fullmatch(r"[a-f0-9]{64}", bundle.get("build_digest", ""))
         or bundle.get("artifact_ref") != "sha256:" + bundle.get("build_digest", "")
+    ):
+        raise LifecycleError("CANONICAL_PUBLISHED_RECEIPT_REQUIRED")
+    source_policy = (
+        load_policy(source_root)
+        if (source_root / ".development-repository.toml").is_file()
+        else authoritative
+    )
+    if not source_candidate_is_eligible(
+        source_root, revision, str(receipt.get("canonical_tip_after_build", "")),
+        source_policy.get("release", {}), source_policy["remote"], source_policy["canonical_ref"],
     ):
         raise LifecycleError("CANONICAL_PUBLISHED_RECEIPT_REQUIRED")
     destination = approved[0] / ".development-build-results" / repository_key / source.name
@@ -1089,6 +1112,45 @@ def remote_canonical_tip(repo: Path, policy: dict[str, str]) -> str:
     return matches[0]
 
 
+def source_candidate_is_eligible(repo: Path, source_sha: str, canonical_sha: str,
+                                 release_policy: dict[str, Any], remote: str = "origin",
+                                 canonical_ref: str = "refs/heads/main") -> bool:
+    required = release_policy.get("required_source_ancestors", [])
+    if not isinstance(required, list) or any(
+        not isinstance(item, str) or not re.fullmatch(r"[a-f0-9]{40,64}", item) for item in required
+    ):
+        return False
+
+    def ancestor(older: str, newer: str) -> bool:
+        return subprocess.run(
+            ["git", "-C", str(repo), "merge-base", "--is-ancestor", older, newer],
+            capture_output=True,
+            check=False,
+        ).returncode == 0
+
+    if not all(ancestor(required_sha, source_sha) for required_sha in required):
+        return False
+    if source_sha == canonical_sha:
+        return True
+    if subprocess.run(
+        ["git", "-C", str(repo), "cat-file", "-e", f"{canonical_sha}^{{commit}}"],
+        capture_output=True,
+        check=False,
+    ).returncode != 0:
+        fetched = subprocess.run(
+            ["git", "-C", str(repo), "fetch", "--no-tags", remote, canonical_ref],
+            capture_output=True,
+            check=False,
+        )
+        if fetched.returncode or subprocess.run(
+            ["git", "-C", str(repo), "cat-file", "-e", f"{canonical_sha}^{{commit}}"],
+            capture_output=True,
+            check=False,
+        ).returncode != 0:
+            return False
+    return release_policy.get("allow_approved_immutable_candidates") is True and ancestor(source_sha, canonical_sha)
+
+
 def sync_primary_workspace(repo: Path, canonical_ref: str, canonical_tip: str) -> dict[str, Any]:
     """Fast-forward the invoking checkout only when it is clean and on canonical."""
     branch = git(repo, "branch", "--show-current", check=False)
@@ -1308,6 +1370,12 @@ def build_canonical(
         if resource_blocked:
             status = "RESOURCE_BLOCKED"
             primary_workspace_sync = {"status": "SKIPPED_RESOURCE_BLOCKED", "head": git(repo, "rev-parse", "HEAD")}
+        elif latest_tip != lease["source_revision"] and source_candidate_is_eligible(
+            Path(str(lease["isolated_workspace"])), lease["source_revision"], latest_tip,
+            policy.get("release", {}), policy["remote"], policy["canonical_ref"],
+        ):
+            status = "BUILD_PASSED"
+            primary_workspace_sync = {"status": "SKIPPED_CANONICAL_ADVANCED", "head": git(repo, "rev-parse", "HEAD")}
         elif latest_tip != lease["source_revision"]:
             status = "STALE_CANONICAL_ADVANCED"
             primary_workspace_sync = {"status": "SKIPPED_CANONICAL_ADVANCED", "head": git(repo, "rev-parse", "HEAD")}

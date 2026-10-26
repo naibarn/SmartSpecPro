@@ -258,6 +258,8 @@ def source_candidate_is_eligible(
     source_sha: str,
     current_sha: str,
     release_policy: dict[str, Any] | None = None,
+    remote: str = "origin",
+    canonical_ref: str = "refs/heads/main",
 ) -> bool:
     """Validate an immutable candidate against canonical history and policy floors.
 
@@ -274,6 +276,14 @@ def source_candidate_is_eligible(
         return False
     if source_sha == current_sha:
         return True
+    git = ["git", "-c", f"safe.directory={workspace.resolve()}", "-C", str(workspace)]
+    available = subprocess.run([*git, "cat-file", "-e", f"{current_sha}^{{commit}}"], capture_output=True, check=False)
+    if available.returncode != 0:
+        fetched = subprocess.run([*git, "fetch", "--no-tags", remote, canonical_ref], capture_output=True, check=False)
+        if fetched.returncode or subprocess.run(
+            [*git, "cat-file", "-e", f"{current_sha}^{{commit}}"], capture_output=True, check=False
+        ).returncode != 0:
+            return False
     if not _is_ancestor(workspace, source_sha, current_sha):
         return False
     if policy.get("allow_approved_immutable_candidates") is True:
@@ -294,7 +304,7 @@ def validate_build_result(
         record.get("status") != "BUILD_PASSED"
         or record.get("source_verified") is not True
         or record.get("canonical_ref") != "refs/heads/main"
-        or record.get("source_revision") != record.get("canonical_tip_after_build")
+        or not isinstance(record.get("canonical_tip_after_build"), str)
         or not isinstance(artifact, dict)
         or not isinstance(workspace_value, str)
         or not isinstance(artifact.get("artifact_path"), str)
@@ -323,6 +333,11 @@ def validate_build_result(
         raise ReleaseError("Build workspace has source changes outside generated dist")
     import tomllib
     policy = tomllib.loads((workspace / ".development-repository.toml").read_text(encoding="utf-8"))["repository"]
+    if not source_candidate_is_eligible(
+        workspace, source_sha, str(record["canonical_tip_after_build"]), policy.get("release", {}),
+        str(policy["remote"]), str(policy["canonical_ref"]),
+    ):
+        raise ReleaseError("Build receipt candidate is not eligible under canonical ancestry/security-floor policy")
     linux_policy = policy.get("platforms", {}).get("linux", {})
     if not isinstance(linux_policy, dict):
         raise ReleaseError("Configured Linux canonical source policy is invalid")
@@ -389,7 +404,8 @@ def prepare_artifact(build_result_path: Path, artifact_store: Path) -> dict[str,
     policy = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
     release_policy = policy.get("release", {})
     current_sha = canonical_tip(workspace, str(policy["remote"]), str(policy["canonical_ref"]))
-    if not source_candidate_is_eligible(workspace, source_sha, current_sha, release_policy):
+    if not source_candidate_is_eligible(workspace, source_sha, current_sha, release_policy,
+                                        str(policy["remote"]), str(policy["canonical_ref"])):
         raise ReleaseError("Release candidate is not eligible: canonical ancestry or required security-floor policy failed")
     source_tree = subprocess.run(
         ["git", "-c", f"safe.directory={workspace.resolve()}", "-C", str(workspace), "rev-parse", f"{source_sha}^{{tree}}"],
@@ -972,7 +988,8 @@ def promote_artifact(
     source_policy = tomllib.loads((workspace / ".development-repository.toml").read_text(encoding="utf-8"))["repository"]
     release_policy = source_policy.get("release", {})
     observed_tip = current_tip(manifest)
-    if not source_candidate_is_eligible(workspace, source_sha, observed_tip, release_policy):
+    if not source_candidate_is_eligible(workspace, source_sha, observed_tip, release_policy,
+                                        str(source_policy["remote"]), str(source_policy["canonical_ref"])):
         _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
         raise ReleaseError("Release candidate rejected: canonical ancestry or required security-floor policy failed")
     if build.get("source_revision") != source_sha:
@@ -992,7 +1009,8 @@ def promote_artifact(
     with lock_path.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
         observed_tip = current_tip(manifest)
-        if not source_candidate_is_eligible(workspace, source_sha, observed_tip, release_policy):
+        if not source_candidate_is_eligible(workspace, source_sha, observed_tip, release_policy,
+                                            str(source_policy["remote"]), str(source_policy["canonical_ref"])):
             _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
             raise ReleaseError("Release candidate rejected while waiting for deployment fence")
         if current_link.is_symlink():
@@ -1125,7 +1143,8 @@ def promote_artifact(
             runtime.restart()
             health = runtime.verify(target, source_sha)
             activation_tip = current_tip(manifest)
-            if not source_candidate_is_eligible(workspace, source_sha, activation_tip, release_policy):
+            if not source_candidate_is_eligible(workspace, source_sha, activation_tip, release_policy,
+                                                str(source_policy["remote"]), str(source_policy["canonical_ref"])):
                 raise ReleaseError("Release candidate rejected because canonical ancestry or security floor changed during activation")
             release_status = json.loads((target / "release-manifest.json").read_text(encoding="utf-8"))
             receipt = {

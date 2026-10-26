@@ -667,6 +667,43 @@ class CanonicalSourceTests(unittest.TestCase):
         self.assertEqual(manifest["source_revision"], result["source_revision"])
         self.assertEqual(manifest["artifact"], result["artifact"])
 
+    def test_central_build_keeps_policy_eligible_immutable_candidate_when_main_advances(self) -> None:
+        from canonical_source import build_canonical
+
+        release_policy = (
+            "\n[repository.release]\n"
+            "allow_approved_immutable_candidates = true\n"
+            f'required_source_ancestors = ["{self.revision}"]\n'
+        )
+        configured_policy = self.policy.read_text(encoding="utf-8") + release_policy
+        self.policy.write_text(configured_policy, encoding="utf-8")
+        (self.seed / ".development-repository.toml").write_text(configured_policy, encoding="utf-8")
+        command("git", "-C", str(self.seed), "add", ".development-repository.toml")
+        command("git", "-C", str(self.seed), "commit", "-m", "enable immutable candidate policy")
+        command("git", "-C", str(self.seed), "push", "origin", "trunk")
+        command_source = (
+            "from pathlib import Path; import subprocess; "
+            "artifact=Path('apps/web/dist/public'); artifact.mkdir(parents=True); "
+            "(artifact/'index.html').write_text('<main>pinned</main>', encoding='utf-8'); "
+            f"root={str(self.seed)!r}; "
+            "Path(root, 'app.txt').write_text('canonical v2\\n', encoding='utf-8'); "
+            "subprocess.run(['git','-C',root,'add','app.txt'],check=True); "
+            "subprocess.run(['git','-C',root,'commit','-m','advance after candidate pin'],check=True); "
+            "subprocess.run(['git','-C',root,'push','origin','trunk'],check=True)"
+        )
+        result = build_canonical(
+            self.shared,
+            command=[sys.executable, "-c", command_source],
+            build_target="fixture",
+            policy_path=self.policy,
+        )
+        self.assertEqual(result["status"], "BUILD_PASSED")
+        self.assertNotEqual(result["source_revision"], result["canonical_tip_after_build"])
+        self.assertEqual(result["primary_workspace_sync"]["status"], "SKIPPED_CANONICAL_ADVANCED")
+        manifest = json.loads(Path(str(result["result_file"])).read_text(encoding="utf-8"))
+        self.assertEqual(manifest["source_revision"], result["source_revision"])
+        self.assertEqual(manifest["canonical_tip_after_build"], result["canonical_tip_after_build"])
+
     def test_build_cli_returns_success_for_completed_pinned_stale_artifact(self) -> None:
         from canonical_source import main
 
