@@ -377,7 +377,20 @@ suite(
     it("publishes, claims and executes the admitted job with fenced authenticated acceptance", async () => {
       fixture.routeLive = false;
       const input = await submission("ingress-claim-fixture");
-      await caller.queueCloudflareProductionIngress(input);
+      // Earlier fixture jobs already occupy this shared class. A valid Owner
+      // operation must persist its exact job/outbox instead of losing admission
+      // to unrelated Python work; execution authorization is checked below.
+      const previousLimit = process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_LONG;
+      process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_LONG = "1";
+      try {
+        await expect(caller.queueCloudflareProductionIngress(input))
+          .resolves.toMatchObject({ jobId: input.submissionId, status: "queued" });
+        await caller.queueCloudflareProductionIngress(input);
+        expect((await client`SELECT count(*)::int AS n FROM worker_job_outbox WHERE "workerJobId"=${input.submissionId}`)[0].n).toBe(1);
+      } finally {
+        if (previousLimit === undefined) delete process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_LONG;
+        else process.env.FEATURE_186_MAX_CONCURRENT_PER_TENANT_LONG = previousLimit;
+      }
       const grant = grants.get(`cf-production-ingress:${input.submissionId}`);
       const { getDb } = await import("../db");
       const db = getDb();

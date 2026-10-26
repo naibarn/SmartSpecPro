@@ -615,6 +615,10 @@ export async function queueProductionIngress(
       createOptions: {
         canonicalJobId: input.submissionId,
         runtimeType: "node_job_worker",
+        // Persist this already approved, deduplicated provider operation before
+        // a shared long-job slot is available. Execution retains grant expiry,
+        // lease/fencing and provider authorization checks.
+        admissionMode: "durable_queue",
       },
     });
   } catch (error) {
