@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Sign in at https://smartaihub.app/chat, open the existing SPEC-224 Workspace for the enrolled SmartSpecPro Runner, confirm the USD 1.00 cap, and press Start Goal. Then resume the returned DevelopmentRun and capture protected dispatch, execution, settlement, reconnect recovery, and independent Final Verify receipts.
-- Manifest generation: 183
+- Next action: Sign in at https://smartaihub.app/chat, open a conversation and its Spec 224 workspace panel, select the existing Windows Runner and SmartSpecPro workspace, leave the bounded cap at USD 1.00, and Start a small reversible task. First report the registered SHA, git status, current origin/main ancestry, and accepted source policy; fast-forward only if clean and provably safe, otherwise stop without changing files. Capture the returned DevelopmentRun ID and continue that same run through protected dispatch, Codex execution, durable audit, settlement, interruption/reconnect recovery, and independent Final Verify.
+- Manifest generation: 186
 
 ## Source-declared status and relationship claims
 
