@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectDevWebDatabase } from "../devWebDatabase.mjs";
+import { selectDevWebDatabase, shouldRunDevSchemaMigrations } from "../devWebDatabase.mjs";
 
 describe("dev web database selection", () => {
   const dev = { SMARTSPEC_ENVIRONMENT: "development", SMARTSPEC_DEV_DATABASE_MODE: "development",
@@ -23,5 +23,22 @@ describe("dev web database selection", () => {
     expect(() => selectDevWebDatabase({ ...dev, SMARTSPEC_DEV_DATABASE_MODE: "production-readonly",
       SMARTSPEC_PRODUCTION_READONLY_DATABASE_URL: "postgresql://smartspec@localhost/smartspec",
       SMARTSPEC_DEV_TENANT_DOMAIN: "smartaihub.app" })).toThrow("dedicated _debug_ro");
+  });
+});
+
+describe("development schema startup repair", () => {
+  it("runs migrations only for the isolated development database", () => {
+    expect(shouldRunDevSchemaMigrations({
+      SMARTSPEC_ENVIRONMENT: "development",
+      SMARTSPEC_DEV_DATABASE_MODE: "development",
+    })).toBe(true);
+    expect(shouldRunDevSchemaMigrations({
+      SMARTSPEC_ENVIRONMENT: "development",
+      SMARTSPEC_DEV_DATABASE_MODE: "production-readonly",
+    })).toBe(false);
+    expect(shouldRunDevSchemaMigrations({
+      SMARTSPEC_ENVIRONMENT: "production",
+      SMARTSPEC_DEV_DATABASE_MODE: "development",
+    })).toBe(false);
   });
 });

@@ -9,7 +9,7 @@ export function selectDevWebDatabase(config) {
     if (!/^postgres(?:ql)?:$/.test(url.protocol) || !/(?:^|_)dev(?:_|$)/.test(url.pathname.slice(1)) || !url.username.endsWith("_dev")) {
       throw new Error("Development mode requires a dedicated _dev database and role");
     }
-    return config;
+    return { ...config, SMARTSPEC_DEV_DATABASE_MODE: mode };
   }
 
   if (mode === "production-readonly") {
@@ -23,4 +23,9 @@ export function selectDevWebDatabase(config) {
   }
 
   throw new Error("Choose development or production-readonly; shared-production is disabled");
+}
+
+export function shouldRunDevSchemaMigrations(config) {
+  return config.SMARTSPEC_ENVIRONMENT === "development" &&
+    (config.SMARTSPEC_DEV_DATABASE_MODE || "development") === "development";
 }

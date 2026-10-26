@@ -11,6 +11,7 @@ import { evaluateMigrationAttempt } from "../server/services/migrationExecutionR
 import { DRIZZLE_MIGRATION_ADVISORY_LOCK } from "../server/services/migrationExecutionLock";
 import { closeDb, getDb } from "../server/db";
 import { hasDatabaseErrorCode } from "./migrationReceiptHelpers";
+import { selectDevMigrationProfile, validateDevActiveSchemaTarget } from "./devActiveSchemaBaseline";
 import {
   evaluateScopedPendingMigrations,
   fingerprintMigrationDatabase,
@@ -31,14 +32,15 @@ const databaseTargetId = process.env.DATABASE_TARGET_ID ?? (() => {
   return `database:${safeIdentity}`;
 })();
 
-async function migrationSet() {
-  const journal = JSON.parse(await readFile(path.join(appRoot, "drizzle/meta/_journal.json"), "utf8")) as { entries?: Array<{ tag?: string; when?: number }> };
+async function migrationSet(profile: "canonical" | "dev-active-baseline" = "canonical") {
+  const migrationDirectory = profile === "canonical" ? "drizzle" : "drizzle/dev-active-baseline/migrations";
+  const journal = JSON.parse(await readFile(path.join(appRoot, migrationDirectory, "meta/_journal.json"), "utf8")) as { entries?: Array<{ tag?: string; when?: number }> };
   if (!Array.isArray(journal.entries) || journal.entries.some(entry =>
     typeof entry.tag !== "string" || !Number.isSafeInteger(entry.when))) {
     throw new Error("DRIZZLE_MIGRATION_JOURNAL_INVALID");
   }
   return Promise.all(journal.entries.map(async entry => {
-    const content = await readFile(path.join(appRoot, "drizzle", `${entry.tag}.sql`));
+    const content = await readFile(path.join(appRoot, migrationDirectory, `${entry.tag}.sql`));
     return { tag: entry.tag as string, when: entry.when as number, hash: createHash("sha256").update(content).digest("hex") };
   }));
 }
@@ -140,17 +142,21 @@ async function writeDbReceipt(db: ReturnType<typeof getDb>, metadata: Record<str
   return true;
 }
 
-function runDrizzle(): Promise<{ code: number | null; signal: NodeJS.Signals | null }> { return runCommand("migrate"); }
+function runDrizzle(profile: "canonical" | "dev-active-baseline"): Promise<{ code: number | null; signal: NodeJS.Signals | null }> {
+  return runCommand("migrate", profile);
+}
 
-function runCommand(command: "generate" | "migrate"): Promise<{ code: number | null; signal: NodeJS.Signals | null }> {
+function runCommand(command: "generate" | "migrate", profile: "canonical" | "dev-active-baseline" = "canonical"): Promise<{ code: number | null; signal: NodeJS.Signals | null }> {
   return new Promise(resolve => {
-    const child = spawn("pnpm", ["exec", "drizzle-kit", command], { cwd: appRoot, env: process.env, stdio: "inherit" });
+    const args = ["exec", "drizzle-kit", command];
+    if (profile === "dev-active-baseline") args.push("--config=drizzle-dev-active-baseline.config.ts");
+    const child = spawn("pnpm", args, { cwd: appRoot, env: process.env, stdio: "inherit" });
     child.once("error", () => resolve({ code: 127, signal: null }));
     child.once("exit", (code, signal) => resolve({ code, signal }));
   });
 }
 
-async function main() {
+async function main(profile: "canonical" | "dev-active-baseline") {
   const isPush = process.argv.includes("push");
   if (isPush) {
     const generated = await runCommand("generate");
@@ -160,7 +166,7 @@ async function main() {
     }
   }
   const db = getDb();
-  const migrations = await migrationSet();
+  const migrations = await migrationSet(profile);
   const scopedExpectedTags = parseExpectedPendingTags(process.env.MIGRATION_EXPECTED_PENDING_TAGS);
   const beforeApplied = await readAppliedHead(db, migrations);
   const base = {
@@ -173,6 +179,7 @@ async function main() {
     environment,
     databaseTargetId,
     migrationProvider: "drizzle",
+    migrationProfile: profile,
     expectedMigrationHead: migrations.at(-1)?.tag ?? null,
     expectedMigrationHash: migrations.at(-1)?.hash ?? null,
     requestedMigrationSet: scopedExpectedTags ?? migrations.map(({ tag }) => tag),
@@ -214,7 +221,7 @@ async function main() {
   }
   let outcome: { code: number | null; signal: NodeJS.Signals | null } = { code: 1, signal: null };
   try {
-    outcome = await runDrizzle();
+    outcome = await runDrizzle(profile);
     const succeeded = outcome.code === 0 && outcome.signal === null;
     const afterApplied = await readAppliedHead(db, migrations);
     const settled = { ...attemptBase, phase: "SETTLED", result: succeeded ? recovering ? "RECOVERED" : "SUCCEEDED" : outcome.signal ? "INTERRUPTED" : "FAILED",
@@ -259,9 +266,43 @@ async function mainWithMigrationLock() {
       process.exitCode = 75;
       return;
     }
-    const migrations = await migrationSet();
-    await assertScopedMigrationRequest(lockClient, migrations);
-    await main();
+    const canonicalMigrations = await migrationSet("canonical");
+    await assertScopedMigrationRequest(lockClient, canonicalMigrations);
+    const identity = await lockClient.query<{ database_name: string; application_table_count: string }>(
+      `SELECT current_database() AS database_name,
+        (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+           AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.deptype = 'e'))::text AS application_table_count`,
+    );
+    const database = identity.rows[0];
+    if (!database) throw new Error("MIGRATION_DATABASE_IDENTITY_UNAVAILABLE");
+    const ledgerCheck = await lockClient.query<{ exists: boolean }>(
+      "SELECT to_regclass('drizzle.__drizzle_migrations') IS NOT NULL AS exists",
+    );
+    const devBaselineMigrations = await migrationSet("dev-active-baseline");
+    const existingLedger = ledgerCheck.rows[0]?.exists
+      ? (await lockClient.query<{ hash: string; created_at: number | string | null }>(
+          "SELECT hash, created_at FROM drizzle.__drizzle_migrations ORDER BY created_at ASC NULLS FIRST, id ASC",
+        )).rows
+      : [];
+    const migrationCount = existingLedger.length;
+    const baselineApplied = existingLedger.some(row => row.hash === devBaselineMigrations[0]?.hash);
+    let profile: "canonical" | "dev-active-baseline" = "canonical";
+    const devBaselineWasRequested = process.env.SMARTSPEC_DEV_DATABASE_MODE === "development" ||
+      process.env.SMARTSPEC_ENVIRONMENT === "development";
+    if (devBaselineWasRequested) validateDevActiveSchemaTarget(process.env);
+    if (devBaselineWasRequested) {
+      profile = selectDevMigrationProfile({
+        nodeEnv: process.env.NODE_ENV ?? "",
+        environment: process.env.SMARTSPEC_ENVIRONMENT ?? "",
+        databaseMode: process.env.SMARTSPEC_DEV_DATABASE_MODE ?? "",
+        databaseName: database.database_name,
+        applicationTableCount: Number(database.application_table_count),
+        migrationCount,
+        baselineApplied,
+      });
+    }
+    await main(profile);
   } finally {
     if (lockAcquired) {
       try {

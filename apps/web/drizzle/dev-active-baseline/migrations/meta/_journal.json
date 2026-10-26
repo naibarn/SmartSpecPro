@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1792909880002,
+      "tag": "0415_dev_active_schema_baseline",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792909880003,
+      "tag": "0416_dev_active_security_reconciliation",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792909880004,
+      "tag": "0417_dev_runtime_metadata_parity",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793006544729,
+      "tag": "0418_dev_active_shared_runtime_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793006544730,
+      "tag": "0419_dev_vector_provider_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793006544731,
+      "tag": "0420_dev_langgraph_checkpoint_ownership",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793006784762,
+      "tag": "0421_dev_runtime_source_parity",
+      "breakpoints": true
+    }
+  ]
+}

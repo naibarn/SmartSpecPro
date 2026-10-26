@@ -140,7 +140,6 @@ export const test = baseTest.extend<{ uatRole: UatRole }>({
         name: COOKIE_NAME,
         value: session.token,
         url: uatOrigin.origin,
-        path: "/",
         expires: Math.floor(session.expiresAt / 1000),
         httpOnly: true,
         secure: uatOrigin.protocol === "https:",

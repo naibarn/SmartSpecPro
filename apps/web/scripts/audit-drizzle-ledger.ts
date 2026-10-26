@@ -7,10 +7,30 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import pg from "pg";
+import { validateDevActiveSchemaTarget } from "./devActiveSchemaBaseline";
 
 type JournalEntry = { idx: number; when: number; tag: string };
 type LedgerRow = { id: number; hash: string; created_at: number | string | null };
 type SqlFile = { name: string; hash: string };
+type DrizzleLedgerProfile = "canonical" | "dev-active-baseline";
+
+export function selectDrizzleLedgerProfile(input: {
+  environment: NodeJS.ProcessEnv;
+  databaseUrl: string;
+}): DrizzleLedgerProfile {
+  const { environment, databaseUrl } = input;
+  const requested = [
+    environment.NODE_ENV === "development",
+    environment.SMARTSPEC_ENVIRONMENT === "development",
+    environment.SMARTSPEC_DEV_DATABASE_MODE === "development",
+  ];
+  if (requested.every(Boolean)) {
+    validateDevActiveSchemaTarget({ ...environment, DATABASE_URL: databaseUrl });
+    return "dev-active-baseline";
+  }
+  if (requested.some(Boolean)) throw new Error("DEV_ACTIVE_SCHEMA_TARGET_REQUIRED");
+  return "canonical";
+}
 
 export function classifyDrizzleLedger(
   journal: JournalEntry[],
@@ -87,14 +107,17 @@ async function main() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL_REQUIRED");
   const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-  const journalBytes = await readFile(path.join(appRoot, "drizzle/meta/_journal.json"));
+  const profile = selectDrizzleLedgerProfile({ environment: process.env, databaseUrl });
+  const migrationDirectory = profile === "canonical" ? "drizzle" : "drizzle/dev-active-baseline/migrations";
+  const journalPath = path.join(appRoot, migrationDirectory, "meta/_journal.json");
+  const journalBytes = await readFile(journalPath);
   const journal = JSON.parse(journalBytes.toString("utf8")) as { entries: JournalEntry[] };
   const sourceSha = process.env.GITHUB_SHA ?? process.env.SOURCE_SHA ?? execFileSync("git", ["rev-parse", "HEAD"], { cwd: appRoot, encoding: "utf8" }).trim();
   const journalHash = createHash("sha256").update(journalBytes).digest("hex");
-  const fileNames = (await readdir(path.join(appRoot, "drizzle"))).filter(name => name.endsWith(".sql"));
+  const fileNames = (await readdir(path.join(appRoot, migrationDirectory))).filter(name => name.endsWith(".sql"));
   const sqlFiles = await Promise.all(fileNames.map(async name => ({
     name,
-    hash: createHash("sha256").update(await readFile(path.join(appRoot, "drizzle", name))).digest("hex"),
+    hash: createHash("sha256").update(await readFile(path.join(appRoot, migrationDirectory, name))).digest("hex"),
   })));
   const targetUrl = new URL(databaseUrl);
   const databaseTargetId = createHash("sha256").update(`${targetUrl.host}${targetUrl.pathname}`).digest("hex").slice(0, 20);
@@ -110,7 +133,8 @@ async function main() {
       schema: "drizzle-ledger-audit.v1",
       observedAt: new Date().toISOString(),
       sourceSha,
-      journalArtifact: { path: "apps/web/drizzle/meta/_journal.json", sha256: journalHash },
+      migrationProfile: profile,
+      journalArtifact: { path: `apps/web/${migrationDirectory}/meta/_journal.json`, sha256: journalHash },
       databaseTargetId,
       access: "read_only",
       ...report,

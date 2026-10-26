@@ -137,7 +137,7 @@ async def seed_default_tenant(db: AsyncSession) -> bool:
             "isActive", status, plan,
             created_at, updated_at, "createdAt", "updatedAt"
         ) VALUES (
-            :id, :name, :slug, :primary_domain, :domains::json,
+            :id, :name, :slug, :primary_domain, CAST(:domains AS json),
             true, 'ACTIVE', 'ENTERPRISE',
             NOW(), NOW(), NOW(), NOW()
         )

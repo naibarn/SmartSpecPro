@@ -75,6 +75,20 @@ def _create_engine():
     )
 
 
+def _schema_tables_for_init(tables, *, environment: str, database_mode: str | None):
+    """Keep the LangGraph checkpointer table owned by its PostgreSQL saver.
+
+    The legacy Python execution model also called its unrelated table
+    ``checkpoints``. Creating that model first prevents the LangGraph saver
+    from installing its durable checkpoint schema in development databases.
+    That retired execution table is not part of the active schema bootstrap.
+    """
+    selected = list(tables)
+    if environment == "development" and database_mode == "development":
+        return [table for table in selected if table.name != "checkpoints"]
+    return selected
+
+
 engine = _create_engine()
 
 # Create async session factory
@@ -165,8 +179,13 @@ async def init_db():
         # Live browser runtime
         live_browser,
     )
+    tables = _schema_tables_for_init(
+        Base.metadata.sorted_tables,
+        environment=settings.ENVIRONMENT,
+        database_mode=os.environ.get("SMARTSPEC_DEV_DATABASE_MODE"),
+    )
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn, tables=tables))
     logger.info(
         "database_initialized",
         url=sanitize_db_url(settings.DATABASE_URL)

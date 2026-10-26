@@ -5,7 +5,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, execFileSync } from "node:child_process";
 import { parse } from "dotenv";
-import { selectDevWebDatabase } from "./devWebDatabase.mjs";
+import { selectDevWebDatabase, shouldRunDevSchemaMigrations } from "./devWebDatabase.mjs";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = resolve(
@@ -45,9 +45,28 @@ const dirty = execFileSync(
   { cwd: appRoot, encoding: "utf8" }
 ).trim();
 const revision = `${sourceSha}${dirty ? "-dirty" : ""}`;
+const hostRuntimeEnv = Object.fromEntries(
+  ["PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "XDG_RUNTIME_DIR"]
+    .filter(key => process.env[key] !== undefined)
+    .map(key => [key, process.env[key]])
+);
 console.log(
   `[dev:web] revision=${revision} port=${config.PORT} databaseMode=${config.SMARTSPEC_DEV_DATABASE_MODE || "isolated"} configuration=${envFile}`
 );
+if (shouldRunDevSchemaMigrations(config)) {
+  console.log("[dev:web] Checking and repairing the guarded development schema before startup...");
+  execFileSync(process.execPath, ["--import", "tsx", "scripts/db-migrate-with-receipt.ts", "migrate"], {
+    cwd: appRoot,
+    stdio: "inherit",
+    env: {
+      ...hostRuntimeEnv,
+      ...config,
+      NODE_ENV: "development",
+      SMARTSPEC_ENVIRONMENT: "development",
+      SMARTSPEC_DEV_DATABASE_MODE: "development",
+    },
+  });
+}
 const child = spawn(
   process.execPath,
   ["--import", "tsx", "server/_core/index.ts"],
@@ -55,20 +74,7 @@ const child = spawn(
     cwd: appRoot,
     stdio: "inherit",
     env: {
-      ...Object.fromEntries(
-        [
-          "PATH",
-          "HOME",
-          "USER",
-          "LOGNAME",
-          "LANG",
-          "LC_ALL",
-          "TMPDIR",
-          "XDG_RUNTIME_DIR",
-        ]
-          .filter(key => process.env[key] !== undefined)
-          .map(key => [key, process.env[key]])
-      ),
+      ...hostRuntimeEnv,
       ...config,
       NODE_ENV: "development",
       NODE_OPTIONS: "--max-old-space-size=4096",

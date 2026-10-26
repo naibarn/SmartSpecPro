@@ -1,0 +1,64 @@
+{
+  "schema": "dev-active-schema-baseline.v1",
+  "generatedFrom": "current Drizzle schema and explicitly listed active security migrations",
+  "scope": {
+    "tableCount": 583,
+    "enumCount": 187,
+    "securityStatementCount": 55
+  },
+  "inputDigests": [
+    {
+      "path": "drizzle/schema.ts",
+      "sha256": "8b67318f6e552e1751c330537399091407d3d2af6cd81d75534fb4df2eb4742f"
+    },
+    {
+      "path": "drizzle/0139_private_personal_finance_security_backstop.sql",
+      "sha256": "78ed57eec64a15edda37f5720646824edad3169042b8661be4673ca57e7499a7"
+    },
+    {
+      "path": "drizzle/0141_private_personal_finance_counterparties.sql",
+      "sha256": "0a129a1cecba8dc7ec340693e5daa06dcfc8f1476d413445b219ce41fcdeae27"
+    },
+    {
+      "path": "drizzle/0142_private_personal_finance_payment_instruments.sql",
+      "sha256": "424959bd807b112063abba722dd7813ef6f8acd1416dbf08716959a9bc0fddc6"
+    },
+    {
+      "path": "drizzle/0353_spec231_inference_plans_attempts.sql",
+      "sha256": "56f6fe82eb8ee73ce6b28a42be41d8c5f4aaf3c859dca2ad54597bfd930f969a"
+    },
+    {
+      "path": "drizzle/0354_spec231_policy_authority.sql",
+      "sha256": "4e6d81fa21b628be130c0c7f4c5513f1554f6d5cc49ad7ffa51077bb26a38bb6"
+    },
+    {
+      "path": "drizzle/0355_spec231_qualification_profiles.sql",
+      "sha256": "7614f14dc25b49708058873586d00a890f4ee6e293b94e2930db5fe55dc46493"
+    },
+    {
+      "path": "drizzle/0356_spec231_inference_probe_runs.sql",
+      "sha256": "792883ac6350ab4247bb4dfe7b311549e8a1a318179f45f4dd85598b31a5801e"
+    },
+    {
+      "path": "drizzle/0357_spec231_policy_revision_rollback_events.sql",
+      "sha256": "803883a8d860a99c600fe9f10653fc14b2afc35694404be4336c77f5572f5b04"
+    },
+    {
+      "path": "drizzle/0358_spec231_signed_rollout_bundles.sql",
+      "sha256": "3601ae7c93e736c9cb545b5044244f7464849097f1678454fea066680af13561"
+    },
+    {
+      "path": "drizzle/0381_spec265_266_durable_foundation.sql",
+      "sha256": "6cae14a0b4b5bca2379f4c5f4933c4391b27f301903efdcfedcf520ea02bb887"
+    },
+    {
+      "path": "drizzle/0388_worker_job_event_context.sql",
+      "sha256": "086b44664c2491e4bc275dba21a2d060e647d4732eb074f1bd06f43856c09b72"
+    },
+    {
+      "path": "drizzle/0396_project_wiki_package_candidate.sql",
+      "sha256": "39a9ad0483ec88e488326f9c6007ee776efbc9a179abf6d79202d0c5ded4245b"
+    }
+  ],
+  "migrationSha256": "5d93f474cf2d01bc68b42b5bfb3a17b505dc4be3b070b4b1dfded96b9b1c5bc0"
+}
