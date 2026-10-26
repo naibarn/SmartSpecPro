@@ -403,7 +403,7 @@ export function createCloudflareStagingArtifactAuthority(input: {
   async function resolveModules(artifactRef: string, expectedSourceSha?: string) {
     const manifest = await resolveManifest(artifactRef, expectedSourceSha);
     if (!manifest) return null;
-    const moduleFiles: CloudflareStagingBundle["moduleFiles"] = {};
+    const moduleFiles: Record<string, { contentType: string; bytes: Uint8Array }> = {};
     const entries = Object.entries(manifest.moduleFiles);
     for (let offset = 0; offset < entries.length; offset += 8) {
       const batch = await Promise.all(entries.slice(offset, offset + 8).map(async ([name, file]) => ({
