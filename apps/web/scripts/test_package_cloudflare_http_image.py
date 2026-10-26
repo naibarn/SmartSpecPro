@@ -62,6 +62,8 @@ class HttpImageTest(unittest.TestCase):
         authority.assert_called_once_with(self.root / "receipt.json")
         self.assertFalse((self.root / "image/runtime/node_modules/fixture/.env").exists())
         self.assertTrue(dependency_env.exists())
+        self.assertEqual((self.root / "image/check-node-version.mjs").read_bytes(), (Path(__file__).parents[3] / "scripts/check-node-version.mjs").read_bytes())
+        self.assertIn("RUN node /app/scripts/check-node-version.mjs", (self.root / "image/Containerfile").read_text())
         self.assertFalse(result["publish"])
         self.assertEqual(result["providerMutations"], 0)
         self.assertTrue((self.runtime / "dist/public/index.html").exists())

@@ -10,7 +10,7 @@ import { withCloudflareStagingLeaseHeartbeat } from "./cloudflareStagingLeaseHea
 import { assertHttpCandidateOwner, resolveHttpCandidatePackage } from "./cloudflareHttpCandidatePreparation";
 import { readHttpRuntimeIntent } from "./cloudflareHttpRuntimeAdmission";
 import { getHttpRuntimePlan, loadHttpRuntimeEnvironments, planHttpApplicationRelations } from "./cloudflareHttpRuntimePlan";
-import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT, httpRuntimeJobSchema } from "./cloudflareHttpRuntimeContract";
+import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT, httpRuntimeJobSchema, httpRuntimeDiagnosticSchema } from "./cloudflareHttpRuntimeContract";
 import { CANDIDATE_MODULE } from "./cloudflareHttpCandidateContract";
 import { prepareApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
 import { composeHttpRuntime } from "./cloudflareHttpRuntimeComposition";
@@ -115,15 +115,28 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
     if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(subdomain?.subdomain ?? "")) fail("WORKERS_SUBDOMAIN_INVALID");
     const candidateOrigin = `https://${plan.candidate.workerName}.${subdomain.subdomain}.workers.dev`;
     const canaryToken = randomBytes(32).toString("hex");
-    const probe = async (path: string, method = "GET") => {
+    const probe = async (path: string, method = "GET", timeoutMs = 160_000) => {
       await assertAuthorized();
       const response = await fetch(`${candidateOrigin}/_ops/application-canary/${path}`, { method,
         headers: { "x-smartaihub-application-canary-token": canaryToken, accept: "application/json" },
-        redirect: "error", cache: "no-store", signal: AbortSignal.timeout(160_000) });
+        redirect: "error", cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
       let json: any; try { json = await response.json(); } catch { json = null; }
       // Raw response bodies may include application detail; only assertions
       // and these narrowly selected fields leave the process.
       return { status: response.status, colo: response.headers.get("cf-ray")?.split("-").at(-1), json };
+    };
+    const captureDiagnostics = async () => {
+      const snapshots = [];
+      for (const runtime of ["node", "python"] as const) {
+        try {
+          const result = await probe(`${runtime}/status`, "GET", 15_000), value = result.json;
+          const parsed = httpRuntimeDiagnosticSchema.safeParse({ runtime, http: result.status,
+            running: value?.running, starts: value?.starts, reservedSeconds: value?.reservedSeconds,
+            configurationMatches: value?.configurationMatches, failure: value?.failure, containerState: value?.containerState });
+          snapshots.push(parsed.success ? parsed.data : { runtime, http: result.status });
+        } catch { snapshots.push({ runtime, http: 0 }); }
+      }
+      state.runtimeDiagnostics = snapshots;
     };
     let directory: string | undefined, roleReceipt: unknown, runtimeReceipt: Record<string, any> | undefined, failure: unknown;
     const cleanup: Record<string, any> = { nodeStopped: false, pythonStopped: false, candidateRestored: false, roleLoginRevoked: false, m2Preserved: false };
@@ -204,7 +217,12 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         probes: results, diagnostics, runtimeBootVerified: true, authenticatedApplicationAcceptance: false, runtimeAcceptance: false,
         pending: ["authenticated-positive-and-cross-tenant-API", "Gateway-billing-jobs-recovery", "independent-native-activation"],
         trafficMutation: false, dnsMutation: false, imagePublication: false, m3Accepted: false };
-    } catch (error) { failure = error; state.failure = safeCode(error); }
+    } catch (error) {
+      failure = error; state.failure = safeCode(error);
+      // Read the existing DO diagnostics BEFORE restoring the Candidate, when
+      // its exact private capability/profile is still available. No VM starts.
+      if (state.deploymentId) await captureDiagnostics();
+    }
     finally {
       // The same bounded intent explicitly authorizes compensation. It still
       // requires a valid canonical lease/intent; expiry is not bypassed.

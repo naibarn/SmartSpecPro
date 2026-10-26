@@ -7,6 +7,8 @@ ARG SOURCE_SHA
 LABEL org.opencontainers.image.revision=${SOURCE_SHA}
 WORKDIR /app
 COPY --chown=node:node runtime/ /app/
+COPY --chown=node:node check-node-version.mjs /app/scripts/check-node-version.mjs
+RUN node /app/scripts/check-node-version.mjs
 COPY --from=connector /usr/local/bin/cloudflared /usr/local/bin/cloudflared
 # cloudflared verifies the public Access HTTPS endpoint before DB TLS starts.
 # node:slim has no system trust bundle; retain the pinned connector's roots.

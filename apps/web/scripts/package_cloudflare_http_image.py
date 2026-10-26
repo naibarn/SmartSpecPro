@@ -47,7 +47,7 @@ def validate_runtime(root: Path, source_sha: str) -> None:
 
 def packager_source_sha(owned: list[str] | None = None) -> str:
     root = Path(__file__).parents[3]
-    owned = owned or ["apps/web/CloudflareHttp.Containerfile", "apps/web/scripts/package_cloudflare_http_image.py", "apps/web/scripts/cloudflare-http-entrypoint.mjs", "apps/web/scripts/bundle-cloudflare-http-api.mjs", "apps/web/scripts/prune-cloudflare-http-dependencies.mjs", "apps/web/scripts/build_cloudflare_http_image.py"]
+    owned = owned or ["apps/web/CloudflareHttp.Containerfile", "apps/web/scripts/package_cloudflare_http_image.py", "apps/web/scripts/cloudflare-http-entrypoint.mjs", "apps/web/scripts/bundle-cloudflare-http-api.mjs", "apps/web/scripts/prune-cloudflare-http-dependencies.mjs", "apps/web/scripts/build_cloudflare_http_image.py", "scripts/check-node-version.mjs", ".nvmrc"]
     dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain=v1", "--", *owned], capture_output=True, text=True, check=True).stdout
     if dirty:
         raise ReleaseError("HTTP_IMAGE_PACKAGER_SOURCE_DIRTY")
@@ -81,6 +81,9 @@ def prepare_context(build_result: Path, output: Path, base_image: str, connector
             raise ReleaseError("HTTP_IMAGE_API_BUNDLE_FAILED")
         bundle_receipt = json.loads(bundle.stdout)
         shutil.copyfile(Path(__file__).parents[1] / "CloudflareHttp.Containerfile", stage / "Containerfile")
+        # Run only the canonical version guard while BUILDING the image. Do not
+        # boot the application, read secrets or discover this mismatch on paid VMs.
+        shutil.copyfile(Path(__file__).parents[3] / "scripts/check-node-version.mjs", stage / "check-node-version.mjs")
         shutil.copyfile(Path(__file__).with_name("cloudflare-http-entrypoint.mjs"), stage / "cloudflare-http-entrypoint.mjs")
         proof = {"schemaVersion": 1, "packagerSourceSha": packager_sha, "connectorImage": connector_image, "sourceSha": record["source_revision"], "canonicalArtifactDigest": record["artifact"]["artifact_digest"],
                  "baseImage": base_image, "runtime": "node-http", "containerPolicy": "on-demand", "port": 3000,

@@ -4,7 +4,7 @@ import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertHttpCandidateOwner } from "./cloudflareHttpCandidatePreparation";
 import { getHttpRuntimePlan } from "./cloudflareHttpRuntimePlan";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { HTTP_RUNTIME_CATEGORY, HTTP_RUNTIME_CONTRACT, HTTP_RUNTIME_JOB } from "./cloudflareHttpRuntimeContract";
+import { HTTP_RUNTIME_CATEGORY, HTTP_RUNTIME_CONTRACT, HTTP_RUNTIME_JOB, httpRuntimeDiagnosticSchema } from "./cloudflareHttpRuntimeContract";
 import { decrypt } from "./crypto";
 
 type Scope = { tenantId: string; projectId: string; actorUserId: number };
@@ -19,13 +19,16 @@ export async function readHttpRuntimeOperation(db: DrizzleDB, scope: Scope) {
     eq(workerJobs.requestedByUserId, scope.actorUserId), sql`${workerJobs.inputJson}->>'projectId'=${scope.projectId}`))
     .orderBy(sql`${workerJobs.createdAt} DESC`).limit(1);
   if (!job) return null;
-  let checkpoint: { stage: string; failure?: string; deploymentId?: string; versionId?: string; rolePrepared: boolean; probes: unknown; cleanup: unknown } | null = null;
+  let checkpoint: { stage: string; failure?: string; deploymentId?: string; versionId?: string; rolePrepared: boolean; probes: unknown; cleanup: unknown; runtimeDiagnostics?: unknown } | null = null;
   const [saved] = await db.select().from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_production_native_runtime_checkpoints"), eq(systemSettings.key, job.id))).limit(1);
   if (saved?.isSensitive && saved.value && saved.updatedBy === scope.actorUserId) {
     try { const value = JSON.parse(decrypt(saved.value));
       if (value.jobId === job.id && value.tenantId === scope.tenantId && value.projectId === scope.projectId && value.actorUserId === scope.actorUserId)
         checkpoint = { stage: value.stage, failure: value.failure, deploymentId: value.deploymentId, versionId: value.versionId,
-          rolePrepared: value.rolePrepared === true, probes: value.probes, cleanup: value.cleanup };
+          rolePrepared: value.rolePrepared === true, probes: value.probes, cleanup: value.cleanup,
+          runtimeDiagnostics: Array.isArray(value.runtimeDiagnostics) ? value.runtimeDiagnostics.slice(0, 2).flatMap((entry: unknown) => {
+            const parsed = httpRuntimeDiagnosticSchema.safeParse(entry); return parsed.success ? [parsed.data] : [];
+          }) : undefined };
     } catch { /* No ciphertext/driver error is exposed through diagnostics. */ }
   }
   return { jobId: job.id, candidateJobId: String(job.inputJson?.candidateJobId), status: job.status, attempt: job.attempt, maxAttempts: job.maxAttempts,

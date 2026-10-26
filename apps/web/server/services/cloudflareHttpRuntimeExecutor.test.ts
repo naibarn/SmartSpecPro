@@ -66,7 +66,9 @@ beforeEach(() => {
     if (path.includes("application-canary")) {
       expect(init.headers["x-smartaihub-application-canary-token"]).toHaveLength(64);
       if (path.endsWith("/stop")) return Response.json({ stopped: true });
-      if (path.endsWith("/status")) return Response.json({ running: true, starts: 1, reservedSeconds: 600, configurationMatches: true, failure: null });
+      if (path.endsWith("/status")) return Response.json({ running: !state.probeFailure, starts: 1, reservedSeconds: 600, configurationMatches: true,
+        failure: state.probeFailure ? { code: "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY", kind: "Error", phase: "readiness", at: Date.now(), exitCode: 1 } : null,
+        token: "never-log-provider-token", environment: { PASSWORD: "never-log-runtime-password" } });
       if (path.endsWith("node/auth")) return Response.json({ result: { data: { json: null } } });
       if (path.endsWith("python/auth")) return Response.json({ error: "unauthorized" }, { status: 401 });
       return Response.json({ status: "ready" }, { status: state.probeFailure ? 503 : 200, headers: { "cf-ray": "fixture-SIN" } });
@@ -134,6 +136,13 @@ describe("canonical bounded existing-Candidate runtime executor", () => {
   it("compensates an actual failed health probe and keeps the precise sanitized error", async () => {
     state.probeFailure = true; await expect(run()).rejects.toThrow("HTTP_RUNTIME_PROBE_NODE_HEALTH_HTTP_503");
     expect(state.phase).toBe("baseline"); expect(state.commands).toHaveBeenCalledTimes(2);
+    const saved = JSON.parse(state.checkpoint.value.slice("encrypted:".length));
+    expect(saved.runtimeDiagnostics).toHaveLength(2);
+    expect(saved.runtimeDiagnostics[0]).toMatchObject({ runtime: "node", http: 200, starts: 1,
+      failure: { code: "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY", phase: "readiness", exitCode: 1 } });
+    expect(JSON.stringify(saved.runtimeDiagnostics)).not.toMatch(/never-log|PASSWORD|environment/);
+    const calls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
+    expect(calls.findIndex(url => url.endsWith("node/status"))).toBeLessThan(calls.findIndex(url => url.endsWith("node/stop")));
     expect(state.updates).toHaveBeenCalledWith(expect.objectContaining({ isSensitive: true, valueJson: null }));
   });
   it("reconciles a successful provider write with lost CLI response without deploying again", async () => {

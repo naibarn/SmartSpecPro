@@ -14,7 +14,7 @@ from package_cloudflare_http_image import prepare_context as prepare_node
 from package_cloudflare_python_http_image import prepare_context as prepare_python
 
 BASES = {
-    "node-http": "docker.io/library/node@sha256:16d364eebf6b62da439dc993d9b80940c78b0ca38438452f011ab9a25c752644",
+    "node-http": "docker.io/library/node@sha256:ea11b74b986d520137cdef9a5346e447a00f275ecc4abc0055b7151226231e09",
     "python-http": "docker.io/library/python@sha256:f040863673aea2570c3ff6a5c3fb4c673a016cbc5375005ad145915922b6b78a",
 }
 CONNECTOR = "docker.io/cloudflare/cloudflared@sha256:e6aba36f47b17ba21c62404f826e7be09f089dc0d8978732752204a75d9d7375"
@@ -50,6 +50,16 @@ def inspect_built_image(value: dict, runtime: str, source_sha: str, job_id: str,
         or type(value.get("Size")) is not int or not 0 < value["Size"] <= 1073741824
         or not isinstance(value.get("RootFS", {}).get("Layers"), list) or not 0 < len(value["RootFS"]["Layers"]) <= 40):
         raise ReleaseError("HTTP_IMAGE_BUILD_READBACK_DENIED")
+    if runtime == "node-http":
+        # A successful build/registry push is not runtime compatibility. The
+        # pinned base must satisfy the same canonical Node minimum as the app.
+        minimum = tuple(map(int, (Path(__file__).parents[3] / ".nvmrc").read_text().strip().split(".")))
+        versions = [item.removeprefix("NODE_VERSION=") for item in config.get("Env", []) if item.startswith("NODE_VERSION=")]
+        if len(versions) != 1 or not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", versions[0]):
+            raise ReleaseError("HTTP_IMAGE_NODE_RUNTIME_UNSUPPORTED")
+        version = tuple(map(int, versions[0].split(".")))
+        if version < minimum or version[0] != minimum[0]:
+            raise ReleaseError("HTTP_IMAGE_NODE_RUNTIME_UNSUPPORTED")
     return {"imageId": value["Id"], "imageBytes": value["Size"], "layers": len(value["RootFS"]["Layers"]),
             "platform": "linux/amd64", "sourceSha": source_sha, "runtime": runtime, "jobId": job_id, "planDigest": plan_digest}
 

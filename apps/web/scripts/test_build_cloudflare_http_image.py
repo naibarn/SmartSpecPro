@@ -36,10 +36,19 @@ class FixedHttpImageBuildTests(unittest.TestCase):
 
     def test_readback_requires_exact_source_job_plan_and_fixed_nonroot_entrypoint(self):
         value = {"Id": "sha256:" + "d" * 64, "Architecture": "amd64", "Os": "linux", "Size": 700_000_000,
-                 "RootFS": {"Layers": ["fixture"]}, "Config": {"User": "node", "Cmd": ["node", "--import=tsx", "scripts/cloudflare-http-entrypoint.mjs"],
+                 "RootFS": {"Layers": ["fixture"]}, "Config": {"Env": ["NODE_VERSION=22.23.4"], "User": "node", "Cmd": ["node", "--import=tsx", "scripts/cloudflare-http-entrypoint.mjs"],
                  "Labels": {"org.opencontainers.image.revision": SHA, "org.smartaihub.packager.revision": SHA,
                             "org.smartaihub.provision.job": JOB, "org.smartaihub.provision.plan": PLAN}}}
         self.assertEqual(inspect_built_image(value, "node-http", SHA, JOB, PLAN)["imageBytes"], 700_000_000)
+        for version in ("22.22.3", "23.0.0", "22.23.4-invalid", ""):
+            changed = deepcopy(value)
+            changed["Config"]["Env"] = [f"NODE_VERSION={version}"] if version else []
+            with self.assertRaisesRegex(ReleaseError, "NODE_RUNTIME_UNSUPPORTED"):
+                inspect_built_image(changed, "node-http", SHA, JOB, PLAN)
+        changed = deepcopy(value)
+        changed["Config"]["Env"].append("NODE_VERSION=22.22.3")
+        with self.assertRaisesRegex(ReleaseError, "NODE_RUNTIME_UNSUPPORTED"):
+            inspect_built_image(changed, "node-http", SHA, JOB, PLAN)
         for field, replacement in (("User", "root"), ("Cmd", ["sh"]), ("Labels", {})):
             changed = deepcopy(value)
             changed["Config"][field] = replacement
