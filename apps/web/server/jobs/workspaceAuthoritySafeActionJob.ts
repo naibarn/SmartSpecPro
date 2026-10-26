@@ -5,6 +5,7 @@ import path from "node:path";
 
 import { enqueueWorkspaceAuthorityAuditEvent } from "./workspaceAuthorityAuditJob";
 import { canonicalGithubRepository } from "./workspaceAuthorityGithub";
+import { workspaceAuthorityBindingDigest } from "../services/workspaceAuthorityBinding";
 import {
   resolveOwnedWorkspaceAuthority,
   type WorkspaceAuthorityAction,
@@ -23,6 +24,7 @@ type ActionInput = {
   payload: Record<string, unknown>;
   authority: {
     runnerId: string;
+    bindingDigest?: string | null;
     snapshotRevision: string | null;
     snapshotObservedAt: string | null;
     snapshotExpiresAt: string | null;
@@ -398,7 +400,10 @@ export async function executeWorkspaceAuthoritySafeAction(
     currentRunnerAuthority.snapshotRevision !== input.authority.snapshotRevision ||
     (input.authority.snapshotRevision === null &&
       currentRunnerAuthority.snapshotObservedAt !== input.authority.snapshotObservedAt);
-  if (authorityChanged) throw new Error("WORKSPACE_ACTION_AUTHORITY_CHANGED");
+  const stableSyncBinding = ["SYNC_WORKSPACE_SAFELY", "VERIFY_PROJECT_CONVERGENCE", "INSPECT_LOCAL_CHANGES", "OPEN_CANONICAL_WORKSPACE"].includes(input.action) &&
+    Boolean(input.workspaceId) && /^[a-f0-9]{64}$/.test(input.authority.bindingDigest ?? "") &&
+    workspaceAuthorityBindingDigest(currentRunnerAuthority) === input.authority.bindingDigest;
+  if (authorityChanged && !stableSyncBinding) throw new Error("WORKSPACE_ACTION_AUTHORITY_CHANGED");
 
   const repository = requiredRepository(env);
   const resolved = await executeAuthority(repository, env, ["resolve"]);

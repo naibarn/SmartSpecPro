@@ -5,6 +5,7 @@ import { runnerNodes, workerJobs } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { workspaceFactsFromSnapshot } from "./spec224WorkspaceSpecSet";
+import { workspaceAuthorityBindingDigest } from "./workspaceAuthorityBinding";
 
 export const WORKSPACE_AUTHORITY_ACTIONS = [
   "SYNC_WORKSPACE_SAFELY",
@@ -121,6 +122,7 @@ export async function enqueueWorkspaceAuthorityAction(input: WorkspaceAuthorityA
           payload: input.payload,
           authority: {
             runnerId: authority.runnerId,
+            bindingDigest: input.workspaceId ? workspaceAuthorityBindingDigest(authority) : null,
             snapshotRevision: authority.snapshotRevision,
             snapshotObservedAt: authority.snapshotObservedAt,
             snapshotExpiresAt: authority.snapshotExpiresAt,

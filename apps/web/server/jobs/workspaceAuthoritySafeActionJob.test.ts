@@ -9,6 +9,7 @@ import {
   executeWorkspaceAuthoritySafeAction,
   readRequiredChecks,
 } from "./workspaceAuthoritySafeActionJob";
+import { workspaceAuthorityBindingDigest } from "../services/workspaceAuthorityBinding";
 
 const env = { SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY: "/canonical/repo" } as NodeJS.ProcessEnv;
 function request(overrides: Record<string, unknown> = {}) {
@@ -39,6 +40,34 @@ beforeEach(() => {
 });
 
 describe("workspace authority safe action executor", () => {
+  const stableAuthority = () => ({ runnerId: "runner-a", ownerUserId: 42, activeSessionId: "session-a",
+    workspace: { workspaceId: "ws-a", projectId: "project-a", repositoryId: "repo-a", gitHead: "a".repeat(40),
+      gitBranch: "main", dirty: false, contentFingerprint: "b".repeat(64) } });
+  it("allows a fresh heartbeat for a read/sync action only when all captured workspace facts remain identical", async () => {
+    const current = { ...stableAuthority(), snapshotRevision: "new-heartbeat" };
+    mocks.resolveAuthority.mockResolvedValue(current);
+    const input = request({ action: "SYNC_WORKSPACE_SAFELY" });
+    Object.assign(input.authority, { bindingDigest: workspaceAuthorityBindingDigest(current) });
+    const runAuthority = vi.fn().mockResolvedValueOnce(resolved).mockResolvedValueOnce({ status: "USER_WORKSPACE_CONVERGED" });
+    await executeWorkspaceAuthoritySafeAction(input, env, { runAuthority });
+    expect(runAuthority).toHaveBeenCalledTimes(2);
+  });
+  it.each(["runner", "owner", "session", "head", "content", "dirty", "incomplete", "destructive"])("rejects changed %s facts across heartbeats", async change => {
+    const baseline = stableAuthority(), current = structuredClone(baseline);
+    if (change === "runner") current.runnerId = "other";
+    if (change === "owner") current.ownerUserId = 99;
+    if (change === "session") current.activeSessionId = "other";
+    if (change === "head") current.workspace.gitHead = "c".repeat(40);
+    if (change === "content") current.workspace.contentFingerprint = "c".repeat(64);
+    if (change === "dirty") current.workspace.dirty = true;
+    if (change === "incomplete") current.workspace.contentFingerprint = "";
+    mocks.resolveAuthority.mockResolvedValue({ ...current, snapshotRevision: "new-heartbeat" });
+    const input = request({ action: change === "destructive" ? "RETIRE_SAFE_WORKTREE" : "SYNC_WORKSPACE_SAFELY" });
+    Object.assign(input.authority, { bindingDigest: workspaceAuthorityBindingDigest(baseline) });
+    const runAuthority = vi.fn();
+    await expect(executeWorkspaceAuthoritySafeAction(input, env, { runAuthority })).rejects.toThrow("WORKSPACE_ACTION_AUTHORITY_CHANGED");
+    expect(runAuthority).not.toHaveBeenCalled();
+  });
   it("reads required checks from active rulesets and legacy branch protection", () => {
     expect(readRequiredChecks([
       { type: "required_status_checks", parameters: { required_status_checks: [
