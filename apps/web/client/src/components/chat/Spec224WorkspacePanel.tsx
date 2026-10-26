@@ -61,6 +61,15 @@ function selectionKey(workspace: WorkspaceOption): string {
   return JSON.stringify([workspace.runnerId, workspace.workspaceId]);
 }
 
+function imageMimeType(file: File): "image/png" | "image/jpeg" | "image/webp" | null {
+  if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/webp") return file.type;
+  const extension = file.name.split(".").pop()?.toLowerCase();
+  if (extension === "png") return "image/png";
+  if (extension === "jpg" || extension === "jpeg") return "image/jpeg";
+  if (extension === "webp") return "image/webp";
+  return null;
+}
+
 async function encodeFile(file: File): Promise<{ path: string; contentBase64: string }> {
   const bytes = await new Promise<Uint8Array>((resolve, reject) => {
     const reader = new FileReader();
@@ -87,6 +96,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const fileInput = useRef<HTMLInputElement>(null);
+  const mockupInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState("");
   const [prompt, setPrompt] = useState("");
   const [visualReferences, setVisualReferences] = useState<ImageReferenceDraft[]>([]);
@@ -107,7 +117,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   function addVisualReferences(files: FileList | null) {
     if (!files?.length) return;
     const selectedFiles = Array.from(files);
-    const supported = selectedFiles.every(file => ["image/png", "image/jpeg", "image/webp"].includes(file.type));
+    const supported = selectedFiles.every(file => imageMimeType(file) !== null);
     const existingBytes = visualReferences.reduce((sum, reference) => sum + reference.file.size, 0);
     const addedBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
     if (!supported || selectedFiles.length + visualReferences.length > 6 || selectedFiles.some(file => file.size > 1024 * 1024) || existingBytes + addedBytes > 1536 * 1024) {
@@ -313,7 +323,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
           visualFiles: await Promise.all(visualReferences.map(async reference => ({
             referenceId: reference.id,
             fileName: reference.file.name,
-            mimeType: reference.file.type as "image/png" | "image/jpeg" | "image/webp",
+            mimeType: imageMimeType(reference.file)!,
             contentBase64: await encodeImageReference(reference.file),
           }))),
           designPreferences: {
@@ -454,11 +464,17 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
               ) : null}
                 {requestKind === "development" ? <fieldset className="space-y-2 rounded-md border border-[var(--color-border)] p-2" aria-label="Design references">
                   <legend className="px-1 text-xs font-medium">Design References (optional)</legend>
-                  <input type="file" multiple accept="image/png,image/jpeg,image/webp" aria-label="แนบภาพอ้างอิงหลายภาพ" onChange={event => { addVisualReferences(event.target.files); event.currentTarget.value = ""; }} />
+                  <input ref={mockupInput} className="sr-only" type="file" multiple accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" aria-label="แนบภาพ Mock-up หลายภาพ" onChange={event => { addVisualReferences(event.target.files); event.currentTarget.value = ""; }} />
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Button type="button" variant="outline" disabled={uploading || visualReferences.length >= 6} onClick={() => mockupInput.current?.click()}>
+                      เลือกภาพ Mock-up
+                    </Button>
+                    <p className="text-xs text-[var(--color-text-secondary)]">แนบ PNG/JPG/WebP ได้สูงสุด 6 ภาพ · ภาพละ 1 MiB · รวม 1.5 MiB</p>
+                  </div>
                   {visualReferences.map((reference, index) => (
                     <div key={reference.id} className="grid gap-2 rounded border border-[var(--color-border)] p-2 sm:grid-cols-2" aria-label={`Visual reference ${index + 1}`}>
                       <p className="truncate text-xs" title={reference.file.name}>{reference.file.name} · {(reference.file.size / 1024).toFixed(0)} KiB</p>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setVisualReferences(current => current.filter(item => item.id !== reference.id))}>ลบภาพ</Button>
+                      <Button type="button" variant="ghost" size="sm" aria-label={`ลบภาพ ${reference.file.name}`} onClick={() => { setVisualReferences(current => current.filter(item => item.id !== reference.id)); setPreparation(null); }}>ลบภาพ</Button>
                       <input aria-label={`Page hint ${index + 1}`} value={reference.pageHint} onChange={event => { setVisualReferences(current => current.map(item => item.id === reference.id ? { ...item, pageHint: event.target.value } : item)); setPreparation(null); }} placeholder="หน้า / route เช่น /dashboard" className="rounded border px-2 py-1 text-xs" />
                       <select aria-label={`State hint ${index + 1}`} value={reference.stateHint} onChange={event => { setVisualReferences(current => current.map(item => item.id === reference.id ? { ...item, stateHint: event.target.value as ImageReferenceDraft["stateHint"] } : item)); setPreparation(null); }} className="rounded border bg-background px-2 py-1 text-xs">
                         {["default", "hover", "modal", "validation", "loading", "empty", "success", "error"].map(state => <option key={state} value={state}>{state}</option>)}
@@ -499,8 +515,15 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
                   ) : null}
                   {specSource === "upload" ? (
                     <>
-                      <input ref={fileInput} type="file" multiple accept=".md,.json,.zip" aria-label="แนบไฟล์ Spec 224" onChange={event => void ingestFiles(event.target.files)} />
-                      <p className="text-xs text-[var(--color-text-secondary)]">รองรับหลายไฟล์ .md/.json หรือ .zip; สูงสุด 64 ไฟล์และ 2 MiB ต่อชุด ไฟล์ .md เดี่ยวประกาศ work package ได้ด้วย code fence `spec224-work-packages` ที่มี JSON `spec224.workPackages`; ถ้าไม่ประกาศ ระบบจะแสดง requirement แต่ยังไม่ให้เริ่ม package นั้น</p>
+                      <input ref={fileInput} className="sr-only" type="file" multiple accept=".md,.json,.zip" aria-label="แนบไฟล์ Spec 224" onChange={event => void ingestFiles(event.target.files)} />
+                      <div className="mt-2 flex flex-wrap items-center gap-3">
+                        <Button type="button" variant="outline" disabled={!workspaceQuery.data?.workspace || uploading} onClick={() => fileInput.current?.click()}>
+                          {uploading ? "กำลังบันทึกไฟล์…" : "เลือกไฟล์ Spec / JSON"}
+                        </Button>
+                        <p className="text-xs text-[var(--color-text-secondary)]">เลือกได้หลายไฟล์ .md, .json หรือ .zip · สูงสุด 64 ไฟล์และ 2 MiB ต่อชุด</p>
+                      </div>
+                      <p className="text-xs text-[var(--color-text-secondary)]">ภาพ mock-up แนบแยกในส่วน Design References ด้านบน ระบบจะส่งให้ Runner เป็นภาพอ้างอิง ไม่ปะปนกับไฟล์ Spec</p>
+                      <p className="text-xs text-[var(--color-text-secondary)]">ไฟล์ .md เดี่ยวประกาศ work package ได้ด้วย code fence `spec224-work-packages` ที่มี JSON `spec224.workPackages`; ถ้าไม่ประกาศ ระบบจะแสดง requirement แต่ยังไม่ให้เริ่ม package นั้น</p>
                     </>
                   ) : isAdmin ? (
                     <div className="space-y-2">

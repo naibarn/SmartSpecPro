@@ -80,6 +80,31 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
   });
 
+  it("shows a clear multi-image mock-up attachment control while developing from a Spec Set", async () => {
+    render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+
+    const mockupInput = screen.getByLabelText("แนบภาพ Mock-up หลายภาพ");
+    expect(screen.getByRole("button", { name: "เลือกภาพ Mock-up" })).toBeInTheDocument();
+    fireEvent.change(mockupInput, { target: { files: [
+      new File(["mockup"], "dashboard.png", { type: "image/png" }),
+      new File(["mockup"], "mobile-mockup.jpg"),
+    ] } });
+
+    expect(await screen.findByText(/dashboard\.png/)).toBeInTheDocument();
+    expect(screen.getByText(/mobile-mockup\.jpg/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ลบภาพ dashboard.png" })).toBeInTheDocument();
+  });
+
+  it("makes the multi-file Spec upload action visible and explains accepted files", async () => {
+    render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
+
+    expect(screen.getByRole("button", { name: "เลือกไฟล์ Spec / JSON" })).toBeInTheDocument();
+    expect(screen.getByText(/\.md, \.json หรือ \.zip/)).toBeInTheDocument();
+  });
+
   it("switches from Mini-App mode to Spec development instead of disabling Spec work", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "สร้าง Mini App" }));
