@@ -70,6 +70,13 @@
         "scope": "Integrated on exact origin/main SHA 720b1ac6daaee8bfba9d9d7856a8b2562516a88b: authorization retry now re-attempts the existing idempotent Job Control hold release after READY_FOR_LIVE; durable release evidence remains valid after queue/lease/settlement. Focused Start, authorization binding, route, and Job Control suites passed 144/144. Read-only dev control-plane snapshot at 2026-10-26T15:15:42Z reported Runner 0.2.41 online but Codex taskProbeState=not_run, policy pending, workspace branch null and SHA fbd7fd1...; no owner Start or protected dispatch was performed. This is implementation and snapshot evidence only, not live E2E acceptance.",
         "source_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_LIVE_CAPABILITY_ACK_AND_EXECUTION_PENDING",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-capability-ack-runtime-20261027.json",
+        "scope": "Runner 0.2.45 and codex-cli 0.161.0 task probe are owner-reported as passed. No fresh server capability acknowledgement, correlation ID, ACK revision, current device consent/policy/budget, DevelopmentRun, Windows execution receipt, settlement, reconnect recovery or independent Final Verify was observed in this session. Do not repeat Codex task probe. The existing Runner button Tools > 'ตรวจเครื่องมืออีกครั้ง' invokes tool rescan and the authenticated capability publication path without executing a task probe. After ACK, verify consent/policy/budget and have the owner start one reversible USD 1.00 non-production goal in Chat.",
+        "source_sha": "5859261fc7eb56880920477e92176a021778d144",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -969,15 +976,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b",
+    "expected_canonical_sha": "5859261fc7eb56880920477e92176a021778d144",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "On the existing Windows Runner, select SmartAIHub Runner → Tools → Codex → Test real task because the latest published snapshot is not_run; wait until the fresh capability is published and acknowledged. Then sign in as the existing owner at https://smartaihub.app/chat, open the existing conversation → Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and Start one reversible task to report live branch/HEAD/status and ancestry. Synchronize only through the existing safe workspace operation if a fresh Windows command confirms the tree is clean and fast-forward is valid. Use the returned DevelopmentRun ID to collect protected dispatch, execution/audit, settlement, recovery and independent Final Verify receipts.",
+    "next_action": "In the existing Windows Runner 0.2.45, click Tools → 'ตรวจเครื่องมืออีกครั้ง' once. It republishes the capability snapshot without executing the Codex task probe. Return the resulting ACK state/revision and correlation ID, or the safe error code/status if it is rejected. Do not start a DevelopmentRun until fresh ACK and owner/tenant, device consent, policy and USD 1.00 budget are confirmed.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "A fresh current Runner snapshot publishes Codex taskProbeState=passed with unexpired evidence and acknowledgement; the authenticated owner then starts the existing Spec 224 workspace goal, after which the real DevelopmentRun and run-bound receipts become available. If live workspace inspection reports dirty or divergent state, do not synchronize it and record the exact result.",
-    "resume_point": "Authorization hold-release retry repair is integrated at 720b1ac6daaee8bfba9d9d7856a8b2562516a88b and focused tests pass 144/144. Current dev-control-plane snapshot (2026-10-26T15:15:42Z) reports Runner 0.2.41 online/trusted, Codex taskProbeState=not_run and policy decision pending. Workspace snapshot reports clean at fbd7fd1... with no branch name; no fresh Windows Git command exists. No owner-authenticated Start, DevelopmentRun, dispatch or settlement has been recorded. Continue at the required fresh Codex probe and owner-authenticated Start; do not repeat builds or migrations.",
-    "waiting_predicate": "Waiting until the existing Windows Runner publishes acknowledged, unexpired Codex task-probe evidence and an existing owner-authenticated SmartAIHub Chat session submits the scoped USD 1.00 Start for the existing Windows Runner/workspace. No Start or source synchronization is claimed before these conditions."
+    "reactivation_predicate": "The current deployed Web/Node Worker includes the ACK fix. Reactivate after the existing Runner publishes a fresh capability snapshot and the server acknowledges its correlation/revision. Capability acknowledgement alone does not authorize execution; owner/tenant, device consent, policy, bounded budget and per-run admission must independently pass before Start.",
+    "resume_point": "Canonical main is 5859261fc7eb56880920477e92176a021778d144. Production Web generation 153 (9b48e5123f1272eb0dd598b07ec8a24cbe8551f9) and Node Worker, plus Python source 2382582a072e91c283ca2bf3513228c049ade574, include ACK fix e8e8245c6ba838194f4ef503bb37cc2fe43867a8; active release manifests and public /healthz 200 were verified. Owner reports Runner 0.2.45 Codex task probe passed, but no fresh capability ACK/correlation/revision, current owner consent/policy/budget, DevelopmentRun, Windows dispatch/execution receipt, settlement/recovery or independent Final Verify is available. Do not repeat the task probe. Next action is one Runner Tools → 'ตรวจเครื่องมืออีกครั้ง' capability publication.",
+    "waiting_predicate": "Waiting only for the existing Runner owner to trigger the capability rescan/publication once and return the resulting ACK correlation/revision (or safe rejection code). If acknowledged, proceed with a legitimate owner-authenticated Chat Start after verifying current device consent, policy and bounded USD 1.00 budget. No synthetic identity, grant, DevelopmentRun or receipt is allowed."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1063,6 +1070,13 @@
         "scope": "Exact approved candidate deployed via existing Python and Web release controllers; Python/Web/Node Worker runtime SHA 08b508284eabe621292ab95a5b1cc6a63bca5fd1. Health and readiness verified; no migration or Cloudflare deploy. Live DevelopmentRun acceptance remains partial.",
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_ACK_FIX_RUNTIME_DEPLOYMENT_VERIFIED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-capability-ack-runtime-20261027.json",
+        "scope": "Observed on 2026-10-26T23:57:29Z. Production Web generation 153 runs source 9b48e5123f1272eb0dd598b07ec8a24cbe8551f9 (artifact sha256:690368b7f9e5467e2e073658f9f28ee2e7b6999632393ab75bb1ed00c5cd57fd); Node Worker uses the same release. Python runs source 2382582a072e91c283ca2bf3513228c049ade574 (artifact sha256:36a38d256f1d7b748631b9f3b6f0e3e102286f6dbd5597609dcedb53c6fde223). Both release SHAs include ACK fix e8e8245c6ba838194f4ef503bb37cc2fe43867a8 and are ancestors of canonical main 5859261fc7eb56880920477e92176a021778d144. Web, Node Worker and Python systemd services were active; public /healthz returned 200. This verifies deployment of the ACK fix, not a fresh Runner acknowledgement.",
+        "source_sha": "9b48e5123f1272eb0dd598b07ec8a24cbe8551f9",
+        "status": "PASS"
       }
     ],
     "required": false,
@@ -1080,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 190,
+  "generation": 192,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1282,11 +1296,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b",
+    "canonical_sha": "5859261fc7eb56880920477e92176a021778d144",
     "integrated": true,
     "integrated_at": "2026-10-26T22:14:35+07:00",
     "pull_request": null,
-    "source_sha": "720b1ac6daaee8bfba9d9d7856a8b2562516a88b"
+    "source_sha": "5859261fc7eb56880920477e92176a021778d144"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3690,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T15:17:18.199533Z",
+  "updated_at": "2026-10-26T23:57:36.811059Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4049,6 +4063,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-probe-expiry-classification-20261026.json",
         "scope": "Integrated at canonical SHA 93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a. Runner retains valid probe outcomes for up to 30 days after the one-hour authorization TTL so expired evidence remains distinguishable from never-run; protected authorization still rejects expired evidence. Focused Runner Rust tests passed 2/2. This is source/test evidence only, not a live Runner build, capability acknowledgement, protected DevelopmentRun, settlement or Final Verify.",
         "source_sha": "93ca8d97e156a8cb9ff2ae83d990b2db8eedb47a",
+        "status": "PASS"
+      },
+      {
+        "kind": "CAPABILITY_ACK_FIX_FOCUSED_REGRESSION",
+        "path": "apps/web/server/routes/__tests__/runnerControl.test.ts",
+        "scope": "Exact fix commit e8e8245c6ba838194f4ef503bb37cc2fe43867a8: runnerControl route tests 25/25; Runner transport focused tests 6/6 plus HTTP failure classification 1/1; Desktop capability projection tests 2/2; node --check apps/runner-desktop/ui/app.js, rustfmt check and git diff --check passed. Regression proves a durable capability snapshot remains acknowledged if the separate readiness projection fails. These are focused software tests, not live Runner ACK evidence.",
+        "source_sha": "e8e8245c6ba838194f4ef503bb37cc2fe43867a8",
         "status": "PASS"
       }
     ],
