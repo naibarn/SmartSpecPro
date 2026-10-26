@@ -220,12 +220,15 @@ function applyRunnerStatus(status) {
       ? "ต้องเชื่อมต่อใหม่"
       : credentialState === "retrying"
         ? "ต่ออายุไม่สำเร็จ — จะลองใหม่"
-        : controlPlaneConnected ? "เชื่อมต่อแล้ว"
+        : status.running && status.lastError ? "กำลังเชื่อมต่อใหม่"
+          : controlPlaneConnected ? "เชื่อมต่อแล้ว"
           : credentialsReady && status.running ? "รอ heartbeat จาก SmartAIHub"
             : credentialsReady ? "บัญชีพร้อม · Runner หยุดอยู่" : "ยังไม่เชื่อมต่อ";
   elements["connection-state"].textContent = connectionLabel;
-  elements["connection-state"].className = `state-pill${controlPlaneConnected && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
-  elements["connection-detail"].textContent = controlPlaneConnected
+  elements["connection-state"].className = `state-pill${controlPlaneConnected && !status.lastError && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
+  elements["connection-detail"].textContent = status.running && status.lastError
+    ? `Runner กำลังเชื่อมต่อ Control Plane ใหม่ · heartbeat ล่าสุด ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
+    : controlPlaneConnected
     ? `SmartAIHub ยืนยัน heartbeat ของ Runner ${status.runnerId} เวลา ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
     : credentialsReady && status.running
       ? `Runner ทำงานอยู่ แต่ยังไม่มี heartbeat ที่ SmartAIHub ยืนยันใน 5 นาที · ล่าสุด ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`

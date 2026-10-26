@@ -3129,6 +3129,7 @@ where
         cleanup_update_helpers(&current);
     }
     let interval = refresh_interval_seconds()?;
+    let mut consecutive_refresh_failures = 0_u32;
     loop {
         if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
             return Ok(());
@@ -3139,10 +3140,12 @@ where
         };
         match status {
             Ok(status) => {
+                consecutive_refresh_failures = 0;
                 observer(None);
                 println!("{status}");
             }
             Err(error) => {
+                consecutive_refresh_failures = consecutive_refresh_failures.saturating_add(1);
                 observer(Some(runtime_error_reason(&error)));
                 eprintln!("runner refresh error: {error}");
                 if error.contains("RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH") {
@@ -3167,7 +3170,11 @@ where
                 }
             }
         }
-        let mut remaining = interval;
+        let mut remaining = if consecutive_refresh_failures == 0 {
+            interval
+        } else {
+            control_retry_delay(interval, consecutive_refresh_failures)
+        };
         while !remaining.is_zero() {
             if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
                 return Ok(());
@@ -3177,6 +3184,16 @@ where
             remaining = remaining.saturating_sub(slice);
         }
     }
+}
+
+fn control_retry_delay(refresh_interval: Duration, consecutive_failures: u32) -> Duration {
+    const FIRST_RETRY_SECONDS: u64 = 5;
+    const MAX_RETRY_SECONDS: u64 = 300;
+    let shift = consecutive_failures.saturating_sub(1).min(6);
+    let backoff_seconds = FIRST_RETRY_SECONDS
+        .saturating_mul(1_u64 << shift)
+        .min(MAX_RETRY_SECONDS);
+    Duration::from_secs(backoff_seconds.min(refresh_interval.as_secs().max(1)))
 }
 
 fn runtime_error_reason(error: &str) -> &'static str {
@@ -3204,7 +3221,8 @@ fn runtime_error_reason(error: &str) -> &'static str {
 
 #[cfg(test)]
 mod refresh_runtime_reason_tests {
-    use super::runtime_error_reason;
+    use super::{control_retry_delay, runtime_error_reason};
+    use std::time::Duration;
 
     #[test]
     fn maps_refresh_http_auth_errors_to_required_and_transport_to_interrupted() {
@@ -3223,6 +3241,31 @@ mod refresh_runtime_reason_tests {
         assert_eq!(
             runtime_error_reason("RUNNER_CONNECT_REQUEST_REJECTED_503"),
             "RUNNER_CONNECTION_INTERRUPTED"
+        );
+    }
+
+    #[test]
+    fn control_reconnect_uses_bounded_backoff_and_resets_after_success() {
+        let normal_refresh = Duration::from_secs(300);
+        assert_eq!(
+            control_retry_delay(normal_refresh, 1),
+            Duration::from_secs(5)
+        );
+        assert_eq!(
+            control_retry_delay(normal_refresh, 2),
+            Duration::from_secs(10)
+        );
+        assert_eq!(
+            control_retry_delay(normal_refresh, 3),
+            Duration::from_secs(20)
+        );
+        assert_eq!(
+            control_retry_delay(normal_refresh, 20),
+            Duration::from_secs(300)
+        );
+        assert_eq!(
+            control_retry_delay(Duration::from_secs(15), 20),
+            Duration::from_secs(15)
         );
     }
 }

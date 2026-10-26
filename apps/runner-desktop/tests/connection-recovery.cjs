@@ -57,3 +57,33 @@ test('a start-request 403 is not misreported as an account ownership denial', as
     await browser.close();
   }
 });
+
+test('a stale heartbeat is shown as reconnecting when the local control loop has failed', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.addInitScript(() => {
+      window.__TAURI__ = { core: { invoke: async name => {
+        if (name === 'runner_status') return {
+          credentialsReady: true,
+          controlPlaneConnected: true,
+          running: true,
+          stopping: false,
+          runnerId: 'local-runner',
+          credentialState: 'valid',
+          lastError: 'RUNNER_CONNECTION_INTERRUPTED',
+          lastControlPlaneHeartbeatAcknowledgedAtMs: Date.now() - 30_000,
+          readiness: { capabilityPublicationState: 'pending' },
+        };
+        if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
+        return null;
+      } } };
+    });
+    await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
+    await page.waitForFunction(() => document.getElementById('connection-state').textContent === 'กำลังเชื่อมต่อใหม่');
+    assert.match(await page.locator('#connection-detail').textContent(), /heartbeat ล่าสุด/);
+    assert.match(await page.locator('#runtime-notice').textContent(), /Runner จะลองใหม่อัตโนมัติ/);
+  } finally {
+    await browser.close();
+  }
+});
