@@ -95,7 +95,7 @@ fn is_loopback_authority(authority: &str) -> bool {
 pub enum TransportError {
     Unavailable,
     Idle,
-    Unauthorized,
+    Unauthorized(u16),
     Protocol,
     Rejected,
     HttpRejected(u16),
@@ -109,7 +109,7 @@ fn classify_http_status(status: u16) -> Option<TransportError> {
         return None;
     }
     Some(if status == 401 || status == 403 {
-        TransportError::Unauthorized
+        TransportError::Unauthorized(status)
     } else {
         TransportError::HttpRejected(status)
     })
@@ -528,6 +528,23 @@ fn parse_ack_payload(payload: &str) -> Result<AckState, TransportError> {
         );
         return Err(TransportError::Protocol);
     };
+    if state == "rejected" {
+        let safe_reason = value
+            .get("reason")
+            .or_else(|| value.get("errorCode"))
+            .and_then(serde_json::Value::as_str)
+            .filter(|reason| {
+                !reason.is_empty()
+                    && reason.len() <= 100
+                    && reason.chars().all(|character| {
+                        character.is_ascii_uppercase()
+                            || character.is_ascii_digit()
+                            || character == '_'
+                    })
+            })
+            .unwrap_or("RUNNER_EVENT_REJECTED");
+        eprintln!("runner control event rejected: safe_reason={safe_reason}");
+    }
     match state {
         "accepted" => Ok(AckState::Accepted),
         "applied" => Ok(AckState::Applied),
@@ -666,11 +683,11 @@ mod tests {
         assert_eq!(classify_http_status(200), None);
         assert_eq!(
             classify_http_status(401),
-            Some(TransportError::Unauthorized)
+            Some(TransportError::Unauthorized(401))
         );
         assert_eq!(
             classify_http_status(403),
-            Some(TransportError::Unauthorized)
+            Some(TransportError::Unauthorized(403))
         );
         assert_eq!(
             classify_http_status(409),

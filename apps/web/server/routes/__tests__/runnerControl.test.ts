@@ -71,6 +71,7 @@ import {
 } from "../../services/runnerGateway";
 import { auditLogger } from "../../services/auditLogger";
 import { RunnerSessionError } from "../../services/runnerSessionContracts";
+import { validateRunnerCapabilitySnapshot } from "../../services/runnerContracts";
 import {
   handleRunnerSocketMessage,
   handleRunnerUpgrade,
@@ -318,7 +319,7 @@ describe("Runner control transport routes", () => {
 
     expect(sent).toContainEqual({
       ackState: "rejected",
-      reason: "runner_event_rejected",
+      reason: "RUNNER_EVENT_REJECTED",
     });
   });
 
@@ -484,9 +485,9 @@ describe("Runner control transport routes", () => {
       capabilitySnapshotId: "capability:wss-proof:1",
       runnerVersion: "0.1.0",
       revision: "snapshot:wss-proof:1",
-      observedAt: "2026-09-21T00:00:00.000Z",
-      expiresAt: "2026-09-21T00:05:00.000Z",
-      capabilities: [],
+      observedAt: new Date(Date.now() - 1_000).toISOString(),
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      capabilities: ["agent.external_task"],
       workspaceIds: [],
       resourceClass: "medium",
       platform: {
@@ -494,9 +495,34 @@ describe("Runner control transport routes", () => {
         architecture: "x86_64",
         target: "x86_64-unknown-linux-gnu",
       },
-      toolInventory: [],
+      toolInventory: [{
+        toolId: "codex-cli",
+        kind: "agent_cli",
+        displayName: "Codex CLI",
+        version: "0.161.0",
+        adapterId: "codex.v1",
+        adapterVersion: "1",
+        discoverySource: "test_fixture",
+        fingerprint: "codex-test-fingerprint",
+        observedAt: new Date(Date.now() - 1_000).toISOString(),
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        trustState: "ready",
+        availabilityState: "available",
+        authState: "authenticated",
+        healthState: "healthy",
+        installState: "installed",
+        configurationState: "configured",
+        versionProbeState: "passed",
+        taskProbeState: "passed",
+        taskProbeObservedAtMs: Date.now() - 2_000,
+        taskProbeExpiresAtMs: Date.now() + 30_000,
+        taskProbeEvidenceRef: "runner-task-probe:sha256:TEST_ONLY_REFERENCE",
+        authorizationEvidenceRef: "TEST_ONLY_READY_REFERENCE",
+        reasonCodes: [],
+      }],
       capabilityInventory: [],
     };
+    expect(() => validateRunnerCapabilitySnapshot(snapshot)).not.toThrow();
     const envelope = {
       protocolVersion: "sah-runner-v1",
       profile: "local_device",
@@ -519,6 +545,9 @@ describe("Runner control transport routes", () => {
       handleRunnerUpgrade(req, socket, head, gateway, {
         afterChannelAuthenticated: origin => {
           authenticatedOrigin = origin;
+        },
+        afterCapabilityPersisted: () => {
+          runnerSessionController.revoke(session.runnerSessionId, "test_projection_failure");
         },
       })
     );
@@ -574,7 +603,15 @@ describe("Runner control transport routes", () => {
       type: "runner.handshake",
       ackState: "accepted",
     });
-    expect(ack).toMatchObject({ ackState: "applied" });
+    expect(ack).toMatchObject({
+      ackState: "applied",
+      correlationId: envelope.correlationId,
+      idempotencyKey: envelope.idempotencyKey,
+      sequence: envelope.sequence,
+      snapshotRevision: "snapshot:wss-proof:1",
+      executionReadiness: "not_ready",
+      readinessReason: "SESSION_STATE_INVALID",
+    });
     expect(
       (await repository.getNode(runnerId, tenantId))?.currentSnapshotRevision
     ).toBe("snapshot:wss-proof:1");

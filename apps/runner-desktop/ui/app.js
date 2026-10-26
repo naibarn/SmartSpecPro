@@ -313,11 +313,11 @@ function applyRunnerStatus(status) {
   const publicationText = capabilitySyncing
     ? "กำลังส่ง capability ไปยัง SmartAIHub"
     : publicationState === "acknowledged" && capabilityAcknowledged(status)
-    ? `Capability ได้รับการยืนยันจาก SmartAIHub เวลา ${formatDate(readiness.capabilityPublicationAcknowledgedAt)}`
+    ? `CAPABILITY_ACKNOWLEDGED (${readiness.capabilitySnapshotRevision ?? "revision ไม่ระบุ"}) · ${formatDate(readiness.capabilityPublicationAcknowledgedAt)}`
     : publicationState === "pending" || publicationState === "acknowledged"
-      ? "กำลังรอการยืนยัน capability จาก SmartAIHub"
+      ? `รอ CAPABILITY_ACKNOWLEDGED${readiness.capabilityPublicationCorrelationId ? ` · correlation ${readiness.capabilityPublicationCorrelationId}` : ""}`
       : publicationState === "failed"
-        ? "SmartAIHub ยังไม่ยืนยัน capability ล่าสุด"
+        ? `CAPABILITY_ACKNOWLEDGEMENT_FAILED · ${readiness.capabilityPublicationErrorCode ?? "RUNNER_CONTROL_EVENT_REJECTED"}${readiness.capabilityPublicationHttpStatus ? ` · HTTP ${readiness.capabilityPublicationHttpStatus}` : ""}${readiness.capabilityPublicationCorrelationId ? ` · correlation ${readiness.capabilityPublicationCorrelationId}` : ""}`
         : "ยังไม่มีหลักฐานยืนยัน capability จาก SmartAIHub";
   const runtimeText = stopPending || status.stopping
     ? "Runner กำลังยกเลิกงานและรอปิด child processes"
@@ -564,10 +564,12 @@ function renderTools(tools, status = latestRunnerStatus) {
       && tool.trust_state === "ready" && versionPassed && authenticated && taskPassed,
     );
     const publicationText = capabilityFresh
-      ? "ระบบยืนยันข้อมูลความพร้อมแล้ว"
+      ? "CAPABILITY_ACKNOWLEDGED · execution ยังต้องผ่าน policy, device consent และ grant ของ run"
       : status?.readiness?.capabilityPublicationState === "pending"
-        ? "กำลังส่งข้อมูลความพร้อมให้ระบบ"
-        : "ระบบยังไม่ยืนยันข้อมูลความพร้อม";
+        ? `รอ CAPABILITY_ACKNOWLEDGED${status?.readiness?.capabilityPublicationCorrelationId ? ` · ${status.readiness.capabilityPublicationCorrelationId}` : ""}`
+        : status?.readiness?.capabilityPublicationState === "failed"
+          ? `CAPABILITY_ACKNOWLEDGEMENT_FAILED · ${status?.readiness?.capabilityPublicationErrorCode ?? "unknown"}${status?.readiness?.capabilityPublicationHttpStatus ? ` · HTTP ${status.readiness.capabilityPublicationHttpStatus}` : ""}`
+          : "ยังไม่มี CAPABILITY_ACKNOWLEDGED";
     const taskText = taskPassed
       ? "ทดสอบส่งงานจริงผ่าน"
       : taskFailed

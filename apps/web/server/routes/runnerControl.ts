@@ -305,6 +305,9 @@ type RunnerReceiptTestHooks = {
     ws: WebSocket
   ) => Promise<void>;
   afterAckWritten?: (receiptEventId: string) => Promise<void>;
+  afterCapabilityPersisted?: (
+    snapshot: RunnerCapabilitySnapshot
+  ) => void | Promise<void>;
 };
 
 /**
@@ -428,6 +431,33 @@ function markRunnerCapabilityReady(
     if (error instanceof RunnerSessionError)
       throw new RunnerAuthError("runner_capability_not_ready", 409, error.code);
     throw error;
+  }
+}
+
+function projectRunnerCapabilityReadinessAfterPersist(
+  auth: { runnerId: string; profile: string; runnerSessionId?: string | null },
+  snapshot: Parameters<typeof validateRunnerCapabilitySnapshot>[0],
+  correlationId: string
+): { executionReadiness: "capability_ready" | "not_ready"; readinessReason: string | null } {
+  try {
+    markRunnerCapabilityReady(auth, snapshot);
+    return {
+      executionReadiness: runnerSnapshotHasReadyExecution(snapshot)
+        ? "capability_ready"
+        : "not_ready",
+      readinessReason: null,
+    };
+  } catch (error) {
+    const readinessReason = safeRunnerCapabilityErrorCode(error);
+    console.warn("[RunnerControl] capability persisted; readiness projection failed", {
+      stage: "project_execution_readiness",
+      correlationId,
+      runnerId: auth.runnerId,
+      runnerSessionId: auth.runnerSessionId ?? null,
+      snapshotRevision: snapshot.revision,
+      errorCode: readinessReason,
+    });
+    return { executionReadiness: "not_ready", readinessReason };
   }
 }
 
@@ -1012,26 +1042,33 @@ export async function handleRunnerSocketMessage(
     ws.close(1009, "runner_message_too_large");
     return;
   }
+  let failureStage = "parse_envelope";
+  let failureEnvelope: RunnerProtocolEnvelope | null = null;
   try {
     const envelope = validateRunnerProtocolEnvelope(
       JSON.parse(message.toString("utf8")) as RunnerProtocolEnvelope
     );
+    failureEnvelope = envelope;
+    failureStage = "validate_runner_scope";
     if (envelope.runnerId !== socketAuthContext.runnerId)
       throw new Error("runner_scope_mismatch");
     const type = envelope.payload.type;
     if (type === "runner.capabilities.update") {
+      failureStage = "authenticate_capability_scope";
       const auth = await verifyRunnerControlToken(socketAuthContext.token, {
         runnerId: socketAuthContext.runnerId,
         tenantId: socketAuthContext.tenantId,
         requiredScopes: ["runner:capabilities"],
       });
+      failureStage = "authorize_device_session";
       if ((auth.runnerSessionId ?? null) !== socketAuthContext.runnerSessionId)
         throw new RunnerAuthError(
           "runner_session_mismatch",
           403,
           "Runner WSS session context changed"
-        );
+      );
       assertRunnerEnvelopeBinding(envelope, auth);
+      failureStage = "validate_snapshot";
       await authorizeRunnerSession(
         auth,
         socketAuthContext.deviceProofVerified,
@@ -1045,16 +1082,38 @@ export async function handleRunnerSocketMessage(
         >[0]
       );
       assertRunnerCapabilitySessionBinding(auth, snapshot);
+      failureStage = "persist_snapshot";
       const result = await gateway.publishCapabilities({
         auth,
         snapshot,
         idempotencyKey: envelope.idempotencyKey,
       });
-      markRunnerCapabilityReady(auth, snapshot);
+      await testHooks?.afterCapabilityPersisted?.(snapshot);
+      // The protocol acknowledgement means the snapshot was durably accepted.
+      // Execution readiness is a separate state and must not turn a persisted
+      // publication into a rejected ACK (which would leave the Runner pending).
+      failureStage = "project_execution_readiness";
+      const { executionReadiness, readinessReason } =
+        projectRunnerCapabilityReadinessAfterPersist(auth, snapshot, envelope.correlationId);
+      console.info("[RunnerControl] capability publication acknowledged", {
+        stage: "acknowledge_persisted_snapshot",
+        correlationId: envelope.correlationId,
+        runnerId: auth.runnerId,
+        runnerSessionId: auth.runnerSessionId ?? null,
+        snapshotRevision: snapshot.revision,
+        ackState: result.status === "duplicate" ? "duplicate" : "applied",
+        executionReadiness,
+        ...(readinessReason ? { readinessReason } : {}),
+      });
+      failureStage = "acknowledge_persisted_snapshot";
       sendRunnerSocket(ws, {
         ackState: result.status === "duplicate" ? "duplicate" : "applied",
         sequence: envelope.sequence,
         idempotencyKey: envelope.idempotencyKey,
+        correlationId: envelope.correlationId,
+        snapshotRevision: snapshot.revision,
+        executionReadiness,
+        readinessReason,
       });
       return;
     }
@@ -1363,8 +1422,6 @@ export async function handleRunnerSocketMessage(
     }
     throw new Error("runner_event_type_not_supported");
   } catch (error) {
-    const reason =
-      error instanceof Error ? error.message : "unknown_runner_event_error";
     let receiptDiagnostics: Record<string, unknown> | undefined;
     try {
       const parsed = JSON.parse(message.toString("utf8")) as {
@@ -1401,17 +1458,61 @@ export async function handleRunnerSocketMessage(
     } catch {
       // Keep rejection handling fail-closed even if diagnostics cannot parse the frame.
     }
+    const rejectedEnvelope = failureEnvelope;
+    const rejectedType = rejectedEnvelope?.payload.type;
+    const safeErrorCode = safeRunnerCapabilityErrorCode(error);
     console.warn("[RunnerControl] runner event rejected", {
+      stage: failureStage,
+      correlationId: rejectedEnvelope?.correlationId ?? null,
+      sequence: rejectedEnvelope?.sequence ?? null,
+      idempotencyKey: rejectedEnvelope?.idempotencyKey ?? null,
       runnerId: socketAuthContext.runnerId,
       tenantId: socketAuthContext.tenantId,
-      reason: reason.slice(0, 160),
+      httpStatus: null,
+      protocolStatus: error instanceof RunnerAuthError
+        ? error.statusCode
+        : error instanceof RunnerSessionError
+          ? 409
+          : error instanceof RunnerGatewayError
+            ? error.code.endsWith("_NOT_FOUND")
+              ? 404
+              : error.code.endsWith("PERMISSION_DENIED")
+                ? 403
+                : 409
+            : null,
+      errorCode: safeErrorCode,
       ...(receiptDiagnostics ? { receiptDiagnostics } : {}),
     });
     sendRunnerSocket(ws, {
       ackState: "rejected",
-      reason: "runner_event_rejected",
+      reason: safeErrorCode,
+      ...(rejectedEnvelope
+        ? {
+            sequence: rejectedEnvelope.sequence,
+            idempotencyKey: rejectedEnvelope.idempotencyKey,
+            correlationId: rejectedEnvelope.correlationId,
+          }
+        : {}),
     });
   }
+}
+
+function safeRunnerCapabilityErrorCode(error: unknown): string {
+  if (
+    error instanceof RunnerAuthError &&
+    error.code === "runner_capability_not_ready" &&
+    /^[A-Z][A-Z0-9_]{2,100}$/.test(error.message)
+  )
+    return error.message;
+  if (
+    error instanceof RunnerAuthError ||
+    error instanceof RunnerGatewayError ||
+    error instanceof RunnerSessionError
+  )
+    return error.code;
+  if (error instanceof Error && /^[A-Z][A-Z0-9_]{2,100}$/.test(error.message))
+    return error.message;
+  return "RUNNER_EVENT_REJECTED";
 }
 
 const enrollmentSchema = z.object({
@@ -1839,6 +1940,13 @@ export function registerRunnerControlRoutes(
             status: readiness.status,
             trustState: row.trustState,
             lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
+            capabilitySnapshotPersisted: Boolean(row.currentSnapshotJson),
+            capabilitySnapshotRevision: row.currentSnapshotRevision ?? null,
+            capabilitySnapshotCurrent: readiness.snapshotCurrent,
+            capabilitySnapshotRunnerSessionId:
+              typeof row.currentSnapshotJson?.runnerSessionId === "string"
+                ? row.currentSnapshotJson.runnerSessionId
+                : null,
             runnerVersion:
               typeof row.currentSnapshotJson?.runnerVersion === "string"
                 ? row.currentSnapshotJson.runnerVersion
@@ -2438,11 +2546,19 @@ export function registerRunnerControlRoutes(
           snapshot,
           idempotencyKey: envelope.idempotencyKey,
         });
-        markRunnerCapabilityReady(auth, snapshot);
+        const readiness = projectRunnerCapabilityReadinessAfterPersist(
+          auth,
+          snapshot,
+          envelope.correlationId
+        );
         return res.json({
           ackState: result.status === "duplicate" ? "duplicate" : "applied",
           sequence: envelope.sequence,
           idempotencyKey: envelope.idempotencyKey,
+          correlationId: envelope.correlationId,
+          snapshotRevision: snapshot.revision,
+          executionReadiness: readiness.executionReadiness,
+          readinessReason: readiness.readinessReason,
         });
       }
       if (envelope.payload.type === "runner.reconcile") {
@@ -2513,8 +2629,16 @@ export function registerRunnerControlRoutes(
         snapshot,
         idempotencyKey: parsed.data.idempotencyKey,
       });
-      markRunnerCapabilityReady(auth, snapshot);
-      return res.json(result);
+      const readiness = projectRunnerCapabilityReadinessAfterPersist(
+        auth,
+        snapshot,
+        `http:${parsed.data.idempotencyKey}`
+      );
+      return res.json({
+        ...result,
+        executionReadiness: readiness.executionReadiness,
+        readinessReason: readiness.readinessReason,
+      });
     } catch (error) {
       sendError(res, error);
     }

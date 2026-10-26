@@ -57,6 +57,10 @@ struct RunnerReadinessStatus {
     capability_publication_state: String,
     capability_publication_acknowledged_at: Option<String>,
     capability_snapshot_revision: Option<String>,
+    capability_publication_correlation_id: Option<String>,
+    capability_publication_ack_state: Option<String>,
+    capability_publication_http_status: Option<u16>,
+    capability_publication_error_code: Option<String>,
 }
 
 impl Default for RunnerReadinessStatus {
@@ -66,6 +70,10 @@ impl Default for RunnerReadinessStatus {
             capability_publication_state: "unknown".into(),
             capability_publication_acknowledged_at: None,
             capability_snapshot_revision: None,
+            capability_publication_correlation_id: None,
+            capability_publication_ack_state: None,
+            capability_publication_http_status: None,
+            capability_publication_error_code: None,
         }
     }
 }
@@ -184,7 +192,62 @@ fn set_readiness_publication_pending(
     status.capability_publication_state = "pending".into();
     status.capability_publication_acknowledged_at = None;
     status.capability_snapshot_revision = None;
+    status.capability_publication_correlation_id = None;
+    status.capability_publication_ack_state = None;
+    status.capability_publication_http_status = None;
+    status.capability_publication_error_code = None;
     Ok(())
+}
+
+fn apply_capability_publication_diagnostics(
+    status: &mut RunnerReadinessStatus,
+    diagnostics: &serde_json::Value,
+) {
+    let ack_state = diagnostics
+        .get("lastCapabilityPublicationAckState")
+        .and_then(serde_json::Value::as_str);
+    let error_code = diagnostics
+        .get("lastCapabilityPublicationErrorCode")
+        .and_then(serde_json::Value::as_str);
+    let acknowledged_at = diagnostics
+        .get("lastCapabilityPublicationAcknowledgedAt")
+        .and_then(serde_json::Value::as_str);
+    if matches!(ack_state, Some("accepted" | "applied" | "duplicate")) && acknowledged_at.is_some()
+    {
+        status.capability_publication_state = "acknowledged".into();
+        status.capability_publication_acknowledged_at = acknowledged_at.map(str::to_string);
+        status.capability_snapshot_revision = diagnostics
+            .get("lastCapabilitySnapshotRevision")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string);
+    } else if ack_state == Some("rejected") || error_code.is_some() {
+        status.capability_publication_state = "failed".into();
+        status.capability_publication_acknowledged_at = None;
+    } else if diagnostics
+        .get("lastCapabilityPublicationCorrelationId")
+        .and_then(serde_json::Value::as_str)
+        .is_some()
+        && status.capability_publication_state != "acknowledged"
+    {
+        status.capability_publication_state = "pending".into();
+        status.capability_publication_acknowledged_at = None;
+    }
+    status.capability_publication_correlation_id = diagnostics
+        .get("lastCapabilityPublicationCorrelationId")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    status.capability_publication_ack_state = diagnostics
+        .get("lastCapabilityPublicationAckState")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    status.capability_publication_http_status = diagnostics
+        .get("lastCapabilityPublicationHttpStatus")
+        .and_then(serde_json::Value::as_u64)
+        .and_then(|value| u16::try_from(value).ok());
+    status.capability_publication_error_code = diagnostics
+        .get("lastCapabilityPublicationErrorCode")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
 }
 
 fn update_tool_readiness(
@@ -216,6 +279,10 @@ fn update_tool_readiness(
             status.capability_publication_state = "pending".into();
             status.capability_publication_acknowledged_at = None;
             status.capability_snapshot_revision = None;
+            status.capability_publication_correlation_id = None;
+            status.capability_publication_ack_state = None;
+            status.capability_publication_http_status = None;
+            status.capability_publication_error_code = None;
         }
         changed
     };
@@ -371,25 +438,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         .lock()
         .map_err(|_| "RUNNER_READINESS_LOCK_FAILED")?
         .clone();
-    if let Some(acknowledged_at) = runtime_diagnostics
-        .get("lastCapabilityPublicationAcknowledgedAt")
-        .and_then(serde_json::Value::as_str)
-    {
-        readiness.capability_publication_state = "acknowledged".into();
-        readiness.capability_publication_acknowledged_at = Some(acknowledged_at.to_string());
-        readiness.capability_snapshot_revision = runtime_diagnostics
-            .get("lastCapabilitySnapshotRevision")
-            .and_then(serde_json::Value::as_str)
-            .map(str::to_string);
-    } else if runtime_diagnostics
-        .get("runtimeCredentialUpdated")
-        .and_then(serde_json::Value::as_bool)
-        == Some(true)
-    {
-        readiness.capability_publication_state = "pending".into();
-        readiness.capability_publication_acknowledged_at = None;
-        readiness.capability_snapshot_revision = None;
-    }
+    apply_capability_publication_diagnostics(&mut readiness, &runtime_diagnostics);
     Ok(RunnerStatus {
         credentials_ready,
         control_plane_connected,
@@ -564,6 +613,7 @@ async fn sync_runner_capabilities(state: State<'_, RunnerState>) -> Result<Strin
                 .get("lastCapabilitySnapshotRevision")
                 .and_then(serde_json::Value::as_str)
                 .map(str::to_string);
+            apply_capability_publication_diagnostics(&mut current, &runtime);
             Ok(sync_state)
         }
         Err(error) => {
@@ -573,6 +623,10 @@ async fn sync_runner_capabilities(state: State<'_, RunnerState>) -> Result<Strin
             current.capability_publication_state = "failed".into();
             current.capability_publication_acknowledged_at = None;
             current.capability_snapshot_revision = None;
+            apply_capability_publication_diagnostics(
+                &mut current,
+                &smartaihub_runner::diagnostics::runner_credential_diagnostics(),
+            );
             Err(error)
         }
     }
@@ -1337,5 +1391,54 @@ mod control_plane_heartbeat_tests {
             1_000_000
         ));
         assert!(!control_plane_heartbeat_is_fresh(None, 1_000_000));
+    }
+}
+
+#[cfg(test)]
+mod capability_publication_projection_tests {
+    use super::{apply_capability_publication_diagnostics, RunnerReadinessStatus};
+    use serde_json::json;
+
+    #[test]
+    fn failed_publication_stays_failed_after_credential_refresh_without_a_new_attempt() {
+        let mut status = RunnerReadinessStatus {
+            capability_publication_state: "failed".into(),
+            ..RunnerReadinessStatus::default()
+        };
+        apply_capability_publication_diagnostics(
+            &mut status,
+            &json!({
+                "runtimeCredentialUpdated": true,
+                "lastCapabilityPublicationCorrelationId": null,
+                "lastCapabilityPublicationAckState": null,
+                "lastCapabilityPublicationErrorCode": null,
+            }),
+        );
+        assert_eq!(status.capability_publication_state, "failed");
+    }
+
+    #[test]
+    fn rejected_ack_projects_failed_with_safe_diagnostics() {
+        let mut status = RunnerReadinessStatus::default();
+        apply_capability_publication_diagnostics(
+            &mut status,
+            &json!({
+                "lastCapabilityPublicationCorrelationId": "runner:test:capability",
+                "lastCapabilityPublicationAckState": "rejected",
+                "lastCapabilityPublicationHttpStatus": 403,
+                "lastCapabilityPublicationErrorCode": "RUNNER_SESSION_INVALID",
+                "lastCapabilitySnapshotRevision": "snapshot:test:2",
+            }),
+        );
+        assert_eq!(status.capability_publication_state, "failed");
+        assert_eq!(
+            status.capability_publication_correlation_id.as_deref(),
+            Some("runner:test:capability")
+        );
+        assert_eq!(status.capability_publication_http_status, Some(403));
+        assert_eq!(
+            status.capability_publication_error_code.as_deref(),
+            Some("RUNNER_SESSION_INVALID")
+        );
     }
 }

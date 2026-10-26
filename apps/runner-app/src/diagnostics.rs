@@ -66,6 +66,10 @@ pub fn runner_credential_diagnostics() -> serde_json::Value {
                 "lastControlPlaneHeartbeatAcknowledgedAtMs": null,
                 "lastCapabilityPublicationAcknowledgedAt": null,
                 "lastCapabilitySnapshotRevision": null,
+                "lastCapabilityPublicationCorrelationId": null,
+                "lastCapabilityPublicationAckState": null,
+                "lastCapabilityPublicationHttpStatus": null,
+                "lastCapabilityPublicationErrorCode": null,
                 "lastFailureCode": null,
                 "lastFailureAt": null
             }))
@@ -83,13 +87,21 @@ pub fn reset_capability_publication_diagnostics() {
         .get_or_init(|| {
             Mutex::new(json!({
                 "lastCapabilityPublicationAcknowledgedAt": null,
-                "lastCapabilitySnapshotRevision": null
+                "lastCapabilitySnapshotRevision": null,
+                "lastCapabilityPublicationCorrelationId": null,
+                "lastCapabilityPublicationAckState": null,
+                "lastCapabilityPublicationHttpStatus": null,
+                "lastCapabilityPublicationErrorCode": null
             }))
         })
         .lock()
     {
         diagnostics["lastCapabilityPublicationAcknowledgedAt"] = serde_json::Value::Null;
         diagnostics["lastCapabilitySnapshotRevision"] = serde_json::Value::Null;
+        diagnostics["lastCapabilityPublicationCorrelationId"] = serde_json::Value::Null;
+        diagnostics["lastCapabilityPublicationAckState"] = serde_json::Value::Null;
+        diagnostics["lastCapabilityPublicationHttpStatus"] = serde_json::Value::Null;
+        diagnostics["lastCapabilityPublicationErrorCode"] = serde_json::Value::Null;
     }
 }
 
@@ -1310,6 +1322,10 @@ struct RotatingControlTransport {
     last_control_plane_heartbeat_acknowledged_at_ms: Option<u64>,
     last_capability_acknowledged_at: Option<String>,
     last_capability_snapshot_revision: Option<String>,
+    last_capability_correlation_id: Option<String>,
+    last_capability_ack_state: Option<String>,
+    last_capability_http_status: Option<u16>,
+    last_capability_error_code: Option<String>,
     wss_transport_recreated: bool,
     last_failure_code: Option<String>,
     last_failure_at: Option<String>,
@@ -1333,6 +1349,10 @@ impl RotatingControlTransport {
             last_control_plane_heartbeat_acknowledged_at_ms: None,
             last_capability_acknowledged_at: None,
             last_capability_snapshot_revision: None,
+            last_capability_correlation_id: None,
+            last_capability_ack_state: None,
+            last_capability_http_status: None,
+            last_capability_error_code: None,
             wss_transport_recreated: false,
             last_failure_code: None,
             last_failure_at: None,
@@ -1428,6 +1448,10 @@ impl RotatingControlTransport {
         self.last_control_plane_heartbeat_acknowledged_at_ms = None;
         self.last_capability_acknowledged_at = None;
         self.last_capability_snapshot_revision = None;
+        self.last_capability_correlation_id = None;
+        self.last_capability_ack_state = None;
+        self.last_capability_http_status = None;
+        self.last_capability_error_code = None;
         self.wss_transport_recreated = true;
         Ok(true)
     }
@@ -1480,6 +1504,10 @@ impl RotatingControlTransport {
             "lastControlPlaneHeartbeatAcknowledgedAtMs": self.last_control_plane_heartbeat_acknowledged_at_ms,
             "lastCapabilityPublicationAcknowledgedAt": self.last_capability_acknowledged_at,
             "lastCapabilitySnapshotRevision": self.last_capability_snapshot_revision,
+            "lastCapabilityPublicationCorrelationId": self.last_capability_correlation_id,
+            "lastCapabilityPublicationAckState": self.last_capability_ack_state,
+            "lastCapabilityPublicationHttpStatus": self.last_capability_http_status,
+            "lastCapabilityPublicationErrorCode": self.last_capability_error_code,
             "lastFailureCode": last_failure_code,
             "lastFailureAt": self.last_failure_at,
         })
@@ -1490,13 +1518,31 @@ fn transport_error_code(error: TransportError) -> &'static str {
     match error {
         TransportError::Unavailable => "RUNNER_TRANSPORT_UNAVAILABLE",
         TransportError::Idle => "RUNNER_TRANSPORT_IDLE",
-        TransportError::Unauthorized => "RUNNER_TRANSPORT_UNAUTHORIZED",
+        TransportError::Unauthorized(_) => "RUNNER_TRANSPORT_UNAUTHORIZED",
         TransportError::Protocol => "RUNNER_TRANSPORT_PROTOCOL_ERROR",
         TransportError::Rejected => "RUNNER_TRANSPORT_REJECTED",
         TransportError::HttpRejected(_) => "RUNNER_TRANSPORT_HTTP_REJECTED",
         TransportError::CredentialStoreUnavailable => "RUNNER_CREDENTIAL_STORE_UNAVAILABLE",
         TransportError::CredentialBindingMismatch => "RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH",
         TransportError::CredentialInvalid => "RUNNER_CREDENTIAL_INVALID",
+    }
+}
+
+fn ack_state_label(state: AckState) -> &'static str {
+    match state {
+        AckState::Accepted => "accepted",
+        AckState::Applied => "applied",
+        AckState::Rejected => "rejected",
+        AckState::Unknown => "unknown",
+        AckState::Duplicate => "duplicate",
+        AckState::OutOfOrder => "out_of_order",
+    }
+}
+
+fn transport_http_status(error: TransportError) -> Option<u16> {
+    match error {
+        TransportError::Unauthorized(status) | TransportError::HttpRejected(status) => Some(status),
+        _ => None,
     }
 }
 
@@ -1515,6 +1561,10 @@ impl ControlTransport for RotatingControlTransport {
             == Some("runner.reconcile");
         if is_capability_publication {
             self.last_capability_acknowledged_at = None;
+            self.last_capability_correlation_id = Some(event.correlation_id.clone());
+            self.last_capability_ack_state = None;
+            self.last_capability_http_status = None;
+            self.last_capability_error_code = None;
             self.last_capability_snapshot_revision = event
                 .payload
                 .get("snapshot")
@@ -1528,6 +1578,10 @@ impl ControlTransport for RotatingControlTransport {
             Err(error) => {
                 self.last_failure_code = Some(transport_error_code(error).to_owned());
                 self.last_failure_at = Some(current_time_iso());
+                if is_capability_publication {
+                    self.last_capability_http_status = transport_http_status(error);
+                    self.last_capability_error_code = Some(transport_error_code(error).to_owned());
+                }
                 self.publish_runtime_diagnostics();
                 return Err(error);
             }
@@ -1535,18 +1589,18 @@ impl ControlTransport for RotatingControlTransport {
         if self.inner.wss_auth_acknowledged() && self.last_wss_auth_acknowledged_at.is_none() {
             self.last_wss_auth_acknowledged_at = Some(current_time_iso());
         }
-        if is_capability_publication
-            && matches!(
-                ack,
-                AckState::Accepted | AckState::Applied | AckState::Duplicate
-            )
-        {
-            self.last_capability_acknowledged_at = Some(current_time_iso());
-        }
         let accepted = matches!(
             ack,
             AckState::Accepted | AckState::Applied | AckState::Duplicate
         );
+        if is_capability_publication && accepted {
+            self.last_capability_acknowledged_at = Some(current_time_iso());
+        }
+        if is_capability_publication {
+            self.last_capability_ack_state = Some(ack_state_label(ack).to_owned());
+            self.last_capability_error_code =
+                (!accepted).then(|| "RUNNER_CONTROL_EVENT_REJECTED".to_owned());
+        }
         if is_heartbeat && accepted {
             self.last_control_plane_heartbeat_acknowledged_at_ms = Some(current_time_ms());
         }
@@ -1575,6 +1629,10 @@ impl ControlTransport for RotatingControlTransport {
             == Some("runner.reconcile");
         if is_capability_publication {
             self.last_capability_acknowledged_at = None;
+            self.last_capability_correlation_id = Some(event.correlation_id.clone());
+            self.last_capability_ack_state = None;
+            self.last_capability_http_status = None;
+            self.last_capability_error_code = None;
             self.last_capability_snapshot_revision = event
                 .payload
                 .get("snapshot")
@@ -1585,18 +1643,18 @@ impl ControlTransport for RotatingControlTransport {
         }
         match self.inner.send_https(endpoint, event) {
             Ok(ack) => {
-                if is_capability_publication
-                    && matches!(
-                        ack,
-                        AckState::Accepted | AckState::Applied | AckState::Duplicate
-                    )
-                {
-                    self.last_capability_acknowledged_at = Some(current_time_iso());
-                }
                 let accepted = matches!(
                     ack,
                     AckState::Accepted | AckState::Applied | AckState::Duplicate
                 );
+                if is_capability_publication && accepted {
+                    self.last_capability_acknowledged_at = Some(current_time_iso());
+                }
+                if is_capability_publication {
+                    self.last_capability_ack_state = Some(ack_state_label(ack).to_owned());
+                    self.last_capability_error_code =
+                        (!accepted).then(|| "RUNNER_CONTROL_EVENT_REJECTED".to_owned());
+                }
                 if is_heartbeat && accepted {
                     self.last_control_plane_heartbeat_acknowledged_at_ms = Some(current_time_ms());
                 }
@@ -1613,6 +1671,10 @@ impl ControlTransport for RotatingControlTransport {
             Err(error) => {
                 self.last_failure_code = Some(transport_error_code(error).to_owned());
                 self.last_failure_at = Some(current_time_iso());
+                if is_capability_publication {
+                    self.last_capability_http_status = transport_http_status(error);
+                    self.last_capability_error_code = Some(transport_error_code(error).to_owned());
+                }
                 self.publish_runtime_diagnostics();
                 Err(error)
             }
@@ -3549,6 +3611,14 @@ mod rotating_transport_tests {
         );
         assert!(transport.last_capability_acknowledged_at.is_none());
         assert_eq!(
+            transport.last_capability_ack_state.as_deref(),
+            Some("rejected")
+        );
+        assert_eq!(
+            transport.last_capability_correlation_id.as_deref(),
+            Some("runner:runner-rotation-test")
+        );
+        assert_eq!(
             transport.last_capability_snapshot_revision.as_deref(),
             Some("r2")
         );
@@ -3561,6 +3631,11 @@ mod rotating_transport_tests {
             transport.send_wss(&endpoint, &capability_event()),
             Ok(AckState::Applied)
         );
+        assert_eq!(
+            transport.last_capability_ack_state.as_deref(),
+            Some("applied")
+        );
+        assert!(transport.last_capability_acknowledged_at.is_some());
         server.join().unwrap();
 
         let captures = captures.lock().unwrap();

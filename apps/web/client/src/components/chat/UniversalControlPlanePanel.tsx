@@ -2008,6 +2008,12 @@ export function UniversalControlPlanePanel({
                         · {runner.toolCount} tools · {runner.capabilityCount}{" "}
                         capabilities · {(runner.workspaceIds ?? []).length} projects
                       </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {runner.capabilitySnapshotPersisted
+                          ? `Capability snapshot stored by server${runner.capabilitySnapshotCurrent ? " · current" : " · stale"}${runner.capabilitySnapshotRevision ? ` · ${runner.capabilitySnapshotRevision}` : ""}`
+                          : "No capability snapshot stored by server"}
+                        {" · per-run policy and device consent are checked separately"}
+                      </p>
                     </section>
                   </section>
                   <Badge
