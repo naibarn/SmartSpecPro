@@ -58,6 +58,28 @@ class FakeRuntime:
 
 
 class LinuxPythonBackendReleaseTests(unittest.TestCase):
+    def test_approved_immutable_python_candidate_requires_canonical_ancestry_and_security_floor(self):
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp)
+            subprocess.run(["git", "init", "-q", str(source)], check=True)
+            subprocess.run(["git", "-C", str(source), "config", "user.email", "test@example.invalid"], check=True)
+            subprocess.run(["git", "-C", str(source), "config", "user.name", "Test"], check=True)
+            (source / "marker").write_text("base\n")
+            subprocess.run(["git", "-C", str(source), "add", "marker"], check=True)
+            subprocess.run(["git", "-C", str(source), "commit", "-qm", "base"], check=True)
+            before_floor = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+            (source / "marker").write_text("execution authority\n")
+            subprocess.run(["git", "-C", str(source), "commit", "-qam", "execution authority floor"], check=True)
+            floor = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+            candidate = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+            (source / "marker").write_text("later runtime change\n")
+            subprocess.run(["git", "-C", str(source), "commit", "-qam", "advance main"], check=True)
+            tip = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+            policy = {"allow_approved_immutable_candidates": True, "required_source_ancestors": [floor]}
+            self.assertTrue(release.source_candidate_is_eligible(source, candidate, tip, policy))
+            self.assertFalse(release.source_candidate_is_eligible(source, before_floor, tip, policy))
+            self.assertFalse(release.source_candidate_is_eligible(source, candidate, "f" * 40, policy))
+
     def test_existing_release_authority_exposes_python_subcommands(self):
         command = SCRIPT.with_name("linux_backend_release.py")
         result = subprocess.run([sys.executable, str(command), "--help"], capture_output=True, text=True, check=True)

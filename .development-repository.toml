@@ -7,6 +7,13 @@ source_root = "/mnt/SmartSpecDev/.cache/codex/canonical-sources"
 lease_root = "/mnt/SmartSpecDev/.cache/codex/canonical-leases"
 build_target = "smartspec-web"
 
+[repository.release]
+# Immutable candidates may remain releasable after main advances, but must
+# descend from the latest required execution-authority revision. Production
+# activation still requires the existing exact-artifact sudo controller.
+allow_approved_immutable_candidates = true
+required_source_ancestors = ["d7f19629ac99faf2d51a0491859a243863b3f706"]
+
 [repository.platforms.linux]
 canonical_user_workspace = "/mnt/SmartSpecDev/projects/SmartSpecPro"
 source_root = "/mnt/SmartSpecDev/.cache/codex/canonical-sources"

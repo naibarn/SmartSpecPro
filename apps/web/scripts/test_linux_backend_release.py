@@ -176,6 +176,20 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         (self.workspace / "apps/web/package.json").write_text('{"name":"@smartspec/web"}\n')
         subprocess.run(["git", "-C", str(self.workspace), "add", "."], check=True)
         subprocess.run(["git", "-C", str(self.workspace), "commit", "-qm", "fixture source"], check=True)
+        (self.workspace / "execution-authority-floor.txt").write_text("scoped development authority\n")
+        subprocess.run(["git", "-C", str(self.workspace), "add", "execution-authority-floor.txt"], check=True)
+        subprocess.run(["git", "-C", str(self.workspace), "commit", "-qm", "execution authority floor"], check=True)
+        self.security_floor_sha = subprocess.check_output(
+            ["git", "-C", str(self.workspace), "rev-parse", "HEAD"], text=True
+        ).strip()
+        policy += (
+            "\n[repository.release]\n"
+            "allow_approved_immutable_candidates = true\n"
+            f'required_source_ancestors = ["{self.security_floor_sha}"]\n'
+        )
+        (self.workspace / ".development-repository.toml").write_text(policy)
+        subprocess.run(["git", "-C", str(self.workspace), "add", ".development-repository.toml"], check=True)
+        subprocess.run(["git", "-C", str(self.workspace), "commit", "-qm", "release candidate policy"], check=True)
         subprocess.run(["git", "-C", str(self.workspace), "branch", "-M", "main"], check=True)
         self.source_sha = subprocess.check_output(
             ["git", "-C", str(self.workspace), "rev-parse", "HEAD"], text=True
@@ -275,13 +289,29 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         runtime = promoted.get("runtime_verification", promoted.get("runtime", {}))
         self.assertEqual(runtime["runtimeRevision"], self.source_sha)
 
-    def test_executable_advance_keeps_old_candidate_ineligible(self):
+    def test_approved_immutable_candidate_survives_executable_main_advance_after_security_floor(self):
         current_tip = self.commit_canonical_advance("apps/web/server/new-runtime.ts", "export const value = true;\n")
-        self.assertFalse(release.source_advance_is_documentation_only(self.workspace, self.source_sha, current_tip))
+        policy = {
+            "allow_approved_immutable_candidates": True,
+            "required_source_ancestors": [self.security_floor_sha],
+        }
+        self.assertTrue(release.source_candidate_is_eligible(self.workspace, self.source_sha, current_tip, policy))
         with patch.object(release, "canonical_tip", return_value=current_tip):
-            with self.assertRaisesRegex(release.ReleaseError, "executable or deployment inputs advanced"):
-                release.prepare_artifact(self.build_result_path, self.artifact_store)
-        self.assertFalse(list(self.artifact_store.glob("smartspec-web-*")))
+            prepared = release.prepare_artifact(self.build_result_path, self.artifact_store)
+        self.assertEqual(prepared["manifest"]["sourceSha"], self.source_sha)
+        self.assertEqual(prepared["manifest"]["canonicalTipAtPreparation"], current_tip)
+        self.assertTrue(prepared["manifest"]["immutableCandidateAllowedByPolicy"])
+        promoted = self.promote(Path(prepared["artifact_path"]))
+        self.assertEqual(promoted["status"], "DEPLOYED_VERIFIED")
+
+    def test_immutable_candidate_missing_required_execution_authority_floor_is_rejected(self):
+        current_tip = self.commit_canonical_advance("apps/web/server/new-runtime.ts", "export const value = true;\n")
+        missing_floor = "0" * 40
+        policy = {
+            "allow_approved_immutable_candidates": True,
+            "required_source_ancestors": [missing_floor],
+        }
+        self.assertFalse(release.source_candidate_is_eligible(self.workspace, self.source_sha, current_tip, policy))
 
     def promote(self, artifact: Path):
         return release.promote_artifact(
@@ -563,7 +593,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
 
     def test_stale_source_is_rejected_before_runtime_changes(self):
         artifact = self.prepare()
-        with self.assertRaisesRegex(release.ReleaseError, "Stale source rejected"):
+        with self.assertRaisesRegex(release.ReleaseError, "Release candidate rejected"):
             release.promote_artifact(
                 artifact,
                 release_root=self.release_root,

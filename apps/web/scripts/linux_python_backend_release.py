@@ -93,7 +93,27 @@ def _ignore(directory: str, names: list[str]) -> set[str]:
     return ignored
 
 
-def validate_source(source_root: Path, source_sha: str, canonical_ref: str = "refs/heads/main") -> None:
+def source_candidate_is_eligible(source_root: Path, source_sha: str, canonical_sha: str,
+                                release_policy: dict[str, Any]) -> bool:
+    required = release_policy.get("required_source_ancestors", [])
+    if not isinstance(required, list) or any(not isinstance(item, str) or not SHA_RE.fullmatch(item) for item in required):
+        return False
+    git = ["git", "-C", str(source_root)]
+
+    def ancestor(older: str, newer: str) -> bool:
+        return subprocess.run([*git, "merge-base", "--is-ancestor", older, newer],
+                              capture_output=True, check=False).returncode == 0
+
+    if not all(ancestor(required_sha, source_sha) for required_sha in required):
+        return False
+    if source_sha == canonical_sha:
+        return True
+    if not ancestor(source_sha, canonical_sha):
+        return False
+    return release_policy.get("allow_approved_immutable_candidates") is True
+
+
+def validate_source(source_root: Path, source_sha: str, canonical_ref: str = "refs/heads/main") -> dict[str, Any]:
     if not SHA_RE.fullmatch(source_sha):
         raise ReleaseError("Python source revision is invalid")
     if canonical_ref != "refs/heads/main":
@@ -108,21 +128,24 @@ def validate_source(source_root: Path, source_sha: str, canonical_ref: str = "re
         raise ReleaseError("Canonical repository policy is missing")
     import tomllib
     config = tomllib.loads(policy.read_text(encoding="utf-8"))["repository"]
+    release_policy = config.get("release", {})
     remote = str(config.get("remote", "origin"))
     ref = str(config.get("canonical_ref", "refs/heads/main"))
     tip = _run(["git", "ls-remote", "--exit-code", remote, ref], cwd=source_root)
     rows = [line.split("\t", 1)[0] for line in tip.splitlines() if "\t" in line]
-    if rows != [source_sha]:
-        raise ReleaseError("Stale Python source rejected: origin/main changed after checkout")
+    if len(rows) != 1 or not source_candidate_is_eligible(source_root, source_sha, rows[0], release_policy):
+        raise ReleaseError("Python release candidate rejected: canonical ancestry or required security-floor policy failed")
     backend = source_root / "python-backend"
     if not (backend / "app/main.py").is_file() or not any((backend / name).is_file() for name in ("requirements.txt", "pyproject.toml")):
         raise ReleaseError("Canonical source is missing the Python application or dependency manifest")
+    return {"canonical_tip_at_preparation": rows[0], "immutable_candidate_allowed_by_policy": rows[0] != source_sha,
+            "required_source_ancestors": release_policy.get("required_source_ancestors", [])}
 
 
 def prepare_artifact(source_root: Path, artifact_store: Path = RELEASE_ROOT, *, source_sha: str | None = None) -> dict[str, Any]:
     source_root = source_root.resolve(strict=True)
     source_sha = source_sha or _run(["git", "rev-parse", "HEAD"], cwd=source_root)
-    validate_source(source_root, source_sha)
+    freshness = validate_source(source_root, source_sha)
     source_backend = source_root / "python-backend"
     slip_parser_root = source_root / "apps/web/skills/unified-payin-slip-parser"
     slip_parser_source = slip_parser_root / "src/unified_slip_parser"
@@ -152,6 +175,9 @@ def prepare_artifact(source_root: Path, artifact_store: Path = RELEASE_ROOT, *, 
             "source_sha": source_sha,
             "canonical_ref": "refs/heads/main",
             "source_workspace": str(source_root),
+            "canonical_tip_at_preparation": freshness["canonical_tip_at_preparation"],
+            "immutable_candidate_allowed_by_policy": freshness["immutable_candidate_allowed_by_policy"],
+            "required_source_ancestors": freshness["required_source_ancestors"],
             "artifact_digest": copied["artifact_digest"],
             "artifact_file_count": copied["file_count"],
             "runtime_paths": [".", "vendor/unified-payin-slip-parser/src"],
