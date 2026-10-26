@@ -10,6 +10,7 @@ from urllib.parse import urlparse
 from openai import AsyncOpenAI
 
 from app.core.config import settings
+from app.core.application_runtime import get_application_runtime_profile
 from app.services.openai_agents_contracts import RuntimeModelConfig, RuntimeSurface
 
 GatewayTransport = Literal["responses", "chat_completions"]
@@ -104,6 +105,22 @@ def _is_smartspec_gateway_origin(url: str) -> bool:
     hostname = (parsed.hostname or "").lower()
     if not hostname:
         return False
+    if hostname == "node.application.internal":
+        # Only the paired Container egress binding owns this HTTP destination.
+        # Do not turn a private bridge hostname into a generally trusted URL,
+        # or bypass the usual tenant attribution and direct-provider checks.
+        try:
+            profile = get_application_runtime_profile(settings.ENVIRONMENT)
+            return (
+                profile.mode == "cloudflare-http"
+                and os.getenv("CLOUDFLARE_APPLICATION_BRIDGE") == "private-http-v1"
+                and parsed.scheme == "http"
+                and parsed.netloc == "node.application.internal"
+                and parsed.path in {"", "/", "/v1"}
+                and not parsed.query and not parsed.fragment
+            )
+        except ValueError:
+            return False
     if hostname in _SMARTSPEC_GATEWAY_HOSTS:
         return True
     return hostname == "smartspecpro.com" or hostname.endswith(_SMARTSPEC_GATEWAY_DOMAIN_SUFFIXES)

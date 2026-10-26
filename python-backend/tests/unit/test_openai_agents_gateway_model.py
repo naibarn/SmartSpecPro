@@ -37,6 +37,55 @@ def test_gateway_base_url_is_used(monkeypatch):
     assert transport.base_url == "https://gateway.internal/v1"
 
 
+@pytest.mark.parametrize("surface", ["chat", "responses", "skill", "media_production"])
+def test_cloudflare_private_gateway_preserves_attribution_and_tenant(monkeypatch, surface):
+    monkeypatch.setenv("SMARTAIHUB_APPLICATION_RUNTIME", "cloudflare-http")
+    monkeypatch.setenv("CLOUDFLARE_CONTAINER_POLICY", "on-demand")
+    monkeypatch.setenv("CLOUDFLARE_APPLICATION_BRIDGE", "private-http-v1")
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "http://node.application.internal")
+    transport = build_gateway_transport_config(
+        surface=surface, model_config=_model_config(),
+        attribution_token="scoped-attribution-fixture", tenant_id="tenant-fixture",
+    )
+    assert transport.base_url == "http://node.application.internal/v1"
+    assert transport.api_key == "scoped-attribution-fixture"
+    assert transport.tenant_id == "tenant-fixture"
+
+
+@pytest.mark.parametrize("url", [
+    "https://node.application.internal", "http://node.application.internal:3000",
+    "http://user:password@node.application.internal", "http://node.application.internal/foreign",
+    "http://node.application.internal?foreign=1", "http://node.application.internal#foreign",
+    "http://node.application.internal.foreign.example", "http://python.application.internal",
+])
+def test_cloudflare_gateway_does_not_broaden_the_private_destination(monkeypatch, url):
+    monkeypatch.setenv("SMARTAIHUB_APPLICATION_RUNTIME", "cloudflare-http")
+    monkeypatch.setenv("CLOUDFLARE_CONTAINER_POLICY", "on-demand")
+    monkeypatch.setenv("CLOUDFLARE_APPLICATION_BRIDGE", "private-http-v1")
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    with pytest.raises(GatewayModelConfigurationError, match="recognized SmartSpecPro gateway"):
+        build_gateway_transport_config(surface="chat", model_config=_model_config(),
+            attribution_token="fixture", gateway_base_url=url)
+
+
+@pytest.mark.parametrize("change", [
+    {"SMARTAIHUB_APPLICATION_RUNTIME": "standard"},
+    {"CLOUDFLARE_CONTAINER_POLICY": "always-on"},
+    {"CLOUDFLARE_APPLICATION_BRIDGE": ""},
+    {"ENVIRONMENT": "development"},
+])
+def test_cloudflare_private_gateway_requires_the_validated_request_runtime(monkeypatch, change):
+    for key, value in {"SMARTAIHUB_APPLICATION_RUNTIME": "cloudflare-http",
+        "CLOUDFLARE_CONTAINER_POLICY": "on-demand", "CLOUDFLARE_APPLICATION_BRIDGE": "private-http-v1", **change}.items():
+        if key != "ENVIRONMENT":
+            monkeypatch.setenv(key, value)
+    monkeypatch.setattr(settings, "ENVIRONMENT", change.get("ENVIRONMENT", "production"))
+    with pytest.raises(GatewayModelConfigurationError, match="recognized SmartSpecPro gateway"):
+        build_gateway_transport_config(surface="chat", model_config=_model_config(),
+            attribution_token="fixture", gateway_base_url="http://node.application.internal")
+
+
 def test_arbitrary_gateway_url_is_rejected_for_production_runtime_surfaces(monkeypatch):
     monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_URL", "https://gateway.example.net")
 
