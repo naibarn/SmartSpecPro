@@ -62,6 +62,30 @@ describe("Cloudflare production provider inventory", () => {
     expect(paths.some(path => path.endsWith("/mtls_certificates"))).toBe(true);
   });
 
+  it("exposes only safe Hyperdrive identity and binding fields for exact recovery reconciliation", async () => {
+    const hyperdriveId = "db6b46010af44ad381dd6e3e2674913a";
+    const vpcServiceId = "12345678-1234-4234-8234-123456789abc";
+    const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
+      const url = new URL(String(request));
+      if (url.pathname.endsWith("/queues") || url.pathname.endsWith("/workers/routes") || url.pathname.endsWith("/cfd_tunnel") ||
+          url.pathname.endsWith("/containers/applications") || url.pathname.endsWith("/mtls_certificates")) return response([]);
+      if (url.pathname.endsWith("/hyperdrive/configs")) return response([{ id: hyperdriveId,
+        name: "smartspec-production-database-aaaaaaaaaaaa", origin: { service_id: vpcServiceId, database: "smartspec",
+          user: "sah_cf_prod_0123456789ab", scheme: "postgres" }, caching: { disabled: true }, origin_connection_limit: 5,
+        mtls: { private_key: "must-not-return" } }]);
+      if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/connectivity/directory/services")) return response([{ service_id: vpcServiceId,
+        name: "smartspec-production-postgres-aaaaaaaaaaaa", type: "tcp", app_protocol: "postgresql" }]);
+      if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
+      throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
+    });
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result).toMatchObject({ hyperdrives: [{ id: hyperdriveId, name: "smartspec-production-database-aaaaaaaaaaaa",
+      vpcServiceId, database: "smartspec", databaseUser: "sah_cf_prod_0123456789ab", scheme: "postgres",
+      cachingDisabled: true, connectionLimit: 5, environment: "production" }] });
+    expect(JSON.stringify(result)).not.toContain("must-not-return");
+  });
+
   it("reports saved Production origin and ingress state without returning its configuration or secrets", async () => {
     resolveTarget.mockResolvedValue({ targetId: workerRef, tenantId: "tenant-a", projectId: "project-a", environment: "production",
       accountRef, workerRef, credentialRef: "cloudflare:production", runtimePolicy: "cf-origin:" + "c".repeat(64), enabled: true });

@@ -781,10 +781,12 @@ describe("AdminDeploymentTargets", () => {
     mocks.workerVersionChecks = [{ httpStatus: null, complete: false }];
     mocks.productionTunnels = [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartspec", status: "healthy" }];
     mocks.databaseVpcReadable = true;
-    mocks.databaseVpcs = [{ id: "01a175b0-3c44-7131-8805-2cd56db223ac", name: "smartspec-postgres-production",
+    mocks.databaseVpcs = [{ id: "01a175b0-3c44-7131-8805-2cd56db223ac", name: "smartspec-production-postgres-aaaaaaaaaaaa",
       type: "tcp", appProtocol: "postgresql", tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", environment: "production" }];
+    mocks.productionHyperdrives = [{ id: "db6b46010af44ad381dd6e3e2674913a", name: "smartspec-production-database-aaaaaaaaaaaa",
+      vpcServiceId: "01a175b0-3c44-7131-8805-2cd56db223ac", scheme: "postgres", cachingDisabled: true, environment: "production" }];
     mocks.latestProductionDatabaseJob = { jobId: "b9ca8316-1604-4764-a769-d92f46e4c823", status: "failed",
-      errorCode: "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015", attempt: 3, maxAttempts: 3,
+      errorCode: "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", attempt: 4, maxAttempts: 4,
       tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", planDigest: "a".repeat(64) };
 
     render(<AdminDeploymentTargets />);
@@ -793,6 +795,7 @@ describe("AdminDeploymentTargets", () => {
     expect(await screen.findByText(/Production inventory is incomplete \(PARTIAL\)/)).toBeInTheDocument();
     expect(screen.getByText("b9ca8316-1604-4764-a769-d92f46e4c823")).toBeInTheDocument();
     expect(screen.getByText(/Worker versions/)).toBeInTheDocument();
+    expect(screen.getByText(/Readback recovery reuses the exact Hyperdrive and VPC/i)).toBeInTheDocument();
     expect(screen.queryByText(/HTTP undefined/)).not.toBeInTheDocument();
     const recover = screen.getByRole("button", { name: "Authorize recovery of existing Hyperdrive job" });
     expect(recover).toBeEnabled();

@@ -14,14 +14,16 @@ function fixture() {
   const service = { service_id: jobId, name: `smartspec-production-postgres-${grant.planDigest.slice(0,12)}`, type: "tcp", app_protocol: "postgresql",
     tcp_port: 5433, host: { hostname: grant.plan.databaseHostname, resolver_network: { tunnel_id: grant.plan.tunnelId } }, tls_settings: { cert_verification_mode: "verify_full" } };
   let hyperdrives: any[] = [];
+  let hyperdriveReadback: any = null;
   const fetchImpl = vi.fn<typeof fetch>(async url => new Response(JSON.stringify({ success: true, result:
     String(url).includes("cfd_tunnel") ? { id: grant.plan.tunnelId, status: "healthy" } :
-      String(url).includes("/services/") ? service : hyperdrives }), { status: 200 }));
+      String(url).includes("/services/") ? service : String(url).match(/\/hyperdrive\/configs\/[^/?]+$/) ? hyperdriveReadback : hyperdrives }), { status: 200 }));
   const runtime = { resolveGrant: async () => ({ grant, databasePassword }), checkpoint: async () => checkpoint,
     resolveTarget: async () => ({ targetId: grant.targetId, accountRef: grant.accountRef, credentialRef: "test" }),
     withCredential: async (_p: string, _t: string, _r: string, op: (token: string) => unknown) => op("test-token"), fetchImpl } as unknown as CloudflareProductionDatabaseRuntime;
   const input = { runtime, jobId, tenantId, projectId, requesterUserId: 17, planDigest: grant.planDigest };
-  return { input, grant, checkpoint, service, fetchImpl, setHyperdrives: (value: any[]) => { hyperdrives = value; } };
+  return { input, grant, checkpoint, service, fetchImpl, setHyperdrives: (value: any[]) => { hyperdrives = value; },
+    setCompletedHyperdrive: (value: any) => { Object.assign(checkpoint, { pending: null, hyperdriveId: "abcdefabcdefabcdefabcdefabcdefab" }); hyperdriveReadback = value; hyperdrives = [value]; } };
 }
 describe("Production database original-checkpoint read-only recovery", () => {
   it("inspects expired authority for identity only and never performs provider writes", async () => {
@@ -45,5 +47,18 @@ describe("Production database original-checkpoint read-only recovery", () => {
     await expect(inspectProductionDatabaseRecovery(f.input)).rejects.toThrow("READBACK_MISMATCH");
     const next = fixture(); next.setHyperdrives([{ origin: { service_id: next.checkpoint.vpcServiceId } }]);
     await expect(inspectProductionDatabaseRecovery(next.input)).rejects.toThrow("REQUIRES_RECONCILIATION");
+  });
+
+  it("reconciles an already-created VPC Hyperdrive after a readback mismatch without provider writes", async () => {
+    const f = fixture();
+    f.setCompletedHyperdrive({ id: "abcdefabcdefabcdefabcdefabcdefab", name: `smartspec-production-database-${f.grant.planDigest.slice(0, 12)}`,
+      origin: { service_id: f.checkpoint.vpcServiceId, database: f.grant.plan.databaseName, user: f.grant.plan.databaseUser, scheme: "postgres" },
+      caching: { disabled: true }, origin_connection_limit: 5, mtls: {} });
+
+    await expect(inspectProductionDatabaseRecovery(f.input)).resolves.toMatchObject({
+      providerReadbackVerified: true, databaseConnectionVerified: false,
+      vpcServiceId: f.checkpoint.vpcServiceId, hyperdriveId: "abcdefabcdefabcdefabcdefabcdefab",
+    });
+    expect(f.fetchImpl.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
   });
 });

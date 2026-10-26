@@ -1,8 +1,12 @@
 import { createHash } from "node:crypto";
 import type { CloudflareProductionDatabaseRuntime } from "./cloudflareProductionDatabaseExecutor";
+import { productionVPCHyperdriveReadbackMatches } from "./cloudflareProductionDatabaseProvision";
 
-export function productionDatabaseRecoveryActionId(jobId: string, planDigest: string) {
-  const hash = createHash("sha256").update(`production-database-provider:${jobId}:${planDigest}`).digest("hex");
+export function productionDatabaseRecoveryActionId(jobId: string, planDigest: string, nextAttempt?: number) {
+  const recoveryKey = nextAttempt === undefined
+    ? `production-database-provider:${jobId}:${planDigest}`
+    : `production-database-provider:${jobId}:${planDigest}:attempt:${nextAttempt}`;
+  const hash = createHash("sha256").update(recoveryKey).digest("hex");
   return `${hash.slice(0,8)}-${hash.slice(8,12)}-4${hash.slice(13,16)}-8${hash.slice(17,20)}-${hash.slice(20,32)}`;
 }
 
@@ -26,9 +30,11 @@ export async function inspectProductionDatabaseRecovery(input: {
       grant.targetId !== "smartspec-cloudflare-runtime") deny("CLOUDFLARE_PRODUCTION_DATABASE_RECOVERY_SCOPE_MISMATCH");
   const verified = secure!;
   const checkpoint = await runtime.checkpoint(input.jobId, input.requesterUserId, input.planDigest);
+  const retryBeforeHyperdrive = checkpoint?.pending === "hyperdrive" && Boolean(checkpoint.vpcServiceId) && !checkpoint.hyperdriveId;
+  const reconcileCreatedHyperdrive = checkpoint?.pending == null && Boolean(checkpoint.vpcServiceId && checkpoint.hyperdriveId);
   if (!checkpoint || checkpoint.jobId !== input.jobId || checkpoint.planDigest !== input.planDigest ||
       checkpoint.databasePasswordDigest !== createHash("sha256").update(verified.databasePassword).digest("hex") ||
-      checkpoint.pending !== "hyperdrive" || !checkpoint.vpcServiceId || checkpoint.hyperdriveId)
+      (!retryBeforeHyperdrive && !reconcileCreatedHyperdrive))
     deny("CLOUDFLARE_PRODUCTION_DATABASE_RECOVERY_CHECKPOINT_INVALID");
   const target = await runtime.resolveTarget(input.tenantId, input.projectId);
   if (!target || target.targetId !== verified.grant.targetId || target.accountRef !== verified.grant.accountRef)
@@ -53,12 +59,23 @@ export async function inspectProductionDatabaseRecovery(input: {
     const inventory = await read("/hyperdrive/configs?per_page=100");
     if (!Array.isArray(inventory.result) || inventory.result.length >= 100 || (inventory.result_info?.total_pages ?? 1) > 1)
       deny("CLOUDFLARE_PRODUCTION_DATABASE_INVENTORY_INCOMPLETE");
-    // An uncertain prior write must be reconciled separately, never retried as
-    // an absent resource. No POST is issued by this inspection.
-    if (inventory.result.some((row: any) => row?.name === `smartspec-production-database-${input.planDigest.slice(0, 12)}` ||
-        row?.origin?.service_id === checkpoint!.vpcServiceId))
-      deny("CLOUDFLARE_PRODUCTION_DATABASE_RECOVERY_PROVIDER_OUTCOME_REQUIRES_RECONCILIATION");
+    const hyperdriveName = `smartspec-production-database-${input.planDigest.slice(0, 12)}`;
+    if (retryBeforeHyperdrive) {
+      // An uncertain prior create must be reconciled separately, never retried
+      // as absent. The original CF2015 path is recoverable only when no
+      // Hyperdrive for this operation or VPC exists. This path performs no POST.
+      if (inventory.result.some((row: any) => row?.name === hyperdriveName || row?.origin?.service_id === checkpoint!.vpcServiceId))
+        deny("CLOUDFLARE_PRODUCTION_DATABASE_RECOVERY_PROVIDER_OUTCOME_REQUIRES_RECONCILIATION");
+    } else {
+      const candidates = inventory.result.filter((row: any) => row?.id === checkpoint!.hyperdriveId);
+      if (candidates.length !== 1 || candidates[0]?.name !== hyperdriveName || candidates[0]?.origin?.service_id !== checkpoint!.vpcServiceId)
+        deny("CLOUDFLARE_PRODUCTION_HYPERDRIVE_CHECKPOINT_MISMATCH");
+      const hyperdrive = (await read(`/hyperdrive/configs/${encodeURIComponent(checkpoint!.hyperdriveId!)}`)).result;
+      if (!productionVPCHyperdriveReadbackMatches({ resource: hyperdrive, id: checkpoint!.hyperdriveId!, name: hyperdriveName,
+        vpcServiceId: checkpoint!.vpcServiceId!, plan })) deny("CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH");
+    }
     return { jobId: input.jobId, planDigest: input.planDigest, vpcServiceId: checkpoint!.vpcServiceId!,
+      ...(checkpoint!.hyperdriveId ? { hyperdriveId: checkpoint!.hyperdriveId } : {}),
       tunnelId: plan.tunnelId, providerReadbackVerified: true as const, databaseConnectionVerified: false as const };
   });
 }

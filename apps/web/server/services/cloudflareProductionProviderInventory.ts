@@ -75,7 +75,10 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const [routes, queueDetails, hyperdriveDetails, tunnels, containers, vpcServices, mtlsCertificates] = await Promise.all([
       zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
       Array.isArray(queues.result) ? queues.result as Array<{ queue_name?: unknown }> : [],
-      Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{ name?: unknown }> : [],
+      Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{
+        id?: unknown; name?: unknown; origin?: { service_id?: unknown; database?: unknown; user?: unknown; scheme?: unknown };
+        caching?: { disabled?: unknown }; origin_connection_limit?: unknown;
+      }> : [],
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/cfd_tunnel?is_deleted=false&per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/containers/applications?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/connectivity/directory/services?per_page=100`, fetchImpl),
@@ -102,7 +105,6 @@ export async function probeCloudflareProductionProviderInventory(input: {
         checked: detail.complete };
     }));
     const queueNames = queueDetails.map(row => row.queue_name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(name));
-    const hyperdriveNames = hyperdriveDetails.map(row => row.name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,127}$/.test(name));
     const inventoryComplete = queues.complete && hyperdrive.complete && zones.complete && Boolean(routes?.complete) &&
       deployments.complete && Array.isArray(deploymentRows) && versionDetails.every(version => version.checked) &&
       vpcServices.complete && tunnels.complete && containers.complete;
@@ -167,7 +169,16 @@ export async function probeCloudflareProductionProviderInventory(input: {
       queueInventoryComplete: queues.complete,
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
       hyperdriveInventoryComplete: hyperdrive.complete,
-      hyperdrives: hyperdriveNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
+      hyperdrives: hyperdriveDetails.flatMap(row => typeof row.name === "string" && /^[a-z0-9][a-z0-9-]{0,127}$/.test(row.name)
+        ? [{ ...(typeof row.id === "string" && /^[a-f0-9]{32}$/i.test(row.id) ? { id: row.id } : {}), name: row.name,
+            ...(typeof row.origin?.service_id === "string" && /^[a-f0-9-]{36}$/i.test(row.origin.service_id) ? { vpcServiceId: row.origin.service_id } : {}),
+            ...(typeof row.origin?.database === "string" && /^[a-zA-Z0-9_]{1,63}$/.test(row.origin.database) ? { database: row.origin.database } : {}),
+            ...(typeof row.origin?.user === "string" && /^sah_cf_prod_[a-f0-9]{12}$/.test(row.origin.user) ? { databaseUser: row.origin.user } : {}),
+            ...(row.origin?.scheme === "postgres" ? { scheme: "postgres" as const } : {}),
+            ...(row.caching?.disabled === true ? { cachingDisabled: true as const } : {}),
+            ...(typeof row.origin_connection_limit === "number" ? { connectionLimit: row.origin_connection_limit } : {}),
+            environment: /(?:^|-)production(?:-|$)/i.test(row.name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(row.name) ? "staging" as const : "other" as const }]
+        : []),
       tunnelInventoryComplete: tunnels.complete,
       tunnels: tunnelRows.flatMap(row => typeof row.id === "string" && /^[a-f0-9-]{36}$/i.test(row.id) &&
         typeof row.name === "string" && /^[a-zA-Z0-9][a-zA-Z0-9 ._-]{0,99}$/.test(row.name)

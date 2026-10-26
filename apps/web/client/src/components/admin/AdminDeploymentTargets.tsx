@@ -500,6 +500,22 @@ export default function AdminDeploymentTargets() {
   const productionDatabaseProviderRecovery = productionDatabaseJobData?.status === "failed" &&
     productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015" &&
     productionDatabaseJobData.attempt === 3 && productionDatabaseJobData.maxAttempts === 3;
+  const productionDatabaseReadbackRecovery = productionDatabaseJobData?.status === "failed" &&
+    productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH" &&
+    productionDatabaseJobData.attempt === 4 && productionDatabaseJobData.maxAttempts === 4;
+  const productionReadbackRecoveryResourcesVerified = (() => {
+    const inventory = productionProviderInventory.data;
+    const job = productionDatabaseJobData;
+    const prefix = job?.planDigest?.slice(0, 12);
+    if (!productionDatabaseReadbackRecovery || !inventory || !("hyperdrives" in inventory) || !prefix ||
+        inventory.hyperdriveInventoryComplete !== true || inventory.vpcServiceInventoryComplete !== true ||
+        inventory.tunnelInventoryComplete !== true) return false;
+    const vpc = inventory.vpcServices.find(service => service.name === `smartspec-production-postgres-${prefix}` &&
+      service.environment === "production" && service.type === "tcp" && service.appProtocol === "postgresql" &&
+      service.tunnelId === job?.tunnelId);
+    return Boolean(vpc && inventory.hyperdrives.some(config => config.name === `smartspec-production-database-${prefix}` &&
+      config.environment === "production" && config.vpcServiceId === vpc.id && config.scheme === "postgres" && config.cachingDisabled === true));
+  })();
 
   const productionScopeKey = `${tenantId}:${projectId}:production`;
   const productionIngressSubmissions=useRef(new Map<string,{submissionId:string;planDigest:string}>());
@@ -968,17 +984,30 @@ export default function AdminDeploymentTargets() {
               const selectedTunnelId = recoveryTunnel
                 ? recoveryTunnel.id
                 : verifiedDatabaseTunnels.length === 1 ? verifiedDatabaseTunnels[0].id : "";
-              const recoveryVpcVerified = databaseVpcInventoryComplete && Boolean(recoveryTunnelId) &&
-                inventory.vpcServices.some(service => service.environment === "production" && service.type === "tcp" &&
-                  service.appProtocol === "postgresql" && service.tunnelId === recoveryTunnelId);
+              const recoveryPlanPrefix = productionDatabaseJobData?.planDigest?.slice(0, 12) ?? "";
+              const recoveryVpc = databaseVpcInventoryComplete && recoveryPlanPrefix
+                ? inventory.vpcServices.find(service => service.environment === "production" && service.type === "tcp" &&
+                    service.appProtocol === "postgresql" && service.tunnelId === recoveryTunnelId &&
+                    service.name === `smartspec-production-postgres-${recoveryPlanPrefix}`)
+                : undefined;
+              const recoveryVpcVerified = Boolean(recoveryVpc);
+              const recoveryHyperdriveVerified = productionDatabaseReadbackRecovery
+                ? databaseHyperdriveInventoryComplete && Boolean(recoveryVpc) && Boolean(recoveryPlanPrefix) &&
+                  inventory.hyperdrives.some(config => config.environment === "production" &&
+                    config.name === `smartspec-production-database-${recoveryPlanPrefix}` && config.vpcServiceId === recoveryVpc!.id &&
+                    config.scheme === "postgres" && config.cachingDisabled === true)
+                : productionDatabaseProviderRecovery
+                  ? databaseHyperdriveInventoryComplete && !inventory.hyperdrives.some(config => config.environment === "production" &&
+                      (config.name === `smartspec-production-database-${recoveryPlanPrefix}` || config.vpcServiceId === recoveryVpc?.id))
+                  : true;
               const recoveryJobEligible = Boolean(productionDatabaseJobData?.jobId === "b9ca8316-1604-4764-a769-d92f46e4c823" &&
                 productionDatabaseJobData.planDigest && /^[a-f0-9]{64}$/i.test(productionDatabaseJobData.planDigest) &&
-                productionDatabaseJobData.tunnelId && (productionDatabaseProviderRecovery || productionDatabaseGuardRecovery ||
+                productionDatabaseJobData.tunnelId && (productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery || productionDatabaseGuardRecovery ||
                   (productionDatabaseJobData.status === "expired" && productionDatabaseJobData.operatorReviewRequired &&
                     productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported")));
               const recoveryReady = validScope && environment === "production" && recoveryJobEligible &&
                 databaseTunnelInventoryComplete && databaseHyperdriveInventoryComplete && recoveryVpcVerified &&
-                selectedTunnelId === recoveryTunnelId;
+                recoveryHyperdriveVerified && selectedTunnelId === recoveryTunnelId;
               return <VStack gap={1} role="alert">
               <p>{text(
                 `Production inventory is incomplete (${inventory.status}); an empty result does not prove that a resource is absent.`,
@@ -1001,15 +1030,23 @@ export default function AdminDeploymentTargets() {
                     : text("No canonical Production database job was found for this tenant and project.", "ไม่พบ canonical job ฐานข้อมูล Production สำหรับ tenant และ project นี้")}</p>
                   {productionDatabaseJobData?.errorCode ? <p role="alert"><code>{productionDatabaseJobData.errorCode}</code></p> : null}
                   {productionDatabaseJobData?.planDigest ? <p>{text("Original immutable plan", "แผน immutable เดิม")}: <code>{productionDatabaseJobData.planDigest}</code></p> : null}
-                  {productionDatabaseProviderRecovery ? <p>{text("CF2015 recovery reuses the same failed Job, plan, verified VPC, and healthy production Tunnel. Worker deployment/version inventory is unrelated to this database operation.", "การกู้ CF2015 ใช้งานเดิม แผนเดิม VPC ที่ตรวจแล้ว และ Tunnel Production ที่ healthy โดย inventory ของ Worker deployment/version ไม่เกี่ยวกับงานฐานข้อมูลนี้")}</p> : null}
+                  {productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery ? <p>{text(
+                    productionDatabaseReadbackRecovery
+                      ? "Readback recovery reuses the exact Hyperdrive and VPC recorded by the failed job. The provider returned an empty optional mTLS object; no resource is recreated. Worker deployment/version inventory is unrelated."
+                      : "CF2015 recovery reuses the same failed Job, plan, verified VPC, and healthy production Tunnel. Worker deployment/version inventory is unrelated to this database operation.",
+                    productionDatabaseReadbackRecovery
+                      ? "การกู้ readback ใช้ Hyperdrive และ VPC เดิมที่บันทึกในงานเดิม โดย provider ส่งค่า mTLS ว่างซึ่งเป็น optional object ระบบจะไม่สร้าง resource ซ้ำ และ inventory ของ Worker ไม่เกี่ยวข้อง"
+                      : "การกู้ CF2015 ใช้งานเดิม แผนเดิม VPC ที่ตรวจแล้ว และ Tunnel Production ที่ healthy โดย inventory ของ Worker deployment/version ไม่เกี่ยวกับงานฐานข้อมูลนี้",
+                  )}</p> : null}
                   {recoveryJobEligible ? <>
                     {!databaseHyperdriveInventoryComplete ? <p role="alert">{text("Hyperdrive inventory is incomplete; recovery remains disabled until it can be reconciled.", "ตรวจรายการ Hyperdrive ไม่ครบ จึงปิดการกู้คืนจนกว่าจะตรวจสอบได้")}</p> : null}
-                    {!databaseVpcInventoryComplete || !recoveryVpcVerified ? <p role="alert">{text("The existing Production PostgreSQL VPC service bound to this job's Tunnel is not verified.", "ยังยืนยัน Workers VPC service ของ PostgreSQL Production ที่ผูกกับ Tunnel ของงานนี้ไม่ได้")}</p> : null}
+                    {!databaseVpcInventoryComplete || !recoveryVpcVerified ? <p role="alert">{text("The exact existing Production PostgreSQL VPC service for this plan and Tunnel is not verified.", "ยังยืนยัน VPC service เดิมของแผนและ Tunnel นี้ไม่ได้")}</p> : null}
+                    {databaseHyperdriveInventoryComplete && recoveryVpcVerified && !recoveryHyperdriveVerified ? <p role="alert">{text("The exact Hyperdrive from this job is not verified against its existing VPC; recovery remains disabled.", "ยังยืนยัน Hyperdrive เดิมของงานว่าผูกกับ VPC เดิมหรือไม่ จึงปิดปุ่มกู้คืน")}</p> : null}
                     {!recoveryTunnel ? <p role="alert">{text("The job's original Tunnel is missing, unhealthy, or not verified as production-capable.", "Tunnel เดิมของงานหายไป ไม่ healthy หรือยังยืนยันว่าใช้กับ Production ไม่ได้")}</p> : null}
                     {recoveryReady ? <Button type="button" disabled={resumeProductionDatabaseMutation.isPending} onClick={() => resumeProductionDatabaseMutation.mutate({
                       tenantId, projectId, jobId: productionDatabaseJobData!.jobId, tunnelId: productionDatabaseJobData!.tunnelId!, environment: "production",
-                      ...((productionDatabaseGuardRecovery || productionDatabaseProviderRecovery) ? { authorizeAdditionalAttempt: true as const } : {}),
-                    })}>{productionDatabaseProviderRecovery
+                      ...((productionDatabaseGuardRecovery || productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery) ? { authorizeAdditionalAttempt: true as const } : {}),
+                    })}>{productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery
                       ? text("Authorize recovery of existing Hyperdrive job", "อนุมัติกู้คืน Hyperdrive โดยใช้งานและ VPC เดิม")
                       : productionDatabaseGuardRecovery
                         ? text("Authorize one corrected attempt on this same job", "อนุมัติเพิ่ม 1 ครั้งให้งานเดิมหลังแก้ไข")
@@ -1051,7 +1088,7 @@ export default function AdminDeploymentTargets() {
             const submittedDatabaseJobId = productionDatabaseSubmissions[productionScopeKey] ?? "";
             const databaseAdmission = productionDatabaseAdmissions[productionScopeKey] ?? readStoredProductionDatabaseAdmission(productionScopeKey);
             const databaseJobAlreadySubmitted = Boolean(
-              productionDatabaseGuardRecovery || productionDatabaseProviderRecovery ||
+              productionDatabaseGuardRecovery || productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery ||
               ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing", "pending", "leased",
                 "waiting_external", "retry_scheduled", "succeeded", "completed", "expired"].includes(productionDatabaseJobData?.status ?? "") ||
               ["JOB_ACCEPTED", "RUNNING", "SUCCEEDED"].includes(databaseAdmission?.status ?? ""),
@@ -1179,8 +1216,11 @@ export default function AdminDeploymentTargets() {
                 {((productionDatabaseJobData?.status === "expired" &&
                   productionDatabaseJobData.errorCode === "JOB_DEADLINE_EXPIRED" &&
                   productionDatabaseJobData.operatorReviewRequired &&
-                  productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported") || productionDatabaseGuardRecovery || productionDatabaseProviderRecovery) ? <VStack gap={1} role="group" aria-label={text("Resume the same Production database job", "กู้งานเตรียมฐานข้อมูล Production เดิม") }>
-                    <p role="alert">{productionDatabaseProviderRecovery ? text(
+                productionDatabaseJobData.operatorReviewReason === "adapter_contract_unsupported") || productionDatabaseGuardRecovery || productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery) ? <VStack gap={1} role="group" aria-label={text("Resume the same Production database job", "กู้งานเตรียมฐานข้อมูล Production เดิม") }>
+                    <p role="alert">{productionDatabaseReadbackRecovery ? text(
+                      "Attempt 4 created the exact Production VPC and Hyperdrive, then failed because Cloudflare returned an empty optional mTLS object. This action authorizes one bounded same-job recovery after the exact resource IDs and bindings are verified. It creates no new resource and does not change traffic; Cloudflare SQL acceptance is still required.",
+                      "Attempt 4 สร้าง VPC และ Hyperdrive Production เดิมแล้ว แต่ล้มเหลวเพราะ Cloudflare ส่ง optional mTLS object ว่าง ปุ่มนี้อนุมัติกู้งานเดิมได้อีกครั้งเดียวหลังยืนยัน ID และ binding ของ resource เดิม ไม่สร้าง resource ใหม่และไม่เปลี่ยน traffic และยังต้องทดสอบ SQL จาก Cloudflare",
+                    ) : productionDatabaseProviderRecovery ? text(
                       "Hyperdrive connection failed (CF2015). This action checks the healthy Tunnel, original VPC and encrypted credential, then authorizes one bounded recovery of the SAME job. It creates no new VPC and does not change production traffic. Cloudflare SQL acceptance remains required.",
                       "Hyperdrive เชื่อมต่อไม่สำเร็จ (CF2015) ระบบจะตรวจ Tunnel, VPC เดิมและ credential ที่เข้ารหัส ก่อนอนุมัติกู้งานเดิมเพิ่ม 1 ครั้ง ไม่สร้าง VPC ซ้ำและไม่เปลี่ยน traffic โดยยังต้องผ่านการทดสอบ SQL จาก Cloudflare",
                     ) : productionDatabaseGuardRecovery ? text(
@@ -1192,13 +1232,14 @@ export default function AdminDeploymentTargets() {
                     )}</p>
                     <Button type="button" disabled={resumeProductionDatabaseMutation.isPending ||
                       !databaseTunnelInventoryComplete || !productionDatabaseJobData?.tunnelId ||
-                      selectedDatabaseTunnelId !== productionDatabaseJobData?.tunnelId}
+                      selectedDatabaseTunnelId !== productionDatabaseJobData?.tunnelId ||
+                      (productionDatabaseReadbackRecovery && !productionReadbackRecoveryResourcesVerified)}
                       onClick={() => resumeProductionDatabaseMutation.mutate({ tenantId, projectId,
                         jobId: productionDatabaseJobData!.jobId, tunnelId: productionDatabaseJobData!.tunnelId!, environment: "production",
-                        ...((productionDatabaseGuardRecovery || productionDatabaseProviderRecovery) ? { authorizeAdditionalAttempt: true as const } : {}) })}>
+                        ...((productionDatabaseGuardRecovery || productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery) ? { authorizeAdditionalAttempt: true as const } : {}) })}>
                       {resumeProductionDatabaseMutation.isPending
                         ? text("Renewing and resuming the same job…", "กำลังต่ออายุสิทธิ์และกู้งานเดิม…")
-                        : productionDatabaseProviderRecovery
+                        : productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery
                           ? text("Authorize recovery of existing Hyperdrive job", "อนุมัติกู้คืน Hyperdrive โดยใช้งานและ VPC เดิม")
                           : productionDatabaseGuardRecovery
                           ? text("Authorize one corrected attempt on this same job", "อนุมัติเพิ่ม 1 ครั้งให้งานเดิมหลังแก้ไข")

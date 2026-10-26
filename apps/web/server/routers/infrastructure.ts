@@ -1084,12 +1084,16 @@ export const infrastructureRouter = router({
       )).limit(1);
       const jobInput = job?.inputJson as Record<string, unknown> | null;
       const { productionDatabaseRecoveryActionId } = await import("../services/cloudflareProductionDatabaseRecovery");
-      const priorRecoveryRef = typeof jobInput?.planDigest === "string" ? productionDatabaseRecoveryActionId(input.jobId, jobInput.planDigest) : null;
+      const recordedRecoveryAttempt = Number((job?.retryPolicyJson as any)?.productionDatabaseRecovery?.attempt);
+      const priorRecoveryRef = typeof jobInput?.planDigest === "string"
+        ? productionDatabaseRecoveryActionId(input.jobId, jobInput.planDigest, recordedRecoveryAttempt === 5 ? 5 : undefined)
+        : null;
       // A lost accepted response is a canonical read, not a second operation.
-      if (input.authorizeAdditionalAttempt === true && job?.requestedByUserId === ctx.user.id && job.attempt === 4 && job.maxAttempts === 4 &&
+      if (input.authorizeAdditionalAttempt === true && job?.requestedByUserId === ctx.user.id && [4, 5].includes(job.attempt) && job.maxAttempts === job.attempt &&
           ["queued", "claimed", "preparing", "running", "waiting_external", "succeeded"].includes(job.status) &&
           jobInput?.projectId === input.projectId && jobInput.targetId === "smartspec-cloudflare-runtime" && jobInput.environment === "production" &&
-          jobInput.grantRef === priorRecoveryRef && (job.retryPolicyJson as any)?.productionDatabaseRecovery?.grantRef === priorRecoveryRef) {
+          recordedRecoveryAttempt === job.attempt && jobInput.grantRef === priorRecoveryRef &&
+          (job.retryPolicyJson as any)?.productionDatabaseRecovery?.grantRef === priorRecoveryRef) {
         const reconciled = await readCloudflareProductionDatabaseGrant(db, job.id);
         if (reconciled?.grantRef === priorRecoveryRef && reconciled.requesterUserId === ctx.user.id && reconciled.tenantId === tenantId &&
             reconciled.projectId === input.projectId && reconciled.plan.tunnelId === input.tunnelId && !reconciled.revokedAt)
@@ -1104,7 +1108,11 @@ export const infrastructureRouter = router({
       const providerRecovery = input.authorizeAdditionalAttempt === true && job?.status === "failed" &&
         job.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015" && job.attempt === 3 && job.maxAttempts === 3 &&
         !job.leaseOwnerToken && !job.leaseExpiresAt && Boolean(job.finishedAt);
-      if (!job || job.requestedByUserId !== ctx.user.id || (!dispatchRecovery && !credentialGuardRecovery && !providerRecovery) ||
+      const providerReadbackRecovery = input.authorizeAdditionalAttempt === true && job?.status === "failed" &&
+        job.errorCode === "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH" && job.attempt === 4 && job.maxAttempts === 4 &&
+        job.fencingVersion === 3 && !job.leaseOwnerToken && !job.leaseExpiresAt && Boolean(job.finishedAt);
+      const databaseProviderRecovery = providerRecovery || providerReadbackRecovery;
+      if (!job || job.requestedByUserId !== ctx.user.id || (!dispatchRecovery && !credentialGuardRecovery && !databaseProviderRecovery) ||
           jobInput?.projectId !== input.projectId || jobInput.targetId !== "smartspec-cloudflare-runtime" ||
           jobInput.environment !== "production" || typeof jobInput.planDigest !== "string" || typeof jobInput.grantRef !== "string") {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_NOT_RECOVERABLE" });
@@ -1135,7 +1143,7 @@ export const infrastructureRouter = router({
           outbox.cancelledAt && outbox.cancelledAt.getTime() >= outbox.quarantinedAt.getTime()));
       const credentialGuardSafe = outboxes.length === 2 && consumedOutbox && dispatches.length === 1 &&
         dispatches[0].id === consumedOutbox.id && dispatches[0].consumedAt && !dispatches[0].failedAt;
-      if ((!providerRecovery && checkpoints.length) || (dispatchRecovery && (!unclaimedOutboxSafe || dispatches.length)) ||
+      if ((!databaseProviderRecovery && checkpoints.length) || (dispatchRecovery && (!unclaimedOutboxSafe || dispatches.length)) ||
           (credentialGuardRecovery && !credentialGuardSafe)) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_EXECUTION_OUTCOME_UNCERTAIN" });
       }
@@ -1144,7 +1152,7 @@ export const infrastructureRouter = router({
           previousGrant.projectId !== input.projectId || previousGrant.requesterUserId !== ctx.user.id ||
           previousGrant.targetId !== "smartspec-cloudflare-runtime" || previousGrant.environment !== "production" ||
           previousGrant.plan.tunnelId !== input.tunnelId || previousGrant.planDigest !== jobInput.planDigest ||
-          previousGrant.revokedAt || (Date.parse(previousGrant.expiresAt) > Date.now() && previousGrant.grantRef !== job.id && !credentialGuardRecovery && !providerRecovery)) {
+          previousGrant.revokedAt || (Date.parse(previousGrant.expiresAt) > Date.now() && previousGrant.grantRef !== job.id && !credentialGuardRecovery && !databaseProviderRecovery)) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "CLOUDFLARE_PRODUCTION_DATABASE_GRANT_NOT_RENEWABLE" });
       }
       const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId, projectId: input.projectId });
@@ -1161,7 +1169,7 @@ export const infrastructureRouter = router({
       // before starting a fresh short-lived authorization window.
       const readiness = await (await import("../services/cloudflareExecutionReadiness")).checkCloudflareExecutionReadiness(db);
       if (!readiness.ready) throw new TRPCError({ code: "PRECONDITION_FAILED", message: readiness.reason });
-      if (providerRecovery) {
+      if (databaseProviderRecovery) {
         const { inspectProductionDatabaseRecovery } = await import("../services/cloudflareProductionDatabaseRecovery");
         const { createCloudflareProductionDatabaseRuntime } = await import("../services/cloudflareProductionDatabaseExecutor");
         try {
@@ -1175,13 +1183,13 @@ export const infrastructureRouter = router({
       }
       // Stable same-job identity also reconciles a response lost after grant
       // renewal. It neither replaces the job nor changes its resource plan.
-      const providerActionId = productionDatabaseRecoveryActionId(job.id, jobInput.planDigest);
-      const actionId = providerRecovery ? providerActionId : credentialGuardRecovery ? consumedOutbox!.attemptId! : job.id;
+      const providerActionId = productionDatabaseRecoveryActionId(job.id, jobInput.planDigest, providerReadbackRecovery ? 5 : undefined);
+      const actionId = databaseProviderRecovery ? providerActionId : credentialGuardRecovery ? consumedOutbox!.attemptId! : job.id;
       const replacementGrantRef = actionId;
       const renewedGrant = await renewCloudflareProductionDatabaseGrant({
         db, jobId: job.id, requesterUserId: ctx.user.id, expectedGrantRef: previousGrant.grantRef,
         replacementGrantRef,
-        reauthorizeTerminalFailure: credentialGuardRecovery || providerRecovery,
+        reauthorizeTerminalFailure: credentialGuardRecovery || databaseProviderRecovery,
         expiresAt: previousGrant.grantRef === replacementGrantRef
           ? previousGrant.expiresAt
           : new Date(Date.now() + 15 * 60_000).toISOString(),
@@ -1189,14 +1197,15 @@ export const infrastructureRouter = router({
       const recovered = await createJobControlPlane().recoverReviewGatedJob(
         job.id,
         actionId,
-        providerRecovery ? "Owner authorized one checkpoint-preserving Hyperdrive recovery after CF2015; existing VPC and credential verified"
+        providerReadbackRecovery ? "Owner authorized one same-job Hyperdrive readback recovery after the provider's empty mTLS object was rejected; existing VPC and Hyperdrive verified"
+          : providerRecovery ? "Owner authorized one checkpoint-preserving Hyperdrive recovery after CF2015; existing VPC and credential verified"
           : credentialGuardRecovery ? "Owner explicitly authorized one additional attempt after the corrected pre-provider credential guard failure"
           : "Owner reauthorized the same Production database job after the deployed adapter admission repair",
-        { disposition: providerRecovery ? "provider_operation_resolved" : "pre_submission_failure", knownRuntime: providerRecovery ? "cloudflare_production_database_provider_recovery" : credentialGuardRecovery ? "cloudflare_production_database_credential_guard" : "cloudflare_production_database_dispatch_quarantine",
-          operationKey: `${providerRecovery ? "production-database-provider" : credentialGuardRecovery ? "production-database-credential-guard" : "production-database-dispatch"}:${job.id}:${jobInput.planDigest}`, replacementGrantRef: renewedGrant.grantRef,
+        { disposition: databaseProviderRecovery ? "provider_operation_resolved" : "pre_submission_failure", knownRuntime: providerReadbackRecovery ? "cloudflare_production_database_readback_recovery" : providerRecovery ? "cloudflare_production_database_provider_recovery" : credentialGuardRecovery ? "cloudflare_production_database_credential_guard" : "cloudflare_production_database_dispatch_quarantine",
+          operationKey: providerReadbackRecovery ? `production-database-provider-readback:${job.id}:${jobInput.planDigest}:attempt:5` : `${providerRecovery ? "production-database-provider" : credentialGuardRecovery ? "production-database-credential-guard" : "production-database-dispatch"}:${job.id}:${jobInput.planDigest}`, replacementGrantRef: renewedGrant.grantRef,
           replacementGrantExpiresAt: renewedGrant.expiresAt },
         ctx.user.id,
-        { tenantId, requestedByUserId: ctx.user.id, authorizationScope: providerRecovery ? "infrastructure.cloudflare_production_database_provider_reauthorize" : credentialGuardRecovery ? "infrastructure.cloudflare_production_database_guard_reauthorize" : "infrastructure.cloudflare_production_database_recover" },
+        { tenantId, requestedByUserId: ctx.user.id, authorizationScope: databaseProviderRecovery ? "infrastructure.cloudflare_production_database_provider_reauthorize" : credentialGuardRecovery ? "infrastructure.cloudflare_production_database_guard_reauthorize" : "infrastructure.cloudflare_production_database_recover" },
       );
       if (!recovered) throw new TRPCError({ code: "CONFLICT", message: "CLOUDFLARE_PRODUCTION_DATABASE_JOB_RECOVERY_REJECTED" });
       try {

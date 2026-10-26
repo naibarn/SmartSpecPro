@@ -35,6 +35,23 @@ export function productionDatabaseResourcePlanDigest(plan: ProductionDatabaseRes
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
+export function productionVPCHyperdriveReadbackMatches(input: {
+  resource: Resource | undefined;
+  id: string;
+  name: string;
+  vpcServiceId: string;
+  plan: ProductionDatabaseResourcePlan;
+}) {
+  const { resource, id, name, vpcServiceId, plan } = input;
+  if (!resource || typeof resource !== "object" || Array.isArray(resource)) return false;
+  const hasDirectOriginMtls = resource.mtls != null &&
+    (typeof resource.mtls !== "object" || Array.isArray(resource.mtls) || Object.keys(resource.mtls).length > 0);
+  return resource.id === id && resource.name === name && resource.origin?.service_id === vpcServiceId &&
+    resource.origin?.database === plan.databaseName && resource.origin?.user === plan.databaseUser &&
+    resource.origin?.scheme === "postgres" && resource.caching?.disabled === true &&
+    resource.origin_connection_limit === plan.connectionLimit && !hasDirectOriginMtls;
+}
+
 export class ProductionDatabaseProvisionError extends Error {
   readonly class: "permanent" | "retryable" | "unknown";
   constructor(readonly diagnosticCode: string, readonly errorClass: "permanent" | "retryable" | "unknown" = "permanent", readonly providerMessage?: string,
@@ -217,12 +234,7 @@ export async function provisionCloudflareProductionDatabase(input: {
   }
   const hyperdriveEnvelope = await request(`${hyperdrivePath}/${encodeURIComponent(hyperdriveId)}`, "GET");
   const hyperdrive = hyperdriveEnvelope.result as Resource | undefined;
-  const hasDirectOriginMtls = hyperdrive.mtls != null &&
-    (typeof hyperdrive.mtls !== "object" || Array.isArray(hyperdrive.mtls) || Object.keys(hyperdrive.mtls).length > 0);
-  if (hyperdrive.id !== hyperdriveId || hyperdrive.name !== hyperdriveName || hyperdrive.origin?.service_id !== vpcServiceId ||
-      hyperdrive.origin?.database !== plan.databaseName || hyperdrive.origin?.user !== plan.databaseUser ||
-      hyperdrive.origin?.scheme !== "postgres" || hyperdrive.caching?.disabled !== true ||
-      hyperdrive.origin_connection_limit !== plan.connectionLimit || hasDirectOriginMtls) {
+  if (!productionVPCHyperdriveReadbackMatches({ resource: hyperdrive, id: hyperdriveId, name: hyperdriveName, vpcServiceId, plan })) {
     fail("CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", "unknown");
   }
   await input.assertAuthorized();

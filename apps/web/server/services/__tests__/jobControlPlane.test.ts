@@ -2107,6 +2107,58 @@ describe("job control plane", () => {
     expect(state.outbox).toHaveLength(2);
   });
 
+  it("permits exactly one attempt-5 recovery for the verified Production Hyperdrive readback failure", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const planDigest = "f".repeat(64);
+    const created = await controlPlane.create({ ...definition, jobType: "cloudflare.production.database.provision",
+      contractVersion: "cloudflare-prod-db-provision-v1", executionClass: "long",
+      input: { projectId: "project-a", targetId: "smartspec-cloudflare-runtime", environment: "production",
+        planDigest, grantRef: "00000000-0000-4000-8000-000000000201" }, idempotencyKey: undefined });
+    Object.assign(state.jobs.get(created.jobId), { status: "failed", errorCode: "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH",
+      attempt: 4, maxAttempts: 4, fencingVersion: 3, finishedAt: new Date(), leaseOwnerToken: null, leaseExpiresAt: null });
+    const replacementGrantRef = "00000000-0000-4000-8000-000000000202";
+    const evidence = { disposition: "provider_operation_resolved" as const, knownRuntime: "cloudflare_production_database_readback_recovery" as const,
+      operationKey: `production-database-provider-readback:${created.jobId}:${planDigest}:attempt:5`, replacementGrantRef,
+      replacementGrantExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString() };
+    const scope = { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId,
+      authorizationScope: "infrastructure.cloudflare_production_database_provider_reauthorize" };
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000203",
+      "same-job-hyperdrive-readback-reconciliation", evidence, definition.requestedByUserId, scope)).resolves.toBe(true);
+    expect(state.jobs.get(created.jobId)).toMatchObject({ status: "queued", attempt: 5, maxAttempts: 5,
+      inputJson: { grantRef: replacementGrantRef, planDigest }, retryPolicyJson: { productionDatabaseRecovery: { attempt: 5, grantRef: replacementGrantRef } } });
+    expect(state.outbox).toHaveLength(2);
+    const lease = await controlPlane.claim({ jobId: created.jobId, runnerId: "production-db-test", adapter: "test" });
+    expect(lease).toBeTruthy();
+    await controlPlane.start(lease!);
+    await controlPlane.fail(lease!, { code: "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", message: "again", class: "unknown" });
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000204",
+      "must-not-be-unbounded", evidence, definition.requestedByUserId, scope)).resolves.toBe(false);
+    expect(state.jobs.get(created.jobId)).toMatchObject({ status: "failed", attempt: 5, maxAttempts: 5 });
+    expect(state.outbox).toHaveLength(2);
+  });
+
+  it.each([
+    ["wrong failure", "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015", 4, 3, true],
+    ["wrong attempt", "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", 3, 3, true],
+    ["wrong fencing", "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", 4, 2, true],
+  ])("rejects readback recovery with %s", async (_label, errorCode, attempt, fencingVersion, invalid) => {
+    const state = makeRepository(), controlPlane = createJobControlPlane(state.repository), planDigest = "e".repeat(64);
+    const created = await controlPlane.create({ ...definition, jobType: "cloudflare.production.database.provision",
+      contractVersion: "cloudflare-prod-db-provision-v1", executionClass: "long",
+      input: { projectId: "project-a", targetId: "smartspec-cloudflare-runtime", environment: "production", planDigest,
+        grantRef: "00000000-0000-4000-8000-000000000211" }, idempotencyKey: undefined });
+    Object.assign(state.jobs.get(created.jobId), { status: "failed", errorCode, attempt, maxAttempts: attempt,
+      fencingVersion, finishedAt: new Date(), leaseOwnerToken: null, leaseExpiresAt: null });
+    const evidence = { disposition: "provider_operation_resolved" as const, knownRuntime: "cloudflare_production_database_readback_recovery" as const,
+      operationKey: `production-database-provider-readback:${created.jobId}:${planDigest}:attempt:5`,
+      replacementGrantRef: "00000000-0000-4000-8000-000000000212", replacementGrantExpiresAt: new Date(Date.now() + 10 * 60_000).toISOString() };
+    await expect(controlPlane.recoverReviewGatedJob(created.jobId, "00000000-0000-4000-8000-000000000213", "bounded-recovery-test",
+      evidence, definition.requestedByUserId, { tenantId: definition.tenantId, requestedByUserId: definition.requestedByUserId,
+        authorizationScope: "infrastructure.cloudflare_production_database_provider_reauthorize" })).resolves.toBe(!invalid);
+    expect(state.jobs.get(created.jobId).attempt).toBe(invalid ? attempt : 5);
+  });
+
   it.each([
     ["wrong authorization scope", "worker_jobs.admin_requeue", "00000000-0000-4000-8000-000000000103", true, false],
     ["wrong plan digest", "infrastructure.cloudflare_production_database_recover", "00000000-0000-4000-8000-000000000104", false, false],

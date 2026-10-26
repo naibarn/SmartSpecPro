@@ -4735,7 +4735,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_ingress_origin_binding";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_database_readback_recovery" | "cloudflare_production_ingress_origin_binding";
         replacementGrantRef?: string;
         replacementGrantExpiresAt?: string;
       },
@@ -4765,6 +4765,7 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "cloudflare_production_database_dispatch_quarantine" &&
           evidence.knownRuntime !== "cloudflare_production_database_credential_guard" &&
           evidence.knownRuntime !== "cloudflare_production_database_provider_recovery" &&
+          evidence.knownRuntime !== "cloudflare_production_database_readback_recovery" &&
           evidence.knownRuntime !== "cloudflare_production_ingress_origin_binding") ||
         (evidence.replacementGrantRef !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence.replacementGrantRef)) ||
         (evidence.replacementGrantExpiresAt !== undefined && !Number.isFinite(Date.parse(evidence.replacementGrantExpiresAt)))
@@ -4914,6 +4915,23 @@ export function createJobControlPlane(
           typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now() &&
           Date.parse(evidence.replacementGrantExpiresAt) <= Date.now() + 15 * 60_000 &&
           evidence.operationKey === `production-database-provider:${job.id}:${job.inputJson.planDigest}`;
+        // One further Owner-scoped recovery is allowed only after Attempt 4
+        // created the exact checkpoint-owned Hyperdrive but failed its readback
+        // because Cloudflare returned an empty optional mTLS object.
+        const knownProductionDatabaseReadbackRecovery =
+          evidence.knownRuntime === "cloudflare_production_database_readback_recovery" &&
+          evidence.disposition === "provider_operation_resolved" &&
+          scope?.authorizationScope === "infrastructure.cloudflare_production_database_provider_reauthorize" &&
+          actorId === job?.requestedByUserId && scope.requestedByUserId === job?.requestedByUserId &&
+          job?.jobType === "cloudflare.production.database.provision" && job.contractVersion === "cloudflare-prod-db-provision-v1" &&
+          job.status === "failed" && job.errorCode === "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH" &&
+          job.attempt === 4 && job.maxAttempts === 4 && job.fencingVersion === 3 &&
+          job.leaseOwnerToken == null && job.leaseExpiresAt == null &&
+          typeof job.inputJson?.planDigest === "string" && /^[a-f0-9]{64}$/.test(job.inputJson.planDigest) &&
+          typeof evidence.replacementGrantRef === "string" && evidence.replacementGrantRef !== job.inputJson.grantRef &&
+          typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now() &&
+          Date.parse(evidence.replacementGrantExpiresAt) <= Date.now() + 15 * 60_000 &&
+          evidence.operationKey === `production-database-provider-readback:${job.id}:${job.inputJson.planDigest}:attempt:5`;
         // The original ingress grant binds the job, not an attempt count. One
         // definite pre-provider wiring failure may resume under that SAME live
         // grant/deadline; no replacement authority or traffic scope is created.
@@ -4929,7 +4947,7 @@ export function createJobControlPlane(
           evidence.operationKey === `ingress-origin-binding:${job.id}:${job.inputJson.buildDigest}`;
         if (
           !job ||
-          (job.jobType === "cloudflare.production.database.provision" && !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery) ||
+          (job.jobType === "cloudflare.production.database.provision" && !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery) ||
           !["failed", "expired"].includes(job.status) ||
           (!job.operatorReviewRequired &&
             !knownRemotionRevisionFailure &&
@@ -4938,8 +4956,8 @@ export function createJobControlPlane(
             !knownCloudflareBootstrapReceipt &&
             !knownNativeReadbackFailure &&
             !knownPrivateDatabaseRejection &&
-            !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownIngressOriginBinding) ||
-          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownIngressOriginBinding)
+            !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding) ||
+          (job.attempt >= job.maxAttempts && !knownNativeReadbackFailure && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery && !knownIngressOriginBinding)
         )
           return false;
 
@@ -4974,14 +4992,14 @@ export function createJobControlPlane(
             attempt: nextAttempt,
             nextRetryAt: null,
             statusReason: "operator_review_recovery",
-            ...((knownProductionDatabaseDispatchQuarantine || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery)
+            ...((knownProductionDatabaseDispatchQuarantine || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery)
               ? { inputJson: { ...job.inputJson, grantRef: evidence.replacementGrantRef },
                   retryPolicyJson: { ...job.retryPolicyJson, productionDatabaseRecovery: {
                     attempt: nextAttempt, grantRef: evidence.replacementGrantRef, authorizedAt: now.toISOString(),
                     expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime() + 12 * 60_000)).toISOString(),
                   } } }
               : {}),
-            ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownIngressOriginBinding) ? { maxAttempts: nextAttempt } : {}),
+            ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery || knownIngressOriginBinding) ? { maxAttempts: nextAttempt } : {}),
             errorCode: null,
             errorMessage: null,
             failureReason: null,
