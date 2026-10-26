@@ -1062,6 +1062,21 @@ export const infrastructureRouter = router({
       }
     }),
 
+  reconcileCloudflareProductionDatabaseReadback: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100),
+      jobId: z.string().uuid(), environment: z.literal("production") }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match the Production target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const { reconcileProductionDatabaseReadback } = await import("../services/cloudflareProductionDatabaseReconciliation");
+      const { createCloudflareProductionDatabaseRuntime } = await import("../services/cloudflareProductionDatabaseExecutor");
+      return reconcileProductionDatabaseReadback({ db, runtime: createCloudflareProductionDatabaseRuntime({ db }),
+        jobId: input.jobId, tenantId, projectId: input.projectId, actorUserId: ctx.user.id });
+    }),
+
   resumeExpiredCloudflareProductionDatabaseJob: exactAdminProcedure
     .input(z.object({
       tenantId: deploymentTenantIdSchema,
