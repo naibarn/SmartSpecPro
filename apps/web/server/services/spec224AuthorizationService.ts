@@ -23,6 +23,7 @@ import {
   type DurableReserveInput,
   type DurableReleaseInput,
 } from "./economicDurableService";
+import { provisionEconomicBudget } from "./economicProvisioningService";
 import {
   type AgentTaskManifest,
   validateAgentTaskManifest,
@@ -56,6 +57,7 @@ export class Spec224AuthorizationError extends Error {
 export type Spec224AuthorizationContext = {
   tenantId: string;
   actorId: number;
+  actorRole?: string;
   userToken?: string | null;
 };
 
@@ -671,6 +673,84 @@ async function persistBinding(
 }
 
 export function createSpec224AuthorizationService() {
+  async function ensureOwnerBoundedDevelopmentPolicy(input: {
+    context: Spec224AuthorizationContext;
+    loaded: LoadedRun;
+    runnerId: string;
+    budgetCapMinorUnits: number;
+  }): Promise<void> {
+    const { context, loaded, runnerId, budgetCapMinorUnits } = input;
+    if (!Number.isSafeInteger(budgetCapMinorUnits) || budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000)
+      throw new Spec224AuthorizationError("SPEC224_DEVELOPMENT_BUDGET_CAP_INVALID");
+    const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId });
+    if (!readiness.ready) throw new Spec224AuthorizationError(readiness.code);
+    const node = await defaultRunnerGateway.getNode(runnerId, context.tenantId);
+    const snapshot = node?.currentSnapshot;
+    const workspace = snapshot?.workspaces?.find(item => item.workspaceId === loaded.run.workspaceId);
+    const projectId = workspace?.projectId ?? loaded.run.metadata?.projectId;
+    const profileId = snapshot?.platform?.os === "windows"
+      ? "spec224-recovery-windows-x64-codex-nonprod" : "spec224-recovery-registered-runner-nonprod";
+    const codex = snapshot?.toolInventory?.find(item => item.adapterId === "codex.v1");
+    const attemptId = loaded.attemptId;
+    const workerJobId = loaded.run.workerJobId;
+    if (!projectId || !attemptId || !workerJobId || !workspace || !snapshot?.runnerSessionId || !snapshot.capabilitySnapshotId || !snapshot.revision || !codex?.authorizationEvidenceRef)
+      throw new Spec224AuthorizationError("SPEC224_POLICY_RUNTIME_BINDING_REQUIRED");
+    const resourceScopes = [
+      { kind: "development_run", id: loaded.run.runId },
+      { kind: "worker_job", id: workerJobId },
+      { kind: "attempt", id: attemptId },
+      { kind: "workspace", id: loaded.run.workspaceId },
+      { kind: "runner", id: runnerId },
+      { kind: "runner_session", id: snapshot.runnerSessionId },
+      { kind: "capability_snapshot", id: snapshot.capabilitySnapshotId },
+    ];
+    const definition = {
+      schemaVersion: "spec224.development-policy.v1",
+      environmentAllowlist: ["development"],
+      profileAllowlist: [profileId],
+      initiatorUserIds: [context.actorId],
+      operations: ["spec224.development.run"],
+      resourceScopes,
+      maxBudgetMinorUnits: budgetCapMinorUnits,
+      currency: "USD",
+      maxTtlSeconds: 3600,
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+    const rows = await db.instance.execute(sql`
+      SELECT id, conditions->'definition' AS definition FROM approval_rules
+      WHERE tenant_id = ${context.tenantId} AND project_id = ${projectId}
+        AND is_active = true AND conditions->>'schemaVersion' = 'spec224.development-policy.v1'
+    `);
+    const candidates = Array.from(rows as unknown as Array<{ id: string; definition: Record<string, any> }>);
+    const sameRun = candidates.find(row => Array.isArray(row.definition?.resourceScopes)
+      && row.definition.resourceScopes.some((scope: { kind?: string; id?: string }) => scope.kind === "development_run" && scope.id === loaded.run.runId));
+    if (sameRun) {
+      const existing = sameRun.definition;
+      if (existing.initiatorUserIds?.includes(context.actorId) !== true
+        || existing.maxBudgetMinorUnits !== budgetCapMinorUnits
+        || String(existing.currency).toUpperCase() !== "USD"
+        || JSON.stringify(existing.resourceScopes) !== JSON.stringify(resourceScopes)
+        || Date.parse(existing.expiresAt) <= Date.now())
+        throw new Spec224AuthorizationError("SPEC224_RUN_POLICY_ALREADY_CONFIGURED");
+    } else {
+      const runtime = await getAppRuntimeConfig();
+      const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/spec224/development-policies`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${requiredToken(context)}` },
+        body: JSON.stringify({ projectId, definition }),
+      });
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null) as { detail?: unknown } | null;
+        const code = typeof detail?.detail === "string" && /^SPEC224_[A-Z0-9_]+$/.test(detail.detail)
+          ? detail.detail : response.status === 403 ? "SPEC224_POLICY_TENANT_OWNER_REQUIRED" : "SPEC224_POLICY_CREATE_FAILED";
+        throw new Spec224AuthorizationError(code);
+      }
+      const created = await response.json() as { policyId?: string };
+      if (!created.policyId) throw new Spec224AuthorizationError("SPEC224_POLICY_REFERENCE_MISSING");
+    }
+
+  }
+
   const service = {
     async runnerReadiness(input: {
       context: Pick<Spec224AuthorizationContext, "tenantId" | "actorId">;
@@ -698,6 +778,7 @@ export function createSpec224AuthorizationService() {
       context: Spec224AuthorizationContext;
       runId: string;
       runnerId: string;
+      budgetCapMinorUnits?: number;
     }): Promise<Spec224AuthorizationResult> {
       const status = () => service.status(input);
       try {
@@ -721,13 +802,25 @@ export function createSpec224AuthorizationService() {
         const profileId = node?.currentSnapshot?.platform?.os === "windows"
           ? "spec224-recovery-windows-x64-codex-nonprod" : "spec224-recovery-registered-runner-nonprod";
         if (!projectId) throw new Spec224AuthorizationError("SPEC224_POLICY_PROJECT_REQUIRED");
+        const codex = node?.currentSnapshot?.toolInventory?.find(item => item.adapterId === "codex.v1");
+        const requiredPolicyScopes = loaded.attemptId && loaded.run.workerJobId && node?.activeSessionId && node.currentSnapshot?.capabilitySnapshotId
+          ? [
+            { kind: "development_run", id: loaded.run.runId },
+            { kind: "worker_job", id: loaded.run.workerJobId },
+            { kind: "attempt", id: loaded.attemptId },
+            { kind: "workspace", id: loaded.run.workspaceId },
+            { kind: "runner", id: input.runnerId },
+            { kind: "runner_session", id: node.activeSessionId },
+            { kind: "capability_snapshot", id: node.currentSnapshot.capabilitySnapshotId },
+          ]
+          : [];
         const rows = await db.instance.execute(sql`
           SELECT id, conditions->'definition' AS definition FROM approval_rules
           WHERE tenant_id = ${input.context.tenantId} AND project_id = ${projectId}
             AND is_active = true AND conditions->>'schemaVersion' = 'spec224.development-policy.v1'
           ORDER BY priority DESC, id
         `);
-        const selected = Array.from(rows as unknown as Array<{ id: string; definition: Record<string, any> }>).find(row => {
+        let selected = Array.from(rows as unknown as Array<{ id: string; definition: Record<string, any> }>).find(row => {
           const value = row.definition;
           return Array.isArray(value?.initiatorUserIds) && value.initiatorUserIds.includes(input.context.actorId) &&
             Array.isArray(value.profileAllowlist) && value.profileAllowlist.includes(profileId) &&
@@ -736,16 +829,44 @@ export function createSpec224AuthorizationService() {
             Number.isSafeInteger(value.maxBudgetMinorUnits) && value.maxBudgetMinorUnits > 0 &&
             Number.isSafeInteger(value.maxTtlSeconds) && value.maxTtlSeconds > 0 &&
             typeof value.currency === "string" && /^[A-Za-z]{3}$/.test(value.currency) &&
+            Boolean(codex?.authorizationEvidenceRef) && requiredPolicyScopes.length === 7 &&
+            Array.isArray(value.resourceScopes) && requiredPolicyScopes.every(required =>
+              value.resourceScopes.some((allowed: { kind?: string; id?: string }) => allowed.kind === required.kind && allowed.id === required.id)) &&
             Date.parse(value.expiresAt) > Date.now();
         });
+        if (!selected && input.budgetCapMinorUnits !== undefined) {
+          await ensureOwnerBoundedDevelopmentPolicy({ context: input.context, loaded, runnerId: input.runnerId,
+            budgetCapMinorUnits: input.budgetCapMinorUnits });
+          const configured = await db.instance.execute(sql`
+            SELECT id, conditions->'definition' AS definition FROM approval_rules
+            WHERE tenant_id = ${input.context.tenantId} AND project_id = ${projectId}
+              AND is_active = true AND conditions->>'schemaVersion' = 'spec224.development-policy.v1'
+          `);
+          selected = Array.from(configured as unknown as Array<{ id: string; definition: Record<string, any> }>).find(row => {
+            const value = row.definition;
+            return Array.isArray(value?.initiatorUserIds) && value.initiatorUserIds.includes(input.context.actorId) &&
+              Array.isArray(value.profileAllowlist) && value.profileAllowlist.includes(profileId) &&
+              Array.isArray(value.environmentAllowlist) && value.environmentAllowlist.includes("development") &&
+              Array.isArray(value.operations) && value.operations.includes("spec224.development.run") &&
+              Number.isSafeInteger(value.maxBudgetMinorUnits) && value.maxBudgetMinorUnits === input.budgetCapMinorUnits &&
+              Array.isArray(value.resourceScopes) && requiredPolicyScopes.every(required =>
+                value.resourceScopes.some((allowed: { kind?: string; id?: string }) => allowed.kind === required.kind && allowed.id === required.id)) &&
+              String(value.currency).toUpperCase() === "USD" && Date.parse(value.expiresAt) > Date.now();
+          });
+        }
         if (!selected) throw new Spec224AuthorizationError("SPEC224_NONPRODUCTION_POLICY_NOT_CONFIGURED");
         const policy = selected.definition;
+        if (String(policy.currency).toUpperCase() !== "USD")
+          throw new Spec224AuthorizationError("SPEC224_EXISTING_POLICY_CURRENCY_MISMATCH");
+        const budgetCapMinorUnits = input.budgetCapMinorUnits === undefined
+          ? policy.maxBudgetMinorUnits
+          : Math.min(input.budgetCapMinorUnits, policy.maxBudgetMinorUnits);
         let approvalRef = current.references?.approvalRef;
         if (current.status === "APPROVAL_REQUIRED") {
           if (approvalRef) return current; // Pending/rejected decisions cannot be silently replaced.
           const deadline = new Date(Math.min(Date.now() + Math.min(policy.maxTtlSeconds, 86_400) * 1000, Date.parse(policy.expiresAt))).toISOString();
           const approval = await service.requestApproval({ ...input, provider: "codex", profileId,
-            deadline, budgetCapMinorUnits: policy.maxBudgetMinorUnits, currency: policy.currency,
+            deadline, budgetCapMinorUnits, currency: policy.currency,
             policyId: selected.id, policyOnly: true });
           approvalRef = approval.approvalRef;
           current = await status();
@@ -753,7 +874,7 @@ export function createSpec224AuthorizationService() {
         if (current.status !== "BUDGET_REQUIRED" || !approvalRef) return current;
         let reservation = current.references?.budgetReservationRef;
         if (!reservation) {
-          const [budget] = await db.select({ id: economicBudgets.id }).from(economicBudgets).where(and(
+          let [budget] = await db.select({ id: economicBudgets.id }).from(economicBudgets).where(and(
             eq(economicBudgets.tenantId, input.context.tenantId), eq(economicBudgets.currency, policy.currency.toUpperCase()),
             eq(economicBudgets.status, "active"),
             or(
@@ -763,9 +884,21 @@ export function createSpec224AuthorizationService() {
               and(eq(economicBudgets.scopeType, "project"), eq(economicBudgets.scopeRef, projectId)),
             ),
           )).orderBy(sql`CASE ${economicBudgets.scopeType} WHEN 'worker_job' THEN 0 WHEN 'user' THEN 1 WHEN 'project' THEN 2 ELSE 3 END`, economicBudgets.id).limit(1);
+          if (!budget && input.budgetCapMinorUnits !== undefined) {
+            await provisionEconomicBudget(db.instance, {
+              authorization: { tenantId: input.context.tenantId, actorId: input.context.actorId, role: input.context.actorRole ?? "user" },
+              scopeType: "worker_job", scopeRef: loaded.run.workerJobId!, currency: policy.currency,
+              limitMinorUnits: budgetCapMinorUnits, idempotencyKey: `spec224:${loaded.run.runId}:development-budget`,
+            });
+            [budget] = await db.select({ id: economicBudgets.id }).from(economicBudgets).where(and(
+              eq(economicBudgets.tenantId, input.context.tenantId), eq(economicBudgets.currency, policy.currency.toUpperCase()),
+              eq(economicBudgets.scopeType, "worker_job"), eq(economicBudgets.scopeRef, loaded.run.workerJobId!),
+              eq(economicBudgets.status, "active"),
+            )).limit(1);
+          }
           if (!budget) throw new Spec224AuthorizationError("SPEC224_AUTHORIZED_BUDGET_NOT_CONFIGURED");
           const hold = await service.reserveBudget({ ...input, approvalRef, budgetId: budget.id,
-            amountMinorUnits: policy.maxBudgetMinorUnits, currency: policy.currency });
+            amountMinorUnits: budgetCapMinorUnits, currency: policy.currency });
           reservation = hold.budgetReservationRef;
         }
         return await service.bind({ ...input, approvalRef, budgetReservationRef: reservation });

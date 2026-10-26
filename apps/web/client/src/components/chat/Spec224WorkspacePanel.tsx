@@ -93,6 +93,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const [miniAppPreviewUrl, setMiniAppPreviewUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"prompt" | "spec_set">("prompt");
   const [requestKind, setRequestKind] = useState<"development" | "mini_app">("development");
+  const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
   const [uploading, setUploading] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [startKeys, setStartKeys] = useState<Record<string, string>>({});
@@ -144,6 +145,8 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
     : "";
   const boundIsListed = workspaces.some(item => selectionKey(item) === boundKey);
   const effectivePrompt = prompt.trim();
+  const budgetCapMinorUnits = /^\d{1,6}(?:\.\d{1,2})?$/.test(budgetCapUsd.trim())
+    ? Math.round(Number(budgetCapUsd) * 100) : 0;
   const designStartFingerprint = JSON.stringify({
     effectivePrompt,
     references: visualReferences.map(({ file, ...reference }) => ({ ...reference, fileName: file.name, fileSize: file.size, fileModified: file.lastModified })),
@@ -233,6 +236,10 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
 
   async function startWorkPackage(workPackageId: string) {
     if (!conversationId || !preparation) return;
+    if (budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000) {
+      toast.error("ระบุวงเงิน USD ตั้งแต่ 0.01 ถึง 100,000.00");
+      return;
+    }
     if (visualReferences.some(reference => {
       const width = Number(reference.viewportWidth);
       const height = Number(reference.viewportHeight);
@@ -247,7 +254,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       toast.error("เลือก responsive target อย่างน้อยหนึ่งอุปกรณ์");
       return;
     }
-    const key = `${conversationId}:${mode}:${preparation.planRevision}:${workPackageId}:${designStartFingerprint}`;
+    const key = `${conversationId}:${mode}:${preparation.planRevision}:${workPackageId}:${designStartFingerprint}:${budgetCapMinorUnits}`;
     const idempotencyKey = startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     try {
@@ -261,6 +268,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
           specSetRevision: preparation.planRevision,
           workPackageId,
         }),
+        budgetCapMinorUnits,
         ...(visualReferences.length ? {
           visualReferences: visualReferences.map(reference => ({
             id: reference.id,
@@ -398,6 +406,21 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
                 <p className="text-xs text-muted-foreground">
                   การสร้างและทดสอบ Preview ไม่ต้องใช้ Windows Runner หรือ GitHub ส่วน GitHub จะใช้เก็บ source ใน repo ส่วนตัวหลังมี artifact แล้ว หากยังไม่มี provider สำหรับสร้างแอป ให้ตั้งค่าได้ที่ <a className="underline" href="/settings?tab=localAi">Settings → Local AI</a>
                 </p>
+              ) : null}
+              {requestKind === "development" ? (
+                <label className="block text-xs font-medium">
+                  วงเงินสูงสุดของ DevelopmentRun นี้ (USD)
+                  <input
+                    aria-label="วงเงินสูงสุดสำหรับ DevelopmentRun เป็น USD"
+                    inputMode="decimal"
+                    value={budgetCapUsd}
+                    onChange={event => { setBudgetCapUsd(event.target.value.replace(/[^\d.]/g, "").slice(0, 9)); setPreparation(null); }}
+                    className="mt-1 block w-full rounded-md border border-[var(--color-border)] bg-white px-2 py-2 text-sm"
+                  />
+                  <span className="mt-1 block font-normal text-[var(--color-text-secondary)]">
+                    Start จะตั้ง policy และ budget แบบ non-production ให้เฉพาะ run นี้ โดยจำกัดการใช้ไม่เกิน USD {budgetCapMinorUnits > 0 ? (budgetCapMinorUnits / 100).toFixed(2) : "—"} และหมดอายุภายในหนึ่งชั่วโมง ไม่มีการเติมเครดิตหรือ deploy production
+                  </span>
+                </label>
               ) : null}
                 {requestKind === "development" ? <fieldset className="space-y-2 rounded-md border border-[var(--color-border)] p-2" aria-label="Design references">
                   <legend className="px-1 text-xs font-medium">Design References (optional)</legend>

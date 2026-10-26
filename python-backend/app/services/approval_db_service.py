@@ -578,7 +578,43 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         now = datetime.now(timezone.utc)
         if expires_at.tzinfo is None or expires_at <= now or expires_at > now + timedelta(days=30):
             raise ValueError("SPEC224_POLICY_EXPIRY_OUT_OF_RANGE")
-        policy_id = str(uuid4())
+        run_scopes = [
+            scope for scope in policy.get("resourceScopes", [])
+            if scope.get("kind") == "development_run"
+        ]
+        policy_id = (
+            str(uuid5(
+                NAMESPACE_URL,
+                f"smartaihub:spec224:owner-policy:{tenant_id}:{project_id}:{actor_id}:{run_scopes[0]['id']}",
+            ))
+            if len(run_scopes) == 1 else str(uuid4())
+        )
+        existing_result = await self.db.execute(
+            select(ApprovalRule).where(
+                ApprovalRule.id == policy_id,
+                ApprovalRule.tenant_id == tenant_id,
+                ApprovalRule.project_id == project_id,
+                ApprovalRule.trigger_type == ApprovalType.CODE_EXECUTION,
+            )
+        )
+        existing = existing_result.scalar_one_or_none()
+        if existing is not None:
+            existing_definition = existing.conditions.get("definition") if isinstance(existing.conditions, dict) else None
+            same_immutable_policy = (
+                isinstance(existing_definition, dict)
+                and {key: value for key, value in existing_definition.items() if key != "expiresAt"}
+                == {key: value for key, value in policy.items() if key != "expiresAt"}
+            )
+            if (
+                existing.is_active
+                and isinstance(existing.conditions, dict)
+                and existing.conditions.get("schemaVersion") == SPEC224_DEVELOPMENT_POLICY_SCHEMA
+                and existing.conditions.get("ownerUserId") == actor_id
+                and same_immutable_policy
+                and datetime.fromisoformat(existing_definition["expiresAt"].replace("Z", "+00:00")) > now
+            ):
+                return existing
+            raise ValueError("SPEC224_POLICY_IDEMPOTENCY_CONFLICT")
         rule = ApprovalRule(
             id=policy_id,
             name=f"SPEC-224 non-production policy {project_id[:60]}",

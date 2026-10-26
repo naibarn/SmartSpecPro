@@ -1,7 +1,10 @@
 from datetime import datetime, timezone
+from datetime import timedelta
+from unittest.mock import AsyncMock
 
 import pytest
 
+from app.services.approval_db_service import ApprovalDBService
 from app.services.spec224_development_policy import (
     SPEC224_DEVELOPMENT_POLICY_SCHEMA,
     evaluate_development_policy,
@@ -123,3 +126,55 @@ def test_policy_denies_expired_policy():
         policy=_policy(expiresAt="2026-10-18T11:59:59Z"),
     )
     assert result == {"decision": "DENY", "reason": "SPEC224_POLICY_EXPIRED"}
+
+
+@pytest.mark.asyncio
+async def test_owner_policy_creation_is_idempotent_for_exact_run_scope():
+    stored = {"rule": None}
+
+    class ScalarResult:
+        def scalar_one_or_none(self):
+            return stored["rule"]
+
+    class FakeSession:
+        async def execute(self, _statement):
+            return ScalarResult()
+
+        def add(self, rule):
+            if hasattr(rule, "conditions"):
+                stored["rule"] = rule
+
+        async def commit(self):
+            return None
+
+        async def refresh(self, _rule):
+            return None
+
+    service = ApprovalDBService(FakeSession())
+    service._require_spec224_policy_owner = AsyncMock(return_value=None)
+    expires = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    definition = _policy(
+        environmentAllowlist=["development"],
+        profileAllowlist=["spec224-recovery-windows-x64-codex-nonprod"],
+        initiatorUserIds=[7],
+        resourceScopes=[{"kind": "development_run", "id": "run-owner-1"}],
+        maxBudgetMinorUnits=100,
+        maxTtlSeconds=3600,
+        expiresAt=expires,
+    )
+
+    first = await service.create_spec224_development_policy(
+        tenant_id="tenant-owner-1", project_id="smartspecpro", actor_id=7, definition=definition,
+    )
+    replay = await service.create_spec224_development_policy(
+        tenant_id="tenant-owner-1", project_id="smartspecpro", actor_id=7,
+        definition={**definition, "expiresAt": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat()},
+    )
+    assert replay.id == first.id
+    assert stored["rule"] is first
+
+    with pytest.raises(ValueError, match="SPEC224_POLICY_IDEMPOTENCY_CONFLICT"):
+        await service.create_spec224_development_policy(
+            tenant_id="tenant-owner-1", project_id="smartspecpro", actor_id=7,
+            definition={**definition, "maxBudgetMinorUnits": 200},
+        )

@@ -49,9 +49,11 @@ describe("Core goal readiness feedback", () => {
 
   it("preserves the Start key for pending authorization and displays the precise setup reason", async () => {
     await preparePanel();
+    expect(screen.getByLabelText("วงเงินสูงสุดสำหรับ DevelopmentRun เป็น USD")).toHaveValue("1.00");
     const start = screen.getByRole("button", { name: "สั่งพัฒนา" });
     fireEvent.click(start);
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    expect(mocks.start.mock.calls[0][0].budgetCapMinorUnits).toBe(100);
     await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("SPEC224_NONPRODUCTION_POLICY_NOT_CONFIGURED")));
     fireEvent.click(start);
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(2));

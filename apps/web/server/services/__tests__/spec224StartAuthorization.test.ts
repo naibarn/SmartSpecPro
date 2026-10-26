@@ -7,8 +7,10 @@ vi.mock("../../db", () => {
   return { db: { ...database, instance: database }, getDb: () => database };
 });
 vi.mock("../runnerGateway", () => ({ defaultRunnerGateway: { getNode: (...args: unknown[]) => mocks.node(...args) } }));
+vi.mock("../economicProvisioningService", () => ({ provisionEconomicBudget: vi.fn(async () => ({ budgetId: "budget-created" })) }));
 
 import { createSpec224AuthorizationService, Spec224AuthorizationError } from "../spec224AuthorizationService";
+import { provisionEconomicBudget } from "../economicProvisioningService";
 
 const context = { tenantId: "tenant-a", actorId: 7, userToken: "unit-test-owner-session" };
 const request = { context, runId: "run-a", runnerId: "runner-a" };
@@ -29,9 +31,18 @@ beforeEach(() => {
   mocks.policyRows = [{ id: "policy-a", definition: {
     initiatorUserIds: [7], profileAllowlist: ["spec224-recovery-windows-x64-codex-nonprod"],
     environmentAllowlist: ["development"], operations: ["spec224.development.run"],
+    resourceScopes: [
+      { kind: "development_run", id: "run-a" }, { kind: "worker_job", id: "job-a" },
+      { kind: "attempt", id: "attempt-a" }, { kind: "workspace", id: "workspace-a" },
+      { kind: "runner", id: "runner-a" }, { kind: "runner_session", id: "runner-session-a" },
+      { kind: "capability_snapshot", id: "snapshot-a" },
+    ],
     maxBudgetMinorUnits: 50, currency: "USD", maxTtlSeconds: 600, expiresAt: new Date(Date.now() + 3600_000).toISOString(),
   } }];
-  mocks.node.mockResolvedValue({ currentSnapshot: { platform: { os: "windows" }, workspaces: [{ workspaceId: "workspace-a", projectId: "project-a" }] } });
+  mocks.node.mockResolvedValue({ activeSessionId: "runner-session-a", currentSnapshot: { platform: { os: "windows" }, runnerSessionId: "runner-session-a",
+    capabilitySnapshotId: "snapshot-a", revision: "revision-a", capabilities: ["agent.external_task"],
+    toolInventory: [{ adapterId: "codex.v1", authorizationEvidenceRef: "codex-auth-a" }],
+    workspaces: [{ workspaceId: "workspace-a", projectId: "project-a" }] } });
 });
 
 describe("owner Start authorization continuation", () => {
@@ -76,6 +87,41 @@ describe("owner Start authorization continuation", () => {
     const approval = vi.spyOn(service, "requestApproval");
     await expect(service.advanceStart(request)).resolves.toMatchObject({ reasons: ["SPEC224_NONPRODUCTION_POLICY_NOT_CONFIGURED"] });
     expect(approval).not.toHaveBeenCalled();
+  });
+
+  it("creates one exact owner scoped non-production policy and budget from the authenticated Start cap", async () => {
+    mocks.policyRows = [];
+    const [jobRows, attemptRows] = mocks.rows;
+    mocks.rows = [jobRows ?? [], attemptRows ?? [], [], [{ id: "budget-created" }]];
+    const service = createService();
+    vi.spyOn(service, "status").mockResolvedValueOnce(approvalRequired).mockResolvedValueOnce(budgetRequired);
+    vi.spyOn(service, "requestApproval").mockResolvedValue({ approvalRef: "approval-a", status: "approved" } as any);
+    vi.spyOn(service, "reserveBudget").mockResolvedValue({ budgetReservationRef: "hold-a" } as any);
+    vi.spyOn(service, "bind").mockResolvedValue({ ...approvalRequired, status: "READY_FOR_LIVE" });
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+      const body = JSON.parse(String(init?.body));
+      mocks.policyRows = [{ id: "policy-created", definition: body.definition }];
+      return new Response(JSON.stringify({ policyId: "policy-created" }), { status: 200 });
+    });
+
+    await expect(service.advanceStart({ ...request, context: { ...context, actorRole: "admin" }, budgetCapMinorUnits: 50 }))
+      .resolves.toMatchObject({ status: "READY_FOR_LIVE" });
+    expect(provisionEconomicBudget).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+      authorization: { tenantId: "tenant-a", actorId: 7, role: "admin" },
+      scopeType: "worker_job", scopeRef: "job-a", currency: "USD", limitMinorUnits: 50,
+    }));
+    const definition = (JSON.parse(String(vi.mocked(globalThis.fetch).mock.calls[0]?.[1]?.body)) as any).definition;
+    expect(definition).toMatchObject({
+      schemaVersion: "spec224.development-policy.v1", environmentAllowlist: ["development"],
+      profileAllowlist: ["spec224-recovery-windows-x64-codex-nonprod"], initiatorUserIds: [7],
+      operations: ["spec224.development.run"], maxBudgetMinorUnits: 50, currency: "USD", maxTtlSeconds: 3600,
+    });
+    expect(definition.resourceScopes).toEqual(expect.arrayContaining([
+      { kind: "development_run", id: "run-a" }, { kind: "worker_job", id: "job-a" },
+      { kind: "attempt", id: "attempt-a" }, { kind: "workspace", id: "workspace-a" },
+      { kind: "runner", id: "runner-a" }, { kind: "runner_session", id: "runner-session-a" },
+      { kind: "capability_snapshot", id: "snapshot-a" },
+    ]));
   });
 
   it("retains an existing pending or rejected approval instead of replacing it", async () => {

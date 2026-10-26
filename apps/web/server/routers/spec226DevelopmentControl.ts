@@ -213,10 +213,12 @@ const authorizationContext = (ctx: {
   userToken?: string | null;
   user?: {
     id?: number | null;
+    role?: string | null;
     currentTenantId?: string | number | null;
   } | null;
 }): Spec224AuthorizationContext => ({
   ...requireScope(ctx),
+  actorRole: ctx.user?.role ?? undefined,
   userToken: ctx.userToken,
 });
 
@@ -709,6 +711,7 @@ export const spec226DevelopmentControlRouter = router({
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
       idempotencyKey: z.string().trim().min(16).max(160),
+      budgetCapMinorUnits: z.number().int().positive().max(10_000_000).default(100),
       provider: z.enum(["codex", "claude_code"]).default("codex"),
       visualReferences: z.array(z.record(z.string(), z.unknown())).max(6).default([]),
       designPreferences: designPreferencesSchema.default({}),
@@ -889,6 +892,7 @@ export const spec226DevelopmentControlRouter = router({
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
           provider: input.provider ?? "codex", visualReferences: input.visualReferences ?? [],
           visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
+          budgetCapMinorUnits: input.budgetCapMinorUnits,
         })).digest("hex");
         const existing = await developmentRunService.get({ ...scope, runId }).catch(error => {
           if (errorCode(error) === "RUN_NOT_FOUND") return null;
@@ -897,7 +901,8 @@ export const spec226DevelopmentControlRouter = router({
         if (existing) {
           if (existing.run.metadata?.spec224StartRequestDigest !== requestDigest || existing.run.workspaceId !== binding.workspace.workspaceId)
             throw new Error("RUN_IDEMPOTENCY_CONFLICT");
-          const authorization = await advanceWorkspaceStartAuthorization({ context: authorizationContext(ctx), runId, runnerId: binding.workspace.runnerId });
+          const authorization = await advanceWorkspaceStartAuthorization({ context: authorizationContext(ctx), runId,
+            runnerId: binding.workspace.runnerId, budgetCapMinorUnits: input.budgetCapMinorUnits });
           const source = existing.run.metadata?.spec224Input as { inputDigest: string };
           const workspace = existing.run.metadata?.spec224Workspace as { specSetRevision: number | null; workPackageId: string | null };
           return { runId, jobId: existing.run.workerJobId, state: existing.run.state,
@@ -1112,6 +1117,7 @@ export const spec226DevelopmentControlRouter = router({
           context: authorizationContext(ctx),
           runId,
           runnerId: prepared.runner.runnerId,
+          budgetCapMinorUnits: input.budgetCapMinorUnits,
         });
         const dispatchStatus = authorization.status === "READY_FOR_LIVE" ? "ENQUEUED" as const : "PENDING_AUTHORIZATION" as const;
         auditLogger.log({
