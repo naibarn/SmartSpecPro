@@ -12,14 +12,14 @@ type Deployment = {
 };
 type Route = { id: string; pattern: string; script: string | null };
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
-const deny = (code: string): never => {
+function deny(code: string): never {
   const diagnosticCode = `CLOUDFLARE_PRODUCTION_INGRESS_${code}`;
   throw Object.assign(new Error(diagnosticCode), { diagnosticCode });
-};
+}
 
 /** Exact apex-route canary with compensating detach. All writes retain the existing grant/lease fence. */
 export function createCloudflareProductionIngressTransport(
-  options: { fetchImpl?: typeof fetch; observationMs?: number } = {}
+  options: { fetchImpl?: typeof fetch; observationMs?: number; probeRetryDelayMs?: number } = {}
 ) {
   const fetchImpl = options.fetchImpl ?? fetch;
   return async function execute(input: {
@@ -165,7 +165,17 @@ export function createCloudflareProductionIngressTransport(
           response.headers.get("x-smartaihub-application-runtime") !==
             "linux-origin"
         )
-          deny("APPLICATION_PROBE_FAILED");
+          throw Object.assign(new Error("CLOUDFLARE_PRODUCTION_INGRESS_APPLICATION_PROBE_FAILED"), {
+            diagnosticCode: "CLOUDFLARE_PRODUCTION_INGRESS_APPLICATION_PROBE_FAILED",
+            // Never retain response bodies, credentials or caller headers.
+            probeEvidence: {
+              phase: runtimeProbe ? "runtime" : "apex",
+              resource: path === "/" ? "web" : "auth",
+              httpStatus: response.status,
+              ingressIdentityMatched: response.headers.get("x-smartaihub-ingress") === "cloudflare-worker",
+              runtimeIdentityMatched: response.headers.get("x-smartaihub-application-runtime") === "linux-origin",
+            },
+          });
         if (path === "/") {
           if (
             !response.headers.get("content-type")?.includes("text/html") ||
@@ -185,9 +195,12 @@ export function createCloudflareProductionIngressTransport(
       for(let attempt=0;;attempt++){
         try{return await probeOnce(origin,versionId);}
         catch(error){
+          if (error instanceof Error && "probeEvidence" in error) {
+            console.warn("[Cloudflare ingress probe]", error.probeEvidence);
+          }
           if(origin!=="https://runtime.smartaihub.app"||attempt>=5)throw error;
           await assertMutationAuthorized();
-          await new Promise(resolve=>setTimeout(resolve,2000));
+          await new Promise(resolve=>setTimeout(resolve, options.probeRetryDelayMs ?? 2000));
         }
       }
     }

@@ -144,6 +144,7 @@ function provider(
   });
   return {
     observationMs: 0,
+    probeRetryDelayMs: 0,
     fetchImpl,
     writes,
     order,
@@ -259,7 +260,11 @@ describe("Production ingress origin-route authority and compensation", () => {
         acceptApplication: async () => ({ verified: true }),
         assertMutationAuthorized: auth(),
       })
-    ).rejects.toThrow("APPLICATION_PROBE_FAILED");
+    ).rejects.toMatchObject({
+      diagnosticCode: "CLOUDFLARE_PRODUCTION_INGRESS_APPLICATION_PROBE_FAILED",
+      probeEvidence: { phase: "runtime", resource: "web", httpStatus: 503,
+        ingressIdentityMatched: true, runtimeIdentityMatched: true },
+    });
     expect(p.routes).toHaveLength(0);
     expect(p.writes.some(w => w.path.includes("/zones/"))).toBe(false);
     expect(p.active.versions).toEqual([
