@@ -37,8 +37,8 @@ export function productionDatabaseResourcePlanDigest(plan: ProductionDatabaseRes
 
 export class ProductionDatabaseProvisionError extends Error {
   readonly class: "permanent" | "retryable" | "unknown";
-  constructor(readonly diagnosticCode: string, readonly errorClass: "permanent" | "retryable" | "unknown" = "permanent") {
-    super(diagnosticCode);
+  constructor(readonly diagnosticCode: string, readonly errorClass: "permanent" | "retryable" | "unknown" = "permanent", readonly providerMessage?: string) {
+    super(providerMessage ? `${diagnosticCode}: ${providerMessage}` : diagnosticCode);
     this.name = "ProductionDatabaseProvisionError";
     this.class = errorClass;
   }
@@ -47,7 +47,7 @@ function fail(code: string, kind: "permanent" | "retryable" | "unknown" = "perma
   throw new ProductionDatabaseProvisionError(code, kind);
 }
 
-type Envelope = { success?: boolean; result?: unknown; result_info?: { total_pages?: number }; errors?: Array<{ code?: number | string }> };
+type Envelope = { success?: boolean; result?: unknown; result_info?: { total_pages?: number }; errors?: Array<{ code?: number | string; message?: string }> };
 type Resource = Record<string, any>;
 
 /**
@@ -125,7 +125,11 @@ export async function provisionCloudflareProductionDatabase(input: {
       const providerCode = envelope.errors?.[0]?.code;
       const code = typeof providerCode === "number" && Number.isSafeInteger(providerCode) && providerCode >= 0 && providerCode <= 999_999
         ? `_CF_${providerCode}` : "";
-      fail(`CLOUDFLARE_PRODUCTION_DATABASE_HTTP_${response.status}${code}`, response.status >= 500 ? "retryable" : "permanent");
+      let message = String(envelope.errors?.[0]?.message ?? "");
+      for (const secret of [input.token, input.databasePassword]) message = message.split(secret).join("[REDACTED]");
+      message = message.replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s/@]+:[^\s/@]+@/gi, "$1[REDACTED]@").replace(/[\r\n\x00-\x1f]/g, " ").slice(0, 400);
+      throw new ProductionDatabaseProvisionError(`CLOUDFLARE_PRODUCTION_DATABASE_HTTP_${response.status}${code}`,
+        response.status >= 500 ? "retryable" : "permanent", message || undefined);
     }
     return envelope;
   }

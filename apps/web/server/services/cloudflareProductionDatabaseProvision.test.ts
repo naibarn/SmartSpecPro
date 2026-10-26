@@ -41,6 +41,15 @@ const hyperdrive = {
 const response = (result: unknown, status = 200) => new Response(JSON.stringify({ success: status < 400, result, errors: status < 400 ? [] : [{ code: 1000 }] }), { status });
 
 describe("Cloudflare production database resources", () => {
+  it("retains bounded provider failure details while redacting both credentials", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ success: false,
+      errors: [{ code: 2015, message: `Connection failed ${token} ${password} postgresql://user:secret@host/db\nnext` }] }), { status: 400 }));
+    await expect(provisionCloudflareProductionDatabase({ jobId, accountRef, token, plan,
+      planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
+    })).rejects.toMatchObject({ diagnosticCode: "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015",
+      providerMessage: "Connection failed [REDACTED] [REDACTED] postgresql://[REDACTED]@host/db next" });
+  });
   it("creates and reads back a private VPC PostgreSQL service and uncached Hyperdrive config", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))

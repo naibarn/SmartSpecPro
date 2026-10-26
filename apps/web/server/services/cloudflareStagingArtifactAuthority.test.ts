@@ -87,6 +87,37 @@ function canonicalBuildRecord() {
 }
 
 describe("Cloudflare staging artifact authority", () => {
+  it("checks immutable Worker modules without reading web assets, while full resolution still verifies them", async () => {
+    const { storage, objects } = fixture();
+    const reads: string[] = [];
+    let authorized = true;
+    const authority = createCloudflareStagingArtifactAuthority({
+      storage: { ...storage, readBuffer: async key => { reads.push(key); return storage.readBuffer(key); } },
+      buildReceipts: { verify: async () => authorized },
+    });
+    const published = await authority.publish({ receipt, bundle });
+    reads.length = 0;
+    const modules = await authority.resolveModules(published.artifactRef, sourceSha);
+    expect(modules).toMatchObject({ sourceSha, buildDigest, mainModule: "index.js" });
+    expect(modules?.moduleFiles["index.js"].bytes).toEqual(moduleBytes);
+    expect(reads).toHaveLength(2); // Verified manifest and one module, no asset reads.
+    const assetKey = [...objects.keys()].find(key => key.includes(sha256(indexBytes)))!;
+    objects.delete(assetKey);
+    expect(await authority.resolveModules(published.artifactRef, sourceSha)).not.toBeNull();
+    expect(await authority.resolveBundle(published.artifactRef, sourceSha)).toBeNull();
+    authorized = false;
+    expect(await authority.resolveModules(published.artifactRef, sourceSha)).toBeNull();
+  });
+
+  it("rejects wrong-source and corrupted Worker modules before readiness is accepted", async () => {
+    const { authority, objects } = fixture();
+    const published = await authority.publish({ receipt, bundle });
+    expect(await authority.resolveModules(published.artifactRef, "d".repeat(40))).toBeNull();
+    const moduleKey = [...objects.keys()].find(key => key.includes(sha256(moduleBytes)))!;
+    objects.set(moduleKey, Buffer.from("corrupted"));
+    expect(await authority.resolveModules(published.artifactRef, sourceSha)).toBeNull();
+  });
+
   it("allows the canonical builder's publisher-unavailable result to be retried", () => {
     expect(isRetryableCloudflareStagingPublishReason("publisher_unavailable")).toBe(true);
     expect(isRetryableCloudflareStagingPublishReason("artifact_storage_unavailable")).toBe(true);

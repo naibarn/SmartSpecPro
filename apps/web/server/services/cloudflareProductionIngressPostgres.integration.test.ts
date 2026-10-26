@@ -56,7 +56,7 @@ vi.mock("./cloudflareProductionProviderInventory", () => ({
 }));
 vi.mock("./cloudflareStagingArtifactAuthority", async original => ({
   ...(await original<any>()),
-  resolveCloudflareStagingBundle: async () => ({
+  resolveCloudflareStagingModules: async () => ({
     moduleFiles: {
       "index.js": {
         bytes: new TextEncoder().encode("/_ops/application-canary/ingress/"),

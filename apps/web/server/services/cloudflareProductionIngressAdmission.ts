@@ -7,7 +7,7 @@ import { resolveCloudflareProductionDeploymentTarget } from "./cloudflareProduct
 import { probeCloudflareProductionProviderInventory } from "./cloudflareProductionProviderInventory";
 import {
   resolveLatestPublishedCloudflareStagingArtifact,
-  resolveCloudflareStagingBundle,
+  resolveCloudflareStagingModules,
 } from "./cloudflareStagingArtifactAuthority";
 import {
   getCloudflareOriginConfiguration,
@@ -101,7 +101,7 @@ export async function getProductionIngressPreflight(
     return blocked("INGRESS_ROUTE_ALREADY_EXISTS");
   const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) return blocked("PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE");
-  const bundle = await resolveCloudflareStagingBundle(
+  const bundle = await resolveCloudflareStagingModules(
     artifact.artifactRef,
     artifact.sourceSha
   );

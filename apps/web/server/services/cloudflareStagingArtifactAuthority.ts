@@ -398,6 +398,23 @@ export function createCloudflareStagingArtifactAuthority(input: {
     return manifest ? { artifactRef, sourceSha: manifest.sourceSha, buildDigest: manifest.buildDigest, immutable: true } : null;
   }
 
+  /** Readiness inspects code capabilities only. The executor must still resolve
+   * the complete bundle (including every asset) before any version upload. */
+  async function resolveModules(artifactRef: string, expectedSourceSha?: string) {
+    const manifest = await resolveManifest(artifactRef, expectedSourceSha);
+    if (!manifest) return null;
+    const moduleFiles: CloudflareStagingBundle["moduleFiles"] = {};
+    const entries = Object.entries(manifest.moduleFiles);
+    for (let offset = 0; offset < entries.length; offset += 8) {
+      const batch = await Promise.all(entries.slice(offset, offset + 8).map(async ([name, file]) => ({
+        name, file, bytes: await readBlob(input.storage, file),
+      })));
+      if (batch.some(item => !item.bytes)) return null;
+      for (const { name, file, bytes } of batch) moduleFiles[name] = { contentType: file.contentType, bytes: bytes! };
+    }
+    return { sourceSha: manifest.sourceSha, buildDigest: manifest.buildDigest, mainModule: manifest.mainModule, moduleFiles };
+  }
+
   async function resolveBundle(artifactRef: string, expectedSourceSha?: string): Promise<CloudflareStagingBundle | null> {
     const manifest = await resolveManifest(artifactRef, expectedSourceSha);
     if (!manifest) return null;
@@ -425,7 +442,7 @@ export function createCloudflareStagingArtifactAuthority(input: {
     return bundle;
   }
 
-  return { publish, resolveBundle, resolveArtifact };
+  return { publish, resolveBundle, resolveArtifact, resolveModules };
 }
 
 let runtimeAuthority: ReturnType<typeof createCloudflareStagingArtifactAuthority> | null = null;
@@ -458,6 +475,10 @@ export async function resolveCloudflareStagingArtifact(
   expectedSourceSha?: string,
 ): Promise<PublishedCloudflareStagingArtifact | null> {
   return (await getRuntimeAuthority()?.resolveArtifact(artifactRef, expectedSourceSha)) ?? null;
+}
+
+export async function resolveCloudflareStagingModules(artifactRef: string, expectedSourceSha?: string) {
+  return (await getRuntimeAuthority()?.resolveModules(artifactRef, expectedSourceSha)) ?? null;
 }
 
 /** Resolve the newest immutable artifact that has both a canonical build receipt
