@@ -493,6 +493,7 @@ export default function AdminDeploymentTargets() {
       !query.state.data || ["succeeded", "failed", "cancelled", "expired"].includes(query.state.data.status) ? false : 2_000 },
   );
   const productionDatabaseJobData = latestProductionDatabaseJob.data;
+  const productionDatabaseObservation = productionDatabaseJobData?.reconciliation;
   const productionDatabaseGuardRecovery = productionDatabaseJobData?.status === "failed" &&
     productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_CREDENTIAL_UNAVAILABLE" &&
     productionDatabaseJobData.attempt === 2 && productionDatabaseJobData.maxAttempts === 2;
@@ -501,6 +502,7 @@ export default function AdminDeploymentTargets() {
     productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_DATABASE_HTTP_400_CF_2015" &&
     productionDatabaseJobData.attempt === 3 && productionDatabaseJobData.maxAttempts === 3;
   const productionDatabaseReadbackRecovery = productionDatabaseJobData?.status === "failed" &&
+    productionDatabaseObservation?.providerReadbackVerified !== true &&
     productionDatabaseJobData.errorCode === "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH" &&
     productionDatabaseJobData.attempt === 4 && productionDatabaseJobData.maxAttempts === 4;
   const productionReadbackRecoveryResourcesVerified = (() => {
@@ -895,6 +897,13 @@ export default function AdminDeploymentTargets() {
           })() : null}
           <Divider />
           <strong>{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
+          {productionDatabaseObservation?.providerReadbackVerified ? <VStack gap={1} role="status" aria-label={text("Production database verification", "ผลตรวจฐานข้อมูล Production")}>
+            <strong>{text("Existing VPC and Hyperdrive verified", "ตรวจยืนยัน VPC และ Hyperdrive เดิมแล้ว")}</strong>
+            <p>{text("Cloudflare SQL", "SQL จาก Cloudflare")}: {productionDatabaseObservation.databaseConnectionVerified ? "PASS" : "NOT_EXECUTED"}</p>
+            <p>{productionDatabaseObservation.databaseConnectionVerified
+              ? text("Remaining: verify tenant isolation. The original failed attempt remains in history; no provisioning retry is needed for this readback.", "ขั้นที่เหลือ: ตรวจการแยกข้อมูล tenant โดยเก็บผลล้มเหลวเดิมไว้ในประวัติ ไม่ต้องรัน provisioning ซ้ำเพื่อตรวจ readback")
+              : text("Remaining: verify SQL from Cloudflare and tenant isolation. No provisioning retry is needed for this readback.", "ขั้นที่เหลือ: ตรวจ SQL จาก Cloudflare และการแยกข้อมูล tenant ไม่ต้องรัน provisioning ซ้ำเพื่อตรวจ readback")}</p>
+          </VStack> : null}
           <VStack as="section" gap={2} role="group" aria-label={text("Cloudflare ingress migration", "ย้ายทางเข้าเว็บไป Cloudflare")}>
             <h3>{text("Cloudflare ingress: web and API", "ทางเข้าเว็บและ API ผ่าน Cloudflare")}</h3>
             {migrationMission.data ? <VStack gap={1} role="status" aria-label={text("Migration mission", "ภารกิจย้ายระบบ")}>
@@ -1088,6 +1097,7 @@ export default function AdminDeploymentTargets() {
             const submittedDatabaseJobId = productionDatabaseSubmissions[productionScopeKey] ?? "";
             const databaseAdmission = productionDatabaseAdmissions[productionScopeKey] ?? readStoredProductionDatabaseAdmission(productionScopeKey);
             const databaseJobAlreadySubmitted = Boolean(
+              productionDatabaseObservation?.providerReadbackVerified ||
               productionDatabaseGuardRecovery || productionDatabaseProviderRecovery || productionDatabaseReadbackRecovery ||
               ["queued", "claimed", "preparing", "running", "uploading", "publishing", "indexing", "pending", "leased",
                 "waiting_external", "retry_scheduled", "succeeded", "completed", "expired"].includes(productionDatabaseJobData?.status ?? "") ||

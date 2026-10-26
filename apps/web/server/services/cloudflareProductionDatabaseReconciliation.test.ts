@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ appendEvent: vi.fn(), inspect: vi.fn() }));
 vi.mock("./jobControlPlane", () => ({ appendJobEvent: mocks.appendEvent }));
 vi.mock("./cloudflareProductionDatabaseRecovery", () => ({ inspectProductionDatabaseRecovery: mocks.inspect }));
-import { reconcileProductionDatabaseReadback } from "./cloudflareProductionDatabaseReconciliation";
+import { productionDatabaseEvidenceDigest, projectProductionDatabaseReadbackObservation, reconcileProductionDatabaseReadback } from "./cloudflareProductionDatabaseReconciliation";
 function fixture() {
   const inputJson = { projectId: "project", targetId: "smartspec-cloudflare-runtime", environment: "production", planDigest: "a".repeat(64), grantRef: "original-grant" };
   const job = { id: "original-job", tenantId: "tenant", requestedByUserId: 17, jobType: "cloudflare.production.database.provision",
@@ -28,10 +27,15 @@ describe("Production database read-only canonical reconciliation", () => {
       providerReadOnly: true, provisioningAttemptConsumed: false, grantRenewed: false, acceptance: "NOT_ACCEPTED" });
     const payload = mocks.appendEvent.mock.calls[0][1].payloadJson;
     const { evidenceDigest, ...evidence } = payload;
-    expect(evidenceDigest).toBe(createHash("sha256").update(JSON.stringify(evidence)).digest("hex"));
+    expect(evidenceDigest).toBe(productionDatabaseEvidenceDigest(evidence));
     expect(mocks.appendEvent.mock.calls[0][1].eventType).toBe("PRODUCTION_DATABASE_READBACK_RECONCILED");
     expect(JSON.stringify(f.job)).toBe(before);
     expect(f.db).not.toHaveProperty("update"); expect(f.db).not.toHaveProperty("insert");
+    const scope = { jobId: f.job.id, tenantId: f.job.tenantId, projectId: "project", planDigest: "a".repeat(64) };
+    const reordered = Object.fromEntries(Object.entries(payload).reverse());
+    expect(projectProductionDatabaseReadbackObservation(reordered, scope)).toMatchObject({ providerReadbackVerified: true, databaseConnectionVerified: false });
+    expect(projectProductionDatabaseReadbackObservation({ ...payload, tenantId: "foreign" }, scope)).toBeNull();
+    expect(projectProductionDatabaseReadbackObservation({ ...payload, providerReadbackVerified: false }, scope)).toBeNull();
   });
   it.each(["actor", "project", "job_type", "contract", "attempt", "error", "lease", "grant"])("rejects changed %s identity before provider reads", async change => {
     const f = fixture();

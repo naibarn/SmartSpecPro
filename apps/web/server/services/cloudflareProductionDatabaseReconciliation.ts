@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { workerJobs } from "../../drizzle/schema";
+import { workerJobEvents, workerJobs } from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
 import { appendJobEvent } from "./jobControlPlane";
 import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE_JOB,
@@ -21,6 +21,48 @@ export const productionDatabaseSqlObservationSchema = z.object({
   backendSsl: z.boolean(), tenantIsolation: z.enum(["NOT_VERIFIED_NO_AUTHORIZED_FIXTURES", "FAIL"]),
   businessRowsRead: z.literal(0), businessWrites: z.literal(0),
 }).strict();
+
+export function productionDatabaseEvidenceDigest(value: unknown): string {
+  const canonical = (entry: any): any => entry && typeof entry === "object"
+    ? Array.isArray(entry) ? entry.map(canonical) : Object.fromEntries(Object.keys(entry).sort().map(key => [key, canonical(entry[key])]))
+    : entry;
+  return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
+}
+
+/** Read model for the exact original job. Reordered JSONB keys cannot change
+ * evidence identity; an event never rewrites the original failed attempt. */
+export function projectProductionDatabaseReadbackObservation(payload: unknown, scope: {
+  jobId: string; tenantId: string; projectId: string; planDigest: string;
+}) {
+  if (!payload || typeof payload !== "object") return null;
+  const { evidenceDigest, ...evidence } = payload as Record<string, any>;
+  if (evidence.evidenceHashFormat !== "canonical-json-v1" || evidenceDigest !== productionDatabaseEvidenceDigest(evidence) ||
+      Object.entries(scope).some(([key, value]) => evidence[key] !== value) || evidence.providerReadbackVerified !== true ||
+      evidence.providerReadOnly !== true || evidence.providerMutations !== 0 || evidence.provisioningAttemptConsumed !== false ||
+      evidence.grantRenewed !== false || evidence.originalStatus !== "failed" || evidence.originalAttempt !== 4 ||
+      evidence.acceptance !== "NOT_ACCEPTED") return null;
+  const sql = productionDatabaseSqlObservationSchema.safeParse(evidence.sqlObservation);
+  const sqlVerified = sql.success && sql.data.planDigest === scope.planDigest && sql.data.hyperdriveId === evidence.hyperdriveId &&
+    sql.data.vpcServiceId === evidence.vpcServiceId;
+  return { jobId: scope.jobId, evidenceDigest: String(evidenceDigest), observedAt: String(evidence.observedAt),
+    providerReadbackVerified: true as const, databaseConnectionVerified: Boolean(sqlVerified),
+    restrictedRoleVerified: Boolean(sqlVerified), tenantIsolationVerified: false as const,
+    vpcServiceId: String(evidence.vpcServiceId), hyperdriveId: String(evidence.hyperdriveId),
+    nextCheck: sqlVerified ? "VERIFY_TENANT_ISOLATION" : "VERIFY_CLOUDFLARE_SQL", acceptance: "NOT_ACCEPTED" as const };
+}
+
+export async function readProductionDatabaseReadbackObservation(db: DrizzleDB, scope: {
+  jobId: string; tenantId: string; projectId: string; planDigest: string;
+}) {
+  const rows = await db.select({ payload: workerJobEvents.payloadJson }).from(workerJobEvents)
+    .where(and(eq(workerJobEvents.workerJobId, scope.jobId), eq(workerJobEvents.eventType, "PRODUCTION_DATABASE_READBACK_RECONCILED")))
+    .orderBy(desc(workerJobEvents.eventSequence)).limit(20);
+  for (const row of rows) {
+    const observation = projectProductionDatabaseReadbackObservation(row.payload, scope);
+    if (observation) return observation;
+  }
+  return null;
+}
 
 /** Trusted service entrypoint for recording fresh GET-only observations. This
  * does not recover/settle the provisioning job, renew authority or create an
@@ -59,13 +101,14 @@ export async function reconcileProductionDatabaseReadback(input: {
     throw new Error("CLOUDFLARE_PRODUCTION_DATABASE_SQL_OBSERVATION_SCOPE_DENIED");
   }
   const evidence = { schemaVersion: "cloudflare-production-database-readback-observation-v1", ...readback,
+    evidenceHashFormat: "canonical-json-v1", databaseConnectionVerified: Boolean(sqlObservation), tenantIsolationVerified: false,
     accountRef: secure.grant.accountRef, tenantId: input.tenantId, projectId: input.projectId,
     observedAt: new Date().toISOString(), observedBy: input.actorUserId === undefined ? "authorized_service_cli" : "authenticated_original_requester",
     originalAttempt: job.attempt, originalStatus: job.status, originalErrorCode: job.errorCode,
     providerReadOnly: true, providerMutations: 0, provisioningAttemptConsumed: false, grantRenewed: false,
     ...(sqlObservation ? { sqlObservation } : {}),
     acceptance: "NOT_ACCEPTED" };
-  const evidenceDigest = createHash("sha256").update(JSON.stringify(evidence)).digest("hex");
+  const evidenceDigest = productionDatabaseEvidenceDigest(evidence);
   await input.db.transaction(async tx => {
     const [current] = await tx.select().from(workerJobs).where(where).for("update");
     if (!current || current.status !== job.status || current.attempt !== job.attempt || current.maxAttempts !== job.maxAttempts ||

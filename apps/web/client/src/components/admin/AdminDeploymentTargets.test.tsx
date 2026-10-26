@@ -805,6 +805,20 @@ describe("AdminDeploymentTargets", () => {
       environment: "production", authorizeAdditionalAttempt: true });
   });
 
+  it("shows canonical SQL evidence and stops offering another provisioning attempt after readback reconciliation", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime", workerRef: "smartspec-cloudflare-runtime" }];
+    mocks.productionInventoryStatus = "PARTIAL";
+    mocks.latestProductionDatabaseJob = { jobId: "b9ca8316-1604-4764-a769-d92f46e4c823", status: "failed",
+      errorCode: "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", attempt: 4, maxAttempts: 4,
+      reconciliation: { providerReadbackVerified: true, databaseConnectionVerified: true, tenantIsolationVerified: false } };
+    render(<AdminDeploymentTargets />); await chooseProductionScope(user);
+    expect(screen.getByRole("status", { name: "Production database verification" })).toHaveTextContent("Cloudflare SQL: PASS");
+    expect(screen.getByText(/Remaining: verify tenant isolation/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Authorize recovery of existing Hyperdrive job" })).not.toBeInTheDocument();
+    expect(mocks.resumeProductionDatabase).not.toHaveBeenCalled(); expect(mocks.prepareProductionDatabase).not.toHaveBeenCalled();
+  });
+
   it.each(["missing-vpc", "incomplete-hyperdrive", "invalid-tunnel", "nonrecoverable-job"])(
     "keeps same-job recovery unavailable when its database prerequisite is %s", async blocker => {
       const user = userEvent.setup();

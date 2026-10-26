@@ -1256,7 +1256,11 @@ export const infrastructureRouter = router({
       const jobInput = job.inputJson as Record<string, unknown> | null;
       const output = job.outputJson as Record<string, unknown> | null;
       const grant = await readCloudflareProductionDatabaseGrant(db, job.id);
+      const { readProductionDatabaseReadbackObservation } = await import("../services/cloudflareProductionDatabaseReconciliation");
+      const reconciliation = typeof jobInput?.planDigest === "string" ? await readProductionDatabaseReadbackObservation(db,
+        { jobId: job.id, tenantId, projectId: input.projectId, planDigest: jobInput.planDigest }) : null;
       return { jobId: job.id, status: job.status, errorCode: job.errorCode, attempt: job.attempt, maxAttempts: job.maxAttempts,
+        reconciliation,
         operatorReviewRequired: job.operatorReviewRequired, operatorReviewReason: job.operatorReviewReason,
         tunnelId: grant?.plan.tunnelId ?? null,
         createdAt: job.createdAt?.toISOString() ?? null, startedAt: job.startedAt?.toISOString() ?? null,
