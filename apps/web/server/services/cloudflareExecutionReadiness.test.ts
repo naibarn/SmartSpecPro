@@ -6,6 +6,12 @@ describe("JIT migration execution readiness without issuing authority", () => {
   beforeEach(() => { vi.resetAllMocks(); mocks.readFile.mockResolvedValue(`${Date.now()}\talive\t123\n`); mocks.readlink.mockResolvedValue(process.cwd()); });
   it("uses actual Node dispatch capacity, independently of Python class admission", async () => {
     expect(await checkCloudflareExecutionReadiness({ execute: async () => [{ count: 0 }] } as any)).toMatchObject({ ready: true });
+    expect(mocks.readFile).toHaveBeenCalledWith("/run/smartspec-node-worker/heartbeat", "utf8");
+  });
+  it("falls back to the direct CLI worker heartbeat only if the systemd default is missing", async () => {
+    mocks.readFile.mockRejectedValueOnce(new Error("ENOENT"));
+    expect(await checkCloudflareExecutionReadiness({ execute: async () => [{ count: 0 }] } as any)).toMatchObject({ ready: true });
+    expect(mocks.readFile).toHaveBeenLastCalledWith("/home/dev/projects/SmartSpecPro/logs/smartspec-node-worker.heartbeat", "utf8");
   });
   it.each(["missing", "stale", "future", "starting", "wrong-release", "queue-blocked"])("defers authorization for %s", async kind => {
     if (kind === "missing") mocks.readFile.mockRejectedValue(new Error("ENOENT"));

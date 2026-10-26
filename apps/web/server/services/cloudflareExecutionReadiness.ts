@@ -6,10 +6,17 @@ import type { DrizzleDB } from "../db";
  * a migration grant before the actual Node executor can accept it. */
 export async function checkCloudflareExecutionReadiness(db: DrizzleDB) {
   const path = process.env.FEATURE_186_NODE_WORKER_HEARTBEAT_FILE ??
-    "/home/dev/projects/SmartSpecPro/logs/smartspec-node-worker.heartbeat";
+    "/run/smartspec-node-worker/heartbeat";
   let heartbeat: string;
   try { heartbeat = await readFile(path, "utf8"); }
-  catch { return { ready: false as const, reason: "MIGRATION_WORKER_HEARTBEAT_UNAVAILABLE" }; }
+  catch {
+    // Match the installed watchdog: the systemd runtime file takes precedence;
+    // only a missing default permits the older direct-CLI worker location.
+    if (process.env.FEATURE_186_NODE_WORKER_HEARTBEAT_FILE)
+      return { ready: false as const, reason: "MIGRATION_WORKER_HEARTBEAT_UNAVAILABLE" };
+    try { heartbeat = await readFile("/home/dev/projects/SmartSpecPro/logs/smartspec-node-worker.heartbeat", "utf8"); }
+    catch { return { ready: false as const, reason: "MIGRATION_WORKER_HEARTBEAT_UNAVAILABLE" }; }
+  }
   const [timestamp, phase, pid] = heartbeat.trim().split("\t");
   const age = Date.now() - Number(timestamp);
   if (!Number.isFinite(age) || age < -5000 || age > 30000 || !["alive", "polling"].includes(phase) || !/^[1-9][0-9]*$/.test(pid))
