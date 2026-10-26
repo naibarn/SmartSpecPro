@@ -131,6 +131,25 @@ describe("Cloudflare production database resources", () => {
     expect(result.providerConfigurationVerified).toBe(true);
   });
 
+  it("accepts Cloudflare's empty Hyperdrive mTLS readback object for a VPC origin", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response({ id: plan.tunnelId, status: "healthy" }))
+      .mockResolvedValueOnce(response([service]))
+      .mockResolvedValueOnce(response(service))
+      .mockResolvedValueOnce(response([hyperdrive]))
+      .mockResolvedValueOnce(response({ ...hyperdrive, mtls: {} }));
+
+    const result = await provisionCloudflareProductionDatabase({
+      jobId, accountRef, token, plan, planDigest: productionDatabaseResourcePlanDigest(plan), databasePassword: password,
+      checkpoint: { jobId, planDigest: productionDatabaseResourcePlanDigest(plan),
+        databasePasswordDigest: createHash("sha256").update(password).digest("hex"), vpcServiceId: serviceId, hyperdriveId },
+      saveCheckpoint: async () => undefined, assertAuthorized: async () => undefined, fetchImpl,
+    });
+
+    expect(result.providerConfigurationVerified).toBe(true);
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
+  });
+
   it("recovers an uncertain create only when the encrypted job checkpoint proves ownership", async () => {
     const checkpoints: Array<Parameters<Parameters<typeof provisionCloudflareProductionDatabase>[0]["saveCheckpoint"]>[0]> = [];
     const firstFetch = vi.fn<typeof fetch>()

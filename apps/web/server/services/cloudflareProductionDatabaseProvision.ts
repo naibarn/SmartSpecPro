@@ -217,10 +217,12 @@ export async function provisionCloudflareProductionDatabase(input: {
   }
   const hyperdriveEnvelope = await request(`${hyperdrivePath}/${encodeURIComponent(hyperdriveId)}`, "GET");
   const hyperdrive = hyperdriveEnvelope.result as Resource | undefined;
+  const hasDirectOriginMtls = hyperdrive.mtls != null &&
+    (typeof hyperdrive.mtls !== "object" || Array.isArray(hyperdrive.mtls) || Object.keys(hyperdrive.mtls).length > 0);
   if (hyperdrive.id !== hyperdriveId || hyperdrive.name !== hyperdriveName || hyperdrive.origin?.service_id !== vpcServiceId ||
       hyperdrive.origin?.database !== plan.databaseName || hyperdrive.origin?.user !== plan.databaseUser ||
       hyperdrive.origin?.scheme !== "postgres" || hyperdrive.caching?.disabled !== true ||
-      hyperdrive.origin_connection_limit !== plan.connectionLimit || hyperdrive.mtls != null) {
+      hyperdrive.origin_connection_limit !== plan.connectionLimit || hasDirectOriginMtls) {
     fail("CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH", "unknown");
   }
   await input.assertAuthorized();
