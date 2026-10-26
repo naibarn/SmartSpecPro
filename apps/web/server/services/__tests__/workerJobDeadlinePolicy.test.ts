@@ -192,3 +192,16 @@ describe("worker job deadline policy", () => {
       .toMatchObject({ deadlineMs: 10 * 60 * 1000, deadlineMode: "adaptive" });
   });
 });
+
+describe("bounded image prebuild recovery deadline", () => {
+  it("keeps the same grant and only the second attempt inside its ten-minute window", () => {
+    const created = Date.now()-3600_000, now = Date.now();
+    const input = { jobType: "cloudflare.staging.http.image.provision", contractVersion: "cloudflare-staging-http-image-v1",
+      runtimeType: "node_job_worker", executionClass: "long", attempt: 2, createdAt: new Date(created), input: { grantRef: "original" },
+      retryPolicy: { deadlineMode: "fixed" as const, deadlineMs: 600_000, httpImagePrebuildRecovery: {
+        attempt: 2, grantRef: "original", authorizedAt: new Date(now).toISOString(), expiresAt: new Date(now+600_000).toISOString() } } };
+    expect(getEffectiveWorkerJobDeadlineMs(input)).toBe(now+600_000-created);
+    for (const patch of [{ attempt: 3 }, { jobType: "other" }, { input: { grantRef: "foreign" } }])
+      expect(getEffectiveWorkerJobDeadlineMs({ ...input, ...patch })).toBe(600_000);
+  });
+});

@@ -72,6 +72,10 @@ export function createCloudflareNativeProvisionRuntime(options: { fetchImpl?: ty
       const r = await fetchImpl(`${config.pythonBackendUrl}/api/v1/approvals/internal/cloudflare-staging-grants/${encodeURIComponent(ref)}`, {
         headers: { "x-internal-token": config.webGatewayToken }, redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15_000),
       });
+      if (r.status === 429 || r.status >= 500) {
+        await r.body?.cancel();
+        throw new NativeProvisionError(`NATIVE_GRANT_LOOKUP_HTTP_${r.status}`);
+      }
       return r.ok ? (await r.json() as { grant?: unknown }).grant : null;
     },
     async verifyExecutor(g) {

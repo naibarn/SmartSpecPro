@@ -1962,6 +1962,32 @@ describe("job control plane", () => {
     ).toHaveLength(1);
   });
 
+  it.each(["valid", "wrong-scope", "wrong-grant", "expired", "wrong-error", "exhausted"])("bounds same-grant image build recovery: %s", async mode => {
+    const state = makeRepository(), cp = createJobControlPlane(state.repository);
+    const grantRef = "11111111-1111-4111-8111-111111111111";
+    const created = await cp.create({ ...definition, jobType: "cloudflare.staging.http.image.provision",
+      contractVersion: "cloudflare-staging-http-image-v1", executionClass: "long", idempotencyKey: undefined,
+      input: { grantRef, planDigest: "a".repeat(64) }, retryPolicy: { ...definition.retryPolicy, maxAttempts: 2 } });
+    const job = state.jobs.get(created.jobId);
+    Object.assign(job, { status: "failed", operatorReviewRequired: true, errorCode: "CloudflareHttpImageError",
+      errorMessage: mode === "wrong-error" ? "HTTP_IMAGE_PUBLICATION_UNCONFIRMED" : "HTTP_IMAGE_AUTHORITY_DENIED",
+      attempt: mode === "exhausted" ? 2 : 1, maxAttempts: 2, fencingVersion: 1, leaseOwnerToken: null, leaseExpiresAt: null });
+    const evidence = { disposition: "pre_submission_failure" as const, knownRuntime: "cloudflare_http_image_prebuild_rate_limit" as const,
+      operationKey: `http-image-prebuild:${job.id}:${job.inputJson.planDigest}`, replacementGrantRef: mode === "wrong-grant" ? "22222222-2222-4222-8222-222222222222" : grantRef,
+      replacementGrantExpiresAt: new Date(Date.now()+(mode === "expired" ? -1 : 20*60_000)).toISOString() };
+    const scope = { tenantId: job.tenantId, requestedByUserId: job.requestedByUserId,
+      authorizationScope: mode === "wrong-scope" ? "other" : "infrastructure.cloudflare_http_image_technical_recovery" };
+    const actionId = "00000000-0000-4000-8000-000000000301";
+    expect(await cp.recoverReviewGatedJob(job.id, actionId, "rate_limit_repaired", evidence, undefined, scope)).toBe(mode === "valid");
+    if (mode === "valid") {
+      expect(job.maxAttempts).toBe(2); expect(job.attempt).toBe(2);
+      expect(job.inputJson.grantRef).toBe(grantRef);
+      expect(job.retryPolicyJson.httpImagePrebuildRecovery.grantRef).toBe(grantRef);
+      expect(await cp.recoverReviewGatedJob(job.id, actionId, "rate_limit_repaired", evidence, undefined, scope)).toBe(true);
+      expect(state.outbox).toHaveLength(2);
+    } else expect(job.status).toBe("failed");
+  });
+
   it("does not recover a failed job without an operator review gate", async () => {
     const state = makeRepository();
     const controlPlane = createJobControlPlane(state.repository);

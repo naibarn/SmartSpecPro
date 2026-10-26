@@ -6,6 +6,7 @@ vi.mock("./cloudflareHttpImageBuildOperator", async original => ({ ...(await ori
   sourceSha: state.sourceSha, buildId: state.sourceSha+"-11111111-1111-4111-8111-111111111111" }) }));
 vi.mock("./cloudflareHttpImageProvisionExecutor", async original => ({ ...(await original<any>()), createCloudflareHttpImageProvisionRuntime: () => ({
   resolveAccount: async () => state.account,
+  loadCheckpoint: async () => null,
   withCredential: async (_scope: any, operation: any) => { if (!state.credential) throw Error("HTTP_IMAGE_CREDENTIAL_DENIED"); return operation("fixture"); },
   verifyExecutor: async () => "cf-staging-executor:fixture",
   resolveGrant: async (ref: string) => [...state.grants.values()].find(g => g.grantRef === ref),
@@ -31,7 +32,7 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     client = (await import("postgres")).default(disposable.databaseUrl, { max: 2 });
     const schema = await import("../../drizzle/schema");
     await (await import("./__tests__/support/spec277AutoTeamRuntimeSchema")).installSpec277AutoTeamRuntimeSchema(client,
-      [schema.systemSettings, schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions, schema.runnerNodes]);
+      [schema.systemSettings, schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions, schema.runnerNodes, schema.workerJobActions]);
     await client.unsafe(`CREATE TABLE canonical_projects (tenant_id text,project_id text,lifecycle text,owner_principal_id text);
       CREATE TABLE approval_rules(id text PRIMARY KEY,tenant_id text,project_id text,is_active boolean,conditions jsonb);`);
     await client`INSERT INTO users(id,"openId",role) VALUES(17,'image-owner','admin'),(18,'image-other','user')`;
@@ -88,6 +89,26 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     expect(jobs).toHaveLength(2); expect(jobs.every((j: any) => j.requestedByUserId === 17)).toBe(true);
     expect(await client`SELECT id FROM worker_job_outbox WHERE "workerJobId" IN ${client(ids)}`).toHaveLength(2);
     expect(result?.published).toBe(false); expect(result?.trafficMutation).toBe(false);
+  });
+  it("recovers only the admitted same-grant prebuild failure through real job/outbox persistence", async () => {
+    const { createJobControlPlane } = await import("./jobControlPlane");
+    const cp = createJobControlPlane();
+    const [job] = await client`SELECT id FROM worker_jobs WHERE "jobType"='cloudflare.staging.http.image.provision' ORDER BY id LIMIT 1`;
+    const lease = await cp.claim({ jobId: job.id, runnerId: "fixture-image-worker", adapter: "postgres-pull" });
+    expect(lease).not.toBeNull();
+    await cp.start(lease!);
+    await cp.fail(lease!, { code: "CloudflareHttpImageError", message: "HTTP_IMAGE_AUTHORITY_DENIED", class: "unknown", operatorReviewRequired: true });
+    const { recoverHttpImagePrebuildRateLimit } = await import("./cloudflareHttpImageRecovery");
+    const grants = state.grants.size, calls = state.calls.length;
+    expect(await recoverHttpImagePrebuildRateLimit(db, job.id)).toMatchObject({ jobId: job.id, accepted: true, newGrantIssued: false, maxAttempts: 2 });
+    const [current] = await client`SELECT status,attempt,"maxAttempts","retryPolicyJson" FROM worker_jobs WHERE id=${job.id}`;
+    expect(current).toMatchObject({ status: "queued", attempt: 2, maxAttempts: 2 });
+    expect(current.retryPolicyJson.httpImagePrebuildRecovery.attempt).toBe(2);
+    expect(await client`SELECT id FROM worker_job_outbox WHERE "workerJobId"=${job.id}`).toHaveLength(2);
+    expect(state.grants.size).toBe(grants); expect(state.calls.length).toBe(calls);
+    await expect(recoverHttpImagePrebuildRateLimit(db, job.id)).rejects.toThrow("RECOVERY_JOB_DENIED");
+    const recoveredLease = await cp.claim({ jobId: job.id, runnerId: "fixture-image-worker", adapter: "postgres-pull" });
+    expect(recoveredLease?.fencingVersion).toBe(2);
   });
   it("rejects foreign Owner/tenant, changed plan, and absent Owner token before approval writes", async () => {
     const input = await request(), count = state.calls.length;

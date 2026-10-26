@@ -130,7 +130,9 @@ export function createCloudflareHttpImageProvisionExecutor(runtime: Runtime | ((
     const output = await active.withCredential(scope, async token => {
       fingerprint = createHash("sha256").update(token).digest("hex");
       await assertAuthorized();
-      return publishHttpImage({ grant, checkpoint, readOnly: context.attempt > 1,
+      return publishHttpImage({ grant, checkpoint, readOnly: context.attempt > 1 && !(context.attempt === 2 && !checkpoint &&
+          (context.retryPolicy as { httpImagePrebuildRecovery?: { attempt: number; grantRef: string } }).httpImagePrebuildRecovery?.attempt === 2 &&
+          (context.retryPolicy as { httpImagePrebuildRecovery?: { grantRef: string } }).httpImagePrebuildRecovery?.grantRef === grant.grantRef),
         ports: { ...active.createPorts(token, assertAuthorized), saveCheckpoint: async state => {
           await assertAuthorized(); await active.saveCheckpoint(grant, state);
         } } });

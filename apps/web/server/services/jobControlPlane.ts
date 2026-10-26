@@ -1736,7 +1736,7 @@ async function prepareOperatorAction(
   input: {
     actionId: string;
     jobId: string;
-    command: "cancel" | "requeue" | "recover_checkpoint" | "force_fail";
+    command: "cancel" | "requeue" | "recover_checkpoint" | "recover_review" | "force_fail";
     reason: string;
     actorId?: number;
     authorizationScope?: string;
@@ -4735,7 +4735,7 @@ export function createJobControlPlane(
       evidence: {
         disposition: "pre_submission_failure" | "provider_operation_resolved";
         operationKey?: string;
-        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_database_readback_recovery" | "cloudflare_production_ingress_origin_binding";
+        knownRuntime?: "remotion_revision_id" | "content_protection_provider" | "cloudflare_staging_compile" | "cloudflare_staging_bootstrap_receipt" | "cloudflare_staging_native_readback" | "cloudflare_staging_private_database_rejection" | "cloudflare_production_database_dispatch_quarantine" | "cloudflare_production_database_credential_guard" | "cloudflare_production_database_provider_recovery" | "cloudflare_production_database_readback_recovery" | "cloudflare_production_ingress_origin_binding" | "cloudflare_http_image_prebuild_rate_limit";
         replacementGrantRef?: string;
         replacementGrantExpiresAt?: string;
       },
@@ -4766,7 +4766,8 @@ export function createJobControlPlane(
           evidence.knownRuntime !== "cloudflare_production_database_credential_guard" &&
           evidence.knownRuntime !== "cloudflare_production_database_provider_recovery" &&
           evidence.knownRuntime !== "cloudflare_production_database_readback_recovery" &&
-          evidence.knownRuntime !== "cloudflare_production_ingress_origin_binding") ||
+          evidence.knownRuntime !== "cloudflare_production_ingress_origin_binding" &&
+          evidence.knownRuntime !== "cloudflare_http_image_prebuild_rate_limit") ||
         (evidence.replacementGrantRef !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence.replacementGrantRef)) ||
         (evidence.replacementGrantExpiresAt !== undefined && !Number.isFinite(Date.parse(evidence.replacementGrantExpiresAt)))
       ) {
@@ -4945,8 +4946,22 @@ export function createJobControlPlane(
           typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now()+300000 &&
           new Date(job.createdAt).getTime()+900000 > Date.now()+300000 &&
           evidence.operationKey === `ingress-origin-binding:${job.id}:${job.inputJson.buildDigest}`;
+        // Technical recovery of the same admitted image job, before any
+        // publication intent. The service verifies the live original grant and
+        // empty checkpoint; no replacement grant or extra attempt is issued.
+        const knownImagePrebuildRateLimit = evidence.knownRuntime === "cloudflare_http_image_prebuild_rate_limit" &&
+          evidence.disposition === "pre_submission_failure" && scope?.authorizationScope === "infrastructure.cloudflare_http_image_technical_recovery" &&
+          actorId == null && scope.requestedByUserId === job?.requestedByUserId &&
+          job?.jobType === "cloudflare.staging.http.image.provision" && job.contractVersion === "cloudflare-staging-http-image-v1" &&
+          job.status === "failed" && job.operatorReviewRequired && job.errorCode === "CloudflareHttpImageError" &&
+          job.errorMessage === "HTTP_IMAGE_AUTHORITY_DENIED" && job.attempt === 1 && job.maxAttempts === 2 &&
+          job.fencingVersion === 1 && job.leaseOwnerToken == null && job.leaseExpiresAt == null &&
+          evidence.replacementGrantRef === job.inputJson?.grantRef &&
+          typeof evidence.replacementGrantExpiresAt === "string" && Date.parse(evidence.replacementGrantExpiresAt) > Date.now()+480000 &&
+          evidence.operationKey === `http-image-prebuild:${job.id}:${job.inputJson?.planDigest}`;
         if (
           !job ||
+          (evidence.knownRuntime === "cloudflare_http_image_prebuild_rate_limit" && !knownImagePrebuildRateLimit) ||
           (job.jobType === "cloudflare.production.database.provision" && !knownProductionDatabaseDispatchQuarantine && !knownProductionDatabaseCredentialGuard && !knownProductionDatabaseProviderRecovery && !knownProductionDatabaseReadbackRecovery) ||
           !["failed", "expired"].includes(job.status) ||
           (!job.operatorReviewRequired &&
@@ -5000,6 +5015,10 @@ export function createJobControlPlane(
                   } } }
               : {}),
             ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery || knownIngressOriginBinding) ? { maxAttempts: nextAttempt } : {}),
+            ...(knownImagePrebuildRateLimit ? { retryPolicyJson: { ...job.retryPolicyJson, httpImagePrebuildRecovery: {
+              attempt: nextAttempt, grantRef: evidence.replacementGrantRef, authorizedAt: now.toISOString(),
+              expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime()+10*60_000)).toISOString(),
+            } } } : {}),
             errorCode: null,
             errorMessage: null,
             failureReason: null,

@@ -11,6 +11,8 @@ FastAPI middleware for:
 
 import asyncio
 import hashlib
+import re
+import secrets
 import time
 
 import sentry_sdk
@@ -142,6 +144,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         is_authenticated = False
         tier = "standard"
         rate_limit_key = f"ip:{client_ip}"
+
+        # Lease guards must check revocation throughout image builds. These
+        # authenticated service reads must not consume the browser's anonymous
+        # loopback bucket. Keep a bounded bucket per exact grant, not an
+        # exemption or an authorization decision; the handler still validates
+        # the credential and live grant independently.
+        if request.method == "GET" and re.fullmatch(
+            r"/api/v1/approvals/internal/cloudflare-staging-grants/[a-f0-9-]{36}",
+            request.url.path,
+        ):
+            from app.core.config import settings
+
+            expected = str(getattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "") or "").strip()
+            supplied = request.headers.get("x-internal-token", "")
+            if expected and supplied and secrets.compare_digest(supplied, expected):
+                grant_ref = request.url.path.rsplit("/", 1)[1]
+                rate_limit_key = f"service:cloudflare-grant:{grant_ref}"
+                is_authenticated = True
 
         # Check for Authorization header
         auth_header = request.headers.get("Authorization", "")

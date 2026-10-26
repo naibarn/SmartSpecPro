@@ -111,3 +111,41 @@ async def test_dispatch_uses_resolved_verified_identity(monkeypatch):
         "is_authenticated": True,
         "tier": "standard",
     }
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method,path,token,authenticated", [
+    ("GET", "/api/v1/approvals/internal/cloudflare-staging-grants/11111111-1111-4111-8111-111111111111", "service-secret", True),
+    ("GET", "/api/v1/approvals/internal/cloudflare-staging-grants/11111111-1111-4111-8111-111111111111", "wrong", False),
+    ("POST", "/api/v1/approvals/internal/cloudflare-staging-grants/11111111-1111-4111-8111-111111111111", "service-secret", False),
+    ("GET", "/api/v1/approvals/cloudflare-staging-policies", "service-secret", False),
+])
+async def test_grant_service_reads_use_bounded_separate_bucket(monkeypatch, method, path, token, authenticated):
+    from app.core.config import settings
+    from app.core.security import RateLimiter
+
+    monkeypatch.setattr(settings, "SMARTSPEC_WEB_GATEWAY_TOKEN", "service-secret")
+    limiter = RateLimiter()
+    monkeypatch.setattr(middleware, "rate_limiter", limiter)
+    # Exhaust the shared anonymous loopback bucket first.
+    for _ in range(90):
+        limiter.check_rate_limit("ip:127.0.0.1")
+    request = Request({"type": "http", "method": method, "path": path,
+                       "headers": [(b"x-internal-token", token.encode())],
+                       "client": ("127.0.0.1", 12345), "server": ("testserver", 80), "scheme": "http", "query_string": b""})
+    reached = []
+
+    async def next_handler(_request):
+        reached.append(True)
+        return Response(status_code=200)
+
+    instance = RateLimitMiddleware(lambda *_args: None)
+    result = await instance.dispatch(request, next_handler)
+    assert result.status_code == (200 if authenticated else 429)
+    assert bool(reached) is authenticated
+    if authenticated:
+        assert result.headers["X-RateLimit-Limit"] == "120"
+        for _ in range(179):
+            await instance.dispatch(request, next_handler)
+        assert (await instance.dispatch(request, next_handler)).status_code == 429
+    assert all("service-secret" not in key for key in limiter.requests)

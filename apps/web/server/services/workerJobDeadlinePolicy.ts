@@ -401,6 +401,7 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
   executionClass?: string;
   input: Record<string, unknown>;
   retryPolicy: { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed";
+    httpImagePrebuildRecovery?: { attempt: number; grantRef: string; authorizedAt: string; expiresAt: string };
     productionDatabaseRecovery?: { attempt: number; grantRef: string; authorizedAt: string; expiresAt: string } };
   timeoutSeconds?: number;
 }): number {
@@ -419,6 +420,16 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
         authorized >= created && expires > authorized && expires - authorized <= 12 * 60_000) {
       return expires - created;
     }
+  }
+  const imageRecovery = input.retryPolicy.httpImagePrebuildRecovery;
+  if (imageRecovery && input.jobType === "cloudflare.staging.http.image.provision" &&
+      input.contractVersion === "cloudflare-staging-http-image-v1" && input.runtimeType === "node_job_worker" &&
+      input.executionClass === "long" && input.attempt === 2 && imageRecovery.attempt === 2 &&
+      imageRecovery.grantRef === input.input.grantRef) {
+    const created = input.createdAt instanceof Date ? input.createdAt.getTime() : Date.parse(input.createdAt ?? "");
+    const authorized = Date.parse(imageRecovery.authorizedAt), expires = Date.parse(imageRecovery.expiresAt);
+    if (Number.isFinite(created) && authorized >= created && expires > authorized && expires-authorized <= 10*60_000)
+      return expires-created;
   }
   const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(input.jobType, input.input);
   if (storyDeadlineMs !== null) {

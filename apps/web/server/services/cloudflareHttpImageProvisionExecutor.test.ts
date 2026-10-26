@@ -66,3 +66,32 @@ describe("HTTP image canonical admission fences", () => {
     expect(() => httpImageProvisionCredentialRef({ ...scope, environment: "production" })).toThrow();
   });
 });
+
+describe("same-grant prebuild technical recovery", () => {
+  it.each([true, false])("only rebuilds an unused publication when canonical recovery is present: %s", async recovered => {
+    const f = fixture();
+    f.input.context.attempt = 2;
+    f.input.controlPlane.getStatus.mockImplementation(async () => ({ attempt: 2,
+      lease: { active: true, stale: false, fencingVersion: 1, expiresAt: new Date(Date.now()+60_000).toISOString() } }));
+    if (recovered) Object.assign(f.input.context.retryPolicy, { httpImagePrebuildRecovery: {
+      attempt: 2, grantRef: f.grant.grantRef, authorizedAt: new Date().toISOString(), expiresAt: new Date(Date.now()+600_000).toISOString() } });
+    const digest = "sha256:"+"e".repeat(64);
+    const built = { schemaVersion: "cloudflare-http-image-build-v1", runtime: f.grant.plan.runtime,
+      sourceSha: f.grant.plan.sourceSha, packagerSourceSha: f.grant.plan.sourceSha, jobId: f.grant.jobId, planDigest: f.grant.planDigest,
+      imageId: digest, configDigest: digest, manifestDigest: digest, imageBytes: 100, layers: 1, platform: "linux/amd64",
+      canonicalArtifactDigest: digest, localTag: `${f.grant.plan.namespace}-${f.grant.plan.runtime}:${f.grant.plan.sourceSha}-${f.grant.jobId}`,
+      providerMutations: 0, containerStarts: 0 };
+    const ports = { build: vi.fn(async () => built), push: vi.fn(async () => undefined),
+      registryCredential: vi.fn(async () => ({ account_id: f.grant.accountRef, registry_host: "registry.cloudflare.com", username: "u", password: "p" })),
+      readManifest: vi.fn().mockResolvedValueOnce(null).mockResolvedValue({ configDigest: digest, manifestDigest: digest }) };
+    f.runtime.createPorts.mockImplementation((_token, assertAuthorized) => ({ ...ports, assertAuthorized }) as never);
+    const execution = createCloudflareHttpImageProvisionExecutor(f.runtime as never)(f.input as never);
+    if (recovered) {
+      await expect(execution).resolves.toMatchObject({ output: { registryVerified: true, applicationCreated: false, containerStarts: 0 } });
+      expect(ports.build).toHaveBeenCalledTimes(1); expect(ports.push).toHaveBeenCalledTimes(1);
+    } else {
+      await expect(execution).rejects.toThrow("RECONCILIATION_REQUIRED");
+      expect(ports.build).not.toHaveBeenCalled(); expect(ports.push).not.toHaveBeenCalled();
+    }
+  });
+});
