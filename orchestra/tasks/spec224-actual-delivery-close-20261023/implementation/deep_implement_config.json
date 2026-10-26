@@ -30,9 +30,9 @@
     "section-04-release-final-verify": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Runtime generation 83 serves revision 9c9d77adc4a23eda9cb884d3b5789c2c15967439. The existing target App Identity (owner user 23, tenant tenant-ZCSKEM9s) and expired run anchor are present in the runtime database; the old absence conclusion came from querying a different database endpoint. Owner browser acceptance remains pending a legitimately authenticated owner session.",
+      "next_action": "Development database repair is integrated at 73ce329ef52f7ff0848353c4e3ae537367256a33; catalog and ledger are ready, Web/Python readiness and local Playwright UAT pass. Continue the original protected Windows Runner DevelopmentRun acceptance without repeating the closed Mini-App V1/V2 pilot or database work. Local Revision-24 content-addressed storage test still needs isolated S3/R2 configuration.",
       "checkpoint_sha": "9c9d77adc4a23eda9cb884d3b5789c2c15967439",
-      "merged_main_sha": "9c9d77adc4a23eda9cb884d3b5789c2c15967439"
+      "merged_main_sha": "73ce329ef52f7ff0848353c4e3ae537367256a33"
     },
     "section-03-real-browser-acceptance": {
       "status": "checkpointed",
@@ -78,17 +78,17 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 37,
-  "updated_at": "2026-10-25T12:03:17.100942+00:00",
+  "generation": 39,
+  "updated_at": "2026-10-26T09:39:04.390741+00:00",
   "progress": {
-    "active_section": "section-08-generic-miniapp-continuous-delivery",
-    "next_action": "Deploy integrated shared runtime SHA 297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70 through the existing release control and verify runtime routes/API. Keep owner-authenticated V2 trial as separate pending evidence; do not repeat app generation or migrations.",
+    "active_section": "section-04-release-final-verify",
+    "next_action": "Development database repair is integrated at 73ce329ef52f7ff0848353c4e3ae537367256a33; catalog and ledger are ready, Web/Python readiness and local Playwright UAT pass. Continue the original protected Windows Runner DevelopmentRun acceptance without repeating the closed Mini-App V1/V2 pilot or database work. Local Revision-24 content-addressed storage test still needs isolated S3/R2 configuration.",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "gaps": [
-      "Generic candidate-adoption code is integrated in origin/main but not yet deployed to the SmartAIHub runtime. Release SHA 297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70 through the existing authorized release control and verify user-facing routes.",
-      "Owner-authenticated browser acceptance of the deployed V2 is not yet evidenced; retain the existing App and run, and record owner verification only after the owner opens the real URL."
+      "Protected Windows Runner live DevelopmentRun with run-bound execution, settlement, interruption recovery and independent Final Verify remains unverified; this database parity checkpoint did not create a production owner run.",
+      "Revision-24 Mini-App artifact UAT cannot use this local filesystem storage provider; isolated non-production S3/R2 configuration is required to exercise content-addressed artifact writes."
     ],
-    "merged_main_sha": "297b09e04d5debc6e9ca5f449e2dcfe88cbe6d70"
+    "merged_main_sha": "73ce329ef52f7ff0848353c4e3ae537367256a33"
   },
   "merged_main_sha": "a6748b9a58915f6a2b5704e62323d8e3b8b2e082"
 }
