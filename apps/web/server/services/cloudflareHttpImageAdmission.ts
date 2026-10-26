@@ -22,7 +22,7 @@ export function httpImagePairJobId(submissionId: string, runtime: string) {
   return `${h.slice(0,8)}-${h.slice(8,12)}-${h.slice(12,16)}-${h.slice(16,20)}-${h.slice(20,32)}`;
 }
 
-async function assertOwner(db: DrizzleDB, scope: Scope) {
+export async function assertHttpImageOwner(db: DrizzleDB, scope: Scope) {
   const rows = await db.execute(sql`SELECT 1 FROM tenants t JOIN users u ON u.id=${scope.actorUserId}
     JOIN canonical_projects p ON p.tenant_id=t.id AND p.project_id=${scope.projectId}
     WHERE t.id=${scope.tenantId} AND t."ownerId"=u.id AND t."isActive" AND u.role='admin' AND NOT u."isDisabled"
@@ -34,7 +34,7 @@ async function assertOwner(db: DrizzleDB, scope: Scope) {
  * Immutable receipts may later be selected by Production; this does not create
  * applications, activate runtime bindings, change M2, or mint CLI authority. */
 export async function getHttpImagePairPreflight(db: DrizzleDB, scope: Scope, expectedDigest?: string) {
-  await assertOwner(db, scope);
+  await assertHttpImageOwner(db, scope);
   try {
     const runtime = createCloudflareHttpImageProvisionRuntime();
     const identity = { tenantId: scope.tenantId, projectId: scope.projectId, provider: "cloudflare", environment: "staging" };
@@ -80,7 +80,7 @@ function assertSubmission(value: Submission, scope: Scope & { submissionId: stri
 function whereSubmission(id: string) { return and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, id)); }
 
 export async function readHttpImagePairSubmission(db: DrizzleDB, scope: Scope & { submissionId?: string }) {
-  await assertOwner(db, scope);
+  await assertHttpImageOwner(db, scope);
   // Browser storage is a convenience, never the canonical job registry. A new
   // tab/device must find the already authorized pair instead of republishing
   // merely because a newer Admin source is now serving.
@@ -124,7 +124,7 @@ export async function readHttpImagePairSubmission(db: DrizzleDB, scope: Scope & 
 export async function queueHttpImagePair(db: DrizzleDB, input: Scope & {
   submissionId: string; planDigest: string; userToken: string; correlationId: string;
 }) {
-  await assertOwner(db, input);
+  await assertHttpImageOwner(db, input);
   if (!input.userToken) throw Error("HTTP_IMAGE_OWNER_SESSION_REQUIRED");
   const submission = await db.transaction(async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`http-image-pair-scope:${input.tenantId}:${input.projectId}`}))`);

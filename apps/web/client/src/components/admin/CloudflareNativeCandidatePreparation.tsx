@@ -35,10 +35,13 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
       "ใช้ image Node/Python ที่เผยแพร่แล้วและ Worker คนละชื่อ ขั้นนี้สร้างข้อมูลทรัพยากรเท่านั้น ยังไม่เริ่ม Container ไม่ใส่ credential ฐานข้อมูล ไม่แก้ DNS และไม่เปลี่ยน traffic จริง การตรวจรับ runtime และ activation ยังไม่เสร็จ")}</Text>
     <Text>{text("DNS inventory permission is not required for this isolated preparation.", "การเตรียม candidate แยกนี้ไม่ต้องรอสิทธิ์อ่าน DNS")}</Text>
     {preflight?.ready ? <>
+      <Text>{text("Published Pair: VERIFIED", "Published Pair: VERIFIED")} · {preflight.publishedPair?.submissionId}</Text>
+      {preflight.publishedPair?.jobs.map(item => <Text key={item.jobId}>{item.runtime}: VERIFIED · {item.jobId}</Text>)}
       <Text>{preflight.plan.workerName}</Text>
       <Text>{text("Image source", "Source ของ image")}: {preflight.plan.imageSourceSha}</Text>
       {preflight.plan.images.map(image => <Text key={image}>{image}</Text>)}
     </> : preflight ? <Text role="status">{preflight.reason}</Text> : null}
+    {preflight && !preflight.ready ? preflight.pairDiagnostics?.map(item => <Text key={`${item.submissionId}:${item.jobId ?? item.code}`} role="status">{item.submissionId} · {item.runtime} · {item.jobId} · {item.code}</Text>) : null}
     <Button type="button" disabled={state.isLoading || Boolean(state.error) || !preflight?.ready || prepare.isPending || Boolean(job)} onClick={() => void submit()}>
       {job ? text("Tracking canonical preparation job", "กำลังติดตามงานเตรียมเดิม") : prepare.isPending ? text("Submitting…", "กำลังส่งงาน…")
         : submission ? text("Reconcile the same preparation", "ตรวจและดำเนินคำขอเตรียมเดิม")

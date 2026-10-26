@@ -4,19 +4,19 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareNativeCandidatePreparation } from "./CloudflareNativeCandidatePreparation";
 const state = vi.hoisted(() => ({ ready: true, job: null as any, error: null as any, loading: false,
-  pending: false, mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
+  pairDiagnostics: [] as any[], pending: false, mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
   getCloudflareHttpCandidatePreparation: { useQuery: () => ({ isLoading: state.loading, error: state.error, refetch: state.refetch,
-    data: { job: state.job, preflight: state.ready ? { ready: true, planDigest: "a".repeat(64),
+    data: { job: state.job, preflight: state.ready ? { ready: true, planDigest: "a".repeat(64), publishedPair: { submissionId: "canonical-pair", jobs: [{ jobId: "node-job", runtime: "node-http" }, { jobId: "python-job", runtime: "python-http" }] },
       plan: { workerName: "isolated-candidate", imageSourceSha: "b".repeat(40), artifactRef: `sha256:${"c".repeat(64)}`,
         workerSourceSha: "d".repeat(40), images: ["node@sha256:fixture", "python@sha256:fixture"] } }
-      : { ready: false, reason: "HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED" } } }) },
+      : { ready: false, reason: "HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED", pairDiagnostics: state.pairDiagnostics } } }) },
   prepareCloudflareHttpCandidate: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.pending, error: state.mutationError }) },
 } } }));
 const props = { tenantId: "tenant-fixture", projectId: "project-fixture" };
 beforeEach(() => { sessionStorage.clear(); state.ready = true; state.job = null; state.error = null; state.loading = false;
-  state.pending = false; state.mutationError = null; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted" }); });
+  state.pairDiagnostics = []; state.pending = false; state.mutationError = null; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted" }); });
 describe("native metadata Owner action", () => {
   it("shows exact independent scope without claiming runtime or DNS readiness", async () => {
     render(<CloudflareNativeCandidatePreparation {...props} />);
@@ -49,4 +49,16 @@ describe("native metadata Owner action", () => {
     expect(screen.getByRole("button")).toBeDisabled(); expect(screen.getByRole("status")).toHaveTextContent("CANONICAL_MODULE_REQUIRED");
     expect(screen.getByRole("alert")).toHaveTextContent("AUTHORIZATION_EXPIRED");
   });
+  it("shows canonical pair and both verified jobs, and exact rejection diagnostics when unavailable", () => {
+    const view = render(<CloudflareNativeCandidatePreparation {...props} />);
+    expect(screen.getByText(/Published Pair: VERIFIED/)).toHaveTextContent("canonical-pair");
+    expect(screen.getByText(/node-http: VERIFIED/)).toHaveTextContent("node-job");
+    expect(screen.getByText(/python-http: VERIFIED/)).toHaveTextContent("python-job");
+    state.ready = false;
+    state.pairDiagnostics = [{ submissionId: "bad-pair", runtime: "python-http", jobId: "bad-job", code: "HTTP_IMAGE_REGISTRY_RECEIPT_DENIED" }];
+    view.rerender(<CloudflareNativeCandidatePreparation {...props} />);
+    expect(screen.getByText(/HTTP_IMAGE_REGISTRY_RECEIPT_DENIED/)).toHaveTextContent("bad-pair · python-http · bad-job");
+    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+  });
+
 });

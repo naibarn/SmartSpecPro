@@ -59,7 +59,7 @@ export function validateHttpApplicationSettings(value: HttpApplicationSettings, 
 
 /** Persisted successful canonical image publication is mandatory. A local
  * Docker image ID or same-name provider tag is never deployment evidence. */
-export function assertHttpImageProvisionReceipt(value: HttpApplicationSettings, runtime: "node" | "python", receipt: {
+export function assertHttpImageProvisionReceipt(value: Pick<HttpApplicationSettings, "sourceSha" | "node" | "python">, runtime: "node" | "python", receipt: {
   id: string; tenantId: string; requestedByUserId: number | null; jobType: string; contractVersion: string;
   status: string; operatorReviewRequired: boolean; inputJson: unknown; outputJson: unknown;
 } | undefined, scope: Scope & { actorUserId: number }) {

@@ -4,7 +4,7 @@ import { httpApplicationNamespace, type HttpApplicationSettings } from "./cloudf
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 const state = vi.hoisted(() => ({ pair: null as any, target: null as any, module: true, responseLost: false, admissionDenied: false,
   sourceSha: "8".repeat(40), artifactRef: `sha256:${"7".repeat(64)}` }));
-vi.mock("./cloudflareHttpImageAdmission", () => ({ readHttpImagePairSubmission: async () => state.pair }));
+vi.mock("./cloudflareHttpPublishedPair", async original => ({ ...(await original<any>()), resolveVerifiedHttpImagePair: async () => ({ pair: state.pair, diagnostics: [] }) }));
 vi.mock("./cloudflareProductionDeploymentContract", async original => ({ ...(await original<any>()), resolveCloudflareProductionDeploymentTarget: async () => state.target }));
 vi.mock("./cloudflareStagingArtifactAuthority", async original => ({ ...(await original<any>()),
   resolveLatestPublishedCloudflareStagingArtifact: async () => ({ artifactRef: state.artifactRef, sourceSha: state.sourceSha }),

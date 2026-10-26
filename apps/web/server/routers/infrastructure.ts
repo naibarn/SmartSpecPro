@@ -3,7 +3,8 @@ import { PRODUCTION_INGRESS_CONTRACT } from "../services/cloudflareProductionIng
 import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../services/cloudflareProductionIngressAcceptance";
 import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMiddleware";
 import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLifecycle";
-import { getHttpImagePairPreflight, queueHttpImagePair, readHttpImagePairSubmission } from "../services/cloudflareHttpImageAdmission";
+import { readHttpImagePublication } from "../services/cloudflareHttpPublishedPair";
+import { getHttpImagePairPreflight, queueHttpImagePair } from "../services/cloudflareHttpImageAdmission";
 import { getProductionTenantIsolationPreflight, prepareProductionTenantIsolation } from "../services/cloudflareProductionTenantIsolation";
 import { getHttpCandidatePreparationPreflight, prepareHttpCandidate, readHttpCandidatePreparation } from "../services/cloudflareHttpCandidatePreparation";
 /**
@@ -741,7 +742,7 @@ export const infrastructureRouter = router({
     .query(async ({ input, ctx }) => {
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_IMAGE_TENANT_MISMATCH" });
-      return readHttpImagePairSubmission(await getDb(), { ...input, actorUserId: ctx.user.id });
+      return readHttpImagePublication(await getDb(), { ...input, actorUserId: ctx.user.id });
     }),
 
   queueCloudflareHttpImagePair: exactAdminProcedure

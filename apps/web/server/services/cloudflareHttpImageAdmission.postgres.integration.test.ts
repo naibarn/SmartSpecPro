@@ -32,7 +32,7 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     client = (await import("postgres")).default(disposable.databaseUrl, { max: 2 });
     const schema = await import("../../drizzle/schema");
     await (await import("./__tests__/support/spec277AutoTeamRuntimeSchema")).installSpec277AutoTeamRuntimeSchema(client,
-      [schema.systemSettings, schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions, schema.runnerNodes, schema.workerJobActions]);
+      [schema.systemSettings, schema.users, schema.tenants, schema.tenantDataTransferPlans, schema.tenantIdentityActions, schema.runnerNodes, schema.workerJobActions, schema.providerDeploymentTargets]);
     await client.unsafe(`CREATE TABLE canonical_projects (tenant_id text,project_id text,lifecycle text,owner_principal_id text);
       CREATE TABLE approval_rules(id text PRIMARY KEY,tenant_id text,project_id text,is_active boolean,conditions jsonb);`);
     await client`INSERT INTO users(id,"openId",role) VALUES(17,'image-owner','admin'),(18,'image-other','user')`;
@@ -139,4 +139,86 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     expect(accepted?.jobs.every(j => j.status === "queued")).toBe(true);
     expect(accepted?.diagnostics).toEqual([]);
   });
+  it("selects the same verified older pair for Admin and Candidate despite newer incomplete submissions and browser hints", async () => {
+    const { resolveVerifiedHttpImagePair, readHttpImagePublication } = await import("./cloudflareHttpPublishedPair");
+    // Only this disposable fixture registry is reset; no provider operation.
+    await client`DELETE FROM system_settings WHERE category='cloudflare_http_image_submissions'`;
+    await client`UPDATE worker_jobs SET status='failed'`;
+    state.sourceSha = "e".repeat(40);
+    const oldInput = await request(), oldPair = await service.queueHttpImagePair(db, oldInput);
+    const oldSource = state.sourceSha;
+    for (const item of oldPair!.jobs) {
+      const grant = [...state.grants.values()].find(g => g.jobId === item.jobId)!;
+      const output = { schemaVersion: "cloudflare-http-image-receipt-v1", jobId: item.jobId, planDigest: grant.planDigest,
+        sourceSha: grant.plan.sourceSha, runtime: item.runtime, accountRef: state.account, namespace: grant.plan.namespace,
+        image: `registry.cloudflare.com/${state.account}/${grant.plan.namespace}-${item.runtime}@sha256:${"d".repeat(64)}`,
+        registryVerified: true, containerStarts: 0, applicationCreated: false, activation: "disabled" };
+      await client`UPDATE worker_jobs SET status='succeeded',"operatorReviewRequired"=false,"outputJson"=${client.json(output)} WHERE id=${item.jobId}`;
+    }
+    state.sourceSha = "c".repeat(40);
+    const incomplete = await request(); await service.queueHttpImagePair(db, incomplete);
+    const before = await client`SELECT count(*)::int AS n FROM worker_jobs`, grants = state.grants.size, calls = state.calls.length;
+    const candidateRequest = { ...scope, submissionId: randomUUID(), planDigest: "a".repeat(64) };
+    // Exact live defect: Candidate UUID used to leak into the image lookup.
+    expect(await service.readHttpImagePairSubmission(db, candidateRequest)).toBeNull();
+    const resolution = await resolveVerifiedHttpImagePair(db, candidateRequest);
+    expect(resolution.pair).toMatchObject({ submissionId: oldInput.submissionId, sourceSha: oldSource, published: true });
+    expect(resolution.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ submissionId: incomplete.submissionId, runtime: "node-http", code: "HTTP_IMAGE_JOB_NOT_SUCCEEDED" }),
+      expect.objectContaining({ submissionId: incomplete.submissionId, runtime: "python-http", code: "HTTP_IMAGE_JOB_NOT_SUCCEEDED" }),
+    ]));
+    const ui = await readHttpImagePublication(db, { ...scope, submissionId: incomplete.submissionId });
+    expect(ui?.submissionId).toBe(resolution.pair?.submissionId); expect(ui?.published).toBe(true);
+    expect(ui?.jobs).toEqual(resolution.pair?.jobs);
+    // A foreign actor's metadata never participates, even when newer.
+    const [original] = await client`SELECT "valueJson" FROM system_settings WHERE key=${oldInput.submissionId}`;
+    const foreignId = randomUUID();
+    await client`INSERT INTO system_settings(category,key,"valueJson","updatedBy") VALUES('cloudflare_http_image_submissions',${foreignId},
+      ${client.json({ ...original.valueJson, submissionId: foreignId, actorUserId: 18 })},18)`;
+    expect((await resolveVerifiedHttpImagePair(db, scope)).pair?.submissionId).toBe(oldInput.submissionId);
+    await expect(resolveVerifiedHttpImagePair(db, { ...scope, actorUserId: 18 })).rejects.toThrow("OWNER_SCOPE_DENIED");
+    expect(await client`SELECT count(*)::int AS n FROM worker_jobs`).toEqual(before);
+    expect(state.grants.size).toBe(grants); expect(state.calls.length).toBe(calls);
+    state.sourceSha = oldSource;
+  });
+  it("rejects wrong account, corrupted digest, missing receipts, forged job Owner and mismatched source without republishing", async () => {
+    const { resolveVerifiedHttpImagePair } = await import("./cloudflareHttpPublishedPair");
+    const [row] = await client`SELECT key,"valueJson" FROM system_settings WHERE category='cloudflare_http_image_submissions'
+      AND "valueJson"->>'sourceSha'=${state.sourceSha} AND "valueJson"->>'actorUserId'='17' ORDER BY id LIMIT 1`;
+    const jobId = service.httpImagePairJobId(row.key, "node-http");
+    const [job] = await client`SELECT "outputJson" FROM worker_jobs WHERE id=${jobId}`;
+    await client`UPDATE system_settings SET "valueJson"=${client.json({ ...row.valueJson, accountRef: "f".repeat(32) })} WHERE key=${row.key}`;
+    expect(await resolveVerifiedHttpImagePair(db, scope)).toMatchObject({ pair: null, diagnostics: expect.arrayContaining([
+      expect.objectContaining({ submissionId: row.key, code: "HTTP_IMAGE_SUBMISSION_ACCOUNT_DENIED" })]) });
+    await client`UPDATE system_settings SET "valueJson"=${client.json(row.valueJson)} WHERE key=${row.key}`;
+    for (const output of [{ ...job.outputJson, image: "registry.cloudflare.com/forged@sha256:broken" }, null,
+      { ...job.outputJson, sourceSha: "f".repeat(40) }, { ...job.outputJson, registryVerified: false }]) {
+      await client`UPDATE worker_jobs SET "outputJson"=${output === null ? null : client.json(output)} WHERE id=${jobId}`;
+      expect(await resolveVerifiedHttpImagePair(db, scope)).toMatchObject({ pair: null, diagnostics: expect.arrayContaining([
+        expect.objectContaining({ jobId, code: "HTTP_IMAGE_REGISTRY_RECEIPT_DENIED" })]) });
+    }
+    await client`UPDATE worker_jobs SET "outputJson"=${client.json(job.outputJson)},"requestedByUserId"=18 WHERE id=${jobId}`;
+    expect(await resolveVerifiedHttpImagePair(db, scope)).toMatchObject({ pair: null, diagnostics: expect.arrayContaining([
+      expect.objectContaining({ code: "HTTP_IMAGE_JOB_SCOPE_DENIED" })]) });
+    await client`UPDATE worker_jobs SET "requestedByUserId"=17 WHERE id=${jobId}`;
+    // Grant expiry is not image expiry. Original immutable receipt still passes.
+    expect((await resolveVerifiedHttpImagePair(db, scope)).pair?.submissionId).toBe(row.key);
+  });
+
+  it("prefers a newer pair only after both independent receipts become verified", async () => {
+    const { resolveVerifiedHttpImagePair } = await import("./cloudflareHttpPublishedPair");
+    const [row] = await client`SELECT key FROM system_settings WHERE category='cloudflare_http_image_submissions'
+      AND "valueJson"->>'sourceSha'=${"c".repeat(40)} AND "valueJson"->>'actorUserId'='17' ORDER BY id DESC LIMIT 1`;
+    const pair = await service.readHttpImagePairSubmission(db, { ...scope, submissionId: row.key });
+    for (const item of pair!.jobs) {
+      const g = [...state.grants.values()].find(g => g.jobId === item.jobId)!;
+      const output = { schemaVersion: "cloudflare-http-image-receipt-v1", jobId: item.jobId, planDigest: g.planDigest,
+        sourceSha: g.plan.sourceSha, runtime: item.runtime, accountRef: state.account, namespace: g.plan.namespace,
+        image: `registry.cloudflare.com/${state.account}/${g.plan.namespace}-${item.runtime}@sha256:${"a".repeat(64)}`,
+        registryVerified: true, containerStarts: 0, applicationCreated: false, activation: "disabled" };
+      await client`UPDATE worker_jobs SET status='succeeded',"operatorReviewRequired"=false,"outputJson"=${client.json(output)} WHERE id=${item.jobId}`;
+    }
+    expect((await resolveVerifiedHttpImagePair(db, scope)).pair?.submissionId).toBe(row.key);
+  });
+
 });

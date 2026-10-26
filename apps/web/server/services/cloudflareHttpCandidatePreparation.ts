@@ -3,7 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
-import { readHttpImagePairSubmission } from "./cloudflareHttpImageAdmission";
+import { resolveVerifiedHttpImagePair, HttpPublishedPairRequired } from "./cloudflareHttpPublishedPair";
 import { createHttpCandidateConfiguration } from "./cloudflareHttpCandidateConfiguration";
 import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 import { resolveCloudflareProductionDeploymentTarget } from "./cloudflareProductionDeploymentContract";
@@ -31,8 +31,9 @@ export async function resolveHttpCandidatePackage(db: DrizzleDB, scope: Scope) {
   await assertHttpCandidateOwner(db, scope);
   const target = await resolveCloudflareProductionDeploymentTarget({ db, ...scope });
   if (!target) throw Error("HTTP_CANDIDATE_PRODUCTION_TARGET_REQUIRED");
-  const pair = await readHttpImagePairSubmission(db, scope);
-  if (!pair?.published) throw Error("HTTP_CANDIDATE_PUBLISHED_PAIR_REQUIRED");
+  const resolution = await resolveVerifiedHttpImagePair(db, scope);
+  const pair = resolution.pair;
+  if (!pair) throw new HttpPublishedPairRequired(resolution.diagnostics);
   const jobs = await Promise.all(pair.jobs.map(async item => {
     const [job] = await db.select().from(workerJobs).where(eq(workerJobs.id, item.jobId)).limit(1); return job;
   }));
@@ -44,14 +45,14 @@ export async function resolveHttpCandidatePackage(db: DrizzleDB, scope: Scope) {
       sourceSha: pair.sourceSha, node: image(node), python: image(python), issuedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(), maxStarts: 2, maxComputeSeconds: 1200,
       hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic" }, receipts: { node, python } });
-  return { target, packet };
+  return { target, packet, publishedPair: { submissionId: pair.submissionId, sourceSha: pair.sourceSha, jobs: pair.jobs, verified: true as const } };
 }
 
 export async function getHttpCandidatePreparationPreflight(db: DrizzleDB, scope: Scope,
   reviewedArtifact?: { artifactRef: string; workerSourceSha: string }) {
   await assertHttpCandidateOwner(db, scope);
   try {
-    const { target, packet } = await resolveHttpCandidatePackage(db, scope);
+    const { target, packet, publishedPair } = await resolveHttpCandidatePackage(db, scope);
     // A newer Admin build cannot replace the exact artifact reviewed by the
     // Owner between the page read and submission. Existing receipt authority
     // still rejects an unpublished/local/foreign digest.
@@ -71,11 +72,11 @@ export async function getHttpCandidatePreparationPreflight(db: DrizzleDB, scope:
       artifactRef: artifact.artifactRef, workerSourceSha: artifact.sourceSha,
       manifestDigest: packet.manifestDigest, workerName: packet.config.name, imageSourceSha: packet.imageSourceSha,
       images: packet.config.containers.map(item => Object.values(item.images)[0].image) };
-    return { ready: true as const, reason: null, plan, providerAccess: access.value, planDigest: digest(plan), dnsRequired: false,
+    return { ready: true as const, reason: null, plan, publishedPair, providerAccess: access.value, planDigest: digest(plan), dnsRequired: false,
       trafficMutation: false, containerStarts: 0, runtimeAcceptance: false };
   } catch (error) {
     const reason = error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message) ? error.message : "HTTP_CANDIDATE_PREFLIGHT_UNAVAILABLE";
-    return { ready: false as const, reason, dnsRequired: false, trafficMutation: false, containerStarts: 0, runtimeAcceptance: false };
+    return { ready: false as const, reason, pairDiagnostics: error instanceof HttpPublishedPairRequired ? error.diagnostics : [], dnsRequired: false, trafficMutation: false, containerStarts: 0, runtimeAcceptance: false };
   }
 }
 

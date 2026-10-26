@@ -25,7 +25,8 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
     ...(submission ? { submissionId: submission.id } : {}) },
   { refetchInterval: 5000, retry: false });
   useEffect(() => {
-    if (!submission && status.data?.submissionId && status.data.planDigest) {
+    if (status.data?.submissionId && status.data.planDigest &&
+        (!submission || status.data.published && submission.id !== status.data.submissionId)) {
       const retained = { id: status.data.submissionId, digest: status.data.planDigest };
       setSubmission(retained);
       try { sessionStorage.setItem(key, JSON.stringify(retained)); } catch { /* Canonical registry remains authoritative. */ }
@@ -55,7 +56,8 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
     <Heading level={3}>{text("Publish Node and Python applications", "เผยแพร่แอป Node และ Python")}</Heading>
     <Text>{text("Publish two immutable images from one verified source. Production traffic continues through the accepted Linux bridge until runtime acceptance.",
       "เผยแพร่ image สองตัวจาก source ที่ตรวจสอบแล้วชุดเดียวกัน ระหว่างทดสอบ runtime ระบบจริงยังใช้ทางเข้า Linux ที่ผ่านการตรวจรับแล้ว")}</Text>
-    {preflight.data?.ready ? <Text>{text("Source", "Source")}: <code>{status.data?.sourceSha ?? preflight.data.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{preflight.data.accountRef}</code></Text>
+    {status.data?.published ? <Text>{text("Source", "Source")}: <code>{status.data.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{status.data.accountRef}</code></Text>
+      : preflight.data?.ready ? <Text>{text("Source", "Source")}: <code>{status.data?.sourceSha ?? preflight.data.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{preflight.data.accountRef}</code></Text>
       : <Text role="status">{preflight.isLoading ? text("Checking image publication readiness…", "กำลังตรวจความพร้อมเผยแพร่ image…")
         : preflight.data?.reason ?? preflight.error?.message ?? "HTTP_IMAGE_PREFLIGHT_UNAVAILABLE"}</Text>}
     {!hideAction ? <Button type="button" disabled={!preflight.data?.ready || status.isLoading || Boolean(status.error) || queue.isPending || admitted} onClick={() => void submit()}>
@@ -64,10 +66,11 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
           : submission ? text("Reconcile and continue the same publication", "ตรวจและดำเนินงานเผยแพร่เดิมต่อ")
             : text("Authorize and publish Node/Python images", "อนุมัติและเผยแพร่ image Node/Python")}
     </Button> : null}
-    {submission ? <Text>{text("Submission", "คำขอ")}: <code>{submission.id}</code></Text> : null}
+    {status.data?.submissionId || submission ? <Text>{text("Submission", "คำขอ")}: <code>{status.data?.submissionId ?? submission?.id}</code></Text> : null}
     {queue.error ? <Text role="alert">{queue.error.message}</Text> : null}
     {status.error ? <Text role="alert">{status.error.message}</Text> : null}
     {status.data?.diagnostics.map(item => <Text key={`${item.runtime}:${item.stage}`} role="alert">{item.runtime}: {item.stage} · {item.code}</Text>)}
+    {status.data?.pairResolution?.map(item => <Text key={`${item.submissionId}:${item.jobId ?? item.code}`} role="status">{item.submissionId} · {item.runtime} · {item.code}</Text>)}
     <VStack as="ul" gap={1} aria-live="polite">{jobs.map(job => <li key={job.jobId}>
       <code>{job.runtime}</code>: {job.status} · <code>{job.jobId}</code>
       {job.errorCode ? ` · ${job.errorCode}` : ""}{job.registryVerified && job.image ? <Text as="p"><code>{job.image}</code></Text> : null}

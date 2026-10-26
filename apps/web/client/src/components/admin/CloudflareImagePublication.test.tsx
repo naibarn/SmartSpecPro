@@ -57,4 +57,17 @@ describe("image publication Owner action", () => {
     expect(screen.getByText("HTTP_IMAGE_CREDENTIAL_DENIED")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("HTTP_IMAGE_APPROVAL_HTTP_403");
   });
+  it("replaces a stale browser hint with the verified canonical pair without republishing", async () => {
+    const key = `smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`;
+    sessionStorage.setItem(key, JSON.stringify({ id: "22222222-2222-4222-8222-222222222222", digest: "c".repeat(64) }));
+    const id = "11111111-1111-4111-8111-111111111111";
+    state.status = { submissionId: id, planDigest: "e".repeat(64), published: true, diagnostics: [], pairResolution: [
+      { submissionId: "22222222-2222-4222-8222-222222222222", runtime: "node-http", code: "HTTP_IMAGE_JOB_NOT_SUCCEEDED" }],
+      jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime, status: "succeeded", registryVerified: true, image: "registry-receipt" })) };
+    render(<CloudflareImagePublication {...props} />);
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual({ id, digest: "e".repeat(64) }));
+    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+    expect(screen.getByText(/HTTP_IMAGE_JOB_NOT_SUCCEEDED/)).toBeInTheDocument();
+  });
+
 });
