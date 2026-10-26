@@ -3,11 +3,12 @@ import { createHash } from "node:crypto";
 import { dirname, extname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { build, transform } from "esbuild";
+import { pruneHttpRuntimeDependencies } from "./prune-cloudflare-http-dependencies.mjs";
 
 /** Compile application modules during image preparation. Packages and original
  * source remain in the image for native dependencies and dynamic workers. No
  * application code, environment file, migration or scheduler is executed. */
-export async function bundleCloudflareHttpApi(sourceRoot, output, runtimeRoot = "/app") {
+export async function bundleCloudflareHttpApi(sourceRoot, output, runtimeRoot = "/app", pruneDependencies = false) {
   const root = await realpath(sourceRoot);
   if (!isAbsolute(runtimeRoot) || !isAbsolute(output)) throw Error("HTTP_API_BUNDLE_PATH_REQUIRED");
   const alias = {};
@@ -99,8 +100,10 @@ export async function bundleCloudflareHttpApi(sourceRoot, output, runtimeRoot = 
     files.push({ name, sha256: createHash("sha256").update(file.contents).digest("hex"), bytes: file.contents.length });
   }
   files.sort((a, b) => a.name.localeCompare(b.name));
+  const externalImports = Object.values(result.metafile.outputs).flatMap(file => file.imports.filter(item => item.external).map(item => item.path));
+  const runtimeDependencies = pruneDependencies ? await pruneHttpRuntimeDependencies(output, externalImports) : { applied: false };
   return { entrypoint: "server/_core/cloudflare-http-api/index.mjs", manifestSha256: createHash("sha256").update(JSON.stringify(files)).digest("hex"),
-    bytes: files.reduce((sum, file) => sum + file.bytes, 0), inputModules: Object.keys(result.metafile.inputs).length, files };
+    bytes: files.reduce((sum, file) => sum + file.bytes, 0), inputModules: Object.keys(result.metafile.inputs).length, runtimeDependencies, files };
 }
 
 function exportTarget(value) {
@@ -118,10 +121,10 @@ function exportTarget(value) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const [source, output, runtimeRoot] = process.argv.slice(2);
+  const [source, output, runtimeRoot, prune] = process.argv.slice(2);
   try {
     if (!source || !output) throw Error("HTTP_API_BUNDLE_PATH_REQUIRED");
-    console.log(JSON.stringify(await bundleCloudflareHttpApi(source, output, runtimeRoot)));
+    console.log(JSON.stringify(await bundleCloudflareHttpApi(source, output, runtimeRoot, prune === "--prune-runtime")));
   } catch (error) {
     console.error(error.errors ?? error.message);
     process.exitCode = 1;

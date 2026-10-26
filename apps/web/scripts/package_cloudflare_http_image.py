@@ -47,7 +47,7 @@ def validate_runtime(root: Path, source_sha: str) -> None:
 
 def packager_source_sha(owned: list[str] | None = None) -> str:
     root = Path(__file__).parents[3]
-    owned = owned or ["apps/web/CloudflareHttp.Containerfile", "apps/web/scripts/package_cloudflare_http_image.py", "apps/web/scripts/cloudflare-http-entrypoint.mjs", "apps/web/scripts/bundle-cloudflare-http-api.mjs", "apps/web/scripts/build_cloudflare_http_image.py"]
+    owned = owned or ["apps/web/CloudflareHttp.Containerfile", "apps/web/scripts/package_cloudflare_http_image.py", "apps/web/scripts/cloudflare-http-entrypoint.mjs", "apps/web/scripts/bundle-cloudflare-http-api.mjs", "apps/web/scripts/prune-cloudflare-http-dependencies.mjs", "apps/web/scripts/build_cloudflare_http_image.py"]
     dirty = subprocess.run(["git", "-C", str(root), "status", "--porcelain=v1", "--", *owned], capture_output=True, text=True, check=True).stdout
     if dirty:
         raise ReleaseError("HTTP_IMAGE_PACKAGER_SOURCE_DIRTY")
@@ -70,11 +70,11 @@ def prepare_context(build_result: Path, output: Path, base_image: str, connector
         def ignore(directory: str, names: list[str]) -> list[str]:
             # SPA assets are already published to the Worker ASSETS binding.
             return [name for name in names if name == ".env" or (name.startswith(".env.") and name != ".env.example")
-                    or (Path(directory) == runtime and name in {"dist", ".data", "logs", "uploads"})]
+                    or (Path(directory) == runtime and name in {"dist", ".data", "logs", "uploads", "client", "test-results"})]
         shutil.copytree(runtime, stage / "runtime", symlinks=True, ignore=ignore)
         bundle = subprocess.run(
             ["node", str(Path(__file__).with_name("bundle-cloudflare-http-api.mjs")), str(runtime),
-             str(stage / "runtime"), "/app"],
+             str(stage / "runtime"), "/app", "--prune-runtime"],
             capture_output=True, text=True, check=False,
         )
         if bundle.returncode != 0:
@@ -84,7 +84,7 @@ def prepare_context(build_result: Path, output: Path, base_image: str, connector
         shutil.copyfile(Path(__file__).with_name("cloudflare-http-entrypoint.mjs"), stage / "cloudflare-http-entrypoint.mjs")
         proof = {"schemaVersion": 1, "packagerSourceSha": packager_sha, "connectorImage": connector_image, "sourceSha": record["source_revision"], "canonicalArtifactDigest": record["artifact"]["artifact_digest"],
                  "baseImage": base_image, "runtime": "node-http", "containerPolicy": "on-demand", "port": 3000,
-                 "httpApiBundle": {key: bundle_receipt[key] for key in ("entrypoint", "manifestSha256", "bytes", "inputModules")},
+                 "httpApiBundle": {key: bundle_receipt[key] for key in ("entrypoint", "manifestSha256", "bytes", "inputModules", "runtimeDependencies")},
                  "buildArguments": {"NODE_HTTP_IMAGE": base_image, "ACCESS_CONNECTOR_IMAGE": connector_image, "SOURCE_SHA": record["source_revision"]}, "publish": False, "providerMutations": 0}
         (stage / "image-input.json").write_text(json.dumps(proof, indent=2) + "\n")
         os.rename(stage, output)
