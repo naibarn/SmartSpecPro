@@ -42,6 +42,13 @@
         "scope": "Generation 119, exact source; public document lifecycle and tenant isolation Chromium PASS, Gateway request/provider usage PASS, 176 focused tests plus 30 narrow regressions PASS. No live Windows run, run-bound receipt chain or independent live Final Verify.",
         "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "REAL_OWNER_CODEX_PROBE_RECEIVED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
+        "scope": "Actual owner local greeting task passed and registered Runner snapshot now includes taskProbeEvidenceRef and authorizationEvidenceRef. Not a protected DevelopmentRun, usage settlement or Final Verify.",
+        "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -928,14 +935,15 @@
       "evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
         "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json",
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json"
       ],
       "evidence_freshness": "FRESH",
       "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-      "next_action": "Windows Runner → Tools → Codex → ทดสอบสั่งงานจริง; publish/acknowledge real probe. Resolve workspace fingerprint/source and configure bounded development policy plus budget using existing authenticated owner/admin APIs, then use the same scoped owner Start. Do not reinstall without a demonstrated version defect.",
+      "next_action": "Exit the old Runner through its tray/menu Exit action (window close hides it), then open the already-installed 0.2.39 Runner using the existing enrollment. Retain the current session-bound probe evidence; do not click task probe again while it remains valid. Then reconcile source/workspace identity and existing owner/admin policy/budget configuration before the same scoped owner Start.",
       "owner": "Registered Windows Runner owner and authenticated non-production tenant owner",
-      "reactivation_predicate": "A current session-bound real Codex probe, source/workspace fingerprint, authorized development policy and funded/scoped economic hold are available; the real owner Start can then issue existing run-bound admission and dispatch without repeated stage approvals.",
-      "root_cause": "Fresh enrolled Windows Runner and authenticated Codex exist, but the real Codex task probe is NOT_RUN, workspace fingerprint is absent, and tenant-ZCSKEM9s has no active SPEC224 development policy or economic budget. No owner-authenticated live Start/run-bound dispatch/settlement evidence exists. Prior offline/expired-only diagnosis is superseded."
+      "reactivation_predicate": "Current session-bound Codex task probe remains passed; the existing workspace publishes a valid source fingerprint and policy/budget configuration supports the real authenticated owner Start.",
+      "root_cause": "Owner-authorized Codex task probe is now PASSED and stored on the real registered Runner snapshot. Remaining admission prerequisites are missing workspace fingerprint/canonical source synchronization and zero configured SPEC224 development policies/economic budgets. The registered runtime still reports 0.2.38 despite owner-reported installed 0.2.39. No protected live DevelopmentRun exists."
     }
   ],
   "concurrency": {
@@ -943,11 +951,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Keep closed Mini-App V1/V2 untouched. Run the real Codex task probe in the already-installed Windows Runner; reconcile the actual workspace fingerprint/source and configure the existing scoped policy/budget under real owner/admin authentication. Continue one owner Start through protected dispatch, recovery, settlement and independent Final Verify. Rev24 public browser access is now verified; only complete run-bound Gateway receipt coverage remains.",
+    "next_action": "Exit the old Runner through its tray/menu Exit action (window close hides it), then open the already-installed 0.2.39 Runner using the existing enrollment. Retain the current session-bound probe evidence; do not click task probe again while it remains valid. Continue source fingerprint synchronization, bounded existing policy/budget setup and the real protected owner Start. Do not repeat the successful Codex probe or closed Mini-App pilot.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "Fresh acknowledged Codex task probe and workspace fingerprint plus legitimate policy/budget allow the existing authenticated owner Start to advance. No additional per-stage owner confirmations.",
-    "resume_point": "Integrated and deployed ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec, generation 119. Quick tests 176/176 plus 30/30 narrow regressions; Chromium public lifecycle/isolation and real Gateway usage 2/2 PASS. Preserve immutable build and pilot. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md.",
-    "waiting_predicate": "Real Windows task probe is NOT_RUN, workspace fingerprint is missing, and this tenant has no configured SPEC224 policy/budget. These exact prerequisites remain; staging identities and broad tool readiness are not prerequisites for unrelated hosted Mini-App use."
+    "reactivation_predicate": "Current session-bound Codex task probe remains passed; the existing workspace publishes a valid source fingerprint and policy/budget configuration supports the real authenticated owner Start.",
+    "resume_point": "Owner Codex probe received in capability:local-runner:2026-10-26T00:54:28.394Z on existing session. Task probe passed, trust ready, auth authenticated; capability policy still pending and workspace fingerprint null. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
+    "waiting_predicate": "Codex task-probe prerequisite is satisfied. Workspace fingerprint/source and existing policy/budget configuration remain missing; the connected runtime reports 0.2.38 while 0.2.39 is reportedly installed."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -966,7 +974,7 @@
         "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
       }
     ],
-    "next_action": "Complete real protected Windows owner Start using exact remaining readiness and policy/budget prerequisites; retain public-browser PASS evidence and finish run-bound Gateway receipt coverage.",
+    "next_action": "Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.",
     "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -1024,7 +1032,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 175,
+  "generation": 176,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2132,7 +2140,7 @@
           "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
         }
       ],
-      "next_action": "Complete real protected Windows owner Start using exact remaining readiness and policy/budget prerequisites; retain public-browser PASS evidence and finish run-bound Gateway receipt coverage.",
+      "next_action": "Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.",
       "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -3622,7 +3630,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T00:48:16.996071Z",
+  "updated_at": "2026-10-26T00:55:59.869429Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3958,6 +3966,13 @@
         "kind": "LIVE_BROWSER_AND_START_READINESS",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
         "scope": "Generation 119, exact source; public document lifecycle and tenant isolation Chromium PASS, Gateway request/provider usage PASS, 176 focused tests plus 30 narrow regressions PASS. No live Windows run, run-bound receipt chain or independent live Final Verify.",
+        "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "REAL_OWNER_CODEX_PROBE_RECEIVED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
+        "scope": "Actual owner local greeting task passed and registered Runner snapshot now includes taskProbeEvidenceRef and authorizationEvidenceRef. Not a protected DevelopmentRun, usage settlement or Final Verify.",
         "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
         "status": "PARTIAL"
       }

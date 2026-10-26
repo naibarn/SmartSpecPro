@@ -91409,7 +91409,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-25T13:18:43.973118Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Complete real protected Windows owner Start using exact remaining readiness and policy/budget prerequisites; retain public-browser PASS evidence and finish run-bound Gateway receipt coverage.",
+      "next_action": "Preserve the successful owner Codex probe. Reconcile the running installed Runner instance, source fingerprint and existing scoped policy/budget, then execute the real protected owner Start.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": {
         "class": "AUTHORITY",
@@ -91417,14 +91417,15 @@
         "evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
           "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json",
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json"
         ],
         "evidence_freshness": "FRESH",
         "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-        "next_action": "Windows Runner → Tools → Codex → ทดสอบสั่งงานจริง; publish/acknowledge real probe. Resolve workspace fingerprint/source and configure bounded development policy plus budget using existing authenticated owner/admin APIs, then use the same scoped owner Start. Do not reinstall without a demonstrated version defect.",
+        "next_action": "Exit the old Runner through its tray/menu Exit action (window close hides it), then open the already-installed 0.2.39 Runner using the existing enrollment. Retain the current session-bound probe evidence; do not click task probe again while it remains valid. Then reconcile source/workspace identity and existing owner/admin policy/budget configuration before the same scoped owner Start.",
         "owner": "Registered Windows Runner owner and authenticated non-production tenant owner",
-        "reactivation_predicate": "A current session-bound real Codex probe, source/workspace fingerprint, authorized development policy and funded/scoped economic hold are available; the real owner Start can then issue existing run-bound admission and dispatch without repeated stage approvals.",
-        "root_cause": "Fresh enrolled Windows Runner and authenticated Codex exist, but the real Codex task probe is NOT_RUN, workspace fingerprint is absent, and tenant-ZCSKEM9s has no active SPEC224 development policy or economic budget. No owner-authenticated live Start/run-bound dispatch/settlement evidence exists. Prior offline/expired-only diagnosis is superseded."
+        "reactivation_predicate": "Current session-bound Codex task probe remains passed; the existing workspace publishes a valid source fingerprint and policy/budget configuration supports the real authenticated owner Start.",
+        "root_cause": "Owner-authorized Codex task probe is now PASSED and stored on the real registered Runner snapshot. Remaining admission prerequisites are missing workspace fingerprint/canonical source synchronization and zero configured SPEC224 development policies/economic budgets. The registered runtime still reports 0.2.38 despite owner-reported installed 0.2.39. No protected live DevelopmentRun exists."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",

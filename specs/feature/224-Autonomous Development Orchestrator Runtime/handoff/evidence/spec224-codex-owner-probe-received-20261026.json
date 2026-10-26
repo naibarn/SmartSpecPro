@@ -1,0 +1,66 @@
+{
+  "observedAt": "2026-10-26T00:55:59.861697+00:00",
+  "sourceSha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+  "observation": "Owner screenshot shows actual Codex greeting response; existing registered Runner subsequently published matching passed task-probe evidence. No repeated probe is requested. Server receipt does not prove UI-side acknowledgement.",
+  "runner": {
+    "runnerId": "local-runner",
+    "ownerUserId": 1,
+    "tenantId": "tenant-ZCSKEM9s",
+    "runnerSessionId": "6ddda9fe-0845-44af-9b9f-1e1cb11e1e62",
+    "lastSeenAt": "2026-10-26T00:55:59.251+00:00",
+    "snapshotId": "capability:local-runner:2026-10-26T00:54:28.394Z",
+    "runnerVersion": "0.2.38",
+    "codex": {
+      "kind": "agent_cli",
+      "toolId": "codex",
+      "version": "codex-cli 0.161.0",
+      "adapterId": "codex.v1",
+      "authState": "authenticated",
+      "expiresAt": "2026-10-26T00:59:28.394Z",
+      "observedAt": "2026-10-26T00:54:28.394Z",
+      "trustState": "ready",
+      "displayName": "codex",
+      "fingerprint": "sha256:a05426e84dff3ed0f20463b42b6f80e931b386dc499114e0ae43fa2b5bb30002",
+      "healthState": "healthy",
+      "reasonCodes": [
+        "version_probe_ok",
+        "auth_status_ok",
+        "task_probe_ok"
+      ],
+      "installState": "installed",
+      "adapterVersion": null,
+      "taskProbeState": "passed",
+      "discoverySource": "path",
+      "availabilityState": "available",
+      "versionProbeState": "passed",
+      "configurationState": "configured",
+      "taskProbeEvidenceRef": "runner-task-probe:sha256:651dafd3e98d93f5dd8e51d72fe99fee70d01b50949be7ba6f9fac3ad8595e3e",
+      "taskProbeExpiresAtMs": 1792979578624,
+      "taskProbeObservedAtMs": 1792975978624,
+      "authorizationEvidenceRef": "runner-agent-auth:sha256:6504b4230c26fc8e5b4d2c537c6ccd9ab86d832d6e852bc154a67e090b18d763"
+    },
+    "codexPolicy": "pending",
+    "workspaces": [
+      {
+        "dirty": false,
+        "taskId": null,
+        "gitHead": "fbd7fd1bd8324973540664d7f7de2bd9e5844757",
+        "gitBranch": null,
+        "projectId": "smartspecpro",
+        "displayName": "SmartSpecPro",
+        "workspaceId": "ws-smartspecpro-12883242a753",
+        "repositoryId": "smartspecpro",
+        "convergenceState": "NOT_REPORTED",
+        "contentFingerprint": null,
+        "convergenceCanonicalSha": null
+      }
+    ]
+  },
+  "protectedDevelopmentRunExecuted": false,
+  "remaining": [
+    "Workspace fingerprint is still absent and source is not synchronized to canonical.",
+    "Registered runtime reports 0.2.38; owner reports 0.2.39 already installed. Do not rebuild or reinstall without further evidence.",
+    "Existing scoped development policy and budget remain required; no grants or authentication were synthesized."
+  ],
+  "nextLocalAction": "Exit the old Runner through its tray/menu Exit action (window close hides it), then open the already-installed 0.2.39 Runner using the existing enrollment. Retain the current session-bound probe evidence; do not click task probe again while it remains valid."
+}
