@@ -41,6 +41,10 @@ const CAPABILITY_SNAPSHOT_TTL: Duration = Duration::from_secs(300);
 const CAPABILITY_SNAPSHOT_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
 const TASK_PROBE_EVIDENCE_FILE: &str = "tool-task-probe-evidence.json";
 const TASK_PROBE_EVIDENCE_TTL: Duration = Duration::from_secs(60 * 60);
+// Keep expired probe outcomes long enough to report EXPIRED instead of
+// silently turning historical PASS/FAIL evidence into NEVER_RUN. This is
+// diagnostic retention only; authorization still checks expires_at_ms.
+const TASK_PROBE_EVIDENCE_RETENTION: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const MAX_TASK_PROBE_EVIDENCE_BYTES: u64 = 256 * 1024;
 static RUNNER_CREDENTIAL_DIAGNOSTICS: OnceLock<Mutex<serde_json::Value>> = OnceLock::new();
 static TASK_PROBE_EVIDENCE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -460,7 +464,10 @@ fn load_task_probe_evidence(data_root: &str) -> Vec<TaskProbeEvidence> {
     entries
         .into_iter()
         .filter(|entry| {
-            entry.expires_at_ms > now_ms
+            entry
+                .expires_at_ms
+                .saturating_add(TASK_PROBE_EVIDENCE_RETENTION.as_millis() as u64)
+                > now_ms
                 && entry.expires_at_ms > entry.observed_at_ms
                 && entry.expires_at_ms.saturating_sub(entry.observed_at_ms)
                     <= TASK_PROBE_EVIDENCE_TTL.as_millis() as u64
@@ -4539,6 +4546,58 @@ mod lifecycle_tests {
         assert_eq!(
             different_session.task_probe_state,
             crate::discovery::ProbeState::NotRun
+        );
+    }
+
+    #[test]
+    fn expired_task_probe_is_retained_for_diagnostics_but_not_authorization() {
+        let root = tempfile::tempdir().unwrap();
+        let mut config =
+            RunnerConfig::local("runner-expired-probe", "device", "https://example.test");
+        config.data_root = root.path().to_string_lossy().into_owned();
+        let mut tool = scan_known_tools(RunnerProfile::LocalDevice, &["codex".into()])
+            .into_iter()
+            .find(|candidate| candidate.tool_id == "codex")
+            .unwrap();
+        tool.version = Some("test-codex".into());
+        tool.version_probe_state = crate::discovery::ProbeState::Passed;
+        tool.auth_state = crate::discovery::CapabilityDimension::Ready;
+
+        let mut evidence = super::save_task_probe_evidence(
+            &config,
+            &tool,
+            crate::discovery::ProbeState::Passed,
+            Some("task_probe_ok"),
+        )
+        .unwrap();
+        evidence.observed_at_ms = super::current_time_ms().saturating_sub(2 * 60 * 60 * 1000);
+        evidence.expires_at_ms = evidence.observed_at_ms + 60 * 60 * 1000;
+        evidence.evidence_ref = super::task_probe_evidence_ref(&evidence);
+        std::fs::write(
+            super::task_probe_evidence_path(&config.data_root),
+            serde_json::to_vec(&vec![evidence]).unwrap(),
+        )
+        .unwrap();
+
+        let entries = super::load_task_probe_evidence(&config.data_root);
+        assert_eq!(entries.len(), 1, "expired evidence remains diagnosable");
+        let mut matching = tool;
+        super::apply_task_probe_evidence(&mut matching, &entries, &config.runner_id, None, None);
+        assert_eq!(
+            matching.task_probe_state,
+            crate::discovery::ProbeState::Passed
+        );
+        assert!(matching.task_probe_expires_at_ms.unwrap() <= super::current_time_ms());
+        assert!(
+            super::external_agent_readiness_ref(
+                &config,
+                &matching,
+                Some("session"),
+                Some("tenant"),
+                Some(super::snapshot_expiry_ms()),
+            )
+            .is_none(),
+            "expired task probes must never authorize execution"
         );
     }
 
