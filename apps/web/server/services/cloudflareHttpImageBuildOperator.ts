@@ -135,7 +135,7 @@ export function createHttpImageBuildOperator(assertAuthorized: () => Promise<voi
 /** Read-only publication preflight. Select a real canonical receipt, never an
  * engineering image tag or a request-supplied filesystem path. The executor
  * independently rechecks the receipt, workspace and all packaged artifacts. */
-export async function resolveHttpImageCanonicalSource() {
+export async function resolveHttpImageCanonicalSource(accept: (source: { sourceSha: string; buildId: string }) => boolean = () => true) {
   const configured = process.env.SMARTSPEC_CANONICAL_BUILD_RESULTS_ROOT?.trim();
   if (!configured || !isAbsolute(configured)) throw new HttpImageError("HTTP_IMAGE_CANONICAL_STORE_REQUIRED");
   const root = await realpath(configured);
@@ -163,6 +163,7 @@ export async function resolveHttpImageCanonicalSource() {
     } catch { /* An incomplete/unavailable receipt cannot authorize publication. */ }
   }
   candidates.sort((a, b) => b.completedAt - a.completedAt || a.buildId.localeCompare(b.buildId));
-  if (!candidates[0]) throw new HttpImageError("HTTP_IMAGE_CANONICAL_RECEIPT_UNAVAILABLE");
-  return { sourceSha: candidates[0].sourceSha, buildId: candidates[0].buildId };
+  const selected = candidates.find(source => accept({ sourceSha: source.sourceSha, buildId: source.buildId }));
+  if (!selected) throw new HttpImageError("HTTP_IMAGE_CANONICAL_RECEIPT_UNAVAILABLE");
+  return { sourceSha: selected.sourceSha, buildId: selected.buildId };
 }

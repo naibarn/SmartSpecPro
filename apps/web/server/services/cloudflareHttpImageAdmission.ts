@@ -33,10 +33,9 @@ async function assertOwner(db: DrizzleDB, scope: Scope) {
 /** Both images use the existing exact-project staging publication namespace.
  * Immutable receipts may later be selected by Production; this does not create
  * applications, activate runtime bindings, change M2, or mint CLI authority. */
-export async function getHttpImagePairPreflight(db: DrizzleDB, scope: Scope) {
+export async function getHttpImagePairPreflight(db: DrizzleDB, scope: Scope, expectedDigest?: string) {
   await assertOwner(db, scope);
   try {
-    const source = await resolveHttpImageCanonicalSource();
     const runtime = createCloudflareHttpImageProvisionRuntime();
     const identity = { tenantId: scope.tenantId, projectId: scope.projectId, provider: "cloudflare", environment: "staging" };
     const accountRef = await runtime.resolveAccount(identity);
@@ -44,6 +43,12 @@ export async function getHttpImagePairPreflight(db: DrizzleDB, scope: Scope) {
     await runtime.withCredential(identity, async () => undefined);
     const executorId = process.env.CLOUDFLARE_STAGING_EXECUTOR_ID?.trim();
     if (!executorId) throw Error("HTTP_IMAGE_EXECUTOR_REQUIRED");
+    const namespace = nativeProvisionNamespace(scope.tenantId, scope.projectId);
+    // An intervening Admin release must not silently replace the immutable
+    // source the Owner reviewed. Resolve that exact still-valid canonical
+    // receipt by packet digest, even when a newer build has appeared.
+    const source = await resolveHttpImageCanonicalSource(candidate => !expectedDigest ||
+      hash({ ...candidate, accountRef, executorId, namespace }) === expectedDigest);
     const registered = await db.execute(sql`SELECT 1 FROM runner_nodes WHERE "tenantId"=${scope.tenantId} AND "runnerId"=${executorId}
       AND "ownerUserId"=${scope.actorUserId} AND profile='cloudflare_staging_executor' AND "trustState"='trusted'
       AND "revokedAt" IS NULL AND "snapshotExpiresAt">now()+interval '46 minutes'`);
@@ -115,7 +120,7 @@ export async function queueHttpImagePair(db: DrizzleDB, input: Scope & {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`http-image-pair-scope:${input.tenantId}:${input.projectId}`}))`);
     const [existing] = await tx.select().from(systemSettings).where(whereSubmission(input.submissionId)).limit(1);
     if (existing) { const value = existing.valueJson as Submission; assertSubmission(value, input); return value; }
-    const preflight = await getHttpImagePairPreflight(db, input);
+    const preflight = await getHttpImagePairPreflight(db, input, input.planDigest);
     if (!preflight.ready) throw Error(preflight.reason);
     if (preflight.planDigest !== input.planDigest) throw Error("HTTP_IMAGE_PLAN_CHANGED");
     const retained = await tx.select().from(systemSettings).where(and(eq(systemSettings.category, CATEGORY),
