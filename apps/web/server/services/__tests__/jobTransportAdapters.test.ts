@@ -1,3 +1,4 @@
+import { HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB } from "../cloudflareHttpCandidateContract";
 import { describe, expect, it, vi } from "vitest";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "../cloudflareHttpImageProvisionContract";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB } from "../cloudflareProductionQueueProvision";
@@ -11,6 +12,12 @@ import {
 } from "../jobTransportAdapters";
 
 describe("job transport adapters", () => {
+  it("admits the registered native Candidate contract only on PostgreSQL transport", () => {
+    const input = { jobType: HTTP_CANDIDATE_JOB, executionClass: "long", contractVersion: HTTP_CANDIDATE_CONTRACT };
+    expect(new PostgresPullJobTransportAdapter().supports(input)).toBe(true);
+    expect(new CloudflareQueueHttpJobTransportAdapter("https://fixture.invalid", "fixture").supports(input)).toBe(false);
+    expect(new PostgresPullJobTransportAdapter().supports({ ...input, contractVersion: HTTP_CANDIDATE_CONTRACT + "-unknown" })).toBe(false);
+  });
   it("admits the exact Production Queue provisioning contract on PostgreSQL pull only", () => {
     const postgres = new PostgresPullJobTransportAdapter();
     const cloudflare = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
