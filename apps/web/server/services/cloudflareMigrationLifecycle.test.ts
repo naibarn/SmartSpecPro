@@ -36,6 +36,16 @@ describe("First migration continuation over the existing canonical job authoriti
     expect(value.currentMilestone).toBe("M1");
     expect(value.ingressReceipt?.routeId).toBe("route");
   });
+  it("uses verified canonical SQL/isolation acceptance while preserving failed provisioning history", () => {
+    const database = { ...base, id: "original-db", jobType: "cloudflare.production.database.provision",
+      contractVersion: "cloudflare-prod-db-provision-v1", errorCode: "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH" };
+    const value = projectCloudflareMigration(scope, continuation, [accepted, database], new Date(), [database.id]);
+    expect(value).toMatchObject({ state: "M1_ACCEPTED", currentMilestone: "M3", nextOperation: "M3_RUNTIME_ACCEPTANCE", blocker: null });
+    expect(value.completedCheckpoints).toEqual(["M2_ACCEPTED", "M1_ACCEPTED"]);
+    expect(value.jobHistory.find(job => job.jobId === database.id)).toMatchObject({ status: "failed", errorCode: database.errorCode });
+    expect(projectCloudflareMigration(scope, continuation, [accepted, database], new Date(), ["another-job"]).currentMilestone).toBe("M1");
+    expect(projectCloudflareMigration(scope, continuation, [accepted, { ...database, tenantId: "foreign" }], new Date(), [database.id]).completedCheckpoints).toEqual(["M2_ACCEPTED"]);
+  });
   it("does not accept a partial deployment or a failed browser receipt", () => {
     expect(projectCloudflareMigration(scope, continuation, [{ ...accepted, outputJson: { ...accepted.outputJson, authenticatedAcceptance: { verified: false } } }]).completedCheckpoints).toEqual([]);
   });

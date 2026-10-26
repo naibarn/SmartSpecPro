@@ -3,6 +3,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DrizzleDB } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
+import { readProductionDatabaseReadbackObservation } from "./cloudflareProductionDatabaseReconciliation";
 
 const modes = ["FIRST_MIGRATION", "STEADY_STATE_DEPLOYMENT"] as const;
 export const migrationContinuationSchema = z.object({
@@ -26,7 +27,7 @@ export function migrationMissionId(scope: Scope) {
 
 /** Read model, never an approval or a second job/receipt registry. Successful
  * checkpoints survive later failures, grant expiry, and agent replacement. */
-export function projectCloudflareMigration(scope: Scope, continuation: MigrationContinuation | null, jobs: Job[], now = new Date()) {
+export function projectCloudflareMigration(scope: Scope, continuation: MigrationContinuation | null, jobs: Job[], now = new Date(), verifiedDatabaseJobIds: readonly string[] = []) {
   const scoped = jobs.filter(job => job.tenantId === scope.tenantId && job.inputJson.projectId === scope.projectId &&
     job.inputJson.environment === "production" && job.inputJson.targetId === "smartspec-cloudflare-runtime");
   const ingress = scoped.filter(job => job.jobType === "cloudflare.production.deploy" &&
@@ -38,11 +39,14 @@ export function projectCloudflareMigration(scope: Scope, continuation: Migration
     typeof job.outputJson.versionId === "string");
   // Provider readback by itself never constitutes real SQL acceptance.
   const acceptedDatabase = scoped.findLast(job => job.jobType === "cloudflare.production.database.provision" &&
-    job.status === "succeeded" && job.outputJson?.databaseConnectionVerified === true && job.outputJson?.tenantIsolationVerified === true);
+    ((job.status === "succeeded" && job.outputJson?.databaseConnectionVerified === true && job.outputJson?.tenantIsolationVerified === true) ||
+      verifiedDatabaseJobIds.includes(job.id)));
   const active = scoped.findLast(job => ["pending", "queued", "claimed", "leased", "preparing", "running", "waiting_external", "retry_scheduled"].includes(job.status));
   const lastIngress = ingress.at(-1);
   const ingressRolledBack = lastIngress?.status === "succeeded" && lastIngress.inputJson.action === "ingress-rollback";
-  const last = scoped.at(-1);
+  // Reconciled SQL/isolation evidence closes the database milestone without
+  // rewriting its historical failed provisioning attempt or issuing Attempt 5.
+  const last = scoped.filter(job => job.id !== acceptedDatabase?.id).at(-1);
   const databaseFailure = scoped.findLast(job => job.jobType === "cloudflare.production.database.provision" && job.status === "failed");
   let state: string = continuation?.engineeringCheckpoint ?? "ENGINEERING";
   if (active) state = ["pending", "queued", "retry_scheduled"].includes(active.status) ? "AUTHORIZED" : "EXECUTING";
@@ -62,6 +66,7 @@ export function projectCloudflareMigration(scope: Scope, continuation: Migration
     completedCheckpoints: [acceptedIngress && "M2_ACCEPTED", acceptedDatabase && "M1_ACCEPTED"].filter(Boolean),
     currentMilestone: !acceptedIngress || ingressRolledBack ? "M2" : !acceptedDatabase ? "M1" : "M3",
     nextOperation: staleLease ? "RECONCILE_CANONICAL_LEASE" : active ? "MONITOR_EXISTING_CANONICAL_JOB" :
+      acceptedIngress && acceptedDatabase && !ingressRolledBack ? "M3_RUNTIME_ACCEPTANCE" :
       acceptedIngress && !ingressRolledBack ? "PRESERVE_INGRESS_REPAIR_DATABASE_AND_RUNTIME" : "REPAIR_PREFLIGHT_THEN_AUTHORIZE_EXACT_OPERATION",
     activeJobId: active?.id ?? null,
     ingressReceipt: acceptedIngress && !ingressRolledBack ? { jobId: acceptedIngress.id, routeId: String(acceptedIngress.outputJson!.routeId),
@@ -103,5 +108,14 @@ export async function getCloudflareMigrationMission(db: DrizzleDB, scope: Scope)
   const jobs = await db.select().from(workerJobs).where(and(eq(workerJobs.tenantId, scope.tenantId),
     sql`${workerJobs.inputJson}->>'projectId' = ${scope.projectId}`,
     sql`${workerJobs.jobType} IN ('cloudflare.production.deploy', 'cloudflare.production.database.provision')`)).orderBy(asc(workerJobs.createdAt));
-  return projectCloudflareMigration(scope, parsed.success ? parsed.data : null, jobs as Job[]);
+  const verifiedDatabaseJobIds: string[] = [];
+  for (const job of jobs) {
+    if (job.jobType !== "cloudflare.production.database.provision" || typeof job.inputJson.planDigest !== "string") continue;
+    const evidence = await readProductionDatabaseReadbackObservation(db, {
+      ...scope, jobId: job.id, planDigest: job.inputJson.planDigest,
+    });
+    if (evidence?.acceptance === "M1_ACCEPTED" && evidence.databaseConnectionVerified && evidence.tenantIsolationVerified)
+      verifiedDatabaseJobIds.push(job.id);
+  }
+  return projectCloudflareMigration(scope, parsed.success ? parsed.data : null, jobs as Job[], new Date(), verifiedDatabaseJobIds);
 }
