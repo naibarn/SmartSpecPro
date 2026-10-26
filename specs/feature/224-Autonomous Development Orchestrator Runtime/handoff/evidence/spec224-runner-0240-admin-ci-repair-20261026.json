@@ -1,0 +1,63 @@
+{
+  "observedAt": "2026-10-26T01:36:45.542893+00:00",
+  "outcome": "RUNNER_RELEASE_ADMIN_CHECKS_REPAIRED",
+  "originalRun": {
+    "id": 40253172367,
+    "sourceSha": "04de5ede1fa1e3516893f1707ac018e634544ee5",
+    "overall": "failure",
+    "windowsInstaller": "success",
+    "adminChecks": "57 passed; 1 failed at spec224RuntimeAdmission.test.ts:167"
+  },
+  "rootCause": "Admission fixture lacked the required workspace contentFingerprint and retained obsolete mandatory Git inventory expectations after commit 017d6202. Production admission checks were not weakened.",
+  "fixSha": "4d4286366c5cdaf2d2e0817f39304a38cc2bf80b",
+  "changes": [
+    "Update admission fixture with source fingerprint.",
+    "Assert missing fingerprint and explicitly unhealthy Git remain rejected; Git-free inventory can pass with verified workspace facts.",
+    "Add tests-only workflow option; no installer or core build."
+  ],
+  "verification": {
+    "local": {
+      "files": 8,
+      "passed": 58,
+      "profile": "quick",
+      "log": "/tmp/spec224-runner-release-checks-fix.log"
+    },
+    "github": {
+      "runId": 40254904523,
+      "url": "https://github.com/naibarn/SmartSpecPro/actions/runs/40254904523",
+      "conclusion": "success",
+      "checkedOutSourceSha": "4d4286366c5cdaf2d2e0817f39304a38cc2bf80b",
+      "workflowHeadSha": "cc833e4f5a58f0c88d959839cd9d718505dfe64d",
+      "files": 8,
+      "passed": 58,
+      "windowsInstaller": "skipped",
+      "macosInstaller": "skipped"
+    },
+    "retry": {
+      "runId": 40254425250,
+      "outcome": "checkout failure before tests; abbreviated SHA interpreted as branch; corrected to full immutable SHA"
+    }
+  },
+  "preservedInstaller": {
+    "workflowRunId": 40253172367,
+    "artifactName": "smartaihub-runner-windows-x64-0.2.40-unsigned-review",
+    "manifest": {
+      "product": "SmartAIHub Runner",
+      "target": "x86_64-pc-windows-msvc",
+      "version": "0.2.40",
+      "buildDate": "2026-10-26T01:14:17Z",
+      "sourceRef": "main",
+      "sourceCommit": "04de5ede1fa1e3516893f1707ac018e634544ee5",
+      "installer": "SmartAIHub Runner_0.2.40_x64-setup.exe",
+      "sha256": "347d9a9842cdc4b794082a0605599e8bd6c621cc1d864febed621256c10e8492",
+      "signingStatus": "unsigned-review"
+    },
+    "sha256Verified": true,
+    "runnerSourceChangedByFix": false
+  },
+  "limitations": [
+    "Original failed workflow remains historically failed. Successful tests-only run is separate evidence; no fabricated green status.",
+    "Unsigned review artifact is not a signed/trusted release or live Windows E2E PASS.",
+    "No installer rebuild or production deployment was required for test/workflow-only changes."
+  ]
+}
