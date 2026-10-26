@@ -108,6 +108,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const [specSource, setSpecSource] = useState<"upload" | "catalog">("upload");
   const [featureSpecSearch, setFeatureSpecSearch] = useState("");
   const [selectedFeatureSpec, setSelectedFeatureSpec] = useState("");
+  const [pendingSpecFiles, setPendingSpecFiles] = useState<File[]>([]);
   const [requestKind, setRequestKind] = useState<"development" | "mini_app">("development");
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
   const [uploading, setUploading] = useState(false);
@@ -206,34 +207,41 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
     }
   }
 
-  async function ingestFiles(files: FileList | null) {
-    if (!files?.length || !conversationId || !workspaceQuery.data?.workspace) return;
+  function selectSpecFiles(files: FileList | null) {
+    if (!files?.length) return;
     const selectedFiles = Array.from(files);
-    if (selectedFiles.length > 64 || selectedFiles.some(file => !/\.(md|json|zip)$/i.test(file.name))) {
+    const combined = [...pendingSpecFiles, ...selectedFiles];
+    if (combined.length > 64 || selectedFiles.some(file => !/\.(md|json|zip)$/i.test(file.name))) {
       toast.error("เลือกได้ไม่เกิน 64 ไฟล์ และรองรับเฉพาะ .md, .json, .zip");
       return;
     }
-    const totalBytes = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+    const totalBytes = combined.reduce((sum, file) => sum + file.size, 0);
     if (totalBytes > 2 * 1024 * 1024) {
       toast.error("ไฟล์รวมต้องไม่เกิน 2 MiB");
       return;
     }
+    setPendingSpecFiles(combined);
+    setPreparation(null);
+  }
+
+  async function saveSpecFiles() {
+    if (!pendingSpecFiles.length || !conversationId || !workspaceQuery.data?.workspace) return;
     setUploading(true);
     setPreparation(null);
     try {
-      const artifacts = await Promise.all(selectedFiles.map(encodeFile));
+      const artifacts = await Promise.all(pendingSpecFiles.map(encodeFile));
       await ingestMutation.mutateAsync({
         conversationId,
         artifacts,
         idempotencyKey: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
       });
       await workspaceQuery.refetch();
+      setPendingSpecFiles([]);
       toast.success("บันทึก Spec Set revision ใหม่แล้ว");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "นำเข้า Spec ไม่สำเร็จ");
     } finally {
       setUploading(false);
-      if (fileInput.current) fileInput.current.value = "";
     }
   }
 
@@ -515,13 +523,32 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
                   ) : null}
                   {specSource === "upload" ? (
                     <>
-                      <input ref={fileInput} className="sr-only" type="file" multiple accept=".md,.json,.zip" aria-label="แนบไฟล์ Spec 224" onChange={event => void ingestFiles(event.target.files)} />
+                      <input ref={fileInput} className="sr-only" type="file" multiple accept=".md,.json,.zip" aria-label="แนบไฟล์ Spec 224" onChange={event => { selectSpecFiles(event.target.files); event.currentTarget.value = ""; }} />
                       <div className="mt-2 flex flex-wrap items-center gap-3">
-                        <Button type="button" variant="outline" disabled={!workspaceQuery.data?.workspace || uploading} onClick={() => fileInput.current?.click()}>
-                          {uploading ? "กำลังบันทึกไฟล์…" : "เลือกไฟล์ Spec / JSON"}
+                        <Button type="button" variant="outline" disabled={uploading} onClick={() => fileInput.current?.click()}>
+                          เลือกไฟล์ Spec / JSON
                         </Button>
                         <p className="text-xs text-[var(--color-text-secondary)]">เลือกได้หลายไฟล์ .md, .json หรือ .zip · สูงสุด 64 ไฟล์และ 2 MiB ต่อชุด</p>
                       </div>
+                      {pendingSpecFiles.length ? (
+                        <section className="space-y-2 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="ไฟล์ Spec ที่รอบันทึก">
+                          <p className="text-xs font-medium">ไฟล์ที่เลือก {pendingSpecFiles.length} ไฟล์ · {(pendingSpecFiles.reduce((sum, file) => sum + file.size, 0) / 1024).toFixed(0)} KiB</p>
+                          <ul className="space-y-1 text-xs">
+                            {pendingSpecFiles.map((file, index) => (
+                              <li key={`${file.name}-${file.lastModified}-${index}`} className="flex items-center justify-between gap-2">
+                                <span className="min-w-0 truncate" title={file.name}>{file.name}</span>
+                                <Button type="button" variant="ghost" size="sm" aria-label={`ลบไฟล์ ${file.name}`} disabled={uploading} onClick={() => setPendingSpecFiles(current => current.filter((_, itemIndex) => itemIndex !== index))}>ลบ</Button>
+                              </li>
+                            ))}
+                          </ul>
+                          {!boundWorkspace ? (
+                            <p className="text-amber-800" role="status">เลือก Runner workspace ด้านบนก่อน แล้วจึงบันทึกไฟล์ Spec เข้า workspace ได้ ไฟล์ที่เลือกจะยังคงอยู่</p>
+                          ) : null}
+                          <Button type="button" disabled={!boundWorkspace || uploading} onClick={() => void saveSpecFiles()}>
+                            {uploading ? "กำลังบันทึกไฟล์…" : "บันทึกไฟล์ Spec เข้า workspace"}
+                          </Button>
+                        </section>
+                      ) : null}
                       <p className="text-xs text-[var(--color-text-secondary)]">ภาพ mock-up แนบแยกในส่วน Design References ด้านบน ระบบจะส่งให้ Runner เป็นภาพอ้างอิง ไม่ปะปนกับไฟล์ Spec</p>
                       <p className="text-xs text-[var(--color-text-secondary)]">ไฟล์ .md เดี่ยวประกาศ work package ได้ด้วย code fence `spec224-work-packages` ที่มี JSON `spec224.workPackages`; ถ้าไม่ประกาศ ระบบจะแสดง requirement แต่ยังไม่ให้เริ่ม package นั้น</p>
                     </>
