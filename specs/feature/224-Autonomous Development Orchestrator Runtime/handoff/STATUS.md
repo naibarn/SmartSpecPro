@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 3 pass / 1280 unresolved of 1284
-- Next action: On the already-enrolled Windows local-runner, install unsigned review artifact 0.2.39 from workflow 40226692138 while preserving enrollment/workspace; run the authenticated Codex real-task probe, then start one reversible non-production Core DevelopmentRun in SmartAIHub Chat against the existing workspace. Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE from the real run-bound grant and fresh workspace fingerprint. Keep closed Mini-App work closed.
-- Manifest generation: 173
+- Requirements: 6 pass / 1277 unresolved of 1284
+- Next action: Complete real protected Windows owner Start using exact remaining readiness and policy/budget prerequisites; retain public-browser PASS evidence and finish run-bound Gateway receipt coverage.
+- Manifest generation: 175
 
 ## Source-declared status and relationship claims
 

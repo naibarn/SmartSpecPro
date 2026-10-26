@@ -1,5 +1,5 @@
 {
-  "generation": 28,
+  "generation": 29,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -3452,7 +3452,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+      "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
@@ -3466,9 +3466,11 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
       ],
-      "verification_method": "Focused disposable-PostgreSQL integration asserts Final Verify is refused when required workspace receipts are absent."
+      "verification_method": "Current-source spec224FinalVerify.test.ts passes negative cases refusing closure when required evidence is missing. Previous disposable PostgreSQL receipt remains historical; no PostgreSQL acceptance was repeated."
     },
     {
       "applicability": "UNASSESSED",
@@ -27644,24 +27646,25 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-      "final_state": "PARTIAL",
+      "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+      "final_state": "PASS",
       "implementation_evidence": [
-        "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
-        "apps/web/server/routers/appIdentity.test.ts",
-        "apps/web/server/routes/miniAppRuntime.test.ts"
+        "apps/web/server/routes/miniAppRuntime.ts",
+        "apps/web/server/routers/appIdentity.ts"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Run the deployed owner/same-tenant/cross-tenant/anonymous matrix against an authorized isolated app and retain identity-bound denial receipts.",
+      "implementation_status": "COMPLETE",
+      "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
       "requirement_digest": "0abcede85de1df372242e86b1cc3755da8be4ac73fe4c58fad76579874b4224f",
       "requirement_id": "REQ-B92C79FEA294",
       "requirement_text": "- [ ] Private owner access passes; same-tenant other-user, cross-tenant, and anonymous access are denied before any private app bytes or data are returned.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json",
+        "apps/web/tests/e2e/uat/spec224-public-access.spec.ts"
       ],
-      "verification_method": "Current-SHA resolver/router tests cover owner access and same-tenant, cross-tenant, and anonymous denial before bytes; no deployed runtime principal-matrix receipt is retained."
+      "verification_method": "Chromium on smartaihub.app generation 119 with authorized disposable synthetic owner/member/cross-tenant fixtures: private resolver denial, owner publication, anonymous sandboxed top-level mobile document, owner unpublish and immediate anonymous API/document denial; owner private workspace remains accessible. Fixture app and artifacts cleaned up."
     },
     {
       "applicability": "APPLICABLE",
@@ -27672,23 +27675,25 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-      "final_state": "PARTIAL",
+      "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+      "final_state": "PASS",
       "implementation_evidence": [
-        "apps/web/server/routers/appIdentity.test.ts",
-        "apps/web/server/routes/miniAppRuntime.test.ts"
+        "apps/web/server/routes/miniAppRuntime.ts",
+        "apps/web/server/routers/appIdentity.ts"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Run publish, anonymous read, owner unpublish and immediate anonymous denial with disposable tenant-bound identities on an isolated target.",
+      "implementation_status": "COMPLETE",
+      "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
       "requirement_digest": "0e20fb1e77641366e6d0e720ff7a39ae2c4fd4cbd0bafa5a365c45005ae613a3",
       "requirement_id": "REQ-6B95E2497188",
       "requirement_text": "- [ ] Anonymous access to an explicitly published app passes, and owner unpublish immediately denies anonymous access.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json",
+        "apps/web/tests/e2e/uat/spec224-public-access.spec.ts"
       ],
-      "verification_method": "Current-SHA unit/router tests cover access policy and owner-only publish/unpublish controls; no durable anonymous read → owner unpublish → immediate denial sequence was run."
+      "verification_method": "Chromium on smartaihub.app generation 119 with authorized disposable synthetic owner/member/cross-tenant fixtures: private resolver denial, owner publication, anonymous sandboxed top-level mobile document, owner unpublish and immediate anonymous API/document denial; owner private workspace remains accessible. Fixture app and artifacts cleaned up."
     },
     {
       "applicability": "APPLICABLE",
@@ -27699,22 +27704,24 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-      "final_state": "OPEN",
+      "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+      "final_state": "PARTIAL",
       "implementation_evidence": [
         "apps/web/server/services/miniAppFactoryRuntime.ts"
       ],
       "implementation_status": "PARTIAL",
-      "next_action": "Exercise an authorized Gateway-only model call and retain complete run-bound usage/credit/budget/trace receipts plus fallback-exclusion evidence.",
+      "next_action": "Complete and verify the remaining run-bound Skill Execution/Gateway usage, credit, budget, trace and settlement receipts; do not repeat closed Mini-App owner trials.",
       "requirement_digest": "409bc6bbbcb80f2fcd6fe49fb6d73443cfaf02d163e1f7866f0b2aaa655bed85",
       "requirement_id": "REQ-99636C68BAEA",
       "requirement_text": "- [ ] Every model call in the Mini-App workflow has a Skill Execution → SmartAIHub Gateway usage/credit/budget/trace receipt; tests prove the Codex Subscription, direct-provider, and API-key fallback paths are not invoked.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
       ],
-      "verification_method": "No live model/Gateway call or run-bound usage, credit, budget and trace receipt was produced in this audit."
+      "verification_method": "Real authenticated Chromium Gateway request and provider/cost/token usage passed. This request does not prove the full Mini-App Skill Execution/DevelopmentRun/job-bound budget/credit/trace chain or all fallback exclusions."
     },
     {
       "applicability": "APPLICABLE",
@@ -27752,7 +27759,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+      "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
       "final_state": "PASS",
       "implementation_evidence": [
         "apps/web/server/services/personalMiniAppPreview.ts",
@@ -27767,9 +27774,11 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
       ],
-      "verification_method": "Existing pilot receipts and pre-promotion failure regression evidence; relevant delivery/runtime files are unchanged from verified source SHA f80ca9721e7631c0d257e2bda87c08bd71a8fc85 to audited source SHA."
+      "verification_method": "Current-source personalMiniAppPreview.test.ts injects a failure before promotion and preserves V1; private full-document routing tests pass. Existing V1/V2 owner receipts are retained without a new live pilot run."
     },
     {
       "applicability": "APPLICABLE",
@@ -27834,23 +27843,25 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-      "final_state": "PARTIAL",
+      "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+      "final_state": "PASS",
       "implementation_evidence": [
-        "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
-        "apps/web/server/routes/miniAppRuntime.test.ts"
+        "apps/web/server/routes/miniAppRuntime.ts",
+        "apps/web/server/routers/appIdentity.ts"
       ],
-      "implementation_status": "PARTIAL",
-      "next_action": "Run the mobile owner/public/unpublish/same-tenant/cross-tenant matrix using authorized disposable principals on an isolated target.",
+      "implementation_status": "COMPLETE",
+      "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
       "requirement_digest": "a0d1efc9ffa47b8be5aaec0427b977522a55ece9bcb4c54128eb9ccd2e7ed78c",
       "requirement_id": "REQ-410EE0357FDC",
       "requirement_text": "- [ ] Mobile internet access, authenticated owner access, public publish/unpublish, and tenant/user isolation pass against authorized synthetic test principals.",
       "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "successor_mapping": [],
       "verification_evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json",
+        "apps/web/tests/e2e/uat/spec224-public-access.spec.ts"
       ],
-      "verification_method": "Private owner and isolation policy contract tests pass; complete deployed mobile, public and tenant matrix was not run."
+      "verification_method": "Chromium on smartaihub.app generation 119 with authorized disposable synthetic owner/member/cross-tenant fixtures: private resolver denial, owner publication, anonymous sandboxed top-level mobile document, owner unpublish and immediate anonymous API/document denial; owner private workspace remains accessible. Fixture app and artifacts cleaned up."
     },
     {
       "applicability": "APPLICABLE",
@@ -27861,7 +27872,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+      "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
       "final_state": "PASS",
       "implementation_evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
@@ -27876,9 +27887,11 @@
       "successor_mapping": [],
       "verification_evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
       ],
-      "verification_method": "Evidence review keeps Functional Mini-App, normative SPEC and protected Runner acceptance distinct."
+      "verification_method": "Current structured receipt and evidence report explicitly separate closed pilot, live public/Gateway checks, scoped unit checks, and absent protected Runner/Final Verify evidence."
     },
     {
       "applicability": "UNASSESSED",

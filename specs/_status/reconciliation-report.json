@@ -101856,7 +101856,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+      "canonical_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -103114,13 +103114,10 @@
         "requirement REQ-02DADAA16ED9 is OPEN",
         "requirement REQ-C7565D4BEDE2 is OPEN",
         "requirement REQ-09D54E098C5F is PARTIAL",
-        "requirement REQ-B92C79FEA294 is PARTIAL",
-        "requirement REQ-6B95E2497188 is PARTIAL",
-        "requirement REQ-99636C68BAEA is OPEN",
+        "requirement REQ-99636C68BAEA is PARTIAL",
         "requirement REQ-AA925E33A229 is PARTIAL",
         "requirement REQ-24575B1B523F is PARTIAL",
         "requirement REQ-23C689C1ACC7 is PARTIAL",
-        "requirement REQ-410EE0357FDC is PARTIAL",
         "requirement REQ-224-UWAC-01 is OPEN",
         "requirement REQ-224-UWAC-02 is OPEN",
         "requirement REQ-9032C703AC1E is OPEN",
@@ -103219,25 +103216,26 @@
       "deployment": "PASS",
       "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
       "disposition": "ACTIVE_CANONICAL",
-      "evidence_freshness": "STALE",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-25T13:18:43.973118Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Install unsigned review artifact 0.2.38 on the existing Windows local-runner while preserving its enrollment and workspace registry. Confirm the Admin lastSeenAt advances without pairing, run the configured Codex real-task probe, then continue SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE with the same identity/workspace and a real run-bound DevelopmentRun grant. Keep Mini-App work closed.",
+      "next_action": "Complete real protected Windows owner Start using exact remaining readiness and policy/budget prerequisites; retain public-browser PASS evidence and finish run-bound Gateway receipt coverage.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": {
         "class": "AUTHORITY",
         "classification": "TRUE_EXTERNAL",
         "evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-          "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json"
+          "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md"
         ],
         "evidence_freshness": "FRESH",
         "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-        "next_action": "Reconnect the existing local-runner on its Windows host, complete the Codex readiness probe until the current capability snapshot is fresh and ready, and register its actual owned workspace. Then an authenticated non-production tenant owner starts the isolated Core DevelopmentRun; use the existing admission endpoint only after real run/job/attempt and lease/fencing identities exist. Do not submit the stale draft.",
+        "next_action": "Windows Runner → Tools → Codex → ทดสอบสั่งงานจริง; publish/acknowledge real probe. Resolve workspace fingerprint/source and configure bounded development policy plus budget using existing authenticated owner/admin APIs, then use the same scoped owner Start. Do not reinstall without a demonstrated version defect.",
         "owner": "Registered Windows Runner owner and authenticated non-production tenant owner",
-        "reactivation_predicate": "A fresh Windows Runner capability snapshot and actual workspace binding are accepted; an authenticated non-production tenant owner starts a real run; the existing admission service commits the exact scoped grant for that run/job/source/workspace/lease/fencing/budget/expiry; protected dispatch emits durable tool and settlement receipts followed by independent Final Verify.",
-        "root_cause": "Current local evidence: registered Windows local-runner capability snapshot expired 2026-10-23T16:51:01Z; current Linux runner reports readyToolCount=0/11 and Codex probe_required. No authenticated tenant-bound non-production browser identity was available. No live run/job/attempt/lease binding exists from which the existing scoped grant service can issue a grant. The existing 2026-10-17 draft grant is DRAFT_NOT_SUBMITTABLE and is not authority."
+        "reactivation_predicate": "A current session-bound real Codex probe, source/workspace fingerprint, authorized development policy and funded/scoped economic hold are available; the real owner Start can then issue existing run-bound admission and dispatch without repeated stage approvals.",
+        "root_cause": "Fresh enrolled Windows Runner and authenticated Codex exist, but the real Codex task probe is NOT_RUN, workspace fingerprint is absent, and tenant-ZCSKEM9s has no active SPEC224 development policy or economic budget. No owner-authenticated live Start/run-bound dispatch/settlement evidence exists. Prior offline/expired-only diagnosis is superseded."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -104222,8 +104220,8 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 1280,
-        "pass": 3,
+        "open": 1277,
+        "pass": 6,
         "total": 1284
       },
       "revision": "24",

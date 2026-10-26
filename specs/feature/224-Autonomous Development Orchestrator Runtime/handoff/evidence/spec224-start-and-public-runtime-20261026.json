@@ -1,0 +1,110 @@
+{
+  "observedAt": "2026-10-26T00:47:06.705882+00:00",
+  "sourceSha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+  "environment": "smartaihub.app Linux runtime; authorized synthetic local-development DB fixtures",
+  "profile": "quick",
+  "focusedTests": {
+    "files": 7,
+    "passed": 176,
+    "log": "/tmp/spec224-start-final-focused.log"
+  },
+  "targetedRegressionTests": {
+    "files": 2,
+    "passed": 30,
+    "log": "/tmp/spec224-evidence-regression.log"
+  },
+  "browser": {
+    "stats": {
+      "startTime": "2026-10-26T00:45:47.273Z",
+      "duration": 15139.053,
+      "expected": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "publicAccess": {
+      "appId": "app_2fe4f61c82453860a2f00e4deb0c74ca",
+      "tenantId": "tenant-codex-2c02f187c3ed",
+      "fixture": "deterministic-access-only",
+      "sourceSha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+      "sourceDigest": "c1c0408d0667c4286c98da6c74007086b338501b17fa193a27a97601af9bf115",
+      "artifactDigest": "0f4feb099a74a0bcf3dfc7ae707ede3509128aeaf6d4cc4cb0cf8b8b5e64aedd",
+      "memberPrivateDenied": true,
+      "restrictedPrivateDenied": true,
+      "ownerPublish": 200,
+      "anonymousPublicRead": 200,
+      "anonymousMobileDocument": true,
+      "ownerUnpublish": 200,
+      "immediateAnonymousDenial": true
+    },
+    "gateway": {
+      "browserOrigin": "https://smartaihub.app",
+      "browserRoute": "/api/v1/chat/completions",
+      "gatewayRoute": "SmartAIHub Gateway",
+      "provider": "openrouter",
+      "model": "openai/gpt-4.1-mini",
+      "providerCostUsd": 1.28e-05,
+      "tokensUsed": 20,
+      "tenantId": "tenant-codex-2c02f187c3ed",
+      "outcome": "passed"
+    }
+  },
+  "deploymentReceipt": "/mnt/SmartSpecDev/.cache/codex/canonical-sources/.development-build-results/f29801373bfd4154c0d8/production-deployments/smartspec-web-ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec-6053b02fd315-119.json",
+  "deployment": {
+    "status": "DEPLOYED_VERIFIED",
+    "generation": 119,
+    "source_revision": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+    "frontend_source_revision": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+    "backend_source_revision": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+    "artifact_digest": "sha256:47847e792b26c3a1454c6b89f56cf5a84574fe87f81d838dce0ecb82a26f5350",
+    "release_id": "smartspec-web-ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec-6053b02fd315",
+    "release_path": "/home/dev/production-releases/smartspec-web-ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec-6053b02fd315-g119",
+    "runtime_verification": {
+      "anonymousDiagnosticsHttp": 403,
+      "healthHttp": 200,
+      "nodeRuntime": {
+        "executable": "/home/dev/.nvm/versions/node/v22.23.4/bin/node",
+        "version": "v22.23.4"
+      },
+      "nodeWorker": {
+        "nodeRuntime": {
+          "executable": "/home/dev/.nvm/versions/node/v22.23.4/bin/node",
+          "version": "v22.23.4"
+        },
+        "pid": 3718044,
+        "runtimeRevision": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "service": "smartspec-node-worker.service",
+        "workingDirectory": "/home/dev/production-releases/smartspec-web-ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec-6053b02fd315-g119"
+      },
+      "pid": 3715125,
+      "runtimeRevision": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+      "service": "smartspec-web.service",
+      "status": "HEALTHY",
+      "workingDirectory": "/home/dev/production-releases/smartspec-web-ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec-6053b02fd315-g119"
+    },
+    "deployed_at": "2026-10-26T00:45:09.226736+00:00"
+  },
+  "evidenceFiles": [
+    {
+      "path": "apps/web/test-results/smarthub-uat/3327a671-3bd9-4ec2-a9ff-9890fc0b02b7/playwright-evidence.json",
+      "sha256": "a6560f1a5d864810e214da21c02d249f8e274d03b538eeb1dd563cb3f4486353"
+    },
+    {
+      "path": "apps/web/test-results/smarthub-uat/3327a671-3bd9-4ec2-a9ff-9890fc0b02b7/uat-spec224-public-access--69d57-ublish-and-tenant-isolation-chromium/trace.zip",
+      "sha256": "3307d45580d1f2089a7d7efd4611dce5b888cc5d112e30e1d293dbaa73225d02"
+    },
+    {
+      "path": "apps/web/test-results/smarthub-uat/3327a671-3bd9-4ec2-a9ff-9890fc0b02b7/uat-gateway-integration-au-e5acc-cords-scoped-provider-usage-chromium/trace.zip",
+      "sha256": "66b6e0007de87664d43d3d8187b642ee2ddf3472d86fe810beb9aae1713c2bf6"
+    },
+    {
+      "path": "apps/web/test-results/smarthub-uat/3327a671-3bd9-4ec2-a9ff-9890fc0b02b7/uat-spec224-public-access--69d57-ublish-and-tenant-isolation-chromium/anonymous-published-mobile.png",
+      "sha256": "7590eba2b10bfa049674595b85755efa502ff2440f03a4234a714a8114bedf71"
+    }
+  ],
+  "limitations": [
+    "No real Windows Codex task, protected DevelopmentRun, restart recovery, settlement chain or independent live Final Verify was executed.",
+    "The successful Gateway browser request is not a run-bound Mini-App Skill Execution/worker_jobs receipt chain.",
+    "The existing Expense Tracker pilot and owner acceptance were not restarted or retrialed."
+  ]
+}

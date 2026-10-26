@@ -35,6 +35,13 @@
         "scope": "Current-SHA focused checks passed; Mini-App pilot remains closed. Core live DevelopmentRun, protected Windows Runner, Gateway receipt chain and uncovered Revision-24 public/tenant browser acceptance remain unverified.",
         "source_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "LIVE_BROWSER_AND_START_READINESS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "scope": "Generation 119, exact source; public document lifecycle and tenant isolation Chromium PASS, Gateway request/provider usage PASS, 176 focused tests plus 30 narrow regressions PASS. No live Windows run, run-bound receipt chain or independent live Final Verify.",
+        "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -920,26 +927,27 @@
       "classification": "TRUE_EXTERNAL",
       "evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-        "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json"
+        "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md"
       ],
       "evidence_freshness": "FRESH",
       "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-      "next_action": "Reconnect the existing local-runner on its Windows host, complete the Codex readiness probe until the current capability snapshot is fresh and ready, and register its actual owned workspace. Then an authenticated non-production tenant owner starts the isolated Core DevelopmentRun; use the existing admission endpoint only after real run/job/attempt and lease/fencing identities exist. Do not submit the stale draft.",
+      "next_action": "Windows Runner → Tools → Codex → ทดสอบสั่งงานจริง; publish/acknowledge real probe. Resolve workspace fingerprint/source and configure bounded development policy plus budget using existing authenticated owner/admin APIs, then use the same scoped owner Start. Do not reinstall without a demonstrated version defect.",
       "owner": "Registered Windows Runner owner and authenticated non-production tenant owner",
-      "reactivation_predicate": "A fresh Windows Runner capability snapshot and actual workspace binding are accepted; an authenticated non-production tenant owner starts a real run; the existing admission service commits the exact scoped grant for that run/job/source/workspace/lease/fencing/budget/expiry; protected dispatch emits durable tool and settlement receipts followed by independent Final Verify.",
-      "root_cause": "Current local evidence: registered Windows local-runner capability snapshot expired 2026-10-23T16:51:01Z; current Linux runner reports readyToolCount=0/11 and Codex probe_required. No authenticated tenant-bound non-production browser identity was available. No live run/job/attempt/lease binding exists from which the existing scoped grant service can issue a grant. The existing 2026-10-17 draft grant is DRAFT_NOT_SUBMITTABLE and is not authority."
+      "reactivation_predicate": "A current session-bound real Codex probe, source/workspace fingerprint, authorized development policy and funded/scoped economic hold are available; the real owner Start can then issue existing run-bound admission and dispatch without repeated stage approvals.",
+      "root_cause": "Fresh enrolled Windows Runner and authenticated Codex exist, but the real Codex task probe is NOT_RUN, workspace fingerprint is absent, and tenant-ZCSKEM9s has no active SPEC224 development policy or economic budget. No owner-authenticated live Start/run-bound dispatch/settlement evidence exists. Prior offline/expired-only diagnosis is superseded."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+    "expected_canonical_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "On the already-enrolled Windows local-runner, install unsigned review artifact 0.2.39 from workflow 40226692138 while preserving enrollment/workspace; run the real Codex task probe, then start one authenticated reversible non-production Core DevelopmentRun from SmartAIHub Chat against the existing workspace. Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE from the real run-bound grant and fresh workspace fingerprint. Keep closed Mini-App work closed.",
+    "next_action": "Keep closed Mini-App V1/V2 untouched. Run the real Codex task probe in the already-installed Windows Runner; reconcile the actual workspace fingerprint/source and configure the existing scoped policy/budget under real owner/admin authentication. Continue one owner Start through protected dispatch, recovery, settlement and independent Final Verify. Rev24 public browser access is now verified; only complete run-bound Gateway receipt coverage remains.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "Resume live protected execution when the existing Windows local-runner has installed 0.2.39, published a fresh authenticated Codex task-probe result and current-source workspace fingerprint, and an authenticated non-production owner starts the DevelopmentRun so existing admission can bind actual run/job/attempt/lease/fence/source/budget identities. Continue Rev24 public lifecycle only with legitimate disposable owner and second-user identities.",
-    "resume_point": "Current integrated source 6e0942a4d644247ab2b9d5649682e0a0eca967ab fixes large clean Git workspaces receiving no content fingerprint. Rust workspace module tests passed 10/10; Mini-App access/runtime focused tests passed 29/29. Windows review workflow 40226692138 succeeded at exact SHA and installer 0.2.39 SHA-256 dad002cfbe1b55a3596f3f0581f1f29f2f53967731ba2a4953e21b59744566a8 verified. Read-only Windows registration is online and fresh; Codex authenticated but taskProbeState=not_run, all 11 capabilities pending, no runner execution session or live run. Full checkpoint: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-runner-review-build-checkpoint-20261026.md.",
-    "waiting_predicate": "Only the existing Windows UI action (install 0.2.39 and run the authenticated Codex real-task probe), followed by an authenticated owner Start in SmartAIHub Chat, is needed to create fresh task authority and a real run for protected dispatch. Do not synthesize capability grants. Rev24 public publish/read/unpublish and same-/cross-tenant browser verification still require an isolated disposable application and legitimate owner/second-user sessions. Independent code fixes and focused tests may continue without reopening Mini-App pilot work."
+    "reactivation_predicate": "Fresh acknowledged Codex task probe and workspace fingerprint plus legitimate policy/budget allow the existing authenticated owner Start to advance. No additional per-stage owner confirmations.",
+    "resume_point": "Integrated and deployed ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec, generation 119. Quick tests 176/176 plus 30/30 narrow regressions; Chromium public lifecycle/isolation and real Gateway usage 2/2 PASS. Preserve immutable build and pilot. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md.",
+    "waiting_predicate": "Real Windows task probe is NOT_RUN, workspace fingerprint is missing, and this tenant has no configured SPEC224 policy/budget. These exact prerequisites remain; staging identities and broad tool readiness are not prerequisites for unrelated hosted Mini-App use."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -958,7 +966,7 @@
         "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
       }
     ],
-    "next_action": "On the already-enrolled Windows local-runner, install unsigned review artifact 0.2.39 from workflow 40226692138 while preserving enrollment/workspace; run the authenticated Codex real-task probe, then start one reversible non-production Core DevelopmentRun in SmartAIHub Chat against the existing workspace. Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE from the real run-bound grant and fresh workspace fingerprint. Keep closed Mini-App work closed.",
+    "next_action": "Complete real protected Windows owner Start using exact remaining readiness and policy/budget prerequisites; retain public-browser PASS evidence and finish run-bound Gateway receipt coverage.",
     "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -983,7 +991,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:498974bd106f206294774f927584a83b3b1f7599958813dc3b58bb0d652985f8",
+    "artifact_digest": "sha256:47847e792b26c3a1454c6b89f56cf5a84574fe87f81d838dce0ecb82a26f5350",
     "environment": "production_linux_systemd",
     "evidence": [
       {
@@ -992,10 +1000,17 @@
         "scope": "Existing sudo-gated Linux full-stack release promoted exact source SHA d8d1bfe8606fb063f4829c6291a797fcb9757038. Active runtime symlink and release manifest bind canonical artifact sha256:498974bd106f206294774f927584a83b3b1f7599958813dc3b58bb0d652985f8 and release digest sha256:069b233fc7401255227bdd4fac8813e1ec9d7c94a757394f16f9938c79238638. smartspec-web.service was active/running; public HTTPS /api/health and / both returned 200. This is deployment health evidence, not SPEC-224 acceptance.",
         "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_119",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json",
+        "scope": "Exact immutable frontend/backend artifact promoted; web and node worker revision verified; public HTTPS health 200. Separate from protected Runner acceptance.",
+        "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "status": "PASS"
       }
     ],
     "required": false,
-    "source_sha": "d8d1bfe8606fb063f4829c6291a797fcb9757038",
+    "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
     "status": "PASS"
   },
   "disposition": {
@@ -1009,7 +1024,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 173,
+  "generation": 175,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1211,11 +1226,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+    "canonical_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
     "integrated": true,
-    "integrated_at": "2026-10-25T17:13:00Z",
+    "integrated_at": "2026-10-26T00:48:16.962216+00:00",
     "pull_request": null,
-    "source_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf"
+    "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2117,7 +2132,7 @@
           "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
         }
       ],
-      "next_action": "On the already-enrolled Windows local-runner, install unsigned review artifact 0.2.39 from workflow 40226692138 while preserving enrollment/workspace; run the authenticated Codex real-task probe, then start one reversible non-production Core DevelopmentRun in SmartAIHub Chat against the existing workspace. Resume SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE from the real run-bound grant and fresh workspace fingerprint. Keep closed Mini-App work closed.",
+      "next_action": "Complete real protected Windows owner Start using exact remaining readiness and policy/budget prerequisites; retain public-browser PASS evidence and finish run-bound Gateway receipt coverage.",
       "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -2451,7 +2466,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+        "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/personalMiniAppPreview.ts",
@@ -2466,9 +2481,11 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
         ],
-        "verification_method": "Existing pilot receipts and pre-promotion failure regression evidence; relevant delivery/runtime files are unchanged from verified source SHA f80ca9721e7631c0d257e2bda87c08bd71a8fc85 to audited source SHA."
+        "verification_method": "Current-source personalMiniAppPreview.test.ts injects a failure before promotion and preserves V1; private full-document routing tests pass. Existing V1/V2 owner receipts are retained without a new live pilot run."
       },
       "REQ-3917D7A777B0": {
         "applicability": "APPLICABLE",
@@ -2479,7 +2496,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+        "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
         "final_state": "PASS",
         "implementation_evidence": [
           "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
@@ -2493,9 +2510,11 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
         ],
-        "verification_method": "Focused disposable-PostgreSQL integration asserts Final Verify is refused when required workspace receipts are absent."
+        "verification_method": "Current-source spec224FinalVerify.test.ts passes negative cases refusing closure when required evidence is missing. Previous disposable PostgreSQL receipt remains historical; no PostgreSQL acceptance was repeated."
       },
       "REQ-40DB4E03A676": {
         "applicability": "APPLICABLE",
@@ -2529,23 +2548,25 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-        "final_state": "PARTIAL",
+        "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "final_state": "PASS",
         "implementation_evidence": [
-          "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
-          "apps/web/server/routes/miniAppRuntime.test.ts"
+          "apps/web/server/routes/miniAppRuntime.ts",
+          "apps/web/server/routers/appIdentity.ts"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Run the mobile owner/public/unpublish/same-tenant/cross-tenant matrix using authorized disposable principals on an isolated target.",
+        "implementation_status": "COMPLETE",
+        "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
         "requirement_digest": "a0d1efc9ffa47b8be5aaec0427b977522a55ece9bcb4c54128eb9ccd2e7ed78c",
         "requirement_id": "REQ-410EE0357FDC",
         "requirement_text": "- [ ] Mobile internet access, authenticated owner access, public publish/unpublish, and tenant/user isolation pass against authorized synthetic test principals.",
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json",
+          "apps/web/tests/e2e/uat/spec224-public-access.spec.ts"
         ],
-        "verification_method": "Private owner and isolation policy contract tests pass; complete deployed mobile, public and tenant matrix was not run."
+        "verification_method": "Chromium on smartaihub.app generation 119 with authorized disposable synthetic owner/member/cross-tenant fixtures: private resolver denial, owner publication, anonymous sandboxed top-level mobile document, owner unpublish and immediate anonymous API/document denial; owner private workspace remains accessible. Fixture app and artifacts cleaned up."
       },
       "REQ-69164877E868": {
         "applicability": "APPLICABLE",
@@ -2582,23 +2603,25 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-        "final_state": "PARTIAL",
+        "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "final_state": "PASS",
         "implementation_evidence": [
-          "apps/web/server/routers/appIdentity.test.ts",
-          "apps/web/server/routes/miniAppRuntime.test.ts"
+          "apps/web/server/routes/miniAppRuntime.ts",
+          "apps/web/server/routers/appIdentity.ts"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Run publish, anonymous read, owner unpublish and immediate anonymous denial with disposable tenant-bound identities on an isolated target.",
+        "implementation_status": "COMPLETE",
+        "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
         "requirement_digest": "0e20fb1e77641366e6d0e720ff7a39ae2c4fd4cbd0bafa5a365c45005ae613a3",
         "requirement_id": "REQ-6B95E2497188",
         "requirement_text": "- [ ] Anonymous access to an explicitly published app passes, and owner unpublish immediately denies anonymous access.",
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json",
+          "apps/web/tests/e2e/uat/spec224-public-access.spec.ts"
         ],
-        "verification_method": "Current-SHA unit/router tests cover access policy and owner-only publish/unpublish controls; no durable anonymous read → owner unpublish → immediate denial sequence was run."
+        "verification_method": "Chromium on smartaihub.app generation 119 with authorized disposable synthetic owner/member/cross-tenant fixtures: private resolver denial, owner publication, anonymous sandboxed top-level mobile document, owner unpublish and immediate anonymous API/document denial; owner private workspace remains accessible. Fixture app and artifacts cleaned up."
       },
       "REQ-76F291D4743E": {
         "applicability": "APPLICABLE",
@@ -2833,22 +2856,24 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-        "final_state": "OPEN",
+        "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "final_state": "PARTIAL",
         "implementation_evidence": [
           "apps/web/server/services/miniAppFactoryRuntime.ts"
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Exercise an authorized Gateway-only model call and retain complete run-bound usage/credit/budget/trace receipts plus fallback-exclusion evidence.",
+        "next_action": "Complete and verify the remaining run-bound Skill Execution/Gateway usage, credit, budget, trace and settlement receipts; do not repeat closed Mini-App owner trials.",
         "requirement_digest": "409bc6bbbcb80f2fcd6fe49fb6d73443cfaf02d163e1f7866f0b2aaa655bed85",
         "requirement_id": "REQ-99636C68BAEA",
         "requirement_text": "- [ ] Every model call in the Mini-App workflow has a Skill Execution → SmartAIHub Gateway usage/credit/budget/trace receipt; tests prove the Codex Subscription, direct-provider, and API-key fallback paths are not invoked.",
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
         ],
-        "verification_method": "No live model/Gateway call or run-bound usage, credit, budget and trace receipt was produced in this audit."
+        "verification_method": "Real authenticated Chromium Gateway request and provider/cost/token usage passed. This request does not prove the full Mini-App Skill Execution/DevelopmentRun/job-bound budget/credit/trace chain or all fallback exclusions."
       },
       "REQ-A30D460A0255": {
         "applicability": "APPLICABLE",
@@ -2925,24 +2950,25 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
-        "final_state": "PARTIAL",
+        "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "final_state": "PASS",
         "implementation_evidence": [
-          "apps/web/server/services/__tests__/appIdentityRepository.test.ts",
-          "apps/web/server/routers/appIdentity.test.ts",
-          "apps/web/server/routes/miniAppRuntime.test.ts"
+          "apps/web/server/routes/miniAppRuntime.ts",
+          "apps/web/server/routers/appIdentity.ts"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Run the deployed owner/same-tenant/cross-tenant/anonymous matrix against an authorized isolated app and retain identity-bound denial receipts.",
+        "implementation_status": "COMPLETE",
+        "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
         "requirement_digest": "0abcede85de1df372242e86b1cc3755da8be4ac73fe4c58fad76579874b4224f",
         "requirement_id": "REQ-B92C79FEA294",
         "requirement_text": "- [ ] Private owner access passes; same-tenant other-user, cross-tenant, and anonymous access are denied before any private app bytes or data are returned.",
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json",
+          "apps/web/tests/e2e/uat/spec224-public-access.spec.ts"
         ],
-        "verification_method": "Current-SHA resolver/router tests cover owner access and same-tenant, cross-tenant, and anonymous denial before bytes; no deployed runtime principal-matrix receipt is retained."
+        "verification_method": "Chromium on smartaihub.app generation 119 with authorized disposable synthetic owner/member/cross-tenant fixtures: private resolver denial, owner publication, anonymous sandboxed top-level mobile document, owner unpublish and immediate anonymous API/document denial; owner private workspace remains accessible. Fixture app and artifacts cleaned up."
       },
       "REQ-B95023F859E5": {
         "applicability": "APPLICABLE",
@@ -3231,7 +3257,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+        "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
         "final_state": "PASS",
         "implementation_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
@@ -3246,9 +3272,11 @@
         "successor_mapping": [],
         "verification_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.json"
         ],
-        "verification_method": "Evidence review keeps Functional Mini-App, normative SPEC and protected Runner acceptance distinct."
+        "verification_method": "Current structured receipt and evidence report explicitly separate closed pilot, live public/Gateway checks, scoped unit checks, and absent protected Runner/Final Verify evidence."
       },
       "REQ-F75D55112EB8": {
         "applicability": "APPLICABLE",
@@ -3589,12 +3617,12 @@
     "blocked_true_external": 1,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 3,
+    "pass": 6,
     "total": 1284,
-    "unresolved": 1280
+    "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-25T19:50:57.770188Z",
+  "updated_at": "2026-10-26T00:48:16.996071Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -3925,13 +3953,20 @@
         "scope": "Current main 6e0942a4d644247ab2b9d5649682e0a0eca967ab: large clean Windows workspace fingerprint fix integrated; Runner 0.2.39 unsigned review installer built and checksum-verified. Current registered Windows runner is online with authenticated Codex but taskProbeState=not_run, all capability policies pending, no execution session or DevelopmentRun. Focused workspace tests 10/10 and Mini-App access/runtime tests 29/29 pass; no live Runner dispatch/settlement/Final Verify or Rev24 public browser run is claimed.",
         "source_sha": "6e0942a4d644247ab2b9d5649682e0a0eca967ab",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "LIVE_BROWSER_AND_START_READINESS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
+        "scope": "Generation 119, exact source; public document lifecycle and tenant isolation Chromium PASS, Gateway request/provider usage PASS, 176 focused tests plus 30 narrow regressions PASS. No live Windows run, run-bound receipt chain or independent live Final Verify.",
+        "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+        "status": "PARTIAL"
       }
     ],
-    "freshness": "STALE",
+    "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "bc2950f0a84404e8b8074523251fb5abc373c6cf",
+    "sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
     "status": "PARTIAL",
     "task_regressions": []
   }
