@@ -394,12 +394,12 @@ export function DesktopHostSettingsPanel(props: {
 
       <DesktopRunBadgeRow labels={runLabels} />
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 2xl:grid-cols-2">
         <DesktopHostBootstrapCard steps={bootstrapSteps} />
         <DesktopHostRolloutGatePanel gates={rolloutGates} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid gap-4 2xl:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <header className="mb-3">
             <h3 className="text-sm font-semibold text-slate-900">

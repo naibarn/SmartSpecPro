@@ -10,7 +10,7 @@
 
 body {
   margin: 0;
-  min-width: 45rem;
+  min-width: 0;
   min-height: 100vh;
   background: radial-gradient(ellipse at 10% 0%, lavender 0%, transparent 36rem), var(--color-background-canvas, aliceblue);
 }
@@ -23,7 +23,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 }
 
 .shell {
-  width: min(100% - 3rem, 76rem);
+  width: min(100% - 2rem, 96rem);
   margin-inline: auto;
   padding-block: 2rem 3rem;
   display: grid;
@@ -37,7 +37,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   gap: 1rem;
 }
 
-.topbar { padding: 0.75rem 0.25rem 1rem; }
+.topbar { flex-wrap: wrap; padding: 0.75rem 0.25rem 1rem; }
 .brand, .section-heading > section, .workspace-name { min-width: 0; }
 h1, h2, p { margin: 0; }
 h1 { font-size: 1.85rem; letter-spacing: -0.035em; }
@@ -95,14 +95,14 @@ h2 { font-size: 1.2rem; }
 .workspace-row { align-items: flex-start; }
 .workspace-name { font-weight: 700; }
 .path { display: block; overflow-wrap: anywhere; margin-top: 0.25rem; color: var(--color-text-secondary, slategray); font-size: 0.86rem; }
-.tool-row { display: grid; grid-template-columns: minmax(8rem, 0.7fr) minmax(14rem, 1.8fr) auto auto; align-items: center; gap: 0.7rem; }
+.tool-row { display: grid; grid-template-columns: minmax(9rem, 0.7fr) minmax(0, 1.8fr) auto auto; align-items: center; gap: 0.7rem; }
 .tool-actions { justify-self: end; }
 .debug-export { margin-top: 1rem; border-top: 1px solid var(--color-border, #d7dde4); padding-top: 0.8rem; }
 .debug-actions { display: flex; flex-wrap: wrap; gap: 0.55rem; margin-top: 0.7rem; }
 .debug-path { display: block; margin-top: 0.55rem; color: var(--color-text-secondary, slategray); font-size: 0.82rem; overflow-wrap: anywhere; }
 .verify-tool { min-height: 2.25rem; padding: 0.4rem 0.7rem; }
 .tool-title { font-weight: 700; }
-.tool-detail { color: var(--color-text-secondary, slategray); }
+.tool-detail { min-width: 0; color: var(--color-text-secondary, slategray); overflow-wrap: anywhere; }
 .tool-task-response { grid-column: 1 / -1; padding: 0.65rem 0.8rem; border-radius: 0.6rem; background: white; overflow-wrap: anywhere; white-space: pre-wrap; }
 .tool-status { justify-self: end; border-radius: 999rem; padding: 0.25rem 0.6rem; color: darkslategray; background: gainsboro; white-space: nowrap; }
 .tool-status.good { color: darkgreen; background: honeydew; }
@@ -114,14 +114,33 @@ h2 { font-size: 1.2rem; }
 .empty { color: var(--color-text-secondary, slategray); padding: 0.75rem; }
 
 @media (max-width: 58rem) {
-  body { min-width: 0; }
-  .shell { width: min(100% - 1.25rem, 76rem); padding-block: 1rem 2rem; }
-  .topbar, .settings, .app-meta { align-items: flex-start; grid-template-columns: 1fr; }
-  .tool-row { grid-template-columns: 1fr auto auto; }
+  .shell { width: min(100% - 1.25rem, 96rem); padding-block: 1rem 2rem; }
+  .topbar { align-items: flex-start; flex-direction: column; }
+  .settings, .app-meta { align-items: flex-start; grid-template-columns: 1fr; }
+  .tool-row { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
   .tool-title { grid-column: 1; grid-row: 1; }
   .tool-detail { grid-column: 1 / -1; grid-row: 2; }
-  .tool-actions { grid-column: 2; grid-row: 1; }
-  .tool-status { grid-column: 3; grid-row: 1; }
+  .tool-actions { grid-column: 1 / -1; grid-row: 3; justify-self: start; }
+  .tool-status { grid-column: 2; grid-row: 1; }
+}
+
+@media (max-width: 36rem) {
+  .shell { width: min(100% - 1rem, 96rem); gap: 0.75rem; }
+  .panel { border-radius: 1rem; padding: 1rem; }
+  h1 { font-size: 1.55rem; }
+  .section-heading { align-items: flex-start; flex-direction: column; }
+  .button-row { align-items: stretch; flex-direction: column; }
+  .button-row .button { width: 100%; }
+  .toggle-row { white-space: normal; }
+  .tool-row { grid-template-columns: minmax(0, 1fr); }
+  .tool-title, .tool-detail, .tool-actions, .tool-status { grid-column: 1; }
+  .tool-title { grid-row: 1; }
+  .tool-status { grid-row: 2; justify-self: start; }
+  .tool-detail { grid-row: 3; }
+  .tool-actions { grid-row: 4; justify-self: stretch; }
+  .tool-actions .button { width: 100%; }
+  .debug-actions { flex-direction: column; }
+  .debug-actions .button { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

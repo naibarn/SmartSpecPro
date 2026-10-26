@@ -302,10 +302,10 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
             {localRunner ? `${localRunner.displayName} · ${currentVersion ?? t("dashboard:runnerReleases.versionUnknown")}` : t("dashboard:runnerReleases.notConnected")}
           </Badge>
         </div>
-        <div className="mt-3 grid gap-1 text-xs text-slate-600 sm:grid-cols-3">
-          <span>{t("dashboard:runnerReleases.currentVersion", { version: currentVersion ?? t("dashboard:runnerReleases.versionUnknown") })}</span>
-          <span>{t("dashboard:runnerReleases.latestVersion", { version: preferredLatest ?? t("dashboard:runnerReleases.versionUnknown") })}</span>
-          <span>{checkedAt ? t("dashboard:runnerReleases.lastChecked", { time: new Date(checkedAt).toLocaleString() }) : t("dashboard:runnerReleases.notChecked")}</span>
+        <div className="mt-3 grid gap-1 text-xs text-slate-600 2xl:grid-cols-3">
+          <span className="break-words">{t("dashboard:runnerReleases.currentVersion", { version: currentVersion ?? t("dashboard:runnerReleases.versionUnknown") })}</span>
+          <span className="break-words">{t("dashboard:runnerReleases.latestVersion", { version: preferredLatest ?? t("dashboard:runnerReleases.versionUnknown") })}</span>
+          <span className="break-words">{checkedAt ? t("dashboard:runnerReleases.lastChecked", { time: new Date(checkedAt).toLocaleString() }) : t("dashboard:runnerReleases.notChecked")}</span>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {preferredTarget?.package ? (
@@ -346,7 +346,7 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
         {!localRunner && <p className="mt-3 text-sm text-slate-600">{t("dashboard:runnerReleases.connectFirst")}</p>}
       </article>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label={t("dashboard:runnerReleases.availablePlatforms")}>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 2xl:grid-cols-4" aria-label={t("dashboard:runnerReleases.availablePlatforms")}>
         {targets.map(target => {
           const asset: RunnerReleaseAsset | null = target.package;
           return (
@@ -363,15 +363,15 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
         {latestRunners.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500">{t("dashboard:runnerReleases.noConnectedRunners")}</p>
         ) : (
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
+          <div className="mt-3 grid gap-3 2xl:grid-cols-2">
             {runnerGroups.map(([runner, ...previousRegistrations]) => (
               <article key={runner.runnerId} className="rounded-lg border border-slate-200 bg-white p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-slate-900">{runner.displayName}</p>
-                    <p className="text-xs text-slate-500">{runner.profile} · {runner.runnerVersion ?? t("dashboard:runnerReleases.versionUnknown")}</p>
+                    <p className="break-words text-xs text-slate-500">{runner.profile} · {runner.runnerVersion ?? t("dashboard:runnerReleases.versionUnknown")}</p>
                   </div>
-                  <Badge variant="outline">{runnerStatusLabel(runner.status, runner.trustState, t)}</Badge>
+                  <Badge variant="outline" className="shrink-0">{runnerStatusLabel(runner.status, runner.trustState, t)}</Badge>
                 </div>
                 <p className="mt-2 text-xs text-slate-500">
                   {t("dashboard:runnerReleases.toolReadiness", { ready: runner.readyToolCount, total: runner.toolCount })} · {t("dashboard:runnerReleases.capabilityReadiness", { ready: runner.readyCapabilityCount, total: runner.capabilityCount })}
@@ -410,12 +410,12 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
                               ? tool.availabilityState
                               : tool.trustState;
                         return (
-                          <li key={tool.toolId} className="flex items-start justify-between gap-3 text-xs">
-                            <span className="min-w-0 text-slate-700">
+                          <li key={tool.toolId} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 text-xs">
+                            <span className="min-w-0 break-words text-slate-700">
                               <span className="block">{tool.displayName}{tool.version ? ` · ${tool.version}` : ""}</span>
-                              {tool.reasonCodes.length > 0 && <span className="mt-0.5 block text-[11px] text-slate-500">{tool.reasonCodes.join(", ")}</span>}
+                              {tool.reasonCodes.length > 0 && <span className="mt-0.5 block break-words text-[11px] text-slate-500">{tool.reasonCodes.join(", ")}</span>}
                             </span>
-                            <span className={ready ? "shrink-0 text-emerald-700" : "shrink-0 text-amber-700"}>
+                            <span className={ready ? "shrink-0 text-right text-emerald-700" : "shrink-0 text-right text-amber-700"}>
                               {t(`dashboard:runnerReleases.toolStatus.${toolStatus}`)}
                             </span>
                           </li>

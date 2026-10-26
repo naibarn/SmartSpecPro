@@ -544,26 +544,26 @@ function renderTools(tools, status = latestRunnerStatus) {
       && tool.trust_state === "ready" && versionPassed && authenticated && taskPassed,
     );
     const publicationText = capabilityFresh
-      ? "Capability ได้รับการยืนยันแล้ว"
+      ? "ระบบยืนยันข้อมูลความพร้อมแล้ว"
       : status?.readiness?.capabilityPublicationState === "pending"
-        ? "กำลังส่ง Capability"
-        : "Capability ยังไม่ยืนยัน";
+        ? "กำลังส่งข้อมูลความพร้อมให้ระบบ"
+        : "ระบบยังไม่ยืนยันข้อมูลความพร้อม";
     const taskText = taskPassed
-      ? "งานทดสอบจริงผ่าน"
+      ? "ทดสอบส่งงานจริงผ่าน"
       : taskFailed
-        ? "งานทดสอบจริงไม่ผ่าน"
+        ? "ทดสอบส่งงานจริงไม่ผ่าน"
         : taskState === "unsupported" || !runsTaskProbe
-          ? "ยังไม่มี task probe ที่รองรับ"
+          ? "ยังไม่มีวิธีทดสอบงานจริงสำหรับเครื่องมือนี้"
           : taskState === "passed"
-            ? "ผล task probe หมดอายุ"
+            ? "ผลทดสอบหมดอายุ ต้องทดสอบใหม่"
             : "ยังไม่ได้ทดสอบงานจริง";
     const reason = taskCheck?.reasonCode ? readableReason[taskCheck.reasonCode] : "";
     detail.textContent = !isFound
       ? tool.reason_codes?.map(code => readableReason[code]).filter(Boolean).join(" · ") || "ไม่พบโปรแกรมในเครื่องนี้"
       : [
         "พบโปรแกรมแล้ว",
-        versionPassed ? `version probe ผ่าน${tool.version ? ` (${tool.version})` : ""}` : tool.version_probe_state === "failed" ? "version probe ไม่ผ่าน" : "ยังไม่ตรวจ version",
-        authenticated ? "ยืนยันสถานะบัญชีแล้ว" : tool.auth_state === "required" ? "ต้องเข้าสู่ระบบใน CLI" : "ยังไม่ยืนยันบัญชี",
+        versionPassed ? `ตรวจเวอร์ชันผ่าน${tool.version ? ` (${tool.version})` : ""}` : tool.version_probe_state === "failed" ? "ตรวจเวอร์ชันไม่ผ่าน" : "ยังไม่ได้ตรวจเวอร์ชัน",
+        authenticated ? "ยืนยันบัญชีแล้ว" : tool.auth_state === "required" ? "ต้องเข้าสู่ระบบใน CLI" : "ยังไม่ยืนยันบัญชี",
         taskText,
         publicationText,
       ].filter(Boolean).join(" · ");
@@ -572,13 +572,13 @@ function renderTools(tools, status = latestRunnerStatus) {
     const state = document.createElement("output");
     state.className = `tool-status ${executionReady ? "good" : taskFailed || tool.trust_state === "degraded" ? "bad" : "warn"}`;
     state.textContent = executionReady
-      ? "พร้อมรับ Control Plane-authorized work"
+      ? "พร้อมรับงานที่ระบบอนุญาต"
       : !isFound
         ? "ไม่พบ"
         : taskFailed || tool.trust_state === "degraded"
           ? "พบข้อผิดพลาด"
           : taskPassed && capabilityFresh && status?.controlPlaneConnected && status?.running
-            ? "ผลทดสอบผ่าน · พร้อมรออนุญาตงาน"
+            ? "ทดสอบผ่าน · รอระบบอนุญาตงาน"
             : "ยังไม่พร้อมรับงานที่อนุญาต";
 
     const actions = document.createElement("section");
