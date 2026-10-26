@@ -89,6 +89,8 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     expect(jobs).toHaveLength(2); expect(jobs.every((j: any) => j.requestedByUserId === 17)).toBe(true);
     expect(await client`SELECT id FROM worker_job_outbox WHERE "workerJobId" IN ${client(ids)}`).toHaveLength(2);
     expect(result?.published).toBe(false); expect(result?.trafficMutation).toBe(false);
+    expect(await service.readHttpImagePairSubmission(db, scope)).toEqual(result);
+    await expect(service.readHttpImagePairSubmission(db, { ...scope, actorUserId: 18 })).rejects.toThrow("OWNER_SCOPE_DENIED");
   });
   it("recovers only the admitted same-grant prebuild failure through real job/outbox persistence", async () => {
     const { createJobControlPlane } = await import("./jobControlPlane");

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -22,8 +22,15 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
   const inFlight = useRef(false);
   const preflight = trpc.infrastructure.getCloudflareHttpImagePairPreflight.useQuery(scope, { staleTime: 30_000, retry: false });
   const status = trpc.infrastructure.getCloudflareHttpImagePairSubmission.useQuery({ ...scope,
-    submissionId: submission?.id ?? "00000000-0000-4000-8000-000000000000" },
-  { enabled: Boolean(submission), refetchInterval: submission ? 5000 : false, retry: false });
+    ...(submission ? { submissionId: submission.id } : {}) },
+  { refetchInterval: 5000, retry: false });
+  useEffect(() => {
+    if (!submission && status.data?.submissionId && status.data.planDigest) {
+      const retained = { id: status.data.submissionId, digest: status.data.planDigest };
+      setSubmission(retained);
+      try { sessionStorage.setItem(key, JSON.stringify(retained)); } catch { /* Canonical registry remains authoritative. */ }
+    }
+  }, [submission, status.data]);
   const queue = trpc.infrastructure.queueCloudflareHttpImagePair.useMutation({ onSettled: () => { void status.refetch(); } });
   const jobs = status.data?.jobs ?? [];
   const admitted = jobs.length === 2 && jobs.every(job => job.status !== "NOT_ADMITTED");
@@ -48,10 +55,10 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
     <Heading level={3}>{text("Publish Node and Python applications", "เผยแพร่แอป Node และ Python")}</Heading>
     <Text>{text("Publish two immutable images from one verified source. Production traffic continues through the accepted Linux bridge until runtime acceptance.",
       "เผยแพร่ image สองตัวจาก source ที่ตรวจสอบแล้วชุดเดียวกัน ระหว่างทดสอบ runtime ระบบจริงยังใช้ทางเข้า Linux ที่ผ่านการตรวจรับแล้ว")}</Text>
-    {preflight.data?.ready ? <Text>{text("Source", "Source")}: <code>{preflight.data.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{preflight.data.accountRef}</code></Text>
+    {preflight.data?.ready ? <Text>{text("Source", "Source")}: <code>{status.data?.sourceSha ?? preflight.data.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{preflight.data.accountRef}</code></Text>
       : <Text role="status">{preflight.isLoading ? text("Checking image publication readiness…", "กำลังตรวจความพร้อมเผยแพร่ image…")
         : preflight.data?.reason ?? preflight.error?.message ?? "HTTP_IMAGE_PREFLIGHT_UNAVAILABLE"}</Text>}
-    {!hideAction ? <Button type="button" disabled={!preflight.data?.ready || queue.isPending || admitted} onClick={() => void submit()}>
+    {!hideAction ? <Button type="button" disabled={!preflight.data?.ready || status.isLoading || Boolean(status.error) || queue.isPending || admitted} onClick={() => void submit()}>
       {queue.isPending ? text("Submitting the paired publication…", "กำลังส่งงานเผยแพร่ทั้งคู่…")
         : admitted ? text("Publication jobs accepted", "รับงานเผยแพร่ทั้งคู่แล้ว")
           : submission ? text("Reconcile and continue the same publication", "ตรวจและดำเนินงานเผยแพร่เดิมต่อ")

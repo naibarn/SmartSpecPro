@@ -40,6 +40,16 @@ describe("image publication Owner action", () => {
     expect(screen.getByText(/Both registry receipts verified/)).toBeInTheDocument();
     expect(screen.getAllByText(/registry.cloudflare.com\/fixture/)).toHaveLength(2);
   });
+  it("discovers a published canonical pair without browser storage and shows its approved source", async () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    state.status = { submissionId: id, planDigest: "e".repeat(64), sourceSha: "d".repeat(40), published: true, diagnostics: [],
+      jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime, status: "succeeded", registryVerified: true, image: "registry-receipt" })) };
+    render(<CloudflareImagePublication {...props} />);
+    await waitFor(() => expect(JSON.parse(sessionStorage.getItem(`smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`)!)).toEqual({ id, digest: "e".repeat(64) }));
+    expect(screen.getByText("d".repeat(40))).toBeInTheDocument();
+    expect(screen.queryByText("a".repeat(40))).not.toBeInTheDocument();
+    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+  });
   it("shows missing purpose credential and exact admission error", () => {
     state.ready = false; state.error = { message: "HTTP_IMAGE_APPROVAL_HTTP_403" };
     render(<CloudflareImagePublication {...props} />);

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -25,19 +25,26 @@ export function CloudflareMigrationPreparation({ tenantId, projectId, jobId, dat
   const database = trpc.infrastructure.getCloudflareProductionTenantIsolationPreflight.useQuery(databaseScope, { enabled: !databaseAccepted, retry: false, staleTime: 30_000 });
   const images = trpc.infrastructure.getCloudflareHttpImagePairPreflight.useQuery(scope, { retry: false, staleTime: 30_000 });
   const status = trpc.infrastructure.getCloudflareHttpImagePairSubmission.useQuery({ ...scope,
-    submissionId: submission?.id ?? "00000000-0000-4000-8000-000000000000" }, { enabled: Boolean(submission), refetchInterval: submission ? 5000 : false });
+    ...(submission ? { submissionId: submission.id } : {}) }, { refetchInterval: 5000, retry: false });
+  useEffect(() => {
+    if (!submission && status.data?.submissionId && status.data.planDigest) {
+      const retained = { id: status.data.submissionId, digest: status.data.planDigest };
+      setSubmission(retained);
+      try { sessionStorage.setItem(storageKey, JSON.stringify(retained)); } catch { /* Canonical registry remains authoritative. */ }
+    }
+  }, [submission, status.data]);
   const prepare = trpc.infrastructure.prepareCloudflareProductionTenantIsolation.useMutation();
   const publish = trpc.infrastructure.queueCloudflareHttpImagePair.useMutation();
   const imageAccepted = status.data?.jobs.length === 2 && status.data.jobs.every(job => job.status !== "NOT_ADMITTED");
   const canDatabase = !databaseAccepted && database.data?.ready && !database.data.prepared;
-  const canImages = images.data?.ready && !imageAccepted;
+  const canImages = images.data?.ready && !imageAccepted && !status.isLoading && !status.error;
   const submit = async () => {
     if (inFlight.current || (!canDatabase && !canImages)) return;
     inFlight.current = true; setBusy(true);
     const operations: Promise<unknown>[] = [];
     // Independent paths proceed even if another prerequisite or operation fails.
     if (!databaseAccepted && database.data?.ready && !database.data.prepared) operations.push(prepare.mutateAsync({ ...databaseScope, actionDigest: database.data.actionDigest }));
-    if (images.data?.ready && !imageAccepted) {
+    if (canImages && images.data?.ready) {
       const request = submission ?? { id: crypto.randomUUID(), digest: images.data.planDigest };
       try { sessionStorage.setItem(storageKey, JSON.stringify(request)); } catch { /* Canonical intent remains authoritative. */ }
       setSubmission(request);

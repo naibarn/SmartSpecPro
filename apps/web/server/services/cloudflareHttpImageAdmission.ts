@@ -79,15 +79,25 @@ function assertSubmission(value: Submission, scope: Scope & { submissionId: stri
 }
 function whereSubmission(id: string) { return and(eq(systemSettings.category, CATEGORY), eq(systemSettings.key, id)); }
 
-export async function readHttpImagePairSubmission(db: DrizzleDB, scope: Scope & { submissionId: string }) {
+export async function readHttpImagePairSubmission(db: DrizzleDB, scope: Scope & { submissionId?: string }) {
   await assertOwner(db, scope);
-  const [row] = await db.select().from(systemSettings).where(whereSubmission(scope.submissionId)).limit(1);
+  // Browser storage is a convenience, never the canonical job registry. A new
+  // tab/device must find the already authorized pair instead of republishing
+  // merely because a newer Admin source is now serving.
+  const [row] = scope.submissionId
+    ? await db.select().from(systemSettings).where(whereSubmission(scope.submissionId)).limit(1)
+    : await db.select().from(systemSettings).where(and(eq(systemSettings.category, CATEGORY),
+      sql`${systemSettings.valueJson}->>'tenantId'=${scope.tenantId}`,
+      sql`${systemSettings.valueJson}->>'projectId'=${scope.projectId}`,
+      sql`${systemSettings.valueJson}->>'actorUserId'=${String(scope.actorUserId)}`))
+      .orderBy(sql`${systemSettings.id} DESC`).limit(1);
   if (!row) return null;
   const submission = row.valueJson as Submission;
-  assertSubmission(submission, scope);
+  const submissionId = scope.submissionId ?? row.key;
+  assertSubmission(submission, { ...scope, submissionId });
   const jobs = [];
   for (const runtime of RUNTIMES) {
-    const jobId = httpImagePairJobId(scope.submissionId, runtime);
+    const jobId = httpImagePairJobId(submissionId, runtime);
     const [job] = await db.select().from(workerJobs).where(eq(workerJobs.id, jobId)).limit(1);
     const plan: HttpImageProvisionPlan = { namespace: submission.namespace, runtime, sourceSha: submission.sourceSha, buildId: submission.buildId,
       configurationExpiresAt: submission.expiresAt, buildBudgetSeconds: 360, maxImageBytes: 1_073_741_824, maxPublishedImages: 1 };
@@ -103,7 +113,7 @@ export async function readHttpImagePairSubmission(db: DrizzleDB, scope: Scope & 
     jobs.push({ runtime, jobId, status: job ? job.status : "NOT_ADMITTED" as const, errorCode: job?.errorCode ?? null,
       image: verified ? String(output?.image) : null, registryVerified: verified });
   }
-  return { submissionId: scope.submissionId, sourceSha: submission.sourceSha, buildId: submission.buildId, jobs,
+  return { submissionId, planDigest: submission.planDigest, sourceSha: submission.sourceSha, buildId: submission.buildId, jobs,
     diagnostics: RUNTIMES.flatMap(runtime => submission.policies[runtime]?.rejectedCode ? [{ runtime, stage: "POLICY_CREATE", code: submission.policies[runtime]!.rejectedCode! }] : []),
     published: jobs.every(job => job.status === "succeeded" && job.registryVerified), trafficMutation: false };
 }

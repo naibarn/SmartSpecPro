@@ -736,7 +736,7 @@ export const infrastructureRouter = router({
     }),
 
   getCloudflareHttpImagePairSubmission: exactAdminProcedure
-    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), submissionId: z.string().uuid() }).strict())
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), submissionId: z.string().uuid().optional() }).strict())
     .query(async ({ input, ctx }) => {
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_IMAGE_TENANT_MISMATCH" });
