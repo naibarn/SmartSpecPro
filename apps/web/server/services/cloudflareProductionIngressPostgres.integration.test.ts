@@ -5,6 +5,11 @@ const fixture = vi.hoisted(() => ({
   afterCommit: false,
   routeLive: false,
   expiry: new Date(Date.now() + 3600000).toISOString(),
+  workerReady: true,
+}));
+vi.mock("./cloudflareExecutionReadiness", () => ({
+  checkCloudflareExecutionReadiness: async () => fixture.workerReady
+    ? { ready: true, reason: null } : { ready: false, reason: "MIGRATION_WAITING_WORKER_CAPACITY" },
 }));
 vi.mock("./cloudflareProductionDeploymentContract", async original => ({
   ...(await original<any>()),
@@ -545,6 +550,29 @@ suite(
           await client`SELECT count(*)::int AS n FROM worker_job_outbox WHERE "workerJobId"=${input.submissionId}`
         )[0].n
       ).toBe(1);
+    });
+    it("retains the same submission without consuming a grant while worker capacity is unavailable", async () => {
+      fixture.routeLive = false;
+      const input = await submission("ingress-jit-capacity");
+      const previousRequests = requests.length;
+      fixture.workerReady = false;
+      try {
+        await expect(caller.queueCloudflareProductionIngress(input)).rejects.toThrow("MIGRATION_WAITING_WORKER_CAPACITY");
+        expect(requests).toHaveLength(previousRequests);
+        expect(await client`SELECT id FROM worker_jobs WHERE id=${input.submissionId}`).toHaveLength(0);
+      } finally { fixture.workerReady = true; }
+      await expect(caller.queueCloudflareProductionIngress(input)).resolves.toMatchObject({ jobId: input.submissionId });
+      expect(requests).toHaveLength(previousRequests + 1);
+      const { recordMigrationContinuation, getCloudflareMigrationMission } = await import("./cloudflareMigrationLifecycle");
+      const { getDb } = await import("../db");
+      const metadata = { migrationMode: "FIRST_MIGRATION" as const, architecture: "HYBRID_INGRESS" as const,
+        agentCapacity: "WAITING_AGENT_CAPACITY" as const, engineeringCheckpoint: "REPAIR_REQUIRED" as const,
+        handoffRef: "orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/implementation/HANDOFF.md" as const };
+      const persisted = await recordMigrationContinuation(getDb(), input, metadata);
+      const projection = await getCloudflareMigrationMission(getDb(), input);
+      expect(projection).toMatchObject({ campaignId: persisted.campaignId, migrationMode: "FIRST_MIGRATION", state: "AUTHORIZED", campaignAuthority: "NOT_AUTHORIZED" });
+      await expect(recordMigrationContinuation(getDb(), { ...input, tenantId: "foreign" }, metadata)).rejects.toThrow("MIGRATION_EXISTING_MISSION_REQUIRED");
+      expect((await client`SELECT count(*)::int n FROM worker_jobs WHERE id=${input.submissionId}`)[0].n).toBe(1);
     });
     it("recovers only the definite pre-provider origin binding defect under the same unexpired grant",async()=>{
       fixture.routeLive=false;const input=await submission("ingress-binding-recovery");await caller.queueCloudflareProductionIngress(input);

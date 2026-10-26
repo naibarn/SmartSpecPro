@@ -2,6 +2,7 @@ import { getProductionIngressPreflight, getProductionIngressRollbackPreflight, q
 import { PRODUCTION_INGRESS_CONTRACT } from "../services/cloudflareProductionIngressContract";
 import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../services/cloudflareProductionIngressAcceptance";
 import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMiddleware";
+import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLifecycle";
 /**
  * Infrastructure Settings tRPC Router
  *
@@ -694,6 +695,14 @@ export const infrastructureRouter = router({
       });
     }),
 
+  getCloudflareMigrationMission: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production") }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "MIGRATION_TENANT_MISMATCH" });
+      return getCloudflareMigrationMission(await getDb(), input);
+    }),
+
   getCloudflareProductionIngressPreflight: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production") }).strict())
     .query(async ({input,ctx}) => {
@@ -938,6 +947,9 @@ export const infrastructureRouter = router({
       logCloudflareProductionDatabaseAdmission({ stage: "resource_plan_validation", outcome: "completed", requestId,
         tenantId, projectId: input.projectId, jobId });
       const expectedPlanDigest = productionDatabaseResourcePlanDigest(plan);
+      const executionReadiness = await (await import("../services/cloudflareExecutionReadiness"))
+        .checkCloudflareExecutionReadiness(db);
+      if (!executionReadiness.ready) throw new TRPCError({ code: "PRECONDITION_FAILED", message: executionReadiness.reason });
       stage = "encrypted_grant_reconciliation";
       let grant = await readCloudflareProductionDatabaseGrant(db, jobId);
       if (grant) {
@@ -985,7 +997,7 @@ export const infrastructureRouter = router({
             activeDedupeKey: `cloudflare-production-database:${tenantId}:${input.projectId}`,
             retryPolicy: { maxAttempts: 2, baseDelayMs: 2_000, maxDelayMs: 5_000, jitter: "bounded", deadlineMs: 12 * 60_000, allowedErrorClasses: ["retryable"] },
             timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 12 * 60_000 } },
-          createOptions: { canonicalJobId: jobId, runtimeType: "node_job_worker" },
+          createOptions: { canonicalJobId: jobId, runtimeType: "node_job_worker", admissionMode: "durable_queue" },
         });
         if (!job.created) {
           const existing = await readCanonicalJob(job.jobId);

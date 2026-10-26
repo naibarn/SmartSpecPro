@@ -134,6 +134,7 @@ vi.mock("@/lib/trpc", () => ({
         isPending: false, error: null,
       }) },
       getCloudflareProductionIngressPreflight: {useQuery:()=>({data:mocks.ingressPreflight,isLoading:false,refetch:vi.fn()})},
+      getCloudflareMigrationMission: {useQuery:()=>({data:null,refetch:vi.fn()})},
       getLatestCloudflareProductionIngressJob: {useQuery:()=>({data:mocks.ingressJob,refetch:vi.fn()})},
       getCloudflareProductionIngressRollbackPreflight: {useQuery:()=>({data:null,refetch:vi.fn()})},
       queueCloudflareProductionIngress: {useMutation:()=>({isPending:false,mutate:mocks.queueProductionIngress,error:null})},

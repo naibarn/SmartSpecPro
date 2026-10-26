@@ -1,0 +1,48 @@
+import { describe, expect, it } from "vitest";
+import { migrationMissionId, projectCloudflareMigration, type MigrationContinuation } from "./cloudflareMigrationLifecycle";
+const scope = { tenantId: "tenant-a", projectId: "project-a" };
+const continuation: MigrationContinuation = { migrationMode: "FIRST_MIGRATION", architecture: "HYBRID_INGRESS", agentCapacity: "AVAILABLE", engineeringCheckpoint: "ENGINEERING", handoffRef: "orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/implementation/HANDOFF.md" };
+const base = { id: "job-a", tenantId: scope.tenantId, status: "failed", jobType: "cloudflare.production.deploy", contractVersion: "cloudflare-production-ingress-v1", inputJson: { projectId: scope.projectId, targetId: "smartspec-cloudflare-runtime", environment: "production" }, outputJson: null, errorCode: "APPLICATION_PROBE_FAILED" };
+const accepted = { ...base, status: "succeeded", errorCode: null, outputJson: { productionTrafficShifted: true, authenticatedAcceptance: { verified: true }, routeId: "route", deploymentId: "deployment", versionId: "version" } };
+describe("First migration continuation over the existing canonical job authorities", () => {
+  it.each(["JOB_DEADLINE_EXPIRED", "GRANT_EXPIRED", "ATTEMPTS_EXHAUSTED", "APPLICATION_PROBE_FAILED"])("keeps the same durable mission after %s", errorCode => {
+    const value = projectCloudflareMigration(scope, continuation, [{ ...base, errorCode }]);
+    expect(value).toMatchObject({ campaignId: migrationMissionId(scope), missionExpiresAt: null, state: "REPAIR_REQUIRED", campaignAuthority: "NOT_AUTHORIZED" });
+  });
+  it("resumes the same checkpoint after agent quota/disconnect without failing the mission", () => {
+    const waiting = { ...continuation, agentCapacity: "WAITING_AGENT_CAPACITY" as const };
+    const before = projectCloudflareMigration(scope, waiting, [accepted]);
+    const after = projectCloudflareMigration(scope, continuation, [accepted]);
+    expect(before.state).toBe("WAITING_AGENT_CAPACITY");
+    expect(after.state).toBe("M2_ACCEPTED");
+    expect(before.completedCheckpoints).toEqual(after.completedCheckpoints);
+    expect(JSON.parse(JSON.stringify(after)).campaignId).toBe(before.campaignId);
+  });
+  it("lets authorized backend work continue when engineering agent capacity is absent", () => {
+    expect(projectCloudflareMigration(scope, { ...continuation, agentCapacity: "WAITING_AGENT_CAPACITY" }, [{ ...base, status: "queued" }]).state).toBe("AUTHORIZED");
+  });
+  it("reconciles a crashed worker lease instead of authorizing a duplicate job", () => {
+    expect(projectCloudflareMigration(scope, continuation, [{ ...base, status: "running", leaseExpiresAt: new Date(0) }])).toMatchObject({ state: "REPAIR_REQUIRED", nextOperation: "RECONCILE_CANONICAL_LEASE", activeJobId: base.id });
+  });
+  it("preserves successful ingress while M1 fails and never treats provider readback as SQL acceptance", () => {
+    const value = projectCloudflareMigration(scope, continuation, [accepted, { ...base, id: "db-job", jobType: "cloudflare.production.database.provision", status: "succeeded", outputJson: { providerConfigurationVerified: true } }]);
+    expect(value.completedCheckpoints).toEqual(["M2_ACCEPTED"]);
+    expect(value.currentMilestone).toBe("M1");
+    expect(value.ingressReceipt?.routeId).toBe("route");
+  });
+  it("does not accept a partial deployment or a failed browser receipt", () => {
+    expect(projectCloudflareMigration(scope, continuation, [{ ...accepted, outputJson: { ...accepted.outputJson, authenticatedAcceptance: { verified: false } } }]).completedCheckpoints).toEqual([]);
+  });
+  it("requires reconciliation for an uncertain provider write rather than a retry", () => {
+    expect(projectCloudflareMigration(scope, continuation, [{ ...base, errorCode: "ROUTE_SUBMISSION_UNKNOWN" }]).state).toBe("ROLLBACK_REQUIRED");
+  });
+  it("keeps historical acceptance but recognizes a later authorized rollback", () => {
+    const rollback = { ...base, id: "rollback", status: "succeeded", inputJson: { ...base.inputJson, action: "ingress-rollback" }, outputJson: { productionTrafficShifted: false } };
+    expect(projectCloudflareMigration(scope, continuation, [accepted, rollback])).toMatchObject({ currentMilestone: "M2", ingressReceipt: null, completedCheckpoints: ["M2_ACCEPTED"] });
+  });
+  it("does not turn scope or artifact changes into renewed operation authority", () => {
+    expect(migrationMissionId({ ...scope, projectId: "other" })).not.toBe(migrationMissionId(scope));
+    expect(projectCloudflareMigration(scope, continuation, [{ ...base, inputJson: { ...base.inputJson, artifactRef: "new-release" } }]).campaignAuthority).toBe("NOT_AUTHORIZED");
+    expect(projectCloudflareMigration(scope, continuation, [{ ...accepted, tenantId: "foreign" }]).completedCheckpoints).toEqual([]);
+  });
+});

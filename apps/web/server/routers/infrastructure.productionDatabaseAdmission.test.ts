@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("../services/cloudflareExecutionReadiness", () => ({ checkCloudflareExecutionReadiness: async () => ({ ready: true, reason: null }) }));
 
 const mocks = vi.hoisted(() => ({
   getDb: vi.fn(),

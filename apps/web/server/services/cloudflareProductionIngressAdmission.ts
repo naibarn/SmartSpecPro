@@ -555,6 +555,11 @@ export async function queueProductionIngress(
       });
     return request;
   });
+  // Engineering, build/release and queue-capacity waits precede the short
+  // operation grant. An unavailable worker does not end the durable mission.
+  const executionReadiness = await (await import("./cloudflareExecutionReadiness"))
+    .checkCloudflareExecutionReadiness(db);
+  if (!executionReadiness.ready) throw new Error(executionReadiness.reason);
   const config = await getAppRuntimeConfig();
   const response = await fetch(
     `${config.pythonBackendUrl}/api/v1/approvals/cloudflare-production-grants`,

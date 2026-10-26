@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+vi.mock("./cloudflareExecutionReadiness", () => ({ checkCloudflareExecutionReadiness: async () => ({ ready: true, reason: null }) }));
 import { randomUUID } from "node:crypto";
 
 const scope = vi.hoisted(() => ({ target: null as any }));
