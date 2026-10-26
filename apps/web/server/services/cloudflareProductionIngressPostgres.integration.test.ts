@@ -559,6 +559,8 @@ suite(
       try {
         await expect(caller.queueCloudflareProductionIngress(input)).rejects.toThrow("MIGRATION_WAITING_WORKER_CAPACITY");
         expect(requests).toHaveLength(previousRequests);
+        // Do not start the immutable request/grant expiry clock during queue waiting.
+        expect(await client`SELECT id FROM system_settings WHERE category='cloudflare_production_ingress_submissions' AND key=${input.submissionId}`).toHaveLength(0);
         expect(await client`SELECT id FROM worker_jobs WHERE id=${input.submissionId}`).toHaveLength(0);
       } finally { fixture.workerReady = true; }
       await expect(caller.queueCloudflareProductionIngress(input)).resolves.toMatchObject({ jobId: input.submissionId });
