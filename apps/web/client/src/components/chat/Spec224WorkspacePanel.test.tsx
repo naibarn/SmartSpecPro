@@ -82,6 +82,14 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
   });
 
+  it("explains that selecting a workspace binds this conversation to that Runner", async () => {
+    render(<Spec224WorkspacePanel conversationId={8} />);
+
+    expect(screen.getByLabelText("1. เลือก Runner และ project workspace")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: /Runner runner-test · Test · workspace-test/ })).toBeInTheDocument();
+    expect(screen.getByText(/conversation นี้จะใช้ Runner\/workspace เดียวกัน/i)).toBeInTheDocument();
+  });
+
   it("shows a clear multi-image mock-up attachment control while developing from a Spec Set", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));

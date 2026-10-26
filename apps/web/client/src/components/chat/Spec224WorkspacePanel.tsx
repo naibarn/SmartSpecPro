@@ -389,7 +389,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
     <section className="mb-4 rounded-lg border border-[var(--color-border)] p-3" aria-labelledby="spec224-workspace-heading">
       <h3 id="spec224-workspace-heading" className="text-sm font-semibold">Spec 224 workspace</h3>
       <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-        Chat section นี้เลือก workspace เดิมเพื่อทำงานต่อได้ การแนบ spec จะเพิ่ม revision; ยังไม่เริ่มแก้โค้ดหรือ build/run
+        Workspace คือ project folder ที่ Runner รายงานจากเครื่องของคุณ การเลือกจะผูก Runner และ folder นั้นกับ conversation ปัจจุบัน; การแนบ Spec จะบันทึก revision แต่ยังไม่เริ่มแก้โค้ดหรือ build/run
       </p>
       <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
         ต้องการเริ่มจาก prompt อย่างเดียว? <a className="underline" href="/factory#personal-mini-app">Create a Personal Mini-App</a>
@@ -398,7 +398,10 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
         <p className="mt-3 text-xs text-amber-700">สร้างหรือเลือก conversation ก่อนจึงจะผูก workspace ได้</p>
       ) : (
         <>
-          <label className="mt-3 block text-xs font-medium" htmlFor="spec224-workspace-select">Workspace</label>
+          <label className="mt-3 block text-xs font-medium" htmlFor="spec224-workspace-select">1. เลือก Runner และ project workspace</label>
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
+            เลือก workspace ที่ต้องการให้ทำงานต่อ รายการนี้มาจาก Runner ที่ออนไลน์และเชื่อถือได้ เมื่อเลือกแล้ว Spec และคำสั่ง Start ของ conversation นี้จะใช้ Runner/workspace เดียวกัน
+          </p>
           <select
             id="spec224-workspace-select"
             className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-white px-2 py-2 text-sm"
@@ -409,12 +412,12 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
             <option value="">เลือก Runner workspace</option>
             {boundWorkspace && !boundIsListed ? (
               <option value={boundKey} key={boundKey}>
-                {boundWorkspace.workspaceId} · saved workspace (not in current Runner list)
+                Runner {boundWorkspace.runnerId} · {boundWorkspace.workspaceId} · บันทึกไว้ก่อนหน้า (Runner ยังไม่อยู่ในรายการปัจจุบัน)
               </option>
             ) : null}
             {workspaces.map(workspace => (
               <option key={selectionKey(workspace)} value={selectionKey(workspace)}>
-                {workspace.displayName} · {workspace.workspaceId}
+                Runner {workspace.runnerId} · {workspace.displayName} · {workspace.workspaceId}
               </option>
             ))}
           </select>
@@ -426,13 +429,13 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
           ) : null}
           {boundWorkspace ? (
             <p className={`mt-2 text-xs ${workspaceQuery.data?.availability?.available ? "text-emerald-700" : "text-amber-800"}`} role="status">
-              ผูกกับ {boundWorkspace.workspaceId}
-              {workspaceQuery.data?.availability?.status ? ` · ${workspaceQuery.data?.availability?.status}` : ""}
+              {workspaceQuery.data?.availability?.available ? "Conversation นี้ผูกแล้ว:" : "Binding ปัจจุบัน:"} Runner {boundWorkspace.runnerId} → Workspace {boundWorkspace.workspaceId}
+              {workspaceQuery.data?.availability?.status ? ` · สถานะ ${workspaceQuery.data?.availability?.status}` : ""}
               {specSet ? ` · Spec Set r${specSet.revision}` : " · ยังไม่มี Spec Set"}
             </p>
           ) : null}
           {workspaces.length === 0 && !workspacesQuery.isLoading ? (
-            <p className="mt-2 text-xs text-amber-700">ไม่พบ Runner workspace ที่ trusted และพร้อมใช้งาน</p>
+            <p className="mt-2 text-xs text-amber-700" role="status">ยังไม่พบ workspace ให้เลือก: เปิด SmartAIHub Runner บนเครื่องที่มี project ให้เชื่อมต่อ และรอให้ Runner แสดงสถานะออนไลน์/เชื่อถือได้ จากนั้นโหลดรายการนี้ใหม่</p>
           ) : null}
 
           <fieldset className="mt-3 space-y-2" disabled={uploading}>
