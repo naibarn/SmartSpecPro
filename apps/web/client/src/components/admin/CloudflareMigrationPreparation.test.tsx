@@ -41,4 +41,10 @@ describe("one Owner action for independently ready migration preparation",()=>{
     render(<CloudflareMigrationPreparation {...scope}/>);await userEvent.click(screen.getByRole("button"));
     expect(state.publish.mock.calls[1][0]).toEqual(request);expect(state.prepare).not.toHaveBeenCalled();
   });
+  it("never repeats database preparation after canonical M1 acceptance",async()=>{
+    render(<CloudflareMigrationPreparation {...scope} databaseAccepted/>);
+    expect(screen.getByText(/M1_ACCEPTED/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button"));
+    expect(state.prepare).not.toHaveBeenCalled();expect(state.publish).toHaveBeenCalledTimes(1);
+  });
 });
