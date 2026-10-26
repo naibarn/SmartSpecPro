@@ -4964,7 +4964,8 @@ export function createJobControlPlane(
         // One technical recovery before any role/provider/compute mutation.
         // The trusted runtime service verifies the original live Owner intent,
         // encrypted PREPARING checkpoint and unchanged reviewed plan. No new
-        // intent, deadline, image, paid-start budget or traffic scope is issued.
+        // intent, image, paid-start budget or traffic scope is issued. Recovery
+        // dispatch is bounded by the unchanged original Owner intent expiry.
         const knownNativeRuntimePrewrite = evidence.knownRuntime === "cloudflare_native_runtime_prewrite" &&
           evidence.disposition === "pre_submission_failure" && actorId == null &&
           scope?.authorizationScope === "infrastructure.cloudflare_native_runtime_technical_recovery" &&
@@ -4974,7 +4975,7 @@ export function createJobControlPlane(
           job.fencingVersion === 1 && job.leaseOwnerToken == null && job.leaseExpiresAt == null &&
           evidence.replacementGrantRef === job.id && typeof evidence.replacementGrantExpiresAt === "string" &&
           Date.parse(evidence.replacementGrantExpiresAt) > Date.now() + 15 * 60_000 &&
-          new Date(job.createdAt).getTime() + 30 * 60_000 > Date.now() + 15 * 60_000 &&
+          Date.parse(evidence.replacementGrantExpiresAt) <= new Date(job.createdAt).getTime() + 45 * 60_000 &&
           evidence.operationKey === `native-runtime-prewrite:${job.id}:${job.inputJson?.planDigest}`;
         if (
           !job ||
@@ -5036,7 +5037,7 @@ export function createJobControlPlane(
             ...((knownNativeReadbackFailure || knownProductionDatabaseCredentialGuard || knownProductionDatabaseProviderRecovery || knownProductionDatabaseReadbackRecovery || knownIngressOriginBinding || knownNativeRuntimePrewrite) ? { maxAttempts: nextAttempt } : {}),
             ...(knownNativeRuntimePrewrite ? { retryPolicyJson: { ...job.retryPolicyJson, httpRuntimePrewriteRecovery: {
               attempt: nextAttempt, intentId: job.id, planDigest: job.inputJson.planDigest,
-              authorizedAt: now.toISOString(), expiresAt: evidence.replacementGrantExpiresAt,
+              authorizedAt: now.toISOString(), expiresAt: new Date(Math.min(Date.parse(evidence.replacementGrantExpiresAt!), now.getTime() + 20 * 60_000)).toISOString(),
             } } } : {}),
             ...(knownImagePrebuildRateLimit ? { retryPolicyJson: { ...job.retryPolicyJson, httpImagePrebuildRecovery: {
               attempt: nextAttempt, grantRef: evidence.replacementGrantRef, authorizedAt: now.toISOString(),

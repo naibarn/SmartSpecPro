@@ -31,6 +31,11 @@ describe("original Owner-intent technical prewrite recovery", () => {
       expect.objectContaining({ replacementGrantRef: state.job.id, replacementGrantExpiresAt: state.intent.expiresAt, disposition: "pre_submission_failure" }),
       undefined, { tenantId: "tenant-fixture", requestedByUserId: 17, authorizationScope: "infrastructure.cloudflare_native_runtime_technical_recovery" });
   });
+  it("recovers after the adaptive dispatch deadline while the original Owner intent remains valid", async () => {
+    state.job.createdAt = new Date(Date.now()-25*60_000);
+    state.intent.expiresAt = new Date(Date.now()+19*60_000).toISOString();
+    expect(await recoverHttpRuntimePrewrite(db(), state.job.id)).toMatchObject({ accepted: true, newIntentIssued: false });
+  });
   it.each(["expired", "revoked", "changed-plan", "foreign-owner", "role", "write", "unknown-error", "attempt-budget", "lease"])("rejects %s before canonical recovery", async mode => {
     if (mode==="expired") state.intent.expiresAt=new Date(Date.now()-1).toISOString();
     if (mode==="revoked") state.intent.revokedAt=new Date().toISOString();

@@ -205,3 +205,22 @@ describe("bounded image prebuild recovery deadline", () => {
       expect(getEffectiveWorkerJobDeadlineMs({ ...input, ...patch })).toBe(600_000);
   });
 });
+
+
+describe("native runtime original-intent prewrite recovery deadline", () => {
+  it("uses only the canonical same-intent twenty-minute recovery window after the adaptive deadline", () => {
+    const created = Date.now()-25*60_000, now = Date.now();
+    const input = { jobType: "cloudflare.production.native.runtime.verify", contractVersion: "cloudflare-native-runtime-verify-v1",
+      runtimeType: "node_job_worker", executionClass: "long", attempt: 2, createdAt: new Date(created),
+      input: { submissionId: "original", planDigest: "digest" },
+      retryPolicy: { deadlineMode: "adaptive" as const, deadlineMs: 600_000, httpRuntimePrewriteRecovery: {
+        attempt: 2, intentId: "original", planDigest: "digest", authorizedAt: new Date(now).toISOString(),
+        expiresAt: new Date(now+20*60_000).toISOString() } } };
+    expect(getEffectiveWorkerJobDeadlineMs(input)).toBe(45*60_000);
+    for (const patch of [{ attempt: 3 }, { jobType: "other" }, { input: { submissionId: "foreign", planDigest: "digest" } },
+      { input: { submissionId: "original", planDigest: "changed" } },
+      { retryPolicy: { ...input.retryPolicy, httpRuntimePrewriteRecovery: { ...input.retryPolicy.httpRuntimePrewriteRecovery,
+        expiresAt: new Date(now+20*60_000+1).toISOString() } } }])
+      expect(getEffectiveWorkerJobDeadlineMs({ ...input, ...patch })).toBe(600_000);
+  });
+});

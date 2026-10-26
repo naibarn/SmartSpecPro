@@ -1989,7 +1989,7 @@ describe("job control plane", () => {
     } else expect(job.status).toBe("failed");
   });
 
-  it.each(["valid", "wrong-scope", "wrong-intent", "expired", "wrong-error", "exhausted"])("bounds one original-intent native runtime prewrite recovery: %s", async mode => {
+  it.each(["valid", "delayed", "wrong-scope", "wrong-intent", "expired", "overlong-intent", "wrong-error", "exhausted"])("bounds one original-intent native runtime prewrite recovery: %s", async mode => {
     const state = makeRepository(), cp = createJobControlPlane(state.repository);
     const created = await cp.create({ ...definition, jobType: "cloudflare.production.native.runtime.verify",
       contractVersion: "cloudflare-native-runtime-verify-v1", executionClass: "long", idempotencyKey: undefined,
@@ -1997,15 +1997,16 @@ describe("job control plane", () => {
     const job = state.jobs.get(created.jobId);
     Object.assign(job, { status: "failed", operatorReviewRequired: false, errorCode: mode === "wrong-error" ? "HTTP_RUNTIME_PROVIDER_WRITE_UNKNOWN" : "HTTP_RUNTIME_PROVIDER_HTTP_200",
       attempt: mode === "exhausted" ? 2 : 1, maxAttempts: mode === "exhausted" ? 2 : 1, fencingVersion: 1, leaseOwnerToken: null, leaseExpiresAt: null });
+    if (mode === "delayed") job.createdAt = new Date(Date.now()-25*60_000);
     const evidence = { disposition: "pre_submission_failure" as const, knownRuntime: "cloudflare_native_runtime_prewrite" as const,
       operationKey: `native-runtime-prewrite:${job.id}:${job.inputJson.planDigest}`,
       replacementGrantRef: mode === "wrong-intent" ? "22222222-2222-4222-8222-222222222222" : job.id,
-      replacementGrantExpiresAt: new Date(Date.now() + (mode === "expired" ? -1 : 25 * 60_000)).toISOString() };
+      replacementGrantExpiresAt: new Date(Date.now() + (mode === "expired" ? -1 : mode === "overlong-intent" ? 46 * 60_000 : mode === "delayed" ? 19 * 60_000 : 25 * 60_000)).toISOString() };
     const scope = { tenantId: job.tenantId, requestedByUserId: job.requestedByUserId,
       authorizationScope: mode === "wrong-scope" ? "worker_jobs.admin_requeue" : "infrastructure.cloudflare_native_runtime_technical_recovery" };
     const actionId = "00000000-0000-4000-8000-000000000305";
-    expect(await cp.recoverReviewGatedJob(job.id, actionId, "pagination_repaired", evidence, undefined, scope)).toBe(mode === "valid");
-    if (mode === "valid") {
+    expect(await cp.recoverReviewGatedJob(job.id, actionId, "pagination_repaired", evidence, undefined, scope)).toBe(mode === "valid" || mode === "delayed");
+    if (mode === "valid" || mode === "delayed") {
       expect(job.attempt).toBe(2); expect(job.maxAttempts).toBe(2); expect(job.inputJson).toEqual({ planDigest: "a".repeat(64) });
       expect(job.retryPolicyJson.httpRuntimePrewriteRecovery).toMatchObject({ intentId: job.id, planDigest: job.inputJson.planDigest, attempt: 2 });
       expect(await cp.recoverReviewGatedJob(job.id, actionId, "pagination_repaired", evidence, undefined, scope)).toBe(true);

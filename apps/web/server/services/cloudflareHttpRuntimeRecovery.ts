@@ -29,7 +29,7 @@ export async function recoverHttpRuntimePrewrite(db: DrizzleDB, jobId: string) {
       digest(intent.plan) !== intent.planDigest || intent.plan.candidateJobId !== job.inputJson.candidateJobId ||
       intent.trafficMutation !== false || intent.dnsMutation !== false || intent.applicationCreation !== false ||
       intent.imagePublication !== false || intent.fixtureCreation !== false || !Number.isFinite(Date.parse(intent.expiresAt)) ||
-      Date.parse(intent.expiresAt) <= Date.now() + 15 * 60_000 || new Date(job.createdAt).getTime() + 30 * 60_000 <= Date.now() + 15 * 60_000)
+      Date.parse(intent.expiresAt) <= Date.now() + 15 * 60_000 || Date.parse(intent.expiresAt) > new Date(job.createdAt).getTime() + 45 * 60_000)
     throw Error("HTTP_RUNTIME_PREWRITE_RECOVERY_AUTHORITY_DENIED");
   const checkpoints = await db.select().from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_production_native_runtime_checkpoints"),
     eq(systemSettings.key, jobId))).limit(2);

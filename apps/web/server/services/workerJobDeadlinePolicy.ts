@@ -401,6 +401,7 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
   executionClass?: string;
   input: Record<string, unknown>;
   retryPolicy: { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed";
+    httpRuntimePrewriteRecovery?: { attempt: number; intentId: string; planDigest: string; authorizedAt: string; expiresAt: string };
     httpImagePrebuildRecovery?: { attempt: number; grantRef: string; authorizedAt: string; expiresAt: string };
     productionDatabaseRecovery?: { attempt: number; grantRef: string; authorizedAt: string; expiresAt: string } };
   timeoutSeconds?: number;
@@ -430,6 +431,20 @@ export function getEffectiveWorkerJobDeadlineMs(input: DeadlineContractIdentity 
     const authorized = Date.parse(imageRecovery.authorizedAt), expires = Date.parse(imageRecovery.expiresAt);
     if (Number.isFinite(created) && authorized >= created && expires > authorized && expires-authorized <= 10*60_000)
       return expires-created;
+  }
+  // A proven pre-write failure may consume the adaptive queue deadline while
+  // the original Owner intent remains valid. The canonical recovery service
+  // binds this one dispatch window to that same intent; no compute is added.
+  const runtimeRecovery = input.retryPolicy.httpRuntimePrewriteRecovery;
+  if (runtimeRecovery && input.jobType === "cloudflare.production.native.runtime.verify" &&
+      input.contractVersion === "cloudflare-native-runtime-verify-v1" && input.runtimeType === "node_job_worker" &&
+      input.executionClass === "long" && input.attempt === 2 && runtimeRecovery.attempt === 2 &&
+      runtimeRecovery.intentId === input.input.submissionId && runtimeRecovery.planDigest === input.input.planDigest) {
+    const created = input.createdAt instanceof Date ? input.createdAt.getTime() : Date.parse(input.createdAt ?? "");
+    const authorized = Date.parse(runtimeRecovery.authorizedAt), expires = Date.parse(runtimeRecovery.expiresAt);
+    if (Number.isFinite(created) && authorized >= created && expires > authorized &&
+        expires - authorized <= 20 * 60_000 && expires - created <= 45 * 60_000)
+      return expires - created;
   }
   const storyDeadlineMs = getVerticalDramaStoryDeadlineMs(input.jobType, input.input);
   if (storyDeadlineMs !== null) {
