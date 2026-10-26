@@ -948,15 +948,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+    "expected_canonical_sha": "2ef1c500010e292b43632c6b2df73a8c19b9f597",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Runner readiness now passes on 0.2.41. Do not reinstall or re-probe. Reconcile canonical workspace source, existing scoped policy/budget and real owner Start for protected dispatch; local GUI acknowledgement is a distinct diagnostic issue if it persists.",
+    "next_action": "After the new bounded authenticated Start admission is deployed, perform one owner Start for a reversible task using the existing Windows Runner; capture real protected dispatch, settlement, recovery, and independent Final Verify receipts. Do not repeat Codex probe or Runner installation.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "Current RUNNER_READY snapshot plus exact canonical source and existing scoped policy/budget enable protected owner Start.",
-    "resume_point": "Received capability:local-runner:2026-10-26T02:08:44.133Z, version 0.2.41, Codex taskProbeState passed, trust ready, nonempty workspace fingerprint. Evaluator RUNNER_READY. See specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-0241-readiness-received-20261026.json",
-    "waiting_predicate": "Codex readiness and workspace fingerprint are satisfied. Canonical source synchronization and legitimate configured policy/budget plus real owner Start remain."
+    "reactivation_predicate": "The bounded Start admission is deployed, a fresh Runner readiness snapshot is available, and the owner starts one reversible non-production task within the displayed USD 1.00 cap.",
+    "resume_point": "Implementation integrated at 2ef1c500010e292b43632c6b2df73a8c19b9f597; focused web tests 36/36, Python policy/API tests 14/14, canonical build passed. Evidence: handoff/evidence/spec224-runner-start-admission-20261026.md.",
+    "waiting_predicate": "Runtime generation 123 is older than canonical SHA 2ef1c500010e292b43632c6b2df73a8c19b9f597; no authenticated owner Start or protected DevelopmentRun receipts exist yet."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -973,10 +973,16 @@
         "observed_at": "2026-10-25T14:45:56Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
         "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-26T02:35:00Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-start-admission-20261026.md",
+        "source_sha": "2ef1c500010e292b43632c6b2df73a8c19b9f597"
       }
     ],
-    "next_action": "Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.",
-    "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
+    "next_action": "Deploy the integrated Start admission through its existing authorized runtime release, then the owner starts one reversible non-production task in Chat under the displayed USD 1.00 cap. Capture protected dispatch, settlement, recovery, and independent Final Verify; do not repeat the Codex probe or Runner install.",
+    "rationale": "Bounded authenticated Start admission is integrated and focused-tested; canonical build passed. The current Linux service remains generation 123 at aa60b47a355ef032d585cd9b1e8cb2716f1b0fd1, and no protected DevelopmentRun or owner Start receipts exist. Continue only after the needed runtime release and one genuine owner Start; overall SPEC acceptance remains partial.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1033,7 +1039,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 177,
+  "generation": 179,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1235,11 +1241,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+    "canonical_sha": "2ef1c500010e292b43632c6b2df73a8c19b9f597",
     "integrated": true,
-    "integrated_at": "2026-10-26T00:48:16.962216+00:00",
+    "integrated_at": "2026-10-26T02:25:00Z",
     "pull_request": null,
-    "source_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec"
+    "source_sha": "2ef1c500010e292b43632c6b2df73a8c19b9f597"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2139,10 +2145,16 @@
           "observed_at": "2026-10-25T14:45:56Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/runner-desktop-responsive-20261025.md",
           "source_sha": "2656a487f0c4b576833be3338a98095703c6ebc4"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-26T02:35:00Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-start-admission-20261026.md",
+          "source_sha": "2ef1c500010e292b43632c6b2df73a8c19b9f597"
         }
       ],
-      "next_action": "Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.",
-      "rationale": "Large clean Git workspace fingerprint repair is integrated at 6e0942a4d644247ab2b9d5649682e0a0eca967ab; focused Rust module tests passed 10/10. Windows review artifact 0.2.39 was built on that exact SHA and its checksum verified. Current read-only Runner observation is online/fresh with authenticated Codex but taskProbeState=not_run, all 11 capability policies pending, zero execution sessions, and no live DevelopmentRun. Focused Mini-App access/runtime tests passed 29/29; they are not live Rev24 public lifecycle evidence. Overall SPEC-224 acceptance remains partial until real Runner execution, settlement, recovery, Final Verify, and separate Rev24 public/tenant acceptance are evidenced.",
+      "next_action": "Deploy the integrated Start admission through its existing authorized runtime release, then the owner starts one reversible non-production task in Chat under the displayed USD 1.00 cap. Capture protected dispatch, settlement, recovery, and independent Final Verify; do not repeat the Codex probe or Runner install.",
+      "rationale": "Bounded authenticated Start admission is integrated and focused-tested; canonical build passed. The current Linux service remains generation 123 at aa60b47a355ef032d585cd9b1e8cb2716f1b0fd1, and no protected DevelopmentRun or owner Start receipts exist. Continue only after the needed runtime release and one genuine owner Start; overall SPEC acceptance remains partial.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3631,7 +3643,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T02:09:34.143753Z",
+  "updated_at": "2026-10-26T02:36:26.743813Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

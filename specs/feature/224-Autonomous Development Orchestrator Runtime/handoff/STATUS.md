@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.
-- Manifest generation: 177
+- Next action: Deploy the integrated Start admission through its existing authorized runtime release, then the owner starts one reversible non-production task in Chat under the displayed USD 1.00 cap. Capture protected dispatch, settlement, recovery, and independent Final Verify; do not repeat the Codex probe or Runner install.
+- Manifest generation: 179
 
 ## Source-declared status and relationship claims
 
