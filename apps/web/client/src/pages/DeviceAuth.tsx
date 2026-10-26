@@ -128,6 +128,7 @@ export default function DeviceAuth() {
     "llm:chat": "Use AI chat features",
     "mcp:read": "Read workspace files",
     "mcp:write": "Write workspace files",
+    "development:run": "Bind a trusted workspace and start engineering runs within your approved policy and explicit budget. Does not authorize production deployment.",
   };
 
   if (userLoading) {

@@ -7,10 +7,16 @@ const TEST_JWT_SIGNING_KEY = "test-jwt-secret-32-chars-minimum-1234567890";
 
 const mocks = vi.hoisted(() => ({
   revokeJti: vi.fn().mockResolvedValue(undefined),
+  issueDevice: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("./revocation", () => ({
   revokeJti: mocks.revokeJti,
+}));
+
+vi.mock("../services/deviceAuthorizationStore", async original => ({
+  ...await original<typeof import("../services/deviceAuthorizationStore")>(),
+  issueDeviceAuthorization: mocks.issueDevice,
 }));
 
 vi.mock("./limits", () => ({
@@ -65,6 +71,15 @@ describe("registerDeviceAuthRoutes /auth/device/revoke", () => {
   beforeEach(() => {
     mocks.revokeJti.mockReset();
     mocks.revokeJti.mockResolvedValue(undefined);
+  });
+
+  it("persists explicit engineering consent without granting unsupported or default extra scopes", async () => {
+    const app = express(); app.use(express.json()); registerDeviceAuthRoutes(app);
+    const response = await request(app).post("/auth/device/code").send({ scopes: ["mcp:read", "development:run", "production:admin"] });
+    expect(response.status).toBe(200);
+    expect(mocks.issueDevice).toHaveBeenLastCalledWith(expect.objectContaining({ scopes: ["mcp:read", "development:run"] }));
+    await request(app).post("/auth/device/code").send({});
+    expect(mocks.issueDevice).toHaveBeenLastCalledWith(expect.objectContaining({ scopes: ["llm:chat", "mcp:read"] }));
   });
 
   it("revokes both desktop access and refresh tokens", async () => {

@@ -1,3 +1,4 @@
+import { rejectScopedAdminMutation } from "../services/developmentBearerScope";
 import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from '@shared/const';
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
@@ -107,6 +108,7 @@ export const adminProcedure = t.procedure.use(
       throw new TRPCError({ code: "FORBIDDEN", message: NOT_ADMIN_ERR_MSG });
     }
 
+    if (opts.type === "mutation") await rejectScopedAdminMutation(ctx.req);
     return next({
       ctx: {
         ...ctx,

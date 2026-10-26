@@ -11,12 +11,12 @@ const inputSchema = z.object({
   budgetCapMinorUnits: z.number().int().positive().max(10_000_000),
 }).strict();
 export type MigrationEngineeringInput = z.infer<typeof inputSchema>;
-type Rpc = (path: string, input: unknown, mutation?: boolean) => Promise<unknown>;
+export type MigrationEngineeringRpc = (path: string, input: unknown, mutation?: boolean) => Promise<unknown>;
 
 /** Uses the existing authenticated workspace start: Runner readiness, input
  * staging, canonical agent.external_task/outbox, policy and budget admission.
  * This is engineering work; it never derives provider authority from M2. */
-export async function startCloudflareMigrationEngineering(raw: MigrationEngineeringInput, rpc: Rpc) {
+export async function startCloudflareMigrationEngineering(raw: MigrationEngineeringInput, rpc: MigrationEngineeringRpc) {
   const input = inputSchema.parse(raw);
   const mission = await rpc("infrastructure.getCloudflareMigrationMission", {
     tenantId: input.tenantId, projectId: input.projectId, environment: "production",
@@ -55,7 +55,7 @@ export async function startCloudflareMigrationEngineering(raw: MigrationEngineer
 
 /** Normal user authentication only. Never reads browser cookies, environment
  * application secrets, or the database to manufacture a request identity. */
-export function createMigrationEngineeringRpc(baseUrl: string, bearer: string | undefined, request: typeof fetch = fetch): Rpc {
+export function createMigrationEngineeringRpc(baseUrl: string, bearer: string | undefined, request: typeof fetch = fetch): MigrationEngineeringRpc {
   if (!bearer?.trim()) throw new Error("MIGRATION_ENGINEERING_AUTHENTICATION_REQUIRED");
   const base = new URL(baseUrl);
   if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash)
@@ -72,4 +72,84 @@ export function createMigrationEngineeringRpc(baseUrl: string, bearer: string | 
       throw new Error(`MIGRATION_ENGINEERING_RPC_HTTP_${response.status}:${envelope.error?.json?.data?.code ?? "REQUEST_FAILED"}`);
     return superjson.deserialize(envelope.result.data);
   };
+}
+
+
+/** Existing owner-authorized workspace binding only; no inferred conversation,
+ * Runner identity, repository SHA or direct database writes. */
+export async function prepareMigrationEngineeringWorkspace(input: {
+  tenantId: string; conversationId: number; runnerId?: string; workspaceId?: string; expectedRevision?: string;
+}, rpc: MigrationEngineeringRpc) {
+  z.object({ tenantId: z.string().min(1), conversationId: z.number().int().positive(),
+    runnerId: z.string().min(1).optional(), workspaceId: z.string().min(1).optional(),
+    expectedRevision: z.string().regex(/^[a-f0-9]{40,64}$/).optional() }).strict().parse(input);
+  if (Boolean(input.runnerId) !== Boolean(input.workspaceId)) throw new Error("MIGRATION_RUNNER_AND_WORKSPACE_REQUIRED");
+  type Binding = { workspace: { tenantId: string; conversationId: number; runnerId: string; workspaceId: string }; availability: { available: boolean } };
+  const query = { conversationId: input.conversationId };
+  let binding = await rpc("spec226DevelopmentControl.getConversationWorkspace", query) as Binding | null;
+  if (binding && (binding.workspace.tenantId !== input.tenantId || binding.workspace.conversationId !== input.conversationId))
+    throw new Error("MIGRATION_WORKSPACE_SCOPE_MISMATCH");
+  if (input.runnerId && input.workspaceId) {
+    if (!input.expectedRevision) throw new Error("MIGRATION_WORKSPACE_REVISION_REQUIRED");
+    const inventory = await rpc("spec226DevelopmentControl.availableWorkspaces", {}) as { workspaces: Array<{ runnerId: string; workspaceId: string; gitHead: string | null }> };
+    const selected = inventory.workspaces.find(item => item.runnerId === input.runnerId && item.workspaceId === input.workspaceId);
+    if (!selected || selected.gitHead !== input.expectedRevision) throw new Error("MIGRATION_TRUSTED_WORKSPACE_REVISION_MISMATCH");
+    if (!binding || binding.workspace.runnerId !== input.runnerId || binding.workspace.workspaceId !== input.workspaceId || !binding.availability.available) {
+      await rpc("spec226DevelopmentControl.bindConversationWorkspace", { ...query, runnerId: input.runnerId, workspaceId: input.workspaceId }, true);
+      binding = await rpc("spec226DevelopmentControl.getConversationWorkspace", query) as Binding | null;
+    }
+  }
+  if (!binding || binding.workspace.tenantId !== input.tenantId || binding.workspace.conversationId !== input.conversationId || !binding.availability.available)
+    throw new Error("MIGRATION_AUTHENTICATED_WORKSPACE_BINDING_REQUIRED");
+  if (input.runnerId && (binding.workspace.runnerId !== input.runnerId || binding.workspace.workspaceId !== input.workspaceId))
+    throw new Error("MIGRATION_WORKSPACE_BINDING_READBACK_MISMATCH");
+  const readiness = await rpc("spec226DevelopmentControl.workspaceRunnerReadiness", query) as { ready?: boolean; code?: string } | null;
+  if (!readiness?.ready) throw new Error(`MIGRATION_RUNNER_NOT_READY:${/^[A-Z0-9_]{1,100}$/.test(readiness?.code ?? "") ? readiness!.code : "UNAVAILABLE"}`);
+  return { workspace: binding.workspace, readiness };
+}
+
+/** Uses the already registered first-party device flow. Tokens stay in memory;
+ * neither bearer nor refresh token is written or printed. Owner approval is
+ * performed by the normal authenticated /auth/device page. */
+export async function authenticateMigrationEngineeringDevice(baseUrl: string,
+  notify: (verification: { verificationUrl: string; userCode: string; expiresIn: number }) => void,
+  ports: { request?: typeof fetch; sleep?: (ms: number) => Promise<void>; now?: () => number } = {}) {
+  const base = new URL(baseUrl);
+  if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash)
+    throw new Error("MIGRATION_ENGINEERING_HTTPS_ENDPOINT_REQUIRED");
+  const request = ports.request ?? fetch;
+  const now = ports.now ?? Date.now;
+  const sleep = ports.sleep ?? (ms => new Promise(resolve => setTimeout(resolve, ms)));
+  async function post(path: string, body: unknown) {
+    const response = await request(new URL(path, base.origin), { method: "POST", redirect: "error",
+      headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
+    let data: Record<string, unknown>;
+    try { data = await response.json() as Record<string, unknown>; } catch { throw new Error("MIGRATION_DEVICE_RESPONSE_INVALID"); }
+    return { response, data };
+  }
+  // Existing mcp:read consent is discovery only. It must never be treated
+  // as permission to bind a workspace or start a development run.
+  const { response, data } = await post("/auth/device/code", { scopes: ["mcp:read"] });
+  if (!response.ok || typeof data.device_code !== "string" || typeof data.user_code !== "string" ||
+      typeof data.expires_in !== "number" || data.expires_in <= 0 || data.expires_in > 3600)
+    throw new Error("MIGRATION_DEVICE_AUTH_START_FAILED");
+  const verificationUrl = new URL("/auth/device", base.origin);
+  verificationUrl.searchParams.set("user_code", data.user_code);
+  notify({ verificationUrl: verificationUrl.href, userCode: data.user_code, expiresIn: data.expires_in });
+  const deadline = now() + data.expires_in * 1000;
+  let interval = Math.max(5, typeof data.interval === "number" ? Math.min(data.interval, 60) : 5);
+  while (now() < deadline) {
+    await sleep(Math.min(interval * 1000, deadline - now()));
+    if (now() >= deadline) break;
+    const poll = await post("/auth/device/token", { grant_type: "urn:ietf:params:oauth:grant-type:device_code", device_code: data.device_code });
+    if (poll.response.ok && typeof poll.data.access_token === "string" && poll.data.token_type === "Bearer") {
+      const scopes = Array.isArray(poll.data.scope) ? poll.data.scope : typeof poll.data.scope === "string" ? poll.data.scope.split(" ") : [];
+      if (!scopes.includes("development:run")) throw new Error("MIGRATION_DEVELOPMENT_CONSENT_REQUIRED");
+      return poll.data.access_token;
+    }
+    if (poll.data.error === "authorization_pending") continue;
+    if (poll.data.error === "slow_down") { interval = Math.min(interval + 5, 60); continue; }
+    throw new Error("MIGRATION_DEVICE_AUTH_DENIED_OR_EXPIRED");
+  }
+  throw new Error("MIGRATION_DEVICE_AUTH_EXPIRED");
 }

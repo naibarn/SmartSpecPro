@@ -3,7 +3,9 @@ import { createHash } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure as authenticatedProcedure, router } from "../_core/trpc";
+import { requireDevelopmentBearerScope } from "../services/developmentBearerScope";
+
 import { auditLogger, type AuditEventType } from "../services/auditLogger";
 import { defaultSpec226DevelopmentControlBridge } from "../services/spec226DevelopmentControlBridge";
 import {
@@ -44,6 +46,11 @@ import { getSpec224BackendRuntimeIdentity } from "../services/spec224BackendRunt
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
 );
+
+const protectedProcedure = authenticatedProcedure.use(async ({ ctx, type, next }) => {
+  if (type === "mutation") await requireDevelopmentBearerScope(ctx.req);
+  return next();
+});
 
 function requireScope(ctx: {
   tenantId: string | null;

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import superjson from "superjson";
-import { CLOUDFLARE_MIGRATION_HANDOFF, createMigrationEngineeringRpc, startCloudflareMigrationEngineering } from "./cloudflareMigrationContinuation";
+import { authenticateMigrationEngineeringDevice, prepareMigrationEngineeringWorkspace, CLOUDFLARE_MIGRATION_HANDOFF, createMigrationEngineeringRpc, startCloudflareMigrationEngineering } from "./cloudflareMigrationContinuation";
 import { migrationMissionId } from "./cloudflareMigrationLifecycle";
 
 const input = { tenantId: "tenant-ZCSKEM9s", projectId: "44fb79ed-8d65-41b0-b04e-97f4b139430b",
@@ -66,5 +66,73 @@ describe("FIRST_MIGRATION engineering uses existing authenticated canonical admi
   it("does not expose server bodies or credentials on rejected authentication", async () => {
     const request = vi.fn(async () => new Response(JSON.stringify({ error: { json: { message: "secret", data: { code: "UNAUTHORIZED" } } } }), { status: 401 }));
     await expect(createMigrationEngineeringRpc("https://smartaihub.app", "user-token", request)("spec226DevelopmentControl.get", {})).rejects.toThrow("MIGRATION_ENGINEERING_RPC_HTTP_401:UNAUTHORIZED");
+  });
+});
+
+
+describe("migration continuation existing authenticated setup", () => {
+  const workspace = { tenantId: input.tenantId, conversationId: 12, runnerId: "runner-authorized", workspaceId: "smartaihub" };
+  it("binds only the exact trusted SHA and reconciles normal binding before Runner admission", async () => {
+    let bound = false;
+    const rpc = vi.fn(async (path: string) => {
+      if (path.endsWith("getConversationWorkspace")) return bound ? { workspace, availability: { available: true } } : null;
+      if (path.endsWith("availableWorkspaces")) return { workspaces: [{ ...workspace, gitHead: "a".repeat(40) }] };
+      if (path.endsWith("bindConversationWorkspace")) { bound = true; return workspace; }
+      return { ready: true };
+    });
+    expect(await prepareMigrationEngineeringWorkspace({ tenantId: input.tenantId, conversationId: 12,
+      runnerId: workspace.runnerId, workspaceId: workspace.workspaceId, expectedRevision: "a".repeat(40) }, rpc)).toMatchObject({ workspace });
+    expect(rpc.mock.calls.filter(([path]) => path.endsWith("bindConversationWorkspace"))).toHaveLength(1);
+    expect(rpc.mock.calls.some(([path]) => path.endsWith("startWorkspaceRun"))).toBe(false);
+  });
+  it("rejects a stale advertised SHA before any binding mutation", async () => {
+    const rpc = vi.fn(async path => path.endsWith("availableWorkspaces") ? { workspaces: [{ ...workspace, gitHead: "b".repeat(40) }] } : null);
+    await expect(prepareMigrationEngineeringWorkspace({ tenantId: input.tenantId, conversationId: 12,
+      runnerId: workspace.runnerId, workspaceId: workspace.workspaceId, expectedRevision: "a".repeat(40) }, rpc)).rejects.toThrow("REVISION_MISMATCH");
+    expect(rpc.mock.calls.some(([path]) => path.endsWith("bindConversationWorkspace"))).toBe(false);
+  });
+  it("rejects foreign tenant before binding writes and does not invent missing binding", async () => {
+    const rpc = vi.fn(async () => ({ workspace: { ...workspace, tenantId: "other" }, availability: { available: true } }));
+    await expect(prepareMigrationEngineeringWorkspace({ tenantId: input.tenantId, conversationId: 12 }, rpc)).rejects.toThrow("SCOPE_MISMATCH");
+    expect(rpc).toHaveBeenCalledTimes(1);
+    await expect(prepareMigrationEngineeringWorkspace({ tenantId: input.tenantId, conversationId: 12 }, async () => null)).rejects.toThrow("AUTHENTICATED_WORKSPACE_BINDING_REQUIRED");
+  });
+  it("reports real Runner capacity failure without claiming execution or submitting a job", async () => {
+    const rpc = vi.fn(async path => path.endsWith("getConversationWorkspace") ? { workspace, availability: { available: true } } : { ready: false, code: "RUNNER_OFFLINE" });
+    await expect(prepareMigrationEngineeringWorkspace({ tenantId: input.tenantId, conversationId: 12 }, rpc)).rejects.toThrow("RUNNER_OFFLINE");
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+  it("uses existing bounded device polling, no cookies or token logging, then returns in-memory bearer", async () => {
+    let time = 0;
+    const responses = [
+      { device_code: "secret-device", user_code: "ABCD-EFGH", expires_in: 600, interval: 5 },
+      { error: "authorization_pending" },
+      { access_token: "secret-bearer", refresh_token: "secret-refresh", token_type: "Bearer", scope: "mcp:read development:run" },
+    ];
+    const request = vi.fn(async () => new Response(JSON.stringify(responses.shift()), { status: responses.length === 1 ? 400 : 200 }));
+    const notify = vi.fn();
+    expect(await authenticateMigrationEngineeringDevice("https://smartaihub.app", notify, {
+      request, now: () => time, sleep: async ms => { time += ms; },
+    })).toBe("secret-bearer");
+    expect(notify).toHaveBeenCalledWith({ verificationUrl: "https://smartaihub.app/auth/device?user_code=ABCD-EFGH", userCode: "ABCD-EFGH", expiresIn: 600 });
+    expect(JSON.stringify(notify.mock.calls)).not.toContain("secret-");
+    for (const call of request.mock.calls as unknown[][]) expect(call[1]).toMatchObject({ redirect: "error", headers: { "content-type": "application/json" } });
+  });
+  it("does not use a read-only device token when the server lacks engineering consent", async () => {
+    let time = 0;
+    const responses = [{ device_code: "secret-device", user_code: "CODE", expires_in: 600 },
+      { access_token: "read-only", token_type: "Bearer", scope: "mcp:read" }];
+    const request = vi.fn(async () => new Response(JSON.stringify(responses.shift()), { status: 200 }));
+    await expect(authenticateMigrationEngineeringDevice("https://smartaihub.app", () => {}, {
+      request, now: () => time, sleep: async ms => { time += ms; },
+    })).rejects.toThrow("DEVELOPMENT_CONSENT_REQUIRED");
+  });
+
+  it("bounds expired device requests and redacts denied provider response bodies", async () => {
+    let time = 0;
+    const request = vi.fn(async () => new Response(JSON.stringify({ device_code: "secret", user_code: "CODE", expires_in: 5 }), { status: 200 }));
+    await expect(authenticateMigrationEngineeringDevice("https://smartaihub.app", () => {}, { request,
+      now: () => time, sleep: async ms => { time += ms; } })).rejects.toThrow("DEVICE_AUTH_EXPIRED");
+    expect(request).toHaveBeenCalledTimes(1);
   });
 });

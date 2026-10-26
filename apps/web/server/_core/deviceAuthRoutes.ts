@@ -369,6 +369,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       "llm:chat",
       "mcp:read",
       "mcp:write",
+      "development:run",
       "hermes:connect",
       "hermes:read",
       "hermes:write",
@@ -694,6 +695,7 @@ export function registerDeviceAuthRoutes(app: Express) {
       access_token: accessToken.token,
       refresh_token: refreshToken.token,
       token_type: "Bearer",
+      scope: entry.scopes.join(" "),
       expires_in: ACCESS_TOKEN_EXPIRY,
       user: {
         id: user.id,
