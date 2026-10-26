@@ -1,14 +1,34 @@
-/** Fixed, reviewed startup programs for the already-published images. The
- * supported Container entrypoint override selects this transport; callers
- * cannot provide commands. No image rebuild, Access token or DNS is needed.
- * cloudflared is an opaque WebSocket carrier here, NOT an Access application.
- * The original request-only APIs and verify-full PostgreSQL drivers are reused. */
-export const NODE_VPC_DATABASE_ENTRYPOINT = String.raw`
+/** Fixed startup programs for the already-published images. The supported
+ * entrypoint override selects these programs; callers cannot supply commands.
+ * Native WebSocket clients use the private outbound binding on port 80, whose
+ * traffic is encrypted by Cloudflare's network. PostgreSQL remains TLS with
+ * verify-full end to end. No Access app, public DNS or image rebuild is used.
+ * cloudflared access tcp is intentionally NOT used: it forces HTTPS even when
+ * passed http://, which cannot reach the private HTTP interception endpoint. */
+export const NODE_DATABASE_CARRIER_SOURCE = String.raw`
+async function createDatabaseCarrier(endpoint,port){
+ const {createServer}=await import('node:net');const connections=new Set();
+ const server=createServer(socket=>{
+  socket.pause();const ws=new WebSocket(endpoint);ws.binaryType='arraybuffer';
+  let count=0,closed=false;
+  const stop=()=>{if(closed)return;closed=true;connections.delete(stop);socket.destroy();try{ws.close();}catch{}};
+  connections.add(stop);socket.once('error',stop);socket.once('close',stop);
+  ws.addEventListener('error',stop);ws.addEventListener('close',stop);ws.addEventListener('open',()=>socket.resume());
+  socket.on('data',data=>{count+=data.length;if(ws.readyState!==1||ws.bufferedAmount>1048576||count>67108864)stop();else ws.send(data);});
+  ws.addEventListener('message',event=>{
+   if(!(event.data instanceof ArrayBuffer)||(count+=event.data.byteLength)>67108864||socket.writableLength>1048576)stop();else socket.write(new Uint8Array(event.data));
+  });
+ });
+ await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(port,'127.0.0.1',resolve);});
+ return{port:server.address().port,close(){for(const stop of connections)stop();return new Promise(resolve=>server.close(resolve));}};
+}
+`;
+export const NODE_VPC_DATABASE_ENTRYPOINT = NODE_DATABASE_CARRIER_SOURCE + String.raw`
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
-const env={...process.env}, end=Date.parse(env.CLOUDFLARE_APPLICATION_EXPIRES_AT??'');
-let connector,app;
-function stop(){app?.kill('SIGKILL');connector?.kill('SIGKILL');}
+const env={...process.env},end=Date.parse(env.CLOUDFLARE_APPLICATION_EXPIRES_AT??'');
+let carrier,app;
+function stop(){app?.kill('SIGKILL');void carrier?.close();}
 try{
  const db=new URL(env.DATABASE_URL);
  if(env.NODE_ENV!=='production'||env.SMARTAIHUB_APPLICATION_RUNTIME!=='cloudflare-http'||env.CLOUDFLARE_CONTAINER_POLICY!=='on-demand'||
@@ -20,50 +40,72 @@ try{
  for(const k of ['DATABASE_ACCESS_CLIENT_ID','DATABASE_ACCESS_CLIENT_SECRET','TUNNEL_SERVICE_TOKEN_ID','TUNNEL_SERVICE_TOKEN_SECRET'])delete env[k];
  const timer=setTimeout(()=>{stop();process.exit(0);},end-Date.now());
  process.once('SIGTERM',()=>{stop();process.exit(0);});process.once('SIGINT',()=>{stop();process.exit(0);});
- connector=spawn('/usr/local/bin/cloudflared',['access','tcp','--hostname','http://database.application.internal','--url','127.0.0.1:15432','--log-level','error'],
- {env:{PATH:process.env.PATH??'/usr/local/bin:/usr/bin:/bin'},stdio:['ignore','ignore','ignore']});
- const exited=new Promise(resolve=>{connector.once('exit',resolve);connector.once('error',resolve);});
+ carrier=await createDatabaseCarrier('ws://database.application.internal/',15432);
  const {createApplicationDatabaseTls}=await import('/app/server/_core/applicationDatabaseTls.ts');
  const {default:postgres}=await import('postgres');
- const client=postgres(env.DATABASE_URL,{ssl:createApplicationDatabaseTls(env.DATABASE_URL,env),max:1,connect_timeout:3});
+ const client=postgres(env.DATABASE_URL,{ssl:createApplicationDatabaseTls(env.DATABASE_URL,env),max:1,connect_timeout:8});
  let ready=false;
- try{for(let n=0;n<5;n++){if(connector.exitCode!==null)break;try{await client.unsafe('SELECT 1');ready=true;break;}catch{await new Promise(r=>setTimeout(r,200));}}}
+ try{for(let n=0;n<3;n++){let timeout;try{await Promise.race([client.unsafe('SELECT 1'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error()),10000);})]);ready=true;break;}catch{await new Promise(r=>setTimeout(r,200));}finally{clearTimeout(timeout);}}}
  finally{await client.end({timeout:1});}
  if(!ready)throw Error();
  app=spawn(process.execPath,['/app/server/_core/cloudflare-http-api/index.mjs'],{env,stdio:['ignore','inherit','inherit']});
- await Promise.race([exited,once(app,'exit')]);clearTimeout(timer);stop();
+ await once(app,'exit');clearTimeout(timer);stop();
 }catch{stop();console.error('APPLICATION_VPC_DATABASE_START_FAILED');process.exit(1);}
 `;
-
+export const PYTHON_DATABASE_CARRIER_SOURCE = String.raw`
+async def forward_database(reader,writer,session,endpoint):
+ try:
+  async with session.ws_connect(endpoint,max_msg_size=1048576) as ws:
+   transferred=0
+   async def upstream():
+    nonlocal transferred
+    while True:
+     data=await reader.read(65536)
+     if not data:return
+     transferred+=len(data)
+     if transferred>67108864:raise ValueError()
+     await ws.send_bytes(data)
+   async def downstream():
+    nonlocal transferred
+    async for message in ws:
+     if message.type!=aiohttp.WSMsgType.BINARY:return
+     transferred+=len(message.data)
+     if transferred>67108864:raise ValueError()
+     writer.write(message.data);await writer.drain()
+   tasks=[asyncio.create_task(upstream()),asyncio.create_task(downstream())]
+   try:await asyncio.wait(tasks,return_when=asyncio.FIRST_COMPLETED)
+   finally:
+    for task in tasks:task.cancel()
+    await asyncio.gather(*tasks,return_exceptions=True)
+ except Exception:pass
+ finally:
+  writer.close()
+  try:await asyncio.wait_for(writer.wait_closed(),2)
+  except Exception:pass
+`;
 export const PYTHON_VPC_DATABASE_ENTRYPOINT = String.raw`
-import os,sys,re,signal,subprocess,threading
+import os,sys,re,signal,threading,asyncio,aiohttp,functools
 from datetime import datetime,timezone
 from urllib.parse import urlsplit,urlunsplit,parse_qsl
-env=dict(os.environ);connector=app=None
-def stop():
- for child in (app,connector):
-  if child is not None:
-   try: os.killpg(child.pid,signal.SIGKILL)
-   except ProcessLookupError: pass
-def deadline():
- stop();os._exit(0)
+` + PYTHON_DATABASE_CARRIER_SOURCE + String.raw`
 try:
- end=datetime.fromisoformat(env.get('CLOUDFLARE_APPLICATION_EXPIRES_AT','').replace('Z','+00:00'))
+ env=dict(os.environ);end=datetime.fromisoformat(env.get('CLOUDFLARE_APPLICATION_EXPIRES_AT','').replace('Z','+00:00'))
  remaining=end.timestamp()-datetime.now(timezone.utc).timestamp();db=urlsplit(env['DATABASE_URL'])
- if env.get('ENVIRONMENT')!='production' or env.get('SMARTAIHUB_APPLICATION_RUNTIME')!='cloudflare-http' or env.get('CLOUDFLARE_CONTAINER_POLICY')!='on-demand' or end.tzinfo is None or not 0<remaining<=600 or db.hostname!='db.smartaihub.app' or not re.fullmatch(r'sah_cf_app_[a-f0-9]{12}',db.username or '') or not db.password or db.scheme not in ('postgres','postgresql','postgresql+asyncpg') or any(k.lower().startswith('ssl') for k,_ in parse_qsl(db.query)) or env.get('DATABASE_SSL_MODE')!='verify-full' or not env.get('DATABASE_SSL_CA'): raise ValueError()
- env['DATABASE_URL']=urlunsplit(db._replace(scheme='postgresql+asyncpg',netloc=db.netloc.rsplit('@',1)[0]+'@db.smartaihub.app:15432'))
- for k in ('DATABASE_ACCESS_CLIENT_ID','DATABASE_ACCESS_CLIENT_SECRET','TUNNEL_SERVICE_TOKEN_ID','TUNNEL_SERVICE_TOKEN_SECRET'): env.pop(k,None)
- timer=threading.Timer(remaining,deadline);timer.daemon=True;timer.start()
- for sig in (signal.SIGTERM,signal.SIGINT):signal.signal(sig,lambda *_:deadline())
- connector=subprocess.Popen(['/usr/local/bin/cloudflared','access','tcp','--hostname','http://database.application.internal','--url','127.0.0.1:15432','--log-level','error'],env={'PATH':env.get('PATH','/usr/local/bin:/usr/bin:/bin')},stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
- app=subprocess.Popen([sys.executable,'-m','app.core.cloudflare_http_entrypoint','--serve'],env=env,stdin=subprocess.DEVNULL,start_new_session=True)
- event=threading.Event()
- while not event.wait(.1):
-  if connector.poll() is not None or app.poll() is not None:raise RuntimeError()
+ if env.get('ENVIRONMENT')!='production' or env.get('SMARTAIHUB_APPLICATION_RUNTIME')!='cloudflare-http' or env.get('CLOUDFLARE_CONTAINER_POLICY')!='on-demand' or end.tzinfo is None or not 0<remaining<=600 or db.hostname!='db.smartaihub.app' or not re.fullmatch(r'sah_cf_app_[a-f0-9]{12}',db.username or '') or not db.password or db.scheme not in ('postgres','postgresql','postgresql+asyncpg') or any(k.lower().startswith('ssl') for k,_ in parse_qsl(db.query)) or env.get('DATABASE_SSL_MODE')!='verify-full' or not env.get('DATABASE_SSL_CA'):raise ValueError()
+ os.environ['DATABASE_URL']=urlunsplit(db._replace(scheme='postgresql+asyncpg',netloc=db.netloc.rsplit('@',1)[0]+'@db.smartaihub.app:15432'))
+ for k in ('DATABASE_ACCESS_CLIENT_ID','DATABASE_ACCESS_CLIENT_SECRET','TUNNEL_SERVICE_TOKEN_ID','TUNNEL_SERVICE_TOKEN_SECRET'):os.environ.pop(k,None)
+ timer=threading.Timer(remaining,lambda:os._exit(0));timer.daemon=True;timer.start()
+ for sig in (signal.SIGTERM,signal.SIGINT):signal.signal(sig,lambda *_:os._exit(0))
+ from app.core.cloudflare_http_entrypoint import DatabaseConnectorEventLoop,serve_http
+ async def main():
+  async with aiohttp.ClientSession() as session:
+   server=await asyncio.start_server(functools.partial(forward_database,session=session,endpoint='http://database.application.internal/'),'127.0.0.1',15432)
+   async with server:await serve_http()
+ asyncio.run(main(),loop_factory=lambda:DatabaseConnectorEventLoop('db.smartaihub.app'))
+ timer.cancel()
 except Exception:
- stop();sys.stderr.write('APPLICATION_VPC_DATABASE_START_FAILED\n');sys.exit(1)
+ sys.stderr.write('APPLICATION_VPC_DATABASE_START_FAILED\n');sys.exit(1)
 `;
-
 export function applicationVpcDatabaseEntrypoint(runtime: "node-http" | "python-http") {
   return runtime === "node-http" ? ["node", "--import=tsx", "--input-type=module", "-e", NODE_VPC_DATABASE_ENTRYPOINT]
     : ["python", "-c", PYTHON_VPC_DATABASE_ENTRYPOINT];

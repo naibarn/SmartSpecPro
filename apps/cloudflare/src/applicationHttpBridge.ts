@@ -3,7 +3,7 @@ import { isCanonicalWidgetBrowserOrigin, parseCloudflarePublicOrigins } from "..
 
 export type ApplicationHttpNamespace = {
   idFromName(name: string): unknown;
-  get(id: unknown): { fetch(request: Request): Promise<Response>; diagnostics?(): Promise<unknown> };
+  get(id: unknown): { fetch(request: Request): Promise<Response>; diagnostics?(): Promise<unknown>; stop?(): Promise<unknown> };
 };
 export type ApplicationHttpBindings = {
   CLOUDFLARE_ENVIRONMENT?: string;

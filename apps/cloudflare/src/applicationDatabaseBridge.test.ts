@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { spawnSync } from "node:child_process";
-import { pipeApplicationDatabase, validateApplicationDatabasePolicy } from "./applicationDatabaseBridge";
+import { acceptApplicationDatabaseWebSocket, pipeApplicationDatabase, validateApplicationDatabasePolicy } from "./applicationDatabaseBridge";
 import { NODE_VPC_DATABASE_ENTRYPOINT, PYTHON_VPC_DATABASE_ENTRYPOINT, applicationVpcDatabaseEntrypoint } from "./applicationDatabaseEntrypoints";
 function profiles() {
   const node = { configurationRef: `cf-origin:${"c".repeat(64)}`, sourceSha: "d".repeat(40), targetId: "smartspec-cloudflare-runtime" as const,
@@ -14,6 +14,10 @@ function profiles() {
   return { node, python, policy };
 }
 describe("private VPC PostgreSQL transport", () => {
+  it("selects ArrayBuffer before accepting the socket, avoiding the live Workers Blob-default regression", () => {
+    const socket = { binaryType: "blob", accept: vi.fn(() => expect(socket.binaryType).toBe("arraybuffer")) };
+    acceptApplicationDatabaseWebSocket(socket); expect(socket.accept).toHaveBeenCalledOnce();
+  });
   it("accepts one bounded production configuration without an Access app or public DNS", () => {
     const f = profiles(); expect(validateApplicationDatabasePolicy(f.policy, f.node, f.python)).toEqual(f.policy);
   });

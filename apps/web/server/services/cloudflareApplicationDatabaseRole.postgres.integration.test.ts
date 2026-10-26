@@ -88,4 +88,16 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
       {expiresAt:new Date(Date.now()+7_200_000).toISOString()}])
       await expect(prepareApplicationDatabaseRole(db,{plan:{...plan(),projectId:'project-negative',...mutation},assertAuthorized:async()=>{},saveSecret:async()=>{}})).rejects.toThrow('PREPARATION_DENIED');
   });
+  it("grants exact quoted existing camelCase sequences without granting other sequences", async () => {
+    await client.unsafe('CREATE TABLE runtime_mixed_fixture("fencingToken" serial PRIMARY KEY)');
+    const p = { ...plan(), projectId: "project-mixed", tables: ["runtime_mixed_fixture"], sequences: ["runtime_mixed_fixture_fencingToken_seq"] };
+    let secret: any;
+    await prepareApplicationDatabaseRole(db, { plan: p, assertAuthorized: async () => {}, saveSecret: async (_tx, value) => { secret=value; } });
+    const url = new URL(disposable.databaseUrl); url.username=secret.role; url.password=secret.password;
+    const mixed = (await import("postgres")).default(url.toString(), { max: 1 });
+    try {
+      expect(await mixed.unsafe('INSERT INTO runtime_mixed_fixture DEFAULT VALUES RETURNING "fencingToken"')).toEqual([{ fencingToken: 1 }]);
+      await expect(mixed.unsafe("SELECT nextval('runtime_role_fixture_id_seq')")).rejects.toMatchObject({ code: "42501" });
+    } finally { await mixed.end({ timeout: 2 }); }
+  });
 });

@@ -3,7 +3,9 @@ import { sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DrizzleDB } from "../db";
 
-const identifier = z.string().regex(/^[a-z][a-z0-9_]{0,62}$/);
+// Existing serial sequences include quoted camelCase column names. Every
+// identifier stays exact-case and double-quoted; punctuation remains denied.
+const identifier = z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,62}$/);
 const retired = /(?:agency|agencies|sandbox|workpack|workflow|work_request)/i;
 const scopeSchema = z.object({ tenantId: z.string().min(1).max(36), projectId: z.string().min(1).max(36) }).strict();
 export const applicationDatabaseRolePlanSchema = z.object({

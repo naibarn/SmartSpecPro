@@ -17,6 +17,15 @@ export async function handleApplicationHttpCanary(request: Request, env: Applica
   const hidden = () => new Response(null, { status: 404, headers: { "cache-control": "no-store" } });
   if (!url.pathname.startsWith(APPLICATION_HTTP_CANARY_PREFIX) || !["staging", "production"].includes(env.CLOUDFLARE_ENVIRONMENT ?? "") ||
       !await sameToken(request.headers.get("x-smartaihub-application-canary-token"), env.CLOUDFLARE_APPLICATION_CANARY_TOKEN)) return hidden();
+  // Cleanup has its own exact fixed action; no destination, command, query or
+  // new start capability. Public and expired profiles remain fail-closed.
+  if ((route === "node/stop" || route === "python/stop") && request.method === "POST" && !url.search && !request.headers.has("upgrade")) {
+    try {
+      const stub = resolveApplicationHttpStub(route === "node/stop" ? "node-http" : "python-http", env);
+      if (!stub.stop) throw Error();
+      return Response.json(await stub.stop(), { headers: { "cache-control": "no-store" } });
+    } catch { return Response.json({ error: "APPLICATION_HTTP_STOP_UNAVAILABLE" }, { status: 503, headers: { "cache-control": "no-store" } }); }
+  }
   if (request.method !== "GET") return new Response(null, { status: 405, headers: { allow: "GET", "cache-control": "no-store" } });
   if (url.search || request.headers.has("upgrade")) return hidden();
   if (route === "node/status" || route === "python/status") {

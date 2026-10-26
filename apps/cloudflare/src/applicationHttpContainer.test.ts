@@ -39,7 +39,7 @@ describe("bounded private application HTTP compute", () => {
       CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" });
     await f.controller.ensureRunning();
     expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.profile.image,
-      entrypoint: ["node", "--import=tsx", "--input-type=module", "-e", expect.stringContaining("http://database.application.internal")] }));
+      entrypoint: ["node", "--import=tsx", "--input-type=module", "-e", expect.stringContaining("ws://database.application.internal/")] }));
   });
   it("rejects a foreign database role before reserving or starting a paid VM", async () => {
     const f = fixture();

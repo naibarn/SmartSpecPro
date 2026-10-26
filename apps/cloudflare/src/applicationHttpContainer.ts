@@ -187,6 +187,14 @@ export class ApplicationHttpContainerController {
       configurationMatches: !state || state.scope === scope, failure: failure ?? null };
   }
 
+  /** Canonical bounded test compensation; never resets the paid-usage ledger. */
+  async stop() {
+    if (this.container.running) await this.container.destroy("application test compensation");
+    const state = await this.storage.get<LifecycleState>(KEY);
+    if (state) await this.storage.put(KEY, { ...state, activeUntil: null });
+    return { stopped: !this.container.running, runtime: this.profile.runtime };
+  }
+
   private async scope() {
     validateApplicationHttpProfile(this.profile, this.now());
     applicationEnvironment(this.profile, this.environment, this.now() + 1000);

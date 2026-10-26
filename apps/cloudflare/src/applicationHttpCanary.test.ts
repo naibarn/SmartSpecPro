@@ -16,6 +16,16 @@ function fixture() {
   return { env, namespace, fetch, request, profile };
 }
 describe("bounded read-only API migration canary", () => {
+  it("compensates only the exact authenticated runtime without starting or forwarding", async () => {
+    const f = fixture(), stop = vi.fn(async () => ({ stopped: true, runtime: "node-http" }));
+    f.namespace.get.mockReturnValue({ fetch: f.fetch, stop } as never);
+    expect((await handleApplicationHttpCanary(f.request("node/stop", { method: "POST" }), f.env)).status).toBe(200);
+    expect(stop).toHaveBeenCalledOnce(); expect(f.fetch).not.toHaveBeenCalled();
+    for (const req of [f.request("node/stop?target=other", { method: "POST" }),
+      f.request("node/stop", { method: "POST", headers: { "x-smartaihub-application-canary-token": "foreign" } }), f.request("node/stop")])
+      expect([404, 405]).toContain((await handleApplicationHttpCanary(req, f.env)).status);
+    expect(stop).toHaveBeenCalledOnce();
+  });
   it("reads lifecycle diagnostics through a fixed RPC without forwarding a request or booting a VM", async () => {
     const f = fixture(), diagnostics = vi.fn(async () => ({ running: false, starts: 0 }));
     f.namespace.get.mockReturnValue({ fetch: f.fetch, diagnostics } as never);

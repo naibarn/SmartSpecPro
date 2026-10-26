@@ -21,6 +21,13 @@ export function validateApplicationDatabasePolicy(policy: ApplicationDatabasePol
 type Socket = { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array>; close(): Promise<void> };
 type BinarySocket = { send(data: ArrayBuffer | ArrayBufferView): void; close(code: number, reason: string): void;
   addEventListener(type: string, listener: (event: any) => void): void; removeEventListener(type: string, listener: (event: any) => void): void };
+/** Newer Workers WebSockets default binary messages to Blob. Select the byte
+ * representation before accept; otherwise valid PostgreSQL TLS frames are
+ * rejected by the bounded binary pipe. Reproduced in real SIN preview SQL. */
+export function acceptApplicationDatabaseWebSocket(socket: { binaryType: string; accept(): void }) {
+  socket.binaryType = "arraybuffer";
+  socket.accept();
+}
 /** Opaque PostgreSQL bytes: the application driver negotiates TLS and verifies
  * the origin certificate through this pipe. No SQL API, credentials, host/port
  * selector or public Worker route is introduced. Bound queues, bytes and time. */

@@ -5,7 +5,7 @@ import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { resolveVerifiedHttpImagePair, HttpPublishedPairRequired } from "./cloudflareHttpPublishedPair";
 import { createHttpCandidateConfiguration } from "./cloudflareHttpCandidateConfiguration";
-import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
+import { httpApplicationNamespace, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { resolveCloudflareProductionDeploymentTarget } from "./cloudflareProductionDeploymentContract";
 import { resolveLatestPublishedCloudflareStagingArtifact, resolveCloudflareStagingArtifact, resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuthority";
 import { CANDIDATE_MODULE, HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB } from "./cloudflareHttpCandidateContract";
@@ -40,12 +40,12 @@ export async function resolveHttpCandidatePackage(db: DrizzleDB, scope: Scope) {
   const node = jobs.find(item => item?.outputJson?.runtime === "node-http"), python = jobs.find(item => item?.outputJson?.runtime === "python-http");
   if (!node || !python) throw Error("HTTP_CANDIDATE_IMAGE_RECEIPTS_REQUIRED");
   const image = (job: typeof node) => ({ provisionJobId: job.id, planDigest: String(job.inputJson.planDigest), image: String(job.outputJson!.image) });
-  const packet = createHttpCandidateConfiguration({ scope: { ...scope, environment: "production", accountRef: target.accountRef },
-    settings: { mode: "private-canary", namespace: httpApplicationNamespace(scope.tenantId, scope.projectId, "production"),
+  const settings: HttpApplicationSettings = { mode: "private-canary", namespace: httpApplicationNamespace(scope.tenantId, scope.projectId, "production"),
       sourceSha: pair.sourceSha, node: image(node), python: image(python), issuedAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 60_000).toISOString(), maxStarts: 2, maxComputeSeconds: 1200,
-      hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic" }, receipts: { node, python } });
-  return { target, packet, publishedPair: { submissionId: pair.submissionId, sourceSha: pair.sourceSha, jobs: pair.jobs, verified: true as const } };
+      hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic" };
+  const packet = createHttpCandidateConfiguration({ scope: { ...scope, environment: "production", accountRef: target.accountRef }, settings, receipts: { node, python } });
+  return { target, packet, settings, publishedPair: { submissionId: pair.submissionId, sourceSha: pair.sourceSha, jobs: pair.jobs, verified: true as const } };
 }
 
 export async function getHttpCandidatePreparationPreflight(db: DrizzleDB, scope: Scope,
