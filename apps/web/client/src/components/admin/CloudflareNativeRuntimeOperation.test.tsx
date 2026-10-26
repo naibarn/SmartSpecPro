@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareNativeRuntimeOperation } from "./CloudflareNativeRuntimeOperation";
+vi.mock("./CloudflareImagePublication", () => ({ CloudflareImagePublication: ({ replacementForSourceSha }: any) => <p>corrected-images:{replacementForSourceSha}</p> }));
 const state = vi.hoisted(() => ({ ready: true, job: null as any, pending: null as any, error: null as any, mutationError: null as any,
   loading: false, busy: false, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
@@ -60,4 +61,12 @@ describe("bounded native runtime Owner operation", () => {
     render(<CloudflareNativeRuntimeOperation {...props} />);
     expect(screen.getByText(/M3_ACCEPTED: NO/)).toBeInTheDocument(); expect(screen.getByRole("button")).toBeDisabled();
   });
+  it("shows the precise Node incompatibility and corrected publication action without repeating the failed runtime job", () => {
+    state.job = { jobId: "canonical-runtime-job", status: "failed", attempt: 2, maxAttempts: 2, imageRepair: {
+      code: "HTTP_IMAGE_NODE_RUNTIME_UNSUPPORTED", observedVersion: "22.22.3", requiredVersion: ">=22.23.4 <23", sourceSha: "d".repeat(40) } };
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("22.22.3"); expect(screen.getByText(/corrected-images:/)).toBeInTheDocument();
+    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+  });
+
 });

@@ -170,12 +170,16 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     const ui = await readHttpImagePublication(db, { ...scope, submissionId: incomplete.submissionId });
     expect(ui?.submissionId).toBe(resolution.pair?.submissionId); expect(ui?.published).toBe(true);
     expect(ui?.jobs).toEqual(resolution.pair?.jobs);
+    expect(ui?.requestedPublication?.submissionId).toBe(incomplete.submissionId);
+    expect(ui?.requestedPublication?.jobs.every(job => job.status === "queued")).toBe(true);
     // A foreign actor's metadata never participates, even when newer.
     const [original] = await client`SELECT "valueJson" FROM system_settings WHERE key=${oldInput.submissionId}`;
     const foreignId = randomUUID();
     await client`INSERT INTO system_settings(category,key,"valueJson","updatedBy") VALUES('cloudflare_http_image_submissions',${foreignId},
       ${client.json({ ...original.valueJson, submissionId: foreignId, actorUserId: 18 })},18)`;
     expect((await resolveVerifiedHttpImagePair(db, scope)).pair?.submissionId).toBe(oldInput.submissionId);
+    const foreignHint = await readHttpImagePublication(db, { ...scope, submissionId: foreignId });
+    expect(foreignHint?.submissionId).toBe(oldInput.submissionId); expect(foreignHint?.requestedPublication).toBeNull();
     await expect(resolveVerifiedHttpImagePair(db, { ...scope, actorUserId: 18 })).rejects.toThrow("OWNER_SCOPE_DENIED");
     expect(await client`SELECT count(*)::int AS n FROM worker_jobs`).toEqual(before);
     expect(state.grants.size).toBe(grants); expect(state.calls.length).toBe(calls);

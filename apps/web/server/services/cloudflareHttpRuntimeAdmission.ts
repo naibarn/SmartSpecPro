@@ -5,6 +5,8 @@ import { assertHttpCandidateOwner } from "./cloudflareHttpCandidatePreparation";
 import { getHttpRuntimePlan } from "./cloudflareHttpRuntimePlan";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
 import { HTTP_RUNTIME_CATEGORY, HTTP_RUNTIME_CONTRACT, HTTP_RUNTIME_JOB, httpRuntimeDiagnosticSchema } from "./cloudflareHttpRuntimeContract";
+import { createHash } from "node:crypto";
+import { knownHttpNodeImageFailure } from "./cloudflareHttpImageCompatibility";
 import { decrypt } from "./crypto";
 
 type Scope = { tenantId: string; projectId: string; actorUserId: number };
@@ -31,7 +33,18 @@ export async function readHttpRuntimeOperation(db: DrizzleDB, scope: Scope) {
           }) : undefined };
     } catch { /* No ciphertext/driver error is exposed through diagnostics. */ }
   }
-  return { jobId: job.id, candidateJobId: String(job.inputJson?.candidateJobId), status: job.status, attempt: job.attempt, maxAttempts: job.maxAttempts,
+  let imageRepair: (NonNullable<ReturnType<typeof knownHttpNodeImageFailure>> & { sourceSha: string }) | null = null;
+  if (job.status === "failed" && job.errorCode === "HTTP_RUNTIME_PROBE_NODE_HEALTH_HTTP_503") {
+    const intentRow = await readHttpRuntimeIntent(db, job.id), value = intentRow?.valueJson;
+    if (intentRow?.updatedBy === scope.actorUserId && value?.actorUserId === scope.actorUserId && value.tenantId === scope.tenantId &&
+        value.projectId === scope.projectId && value.planDigest === job.inputJson.planDigest &&
+        createHash("sha256").update(JSON.stringify(value.plan)).digest("hex") === value.planDigest) {
+      const image = value.plan?.candidate?.applications?.find((app: any) => app.images?.node)?.images.node;
+      const failure = knownHttpNodeImageFailure(image);
+      if (failure) imageRepair = { ...failure, sourceSha: value.plan.candidate.imageSourceSha };
+    }
+  }
+  return { imageRepair, jobId: job.id, candidateJobId: String(job.inputJson?.candidateJobId), status: job.status, attempt: job.attempt, maxAttempts: job.maxAttempts,
     errorCode: job.errorCode, receipt: job.outputJson, heartbeatAt: job.heartbeatAt, checkpoint };
 }
 

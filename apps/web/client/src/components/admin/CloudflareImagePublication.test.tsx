@@ -70,4 +70,29 @@ describe("image publication Owner action", () => {
     expect(screen.getByText(/HTTP_IMAGE_JOB_NOT_SUCCEEDED/)).toBeInTheDocument();
   });
 
+  it("publishes a reviewed corrected source without resubmitting the incompatible published pair", async () => {
+    const oldId = "11111111-1111-4111-8111-111111111111", sourceSha = "d".repeat(40);
+    sessionStorage.setItem(`smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`, JSON.stringify({ id: oldId, digest: "e".repeat(64) }));
+    state.status = { submissionId: oldId, sourceSha, planDigest: "e".repeat(64), published: true, diagnostics: [],
+      jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime, status: "succeeded", registryVerified: true })) };
+    const view = render(<CloudflareImagePublication {...props} replacementForSourceSha={sourceSha} />);
+    await userEvent.click(screen.getByRole("button", { name: "Authorize corrected Node/Python image publication" }));
+    expect(state.mutate).toHaveBeenCalledOnce();
+    const request = state.mutate.mock.calls[0][0]; expect(request.submissionId).not.toBe(oldId); expect(request.planDigest).toBe("c".repeat(64));
+    view.unmount(); render(<CloudflareImagePublication {...props} replacementForSourceSha={sourceSha} />);
+    await userEvent.click(screen.getByRole("button")); expect(state.mutate.mock.calls[1][0]).toEqual(request);
+  });
+  it("keeps a requested corrected publication visible while the older verified pair remains authoritative", () => {
+    state.status = { sourceSha: "d".repeat(40), published: true, jobs: [], diagnostics: [], requestedPublication: {
+      submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "c".repeat(64), sourceSha: "a".repeat(40), published: false, diagnostics: [],
+      jobs: [{ runtime: "node-http", jobId: "node-new", status: "running" }, { runtime: "python-http", jobId: "python-new", status: "queued" }] } };
+    render(<CloudflareImagePublication {...props} replacementForSourceSha={"d".repeat(40)} />);
+    expect(screen.getByText(/node-new/)).toBeInTheDocument(); expect(screen.getByText(/python-new/)).toBeInTheDocument();
+    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+  });
+  it("does not republish the same incompatible source as a purported repair", () => {
+    render(<CloudflareImagePublication {...props} replacementForSourceSha={"a".repeat(40)} />);
+    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+  });
+
 });

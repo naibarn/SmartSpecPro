@@ -77,10 +77,19 @@ export async function resolveVerifiedHttpImagePair(db: DrizzleDB, scope: Scope) 
 export async function readHttpImagePublication(db: DrizzleDB, scope: Scope & { submissionId?: string }) {
   const resolution = await resolveVerifiedHttpImagePair(db, scope);
   const pair = resolution.pair ?? (scope.submissionId ? await readHttpImagePairSubmission(db, scope) : resolution.latest);
-  if (pair) return { ...pair, accountRef: resolution.pair?.accountRef ?? null,
+  // Keep the verified pair authoritative while exposing a separately named
+  // explicitly requested publication's admission state. An unfinished new
+  // publication must neither hide the valid pair nor vanish from Owner feedback.
+  let requestedPublication: Awaited<ReturnType<typeof readHttpImagePairSubmission>> = null;
+  let requestedPublicationError: string | null = null;
+  if (scope.submissionId && scope.submissionId !== pair?.submissionId) {
+    try { requestedPublication = await readHttpImagePairSubmission(db, scope); }
+    catch { requestedPublicationError = "HTTP_IMAGE_REQUESTED_PUBLICATION_UNAVAILABLE"; }
+  }
+  if (pair) return { ...pair, requestedPublication, requestedPublicationError, accountRef: resolution.pair?.accountRef ?? null,
     published: Boolean(resolution.pair), pairResolution: resolution.diagnostics };
   return resolution.diagnostics.length ? { submissionId: null, planDigest: null, sourceSha: null, buildId: null, accountRef: null,
-    jobs: [], diagnostics: [], published: false, pairResolution: resolution.diagnostics, trafficMutation: false } : null;
+    jobs: [], diagnostics: [], published: false, requestedPublication, requestedPublicationError, pairResolution: resolution.diagnostics, trafficMutation: false } : null;
 }
 
 export class HttpPublishedPairRequired extends Error {

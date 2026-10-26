@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 const state = vi.hoisted(() => ({ preflightDenied: false, admissionDenied: false, responseLost: false,
   planDigest: "a".repeat(64), artifactRef: `sha256:${"b".repeat(64)}`, workerSourceSha: "c".repeat(40) }));
 vi.mock("./cloudflareHttpRuntimePlan", () => ({ getHttpRuntimePlan: async (_db: any, scope: any, candidateJobId: string, reviewed: any) => {
@@ -72,4 +72,22 @@ suite("Owner bounded runtime admission with real canonical PostgreSQL/outbox", (
     const [intent] = await client`SELECT "valueJson" FROM system_settings WHERE category='cloudflare_production_native_runtime' AND key=${input.submissionId}`;
     expect(intent.valueJson).toMatchObject({ trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false });
   });
+  it("exposes the known immutable Node incompatibility only from the matching canonical failed intent", async () => {
+    const [row] = await client`SELECT id,"inputJson" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB} LIMIT 1`;
+    const [saved] = await client`SELECT "valueJson" FROM system_settings WHERE category='cloudflare_production_native_runtime' AND key=${row.id}`;
+    const plan = { ...saved.valueJson.plan, candidate: { imageSourceSha: "d".repeat(40), applications: [{ images: {
+      node: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-abcdef012345-node-http@sha256:d8d5b38fca643300119684f11576b4b94c5bfa6e043f75e6a3bf7f471690140f` } }] } };
+    const planDigest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
+    const value = { ...saved.valueJson, plan, planDigest };
+    await client`UPDATE worker_jobs SET status='failed',"errorCode"='HTTP_RUNTIME_PROBE_NODE_HEALTH_HTTP_503',"inputJson"=${client.json({ ...row.inputJson, planDigest })} WHERE id=${row.id}`;
+    await client`UPDATE system_settings SET "valueJson"=${JSON.stringify(value)}::json WHERE category='cloudflare_production_native_runtime' AND key=${row.id}`;
+    const persisted = await service.readHttpRuntimeIntent(db, row.id);
+    expect(persisted?.updatedBy).toBe(scope.actorUserId);
+    expect(createHash("sha256").update(JSON.stringify(persisted?.valueJson?.plan)).digest("hex")).toBe(planDigest);
+    const operation = await service.readHttpRuntimeOperation(db, scope);
+    expect(operation?.imageRepair).toMatchObject({ code: "HTTP_IMAGE_NODE_RUNTIME_UNSUPPORTED", observedVersion: "22.22.3", sourceSha: "d".repeat(40) });
+    await client`UPDATE system_settings SET "valueJson"=${JSON.stringify({ ...value, actorUserId: 2 })}::json WHERE category='cloudflare_production_native_runtime' AND key=${row.id}`;
+    expect((await service.readHttpRuntimeOperation(db, scope))?.imageRepair).toBeNull();
+  });
+
 });
