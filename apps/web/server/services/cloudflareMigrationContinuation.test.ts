@@ -114,6 +114,7 @@ describe("migration continuation existing authenticated setup", () => {
     expect(await authenticateMigrationEngineeringDevice("https://smartaihub.app", notify, {
       request, now: () => time, sleep: async ms => { time += ms; },
     })).toBe("secret-bearer");
+    expect(JSON.parse(((request.mock.calls as unknown[][])[0][1] as { body: string }).body)).toEqual({ scopes: ["mcp:read", "development:run"] });
     expect(notify).toHaveBeenCalledWith({ verificationUrl: "https://smartaihub.app/auth/device?user_code=ABCD-EFGH", userCode: "ABCD-EFGH", expiresIn: 600 });
     expect(JSON.stringify(notify.mock.calls)).not.toContain("secret-");
     for (const call of request.mock.calls as unknown[][]) expect(call[1]).toMatchObject({ redirect: "error", headers: { "content-type": "application/json" } });

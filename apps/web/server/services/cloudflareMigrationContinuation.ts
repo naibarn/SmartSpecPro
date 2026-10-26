@@ -129,7 +129,7 @@ export async function authenticateMigrationEngineeringDevice(baseUrl: string,
   }
   // Existing mcp:read consent is discovery only. It must never be treated
   // as permission to bind a workspace or start a development run.
-  const { response, data } = await post("/auth/device/code", { scopes: ["mcp:read"] });
+  const { response, data } = await post("/auth/device/code", { scopes: ["mcp:read", "development:run"] });
   if (!response.ok || typeof data.device_code !== "string" || typeof data.user_code !== "string" ||
       typeof data.expires_in !== "number" || data.expires_in <= 0 || data.expires_in > 3600)
     throw new Error("MIGRATION_DEVICE_AUTH_START_FAILED");
