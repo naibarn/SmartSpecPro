@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB } from "./cloudflareHttpCandidateContract";
 
 const mock = vi.hoisted(() => ({ owner: vi.fn(), resolve: vi.fn(), verify: vi.fn(), credential: vi.fn() }));
+vi.mock("./cloudflareHttpDatabaseNetwork", () => ({ readHttpDatabaseNetwork: vi.fn(async () => ({ transport: "private-vpc-websocket-v1", dnsRequired: false, accessApplicationRequired: false })) }));
 vi.mock("./cloudflareHttpCandidatePreparation", () => ({ assertHttpCandidateOwner: mock.owner, resolveHttpCandidatePackage: mock.resolve }));
 vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: mock.credential }));
 vi.mock("./cloudflareHttpCandidateReadback", async original => ({ ...(await original<any>()), verifyHttpCandidateProviderReceipt: mock.verify }));
@@ -24,6 +25,8 @@ function fixture() {
   mock.credential.mockImplementation(async (_db, _identity, operation) => ({ status: "CONFIGURED", value: await operation("private-fixture-token") }));
   const fetch = vi.fn(async (url: any, init: any) => {
     expect(init.method).toBe("GET");
+    if (String(url).endsWith("/zones/9acd8fe46851607de0919f2b6a462911")) return Response.json({ success: true,
+      result: { id: "9acd8fe46851607de0919f2b6a462911", name: "smartaihub.app", account: { id: receipt.accountRef } } });
     return String(url).includes("/dns_records") ? Response.json({ success: false, errors: [{ code: 10000, message: "private provider detail" }] }, { status: 403 })
       : Response.json({ success: true, result: [], result_info: { total_pages: 1 } });
   });
@@ -37,11 +40,13 @@ describe("successful native Candidate runtime inspection", () => {
     expect(result).toMatchObject({ candidateJobId: "exact-job", ready: false, runtimeAcceptance: false, activationAuthorized: false,
       providerMutations: 0, databaseMutations: 0, containerStarts: 0 });
     expect(result.checks).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: "PRODUCTION_DATABASE_DNS", status: "UNVERIFIED", http: 403, providerCodes: [10000], permission: expect.stringContaining("DNS") }),
+      expect.objectContaining({ code: "PRODUCTION_DATABASE_DNS", status: "UNVERIFIED", required: false, http: 403, providerCodes: [10000], permission: expect.stringContaining("DNS · Read") }),
       expect.objectContaining({ code: "PRODUCTION_DATABASE_ACCESS_CONNECTOR", status: "MISSING" }),
       expect.objectContaining({ code: "APPLICATION_DATABASE_ROLE", status: "MISSING" }),
     ]));
-    expect(f.db.execute).toHaveBeenCalledTimes(2); expect(f.fetch).toHaveBeenCalledTimes(2);
+    expect(f.db.execute).toHaveBeenCalledTimes(2); expect(f.fetch).toHaveBeenCalledTimes(3);
+    expect(result.databaseNetwork).toMatchObject({ dnsRequired: false, accessApplicationRequired: false });
+    expect(JSON.stringify(result)).not.toContain("DNS · Edit");
     expect(JSON.stringify(result)).not.toMatch(/private-fixture-token|private provider detail/);
   });
   it.each(["tenant", "owner", "project", "contract", "status", "review"])("rejects a mismatched %s before provider credential access", async kind => {
@@ -66,9 +71,16 @@ describe("successful native Candidate runtime inspection", () => {
     expect(mock.credential).not.toHaveBeenCalled();
   });
   it("treats incomplete Access inventory as unknown rather than a missing or ready connector", async () => {
-    const f = fixture(); f.fetch.mockImplementation(async () => Response.json({ success: true, result: [], result_info: { total_pages: 2 } }));
+    const f = fixture(), original = f.fetch.getMockImplementation()!;
+    f.fetch.mockImplementation(async (url, init) => String(url).endsWith("/zones/9acd8fe46851607de0919f2b6a462911") ? original(url, init)
+      : Response.json({ success: true, result: [], result_info: { total_pages: 2 } }));
     const result = await getHttpRuntimeReadiness(f.db as any, scope, "exact-job");
     expect(result.checks.find(c => c.code === "PRODUCTION_DATABASE_ACCESS_CONNECTOR")?.status).toBe("UNVERIFIED");
     expect(result.ready).toBe(false);
+  });
+  it("rejects a wrong authoritative zone/account rather than recommending broader permissions", async () => {
+    const f = fixture(); f.fetch.mockImplementation(async () => Response.json({ success: true, result: {
+      id: "9acd8fe46851607de0919f2b6a462911", name: "foreign.example", account: { id: "f".repeat(32) } } }));
+    await expect(getHttpRuntimeReadiness(f.db as any, scope, "exact-job")).rejects.toThrow("ZONE_IDENTITY_DENIED");
   });
 });

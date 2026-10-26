@@ -32,6 +32,23 @@ function fixture() {
 }
 
 describe("bounded private application HTTP compute", () => {
+  it("uses the fixed private VPC startup program with the same immutable image and exact application role", async () => {
+    const f = fixture();
+    Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345", instance: "basic" });
+    Object.assign(f.environment, { DATABASE_URL: "postgresql://sah_cf_app_abcdef012345:fixture-secret@db.smartaihub.app:5433/fixture",
+      CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" });
+    await f.controller.ensureRunning();
+    expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.profile.image,
+      entrypoint: ["node", "--import=tsx", "--input-type=module", "-e", expect.stringContaining("http://database.application.internal")] }));
+  });
+  it("rejects a foreign database role before reserving or starting a paid VM", async () => {
+    const f = fixture();
+    Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345", instance: "basic" });
+    Object.assign(f.environment, { DATABASE_URL: "postgresql://sah_cf_app_ffffffffffff:fixture-secret@db.smartaihub.app:5433/fixture",
+      CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" });
+    await expect(f.controller.ensureRunning()).rejects.toThrow("DATABASE_SCOPE_DENIED");
+    expect(f.container.start).not.toHaveBeenCalled(); expect(f.storage.put).not.toHaveBeenCalled();
+  });
   it("accepts a monthly bounded production profile and rejects longer or larger compute authority", () => {
     const f = fixture();
     Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345",

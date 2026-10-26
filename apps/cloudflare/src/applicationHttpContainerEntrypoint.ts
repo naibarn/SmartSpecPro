@@ -1,11 +1,37 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { ApplicationHttpContainerController, applicationHttpInstanceName, validateApplicationHttpProfilePair, type ApplicationHttpProfile } from "./applicationHttpContainer";
 import { applicationHttpHostname, forwardApplicationHttpBridge, validateApplicationHttpWebSocket, type ApplicationHttpBindings } from "./applicationHttpBridge";
+import { APPLICATION_DATABASE_HOST, APPLICATION_DATABASE_TRANSPORT, pipeApplicationDatabase, validateApplicationDatabasePolicy } from "./applicationDatabaseBridge";
 
 type ApplicationEnvironment = ApplicationHttpBindings & {
   CLOUDFLARE_NODE_HTTP_SECRETS?: string;
   CLOUDFLARE_PYTHON_HTTP_SECRETS?: string;
+  CLOUDFLARE_APPLICATION_DATABASE_POLICY?: string;
+  DATABASE_NETWORK?: { connect(address: { hostname: string; port: number }): Promise<{ readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array>; close(): Promise<void> }> };
 };
+
+/** Container egress only; fetch() never routes to this class. PostgreSQL TLS
+ * and authentication stay end-to-end between the native driver and Linux. */
+export class ApplicationDatabaseBridge extends WorkerEntrypoint<ApplicationEnvironment, { runtime: ApplicationHttpProfile["runtime"]; configurationRef: string }> {
+  async fetch(request: Request) {
+    let socket;
+    try {
+      const url = new URL(request.url);
+      if (request.method !== "GET" || url.protocol !== "http:" || url.hostname !== APPLICATION_DATABASE_HOST || url.port || url.pathname !== "/" || url.search ||
+          request.headers.get("upgrade")?.toLowerCase() !== "websocket" || !["node-http", "python-http"].includes(this.ctx.props.runtime)) throw Error();
+      const node = JSON.parse(this.env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null"), python = JSON.parse(this.env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
+      const policy = validateApplicationDatabasePolicy(JSON.parse(this.env.CLOUDFLARE_APPLICATION_DATABASE_POLICY ?? "null"), node, python);
+      if (this.ctx.props.configurationRef !== policy.configurationRef || !this.env.DATABASE_NETWORK) throw Error();
+      socket = await this.env.DATABASE_NETWORK.connect({ hostname: policy.hostname, port: policy.port });
+      const pair = new WebSocketPair(), client = pair[0], server = pair[1]; server.accept();
+      this.ctx.waitUntil(pipeApplicationDatabase(socket, server, Date.parse(policy.expiresAt)));
+      return new Response(null, { status: 101, webSocket: client });
+    } catch {
+      await socket?.close().catch(() => undefined);
+      return new Response(null, { status: 404, headers: { "cache-control": "no-store" } });
+    }
+  }
+}
 
 /** Container egress loopback binding only; the public Worker has no route to
  * this entrypoint. Destination and instance names are fixed, with normal app
@@ -56,6 +82,14 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
           if (!bridge || typeof bridge.fetch !== "function") throw Error();
           await ctx.container!.interceptOutboundHttp(applicationHttpHostname(target), bridge);
         }
+        if (secretsUseVpc(env, runtime)) {
+          const node = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null"), python = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null");
+          const policy = validateApplicationDatabasePolicy(JSON.parse(env.CLOUDFLARE_APPLICATION_DATABASE_POLICY ?? "null"), node, python);
+          const databaseFactory = Reflect.get(ctx.exports, "ApplicationDatabaseBridge");
+          if (typeof databaseFactory !== "function" || !env.DATABASE_NETWORK) throw Error();
+          const database = databaseFactory({ props: { runtime, configurationRef: policy.configurationRef } }) as Fetcher;
+          await ctx.container!.interceptOutboundHttp(APPLICATION_DATABASE_HOST, database);
+        }
         await this.controller.restore({ deferInactivityTimeout: true });
       } catch (error) {
         await this.controller.recordFailure(error).catch(() => undefined);
@@ -91,6 +125,11 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
 
   alarm() { return this.ctx.blockConcurrencyWhile(() => this.controller.expire()); }
   diagnostics() { return this.ctx.blockConcurrencyWhile(() => this.controller.diagnostics()); }
+}
+
+function secretsUseVpc(env: ApplicationEnvironment, runtime: ApplicationHttpProfile["runtime"]) {
+  const secrets = JSON.parse((runtime === "node-http" ? env.CLOUDFLARE_NODE_HTTP_SECRETS : env.CLOUDFLARE_PYTHON_HTTP_SECRETS) ?? "null");
+  return secrets?.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT === APPLICATION_DATABASE_TRANSPORT;
 }
 
 export class StagingNodeHttpContainer extends ApplicationHttpContainer {

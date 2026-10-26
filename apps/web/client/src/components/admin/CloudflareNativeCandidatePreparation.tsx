@@ -11,7 +11,9 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
   const text = (en: string, thai: string) => th ? thai : en;
   const runtimeActions: Record<string, string> = {
     APPLICATION_DATABASE_ROLE: "ระบบต้องเตรียม role ฐานข้อมูลสำหรับแอปแบบจำกัดสิทธิ์และระบุ table ที่ใช้ โดยรักษา role ของ Linux และ M1 เดิม",
-    PRODUCTION_DATABASE_ACCESS_CONNECTOR: "ระบบต้องเตรียม Access application, service-token policy และเส้นทาง TCP ของ Tunnel ไป PostgreSQL port 5433 โดยใช้ credential แยกจาก staging",
+    PRODUCTION_DATABASE_NETWORK: "ใช้ Tunnel/VPC เดิมผ่าน interface ภายในที่จำกัดปลายทาง โดยคง PostgreSQL TLS และ app role แยก ไม่ต้องสร้าง Access, DNS หรือ Hyperdrive เพิ่ม แต่ยังต้องตรวจจาก Container จริง",
+    DATABASE_TRANSPORT_BINDING: "ระบบต้องผูก Tunnel เดิมกับ bridge ภายในและ startup contract ที่ตรวจแล้วกับ Candidate นี้ ก่อนเริ่มทดสอบ TLS/SQL จริงตามขอบเขตที่อนุมัติ",
+    PRODUCTION_DATABASE_ACCESS_CONNECTOR: "เป็นทางเลือกที่ไม่ได้เลือกใช้ จึงไม่ต้องสร้าง Access application หรือ service token สำหรับเส้นทาง VPC นี้",
     PAIRED_RUNTIME_BINDINGS: "ระบบต้องผูก config และ secret ที่เข้ารหัส, role ฐานข้อมูล, CA สำหรับ verify-full และ profile ทดสอบที่มีอายุจำกัดกับ Candidate นี้",
     BOUNDED_RUNTIME_AUTHORITY: "คำอนุมัติเตรียม Candidate เดิมอนุญาตให้สร้างทรัพยากรเท่านั้น ขั้นทดสอบ runtime ต้องครอบคลุม role, connector, bindings, จำนวนครั้งเริ่ม Container และการคืนค่า ส่วนเปลี่ยน traffic จริงยังเป็นขั้นแยก",
     LIVE_RUNTIME_ACCEPTANCE: "หลังเริ่ม Container แบบจำกัด ต้องตรวจ Node/Python, SQL, API, login, ขอบเขต tenant, Gateway, billing, jobs และ rollback ด้วยข้อมูลทดสอบที่ได้รับอนุญาต",
@@ -66,17 +68,17 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
         <Text>{runtime.data.metadata.workerName} · VERIFIED</Text>
         <Text>Deployment: {runtime.data.metadata.deploymentId}</Text>
         <Text>Version: {runtime.data.metadata.versionId}</Text>
+        {runtime.data.databaseNetwork ? <Text>VPC: {runtime.data.databaseNetwork.vpcServiceId} · Hyperdrive: {runtime.data.databaseNetwork.hyperdriveId} · Tunnel: {runtime.data.databaseNetwork.tunnelId}</Text> : null}
         <VStack as="ul" gap={1}>{runtime.data.metadata.applications.map(app => <li key={app.applicationId}>
           {app.runtime}: {app.applicationId} · namespace {app.namespaceId} · VERIFIED
         </li>)}</VStack>
         <Text>{text("Runtime acceptance: NOT VERIFIED. Accepted production ingress and Linux fallback remain active.",
           "Runtime acceptance: ยังไม่ผ่านการตรวจรับ ทางเข้าระบบจริงและ Linux fallback ยังทำงานอยู่")}</Text>
         <VStack as="ul" gap={2}>{runtime.data.checks.map(check => <li key={check.code}>
-          <Text>{check.code} · {check.status}{check.http ? ` · HTTP ${check.http}` : ""}{check.providerCodes?.length ? ` · CF ${check.providerCodes.join(",")}` : ""}</Text>
-          {check.permission ? <Text>{text("Required permission", "สิทธิ์ที่ต้องใช้")}: {check.permission} · <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">Cloudflare API Tokens</a></Text> : null}
+          <Text>{check.code} · {check.status}{check.required === false ? text(" · OPTIONAL, not a blocker", " · ทางเลือก ไม่ขวางงานนี้") : ""}{check.http ? ` · HTTP ${check.http}` : ""}{check.providerCodes?.length ? ` · CF ${check.providerCodes.join(",")}` : ""}</Text>
+          {check.permission ? <Text>{check.required === false ? text("Optional inspection permission", "สิทธิ์สำหรับตรวจทางเลือกเท่านั้น") : text("Required permission", "สิทธิ์ที่ต้องใช้")}: {check.permission} · <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank" rel="noreferrer">Cloudflare API Tokens</a></Text> : null}
           <Text>{th && check.code === "PRODUCTION_DATABASE_DNS"
-            ? check.http === 403 ? "token ของ Production target อ่าน DNS ไม่ผ่าน ให้เพิ่ม Zone · DNS · Edit เฉพาะ smartaihub.app ใน token เดิม แล้วระบบจะตรวจซ้ำอัตโนมัติ ไม่ต้องสร้าง Candidate ซ้ำ"
-              : "ระบบต้องตรวจ DNS, Access/Tunnel และชื่อโฮสต์ TLS สำหรับฐานข้อมูลให้ตรงกัน การพบ DNS เพียงอย่างเดียวยังไม่ยืนยันว่าเชื่อมต่อได้"
+            ? "การอ่าน DNS เป็นข้อมูลทางเลือกเท่านั้น ใช้ DNS Read ก็เพียงพอ ไม่ต้องเพิ่ม DNS Edit เส้นทาง VPC ที่เลือกไม่ต้องเปลี่ยน DNS หรือเพิ่มสิทธิ์ token"
             : th ? runtimeActions[check.code] ?? check.nextAction : check.nextAction}</Text>
         </li>)}</VStack>
       </> : null}

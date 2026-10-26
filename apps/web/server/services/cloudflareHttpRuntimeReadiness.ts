@@ -5,9 +5,10 @@ import { HTTP_CANDIDATE_JOB, HTTP_CANDIDATE_CONTRACT } from "./cloudflareHttpCan
 import { httpCandidateReceiptSchema, verifyHttpCandidateProviderReceipt } from "./cloudflareHttpCandidateReadback";
 import { applicationDatabaseRoleName } from "./cloudflareApplicationDatabaseRole";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
+import { readHttpDatabaseNetwork } from "./cloudflareHttpDatabaseNetwork";
 
 type Scope = { tenantId: string; projectId: string; actorUserId: number };
-type Check = { code: string; status: "VERIFIED" | "MISSING" | "UNVERIFIED"; nextAction: string; permission?: string; http?: number; providerCodes?: number[] };
+type Check = { code: string; status: "VERIFIED" | "MISSING" | "UNVERIFIED"; nextAction: string; permission?: string; http?: number; providerCodes?: number[]; required?: boolean };
 
 /** Database connector and runtime checks follow successful Candidate metadata
  * preparation. Missing optional platform capabilities are not prerequisites.
@@ -25,6 +26,11 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
   if (receipt.accountRef !== target.accountRef || receipt.workerName !== packet.config.name || receipt.manifestDigest !== packet.manifestDigest ||
       receipt.imageSourceSha !== packet.imageSourceSha) throw Error("HTTP_RUNTIME_CANONICAL_RECEIPT_DENIED");
   const checks: Check[] = [];
+  const databaseNetwork = await readHttpDatabaseNetwork(db, scope);
+  checks.push({ code: "PRODUCTION_DATABASE_NETWORK", status: "VERIFIED", required: true,
+    nextAction: "Reuse the accepted production Tunnel through a fixed-target private VPC Network/WebSocket bridge. Native drivers retain PostgreSQL TLS verification and a separate app role. No new Access application, DNS record or Hyperdrive is required; Container execution remains unverified." });
+  checks.push({ code: "DATABASE_TRANSPORT_BINDING", status: "MISSING", required: true,
+    nextAction: "Bind the exact existing Tunnel, private egress bridge and fixed VPC startup programs to this Candidate under bounded runtime authority, then verify real Container-to-PostgreSQL TLS/SQL before acceptance." });
   const role = applicationDatabaseRoleName(scope);
   const roles = await db.execute(sql`SELECT rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolreplication,rolbypassrls,rolconnlimit,rolvaliduntil
     FROM pg_roles WHERE rolname=${role}`);
@@ -46,14 +52,17 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
         result: body.result, codes: (body.errors ?? []).map((e: any) => e.code).filter((code: unknown) => Number.isSafeInteger(code)) as number[] };
       } catch { return { http: 0, complete: false, result: undefined, codes: [] as number[] }; }
     };
+    const zone = await get("/zones/9acd8fe46851607de0919f2b6a462911");
+    if (!zone.complete || zone.result?.id !== "9acd8fe46851607de0919f2b6a462911" || zone.result?.name !== "smartaihub.app" || zone.result?.account?.id !== target.accountRef)
+      throw Error("HTTP_RUNTIME_DATABASE_ZONE_IDENTITY_DENIED");
+    // Optional diagnostics for the alternative Access connector. They cannot
+    // gate the selected private VPC transport or justify DNS Write authority.
     const [dns, apps] = await Promise.all([get("/zones/9acd8fe46851607de0919f2b6a462911/dns_records?name=db.smartaihub.app"), get(`${root}/access/apps?per_page=100`)]);
     checks.push({ code: "PRODUCTION_DATABASE_DNS", status: dns.complete && Array.isArray(dns.result) && dns.result.length === 0 ? "MISSING" : "UNVERIFIED",
-      http: dns.http, providerCodes: dns.codes, ...(dns.http === 403 ? { permission: "Zone · DNS · Edit — smartaihub.app" } : {}),
-      nextAction: dns.http === 403 ? "The production target token cannot inspect the selected hostname. Update that token's zone DNS permission, then rerun this read-only check."
-        : !dns.complete ? "DNS inspection is incomplete. Reconcile the authentication, provider response or network error before preparing the hostname."
-        : "Reconcile a dedicated Access/Tunnel connector and exact PostgreSQL TLS hostname for the published images; DNS existence alone is not connectivity acceptance." });
-    checks.push({ code: "PRODUCTION_DATABASE_ACCESS_CONNECTOR", status: !apps.complete || !Array.isArray(apps.result) || apps.result.some((app: any) => app.domain === "db.smartaihub.app") ? "UNVERIFIED" : "MISSING", http: apps.http, providerCodes: apps.codes,
-      nextAction: "Prepare and verify a dedicated self-hosted Access application, service-token policy and Tunnel TCP route for db.smartaihub.app:5433; do not reuse staging credentials." });
+      required: false, http: dns.http, providerCodes: dns.codes, ...(dns.http === 403 ? { permission: "Zone · DNS · Read — smartaihub.app (optional inspection only)" } : {}),
+      nextAction: "Optional Access-alternative inventory only. DNS GET uses DNS Read, never DNS Edit. The selected VPC transport needs no public database DNS or token privilege expansion." });
+    checks.push({ code: "PRODUCTION_DATABASE_ACCESS_CONNECTOR", status: !apps.complete || !Array.isArray(apps.result) || apps.result.some((app: any) => app.domain === "db.smartaihub.app") ? "UNVERIFIED" : "MISSING", required: false, http: apps.http, providerCodes: apps.codes,
+      nextAction: "Optional alternative, not selected. Do not create an Access application or service token for the private VPC transport." });
     checks.push({ code: "PAIRED_RUNTIME_BINDINGS", status: provider.runtimeBindingsConfigured ? "UNVERIFIED" : "MISSING",
       nextAction: "Bind encrypted Node/Python application configuration, restricted database identity, verify-full CA and short-lived paired profiles to this Candidate only." });
     return provider;
@@ -63,7 +72,7 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
     nextAction: "Candidate metadata authority permits zero starts. A runtime operation must cover the exact role, connector, bindings, bounded starts, test scope and compensation; production activation remains separate." });
   checks.push({ code: "LIVE_RUNTIME_ACCEPTANCE", status: "UNVERIFIED",
     nextAction: "After bounded starts, verify Node/Python SQL, HTTP/API, authentication, tenant boundaries, Gateway, billing, jobs, recovery and rollback with authorized synthetic fixtures." });
-  return { observedAt: new Date().toISOString(), candidateJobId: jobId, metadata: access.value, databaseRole: role,
+  return { observedAt: new Date().toISOString(), candidateJobId: jobId, metadata: access.value, databaseRole: role, databaseNetwork,
     connectorHostname: "db.smartaihub.app", checks, ready: false as const, runtimeAcceptance: false as const,
     activationAuthorized: false as const, providerMutations: 0 as const, databaseMutations: 0 as const, containerStarts: 0 as const };
 }

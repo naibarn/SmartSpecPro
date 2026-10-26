@@ -1,3 +1,4 @@
+import { applicationVpcDatabaseEntrypoint } from "./applicationDatabaseEntrypoints";
 /** Private HTTP lifecycle, separate from canonical background job execution.
  * Deployment configuration remains the authority for images, secrets and scope.
  * This module neither provisions resources nor publishes public start routes. */
@@ -256,11 +257,16 @@ export class ApplicationHttpContainerController {
     if (state.starts >= this.profile.maxStarts || reservation < 1 ||
         state.reservedSeconds + reservation > this.profile.maxComputeSeconds) throw new Error("APPLICATION_HTTP_COMPUTE_BUDGET_EXHAUSTED");
     const env = applicationEnvironment(this.profile, this.environment, deadline);
+    const privateDatabase = this.environment.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT === "private-vpc-websocket-v1";
+    if (privateDatabase && (this.profile.targetId !== "smartspec-cloudflare-runtime" ||
+        new URL(this.environment.DATABASE_URL).username !== `sah_cf_app_${this.profile.namespace.slice(-12)}`))
+      throw Error("APPLICATION_HTTP_DATABASE_SCOPE_DENIED");
     await this.storage.put(KEY, { ...state, starts: state.starts + 1, reservedSeconds: state.reservedSeconds + reservation, activeUntil: deadline });
     await this.storage.setAlarm(deadline);
     this.inactivityTimeoutPromise = null;
     this.phase = "start";
     this.container.start({ image: this.profile.image, instance: this.profile.instance, env,
+      ...(privateDatabase ? { entrypoint: applicationVpcDatabaseEntrypoint(this.profile.runtime) } : {}),
       enableInternet: true, labels: { scope } });
     this.watchContainerExit();
     this.phase = "idle-bound";
