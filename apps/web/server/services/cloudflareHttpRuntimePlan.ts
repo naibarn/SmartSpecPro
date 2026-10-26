@@ -60,7 +60,7 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
   if (!job || job.tenantId !== scope.tenantId || job.requestedByUserId !== scope.actorUserId || job.status !== "succeeded" ||
       job.jobType !== HTTP_CANDIDATE_JOB || job.contractVersion !== HTTP_CANDIDATE_CONTRACT || job.operatorReviewRequired ||
       (job.inputJson as any)?.projectId !== scope.projectId) throw Error("HTTP_RUNTIME_CANDIDATE_JOB_DENIED");
-  const candidate = httpCandidateReceiptSchema.parse(job.outputJson), pkg = await resolveHttpCandidatePackage(db, scope);
+  const candidate = httpCandidateReceiptSchema.parse(job.outputJson), pkg = await resolveHttpCandidatePackage(db, scope, { imageSourceSha: candidate.imageSourceSha });
   if (candidate.accountRef !== pkg.target.accountRef || candidate.workerName !== pkg.packet.config.name ||
       candidate.manifestDigest !== pkg.packet.manifestDigest || candidate.imageSourceSha !== pkg.packet.imageSourceSha)
     throw Error("HTTP_RUNTIME_CANDIDATE_RECEIPT_CHANGED");

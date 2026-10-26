@@ -225,4 +225,27 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     expect((await resolveVerifiedHttpImagePair(db, scope)).pair?.submissionId).toBe(row.key);
   });
 
+  it("reconciles the original Candidate image source independently of a newer fully published pair", async () => {
+    const { resolveVerifiedHttpImagePair } = await import("./cloudflareHttpPublishedPair");
+    const sources = ["6".repeat(40), "7".repeat(40)], ids: string[] = [];
+    for (const source of sources) {
+      state.sourceSha = source;
+      const input = await request(), pair = await service.queueHttpImagePair(db, input); ids.push(input.submissionId);
+      for (const item of pair!.jobs) {
+        const grant = [...state.grants.values()].find(g => g.jobId === item.jobId)!;
+        const output = { schemaVersion: "cloudflare-http-image-receipt-v1", jobId: item.jobId, planDigest: grant.planDigest,
+          sourceSha: source, runtime: item.runtime, accountRef: state.account, namespace: grant.plan.namespace,
+          image: `registry.cloudflare.com/${state.account}/${grant.plan.namespace}-${item.runtime}@sha256:${"d".repeat(64)}`,
+          registryVerified: true, containerStarts: 0, applicationCreated: false, activation: "disabled" };
+        await client`UPDATE worker_jobs SET status='succeeded',"operatorReviewRequired"=false,"outputJson"=${client.json(output)} WHERE id=${item.jobId}`;
+      }
+    }
+    const before = await client`SELECT count(*)::int AS n FROM worker_jobs`;
+    expect((await resolveVerifiedHttpImagePair(db, scope)).pair?.submissionId).toBe(ids[1]);
+    expect((await resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: sources[0] })).pair?.submissionId).toBe(ids[0]);
+    expect((await resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: "9".repeat(40) })).pair).toBeNull();
+    await expect(resolveVerifiedHttpImagePair(db, { ...scope, actorUserId: 18 }, { imageSourceSha: sources[0] })).rejects.toThrow("OWNER_SCOPE_DENIED");
+    expect(await client`SELECT count(*)::int AS n FROM worker_jobs`).toEqual(before);
+  });
+
 });

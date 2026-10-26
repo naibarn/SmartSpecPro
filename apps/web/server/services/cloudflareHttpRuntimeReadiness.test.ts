@@ -60,6 +60,7 @@ describe("successful native Candidate runtime inspection", () => {
       expect.objectContaining({ code: "APPLICATION_DATABASE_ROLE", status: "MISSING" }),
     ]));
     expect(f.db.execute).toHaveBeenCalledTimes(2); expect(f.fetch).toHaveBeenCalledTimes(3);
+    expect(mock.resolve).toHaveBeenCalledWith(f.db, scope, { imageSourceSha: f.receipt.imageSourceSha });
     expect(result.databaseNetwork).toMatchObject({ dnsRequired: false, accessApplicationRequired: false });
     expect(JSON.stringify(result)).not.toContain("DNS · Edit");
     expect(JSON.stringify(result)).not.toMatch(/private-fixture-token|private provider detail/);

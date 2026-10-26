@@ -23,7 +23,7 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
       job.contractVersion !== HTTP_CANDIDATE_CONTRACT || job.status !== "succeeded" || job.operatorReviewRequired ||
       (job.inputJson as any)?.projectId !== scope.projectId) throw Error("HTTP_RUNTIME_CANDIDATE_JOB_DENIED");
   const receipt = httpCandidateReceiptSchema.parse(job.outputJson);
-  const { target, packet } = await resolveHttpCandidatePackage(db, scope);
+  const { target, packet } = await resolveHttpCandidatePackage(db, scope, { imageSourceSha: receipt.imageSourceSha });
   if (receipt.accountRef !== target.accountRef || receipt.workerName !== packet.config.name || receipt.manifestDigest !== packet.manifestDigest ||
       receipt.imageSourceSha !== packet.imageSourceSha) throw Error("HTTP_RUNTIME_CANONICAL_RECEIPT_DENIED");
   const checks: Check[] = [];
