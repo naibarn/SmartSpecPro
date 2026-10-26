@@ -513,7 +513,7 @@ export default function AdminDeploymentTargets() {
     {tenantId,projectId,environment:"production"}, {enabled:validScope&&environment==="production"});
   const latestProductionIngressJob = trpc.infrastructure.getLatestCloudflareProductionIngressJob.useQuery(
     {tenantId,projectId,environment:"production"}, {enabled:validScope&&environment==="production",refetchInterval:query=>
-      query.state.data&&! ["succeeded","failed","expired","cancelled"].includes(query.state.data.status)?2000:false});
+      query.state.data&&! ["succeeded","failed","expired","cancelled"].includes(query.state.data.status)?2000:10000});
   const previousIngressJob = latestProductionIngressJob.data;
   const canReplaceTerminalIngressJob = Boolean(previousIngressJob &&
     ["failed", "expired", "cancelled"].includes(previousIngressJob.status));

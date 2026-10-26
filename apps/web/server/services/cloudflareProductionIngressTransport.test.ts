@@ -66,6 +66,7 @@ function provider(
     failPublic?: boolean;
     failRuntime?: boolean;
     ambiguousRoute?: boolean;
+    apexPropagationReads?: number;
   } = {}
 ) {
   let counter = 10;
@@ -87,6 +88,12 @@ function provider(
         "Cloudflare-Workers-Version-Overrides": `${target.workerRef}="${candidate.versionId}"`,
       });
       const html = path === "/" || path.endsWith("/web");
+      if (u.hostname === "smartaihub.app" && (options.apexPropagationReads ?? 0) > 0) {
+        options.apexPropagationReads!--;
+        return new Response("<html>Previous Linux origin</html>", {
+          status: 200, headers: { "content-type": "text/html", "cf-ray": "fixture-BKK" },
+        });
+      }
       const failed =
         u.hostname === "smartaihub.app"
           ? options.failPublic
@@ -247,6 +254,18 @@ describe("Production ingress origin-route authority and compensation", () => {
       pattern: "smartaihub.app/*",
       script: target.workerRef,
     });
+  });
+  it("waits for apex route propagation without repeating provider writes or accepting origin-only 200", async () => {
+    const p = provider({ apexPropagationReads: 3 });
+    const acceptance = vi.fn(async () => ({ verified: true }));
+    const result = await createCloudflareProductionIngressTransport(p)({
+      token: "fixture", target, grant, candidate, probeToken: "p".repeat(32),
+      acceptApplication: acceptance, assertMutationAuthorized: auth(),
+    });
+    expect(result.productionTrafficShifted).toBe(true);
+    expect(p.order.filter(value => value === "smartaihub.app/")).toHaveLength(4);
+    expect(p.writes).toHaveLength(3);
+    expect(acceptance).toHaveBeenCalledOnce();
   });
   it("failed pre-route probe restores runtime baseline without touching apex", async () => {
     const p = provider({ failRuntime: true });

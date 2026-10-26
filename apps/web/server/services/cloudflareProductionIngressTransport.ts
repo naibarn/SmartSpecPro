@@ -174,6 +174,8 @@ export function createCloudflareProductionIngressTransport(
               httpStatus: response.status,
               ingressIdentityMatched: response.headers.get("x-smartaihub-ingress") === "cloudflare-worker",
               runtimeIdentityMatched: response.headers.get("x-smartaihub-application-runtime") === "linux-origin",
+              edgeRay: response.headers.get("cf-ray"),
+              cacheStatus: response.headers.get("cf-cache-status"),
             },
           });
         if (path === "/") {
@@ -190,15 +192,24 @@ export function createCloudflareProductionIngressTransport(
       }
     }
     async function probe(origin:"https://runtime.smartaihub.app"|"https://smartaihub.app",versionId:string){
-      // A read-after-write deployment receipt can precede global edge
-      // propagation. Retry only anonymous runtime GET probes, never writes.
+      // Provider readback precedes both version and route propagation. A new
+      // apex route can briefly reach the old origin without Worker identity.
+      // Bound anonymous GET retries; never replay a provider mutation.
+      const retryLimit = origin === "https://runtime.smartaihub.app" ? 5 : 15;
       for(let attempt=0;;attempt++){
         try{return await probeOnce(origin,versionId);}
         catch(error){
           if (error instanceof Error && "probeEvidence" in error) {
             console.warn("[Cloudflare ingress probe]", error.probeEvidence);
           }
-          if(origin!=="https://runtime.smartaihub.app"||attempt>=5)throw error;
+          if (origin === "https://smartaihub.app") {
+            const evidence = (error as { probeEvidence?: { httpStatus?: number; ingressIdentityMatched?: boolean; runtimeIdentityMatched?: boolean } })?.probeEvidence;
+            // Actual Worker/application failures still compensate immediately.
+            // Only an old-origin response may be route propagation lag.
+            if (!evidence || evidence.httpStatus !== 200 ||
+              evidence.ingressIdentityMatched || evidence.runtimeIdentityMatched) throw error;
+          }
+          if(attempt>=retryLimit)throw error;
           await assertMutationAuthorized();
           await new Promise(resolve=>setTimeout(resolve, options.probeRetryDelayMs ?? 2000));
         }
