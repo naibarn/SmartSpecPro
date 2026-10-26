@@ -1,4 +1,5 @@
 import { HTTP_CANDIDATE_CONTRACT } from "./cloudflareHttpCandidateContract";
+import { HTTP_RUNTIME_CONTRACT } from "./cloudflareHttpRuntimeContract";
 import { PRODUCTION_INGRESS_CONTRACT } from "./cloudflareProductionIngressContract";
 import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT } from "./cloudflareProductionDeploymentContract";
 import { and, eq } from "drizzle-orm";
@@ -45,6 +46,7 @@ const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT,
   PRODUCTION_INGRESS_CONTRACT,
   HTTP_CANDIDATE_CONTRACT,
+  HTTP_RUNTIME_CONTRACT,
 ]);
 
 export type TransportObservation = "unknown" | "published" | "consumed" | "failed";

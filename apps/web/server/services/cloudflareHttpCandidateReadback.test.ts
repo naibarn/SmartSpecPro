@@ -23,6 +23,11 @@ function fixture() {
   return {receipt,accountRef,bindings,version,apps,deployment,routes,fetchImpl,input:{receipt,accountRef,token:"fixture-secret",fetchImpl}};
 }
 describe("canonical native Candidate provider readback",()=>{
+  it("accepts a scoped compensated deployment only for the original immutable version",async()=>{
+    const f=fixture(),deploymentId="00000000-0000-4000-8000-000000000003"; f.deployment.id=deploymentId;
+    expect((await verifyHttpCandidateProviderReceipt({...f.input,restoredBaseline:{deploymentId,versionId:f.receipt.versionId}})).deploymentId).toBe(deploymentId);
+    await expect(verifyHttpCandidateProviderReceipt({...f.input,restoredBaseline:{deploymentId,versionId:"00000000-0000-4000-8000-000000000004"}})).rejects.toThrow("RESTORED_BASELINE_DENIED");
+  });
   it("independently verifies exact deployment, namespaces and immutable images with GET only, without claiming runtime acceptance",async()=>{
     const f=fixture(),result=await verifyHttpCandidateProviderReceipt(f.input);
     expect(result).toMatchObject({verified:true,deploymentId:f.receipt.deploymentId,versionId:f.receipt.versionId,m2RouteId:"accepted-route",

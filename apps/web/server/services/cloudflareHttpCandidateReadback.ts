@@ -16,9 +16,15 @@ export type HttpCandidateReceipt = z.infer<typeof httpCandidateReceiptSchema>;
 /** Verify the deployed metadata against the exact successful canonical
  * receipt, not another same-name application. These GETs never start a VM. */
 export async function verifyHttpCandidateProviderReceipt(input: { receipt: HttpCandidateReceipt; accountRef: string;
-  token: string; fetchImpl?: typeof fetch }) {
+  token: string; fetchImpl?: typeof fetch;
+  /** Trusted service supplies this only from a scoped canonical runtime
+   * compensation receipt. Rollback creates a NEW deployment of the SAME
+   * immutable baseline version; never rewrite the preparation receipt. */
+  restoredBaseline?: { deploymentId: string; versionId: string } }) {
   const receipt = httpCandidateReceiptSchema.parse(input.receipt);
   if (receipt.accountRef !== input.accountRef) throw Error("HTTP_CANDIDATE_READBACK_ACCOUNT_DENIED");
+  if (input.restoredBaseline && (!uuid.safeParse(input.restoredBaseline.deploymentId).success || input.restoredBaseline.versionId !== receipt.versionId))
+    throw Error("HTTP_CANDIDATE_RESTORED_BASELINE_DENIED");
   const request = async (path: string) => {
     const res = await (input.fetchImpl ?? fetch)(`https://api.cloudflare.com/client/v4${path}`, {
       method: "GET", headers: { authorization: `Bearer ${input.token}` }, redirect: "error", cache: "no-store", signal: AbortSignal.timeout(12_000),
@@ -33,7 +39,7 @@ export async function verifyHttpCandidateProviderReceipt(input: { receipt: HttpC
     request(`${root}/containers/applications?per_page=100`), request("/zones/9acd8fe46851607de0919f2b6a462911/workers/routes"),
   ]);
   const active = deployments?.deployments?.[0];
-  if (active?.id !== receipt.deploymentId || active.versions?.length !== 1 || active.versions[0].version_id !== receipt.versionId ||
+  if (active?.id !== (input.restoredBaseline?.deploymentId ?? receipt.deploymentId) || active.versions?.length !== 1 || active.versions[0].version_id !== receipt.versionId ||
       active.versions[0].percentage !== 100 || version?.id !== receipt.versionId) throw Error("HTTP_CANDIDATE_DEPLOYMENT_CHANGED");
   const bindings = version?.resources?.bindings, metadata = version?.resources?.script_runtime?.containers;
   if (!Array.isArray(bindings) || !Array.isArray(metadata) || !Array.isArray(apps)) throw Error("HTTP_CANDIDATE_READBACK_INCOMPLETE");
@@ -53,7 +59,7 @@ export async function verifyHttpCandidateProviderReceipt(input: { receipt: HttpC
   });
   const baseline = Array.isArray(routes) ? routes.filter(r => r.pattern === "smartaihub.app/*") : [];
   if (baseline.length !== 1 || baseline[0].script !== "smartspec-cloudflare-runtime") throw Error("HTTP_CANDIDATE_M2_BASELINE_CHANGED");
-  return { verified: true as const, workerName: receipt.workerName, deploymentId: receipt.deploymentId, versionId: receipt.versionId,
+  return { verified: true as const, workerName: receipt.workerName, deploymentId: active.id, versionId: receipt.versionId,
     applications, m2RouteId: baseline[0].id, m2Preserved: true as const,
     runtimeBindingsConfigured: ["CLOUDFLARE_NODE_HTTP_PROFILE", "CLOUDFLARE_PYTHON_HTTP_PROFILE", "CLOUDFLARE_NODE_HTTP_SECRETS",
       "CLOUDFLARE_PYTHON_HTTP_SECRETS", "CLOUDFLARE_APPLICATION_CANARY_TOKEN"].every(name => bindings.some(b => b.name === name)),

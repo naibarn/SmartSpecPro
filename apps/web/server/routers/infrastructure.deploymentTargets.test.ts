@@ -25,6 +25,18 @@ describe("infrastructure deployment target project selector", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
+  it("keeps native runtime review and execution behind exact Admin and the authenticated tenant", async () => {
+    const request = { tenantId: "tenant-ZCSKEM9s", projectId, candidateJobId: "22222222-2222-4222-8222-222222222222",
+      submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "a".repeat(64),
+      artifactRef: `sha256:${"b".repeat(64)}`, workerSourceSha: "c".repeat(40) };
+    for (const user of [null, { id: 2, role: "user" }, { id: 3, role: "system_agent" }, { id: 1, role: "admin", currentTenantId: "tenant-other" }]) {
+      const caller = infrastructureRouter.createCaller({ user, tenantId: user?.currentTenantId ?? request.tenantId } as any);
+      await expect(caller.prepareCloudflareHttpRuntime(request)).rejects.toMatchObject({ code: "FORBIDDEN" });
+      await expect(caller.getCloudflareHttpRuntimeOperation({ tenantId: request.tenantId, projectId, candidateJobId: request.candidateJobId })).rejects.toMatchObject({ code: "FORBIDDEN" });
+    }
+    expect(getDbMock).not.toHaveBeenCalled();
+  });
+
   it("accepts the complete automatic activation request through the serving API parser", async () => {
     getDbMock.mockResolvedValue(null);
     const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },

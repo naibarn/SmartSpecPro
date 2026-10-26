@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB } from "./cloudflareHttpCandidateContract";
 
-const mock = vi.hoisted(() => ({ owner: vi.fn(), resolve: vi.fn(), verify: vi.fn(), credential: vi.fn() }));
+const mock = vi.hoisted(() => ({ owner: vi.fn(), resolve: vi.fn(), verify: vi.fn(), credential: vi.fn(), runtime: vi.fn() }));
+vi.mock("./cloudflareHttpRuntimeAdmission", () => ({ readHttpRuntimeOperation: mock.runtime }));
 vi.mock("./cloudflareHttpDatabaseNetwork", () => ({ readHttpDatabaseNetwork: vi.fn(async () => ({ transport: "private-vpc-websocket-v1", dnsRequired: false, accessApplicationRequired: false })) }));
 vi.mock("./cloudflareHttpCandidatePreparation", () => ({ assertHttpCandidateOwner: mock.owner, resolveHttpCandidatePackage: mock.resolve }));
 vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: mock.credential }));
@@ -10,6 +11,7 @@ import { getHttpRuntimeReadiness } from "./cloudflareHttpRuntimeReadiness";
 
 const scope = { tenantId: "tenant-fixture", projectId: "project-fixture", actorUserId: 1 };
 function fixture() {
+  mock.runtime.mockResolvedValue(null);
   const receipt = { schemaVersion: "cloudflare-production-native-preparation-receipt-v1", accountRef: "a".repeat(32),
     workerName: `smartspec-production-${"b".repeat(12)}-candidate`, deploymentId: "00000000-0000-4000-8000-000000000001",
     versionId: "00000000-0000-4000-8000-000000000002", workerSourceSha: "c".repeat(40), imageSourceSha: "d".repeat(40), manifestDigest: "e".repeat(64),
@@ -35,6 +37,19 @@ function fixture() {
 }
 beforeEach(() => { vi.resetAllMocks(); vi.unstubAllGlobals(); });
 describe("successful native Candidate runtime inspection", () => {
+  it("recognizes canonical compensation as a new deployment of the same immutable Candidate baseline", async () => {
+    const f = fixture(), restored = { deploymentId: "00000000-0000-4000-8000-000000000003", versionId: f.receipt.versionId };
+    mock.runtime.mockResolvedValue({ candidateJobId: "exact-job", checkpoint: { cleanup: { candidateRestored: true, m2Preserved: true,
+      candidateDeploymentId: restored.deploymentId, candidateVersionId: restored.versionId } } });
+    await getHttpRuntimeReadiness(f.db as any, scope, "exact-job");
+    expect(mock.verify).toHaveBeenCalledWith(expect.objectContaining({ restoredBaseline: restored }));
+    mock.runtime.mockResolvedValue({ candidateJobId: "foreign-job", checkpoint: { cleanup: { candidateRestored: true, m2Preserved: true,
+      candidateDeploymentId: restored.deploymentId, candidateVersionId: restored.versionId } } });
+    const other = fixture(); mock.runtime.mockResolvedValue({ candidateJobId: "foreign-job", checkpoint: { cleanup: {
+      candidateRestored: true, m2Preserved: true, candidateDeploymentId: restored.deploymentId, candidateVersionId: restored.versionId } } });
+    await getHttpRuntimeReadiness(other.db as any, scope, "exact-job");
+    expect(mock.verify).toHaveBeenLastCalledWith(expect.objectContaining({ restoredBaseline: undefined }));
+  });
   it("reports exact connector blockers and sanitized DNS permission evidence without a write or Container start", async () => {
     const f = fixture(), result = await getHttpRuntimeReadiness(f.db as any, scope, "exact-job");
     expect(result).toMatchObject({ candidateJobId: "exact-job", ready: false, runtimeAcceptance: false, activationAuthorized: false,

@@ -5,6 +5,7 @@ import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
+import { CloudflareNativeRuntimeOperation } from "./CloudflareNativeRuntimeOperation";
 
 export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { tenantId: string; projectId: string }) {
   const { i18n } = useTranslation(), th = i18n.language?.startsWith("th");
@@ -84,6 +85,7 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
       </> : null}
       {runtime.error ? <Text role="alert">{runtime.error.message}</Text> : null}
     </VStack> : null}
+    {job?.status === "succeeded" ? <CloudflareNativeRuntimeOperation tenantId={tenantId} projectId={projectId} candidateJobId={job.jobId} /> : null}
     {prepare.error ? <Text role="alert">{prepare.error.message}</Text> : null}
     {state.error ? <Text role="alert">{state.error.message}</Text> : null}
   </VStack>;

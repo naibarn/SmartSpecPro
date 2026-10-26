@@ -6,6 +6,7 @@ import { httpCandidateReceiptSchema, verifyHttpCandidateProviderReceipt } from "
 import { applicationDatabaseRoleName } from "./cloudflareApplicationDatabaseRole";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import { readHttpDatabaseNetwork } from "./cloudflareHttpDatabaseNetwork";
+import { readHttpRuntimeOperation } from "./cloudflareHttpRuntimeAdmission";
 
 type Scope = { tenantId: string; projectId: string; actorUserId: number };
 type Check = { code: string; status: "VERIFIED" | "MISSING" | "UNVERIFIED"; nextAction: string; permission?: string; http?: number; providerCodes?: number[]; required?: boolean };
@@ -26,6 +27,10 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
   if (receipt.accountRef !== target.accountRef || receipt.workerName !== packet.config.name || receipt.manifestDigest !== packet.manifestDigest ||
       receipt.imageSourceSha !== packet.imageSourceSha) throw Error("HTTP_RUNTIME_CANONICAL_RECEIPT_DENIED");
   const checks: Check[] = [];
+  const operation = await readHttpRuntimeOperation(db, scope), cleanup = operation?.checkpoint?.cleanup as Record<string, unknown> | undefined;
+  const restoredBaseline = operation?.candidateJobId === jobId && cleanup?.candidateRestored === true && cleanup.m2Preserved === true &&
+    typeof cleanup.candidateDeploymentId === "string" && cleanup.candidateVersionId === receipt.versionId
+    ? { deploymentId: cleanup.candidateDeploymentId, versionId: receipt.versionId } : undefined;
   const databaseNetwork = await readHttpDatabaseNetwork(db, scope);
   checks.push({ code: "PRODUCTION_DATABASE_NETWORK", status: "VERIFIED", required: true,
     nextAction: "Reuse the accepted production Tunnel through a fixed-target private VPC Network/WebSocket bridge. Native drivers retain PostgreSQL TLS verification and a separate app role. No new Access application, DNS record or Hyperdrive is required; Container execution remains unverified." });
@@ -41,7 +46,7 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
     nextAction: restricted ? "Verify exact table grants, immutable plan checkpoint and live tenant isolation before acceptance."
       : "Prepare the separate bounded application role with exact table grants under runtime authority; preserve Linux roles and M1 intake role." });
   const access = await withCloudflareDeploymentCredential(db, { identity: { ...scope, environment: "production", provider: "cloudflare" }, credentialRef: target.credentialRef }, async token => {
-    const provider = await verifyHttpCandidateProviderReceipt({ receipt, accountRef: target.accountRef, token });
+    const provider = await verifyHttpCandidateProviderReceipt({ receipt, accountRef: target.accountRef, token, restoredBaseline });
     const root = `/accounts/${target.accountRef}`;
     const get = async (path: string) => {
       try {

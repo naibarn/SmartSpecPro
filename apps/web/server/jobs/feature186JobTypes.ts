@@ -75,6 +75,9 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   // Isolated metadata-only Worker/Container setup. Owner canonical admission,
   // immutable images, lease and expiry are checked before each provider write.
   "cloudflare.production.native.prepare",
+  // Existing Candidate-only role/bindings and bounded tests. Separate Owner
+  // intent, encrypted checkpoints and fenced executor; no traffic activation.
+  "cloudflare.production.native.runtime.verify",
   // Feature 195 is the sole durable execution authority for the
   // provider-neutral external-agent handoff. Provider selection remains in
   // the governed job manifest; it must not create a second queue or worker.

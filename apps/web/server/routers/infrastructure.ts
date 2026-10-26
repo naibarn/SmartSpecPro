@@ -7,6 +7,8 @@ import { readHttpImagePublication } from "../services/cloudflareHttpPublishedPai
 import { getHttpImagePairPreflight, queueHttpImagePair } from "../services/cloudflareHttpImageAdmission";
 import { getProductionTenantIsolationPreflight, prepareProductionTenantIsolation } from "../services/cloudflareProductionTenantIsolation";
 import { getHttpRuntimeReadiness } from "../services/cloudflareHttpRuntimeReadiness";
+import { getHttpRuntimePlan } from "../services/cloudflareHttpRuntimePlan";
+import { prepareHttpRuntime, readHttpRuntimeOperation, readPendingHttpRuntimeIntent } from "../services/cloudflareHttpRuntimeAdmission";
 import { getHttpCandidatePreparationPreflight, prepareHttpCandidate, readHttpCandidatePreparation } from "../services/cloudflareHttpCandidatePreparation";
 /**
  * Infrastructure Settings tRPC Router
@@ -850,6 +852,33 @@ export const infrastructureRouter = router({
       try { return await getHttpRuntimeReadiness(getDb(), { ...input, actorUserId: ctx.user.id }, input.jobId); }
       catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
         ? error.message : "HTTP_RUNTIME_READBACK_UNAVAILABLE" }); }
+    }),
+
+  getCloudflareHttpRuntimeOperation: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), candidateJobId: z.string().uuid() }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_RUNTIME_AUTHENTICATED_TENANT_REQUIRED" });
+      const db = getDb(), scope = { ...input, actorUserId: ctx.user.id }, job = await readHttpRuntimeOperation(db, scope);
+      if (job) return { job, preflight: null, pending: null };
+      const pending = await readPendingHttpRuntimeIntent(db, scope);
+      try { return { job: null, pending, preflight: await getHttpRuntimePlan(db, scope, input.candidateJobId, pending ?? undefined) }; }
+      catch (error) { return { job: null, pending, preflight: { ready: false as const, reason: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
+        ? error.message : "HTTP_RUNTIME_PREFLIGHT_UNAVAILABLE" } }; }
+    }),
+
+  prepareCloudflareHttpRuntime: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), candidateJobId: z.string().uuid(),
+      submissionId: z.string().uuid(), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
+      artifactRef: z.string().regex(/^sha256:[a-f0-9]{64}$/), workerSourceSha: z.string().regex(/^[a-f0-9]{40}$/) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_RUNTIME_AUTHENTICATED_TENANT_REQUIRED" });
+      try { const result = await prepareHttpRuntime(getDb(), { ...input, actorUserId: ctx.user.id,
+        correlationId: (ctx.req as typeof ctx.req & { requestId?: string }).requestId ?? input.submissionId });
+        return { jobId: result.jobId }; }
+      catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
+        ? error.message : "HTTP_RUNTIME_ADMISSION_UNKNOWN" }); }
     }),
 
   prepareCloudflareHttpCandidate: exactAdminProcedure

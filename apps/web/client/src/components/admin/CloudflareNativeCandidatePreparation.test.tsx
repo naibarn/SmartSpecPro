@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareNativeCandidatePreparation } from "./CloudflareNativeCandidatePreparation";
+vi.mock("./CloudflareNativeRuntimeOperation", () => ({ CloudflareNativeRuntimeOperation: () => null }));
 const state = vi.hoisted(() => ({ ready: true, job: null as any, error: null as any, loading: false,
   runtime: null as any, runtimeError: null as any, pairDiagnostics: [] as any[], pending: false, mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
@@ -67,8 +68,8 @@ describe("native metadata Owner action", () => {
     state.ready = false;
     state.runtime = { metadata: { workerName: "actual-candidate", deploymentId: "deployment-receipt", versionId: "version-receipt",
       applications: [{ runtime: "node", applicationId: "node-app", namespaceId: "node-ns" }, { runtime: "python", applicationId: "python-app", namespaceId: "python-ns" }] },
-      checks: [{ code: "PRODUCTION_DATABASE_DNS", status: "UNVERIFIED", http: 403, providerCodes: [10000],
-        permission: "Zone · DNS · Edit — smartaihub.app", nextAction: "Update the exact production token." }] };
+      checks: [{ code: "PRODUCTION_DATABASE_DNS", status: "UNVERIFIED", required: false, http: 403, providerCodes: [10000],
+        permission: "Zone · DNS · Read — smartaihub.app", nextAction: "Optional DNS inspection; the selected VPC transport needs no DNS changes." }] };
     render(<CloudflareNativeCandidatePreparation {...props} />);
     expect(screen.getByText(/actual-candidate/)).toHaveTextContent("VERIFIED");
     expect(screen.getByText(/Deployment: deployment-receipt/)).toBeInTheDocument();
@@ -76,6 +77,8 @@ describe("native metadata Owner action", () => {
     expect(screen.getByText(/python-app/)).toHaveTextContent("python-ns");
     expect(screen.getByText(/HTTP 403/)).toHaveTextContent("CF 10000");
     expect(screen.getByRole("link", { name: "Cloudflare API Tokens" })).toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
+    expect(screen.getByText(/OPTIONAL, not a blocker/)).toBeInTheDocument();
+    expect(screen.queryByText(/DNS · Edit/)).not.toBeInTheDocument();
     expect(screen.getByText(/Runtime acceptance: NOT VERIFIED/)).toBeInTheDocument();
     expect(screen.queryByText("HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED")).not.toBeInTheDocument();
     expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
