@@ -18,6 +18,7 @@ import { VStack } from "@astryxdesign/core/VStack";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { CloudflareImagePublication } from "./CloudflareImagePublication";
+import { CloudflareMigrationPreparation } from "./CloudflareMigrationPreparation";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
 const ENVIRONMENTS = ["preview", "staging", "production"] as const;
@@ -898,11 +899,15 @@ export default function AdminDeploymentTargets() {
           })() : null}
           <Divider />
           <strong>{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
-          <CloudflareImagePublication key={`${scope.tenantId}:${scope.projectId}`} tenantId={scope.tenantId} projectId={scope.projectId} />
+          {productionDatabaseObservation?.databaseConnectionVerified && productionDatabaseJobData?.jobId ?
+            <CloudflareMigrationPreparation key={`migration-preparation:${scope.tenantId}:${scope.projectId}`} tenantId={scope.tenantId}
+              projectId={scope.projectId} jobId={productionDatabaseJobData.jobId} databaseAccepted={productionDatabaseObservation.tenantIsolationVerified} />
+            : <CloudflareImagePublication key={`${scope.tenantId}:${scope.projectId}`} tenantId={scope.tenantId} projectId={scope.projectId} />}
           {productionDatabaseObservation?.providerReadbackVerified ? <VStack gap={1} role="status" aria-label={text("Production database verification", "ผลตรวจฐานข้อมูล Production")}>
             <strong>{text("Existing VPC and Hyperdrive verified", "ตรวจยืนยัน VPC และ Hyperdrive เดิมแล้ว")}</strong>
             <p>{text("Cloudflare SQL", "SQL จาก Cloudflare")}: {productionDatabaseObservation.databaseConnectionVerified ? "PASS" : "NOT_EXECUTED"}</p>
-            <p>{productionDatabaseObservation.databaseConnectionVerified
+            <p>{productionDatabaseObservation.tenantIsolationVerified ? "M1_ACCEPTED"
+              : productionDatabaseObservation.databaseConnectionVerified
               ? text("Remaining: verify tenant isolation. The original failed attempt remains in history; no provisioning retry is needed for this readback.", "ขั้นที่เหลือ: ตรวจการแยกข้อมูล tenant โดยเก็บผลล้มเหลวเดิมไว้ในประวัติ ไม่ต้องรัน provisioning ซ้ำเพื่อตรวจ readback")
               : text("Remaining: verify SQL from Cloudflare and tenant isolation. No provisioning retry is needed for this readback.", "ขั้นที่เหลือ: ตรวจ SQL จาก Cloudflare และการแยกข้อมูล tenant ไม่ต้องรัน provisioning ซ้ำเพื่อตรวจ readback")}</p>
           </VStack> : null}

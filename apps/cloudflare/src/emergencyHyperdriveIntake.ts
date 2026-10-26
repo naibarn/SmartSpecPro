@@ -67,6 +67,10 @@ export async function executeHyperdriveEmergencyIntake(delivery: Delivery, clien
       if ((await tx.unsafe<unknown[]>(directFenceQuery, [...parameters, adapter])).length !== 1) denied("HYPERDRIVE_INTAKE_LEASE_STALE");
     }
     await fence();
+    // Transaction-local context for the immutable role/tenant RLS binding.
+    // Set only after canonical tenant + live lease validation; never retain
+    // context on a pooled Hyperdrive session between deliveries.
+    await tx.unsafe("SELECT set_config('smartspec.tenant_id', $1, true)", [job.tenantId]);
     const [report] = await tx.unsafe<Array<{ status: string; workerJobId: string }>>(
       `SELECT status, "workerJobId" FROM emergency_reports WHERE id=$1 AND "tenantId"=$2 FOR UPDATE`, [job.input.reportId, job.tenantId]);
     if (!report || report.workerJobId !== job.jobId) denied("HYPERDRIVE_INTAKE_REPORT_SCOPE_DENIED");

@@ -38,6 +38,7 @@ describe("direct intake admission", () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ accepted: true }])
+      .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ status: "received", workerJobId: "job-1" }])
       .mockResolvedValueOnce([{ id: "case-1", revision: 0 }])
       .mockResolvedValueOnce([])
@@ -51,6 +52,7 @@ describe("direct intake admission", () => {
     expect(unsafe.mock.calls[2]?.[0]).toContain("cloudflare_validate_emergency_intake_v1");
     expect(unsafe.mock.calls[2]?.[1]?.slice(0, 5)).toEqual(["job-1", "tenant-a", 1, "attempt-1", 1]);
     expect(unsafe.mock.calls[2]?.[0]).toContain("$9::text::jsonb");
+    expect(unsafe.mock.calls[3]).toEqual(["SELECT set_config('smartspec.tenant_id', $1, true)", ["tenant-a"]]);
     expect(JSON.parse(String(unsafe.mock.calls[2]?.[1]?.[8]))).toEqual(d.job.input);
     expect(unsafe.mock.calls.at(-1)?.[0]).toContain("cloudflare_validate_emergency_intake_v1");
   });

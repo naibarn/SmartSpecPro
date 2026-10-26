@@ -4,6 +4,7 @@ import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../
 import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMiddleware";
 import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLifecycle";
 import { getHttpImagePairPreflight, queueHttpImagePair, readHttpImagePairSubmission } from "../services/cloudflareHttpImageAdmission";
+import { getProductionTenantIsolationPreflight, prepareProductionTenantIsolation } from "../services/cloudflareProductionTenantIsolation";
 /**
  * Infrastructure Settings tRPC Router
  *
@@ -710,6 +711,28 @@ export const infrastructureRouter = router({
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_IMAGE_TENANT_MISMATCH" });
       return getHttpImagePairPreflight(await getDb(), { ...input, actorUserId: ctx.user.id });
+    }),
+
+  getCloudflareProductionTenantIsolationPreflight: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), jobId: z.string().uuid() }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "M1_ISOLATION_TENANT_MISMATCH" });
+      try { return await getProductionTenantIsolationPreflight(await getDb(), { ...input, actorUserId: ctx.user.id }); }
+      catch (error) { return { ready: false as const, reason: error instanceof Error && /^[A-Z0-9_]{5,150}$/.test(error.message)
+        ? error.message : "M1_ISOLATION_PREFLIGHT_UNAVAILABLE" }; }
+    }),
+
+  prepareCloudflareProductionTenantIsolation: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), jobId: z.string().uuid(),
+      actionDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId)
+        throw new TRPCError({ code: "FORBIDDEN", message: "M1_ISOLATION_TENANT_MISMATCH" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "M1_ISOLATION_OWNER_SESSION_REQUIRED" });
+      try { return await prepareProductionTenantIsolation(await getDb(), { ...input, actorUserId: ctx.user.id }); }
+      catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_]{5,150}$/.test(error.message)
+        ? error.message : "M1_ISOLATION_PREPARATION_FAILED" }); }
     }),
 
   getCloudflareHttpImagePairSubmission: exactAdminProcedure

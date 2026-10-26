@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
 
 /** No dependency on whole-platform inventory or M1 completion. */
-export function CloudflareImagePublication({ tenantId, projectId }: { tenantId: string; projectId: string }) {
+export function CloudflareImagePublication({ tenantId, projectId, hideAction = false }: { tenantId: string; projectId: string; hideAction?: boolean }) {
   const { i18n } = useTranslation();
   const th = i18n.language?.startsWith("th");
   const text = (en: string, thai: string) => th ? thai : en;
@@ -51,12 +51,12 @@ export function CloudflareImagePublication({ tenantId, projectId }: { tenantId: 
     {preflight.data?.ready ? <Text>{text("Source", "Source")}: <code>{preflight.data.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{preflight.data.accountRef}</code></Text>
       : <Text role="status">{preflight.isLoading ? text("Checking image publication readiness…", "กำลังตรวจความพร้อมเผยแพร่ image…")
         : preflight.data?.reason ?? preflight.error?.message ?? "HTTP_IMAGE_PREFLIGHT_UNAVAILABLE"}</Text>}
-    <Button type="button" disabled={!preflight.data?.ready || queue.isPending || admitted} onClick={() => void submit()}>
+    {!hideAction ? <Button type="button" disabled={!preflight.data?.ready || queue.isPending || admitted} onClick={() => void submit()}>
       {queue.isPending ? text("Submitting the paired publication…", "กำลังส่งงานเผยแพร่ทั้งคู่…")
         : admitted ? text("Publication jobs accepted", "รับงานเผยแพร่ทั้งคู่แล้ว")
           : submission ? text("Reconcile and continue the same publication", "ตรวจและดำเนินงานเผยแพร่เดิมต่อ")
             : text("Authorize and publish Node/Python images", "อนุมัติและเผยแพร่ image Node/Python")}
-    </Button>
+    </Button> : null}
     {submission ? <Text>{text("Submission", "คำขอ")}: <code>{submission.id}</code></Text> : null}
     {queue.error ? <Text role="alert">{queue.error.message}</Text> : null}
     {status.error ? <Text role="alert">{status.error.message}</Text> : null}

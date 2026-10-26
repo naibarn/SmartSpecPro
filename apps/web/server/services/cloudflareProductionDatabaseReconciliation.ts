@@ -46,9 +46,9 @@ export function projectProductionDatabaseReadbackObservation(payload: unknown, s
     sql.data.vpcServiceId === evidence.vpcServiceId;
   return { jobId: scope.jobId, evidenceDigest: String(evidenceDigest), observedAt: String(evidence.observedAt),
     providerReadbackVerified: true as const, databaseConnectionVerified: Boolean(sqlVerified),
-    restrictedRoleVerified: Boolean(sqlVerified), tenantIsolationVerified: false as const,
+    restrictedRoleVerified: Boolean(sqlVerified), tenantIsolationVerified: false as boolean,
     vpcServiceId: String(evidence.vpcServiceId), hyperdriveId: String(evidence.hyperdriveId),
-    nextCheck: sqlVerified ? "VERIFY_TENANT_ISOLATION" : "VERIFY_CLOUDFLARE_SQL", acceptance: "NOT_ACCEPTED" as const };
+    nextCheck: sqlVerified ? "VERIFY_TENANT_ISOLATION" : "VERIFY_CLOUDFLARE_SQL", acceptance: "NOT_ACCEPTED" as "NOT_ACCEPTED" | "M1_ACCEPTED" };
 }
 
 export async function readProductionDatabaseReadbackObservation(db: DrizzleDB, scope: {
@@ -59,7 +59,19 @@ export async function readProductionDatabaseReadbackObservation(db: DrizzleDB, s
     .orderBy(desc(workerJobEvents.eventSequence)).limit(20);
   for (const row of rows) {
     const observation = projectProductionDatabaseReadbackObservation(row.payload, scope);
-    if (observation) return observation;
+    if (observation) {
+      if (!observation.databaseConnectionVerified) return observation;
+      const checks = await db.select({ payload: workerJobEvents.payloadJson }).from(workerJobEvents)
+        .where(and(eq(workerJobEvents.workerJobId, scope.jobId), eq(workerJobEvents.eventType, "PRODUCTION_DATABASE_TENANT_ISOLATION_VERIFIED")))
+        .orderBy(desc(workerJobEvents.eventSequence)).limit(20);
+      const { projectProductionTenantIsolationObservation } = await import("./cloudflareProductionTenantIsolation");
+      for (const check of checks) {
+        const isolation = projectProductionTenantIsolationObservation(check.payload, { jobId: scope.jobId, tenantId: scope.tenantId,
+          projectId: scope.projectId, planDigest: scope.planDigest, vpcServiceId: observation.vpcServiceId, hyperdriveId: observation.hyperdriveId });
+        if (isolation) return { ...observation, ...isolation, nextCheck: "M3_RUNTIME_ACCEPTANCE" };
+      }
+      return observation;
+    }
   }
   return null;
 }

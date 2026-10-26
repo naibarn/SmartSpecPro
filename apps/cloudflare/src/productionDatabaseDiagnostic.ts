@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { withHyperdrivePostgres } from "./postgresClient";
 import type { HyperdriveBinding } from "./contracts";
+import { probeProductionTenantIsolation, validProductionTenantFixtures, type ProductionTenantIsolationFixtures } from "./productionTenantIsolationProbe";
 
 /** Isolated remote-preview entrypoint only. Never imported by the production
  * router. No arbitrary SQL, business rows, local connection string or writes. */
@@ -11,6 +12,7 @@ export type ProductionDatabaseDiagnosticEnv = {
   EXPECTED_DATABASE: string;
   EXPECTED_ROLE: string;
   PLAN_DIGEST: string;
+  ISOLATION_FIXTURES?: string;
 };
 
 export async function productionDatabaseDiagnostic(request: Request, env: ProductionDatabaseDiagnosticEnv) {
@@ -29,6 +31,11 @@ export async function productionDatabaseDiagnostic(request: Request, env: Produc
   // A local workerd result can never be accepted as Cloudflare-side evidence.
   const cf = (request as Request & { cf?: { colo?: string; country?: string } }).cf;
   if (!cf?.colo) return new Response("Remote runtime required", { status: 412, headers });
+  let fixtures: ProductionTenantIsolationFixtures | undefined;
+  if (env.ISOLATION_FIXTURES) {
+    try { fixtures = JSON.parse(env.ISOLATION_FIXTURES); } catch { return new Response("Invalid fixtures", { status: 403, headers }); }
+    if (!fixtures || !validProductionTenantFixtures(fixtures)) return new Response("Invalid fixtures", { status: 403, headers });
+  }
   let stage = "connectivity";
   try {
     const result = await withHyperdrivePostgres(env.HYPERDRIVE, async client => {
@@ -60,7 +67,9 @@ export async function productionDatabaseDiagnostic(request: Request, env: Produc
           await tx.unsafe("SELECT * FROM public.users LIMIT 0");
         });
       } catch (error) { if ((error as { code?: string }).code === "42501") denied = true; else throw error; }
-      return { ...identity, deniedSchemaAccessVerified: denied };
+      stage = "tenant_isolation";
+      const isolation = fixtures ? await probeProductionTenantIsolation(client, fixtures) : undefined;
+      return { ...identity, deniedSchemaAccessVerified: denied, ...(isolation ? { isolation, tenantIsolation: isolation.passed ? "PASS" : "FAIL" } : {}) };
     });
     // pg_stat_ssl observes the PostgreSQL backend socket. With the existing
     // TLS-only origin proxy, that socket is loopback plaintext after TLS
@@ -68,7 +77,7 @@ export async function productionDatabaseDiagnostic(request: Request, env: Produc
     // from the backend field or silently claim full M1 acceptance.
     const passed = result.roleVerified && result.deniedSchemaAccessVerified &&
       result.privileges.public_usage === true && result.privileges.report_id_select === true &&
-      result.privileges.users_select === false && result.privileges.jobs_select === false;
+      result.privileges.users_select === false && result.privileges.jobs_select === false && (!fixtures || result.isolation?.passed === true);
     return new Response(JSON.stringify({ schemaVersion: "cloudflare-production-sql-observation-v1", observedAt: new Date().toISOString(),
       runtime: "cloudflare-remote-preview", colo: cf.colo, planDigest: env.PLAN_DIGEST, sql: passed ? "PASS" : "FAIL", ...result,
       tlsEvidence: "VERIFY_VPC_AND_ORIGIN_TLS_TERMINATOR", businessRowsRead: 0, businessWrites: 0,
