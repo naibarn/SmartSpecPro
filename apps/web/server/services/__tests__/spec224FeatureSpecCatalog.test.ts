@@ -62,12 +62,23 @@ describe("repository feature spec catalog", () => {
       join(root, "server", "feature-spec-catalog", "224-runtime-example", "spec.md"),
       "# Packaged Runtime Spec\n\nAvailable inside the immutable server release.\n",
     );
+    await mkdir(join(root, "server", "feature-spec-catalog", "225-Interop & UI — Recovery"), { recursive: true });
+    await writeFile(
+      join(root, "server", "feature-spec-catalog", "225-Interop & UI — Recovery", "spec.md"),
+      "# Unicode Feature Spec\n\nNames retain their repository spelling.\n",
+    );
 
     await expect(listRepositoryFeatureSpecs({ repositoryRoot: root })).resolves.toMatchObject({
-      specs: [{ id: "224-runtime-example", title: "Packaged Runtime Spec" }],
+      specs: expect.arrayContaining([
+        expect.objectContaining({ id: "224-runtime-example", title: "Packaged Runtime Spec" }),
+        expect.objectContaining({ id: "225-Interop & UI — Recovery", title: "Unicode Feature Spec" }),
+      ]),
     });
     await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "224-runtime-example" })).resolves.toMatchObject({
       content: expect.stringContaining("immutable server release"),
+    });
+    await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "225-Interop & UI — Recovery" })).resolves.toMatchObject({
+      title: "Unicode Feature Spec",
     });
   });
 });

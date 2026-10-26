@@ -2,7 +2,7 @@ import { open, lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 
 const MAX_SPEC_BYTES = 1024 * 1024;
-const SAFE_SPEC_ID = /^[A-Za-z0-9][A-Za-z0-9._ -]{0,159}$/;
+const SAFE_SPEC_ID = /^[^/\\\u0000-\u001F\u007F]{1,160}$/u;
 
 export type RepositoryFeatureSpec = {
   id: string;
@@ -56,7 +56,7 @@ async function resolveFeatureRoot(repositoryRoot?: string): Promise<string> {
 }
 
 async function readSpecFile(featureRoot: string, specId: string, metadataOnly = false) {
-  if (!SAFE_SPEC_ID.test(specId) || specId.includes("..")) {
+  if (!SAFE_SPEC_ID.test(specId) || specId === "." || specId.includes("..")) {
     throw new Error("FEATURE_SPEC_ID_INVALID");
   }
 
