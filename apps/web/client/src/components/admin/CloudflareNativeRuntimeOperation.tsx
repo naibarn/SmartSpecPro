@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VStack } from "@astryxdesign/core/VStack";
+import { Section } from "@astryxdesign/core/Section";
 import { Heading } from "@astryxdesign/core/Heading";
 import { Text } from "@astryxdesign/core/Text";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
@@ -88,18 +89,39 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     catch { /* Retain the same ID so the canonical intent/job can be reconciled. */ }
     finally { busy.current = false; void applicationState.refetch(); }
   };
+  const completedCount = 2 + Number(Boolean(job?.receipt?.runtimeBootVerified)) + Number(Boolean(appJob?.receipt?.runtimeAcceptance));
+  const currentAppStatus = appJob?.status ?? (appPreflight?.ready ? text("READY · awaiting Owner action", "พร้อม · รอคำสั่ง Owner")
+    : appPreflight ? appPreflightStage ? `BLOCKED · ${appPreflightStage}` : text("Preflight blocked", "preflight ติดเงื่อนไข")
+      : applicationState.error ? text("Request failed", "คำขอตรวจล้มเหลว") : text("Checking prerequisites", "กำลังตรวจ prerequisite"));
   return <VStack as="section" gap={2} id="cloudflare-m3-runtime-operation" aria-label={text("Bounded native runtime test", "ทดสอบ native runtime แบบจำกัดขอบเขต")}>
-    <Heading level={3}>{text("Cloudflare migration control center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}</Heading>
-    <Text>{text("Current phase: authenticated application acceptance. Earlier accepted infrastructure and bounded boot evidence are retained; this page will not repeat them.",
-      "ขั้นปัจจุบัน: ตรวจรับแอปที่ต้องเข้าสู่ระบบ โดยคงผล infrastructure และ boot test ที่ผ่านแล้วไว้ และไม่ทำขั้นเดิมซ้ำ")}</Text>
-    <VStack as="ol" gap={1} aria-label={text("Migration progress", "ความคืบหน้าการย้ายระบบ")}>
-      <li>{text("M1 database and tenant isolation", "M1 ฐานข้อมูลและการแยก tenant")}: {text("ACCEPTED", "ผ่าน")}</li>
-      <li>{text("M2 Cloudflare ingress", "M2 ทางเข้า Cloudflare")}: {text("ACCEPTED", "ผ่าน")}</li>
-      <li>{text("Node/Python on-demand boot and SQL", "Node/Python เริ่มแบบ on-demand และ SQL")}: {job?.receipt?.runtimeBootVerified ? text("VERIFIED", "ตรวจแล้ว") : job?.status ?? text("Checking", "กำลังตรวจ")}</li>
-      <li>{text("Authenticated application/API", "แอปและ API ที่ต้องเข้าสู่ระบบ")}: {appJob?.status ?? (appPreflight?.ready ? text("READY TO SUBMIT", "พร้อมส่งงาน") : text("PREFLIGHT BLOCKED", "ติดเงื่อนไข preflight"))}</li>
-      <li>{text("Gateway/Credit/Billing and Jobs/Recovery parity", "ความเท่าเทียม Gateway/Credit/Billing และ Jobs/Recovery")}: {appJob?.receipt?.runtimeAcceptance ? text("IN REVIEW", "อยู่ระหว่างตรวจ") : text("NOT ACCEPTED", "ยังไม่ผ่าน")}</li>
-      <li>{text("Native production activation", "เปิด native production")}: {text("SEPARATE AUTHORIZATION REQUIRED", "ต้องอนุมัติแยก")}</li>
-    </VStack>
+    <Section variant="muted" role="region" aria-label={text("Current migration action", "คำสั่งปัจจุบันของการย้ายระบบ")}>
+      <VStack gap={2}>
+        <Heading level={3}>{text("Current step 4 of 5 · Authenticated application acceptance", "ขั้นที่ 4 จาก 5 · ตรวจรับแอปหลังเข้าสู่ระบบ")}</Heading>
+        <Text>{text("Now: verify login, API access, tenant isolation and authenticated Gateway behavior on the existing Candidate. Then continue to billing and job parity; native production activation is a separate final step.",
+          "ตอนนี้: ตรวจ login, API, การแยก tenant และ Gateway ที่ต้องเข้าสู่ระบบบน Candidate เดิม จากนั้นตรวจ billing และงานเบื้องหลัง ส่วนเปิด native production เป็นขั้นสุดท้ายและแยกอนุมัติ")}</Text>
+        <progress aria-label={text("Migration progress", "ความคืบหน้าการย้ายระบบ")} max={5} value={completedCount} />
+        <Text role="status">{text("Current status", "สถานะปัจจุบัน")}: {currentAppStatus}</Text>
+        {appPreflight?.ready ? <Text>{text("Next action: submit one synthetic-only application acceptance job. It does not charge credits or change production traffic.",
+          "คำสั่งถัดไป: ส่งงานตรวจรับแอปด้วยข้อมูลสังเคราะห์หนึ่งครั้ง ไม่หักเครดิตและไม่เปลี่ยน production traffic")}</Text>
+          : appPreflight ? <Text>{text("Next action: resolve the blocker below, then run the read-only preflight again.",
+            "คำสั่งถัดไป: แก้ blocker ที่แสดงด้านล่าง แล้วตรวจ preflight แบบอ่านอย่างเดียวอีกครั้ง")}</Text>
+            : <Text>{text("Next action: wait for the prerequisite check to finish.", "คำสั่งถัดไป: รอการตรวจ prerequisite ให้เสร็จ")}</Text>}
+        <details>
+          <summary>{text("Completed steps and what remains", "ขั้นที่ผ่านแล้วและงานที่เหลือ")}</summary>
+          <VStack as="ol" gap={1} aria-label={text("Migration milestones", "ขั้นตอนการย้ายระบบ")}>
+            <li>{text("M1 database and tenant isolation", "M1 ฐานข้อมูลและการแยก tenant")}: {text("ACCEPTED", "ผ่าน")}</li>
+            <li>{text("M2 Cloudflare ingress", "M2 ทางเข้า Cloudflare")}: {text("ACCEPTED", "ผ่าน")}</li>
+            <li>{text("Node/Python on-demand boot and SQL", "Node/Python เริ่มแบบ on-demand และ SQL")}: {job?.receipt?.runtimeBootVerified ? text("VERIFIED", "ตรวจแล้ว") : job?.status ?? text("Checking", "กำลังตรวจ")}</li>
+            <li>{text("Authenticated application/API", "แอปและ API ที่ต้องเข้าสู่ระบบ")}: {currentAppStatus}</li>
+            <li>{text("Gateway/Credit/Billing and Jobs/Recovery parity", "ความเท่าเทียม Gateway/Credit/Billing และ Jobs/Recovery")}: {appJob?.receipt?.runtimeAcceptance ? text("IN REVIEW", "อยู่ระหว่างตรวจ") : text("NOT ACCEPTED", "ยังไม่ผ่าน")}</li>
+            <li>{text("Native production activation", "เปิด native production")}: {text("SEPARATE AUTHORIZATION REQUIRED", "ต้องอนุมัติแยก")}</li>
+          </VStack>
+        </details>
+      </VStack>
+    </Section>
+    <details open={!job?.receipt?.runtimeBootVerified}>
+      <summary>{text("Step 3 · Node/Python boot and SQL", "ขั้นที่ 3 · เริ่ม Node/Python และตรวจ SQL")}: {job?.receipt?.runtimeBootVerified ? text("VERIFIED · view result", "ผ่านแล้ว · ดูผลตรวจ") : text("review or run bounded test", "ตรวจหรือเริ่มทดสอบแบบจำกัด")}</summary>
+    <VStack gap={2}>
     <Heading level={4}>{text("Test the existing Node/Python Containers", "ทดสอบ Container Node/Python เดิม")}</Heading>
     <Text>{text("Prepares a separate application database role, encrypted bindings and the private VPC connection, then starts and tests the existing Containers. Stops both Containers, disables the test database login and restores the Candidate deployment afterward.",
       "ระบบจะเตรียม role ฐานข้อมูลแยก ผูก secret แบบเข้ารหัสและ VPC เดิม แล้วเริ่มทดสอบ Container ที่มีอยู่ เมื่อจบจะหยุด Container ปิด login ของ role ทดสอบ และคืน deployment ของ Candidate")}</Text>
@@ -128,7 +150,11 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       label={job.status} isPulsing={job.status === "running"} /> {job.jobId} · {job.status} · {job.attempt}/{job.maxAttempts}{job.errorCode ? ` · ${job.errorCode}` : ""}</Text> : null}
     {job?.checkpoint ? <Text>{job.checkpoint.stage}{job.checkpoint.failure ? ` · ${job.checkpoint.failure}` : ""}{job.checkpoint.deploymentId ? ` · Deployment ${job.checkpoint.deploymentId}` : ""}</Text> : null}
     {job?.receipt ? <Text>{text("Runtime boot test", "ผลทดสอบเริ่ม runtime")}: {job.receipt.runtimeBootVerified ? "VERIFIED" : "UNVERIFIED"} · M3_ACCEPTED: {job.receipt.m3Accepted ? "YES" : "NO"}</Text> : null}
-    <Heading level={4}>{text("Authenticated application acceptance", "ทดสอบการใช้งานแอปเมื่อเข้าสู่ระบบ")}</Heading>
+    </VStack>
+    </details>
+    <Section variant="muted" aria-label={text("Authenticated application acceptance", "ทดสอบการใช้งานแอปเมื่อเข้าสู่ระบบ")}>
+    <VStack gap={2}>
+    <Heading level={3}>{text("Current action · authenticated application acceptance", "คำสั่งปัจจุบัน · ตรวจรับแอปหลังเข้าสู่ระบบ")}</Heading>
     <Text>{text("Runs a synthetic-only login/session test through the existing Node and Python APIs, checks cross-tenant denial, session revocation and authenticated Gateway model-catalog routing without calling a model provider. It creates one temporary synthetic login in the active tenant; no business rows, credit reservation, billing writes, real charges, DNS, or production traffic are changed. The temporary user is deleted and test role disabled afterward. Credit reserve/settlement, application job delivery/recovery and native traffic activation remain separate acceptance gates.",
       "ทดสอบ login/session ด้วยข้อมูลสังเคราะห์ผ่าน API ของ Node/Python ตรวจการปฏิเสธข้าม tenant การเพิกถอน session และ Gateway model catalog ที่ต้อง login โดยไม่เรียก model provider ระบบสร้างบัญชีทดสอบชั่วคราวหนึ่งบัญชีใน tenant ที่เลือก โดยไม่อ่าน/เขียนข้อมูลธุรกิจ ไม่จอง credit ไม่เขียน billing ไม่เรียกเก็บเงินจริง ไม่แก้ DNS หรือ production traffic จากนั้นลบบัญชีและปิด role ทดสอบ ส่วน reserve/settle credit การส่งและกู้คืน application job และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text>
     {applicationState.isLoading ? <Text role="status">{text("Checking authenticated application prerequisites…", "กำลังตรวจ prerequisite ของแอปที่ต้องเข้าสู่ระบบ…")}</Text> : null}
@@ -164,6 +190,8 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       label={appJob.status} isPulsing={appJob.status === "running"} /> {appJob.jobId} · {appJob.status} · {appJob.attempt}/{appJob.maxAttempts}{appJob.errorCode ? ` · ${appJob.errorCode}` : ""}</Text> : null}
     {appJob?.receipt ? <Text>{text("Authenticated application checks", "ผลตรวจ authenticated application")}: {appJob.receipt.authenticatedApplicationAcceptance ? "PASS" : "FAIL"} ·
       {text("M3 acceptance", "ตรวจรับ M3")}: {appJob.receipt.runtimeAcceptance ? "PASS" : "PENDING"} · {text("Credit settlement, application jobs/recovery and native activation remain separate gates", "การ settle credit, application jobs/recovery และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text> : null}
+    </VStack>
+    </Section>
     {job?.imageRepair ? <>
       <Text role="alert">{job.imageRepair.code} · Node {job.imageRepair.observedVersion} · {text("Required", "ต้องใช้")} {job.imageRepair.requiredVersion}</Text>
       <CloudflareImagePublication tenantId={tenantId} projectId={projectId} replacementForSourceSha={job.imageRepair.sourceSha} />

@@ -42,9 +42,14 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
     finally { busy.current = false; void state.refetch(); }
   };
   return <VStack as="section" gap={3} aria-label={text("Isolated native candidate", "Native candidate แยกจากระบบจริง")}>
-    <Heading level={3}>{text("Prepare isolated Production Worker and Containers", "เตรียม Worker และ Container แยกสำหรับ Production")}</Heading>
-    <Text>{text("Uses the published Node/Python images and a separate Worker. This creates metadata only: no Container starts, database credentials, DNS changes or production traffic changes. Runtime acceptance and activation remain incomplete.",
-      "ใช้ image Node/Python ที่เผยแพร่แล้วและ Worker คนละชื่อ ขั้นนี้สร้างข้อมูลทรัพยากรเท่านั้น ยังไม่เริ่ม Container ไม่ใส่ credential ฐานข้อมูล ไม่แก้ DNS และไม่เปลี่ยน traffic จริง การตรวจรับ runtime และ activation ยังไม่เสร็จ")}</Text>
+    <Heading level={3}>{job?.status === "succeeded"
+      ? text("Candidate ready · continue with application acceptance", "Candidate พร้อมแล้ว · ทำขั้นตรวจรับแอปต่อ")
+      : text("Prepare isolated Production Worker and Containers", "เตรียม Worker และ Container แยกสำหรับ Production")}</Heading>
+    <Text>{job?.status === "succeeded"
+      ? text("The existing Worker and Containers are ready. No preparation action is needed; the current task is authenticated application acceptance below.",
+        "Worker และ Container เดิมพร้อมแล้ว ไม่ต้องกดเตรียมซ้ำ ขั้นปัจจุบันคือการตรวจรับแอปที่ต้องเข้าสู่ระบบด้านล่าง")
+      : text("Uses the published Node/Python images and a separate Worker. This creates metadata only: no Container starts, database credentials, DNS changes or production traffic changes. Runtime acceptance and activation remain incomplete.",
+        "ใช้ image Node/Python ที่เผยแพร่แล้วและ Worker คนละชื่อ ขั้นนี้สร้างข้อมูลทรัพยากรเท่านั้น ยังไม่เริ่ม Container ไม่ใส่ credential ฐานข้อมูล ไม่แก้ DNS และไม่เปลี่ยน traffic จริง การตรวจรับ runtime และ activation ยังไม่เสร็จ")}</Text>
     <Text>{text("DNS inventory permission is not required for this isolated preparation.", "การเตรียม candidate แยกนี้ไม่ต้องรอสิทธิ์อ่าน DNS")}</Text>
     {job?.status !== "succeeded" && preflight?.ready ? <>
       <Text>{text("Published Pair: VERIFIED", "Published Pair: VERIFIED")} · {preflight.publishedPair?.submissionId}</Text>
@@ -54,16 +59,18 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
       {preflight.plan.images.map(image => <Text key={image}>{image}</Text>)}
     </> : job?.status !== "succeeded" && preflight ? <Text role="status">{preflight.reason}</Text> : null}
     {job?.status !== "succeeded" && preflight && !preflight.ready ? preflight.pairDiagnostics?.map(item => <Text key={`${item.submissionId}:${item.jobId ?? item.code}`} role="status">{item.submissionId} · {item.runtime} · {item.jobId} · {item.code}</Text>) : null}
-    <Button type="button" disabled={state.isLoading || Boolean(state.error) || !preflight?.ready || prepare.isPending || Boolean(job)} onClick={() => void submit()}>
-      {job ? text("Tracking canonical preparation job", "กำลังติดตามงานเตรียมเดิม") : prepare.isPending ? text("Submitting…", "กำลังส่งงาน…")
+    {!job ? <Button type="button" disabled={state.isLoading || Boolean(state.error) || !preflight?.ready || prepare.isPending} onClick={() => void submit()}>
+      {prepare.isPending ? text("Submitting…", "กำลังส่งงาน…")
         : submission ? text("Reconcile the same preparation", "ตรวจและดำเนินคำขอเตรียมเดิม")
           : text("Prepare isolated Worker and Containers", "เตรียม Worker และ Container แยก")}
-    </Button>
+    </Button> : null}
     {job ? <Text role="status">{job.jobId} · {job.status} · {job.attempt}/{job.maxAttempts}{job.errorCode ? ` · ${job.errorCode}` : ""}</Text> : null}
     {job?.status === "succeeded" ? <Text>{text("Worker and Container metadata prepared. Native application runtime acceptance is still pending.",
       "เตรียมข้อมูล Worker และ Container แล้ว ยังรอตรวจรับแอปที่รันบน Cloudflare จริง")}</Text> : null}
-    {job?.status === "succeeded" ? <VStack as="section" gap={2} aria-label={text("Native runtime readiness", "ความพร้อม native runtime")}>
-      <Heading level={4}>{text("Candidate resources and remaining runtime steps", "ทรัพยากร Candidate และขั้นตอน runtime ที่เหลือ")}</Heading>
+    {job?.status === "succeeded" ? <CloudflareNativeRuntimeOperation tenantId={tenantId} projectId={projectId} candidateJobId={job.jobId} /> : null}
+    {job?.status === "succeeded" ? <details>
+      <summary>{text("Candidate resources and technical readiness details", "ทรัพยากร Candidate และรายละเอียดการตรวจระบบ")}</summary>
+      <VStack as="section" gap={2} aria-label={text("Native runtime readiness details", "รายละเอียดความพร้อม native runtime")}>
       {runtime.isLoading ? <Text role="status">{text("Checking actual Cloudflare resources…", "กำลังอ่านทรัพยากรจริงจาก Cloudflare…")}</Text> : null}
       {runtime.data ? <>
         <Text>{runtime.data.metadata.workerName} · VERIFIED</Text>
@@ -84,8 +91,8 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
         </li>)}</VStack>
       </> : null}
       {runtime.error ? <Text role="alert">{runtime.error.message}</Text> : null}
-    </VStack> : null}
-    {job?.status === "succeeded" ? <CloudflareNativeRuntimeOperation tenantId={tenantId} projectId={projectId} candidateJobId={job.jobId} /> : null}
+      </VStack>
+    </details> : null}
     {prepare.error ? <Text role="alert">{prepare.error.message}</Text> : null}
     {state.error ? <Text role="alert">{state.error.message}</Text> : null}
   </VStack>;

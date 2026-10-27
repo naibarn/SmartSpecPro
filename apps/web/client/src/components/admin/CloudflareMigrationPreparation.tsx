@@ -37,6 +37,7 @@ export function CloudflareMigrationPreparation({ tenantId, projectId, jobId, dat
   const prepare = trpc.infrastructure.prepareCloudflareProductionTenantIsolation.useMutation();
   const publish = trpc.infrastructure.queueCloudflareHttpImagePair.useMutation();
   const imageAccepted = status.data?.jobs.length === 2 && status.data.jobs.every(job => job.status !== "NOT_ADMITTED");
+  const imagesPublished = status.data?.jobs.length === 2 && status.data.jobs.every(job => job.status === "succeeded");
   const canDatabase = !databaseAccepted && database.data?.ready && !database.data.prepared;
   const canImages = images.data?.ready && !imageAccepted && !status.isLoading && !status.error;
   const submit = async () => {
@@ -60,16 +61,26 @@ export function CloudflareMigrationPreparation({ tenantId, projectId, jobId, dat
     finally { inFlight.current = false; setBusy(false); void database.refetch(); void status.refetch(); }
   };
   return <VStack as="section" gap={3} aria-label={text("Remaining Cloudflare preparation", "เตรียมส่วนที่เหลือสำหรับ Cloudflare")}>
-    <Heading level={3}>{text("Prepare the remaining database and application steps", "เตรียมฐานข้อมูลและแอปส่วนที่เหลือ")}</Heading>
-    <Text>{text("Review the exact scopes below, then confirm once to run every ready preparation step. The accepted production ingress remains active until the new runtime passes acceptance.",
-      "ตรวจขอบเขตด้านล่าง แล้วกดยืนยันครั้งเดียวเพื่อดำเนินทุกขั้นเตรียมที่พร้อม ทางเข้าระบบจริงเดิมยังทำงานจนกว่า runtime ใหม่จะผ่านการตรวจรับ")}</Text>
-    {databaseAccepted ? <Text role="status">M1_ACCEPTED · {text("Cloudflare tenant isolation verified", "ตรวจยืนยันการแยก tenant จาก Cloudflare แล้ว")}</Text>
+    <Heading level={3}>{databaseAccepted && imagesPublished
+      ? text("Preparation complete · candidate acceptance is next", "เตรียมระบบครบแล้ว · ขั้นถัดไปคือตรวจรับ Candidate")
+      : text("Prepare the remaining database and application steps", "เตรียมฐานข้อมูลและแอปส่วนที่เหลือ")}</Heading>
+    <Text>{databaseAccepted && imagesPublished
+      ? text("M1 and the Node/Python image pair are complete. Continue with the existing Candidate below; no preparation job needs to be repeated.",
+        "M1 และ image Node/Python ผ่านแล้ว ให้ทำขั้น Candidate เดิมด้านล่าง ไม่ต้องส่งงานเตรียมซ้ำ")
+      : text("Review the exact scopes below, then confirm once to run every ready preparation step. The accepted production ingress remains active until the new runtime passes acceptance.",
+        "ตรวจขอบเขตด้านล่าง แล้วกดยืนยันครั้งเดียวเพื่อดำเนินทุกขั้นเตรียมที่พร้อม ทางเข้าระบบจริงเดิมยังทำงานจนกว่า runtime ใหม่จะผ่านการตรวจรับ")}</Text>
+    {databaseAccepted ? <details><summary>{text("M1 accepted · database and tenant isolation", "M1 ผ่านแล้ว · ฐานข้อมูลและการแยก tenant")}</summary>
+      <Text role="status">M1_ACCEPTED · {text("Cloudflare tenant isolation verified", "ตรวจยืนยันการแยก tenant จาก Cloudflare แล้ว")}</Text>
+      <CloudflareTenantIsolation {...databaseScope} hideAction />
+    </details>
       : <CloudflareTenantIsolation {...databaseScope} hideAction />}
-    <CloudflareImagePublication key={submission?.id ?? "new"} {...scope} hideAction />
-    <Button type="button" disabled={busy || (!canDatabase && !canImages)} onClick={() => void submit()}>
+    {imagesPublished ? <details><summary>{text("Node/Python image pair published · VERIFIED", "เผยแพร่ image Node/Python แล้ว · ตรวจยืนยันแล้ว")}</summary>
+      <CloudflareImagePublication key={submission?.id ?? "published"} {...scope} hideAction />
+    </details> : <CloudflareImagePublication key={submission?.id ?? "new"} {...scope} hideAction />}
+    {!(databaseAccepted || database.data?.prepared) || !imagesPublished ? <Button type="button" disabled={busy || (!canDatabase && !canImages)} onClick={() => void submit()}>
       {busy ? text("Preparing the approved steps…", "กำลังดำเนินขั้นตอนที่ยืนยัน…")
-        : text("Confirm database preparation and application publication", "ยืนยันเตรียมฐานข้อมูลและเผยแพร่แอป")}
-    </Button>
+        : text("Confirm remaining preparation", "ยืนยันการเตรียมส่วนที่ยังเหลือ")}
+    </Button> : null}
     {prepare.error ? <Text role="alert">{prepare.error.message}</Text> : null}
     {publish.error ? <Text role="alert">{publish.error.message}</Text> : null}
     <CloudflareNativeCandidatePreparation key={`${tenantId}:${projectId}`} {...scope} />

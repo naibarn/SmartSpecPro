@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareNativeCandidatePreparation } from "./CloudflareNativeCandidatePreparation";
-vi.mock("./CloudflareNativeRuntimeOperation", () => ({ CloudflareNativeRuntimeOperation: () => null }));
+vi.mock("./CloudflareNativeRuntimeOperation", () => ({ CloudflareNativeRuntimeOperation: ({ candidateJobId }: { candidateJobId: string }) =>
+  <section data-testid="current-runtime-action">Authenticated acceptance · {candidateJobId}</section> }));
 const state = vi.hoisted(() => ({ ready: true, job: null as any, error: null as any, loading: false,
   runtime: null as any, runtimeError: null as any, pairDiagnostics: [] as any[], pending: false, mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
@@ -43,7 +44,7 @@ describe("native metadata Owner action", () => {
   it("disables duplicates after canonical admission and shows real status", () => {
     state.job = { jobId: "canonical-job", status: "running", attempt: 1, maxAttempts: 1 };
     render(<CloudflareNativeCandidatePreparation {...props} />);
-    expect(screen.getByRole("button")).toBeDisabled(); expect(screen.getByRole("status")).toHaveTextContent("canonical-job · running");
+    expect(screen.queryByRole("button")).not.toBeInTheDocument(); expect(screen.getByRole("status")).toHaveTextContent("canonical-job · running");
   });
   it("keeps missing artifact and authorization errors explicit", () => {
     state.ready = false; state.mutationError = { message: "HTTP_CANDIDATE_AUTHORIZATION_EXPIRED" };
@@ -63,7 +64,7 @@ describe("native metadata Owner action", () => {
     expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
   });
 
-  it("shows actual successful Candidate resource IDs and actionable runtime blockers without another prepare action", () => {
+  it("shows current runtime action first and tucks Candidate receipts behind technical details", async () => {
     state.job = { jobId: "canonical-job", status: "succeeded", attempt: 1, maxAttempts: 1 };
     state.ready = false;
     state.runtime = { metadata: { workerName: "actual-candidate", deploymentId: "deployment-receipt", versionId: "version-receipt",
@@ -71,17 +72,21 @@ describe("native metadata Owner action", () => {
       checks: [{ code: "PRODUCTION_DATABASE_DNS", status: "UNVERIFIED", required: false, http: 403, providerCodes: [10000],
         permission: "Zone · DNS · Read — smartaihub.app", nextAction: "Optional DNS inspection; the selected VPC transport needs no DNS changes." }] };
     render(<CloudflareNativeCandidatePreparation {...props} />);
+    expect(screen.getByTestId("current-runtime-action")).toHaveTextContent("Authenticated acceptance · canonical-job");
+    expect(screen.getByText("Candidate resources and technical readiness details").closest("details")).not.toHaveAttribute("open");
     expect(screen.getByText(/actual-candidate/)).toHaveTextContent("VERIFIED");
     expect(screen.getByText(/Deployment: deployment-receipt/)).toBeInTheDocument();
     expect(screen.getByText(/node-app/)).toHaveTextContent("node-ns");
     expect(screen.getByText(/python-app/)).toHaveTextContent("python-ns");
     expect(screen.getByText(/HTTP 403/)).toHaveTextContent("CF 10000");
-    expect(screen.getByRole("link", { name: "Cloudflare API Tokens" })).toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
     expect(screen.getByText(/OPTIONAL, not a blocker/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Cloudflare API Tokens" }).closest("details")).not.toHaveAttribute("open");
+    await userEvent.click(screen.getByText("Candidate resources and technical readiness details"));
+    expect(screen.getByRole("link", { name: "Cloudflare API Tokens" })).toHaveAttribute("href", "https://dash.cloudflare.com/profile/api-tokens");
     expect(screen.queryByText(/DNS · Edit/)).not.toBeInTheDocument();
     expect(screen.getByText(/Runtime acceptance: NOT VERIFIED/)).toBeInTheDocument();
     expect(screen.queryByText("HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED")).not.toBeInTheDocument();
-    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument(); expect(state.mutate).not.toHaveBeenCalled();
   });
 
 });
