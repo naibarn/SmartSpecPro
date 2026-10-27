@@ -309,6 +309,20 @@ describe("bounded private application HTTP compute", () => {
     expect(f.container.start).toHaveBeenCalledTimes(3);
   });
 
+  it("continues the observed legacy ledger of two starts and 911 seconds with a fresh bounded capability", async () => {
+    const f = fixture();
+    Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345",
+      instance: "basic", maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600 });
+    f.records.set("application-http-lifecycle-v1", { scope: "a".repeat(64), issuedAt: Date.parse(f.profile.issuedAt) - 1000,
+      budgetWindowStartedAt: Date.parse(f.profile.issuedAt) - 1000, starts: 2, reservedSeconds: 911, activeUntil: null });
+    await f.controller.ensureRunning();
+    const state = f.records.get("application-http-lifecycle-v1");
+    expect(state).toMatchObject({ starts: 3, operationRef: f.profile.configurationRef, operationStarts: 1 });
+    expect((state as any).reservedSeconds).toBeGreaterThan(911);
+    expect((state as any).operationReservedSeconds).toBeLessThanOrEqual(600);
+    expect(f.container.start).toHaveBeenCalledOnce();
+  });
+
   it("cannot adopt an unowned instance, reset budget by changing secrets, or run an unbound image", async () => {
     const f = fixture(); f.container.running = true;
     await expect(f.controller.ensureRunning()).rejects.toThrow("ACTIVE_SCOPE_REQUIRED");
