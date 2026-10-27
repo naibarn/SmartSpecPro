@@ -501,6 +501,18 @@ describe("UniversalControlPlanePanel", () => {
   });
 
   it("creates a DevelopmentRun through the canonical pending-authorization mutation", async () => {
+    mocks.availableWorkspacesQuery.mockReturnValue({
+      ...emptyQuery,
+      data: { workspaces: [{ runnerId: "runner-1", workspaceId: "workspace-1", displayName: "Project A", status: "online", snapshotRevision: "r1" }] },
+    });
+    mocks.conversationWorkspaceQuery.mockReturnValue({
+      ...emptyQuery,
+      data: {
+        workspace: { conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1", snapshotRevision: "r1", revision: 1 },
+        specSet: null,
+        availability: { status: "current", available: true },
+      },
+    });
     render(
       <UniversalControlPlanePanel
         conversationId={42}
@@ -530,12 +542,7 @@ describe("UniversalControlPlanePanel", () => {
         target: { value: "a".repeat(64) },
       }
     );
-    fireEvent.change(
-      screen.getByRole("textbox", { name: "Workspace reference" }),
-      {
-        target: { value: "workspace:trusted" },
-      }
-    );
+    expect(screen.getByText("Project A · พร้อมใช้งาน")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox", { name: "Plan ID" }), {
       target: { value: "plan-1" },
     });
@@ -548,7 +555,7 @@ describe("UniversalControlPlanePanel", () => {
         repositoryRef: "repo:owner/project",
         baseRevision: "git:abc123",
         contextPackHash: "a".repeat(64),
-        workspaceId: "workspace:trusted",
+        workspaceId: "workspace-1",
       planId: "plan-1",
       planRevision: 1,
       idempotencyKey: expect.any(String),

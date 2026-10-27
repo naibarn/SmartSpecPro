@@ -163,6 +163,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const workspaces = workspacesQuery.data?.workspaces ?? [];
   const boundWorkspace = workspaceQuery.data?.workspace;
+  const selectedWorkspace = workspaces.find(item => selectionKey(item) === selected);
   const specSet = workspaceQuery.data?.specSet;
   const boundKey = boundWorkspace
     ? JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId])
@@ -407,7 +408,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   }
 
   return (
-    <section className="mb-4 rounded-lg border border-[var(--color-border)] p-3" aria-labelledby="spec224-workspace-heading">
+    <section id="task-control-workspace" className="mb-4 rounded-lg border border-[var(--color-border)] p-3" aria-labelledby="spec224-workspace-heading">
       <h3 id="spec224-workspace-heading" className="text-sm font-semibold">Spec 224 workspace</h3>
       <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
         Workspace คือ project folder ที่ Runner รายงานจากเครื่องของคุณ การเลือกจะผูก Runner และ folder นั้นกับ conversation ปัจจุบัน; การแนบ Spec จะบันทึก revision แต่ยังไม่เริ่มแก้โค้ดหรือ build/run
@@ -419,7 +420,19 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
         <p className="mt-3 text-xs text-amber-700">สร้างหรือเลือก conversation ก่อนจึงจะผูก workspace ได้</p>
       ) : (
         <>
-          <label className="mt-3 block text-xs font-medium" htmlFor="spec224-workspace-select">1. เลือก Runner และ project workspace</label>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <label className="block text-xs font-medium" htmlFor="spec224-workspace-select">1. เลือก Runner และ project workspace</label>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={workspacesQuery.isFetching || bindMutation.isPending}
+              onClick={() => void Promise.all([workspacesQuery.refetch(), workspaceQuery.refetch()])}
+              aria-label="โหลด Runner workspace ใหม่"
+            >
+              {workspacesQuery.isFetching ? "กำลังโหลด…" : "โหลดรายการใหม่"}
+            </Button>
+          </div>
           <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
             เลือก workspace ที่ต้องการให้ทำงานต่อ รายการนี้มาจาก Runner ที่ออนไลน์และเชื่อถือได้ เมื่อเลือกแล้ว Spec และคำสั่ง Start ของ conversation นี้จะใช้ Runner/workspace เดียวกัน
           </p>
@@ -455,8 +468,23 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
               {specSet ? ` · Spec Set r${specSet.revision}` : " · ยังไม่มี Spec Set"}
             </p>
           ) : null}
+          {selectedWorkspace ? (
+            <section className="mt-2 rounded-md bg-[var(--color-background-subtle)] px-3 py-2 text-xs" aria-label="รายละเอียด workspace ที่เลือก">
+              <p className="font-medium">{selectedWorkspace.displayName}</p>
+              <p className="mt-1 text-[var(--color-text-secondary)]">
+                {selectedWorkspace.dirty === null
+                  ? "Runner ยังไม่รายงานสถานะการเปลี่ยนแปลง"
+                  : selectedWorkspace.dirty
+                    ? "มีการเปลี่ยนแปลงใน workspace"
+                    : "ไม่มีการเปลี่ยนแปลงที่ยังไม่บันทึก"}
+              </p>
+            </section>
+          ) : null}
           {workspaces.length === 0 && !workspacesQuery.isLoading ? (
-            <p className="mt-2 text-xs text-amber-700" role="status">ยังไม่พบ workspace ให้เลือก: เปิด SmartAIHub Runner บนเครื่องที่มี project ให้เชื่อมต่อ และรอให้ Runner แสดงสถานะออนไลน์/เชื่อถือได้ จากนั้นโหลดรายการนี้ใหม่</p>
+            <section className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="status">
+              <p className="font-medium">ยังไม่มี project workspace ที่เว็บใช้ได้</p>
+              <p className="mt-1">รายการจะแสดงเมื่อ Runner ที่ได้รับอนุญาตรายงาน workspace แล้ว ตรวจสอบการเชื่อมต่อและสิทธิ์ Runner จากนั้นกด “โหลดรายการใหม่”</p>
+            </section>
           ) : null}
 
           <fieldset className="mt-3 space-y-2" disabled={uploading}>

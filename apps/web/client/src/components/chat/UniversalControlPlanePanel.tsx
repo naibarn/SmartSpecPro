@@ -323,7 +323,6 @@ export function UniversalControlPlanePanel({
     repositoryRef: "",
     baseRevision: "",
     contextPackHash: "",
-    workspaceId: "",
     planId: "",
     planRevision: "1",
   });
@@ -381,6 +380,14 @@ export function UniversalControlPlanePanel({
   const developmentRunsQuery = trpc.spec226DevelopmentControl.list.useQuery(
     { limit: 25 },
     { refetchInterval: 10_000, refetchIntervalInBackground: false }
+  );
+  const availableWorkspacesQuery = trpc.spec226DevelopmentControl.availableWorkspaces.useQuery(
+    {},
+    { refetchInterval: 15_000, refetchIntervalInBackground: false }
+  );
+  const conversationWorkspaceQuery = trpc.spec226DevelopmentControl.getConversationWorkspace.useQuery(
+    { conversationId: conversationId ?? 0 },
+    { enabled: Boolean(conversationId), refetchInterval: 15_000, refetchIntervalInBackground: false }
   );
   const developmentRunQuery = trpc.spec226DevelopmentControl.get.useQuery(
     { runId: expandedDevelopmentRunId ?? "" },
@@ -608,9 +615,15 @@ export function UniversalControlPlanePanel({
 
   async function createDevelopmentRun(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const workspaceBinding = conversationWorkspaceQuery.data?.workspace;
+    if (!workspaceBinding || !conversationWorkspaceQuery.data?.availability?.available) {
+      toast.error("เลือก Runner workspace ที่พร้อมใช้งานในส่วน Workspace ก่อนสร้าง DevelopmentRun");
+      return;
+    }
     try {
       const created = await createDevelopmentRunMutation.mutateAsync({
         ...newDevelopmentRun,
+        workspaceId: workspaceBinding.workspaceId,
         idempotencyKey: developmentRunIdempotencyKey,
         planRevision: Number(newDevelopmentRun.planRevision),
         skillIds: [],
@@ -620,6 +633,7 @@ export function UniversalControlPlanePanel({
       setExpandedDevelopmentRunId(created.runId);
       setDevelopmentRunIdempotencyKey(newDevelopmentRunIdempotencyKey());
       await developmentRunsQuery.refetch();
+      await conversationWorkspaceQuery.refetch();
       toast.success(
         "สร้าง DevelopmentRun แล้ว — ยังไม่ dispatch จนกว่า authorization จะครบ"
       );
@@ -1056,20 +1070,36 @@ export function UniversalControlPlanePanel({
                     }
                   />
                 </label>
-                <label className="block space-y-1 text-xs font-medium">
-                  Workspace reference
-                  <Input
-                    required
-                    value={newDevelopmentRun.workspaceId}
-                    placeholder="workspace:trusted-id"
-                    onChange={event =>
-                      setNewDevelopmentRun(current => ({
-                        ...current,
-                        workspaceId: event.target.value,
-                      }))
-                    }
-                  />
-                </label>
+                {(() => {
+                  const binding = conversationWorkspaceQuery.data?.workspace;
+                  const workspace = binding
+                    ? availableWorkspacesQuery.data?.workspaces.find(item =>
+                        item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId
+                      )
+                    : undefined;
+                  const ready = Boolean(binding && conversationWorkspaceQuery.data?.availability?.available);
+                  return (
+                    <section className="space-y-1 rounded-lg border border-slate-200 bg-slate-50 p-3" aria-label="DevelopmentRun workspace">
+                      <p className="text-xs font-medium">Project workspace</p>
+                      {conversationWorkspaceQuery.isLoading ? (
+                        <p role="status" className="text-xs text-slate-600">กำลังตรวจสอบ workspace ของ conversation…</p>
+                      ) : conversationWorkspaceQuery.error ? (
+                        <p role="alert" className="text-xs text-rose-700">ตรวจสอบ workspace ไม่สำเร็จ โปรดลองโหลดใหม่</p>
+                      ) : ready ? (
+                        <p role="status" className="text-xs text-emerald-800">
+                          {workspace?.displayName ?? "Workspace ที่ผูกกับ conversation นี้"} · พร้อมใช้งาน
+                        </p>
+                      ) : (
+                        <p role="status" className="text-xs text-amber-800">
+                          เลือก Runner และ project workspace ที่ส่วน Workspace ด้านบนก่อนสร้าง run
+                        </p>
+                      )}
+                      <a href="#task-control-workspace" className="text-xs font-medium text-sky-700 underline">
+                        ไปเลือก workspace
+                      </a>
+                    </section>
+                  );
+                })()}
                 <label className="block space-y-1 text-xs font-medium">
                   Plan ID
                   <Input
@@ -1101,7 +1131,7 @@ export function UniversalControlPlanePanel({
                 </label>
                 <Button
                   type="submit"
-                  disabled={createDevelopmentRunMutation.isPending}
+                  disabled={createDevelopmentRunMutation.isPending || !conversationWorkspaceQuery.data?.workspace || !conversationWorkspaceQuery.data?.availability?.available}
                 >
                   {createDevelopmentRunMutation.isPending
                     ? "กำลังสร้าง…"
