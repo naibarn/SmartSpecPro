@@ -93,7 +93,7 @@ function run(command, args, options = {}) {
     stdio: "inherit",
     env: process.env,
     // On Windows, npm is exposed as npm.cmd and must be resolved by cmd.exe.
-    shell: process.platform === "win32",
+    shell: process.platform === "win32" && command === "npm",
   });
 }
 
@@ -415,9 +415,7 @@ if (runtimeFromServer) {
 
 if (!skipBuild) {
   const tauriBuildArgs = [
-    "run",
-    "tauri:build",
-    "--",
+    "build",
   ];
   if (process.platform !== "win32") {
     tauriBuildArgs.push("--runner", "cargo-xwin");
@@ -436,7 +434,10 @@ if (!skipBuild) {
   if (Object.keys(buildConfig).length > 0) {
     tauriBuildArgs.push("--config", JSON.stringify(buildConfig));
   }
-  run("npm", tauriBuildArgs);
+  run(process.execPath, [
+    join(appDir, "node_modules/@tauri-apps/cli/tauri.js"),
+    ...tauriBuildArgs,
+  ]);
 }
 
 const bundlePath = join(
