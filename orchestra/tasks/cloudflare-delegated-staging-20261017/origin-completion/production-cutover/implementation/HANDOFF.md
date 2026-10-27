@@ -8,11 +8,11 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest verified deployed implementation SHA: `d4816a8d199cf2440776d513c49a3c7bdd79ef29` (release g168)
-- The latest handoff update is documentation only; it does not change the g168 runtime release.
+- Latest verified deployed implementation SHA: `d4816a8d199cf2440776d513c49a3c7bdd79ef29` (release g168; no later production release verified)
+- The current guided-control-center patch is development code only until separately released and checked against the serving service.
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: Release g168 from SHA `d4816a8d199cf2440776d513c49a3c7bdd79ef29` is deployed and verified. The generic `HTTP_RUNTIME_PREFLIGHT_UNAVAILABLE` masking is fixed: authenticated reads now return a sanitized failure stage (`CANDIDATE`, `M1_EVIDENCE`, `BOUNDED_RUNTIME_EVIDENCE`, `DATABASE_SCHEMA`, `DATABASE_ROLE`, `RUNTIME_CONFIGURATION`, `ARTIFACT`, `CLOUDFLARE_READBACK`, or `REGISTRY`) so the actual blocked prerequisite can be repaired. This session has no authenticated Owner browser session and observed no new application-acceptance submission/job. Refresh the authenticated Admin page and read the exact current preflight result; if READY, submit exactly “Authorize synthetic application acceptance” once and reconcile that same submission/job. Do not repeat M1/M2 or bounded boot/SQL. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.
+- Next action: No authenticated application-preflight query was observed after g168 and the exact failed stage is therefore not yet known. A read-only query against the live `smartspec-web` database identity found no application-acceptance intent/job for Candidate `63242e38-917a-4c22-8caf-9db1297ebbe3`; do not fabricate or duplicate one. g168 already emits a sanitized stage/error code. The current development patch adds an M3 progress view, surfaces the exact stage, offers only a read-only preflight recheck while blocked, and shows the existing Owner submit action only when READY. It is not yet released. After canonical integration and the approved UI release, use the authenticated Admin session to refresh/recheck; repair the exact observed prerequisite, and if READY submit once via the existing authorization workflow and reconcile that same submission/job. Preserve M1/M2 and bounded boot/SQL. Credit reserve/settlement and application job parity are not currently exercised by the Cloudflare application probe; native activation remains a separate authorization gate.
 
 ## Sections
 
@@ -32,6 +32,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.
 - No live production application-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit settlement/job parity and separately authorized native activation are verified.
 - Release g168 is live and healthy, but this session has no authenticated Owner browser session, so the newly stage-specific authenticated application preflight and canonical acceptance job were not observed or submitted. No production application-acceptance receipt exists yet; M3 and final migration remain NOT_ACCEPTED.
+- New g168-follow-up UI patch (currently not deployed): the guided M3 panel now shows the migration steps/progress, exact sanitized preflight stage and result, the existing canonical application job state, and a read-only preflight recheck while blocked. Its Owner submission remains hidden until the same preflight is READY. It labels Gateway/Credit/Billing and Jobs/Recovery as NOT ACCEPTED rather than promoting service tests to live evidence. Focused Admin/runtime component tests pass; serving release remains g168 pending integration and an authorized release.
 
 ## Resume
 

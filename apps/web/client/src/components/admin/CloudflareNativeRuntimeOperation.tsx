@@ -49,6 +49,9 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
   // replaying that exhausted job's ID.
   const usablePending = pending && !pendingRevoked && !pendingExpired ? pending : null;
   const appPreflight = applicationState.data?.preflight, appJob = applicationState.data?.job, appPending = applicationState.data?.pending;
+  const appPreflightStage = appPreflight && !appPreflight.ready
+    ? /HTTP_RUNTIME_PREFLIGHT_([A-Z_]+)_/.exec(appPreflight.reason)?.[1] ?? null
+    : null;
   const applicationContinuation = Boolean(appJob?.status === "failed" && appPreflight?.ready &&
     appPreflight.plan.previousApplicationAcceptance?.jobId === appJob.jobId);
   const previousFailedApplicationIntent = Boolean(applicationContinuation && appPending?.submissionId === appJob?.jobId);
@@ -86,6 +89,17 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     finally { busy.current = false; void applicationState.refetch(); }
   };
   return <VStack as="section" gap={2} id="cloudflare-m3-runtime-operation" aria-label={text("Bounded native runtime test", "ทดสอบ native runtime แบบจำกัดขอบเขต")}>
+    <Heading level={3}>{text("Cloudflare migration control center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}</Heading>
+    <Text>{text("Current phase: authenticated application acceptance. Earlier accepted infrastructure and bounded boot evidence are retained; this page will not repeat them.",
+      "ขั้นปัจจุบัน: ตรวจรับแอปที่ต้องเข้าสู่ระบบ โดยคงผล infrastructure และ boot test ที่ผ่านแล้วไว้ และไม่ทำขั้นเดิมซ้ำ")}</Text>
+    <VStack as="ol" gap={1} aria-label={text("Migration progress", "ความคืบหน้าการย้ายระบบ")}>
+      <li>{text("M1 database and tenant isolation", "M1 ฐานข้อมูลและการแยก tenant")}: {text("ACCEPTED", "ผ่าน")}</li>
+      <li>{text("M2 Cloudflare ingress", "M2 ทางเข้า Cloudflare")}: {text("ACCEPTED", "ผ่าน")}</li>
+      <li>{text("Node/Python on-demand boot and SQL", "Node/Python เริ่มแบบ on-demand และ SQL")}: {job?.receipt?.runtimeBootVerified ? text("VERIFIED", "ตรวจแล้ว") : job?.status ?? text("Checking", "กำลังตรวจ")}</li>
+      <li>{text("Authenticated application/API", "แอปและ API ที่ต้องเข้าสู่ระบบ")}: {appJob?.status ?? (appPreflight?.ready ? text("READY TO SUBMIT", "พร้อมส่งงาน") : text("PREFLIGHT BLOCKED", "ติดเงื่อนไข preflight"))}</li>
+      <li>{text("Gateway/Credit/Billing and Jobs/Recovery parity", "ความเท่าเทียม Gateway/Credit/Billing และ Jobs/Recovery")}: {appJob?.receipt?.runtimeAcceptance ? text("IN REVIEW", "อยู่ระหว่างตรวจ") : text("NOT ACCEPTED", "ยังไม่ผ่าน")}</li>
+      <li>{text("Native production activation", "เปิด native production")}: {text("SEPARATE AUTHORIZATION REQUIRED", "ต้องอนุมัติแยก")}</li>
+    </VStack>
     <Heading level={4}>{text("Test the existing Node/Python Containers", "ทดสอบ Container Node/Python เดิม")}</Heading>
     <Text>{text("Prepares a separate application database role, encrypted bindings and the private VPC connection, then starts and tests the existing Containers. Stops both Containers, disables the test database login and restores the Candidate deployment afterward.",
       "ระบบจะเตรียม role ฐานข้อมูลแยก ผูก secret แบบเข้ารหัสและ VPC เดิม แล้วเริ่มทดสอบ Container ที่มีอยู่ เมื่อจบจะหยุด Container ปิด login ของ role ทดสอบ และคืน deployment ของ Candidate")}</Text>
@@ -117,6 +131,7 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     <Heading level={4}>{text("Authenticated application acceptance", "ทดสอบการใช้งานแอปเมื่อเข้าสู่ระบบ")}</Heading>
     <Text>{text("Runs a synthetic-only login/session test through the existing Node and Python APIs, checks cross-tenant denial, session revocation and authenticated Gateway model-catalog routing without calling a model provider. It creates one temporary synthetic login in the active tenant; no business rows, credit reservation, billing writes, real charges, DNS, or production traffic are changed. The temporary user is deleted and test role disabled afterward. Credit reserve/settlement, application job delivery/recovery and native traffic activation remain separate acceptance gates.",
       "ทดสอบ login/session ด้วยข้อมูลสังเคราะห์ผ่าน API ของ Node/Python ตรวจการปฏิเสธข้าม tenant การเพิกถอน session และ Gateway model catalog ที่ต้อง login โดยไม่เรียก model provider ระบบสร้างบัญชีทดสอบชั่วคราวหนึ่งบัญชีใน tenant ที่เลือก โดยไม่อ่าน/เขียนข้อมูลธุรกิจ ไม่จอง credit ไม่เขียน billing ไม่เรียกเก็บเงินจริง ไม่แก้ DNS หรือ production traffic จากนั้นลบบัญชีและปิด role ทดสอบ ส่วน reserve/settle credit การส่งและกู้คืน application job และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text>
+    {applicationState.isLoading ? <Text role="status">{text("Checking authenticated application prerequisites…", "กำลังตรวจ prerequisite ของแอปที่ต้องเข้าสู่ระบบ…")}</Text> : null}
     {appPreflight?.ready ? <>
       <Text>{text("Application preflight READY", "ตรวจความพร้อม acceptance แล้ว")}: {appPreflight.planDigest}</Text>
       <Text>{text("Existing M1 synthetic tenant", "Tenant สังเคราะห์ M1 เดิม")}: {appPreflight.plan.applicationFixture.foreignTestTenantId} · {text("existing Candidate", "Candidate เดิม")}: {candidateJobId}</Text>
@@ -130,13 +145,25 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
           : usableApplicationPending || applicationSubmission?.planDigest === appPreflight.planDigest ? text("Reconcile the same application acceptance", "ตรวจงาน application acceptance เดิม")
           : text("Authorize synthetic application acceptance", "อนุมัติทดสอบการใช้งานด้วยข้อมูลสังเคราะห์")}
       </Button>
-    </> : appPreflight ? <VStack gap={1} role="status"><Text>{appPreflight.reason}</Text><Text>{preflightHelp(appPreflight.reason)}</Text></VStack> : null}
+    </> : appPreflight ? <VStack gap={1} role="status">
+      <Text>{appPreflightStage ? text(`Blocked at ${appPreflightStage}`, `ติดเงื่อนไขขั้น ${appPreflightStage}`) : text("Application preflight is not ready", "preflight ของแอปยังไม่พร้อม")}</Text>
+      <Text>{preflightHelp(appPreflight.reason)}</Text>
+      <details><summary>{text("Exact sanitized preflight result", "ผล preflight แบบไม่เปิดเผยข้อมูลลับ")}</summary><Text>{appPreflight.reason}</Text></details>
+      <Button type="button" onClick={() => void applicationState.refetch()} disabled={applicationState.isFetching || Boolean(appJob && !applicationContinuation)}>
+        {applicationState.isFetching ? text("Rechecking the same Candidate…", "กำลังตรวจ Candidate เดิม…") : text("Recheck application preflight", "ตรวจ preflight แอปอีกครั้ง")}
+      </Button>
+    </VStack> : applicationState.error ? <VStack gap={1} role="alert">
+      <Text>{text("Authenticated application preflight request failed; no job was submitted.", "คำขอตรวจ preflight แอปที่ต้องเข้าสู่ระบบล้มเหลว และยังไม่มีการส่ง job")}</Text>
+      <Text>{applicationState.error.message}</Text>
+      <Button type="button" onClick={() => void applicationState.refetch()} disabled={applicationState.isFetching}>
+        {applicationState.isFetching ? text("Rechecking the same Candidate…", "กำลังตรวจ Candidate เดิม…") : text("Retry read-only preflight", "ตรวจ preflight แบบอ่านอย่างเดียวอีกครั้ง")}
+      </Button>
+    </VStack> : null}
     {appPending && !appJob ? <Text role="status">{text("Admission pending canonical reconciliation", "กำลังตรวจผลรับงานจาก canonical registry")}: {appPending.submissionId}</Text> : null}
     {appJob ? <Text role="status"><StatusDot variant={appJob.status === "failed" ? "error" : appJob.status === "succeeded" ? "success" : "accent"}
       label={appJob.status} isPulsing={appJob.status === "running"} /> {appJob.jobId} · {appJob.status} · {appJob.attempt}/{appJob.maxAttempts}{appJob.errorCode ? ` · ${appJob.errorCode}` : ""}</Text> : null}
     {appJob?.receipt ? <Text>{text("Authenticated application checks", "ผลตรวจ authenticated application")}: {appJob.receipt.authenticatedApplicationAcceptance ? "PASS" : "FAIL"} ·
       {text("M3 acceptance", "ตรวจรับ M3")}: {appJob.receipt.runtimeAcceptance ? "PASS" : "PENDING"} · {text("Credit settlement, application jobs/recovery and native activation remain separate gates", "การ settle credit, application jobs/recovery และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text> : null}
-    {applicationState.error ? <Text role="alert">{applicationState.error.message}</Text> : null}
     {job?.imageRepair ? <>
       <Text role="alert">{job.imageRepair.code} · Node {job.imageRepair.observedVersion} · {text("Required", "ต้องใช้")} {job.imageRepair.requiredVersion}</Text>
       <CloudflareImagePublication tenantId={tenantId} projectId={projectId} replacementForSourceSha={job.imageRepair.sourceSha} />

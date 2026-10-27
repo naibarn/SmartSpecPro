@@ -782,15 +782,18 @@ export default function AdminDeploymentTargets() {
       {validScope && environment === "production" ? <Section variant="muted" role="region" aria-label={text("Cloudflare migration control center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}>
         <VStack gap={2}>
           <h2>{text("Cloudflare Migration Control Center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}</h2>
-          <p>{text("Current milestone", "ขั้นปัจจุบัน")}: {migrationMission.data?.currentMilestone ?? text("Checking migration state…", "กำลังตรวจสถานะการย้ายระบบ…")}</p>
-          <HStack gap={3} wrap="wrap">
-            <Badge variant={productionDatabaseObservation?.tenantIsolationVerified ? "default" : "secondary"}>M1 {productionDatabaseObservation?.tenantIsolationVerified ? "ACCEPTED" : "IN PROGRESS"}</Badge>
-            <Badge variant={acceptedIngress ? "default" : "secondary"}>M2 {acceptedIngress ? "ACCEPTED" : "IN PROGRESS"}</Badge>
-            <Badge variant="secondary">M3 {text("APPLICATION ACCEPTANCE", "ตรวจรับการใช้งานแอป")}</Badge>
-          </HStack>
-          <p>{text("Linux remains available as the application fallback. The accepted Cloudflare ingress stays unchanged while M3 tests run.",
+          <p role="status">{text("Next step", "ขั้นถัดไป")}: {migrationMission.data?.currentMilestone ?? text("Checking the saved migration checkpoint…", "กำลังตรวจ checkpoint การย้ายระบบ")}</p>
+          <progress aria-label={text("Migration milestones completed", "ขั้นการย้ายระบบที่ผ่านแล้ว")} max={4}
+            value={Number(Boolean(productionDatabaseObservation?.tenantIsolationVerified)) + Number(acceptedIngress)} />
+          <VStack as="ol" gap={1} aria-label={text("Migration progress", "ความคืบหน้าการย้ายระบบ")}>
+            <li>M1 · {productionDatabaseObservation?.tenantIsolationVerified ? text("Database and tenant isolation accepted", "ฐานข้อมูลและการแยก tenant ผ่านแล้ว") : text("Database acceptance not verified", "ยังไม่ยืนยันการตรวจรับฐานข้อมูล")}</li>
+            <li>M2 · {acceptedIngress ? text("Production ingress accepted", "ทางเข้า Production ผ่านแล้ว") : text("Production ingress not accepted", "ทางเข้า Production ยังไม่ผ่าน")}</li>
+            <li>M3 · {text("Authenticated application and service parity", "ตรวจแอปที่เข้าสู่ระบบและ parity ของบริการ")}</li>
+            <li>{text("Final native runtime activation", "เปิดใช้งาน native runtime ขั้นสุดท้าย")}: {text("separate authorization after M3 acceptance", "ต้องอนุมัติแยกหลัง M3 ผ่าน")}</li>
+          </VStack>
+          <p>{text("Linux remains the application fallback. The accepted Cloudflare ingress and on-demand Container policy stay unchanged during M3 tests.",
             "Linux ยังคงพร้อมเป็นระบบสำรอง และทางเข้า Cloudflare ที่ผ่านการตรวจรับแล้วจะไม่เปลี่ยนระหว่างทดสอบ M3")}</p>
-          <p><a href="#cloudflare-m3-runtime-operation">{text("Open the current M3 acceptance action", "ไปยังขั้นตรวจรับ M3 ปัจจุบัน")}</a></p>
+          <p><a href="#cloudflare-m3-runtime-operation">{text("Continue the current M3 step", "ไปทำขั้น M3 ปัจจุบันต่อ")}</a></p>
           <details>
             <summary>{text("History and advanced diagnostics", "ประวัติและรายละเอียดทางเทคนิค")}</summary>
             <p>{text("M1 database and tenant isolation evidence, M2 ingress receipts, provider inventory, and canonical job history remain below.",

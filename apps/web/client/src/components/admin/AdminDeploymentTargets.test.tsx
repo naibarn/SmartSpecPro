@@ -266,7 +266,9 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseProductionScope(user);
     expect(screen.getByRole("region", { name: "Cloudflare migration control center" })).toHaveTextContent("M3_APPLICATION_ACCEPTANCE");
-    expect(screen.getByRole("link", { name: "Open the current M3 acceptance action" })).toHaveAttribute("href", "#cloudflare-m3-runtime-operation");
+    expect(screen.getByRole("link", { name: "Continue the current M3 step" })).toHaveAttribute("href", "#cloudflare-m3-runtime-operation");
+    expect(screen.getByRole("progressbar", { name: "Migration milestones completed" })).toHaveAttribute("max", "4");
+    expect(screen.getByRole("list", { name: "Migration progress" })).toHaveTextContent("Final native runtime activation");
     expect(screen.getByText("History and advanced diagnostics").closest("details")).not.toHaveAttribute("open");
   });
 
