@@ -169,7 +169,9 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       const rolePlan = { tenantId: scope.tenantId, projectId: scope.projectId, databaseName: plan.network.databaseName,
         tables: relations.tables, sequences: relations.sequences, connectionLimit: 10 as const,
         expiresAt: new Date(Math.min(Date.now() + 40 * 60_000, Date.parse(intent.expiresAt))).toISOString() };
+      if (operation === "application" && plan.pythonAuthReadOnlyTable !== "token_blacklist") fail("PYTHON_AUTH_RELATION_DENIED");
       roleReceipt = await prepareApplicationDatabaseRole(db, { plan: rolePlan, reuse: plan.previousRuntime?.rolePlan, assertAuthorized,
+        pythonAuthReadOnly: operation === "application",
         saveSecret: async (tx, secret) => { Object.assign(state, { rolePrepared: true, rolePlan, roleSecret: secret, stage: "ROLE_PREPARED" }); await persist(tx); } });
       await reporter.progress(lease, { progress: 15, stage: "NATIVE_RUNTIME_ROLE_PREPARED", measured: { role: plan.role, policiesChanged: false } });
       if (operation === "application") {

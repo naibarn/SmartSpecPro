@@ -49,8 +49,10 @@ export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value
     WHERE a.grantee=${observed.oid} ORDER BY n.nspname,c.relname,a.privilege_type`);
   const expected = [...plan.tables.flatMap(name => ["SELECT", "INSERT", "UPDATE", "DELETE"].map(privilege => `${name}:${privilege}`)),
     ...plan.sequences.flatMap(name => ["USAGE", "SELECT"].map(privilege => `${name}:${privilege}`))].sort();
+  const actual = grants.map(g => `${g.relname}:${g.privilege_type}`).sort();
+  const withPythonAuth = [...expected, "token_blacklist:SELECT"].sort();
   if (grants.some(g => g.nspname !== "public" || g.is_grantable || !["r", "p", "S"].includes(String(g.relkind))) ||
-      JSON.stringify(grants.map(g => `${g.relname}:${g.privilege_type}`).sort()) !== JSON.stringify(expected)) deny();
+      (JSON.stringify(actual) !== JSON.stringify(expected) && JSON.stringify(actual) !== JSON.stringify(withPythonAuth))) deny();
   const schemas = await db.execute(sql`SELECT n.nspname,a.privilege_type,a.is_grantable FROM pg_namespace n,
     LATERAL aclexplode(n.nspacl) a WHERE a.grantee=${observed.oid}`);
   const databases = await db.execute(sql`SELECT d.datname,a.privilege_type,a.is_grantable FROM pg_database d,
@@ -66,6 +68,8 @@ export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value
  * leave an unowned login, and no password appears in a job receipt or error. */
 export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
   plan: ApplicationDatabaseRolePlan;
+  /** Reviewed, exact read-only dependency of Python session authentication. */
+  pythonAuthReadOnly?: boolean;
   /** Trusted canonical compensation evidence; never supplied by an API caller. */
   reuse?: ApplicationDatabaseRolePlan;
   assertAuthorized(): Promise<void>;
@@ -109,6 +113,11 @@ export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
       await tx.execute(sql.raw(`GRANT CONNECT ON DATABASE ${quote(plan.databaseName)} TO ${quote(role)}`));
       await tx.execute(sql.raw(`GRANT USAGE ON SCHEMA public TO ${quote(role)}`));
       await tx.execute(sql.raw(`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE ${plan.tables.map(quote).join(",")} TO ${quote(role)}`));
+      if (input.pythonAuthReadOnly && !plan.tables.includes("token_blacklist")) {
+        const dependency = await tx.execute(sql`SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='token_blacklist' AND c.relkind IN ('r','p')`);
+        if (dependency.length !== 1) deny();
+        await tx.execute(sql.raw(`GRANT SELECT ON TABLE public."token_blacklist" TO ${quote(role)}`));
+      }
       if (plan.sequences.length) await tx.execute(sql.raw(`GRANT USAGE, SELECT ON SEQUENCE ${plan.sequences.map(quote).join(",")} TO ${quote(role)}`));
       await tx.execute(sql.raw(`ALTER ROLE ${quote(role)} SET statement_timeout='15s'`));
       await tx.execute(sql.raw(`ALTER ROLE ${quote(role)} SET lock_timeout='3s'`));

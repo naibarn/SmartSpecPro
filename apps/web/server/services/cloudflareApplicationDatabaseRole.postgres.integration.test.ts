@@ -18,6 +18,7 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
       CREATE POLICY fixture_isolation ON runtime_role_fixture USING(tenant_id=current_setting('app.current_tenant_id',true))
         WITH CHECK(tenant_id=current_setting('app.current_tenant_id',true));
       CREATE TABLE runtime_unselected_fixture(id int);
+      CREATE TABLE token_blacklist(jti text);
       CREATE TABLE agency_retired_fixture(id int);`);
     const connection = await import("../db"); db = connection.getDb(); closeDb = connection.closeDb;
   }, 30_000);
@@ -56,6 +57,19 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
     await expect(app`SELECT * FROM agency_retired_fixture`).rejects.toMatchObject({code:'42501'});
     await expect(app.unsafe('CREATE TABLE public.forbidden_fixture(id int)')).rejects.toMatchObject({code:'42501'});
     await expect(app.unsafe('CREATE ROLE forbidden_role')).rejects.toMatchObject({code:'42501'});
+  });
+  it("grants only read access to the reviewed Python revocation dependency and permits exact compensated reuse", async () => {
+    const p = { ...plan(), projectId: "project-python-auth" }, role = applicationDatabaseRoleName(p);
+    let secret: any;
+    await prepareApplicationDatabaseRole(db, { plan: p, pythonAuthReadOnly: true, assertAuthorized: async () => {}, saveSecret: async (_tx, value) => { secret = value; } });
+    const url = new URL(disposable.databaseUrl); url.username = role; url.password = secret.password;
+    const connection = (await import("postgres")).default(url.toString(), { max: 1 });
+    try {
+      expect(await connection`SELECT jti FROM token_blacklist`).toEqual([]);
+      await expect(connection`INSERT INTO token_blacklist(jti) VALUES ('fixture')`).rejects.toMatchObject({ code: "42501" });
+    } finally { await connection.end({ timeout: 2 }); }
+    await client.unsafe(`ALTER ROLE "${role}" NOLOGIN`);
+    await expect(assertReusableApplicationDatabaseRole(db, p)).resolves.toBeUndefined();
   });
   it("rolls role creation back atomically on lost authority or secret checkpoint failure", async () => {
     for (const failure of ['authority','checkpoint']) {

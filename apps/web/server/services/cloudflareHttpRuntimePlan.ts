@@ -197,7 +197,7 @@ async function buildHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJobId:
     testScope: ["node-health", "node-database-readiness", "python-health", "python-database-readiness", "missing-auth-denied", "bounded-recovery",
       ...(operation === "application" ? ["synthetic-login-session-lifecycle", "authenticated-credit-read", "authenticated-gateway-model-routing",
         "cross-tenant-api-denial", "python-authenticated-api-read"] : [])],
-    ...(operation === "application" ? { operation, applicationFixture, previousApplicationAcceptance } : {}),
+    ...(operation === "application" ? { operation, applicationFixture, previousApplicationAcceptance, pythonAuthReadOnlyTable: "token_blacklist" as const } : {}),
     applicationAcceptance: operation === "application", fixtureCreation: operation === "application", restoreCandidateDeployment: true, revokeApplicationLogin: true };
   if (!plan.executorId) throw Error("HTTP_RUNTIME_EXECUTOR_REQUIRED");
   return { ready: true as const, plan, planDigest: hash(plan), providerReadbackVerified: true as const,
