@@ -3,18 +3,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareImagePublication } from "./CloudflareImagePublication";
-const state = vi.hoisted(() => ({ mutate: vi.fn(), refetch: vi.fn(), ready: true, status: null as any, statusLoading: false, pending: false, error: null as any }));
+
+const state = vi.hoisted(() => ({ mutate: vi.fn(), refetch: vi.fn(), ready: true, status: null as any,
+  baselineStatus: undefined as any, requestedStatus: undefined as any, planDigest: "c".repeat(64), pending: false, error: null as any }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
-  getCloudflareHttpImagePairPreflight: { useQuery: () => ({ data: state.ready ? { ready: true, sourceSha: "a".repeat(40), accountRef: "b".repeat(32), planDigest: "c".repeat(64) }
+  getCloudflareHttpImagePairPreflight: { useQuery: () => ({ data: state.ready ? { ready: true, sourceSha: "a".repeat(40), accountRef: "b".repeat(32), planDigest: state.planDigest }
     : { ready: false, reason: "HTTP_IMAGE_CREDENTIAL_DENIED" }, isLoading: false }) },
-  getCloudflareHttpImagePairSubmission: { useQuery: () => ({ data: state.status, isLoading: state.statusLoading, refetch: state.refetch }) },
+  getCloudflareHttpImagePairSubmission: { useQuery: (input: any) => ({ data: input.submissionId
+    ? state.requestedStatus ?? state.status : state.baselineStatus ?? state.status, refetch: state.refetch }) },
   queueCloudflareHttpImagePair: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.pending, error: state.error }) },
 } } }));
+
 const props = { tenantId: "tenant-test", projectId: "project-test" };
-beforeEach(() => { sessionStorage.clear(); state.mutate.mockReset().mockResolvedValue(null); state.status = null; state.statusLoading = false; state.ready = true; state.pending = false; state.error = null; });
+const pubJobs = (prefix: string) => ["node-http", "python-http"].map(runtime => ({ runtime, jobId: `${prefix}-${runtime}`, status: "succeeded", registryVerified: true }));
+beforeEach(() => { sessionStorage.clear(); state.mutate.mockReset().mockResolvedValue(null); state.status = null; state.baselineStatus = undefined;
+  state.requestedStatus = undefined; state.planDigest = "c".repeat(64); state.ready = true; state.pending = false; state.error = null; });
+
 describe("image publication Owner action", () => {
-  it("shows exact source and scopes one click to the two images without traffic activation", async () => {
+  it("shows the reviewed source and submits one scoped pair without traffic activation", async () => {
     render(<CloudflareImagePublication {...props} />);
     expect(screen.getByText("a".repeat(40))).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Authorize and publish Node/Python images" }));
@@ -22,94 +29,86 @@ describe("image publication Owner action", () => {
     expect(state.mutate.mock.calls[0][0]).toEqual({ ...props, submissionId: expect.any(String), planDigest: "c".repeat(64) });
     expect(screen.getByText(/Production traffic continues/)).toBeInTheDocument();
   });
-  it("retains the same submission across a lost response and reload", async () => {
+
+  it("reuses the same stable ID after an ambiguous response and reload", async () => {
     state.mutate.mockRejectedValueOnce(Error("response lost"));
     const first = render(<CloudflareImagePublication {...props} />);
     await userEvent.click(screen.getByRole("button"));
     await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1));
-    const input = state.mutate.mock.calls[0][0]; first.unmount();
+    const request = state.mutate.mock.calls[0][0]; first.unmount();
     render(<CloudflareImagePublication {...props} />);
     await userEvent.click(screen.getByRole("button", { name: "Reconcile and continue the same publication" }));
-    expect(state.mutate.mock.calls[1][0]).toEqual(input);
+    expect(state.mutate.mock.calls[1][0]).toEqual(request);
   });
-  it("surfaces a stale browser-only ID and submits the current digest under a fresh ID", async () => {
-    const oldId = "22222222-2222-4222-8222-222222222222", publishedId = "33333333-3333-4333-8333-333333333333";
-    const key = `smartspec:cloudflare-image-repair:${props.tenantId}:${props.projectId}:e${"e".repeat(39)}`;
-    sessionStorage.setItem(key, JSON.stringify({ id: oldId, digest: "d".repeat(64) }));
-    state.status = { submissionId: publishedId, planDigest: "f".repeat(64), sourceSha: `e${"e".repeat(39)}`, published: true,
-      requestedPublication: null, requestedPublicationError: null, diagnostics: [], jobs: [] };
-    render(<CloudflareImagePublication {...props} replacementForSourceSha={`e${"e".repeat(39)}`} />);
-    expect(screen.getByRole("alert")).toHaveTextContent(oldId);
-    expect(screen.getByRole("alert")).toHaveTextContent("no canonical registry record");
-    const button = screen.getByRole("button", { name: "Authorize the current image plan" });
-    await userEvent.click(button);
-    expect(state.mutate).toHaveBeenCalledOnce();
-    const request = state.mutate.mock.calls[0][0];
-    expect(request.submissionId).not.toBe(oldId);
-    expect(request.planDigest).toBe("c".repeat(64));
-    expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual({ id: request.submissionId, digest: "c".repeat(64) });
-  });
-  it("disables duplicate admission and shows real per-job registry receipts", () => {
-    state.status = { published: true, diagnostics: [], jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime,
-      status: "succeeded", registryVerified: true, image: `registry.cloudflare.com/fixture/${runtime}@sha256:${"a".repeat(64)}` })) };
+
+  it("shows a verified pair matching the plan and prevents duplicate admission", () => {
+    state.status = { published: true, planDigest: "c".repeat(64), diagnostics: [], jobs: pubJobs("published").map(job => ({ ...job,
+      image: `registry.cloudflare.com/fixture/${job.runtime}@sha256:${"a".repeat(64)}` })) };
     render(<CloudflareImagePublication {...props} />);
     expect(screen.getByRole("button", { name: "Publication jobs accepted" })).toBeDisabled();
     expect(screen.getByText(/Both registry receipts verified/)).toBeInTheDocument();
     expect(screen.getAllByText(/registry.cloudflare.com\/fixture/)).toHaveLength(2);
   });
-  it("discovers a published canonical pair without browser storage and shows its approved source", async () => {
-    const id = "11111111-1111-4111-8111-111111111111";
-    state.status = { submissionId: id, planDigest: "e".repeat(64), sourceSha: "d".repeat(40), published: true, diagnostics: [],
-      jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime, status: "succeeded", registryVerified: true, image: "registry-receipt" })) };
+
+  it("discovers a published canonical pair without treating it as a pending Owner request", () => {
+    state.planDigest = "e".repeat(64);
+    state.status = { submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "e".repeat(64), sourceSha: "d".repeat(40),
+      published: true, diagnostics: [], jobs: pubJobs("old") };
     render(<CloudflareImagePublication {...props} />);
-    await waitFor(() => expect(JSON.parse(sessionStorage.getItem(`smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`)!)).toEqual({ id, digest: "e".repeat(64) }));
     expect(screen.getByText("d".repeat(40))).toBeInTheDocument();
-    expect(screen.queryByText("a".repeat(40))).not.toBeInTheDocument();
-    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
-  });
-  it("shows missing purpose credential and exact admission error", () => {
-    state.ready = false; state.error = { message: "HTTP_IMAGE_APPROVAL_HTTP_403" };
-    render(<CloudflareImagePublication {...props} />);
-    expect(screen.getByRole("button")).toBeDisabled();
-    expect(screen.getByText("HTTP_IMAGE_CREDENTIAL_DENIED")).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("HTTP_IMAGE_APPROVAL_HTTP_403");
-  });
-  it("replaces a stale browser hint with the verified canonical pair without republishing", async () => {
-    const key = `smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`;
-    sessionStorage.setItem(key, JSON.stringify({ id: "22222222-2222-4222-8222-222222222222", digest: "c".repeat(64) }));
-    const id = "11111111-1111-4111-8111-111111111111";
-    state.status = { submissionId: id, planDigest: "e".repeat(64), published: true, diagnostics: [], pairResolution: [
-      { submissionId: "22222222-2222-4222-8222-222222222222", runtime: "node-http", code: "HTTP_IMAGE_JOB_NOT_SUCCEEDED" }],
-      jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime, status: "succeeded", registryVerified: true, image: "registry-receipt" })) };
-    render(<CloudflareImagePublication {...props} />);
-    await waitFor(() => expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual({ id, digest: "e".repeat(64) }));
-    expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
-    expect(screen.getByText(/HTTP_IMAGE_JOB_NOT_SUCCEEDED/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Publication jobs accepted" })).toBeDisabled();
+    expect(sessionStorage.getItem(`smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`)).toBeNull();
   });
 
-  it("publishes a reviewed corrected source without resubmitting the incompatible published pair", async () => {
-    const oldId = "11111111-1111-4111-8111-111111111111", sourceSha = "d".repeat(40);
-    sessionStorage.setItem(`smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`, JSON.stringify({ id: oldId, digest: "e".repeat(64) }));
-    state.status = { submissionId: oldId, sourceSha, planDigest: "e".repeat(64), published: true, diagnostics: [],
-      jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime, status: "succeeded", registryVerified: true })) };
-    const view = render(<CloudflareImagePublication {...props} replacementForSourceSha={sourceSha} />);
-    await userEvent.click(screen.getByRole("button", { name: "Authorize corrected Node/Python image publication" }));
-    expect(state.mutate).toHaveBeenCalledOnce();
-    const request = state.mutate.mock.calls[0][0]; expect(request.submissionId).not.toBe(oldId); expect(request.planDigest).toBe("c".repeat(64));
-    view.unmount(); render(<CloudflareImagePublication {...props} replacementForSourceSha={sourceSha} />);
-    await userEvent.click(screen.getByRole("button")); expect(state.mutate.mock.calls[1][0]).toEqual(request);
+  it("uses a new ID when the saved ID still resolves to an old published plan", async () => {
+    const oldId = "22222222-2222-4222-8222-222222222222", key = `smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`;
+    const oldPair = { submissionId: oldId, sourceSha: "d".repeat(40), planDigest: "e".repeat(64), published: true, diagnostics: [], jobs: pubJobs("old") };
+    sessionStorage.setItem(key, JSON.stringify({ id: oldId, digest: oldPair.planDigest })); state.status = oldPair;
+    const view = render(<CloudflareImagePublication {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Authorize the current image plan" }));
+    const request = state.mutate.mock.calls[0][0];
+    expect(request.submissionId).not.toBe(oldId); expect(request.planDigest).toBe("c".repeat(64));
+    expect(screen.getByText(/Last verified published source/)).toBeInTheDocument(); expect(screen.getByText(/old-node-http/)).toBeInTheDocument();
+    state.requestedStatus = { submissionId: request.submissionId, sourceSha: "a".repeat(40), planDigest: request.planDigest,
+      published: false, diagnostics: [], jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: `new-${runtime}`, status: "queued" })) };
+    view.rerender(<CloudflareImagePublication {...props} />);
+    expect(screen.getByText(new RegExp(request.submissionId))).toBeInTheDocument(); expect(screen.getByText(/new-node-http/)).toBeInTheDocument();
+    view.unmount(); render(<CloudflareImagePublication {...props} />);
+    expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual({ id: request.submissionId, digest: "c".repeat(64) });
+    expect(screen.getByText(/new-python-http/)).toBeInTheDocument(); expect(state.mutate).toHaveBeenCalledOnce();
   });
-  it("keeps a requested corrected publication visible while the older verified pair remains authoritative", () => {
-    state.status = { sourceSha: "d".repeat(40), published: true, jobs: [], diagnostics: [], requestedPublication: {
-      submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "c".repeat(64), sourceSha: "a".repeat(40), published: false, diagnostics: [],
-      jobs: [{ runtime: "node-http", jobId: "node-new", status: "running" }, { runtime: "python-http", jobId: "python-new", status: "queued" }] } };
-    render(<CloudflareImagePublication {...props} replacementForSourceSha={"d".repeat(40)} />);
+
+  it("does not let the old canonical response overwrite a new digest in local storage", async () => {
+    const staleId = "22222222-2222-4222-8222-222222222222", key = `smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`;
+    sessionStorage.setItem(key, JSON.stringify({ id: staleId, digest: "c".repeat(64) }));
+    state.status = { submissionId: staleId, planDigest: "e".repeat(64), published: true, diagnostics: [], jobs: pubJobs("old") };
+    render(<CloudflareImagePublication {...props} />);
+    expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual({ id: staleId, digest: "c".repeat(64) });
+    await userEvent.click(screen.getByRole("button", { name: "Authorize the current image plan" }));
+    expect(state.mutate.mock.calls[0][0].submissionId).not.toBe(staleId);
+  });
+
+  it("retains an explicitly requested corrected pair while the previous published pair remains baseline", () => {
+    const activeId = "11111111-1111-4111-8111-111111111111", oldSource = "d".repeat(40);
+    sessionStorage.setItem(`smartspec:cloudflare-image-repair:${props.tenantId}:${props.projectId}:${oldSource}`,
+      JSON.stringify({ id: activeId, digest: "c".repeat(64) }));
+    state.status = { submissionId: "older-published", planDigest: "e".repeat(64), sourceSha: oldSource, published: true, jobs: [], diagnostics: [],
+      requestedPublication: { submissionId: activeId, planDigest: "c".repeat(64), sourceSha: "a".repeat(40), published: false, diagnostics: [],
+        jobs: [{ runtime: "node-http", jobId: "node-new", status: "running" }, { runtime: "python-http", jobId: "python-new", status: "queued" }] } };
+    render(<CloudflareImagePublication {...props} replacementForSourceSha={oldSource} />);
     expect(screen.getByText(/node-new/)).toBeInTheDocument(); expect(screen.getByText(/python-new/)).toBeInTheDocument();
     expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
   });
-  it("does not republish the same incompatible source as a purported repair", () => {
+
+  it("keeps mutation and preflight errors visible", () => {
+    state.ready = false; state.error = { message: "HTTP_IMAGE_APPROVAL_HTTP_403" };
+    render(<CloudflareImagePublication {...props} />);
+    expect(screen.getByRole("button")).toBeDisabled(); expect(screen.getByText("HTTP_IMAGE_CREDENTIAL_DENIED")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("HTTP_IMAGE_APPROVAL_HTTP_403");
+  });
+
+  it("does not authorize repair when the requested source is still incompatible", () => {
     render(<CloudflareImagePublication {...props} replacementForSourceSha={"a".repeat(40)} />);
     expect(screen.getByRole("button")).toBeDisabled(); expect(state.mutate).not.toHaveBeenCalled();
   });
-
 });
