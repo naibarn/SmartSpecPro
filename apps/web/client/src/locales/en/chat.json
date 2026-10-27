@@ -84,6 +84,8 @@
   "taskControl.promptPlaceholder": "Describe what you want the agent to do…",
   "taskControl.newConversationNotice": "A new Chat conversation will be created when you continue.",
   "taskControl.addToComposer": "Add to chat composer",
+  "taskControl.chooseSkill": "Choose a skill",
+  "taskControl.openSkillFailed": "Could not open the skill selector.",
   "taskControl.checkingReadiness": "Checking execution readiness…",
   "taskControl.readinessUnavailable": "Some readiness data is unavailable",
   "taskControl.readinessHeading": "Execution readiness",

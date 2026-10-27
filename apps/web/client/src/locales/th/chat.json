@@ -84,6 +84,8 @@
   "taskControl.promptPlaceholder": "อธิบายงานที่ต้องการให้ผู้ช่วยทำ…",
   "taskControl.newConversationNotice": "ระบบจะสร้างบทสนทนาใหม่เมื่อคุณดำเนินการต่อ",
   "taskControl.addToComposer": "เพิ่มคำสั่งลงในช่องแชต",
+  "taskControl.chooseSkill": "เลือกสกิล",
+  "taskControl.openSkillFailed": "ไม่สามารถเปิดตัวเลือกสกิลได้",
   "taskControl.checkingReadiness": "กำลังตรวจสอบความพร้อมในการทำงาน…",
   "taskControl.readinessUnavailable": "ข้อมูลความพร้อมบางส่วนไม่พร้อมแสดง",
   "taskControl.readinessHeading": "ความพร้อมในการทำงาน",

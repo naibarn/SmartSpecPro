@@ -75,6 +75,7 @@ import {
 import type { LiveBrowserCreateSessionRequest } from "@shared/liveBrowser";
 import { LocaleToggle } from "@/components/LocaleToggle";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 
 type RightPanel =
   | "none"
@@ -88,6 +89,7 @@ type RightPanel =
 export default function Chat() {
   const { isLoading, isAuthenticated, user } = useAuth();
   const { t } = useScopedTranslation("chat");
+  const skillSelectorEnabled = useFeatureFlag("chat.dynamicSkillForm");
   const [, setLocation] = useLocation();
   const search = useSearch();
 
@@ -103,6 +105,7 @@ export default function Chat() {
     id: number;
     text: string;
   } | null>(null);
+  const [skillSelectorRequest, setSkillSelectorRequest] = useState<{ id: number } | null>(null);
   // Deep-link state from GlobalAlerts (e.g. /chat?dm=123&dmName=John)
   const [initialDmUserId, setInitialDmUserId] = useState<number | null>(null);
   const [initialDmUserName, setInitialDmUserName] = useState<string>("");
@@ -442,6 +445,18 @@ export default function Chat() {
       toast.error(
         error instanceof Error ? error.message : "เปิด Chat composer ไม่สำเร็จ"
       );
+    }
+  };
+
+  const handleOpenControlPlaneSkill = async () => {
+    try {
+      const conversationId = await ensureConversationId();
+      setSkillSelectorRequest({ id: Date.now() });
+      setFullControlPlane(false);
+      setRightPanel("none");
+      if (fullControlPlane) setLocation(`/chat?c=${conversationId}`);
+    } catch {
+      toast.error(t("taskControl.openSkillFailed"));
     }
   };
 
@@ -1063,6 +1078,8 @@ export default function Chat() {
                   }
                   onOpenFinancePanel={() => setRightPanel("finance")}
                   composerPrompt={chatPromptRequest}
+                  skillSelectorRequest={skillSelectorRequest}
+                  onSkillSelectorRequestHandled={() => setSkillSelectorRequest(null)}
                 />
               </div>
             </div>
@@ -1205,6 +1222,7 @@ export default function Chat() {
                 }
               }}
               onOpenPrompt={prompt => void handleOpenControlPlanePrompt(prompt)}
+              onOpenSkill={skillSelectorEnabled ? () => void handleOpenControlPlaneSkill() : undefined}
             />
           )}
           {rightPanel === "schedule" && (

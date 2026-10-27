@@ -746,6 +746,8 @@ interface ChatViewProps {
   conversationId: number | null;
   density?: "default" | "compact";
   composerPrompt?: { id: number; text: string } | null;
+  skillSelectorRequest?: { id: number } | null;
+  onSkillSelectorRequestHandled?: () => void;
   mapContextDraft?: { id: number; contextText: string } | null;
   onRemoveMapContext?: () => void;
   onTitleUpdate?: (title: string) => void;
@@ -767,6 +769,8 @@ export function ChatView({
   conversationId,
   density = "default",
   composerPrompt,
+  skillSelectorRequest,
+  onSkillSelectorRequestHandled,
   mapContextDraft,
   onRemoveMapContext,
   onTitleUpdate,
@@ -819,6 +823,7 @@ export function ChatView({
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const appliedComposerPromptIdRef = useRef<number | null>(null);
+  const appliedSkillSelectorRequestIdRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
@@ -2225,6 +2230,13 @@ export function ChatView({
     preferredLocalProfileId: chatSessionLocalAiPreferences.defaultModelId,
     platform: localAiRuntimePlatform,
   });
+  useEffect(() => {
+    if (!isSkillFormEnabled || !conversationId || !skillSelectorRequest ||
+        appliedSkillSelectorRequestIdRef.current === skillSelectorRequest.id) return;
+    appliedSkillSelectorRequestIdRef.current = skillSelectorRequest.id;
+    skillForm.setShowSkillSelector(true);
+    onSkillSelectorRequestHandled?.();
+  }, [conversationId, isSkillFormEnabled, skillSelectorRequest, skillForm.setShowSkillSelector, onSkillSelectorRequestHandled]);
   const preferredSkillExecution = useSkillExecution({
     conversationId:
       typeof conversationId === "number" ? conversationId : undefined,

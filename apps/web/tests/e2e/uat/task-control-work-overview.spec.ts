@@ -55,3 +55,20 @@ test("a general request can return to the Chat composer without creating develop
   await expect(page.getByPlaceholder("Type a message or / for skills...")).toHaveValue("Summarize my notes", { timeout: 30_000 });
   expect(developmentMutations).toEqual([]);
 });
+
+test("Task Control opens the existing skill selector without executing work", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  const executionRequests: string[] = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && /(?:spec226DevelopmentControl\.(?:create|startWorkspaceRun|resumeWorkspaceRun)|skills\.(?:execute|run))/.test(request.url())) executionRequests.push(request.url().split("?")[0]);
+  });
+  await page.goto("/chat?panel=control-plane&view=full");
+  const panel = page.getByTestId("control-plane-panel");
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await panel.getByRole("button", { name: "Choose a skill" }).click();
+  await expect(page.getByText("Select a Skill", { exact: true })).toBeVisible({ timeout: 30_000 });
+  expect(executionRequests).toEqual([]);
+});

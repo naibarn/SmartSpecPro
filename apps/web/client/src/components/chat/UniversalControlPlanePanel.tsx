@@ -32,6 +32,7 @@ export interface UniversalControlPlanePanelProps {
   conversationId: number | null;
   onClose: () => void;
   onOpenPrompt: (prompt: string) => void;
+  onOpenSkill?: () => void;
   fullPage?: boolean;
 }
 
@@ -303,6 +304,7 @@ export function UniversalControlPlanePanel({
   conversationId,
   onClose,
   onOpenPrompt,
+  onOpenSkill,
   fullPage = false,
 }: UniversalControlPlanePanelProps) {
   const { t } = useScopedTranslation("chat");
@@ -881,6 +883,11 @@ export function UniversalControlPlanePanel({
           <Activity className="h-4 w-4" aria-hidden="true" />
           {t("taskControl.addToComposer")}
         </Button>
+        {onOpenSkill ? (
+          <Button type="button" variant="outline" className="mt-2 w-full" onClick={onOpenSkill}>
+            {t("taskControl.chooseSkill")}
+          </Button>
+        ) : null}
       </section>
 
       <section className="px-4 pb-24 pt-4">
