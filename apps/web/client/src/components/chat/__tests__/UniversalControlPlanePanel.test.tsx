@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -300,9 +300,35 @@ describe("UniversalControlPlanePanel", () => {
       { jobId: "job-chat-1", projectionToken },
       expect.objectContaining({ enabled: true }),
     );
+    expect(screen.queryByText(/UI Session session-model/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "taskControl.developerMode" }));
     expect(screen.getByText(/UI Session session-model/)).toBeTruthy();
     expect(screen.getByText(/Worker requested worker-model · Provider effective Unknown \/ unverified/)).toBeTruthy();
     expect(screen.getByText(/Measured linked tokens Unknown · known subtotal 400 · calls 1 · missing 1 · quota UNKNOWN/)).toBeTruthy();
+  });
+
+  it("shows a bounded conversation overview without treating completion as verified or changing work when switching views", () => {
+    mocks.observabilityQuery.mockReturnValue({
+      ...emptyQuery,
+      data: { snapshot: { projectionToken: "scope-bound.snapshot-token" }, nextCursor: "more", items: [
+        { id: "private-1", status: "running", operatorAttention: { required: false } },
+        { id: "private-2", status: "waiting_external", operatorAttention: { required: true } },
+        { id: "private-3", status: "queued", operatorAttention: { required: false } },
+        { id: "private-4", status: "completed", operatorAttention: { required: false } },
+      ] },
+    });
+    render(<UniversalControlPlanePanel conversationId={42} fullPage onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    const overview = screen.getByRole("region", { name: "taskControl.overviewTitle" });
+    expect(within(overview).getByRole("heading", { name: "taskControl.attention" }).parentElement).toHaveTextContent("1");
+    expect(within(overview).getByRole("heading", { name: "taskControl.running" }).parentElement).toHaveTextContent("1");
+    expect(within(overview).getByRole("heading", { name: "taskControl.waiting" }).parentElement).toHaveTextContent("1");
+    expect(screen.getByText("taskControl.completedUnverified")).toBeInTheDocument();
+    expect(screen.getByText("taskControl.overviewPartial")).toBeInTheDocument();
+    expect(overview).not.toHaveTextContent("private-1");
+    fireEvent.click(screen.getByRole("button", { name: "taskControl.developerMode" }));
+    expect(screen.getByText("taskControl.completedUnverified")).toBeInTheDocument();
+    expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
+    expect(mocks.startWorkspaceMutateAsync).not.toHaveBeenCalled();
   });
 
   it("prepares first, then starts prompt development only through the explicit user action", async () => {

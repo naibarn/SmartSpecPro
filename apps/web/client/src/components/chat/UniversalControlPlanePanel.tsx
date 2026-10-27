@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Spec224WorkspacePanel } from "@/components/chat/Spec224WorkspacePanel";
+import { WorkOverview } from "@/components/chat/WorkOverview";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
@@ -333,7 +334,7 @@ export function UniversalControlPlanePanel({
   const trpcUtils = trpc.useUtils();
   const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
     conversationId ? { conversationId } : {},
-    { enabled: Boolean(conversationId), staleTime: 15_000, retry: false }
+    { enabled: Boolean(conversationId), staleTime: 15_000, refetchInterval: 15_000, refetchIntervalInBackground: false, retry: false }
   );
   const taskProjectionToken = taskObservabilityQuery.data?.snapshot.projectionToken;
   const conversationJobs = taskObservabilityQuery.error ? [] : taskObservabilityQuery.data?.items ?? [];
@@ -770,7 +771,7 @@ export function UniversalControlPlanePanel({
           <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base">
             {t("taskControl.description")}
           </p>
-          {conversationId ? (
+          {conversationId && runnerViewMode === "developer" ? (
             <section className="mt-4 w-full space-y-3" aria-label={t("taskControl.evidenceLabel")}>
               <section className="w-full min-w-0 rounded-xl border border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground sm:p-5" aria-live="polite">
                 <p className="font-semibold text-foreground">{t("taskControl.snapshotTitle")}</p>
@@ -798,8 +799,14 @@ export function UniversalControlPlanePanel({
               </Link>
             </section>
           ) : null}
+          {conversationId && runnerViewMode === "simple" && !fullPage ? (
+            <Link href={taskMonitorHref}>{t("taskControl.inspectEvidence")}</Link>
+          ) : null}
         </section>
         <section className="flex shrink-0 items-center gap-2">
+          <Button type="button" variant="outline" size="sm" aria-pressed={runnerViewMode === "developer"} onClick={() => setRunnerViewMode(mode => mode === "simple" ? "developer" : "simple") }>
+            {runnerViewMode === "simple" ? t("taskControl.developerMode") : t("taskControl.simpleMode")}
+          </Button>
           {!fullPage ? (
             <Link
               href={`/chat?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}`}
@@ -823,6 +830,16 @@ export function UniversalControlPlanePanel({
         </section>
       </header>
 
+      <section className="min-h-0 flex-1 overflow-y-auto">
+      {fullPage ? (
+        <WorkOverview
+          items={conversationJobs}
+          state={!conversationId ? "no-context" : taskObservabilityQuery.isLoading ? "loading" : taskObservabilityQuery.error || !taskObservabilityQuery.data ? "unavailable" : "ready"}
+          hasMore={Boolean(taskObservabilityQuery.data?.nextCursor)}
+          hasWorkspace={Boolean(conversationWorkspaceQuery.data?.workspace)}
+          monitorHref={taskMonitorHref}
+        />
+      ) : null}
       <section
         className="shrink-0 border-b border-[var(--color-border)] bg-sky-50/50 px-4 py-4 sm:px-6 sm:py-5"
         aria-labelledby="control-plane-task-heading"
@@ -859,8 +876,13 @@ export function UniversalControlPlanePanel({
         </Button>
       </section>
 
-      <section className="min-h-0 flex-1 overflow-y-auto px-4 pb-24 pt-4">
-        <Spec224WorkspacePanel conversationId={conversationId} />
+      <section className="px-4 pb-24 pt-4">
+        {fullPage ? (
+          <details>
+            <summary>{t("taskControl.newDevelopmentTask")}</summary>
+            <Spec224WorkspacePanel conversationId={conversationId} />
+          </details>
+        ) : <Spec224WorkspacePanel conversationId={conversationId} />}
         {queryErrors.length > 0 ? (
           <section
             className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800"
@@ -2324,6 +2346,7 @@ export function UniversalControlPlanePanel({
             </Link>
           </Button>
         </nav>
+      </section>
       </section>
     </aside>
   );
