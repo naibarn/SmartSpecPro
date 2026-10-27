@@ -350,7 +350,13 @@ export async function reconcileAndContinueNextPhase(
     tenantId: input.tenantId,
     actorId: input.actorId,
   });
-  if (reconcile.action !== "CONTINUE") {
+  // A crash can occur after the terminal outcome is persisted but before the
+  // next job is admitted. Re-evaluate the persisted run on replay; the phase
+  // admission transaction still checks the reconciled job, fence and revision.
+  const resumeAfterPersistedOutcome =
+    reconcile.reason === "worker_job_already_reconciled" &&
+    ["RUN_PHASE", "RECOVER_PHASE"].includes(decideNextSafeAction(reconcile.run).command);
+  if (reconcile.action !== "CONTINUE" && !resumeAfterPersistedOutcome) {
     return { reconcile, continuation: null };
   }
   return {

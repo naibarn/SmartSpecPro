@@ -29,7 +29,7 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       await client.unsafe('CREATE TABLE tenant_data_transfer_plans ("operationId" varchar(36), "tenantId" varchar(36), "sourceUserId" integer)');
       await client.unsafe('CREATE TABLE tenant_identity_actions (id varchar(36) PRIMARY KEY, "userId" integer, "sourceTenantId" varchar(36), phase varchar(40))');
       process.env.DATABASE_URL = fixture.databaseUrl;
-      const [{ createJobControlPlane }, { createPersistedDevelopmentRun, defaultDevelopmentRunPersistenceAdapter },
+      const [{ createJobControlPlane }, { createDevelopmentRunService, createPersistedDevelopmentRun, defaultDevelopmentRunPersistenceAdapter },
         { buildDevelopmentRun }, { reconcileAndContinueNextPhase }, { defaultJobExecutorRegistry }] = await Promise.all([
         import("../jobControlPlane"), import("../spec224DevelopmentRunPersistence"),
         import("../spec224DevelopmentRunContracts"), import("../spec224PhaseController"), import("../jobExecutorRegistry"),
@@ -46,10 +46,15 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       if (!lease) throw new Error("SPEC224_SYNTHETIC_JOB_NOT_CLAIMED");
       await controlPlane.start(lease);
       await controlPlane.complete(lease, { resultRef: "evidence:held-phase" });
+      // Simulate a process interruption after persisting the phase outcome.
+      const persistedOutcome = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter)
+        .reconcile({ runId, tenantId, actorId });
+      expect(persistedOutcome.action).toBe("CONTINUE");
       const result = await reconcileAndContinueNextPhase({ ...base, runId, tenantId, actorId,
         expectedRevision: 0, expectedFencingVersion: first.run.fencingVersion,
         idempotencyKey: `held-phase:${runId}`, planRevision: 2, deferredAdmission: true });
       expect(result.continuation?.accepted).toBe(true);
+      expect(result.reconcile.reason).toBe("worker_job_already_reconciled");
       const jobId = result.continuation!.jobRef.jobId;
       const [job] = await client.unsafe('SELECT status FROM worker_jobs WHERE id = $1', [jobId]);
       const [outbox] = await client.unsafe('SELECT COUNT(*)::int AS count FROM worker_job_outbox WHERE "workerJobId" = $1', [jobId]);
