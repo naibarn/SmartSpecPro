@@ -326,6 +326,25 @@ async function assertPublishedRuntimeAvailable() {
   console.log(`[worker-app] published runtime is release-ready: ${manifest.runtimeId}@${manifest.version}`);
 }
 
+function assertDashboardRuntimeDownloadContract() {
+  const commandsSource = readFileSync(join(appDir, "src-tauri/src/commands.rs"), "utf8");
+  const requiredContracts = [
+    "api/workers/runtime-pack/manifest?runtimeId=hyperframes-wsl2",
+    "archiveSha256",
+    "archive_sha256",
+    "sha256sum -c",
+    "Runtime archive checksum mismatch",
+  ];
+  const missing = requiredContracts.filter((contract) => !commandsSource.includes(contract));
+  if (missing.length > 0) {
+    throw new Error([
+      "Worker App no longer has the verified Dashboard runtime download flow.",
+      ...missing.map((contract) => `- missing source contract: ${contract}`),
+    ].join("\n"));
+  }
+  console.log("[worker-app] installer uses Dashboard runtime download with archive SHA-256 verification.");
+}
+
 const packageJson = readJson(packagePath);
 const tauriConfig = readJson(tauriConfigPath);
 const publishedVersions = listPublishedVersions();
@@ -360,6 +379,11 @@ if (args.has("--check-published-runtime")) {
   process.exit(0);
 }
 
+if (args.has("--check-dashboard-runtime-download-contract")) {
+  assertDashboardRuntimeDownloadContract();
+  process.exit(0);
+}
+
 if (dryRun) {
   console.log("[worker-app] dry run does not validate runtime readiness; use --check-runtime for the release gate.");
   console.log(`[worker-app] dry run only; would write ${sourceReleasePath}`);
@@ -384,7 +408,7 @@ if (!runtimeFromServer) {
 }
 console.log("[worker-app] Content Protection is published as an optional runtime and is not bundled in the Worker App installer.");
 if (runtimeFromServer) {
-  await assertPublishedRuntimeAvailable();
+  assertDashboardRuntimeDownloadContract();
 } else {
   assertReleaseRuntimePack();
 }
