@@ -3507,6 +3507,83 @@ mod rotating_transport_tests {
     }
 
     #[test]
+    fn control_loop_reports_recovery_after_real_socket_disconnect_and_reconnect() {
+        let root = tempfile::tempdir().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let origin = format!("http://{}", listener.local_addr().unwrap());
+        let endpoint = ControlEndpoint::from_control_url(&origin).unwrap();
+        let server = thread::spawn(move || {
+            for attempt in 0..2 {
+                let (stream, _) = listener.accept().unwrap();
+                let mut socket = tungstenite::accept(stream).unwrap();
+                socket
+                    .send(tungstenite::Message::Text(
+                        r#"{"ackState":"accepted"}"#.into(),
+                    ))
+                    .unwrap();
+                socket.read().unwrap();
+                socket
+                    .send(tungstenite::Message::Text(
+                        r#"{"ackState":"applied"}"#.into(),
+                    ))
+                    .unwrap();
+                if attempt == 0 {
+                    socket.close(None).unwrap();
+                } else {
+                    let _ = socket.read();
+                }
+            }
+        });
+        let mut config = RunnerConfig::local("runner-rotation-test", "device", &origin);
+        config.data_root = root.path().to_string_lossy().into_owned();
+        let snapshot = json!({
+            "tenantId": "tenant", "runnerSessionId": "session",
+            "capabilitySnapshotId": "snapshot", "revision": "revision",
+            "controlPlaneOrigin": origin, "expiresAt": "2099-01-01T00:00:00Z",
+            "toolInventory": []
+        });
+        let mut recoveries = 0;
+        for attempt in 0..2 {
+            let native = NativeControlTransport::new("test-token", Duration::from_secs(2)).unwrap();
+            let mut transport =
+                RotatingControlTransport::new(native, None, &config.data_root, "test-token");
+            assert_eq!(
+                transport.send_wss(&endpoint.wss_url, &heartbeat_event()),
+                Ok(AckState::Applied)
+            );
+            let stop = AtomicBool::new(false);
+            let mut channel = ControlChannel::default();
+            let mut tools = Vec::new();
+            let mut snapshot = snapshot.clone();
+            let result = run_live_control_loop(
+                &config,
+                &endpoint,
+                &mut transport,
+                &mut channel,
+                NodeKind::LocalDevice,
+                0,
+                &mut tools,
+                &mut snapshot,
+                None,
+                Some(&stop),
+                &mut || {
+                    recoveries += 1;
+                    if attempt == 1 {
+                        stop.store(true, Ordering::Release);
+                    }
+                },
+            );
+            if attempt == 0 {
+                assert!(result.is_err());
+            } else {
+                assert!(result.is_ok());
+            }
+            assert_eq!(recoveries, attempt + 1);
+        }
+        server.join().unwrap();
+    }
+
+    #[test]
     fn credential_rotation_during_wss_receive_reconnects_and_renews_heartbeat_evidence() {
         let root = tempfile::tempdir().unwrap();
         let token_a = token("jti-A");
