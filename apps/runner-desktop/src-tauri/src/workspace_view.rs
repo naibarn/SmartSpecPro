@@ -100,16 +100,13 @@ mod tests {
         assert!(!simple.contains("project-internal"));
         assert!(!simple.contains("repository-internal"));
 
-        let developer = serde_json::to_string(&list(&config, true).unwrap()).unwrap();
-        assert!(developer.contains(
-            &workspace_path
-                .canonicalize()
-                .unwrap()
-                .to_string_lossy()
-                .to_string()
-        ));
-        assert!(developer.contains("project-internal"));
-        assert!(developer.contains("repository-internal"));
+        let developer = serde_json::to_value(list(&config, true).unwrap()).unwrap();
+        assert_eq!(
+            developer[0]["localPath"],
+            serde_json::to_value(workspace_path.canonicalize().unwrap()).unwrap()
+        );
+        assert!(developer.to_string().contains("project-internal"));
+        assert!(developer.to_string().contains("repository-internal"));
         fs::remove_dir_all(temp).unwrap();
     }
 }
