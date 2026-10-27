@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Implement server-side delegated child authorization in spec224AuthorizationService: load the current Goal approval and pinned configuration from persisted authority, resolve the current child job/attempt, provision the shared Goal budget, reserve its distinct hold, evaluate and persist the binding. Extend jobControlPlane release to revalidate the complete Goal scope atomically; current release deliberately permits only exact-job approvals. Then wire spec224RunnerContinuationReconciler to spec224PhaseController and authorize/release the admitted child, with crash/replay and concurrent PostgreSQL acceptance. Windows Live E2E remains downstream.
-- Manifest generation: 206
+- Next action: In spec224AuthorizationService implement delegated child authorization using recoverSpec224GoalGrant, the persisted root and current child manifests and current attempt; provision/recover the Goal budget, reserve an attempt-specific hold, evaluate scope and persist the binding. Extend jobControlPlane release to re-read and lock the Goal approval, budget and hold and re-evaluate the complete scope before outbox insertion. Then wire spec224RunnerContinuationReconciler through the phase controller and child authorization without marking an unfinished successor processed; prove the full production path with disposable PostgreSQL replay, restart and concurrency. Windows live acceptance remains separate.
+- Manifest generation: 207
 
 ## Source-declared status and relationship claims
 
