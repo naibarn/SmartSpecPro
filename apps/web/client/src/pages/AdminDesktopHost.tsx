@@ -18,6 +18,7 @@ import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { DesktopReleaseConfigPanel } from "@/features/desktop-releases/DesktopReleaseConfigPanel";
 import { DesktopReleasePanel } from "@/features/desktop-releases/DesktopReleasePanel";
 import { WorkerRuntimeReleasePanel } from "@/features/desktop-releases/WorkerRuntimeReleasePanel";
+import { WorkerAppBuildPanel } from "@/features/desktop-releases/WorkerAppBuildPanel";
 import { RunnerReleasePanel } from "@/features/runner-releases/RunnerReleasePanel";
 import { RunnerReleaseAdminPanel } from "@/features/desktop-releases/RunnerReleaseAdminPanel";
 
@@ -214,6 +215,7 @@ export default function AdminDesktopHost() {
           ) : null}
 
           {canManageReleaseSettings ? <WorkerRuntimeReleasePanel /> : null}
+          {canManageReleaseSettings ? <WorkerAppBuildPanel /> : null}
         </div>
 
         <RunnerReleasePanel enabled={Boolean(user)} />

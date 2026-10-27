@@ -92,7 +92,7 @@ function isMissingDesktopReleaseTableError(error: unknown): boolean {
   return /desktop_installer_releases/i.test(message) && /Failed query|does not exist|relation/i.test(message);
 }
 
-async function ensureDesktopReleaseSchema(): Promise<void> {
+export async function ensureDesktopReleaseSchema(): Promise<void> {
   if (desktopReleaseSchemaReady) {
     return;
   }
@@ -293,9 +293,9 @@ async function hashFileSha256(filePath: string): Promise<string> {
   });
 }
 
-async function selectPublicRows(includeUnpublished: boolean): Promise<DesktopReleasePublicRow[]> {
+async function selectPublicRows(includeUnpublished: boolean, database?: ReturnType<typeof getDb>): Promise<DesktopReleasePublicRow[]> {
   await ensureDesktopReleaseSchema();
-  const drizzle = getDb();
+  const drizzle = database ?? getDb();
   const query = drizzle
     .select({
       id: desktopInstallerReleases.id,
@@ -345,19 +345,24 @@ async function selectStorageRow(id: number): Promise<DesktopReleaseStorageRow | 
   return row ? (row as DesktopReleaseStorageRow) : null;
 }
 
-export async function getDesktopReleaseAssetById(id: number): Promise<DesktopReleaseAsset | null> {
-  const rows = await selectPublicRows(true);
+export async function getDesktopReleaseAssetById(id: number, database?: ReturnType<typeof getDb>): Promise<DesktopReleaseAsset | null> {
+  const rows = await selectPublicRows(true, database);
   const match = rows.find((row) => row.id === id);
   return match ? mapPublicRow(match) : null;
+}
+
+export function isWorkerAppReleaseFileName(fileName: string): boolean {
+  return /^smart-ai-hub-worker-app-.+-(?:x64|arm64)-setup\.(?:exe|msi|dmg|pkg)$/i.test(fileName);
 }
 
 export async function listDesktopReleaseCatalog(input: {
   includeUnpublished?: boolean;
   platform?: DesktopReleasePlatform | null;
-} = {}): Promise<DesktopReleaseCatalogResponse> {
+  product?: "desktop" | "worker";
+} = {}, database?: ReturnType<typeof getDb>): Promise<DesktopReleaseCatalogResponse> {
   let rows: DesktopReleasePublicRow[] = [];
   try {
-    rows = await selectPublicRows(Boolean(input.includeUnpublished));
+    rows = await selectPublicRows(Boolean(input.includeUnpublished), database);
   } catch (error) {
     if (!isMissingDesktopReleaseTableError(error)) {
       console.warn("[desktop-releases] Falling back to empty catalog after query failure", error);
@@ -366,6 +371,10 @@ export async function listDesktopReleaseCatalog(input: {
   }
   const mapped = rows
     .map(mapPublicRow)
+    .filter((release) => {
+      const isWorker = isWorkerAppReleaseFileName(release.fileName);
+      return input.product === "worker" ? isWorker : !isWorker;
+    })
     .filter((release) => !input.includeUnpublished || !isDesktopReleaseVersionBlockedFromPublic(release.version))
     .filter((release) => !input.platform || release.platform === input.platform)
     .sort(sortReleasesDescending);
@@ -389,9 +398,9 @@ export async function listDesktopReleaseCatalog(input: {
   });
 }
 
-export async function persistDesktopReleaseUpload(input: DesktopReleaseUploadInput): Promise<DesktopReleaseAsset> {
+export async function persistDesktopReleaseUpload(input: DesktopReleaseUploadInput, database?: ReturnType<typeof getDb>): Promise<DesktopReleaseAsset> {
   await ensureDesktopReleaseSchema();
-  const drizzle = getDb();
+  const drizzle = database ?? getDb();
   const fileSizeBytes = fs.statSync(input.filePath).size;
   const fileSha256 = await hashFileSha256(input.filePath);
   const channel = input.channel ?? "stable";
@@ -432,7 +441,7 @@ export async function persistDesktopReleaseUpload(input: DesktopReleaseUploadInp
       throw new Error("failed_to_create_desktop_release_record");
     }
 
-    const loaded = await getDesktopReleaseAssetById(created.id);
+    const loaded = await getDesktopReleaseAssetById(created.id, database);
     if (!loaded) {
       throw new Error("failed_to_load_desktop_release_record");
     }

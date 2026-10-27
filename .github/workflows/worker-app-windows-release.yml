@@ -1,4 +1,5 @@
 name: Worker App Windows Release
+run-name: Worker App Windows ${{ inputs.release_version || 'next' }} · ${{ inputs.build_id || 'manual' }}
 
 on:
   workflow_dispatch:
@@ -11,6 +12,19 @@ on:
         description: "Optional release notes shown in the Dashboard"
         required: false
         type: string
+      build_id:
+        description: "Build correlation ID from the Dashboard"
+        required: false
+        type: string
+      source_sha:
+        description: "Exact main commit selected by the Dashboard"
+        required: false
+        type: string
+      publish_direct:
+        description: "Publish directly through the legacy upload endpoint"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +37,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_sha || github.sha }}
 
       - uses: pnpm/action-setup@v4
 
@@ -68,6 +84,7 @@ jobs:
         id: verify
         env:
           RELEASE_VERSION: ${{ steps.build.outputs.release_version }}
+          BUILD_ID: ${{ inputs.build_id }}
         shell: pwsh
         run: |
           $installerPath = "apps/web/client/public/releases/smart-ai-hub-worker-app-$env:RELEASE_VERSION-x64-setup.exe"
@@ -75,16 +92,32 @@ jobs:
           $bytes = [System.IO.File]::ReadAllBytes($installerPath)
           if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw "Worker App installer is not a Windows PE executable" }
           Get-FileHash $installerPath -Algorithm SHA256
+          $item = Get-Item $installerPath
+          $manifest = [ordered]@{
+            product = 'smart-ai-hub-worker-app'
+            platform = 'windows-x64'
+            version = $env:RELEASE_VERSION
+            fileName = $item.Name
+            sizeBytes = $item.Length
+            sha256 = (Get-FileHash $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            sourceCommit = (git rev-parse HEAD)
+            workflowRunId = $env:GITHUB_RUN_ID
+            buildId = $env:BUILD_ID
+          }
+          $manifest | ConvertTo-Json -Compress | Set-Content -Encoding utf8 apps/web/client/public/releases/worker-release-manifest.json
 
       - name: Preserve installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: smart-ai-hub-worker-app-windows-x64
-          path: apps/web/client/public/releases/smart-ai-hub-worker-app-${{ steps.build.outputs.release_version }}-x64-setup.exe
+          path: |
+            apps/web/client/public/releases/smart-ai-hub-worker-app-${{ steps.build.outputs.release_version }}-x64-setup.exe
+            apps/web/client/public/releases/worker-release-manifest.json
           if-no-files-found: error
           retention-days: 14
 
       - name: Publish installer to Dashboard
+        if: inputs.publish_direct == true
         env:
           RELEASE_VERSION: ${{ steps.build.outputs.release_version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}

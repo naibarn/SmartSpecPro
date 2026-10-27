@@ -13,7 +13,7 @@ const featureFlagsState = vi.hoisted(() => ({
 }));
 const authState = vi.hoisted(() => ({
   user: {
-    role: "admin" as const,
+    role: "admin" as "admin" | "domain_admin",
     currentTenantId: "tenant-1" as string | null,
   },
 }));
@@ -60,6 +60,9 @@ vi.mock("@/features/desktop-releases/RunnerReleaseAdminPanel", () => ({
 
 vi.mock("@/features/desktop-releases/WorkerRuntimeReleasePanel", () => ({
   WorkerRuntimeReleasePanel: () => <div data-testid="worker-runtime-release-panel" />,
+}));
+vi.mock("@/features/desktop-releases/WorkerAppBuildPanel", () => ({
+  WorkerAppBuildPanel: () => <div data-testid="worker-app-build-panel" />,
 }));
 
 import AdminDesktopHost from "../AdminDesktopHost";
@@ -116,5 +119,12 @@ describe("AdminDesktopHost", () => {
         canTriggerBuild: true,
       }),
     );
+    expect(screen.getByTestId("worker-app-build-panel")).toBeInTheDocument();
+  });
+
+  it("does not expose the Worker build panel to domain admins", () => {
+    authState.user.role = "domain_admin";
+    render(<AdminDesktopHost />);
+    expect(screen.queryByTestId("worker-app-build-panel")).not.toBeInTheDocument();
   });
 });

@@ -49,6 +49,7 @@ import {
   suggestDesktopReleaseBuildVersion,
 } from "../services/desktopReleaseBuildService";
 import { isAuthorizedWorkerAppWindowsReleaseWorkflow } from "../services/githubActionsWorkerReleaseAuth";
+import { listWorkerAppBuilds, reconcileWorkerAppBuild, startWorkerAppBuild, startWorkerAppBuildReconciler } from "../services/workerAppBuildService";
 
 const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
@@ -377,7 +378,7 @@ async function listWorkerAppReleasesForTarget(input: WorkerAppTarget): Promise<W
 
   if (process.env.DATABASE_URL?.trim()) {
     try {
-      const catalog = await listDesktopReleaseCatalog({ platform: input.platform });
+      const catalog = await listDesktopReleaseCatalog({ platform: input.platform, product: "worker" });
       candidates.push(
         ...catalog.releases.filter((release) => isWorkerAppInstallerForPlatform(
           release,
@@ -553,6 +554,7 @@ async function sendStoredDesktopRelease(req: any, res: any, release: DesktopRele
 
 export function createDesktopReleaseRouter(): Router {
   const router = Router();
+  startWorkerAppBuildReconciler();
 
   const upload = multer({
     storage: multer.diskStorage({
@@ -619,7 +621,7 @@ export function createDesktopReleaseRouter(): Router {
           stream.on("end", () => resolve(hash.digest("hex")));
         });
 
-        const catalog = await listDesktopReleaseCatalog({ includeUnpublished: true, platform: "windows" });
+        const catalog = await listDesktopReleaseCatalog({ includeUnpublished: true, platform: "windows", product: "worker" });
         const existing = catalog.releases.find((release) => release.version === version);
         if (existing) {
           if (existing.fileName === expectedFileName && existing.fileSha256 === fileSha256 && existing.isPublished) {
@@ -755,6 +757,35 @@ export function createDesktopReleaseRouter(): Router {
 
   registerCompanionExtensionRoutes("companion-extension");
   registerCompanionExtensionRoutes("marketplace-extension");
+
+  router.get("/worker-app/builds", async (req, res) => {
+    const viewer = await authenticateDesktopReleaseUser(req);
+    if (!viewer) return res.status(401).json({ error: "desktop_release_unauthorized" });
+    if (viewer.role !== "admin") return res.status(403).json({ error: "desktop_release_forbidden" });
+    try { return res.json({ builds: await listWorkerAppBuilds() }); }
+    catch { return res.status(503).json({ error: "worker_build_history_unavailable" }); }
+  });
+
+  router.post("/worker-app/builds", async (req, res) => {
+    const viewer = await authenticateDesktopReleaseUser(req);
+    if (!viewer) return res.status(401).json({ error: "desktop_release_unauthorized" });
+    if (viewer.role !== "admin") return res.status(403).json({ error: "desktop_release_forbidden" });
+    try {
+      const latest = await getLatestWorkerAppReleaseForTarget({ platform: "windows", architecture: "x64" });
+      return res.status(202).json({ build: await startWorkerAppBuild(viewer.userId, latest?.version ?? null) });
+    } catch (error) {
+      const code = error instanceof Error && /^worker_build_[a-z0-9_]+$/.test(error.message) ? error.message : "worker_build_dispatch_failed";
+      return res.status(400).json({ error: code });
+    }
+  });
+
+  router.post("/worker-app/builds/:id/sync", async (req, res) => {
+    const viewer = await authenticateDesktopReleaseUser(req);
+    if (!viewer) return res.status(401).json({ error: "desktop_release_unauthorized" });
+    if (viewer.role !== "admin") return res.status(403).json({ error: "desktop_release_forbidden" });
+    try { return res.json({ build: await reconcileWorkerAppBuild(req.params.id) }); }
+    catch { return res.status(400).json({ error: "worker_build_sync_failed" }); }
+  });
 
   router.get("/worker-app/latest", async (req, res) => {
     try {
