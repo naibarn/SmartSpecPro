@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useLocation } from "wouter";
 import { DashboardCard } from "@/components/dashboard";
+import { presentCustomerError } from "@shared/projectIdentityPresentation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
@@ -45,11 +46,7 @@ export function CreatePersonalMiniAppPanel() {
       setConversationId(null);
       setLocation(`/miniapp/${encodeURIComponent(result.miniAppId)}`);
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Could not start this Mini-App."
-      );
+      setErrorMessage(presentCustomerError(error, "Could not start this Mini-App."));
     }
   }
 

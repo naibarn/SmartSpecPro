@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { presentCustomerError, sanitizePlatformDiagnostic } from "@shared/projectIdentityPresentation";
 import { Text } from "@/components/AppPage";
 
 type WorkspaceOption = {
@@ -203,7 +204,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       await workspaceQuery.refetch();
     } catch (error) {
       setSelected("");
-      toast.error(error instanceof Error ? error.message : "ผูก workspace ไม่สำเร็จ");
+      toast.error(error instanceof Error ? sanitizePlatformDiagnostic(error.message) : "ผูก workspace ไม่สำเร็จ");
     }
   }
 
@@ -239,7 +240,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       setPendingSpecFiles([]);
       toast.success("บันทึก Spec Set revision ใหม่แล้ว");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "นำเข้า Spec ไม่สำเร็จ");
+      toast.error(presentCustomerError(error, "นำเข้า Spec ไม่สำเร็จ"));
     } finally {
       setUploading(false);
     }
@@ -258,7 +259,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       await workspaceQuery.refetch();
       toast.success(`เพิ่ม ${result.sourceSpec.title} ใน Spec Set revision ${result.revision} แล้ว`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "นำเข้า Feature Spec ไม่สำเร็จ");
+      toast.error(presentCustomerError(error, "นำเข้า Feature Spec ไม่สำเร็จ"));
     } finally {
       setUploading(false);
     }
@@ -276,7 +277,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       });
       setPreparation(result);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "เตรียมแผนไม่สำเร็จ");
+      toast.error(presentCustomerError(error, "เตรียมแผนไม่สำเร็จ"));
     } finally {
       setPreparing(false);
     }
@@ -356,7 +357,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
         toast.info(`DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "สั่งพัฒนาไม่สำเร็จ");
+      toast.error(presentCustomerError(error, "สั่งพัฒนาไม่สำเร็จ"));
     }
   }
 
@@ -381,7 +382,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       setMiniAppPreviewUrl(result.previewUrl ?? null);
       toast.success(`เริ่มสร้าง Mini App แล้ว · ${result.previewUrl}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "เริ่มสร้าง Mini App ไม่สำเร็จ");
+      toast.error(presentCustomerError(error, "เริ่มสร้าง Mini App ไม่สำเร็จ"));
     }
   }
 
@@ -412,24 +413,24 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
             <option value="">เลือก Runner workspace</option>
             {boundWorkspace && !boundIsListed ? (
               <option value={boundKey} key={boundKey}>
-                Runner {boundWorkspace.runnerId} · {boundWorkspace.workspaceId} · บันทึกไว้ก่อนหน้า (Runner ยังไม่อยู่ในรายการปัจจุบัน)
+                Workspace ที่บันทึกไว้ก่อนหน้า (Runner ยังไม่อยู่ในรายการปัจจุบัน)
               </option>
             ) : null}
             {workspaces.map(workspace => (
               <option key={selectionKey(workspace)} value={selectionKey(workspace)}>
-                Runner {workspace.runnerId} · {workspace.displayName} · {workspace.workspaceId}
+                {workspace.displayName}
               </option>
             ))}
           </select>
           {workspacesQuery.error ? (
-            <p className="mt-2 text-xs text-rose-700" role="alert">โหลด Runner workspace ไม่สำเร็จ: {workspacesQuery.error.message}</p>
+            <p className="mt-2 text-xs text-rose-700" role="alert">โหลด Runner workspace ไม่สำเร็จ โปรดลองใหม่หรือตรวจสอบสิทธิ์</p>
           ) : null}
           {workspaceQuery.error ? (
-            <p className="mt-2 text-xs text-rose-700" role="alert">โหลด workspace ที่ผูกไว้ไม่สำเร็จ: {workspaceQuery.error.message}</p>
+            <p className="mt-2 text-xs text-rose-700" role="alert">โหลด workspace ที่ผูกไว้ไม่สำเร็จ: {sanitizePlatformDiagnostic(workspaceQuery.error.message)}</p>
           ) : null}
           {boundWorkspace ? (
             <p className={`mt-2 text-xs ${workspaceQuery.data?.availability?.available ? "text-emerald-700" : "text-amber-800"}`} role="status">
-              {workspaceQuery.data?.availability?.available ? "Conversation นี้ผูกแล้ว:" : "Binding ปัจจุบัน:"} Runner {boundWorkspace.runnerId} → Workspace {boundWorkspace.workspaceId}
+              {workspaceQuery.data?.availability?.available ? "Conversation นี้ผูกแล้ว:" : "Binding ปัจจุบัน:"} {workspaces.find(item => selectionKey(item) === boundKey)?.displayName ?? "workspace ที่บันทึกไว้"}
               {workspaceQuery.data?.availability?.status ? ` · สถานะ ${workspaceQuery.data?.availability?.status}` : ""}
               {specSet ? ` · Spec Set r${specSet.revision}` : " · ยังไม่มี Spec Set"}
             </p>
@@ -580,7 +581,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
                         ))}
                       </select>
                       {featureSpecsQuery.isLoading ? <p role="status" className="text-xs text-[var(--color-text-secondary)]">กำลังโหลด Feature Specs…</p> : null}
-                      {featureSpecsQuery.error ? <p role="alert" className="text-xs text-rose-700">โหลดรายการ Spec ไม่สำเร็จ: {featureSpecsQuery.error.message}</p> : null}
+                      {featureSpecsQuery.error ? <p role="alert" className="text-xs text-rose-700">โหลดรายการ Spec ไม่สำเร็จ: {sanitizePlatformDiagnostic(featureSpecsQuery.error.message)}</p> : null}
                       {selectedFeatureSpec ? <p className="break-all text-xs text-[var(--color-text-secondary)]">ต้นฉบับ: specs/feature/{selectedFeatureSpec}/spec.md</p> : null}
                       <Button type="button" variant="outline" disabled={!workspaceQuery.data?.workspace || !selectedFeatureSpec || uploading || ingestFeatureSpecMutation.isPending} onClick={() => void ingestSelectedFeatureSpec()}>
                         {uploading ? "กำลังเพิ่ม Spec ใน workspace…" : "เพิ่ม Spec ที่เลือกใน workspace"}

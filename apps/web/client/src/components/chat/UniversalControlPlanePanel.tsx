@@ -330,6 +330,7 @@ export function UniversalControlPlanePanel({
   const [expandedRunners, setExpandedRunners] = useState<Set<string>>(
     new Set()
   );
+  const [runnerViewMode, setRunnerViewMode] = useState<"simple" | "developer">("simple");
   const trpcUtils = trpc.useUtils();
   const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
     conversationId ? { conversationId } : {},
@@ -365,7 +366,7 @@ export function UniversalControlPlanePanel({
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
-  const runnersQuery = trpc.runnerNodes.list.useQuery(undefined, {
+  const runnersQuery = trpc.runnerNodes.list.useQuery({ viewMode: runnerViewMode }, {
     refetchInterval: 15_000,
     refetchIntervalInBackground: false,
   });
@@ -1949,6 +1950,15 @@ export function UniversalControlPlanePanel({
               SmartAIHub Runner & MCP connections
             </h3>
             <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={runnerViewMode === "simple" ? "Show developer workspace details" : "Hide developer workspace details"}
+              onClick={() => setRunnerViewMode(mode => mode === "simple" ? "developer" : "simple")}
+            >
+              {runnerViewMode === "simple" ? "Developer details" : "Simple view"}
+            </Button>
+            <Button
               asChild
               variant="link"
               size="sm"
@@ -2006,7 +2016,7 @@ export function UniversalControlPlanePanel({
                           ? `${runner.platform.os} ${runner.platform.architecture}`
                           : runner.profile.replaceAll("_", " ")}{" "}
                         · {runner.toolCount} tools · {runner.capabilityCount}{" "}
-                        capabilities · {(runner.workspaceIds ?? []).length} projects
+                        capabilities · {runner.workspaceCount ?? runner.workspaces?.length ?? 0} projects
                       </p>
                       <p className="truncate text-xs text-slate-500">
                         {runner.capabilitySnapshotPersisted
@@ -2039,10 +2049,14 @@ export function UniversalControlPlanePanel({
                       <h5 className="text-xs font-medium text-slate-700">
                         โฟลเดอร์โปรเจกต์ที่อนุญาต
                       </h5>
-                      {runner.workspaceIds?.length ? (
+                      {runner.workspaces?.length ? (
                         <ul className="mt-1 space-y-1 text-xs text-slate-600">
-                          {runner.workspaceIds.map((workspaceId: string) => (
-                            <li key={workspaceId}>{workspaceId}</li>
+                          {runner.workspaces.map((workspace, index) => (
+                            <li key={`${runner.runnerId}-workspace-${index}`}>
+                              {workspace.displayName}
+                              {runnerViewMode === "developer" && workspace.projectId ? ` · Project ${workspace.projectId}` : ""}
+                              {runnerViewMode === "developer" && workspace.repositoryId ? ` · Repository ${workspace.repositoryId}` : ""}
+                            </li>
                           ))}
                         </ul>
                       ) : (
@@ -2060,15 +2074,18 @@ export function UniversalControlPlanePanel({
                       </h5>
                       {runner.workspaces?.length ? (
                         <ul className="mt-1 space-y-1.5">
-                          {runner.workspaces.map(workspace => (
+                          {runner.workspaces.map((workspace, index) => (
                             <li
-                              key={`workspace-${workspace.workspaceId}`}
+                              key={`workspace-${runner.runnerId}-${index}`}
                               className="rounded-lg border border-slate-200 bg-white px-2 py-2"
                             >
                               <span className="flex flex-wrap items-center justify-between gap-2">
                                 <span className="min-w-0 truncate text-xs font-medium text-slate-700">
-                                  {workspace.displayName ?? workspace.workspaceId}
+                                  {workspace.displayName}
                                 </span>
+                                {workspace.provenance === "platform_internal" ? (
+                                  <Badge variant="outline" className="text-[10px]">Platform workspace</Badge>
+                                ) : null}
                                 <span className="flex flex-wrap items-center gap-1.5">
                                   <Badge
                                     variant="outline"
@@ -2095,14 +2112,14 @@ export function UniversalControlPlanePanel({
                                   </Badge>
                                 </span>
                               </span>
-                              <span className="mt-1 block break-all font-mono text-[10px] text-slate-500">
-                                {workspace.gitHead
-                                  ? `HEAD ${workspace.gitHead.slice(0, 12)}`
-                                  : "HEAD unavailable"}
-                                {workspace.gitBranch
-                                  ? ` · ${workspace.gitBranch}`
-                                  : " · branch unavailable"}
-                              </span>
+                              {runnerViewMode === "developer" && workspace.provenance === "user_owned" ? (
+                                <span className="mt-1 block break-all font-mono text-[10px] text-slate-500">
+                                  {workspace.projectId ? `Project ${workspace.projectId}` : "Project identity unavailable"}
+                                  {workspace.repositoryId ? ` · Repository ${workspace.repositoryId}` : " · Repository identity unavailable"}
+                                  {workspace.gitHead ? ` · HEAD ${workspace.gitHead.slice(0, 12)}` : " · HEAD unavailable"}
+                                  {workspace.gitBranch ? ` · ${workspace.gitBranch}` : " · branch unavailable"}
+                                </span>
+                              ) : null}
                               <span className="mt-1 block text-[10px] text-slate-500">
                                 Runner snapshot has no canonical SHA; clean does not mean synced.
                               </span>

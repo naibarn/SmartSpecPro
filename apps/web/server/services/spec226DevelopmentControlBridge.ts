@@ -17,6 +17,7 @@ import {
 } from "./spec224DevelopmentRunPersistence";
 import { createRequirementClosurePersistenceService } from "./spec224RequirementClosurePersistence";
 import { MINI_APP_FACTORY_STATE_KEY } from "./miniAppFactoryDurableState";
+import { sanitizeCustomerDiagnosticPayload } from "../../shared/projectIdentityPresentation";
 
 export const SPEC_226_DEVELOPMENT_CONTROL_BRIDGE_VERSION =
   "spec-226-development-control-v3" as const;
@@ -321,7 +322,11 @@ export function createSpec226DevelopmentControlBridge(input: {
       const record = await runs.get(params);
       const events = record.events
         .filter(event => event.sequence > params.afterSequence)
-        .slice(0, params.limit);
+        .slice(0, params.limit)
+        .map(event => ({
+          ...event,
+          payload: sanitizeCustomerDiagnosticPayload(event.payload),
+        }));
       return {
         events,
         nextCursor: events.at(-1)?.sequence ?? params.afterSequence,

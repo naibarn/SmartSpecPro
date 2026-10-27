@@ -36,7 +36,7 @@ beforeEach(() => {
   detailArgs.current = [];
   aggregateArgs.current = [];
   aggregateOptions.current = {};
-  runnerQuery.current = { data: { runners: [{ runnerId: "runner-1", displayName: "Runner One", displayState: "ready", trustState: "trusted", status: "online", lastSeenAt: "2026-10-17T00:00:00Z", snapshotExpiresAt: "2026-10-17T00:10:00Z", workspaceIds: [], toolCount: 2, capabilityCount: 3 }] }, isLoading: false, error: null };
+  runnerQuery.current = { data: { runners: [{ runnerId: "runner-1", displayName: "Runner One", displayState: "ready", trustState: "trusted", status: "online", lastSeenAt: "2026-10-17T00:00:00Z", snapshotExpiresAt: "2026-10-17T00:10:00Z", workspaceCount: 0, toolCount: 2, capabilityCount: 3 }] }, isLoading: false, error: null };
   aggregateQuery.current = { data: null, isLoading: false, error: null };
   detailQuery.current = { data: {
     ...job,

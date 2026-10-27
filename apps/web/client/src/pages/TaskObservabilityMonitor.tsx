@@ -161,7 +161,7 @@ export default function TaskObservabilityMonitor() {
               <Text>{runner.displayName ?? runner.runnerId}</Text>
               <Badge label={runner.displayState} variant={runner.displayState === "ready" ? "success" : "neutral"} />
               <Text type="supporting">Trust {runner.trustState} · status {runner.status} · last seen {runner.lastSeenAt ?? "unknown"} · snapshot expires {runner.snapshotExpiresAt ?? "unknown"}</Text>
-              <Text type="supporting">{runner.workspaceIds.length} workspace(s) · {runner.toolCount} tools · {runner.capabilityCount} capabilities</Text>
+              <Text type="supporting">{runner.workspaceCount} workspace(s) · {runner.toolCount} tools · {runner.capabilityCount} capabilities</Text>
             </HStack>
           ))}
           <Heading level={3}>Observed runner to task topology</Heading>

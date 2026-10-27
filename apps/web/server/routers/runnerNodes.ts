@@ -12,6 +12,7 @@ import {
   validateCloudflareStagingExecutorRegistration,
 } from "../services/cloudflareStagingExecutorIdentityService";
 import { getRunnerCompanionState } from "../services/runnerCompanionViewState";
+import { projectRunnerDisplayName, projectRunnerWorkspacePresentation } from "../../shared/projectIdentityPresentation";
 
 function tenantRequired(ctx: {
   tenantId?: unknown;
@@ -149,8 +150,11 @@ export const runnerNodesRouter = router({
     userId: ctx.user.id,
   })),
 
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure
+    .input(z.object({ viewMode: z.enum(["simple", "developer"]).default("simple") }).optional())
+    .query(async ({ ctx, input }) => {
     const tenantId = tenantRequired(ctx);
+    const viewMode = input?.viewMode ?? "simple";
     const db = getDb();
     const rows = await db
       .select()
@@ -186,7 +190,16 @@ export const runnerNodesRouter = router({
           "capability"
         );
         const workspaceIds = safeWorkspaceIds(snapshot?.workspaceIds);
-        const workspaces = safeWorkspaceFacts(snapshot?.workspaces, workspaceIds);
+        const workspaces = safeWorkspaceFacts(snapshot?.workspaces, workspaceIds).map(workspace =>
+          projectRunnerWorkspacePresentation({
+            actorId: ctx.user.id,
+            ownerUserId: row.ownerUserId,
+            runnerProfile: row.profile,
+            nodeKind: row.nodeKind,
+            mode: viewMode,
+            ...workspace,
+          })
+        );
         const snapshotExpired = Boolean(
           row.snapshotExpiresAt && row.snapshotExpiresAt.getTime() <= Date.now()
         );
@@ -204,7 +217,13 @@ export const runnerNodesRouter = router({
                     : "ready";
         return {
           runnerId: row.runnerId,
-          displayName: row.displayName,
+          displayName: projectRunnerDisplayName({
+            actorId: ctx.user.id,
+            ownerUserId: row.ownerUserId,
+            runnerProfile: row.profile,
+            nodeKind: row.nodeKind,
+            displayName: row.displayName,
+          }),
           profile: row.profile,
           nodeKind: row.nodeKind,
           status: row.status,
@@ -216,7 +235,7 @@ export const runnerNodesRouter = router({
           displayState,
           toolCount: toolInventory.length,
           capabilityCount: capabilityInventory.length,
-          workspaceIds,
+          workspaceCount: workspaceIds.length,
           workspaces,
           toolInventory,
           capabilityInventory,

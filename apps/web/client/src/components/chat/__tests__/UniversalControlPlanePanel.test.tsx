@@ -247,7 +247,7 @@ describe("UniversalControlPlanePanel", () => {
     );
     expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ })).toHaveAttribute("href", "/agent-monitor?conversationId=42");
-    fireEvent.change(screen.getByRole("combobox", { name: "Workspace" }), { target: { value: '["runner-1","workspace-1"]' } });
+    fireEvent.change(screen.getByLabelText("1. เลือก Runner และ project workspace"), { target: { value: '["runner-1","workspace-1"]' } });
     await waitFor(() => expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1" }));
     expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
     expect(screen.getByText(/ยังไม่เริ่มแก้โค้ดหรือ build\/run/)).toBeTruthy();
@@ -404,6 +404,7 @@ describe("UniversalControlPlanePanel", () => {
     fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
     const files = [new File(["# One"], "one.md"), new File(["{\"requirements\": []}"], "two.json", { type: "application/json" })];
     fireEvent.change(screen.getByLabelText("แนบไฟล์ Spec 224"), { target: { files } });
+    fireEvent.click(screen.getByRole("button", { name: "บันทึกไฟล์ Spec เข้า workspace" }));
     await waitFor(() => expect(mocks.ingestSpecSetMutateAsync).toHaveBeenCalled());
     expect(mocks.ingestSpecSetMutateAsync.mock.calls[0][0]).toMatchObject({
       conversationId: 42,
@@ -687,11 +688,15 @@ describe("UniversalControlPlanePanel", () => {
             displayState: "ready",
             toolCount: 6,
             capabilityCount: 3,
+            workspaceCount: 1,
             workspaceIds: ["ws-story-app-1a2b3c4d"],
             workspaces: [
               {
-                workspaceId: "ws-story-app-1a2b3c4d",
+                provenance: "user_owned",
                 displayName: "Storyboard app",
+                workspaceId: "ws-story-app-1a2b3c4d",
+                projectId: "project-story-app",
+                repositoryId: "customer/storyboard-app",
                 gitHead: "a".repeat(40),
                 gitBranch: "feature/storyboard",
                 dirty: true,
@@ -758,12 +763,16 @@ describe("UniversalControlPlanePanel", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Expand runner Mac Runner" })
     );
-    expect(screen.getByText("ws-story-app-1a2b3c4d")).toBeInTheDocument();
+    expect(screen.getAllByText("Storyboard app")).toHaveLength(2);
+    expect(screen.queryByText(/Project project-story-app/)).not.toBeInTheDocument();
     expect(screen.getByText("Codex CLI · 1.2.3")).toBeInTheDocument();
     expect(screen.getByText("code.edit · codex-cli")).toBeInTheDocument();
     expect(screen.getByText("Authority unknown")).toBeInTheDocument();
     expect(screen.getByText("Dirty")).toBeInTheDocument();
-    expect(screen.getByText(/HEAD aaaaaaaaaaaa · feature\/storyboard/)).toBeInTheDocument();
+    expect(screen.queryByText(/HEAD aaaaaaaaaaaa/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show developer workspace details" }));
+    expect(screen.getAllByText(/Project project-story-app/)).toHaveLength(2);
+    expect(screen.getByText(/HEAD aaaaaaaaaaaa/)).toBeInTheDocument();
     expect(screen.getByText("Runner snapshot has no canonical SHA; clean does not mean synced.")).toBeInTheDocument();
     expect(
       screen.getByText(

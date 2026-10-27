@@ -136,6 +136,53 @@ async function mockControlPlaneRoutes(page: Page) {
           },
         ],
       };
+    } else if (procedure === "runnerNodes.list") {
+      data = {
+        runners: [
+          {
+            runnerId: "customer-runner-id",
+            displayName: "My Runner",
+            profile: "local_device",
+            nodeKind: "local_device",
+            status: "online",
+            trustState: "trusted",
+            displayState: "ready",
+            toolCount: 0,
+            capabilityCount: 0,
+            workspaceCount: 1,
+            workspaces: [{
+              provenance: "user_owned",
+              displayName: "SmartSpecPro",
+              workspaceId: "customer-workspace-id",
+              projectId: "customer-project-id",
+              repositoryId: "customer/repository",
+              gitHead: "a".repeat(40),
+              gitBranch: "main",
+              dirty: false,
+            }],
+            toolInventory: [],
+            capabilityInventory: [],
+          },
+          {
+            runnerId: "platform-runner-internal-id",
+            displayName: "SmartAIHub Runner",
+            profile: "shared_container",
+            nodeKind: "managed_container",
+            status: "online",
+            trustState: "trusted",
+            displayState: "ready",
+            toolCount: 0,
+            capabilityCount: 0,
+            workspaceCount: 1,
+            workspaces: [{
+              provenance: "platform_internal",
+              displayName: "Runner workspace",
+            }],
+            toolInventory: [],
+            capabilityInventory: [],
+          },
+        ],
+      };
     } else if (procedure === "mcpConnections.listConnections") {
       data = [
         {
@@ -186,6 +233,10 @@ for (const viewport of VIEWPORTS) {
     await page.waitForTimeout(2_000);
 
     const panel = page.getByTestId("control-plane-panel");
+    if (!(await panel.count()) && viewport.width < 1024) {
+      await page.getByRole("button", { name: "Open AI Chat & Feedback" }).click();
+      await page.getByRole("tab", { name: "Task Control" }).click();
+    }
     if (!(await panel.count())) {
       throw new Error(
         `Task Control Center did not render. Status: ${response?.status()} URL: ${page.url()} PageErrors: ${pageErrors.join(" | ")} ConsoleErrors: ${consoleErrors.join(" | ")} RequestErrors: ${requestErrors.join(" | ")} Body: ${await page.locator("body").innerText()} HTML: ${(await page.content()).slice(0, 500)}`
@@ -197,6 +248,16 @@ for (const viewport of VIEWPORTS) {
     ).toBeVisible();
     await expect(panel.getByText("Browser Worker")).toBeVisible();
     await expect(panel.getByText("Browser MCP", { exact: true })).toBeVisible();
+    await panel.getByRole("button", { name: "Expand runner My Runner" }).click();
+    await expect(panel.getByLabel("Workspace source status").getByText("SmartSpecPro", { exact: true })).toBeVisible();
+    await expect(panel.getByText(/customer-project-id|customer\/repository/)).toHaveCount(0);
+    await panel.getByRole("button", { name: "Show developer workspace details" }).click();
+    await expect(panel.getByText(/customer-project-id/)).toHaveCount(2);
+    await expect(panel.getByText(/customer\/repository/)).toHaveCount(2);
+    await panel.getByRole("button", { name: "Expand runner SmartAIHub Runner" }).click();
+    await expect(panel.getByLabel("Workspace source status").getByText("Runner workspace", { exact: true })).toBeVisible();
+    await expect(panel.getByText(/platform-runner-internal-id|internal repository/)).toHaveCount(0);
+    await panel.getByRole("button", { name: "Hide developer workspace details" }).click();
     await panel
       .getByRole("button", { name: "Expand task Plan browser-plan" })
       .click();

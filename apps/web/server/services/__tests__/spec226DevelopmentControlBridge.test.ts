@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   buildDevelopmentRun,
+  recordDevelopmentEvent,
   transitionDevelopmentRun,
   type DevelopmentRun,
 } from "../spec224DevelopmentRunContracts";
@@ -89,6 +90,37 @@ function memoryAdapter(initial: DevelopmentRunStoreRecord) {
 }
 
 describe("Spec 226 DevelopmentRun control bridge", () => {
+  it("sanitizes platform diagnostics in customer events while preserving user-owned repository names", async () => {
+    const run = runAtPlanning();
+    const recorded = recordDevelopmentEvent(run, {
+      eventId: "event-diagnostic-1",
+      idempotencyKey: "diagnostic-event-1",
+      type: "PHASE_FAILED",
+      payload: {
+        errorMessage: "SmartSpecPro failed at /home/dev/projects/SmartSpecPro/server.js",
+        repositoryName: "SmartSpecPro",
+      },
+    });
+    const bridge = createSpec226DevelopmentControlBridge({
+      persistence: memoryAdapter({ run: recorded.run, revision: 1, events: recorded.run.events }).adapter,
+      listRuns: async () => [recorded.run],
+    });
+
+    await expect(bridge.events({
+      runId: run.runId,
+      tenantId: run.tenantId,
+      actorId: run.actorId,
+      afterSequence: 0,
+      limit: 10,
+    })).resolves.toMatchObject({
+      events: [{ payload: {
+        errorMessage: "SmartAIHub failed at [filesystem path]",
+        repositoryName: "SmartSpecPro",
+      } }],
+      nextCursor: 1,
+    });
+  });
+
   it("filters workspace history and projects package identity plus pinned Spec revision", async () => {
     const run = {
       ...runAtPlanning(),
