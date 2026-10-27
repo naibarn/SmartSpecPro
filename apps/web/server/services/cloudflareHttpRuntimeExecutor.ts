@@ -26,6 +26,17 @@ const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(valu
 function fail(code: string): never { const diagnosticCode = `HTTP_RUNTIME_${code}`;
   throw Object.assign(Error(diagnosticCode), { diagnosticCode, class: "permanent" }); }
 const safeCode = (error: unknown) => error instanceof Error && /^[A-Z][A-Z0-9_]{4,120}$/.test(error.message) ? error.message : "HTTP_RUNTIME_EXECUTION_FAILED";
+const applicationChecks = ["invalidLoginDenied", "primaryLogin", "primarySessionTenant", "authenticatedCreditRead", "authenticatedGatewayModelRouting", "crossTenantReadDenied", "pythonAuthenticatedUserRead", "logout", "revokedSessionDenied"] as const;
+const applicationStatuses = ["invalidLogin", "primaryLogin", "primarySession", "creditRead", "gatewayModels", "crossTenantRead", "pythonAuthenticatedRead", "logout", "gatewayModelCount", "revokedSession"] as const;
+/** Never persist response bodies, credentials, cookies or token hashes. */
+export function summarizeApplicationProbe(http: number, receipt: any, colo?: string) {
+  return { http, ...(typeof colo === "string" && /^[A-Z]{3}$/.test(colo) ? { colo } : {}),
+    schemaValid: receipt?.schemaVersion === "cloudflare-application-auth-acceptance-v1",
+    passed: receipt?.passed === true,
+    checks: Object.fromEntries(applicationChecks.filter(k => typeof receipt?.checks?.[k] === "boolean").map(k => [k, receipt.checks[k]])),
+    status: Object.fromEntries(applicationStatuses.filter(k => Number.isSafeInteger(receipt?.status?.[k]) && receipt.status[k] >= 0 && receipt.status[k] <= (k === "gatewayModelCount" ? 100000 : 599)).map(k => [k, receipt.status[k]])),
+    revocationHashCount: Array.isArray(receipt?.revocationHashes) ? Math.min(receipt.revocationHashes.length, 2) : 0 };
+}
 
 /** Updates only the existing isolated Candidate under a canonical Owner
  * intent. Metadata authority from its original preparation cannot enter here.
@@ -258,11 +269,11 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         const result = await probe("node/application-auth", "POST", 160_000, { version: "application-auth-acceptance-v1",
           primary: applicationFixtures.primary, foreignTenantId: applicationFixtures.foreignTenantId });
         const receipt = result.json;
-        const checkNames = ["invalidLoginDenied", "primaryLogin", "primarySessionTenant", "authenticatedCreditRead", "authenticatedGatewayModelRouting", "crossTenantReadDenied",
-          "pythonAuthenticatedUserRead", "logout", "revokedSessionDenied"] as const;
+        state.applicationProbe = summarizeApplicationProbe(result.status, receipt, result.colo);
+        await persist();
         const hashes = Array.isArray(receipt?.revocationHashes) ? receipt.revocationHashes : [];
         if (result.status !== 200 || receipt?.schemaVersion !== "cloudflare-application-auth-acceptance-v1" || receipt.passed !== true ||
-            !checkNames.every(name => receipt.checks?.[name] === true) || hashes.length !== 1 || !/^[a-f0-9]{64}$/.test(hashes[0]))
+            !applicationChecks.every(name => receipt.checks?.[name] === true) || hashes.length !== 1 || !/^[a-f0-9]{64}$/.test(hashes[0]))
           fail("APPLICATION_AUTH_ACCEPTANCE_FAILED");
         const revocations = await db.select({ jtiHash: revokedTokenJtis.jtiHash }).from(revokedTokenJtis).where(and(
           inArray(revokedTokenJtis.jtiHash, hashes), gt(revokedTokenJtis.expiresAt, new Date())));

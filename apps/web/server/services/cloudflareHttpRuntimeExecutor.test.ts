@@ -41,7 +41,7 @@ vi.mock("./cloudflareHttpImageBuildOperator", () => ({ runHttpImageOperatorComma
   if (!input.args.includes("--dry-run")) { state.phase = "runtime"; if (state.uncertainWrite) throw Error("HTTP_IMAGE_OPERATOR_RESPONSE_LOST"); }
   return "stdout is not a deployment receipt";
 } }));
-import { createHttpRuntimeExecutor } from "./cloudflareHttpRuntimeExecutor";
+import { createHttpRuntimeExecutor, summarizeApplicationProbe } from "./cloudflareHttpRuntimeExecutor";
 import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT } from "./cloudflareHttpRuntimeContract";
 beforeEach(() => {
   vi.clearAllMocks(); state.phase = "baseline"; state.expired = false; state.revoked = false; state.probeFailure = false; state.uncertainWrite = false; state.checkpoint = null;
@@ -96,6 +96,15 @@ const run = (overrides: Record<string, unknown> = {}) => createHttpRuntimeExecut
     projectId: "project-fixture", candidateJobId: state.plan.candidateJobId, submissionId: state.intent.submissionId, planDigest: state.intent.planDigest }, ...overrides },
   lease: { expiresAt: new Date(Date.now() + 60_000).toISOString() }, reporter: { assertActive: state.assertActive, heartbeat: vi.fn(), progress: vi.fn() } } as never);
 describe("canonical bounded existing-Candidate runtime executor", () => {
+  it("retains only bounded application probe evidence and never response secrets", () => {
+    const evidence = summarizeApplicationProbe(200, { schemaVersion: "cloudflare-application-auth-acceptance-v1", passed: false,
+      checks: { primaryLogin: false, authenticatedCreditRead: true, unexpected: "secret" },
+      status: { primaryLogin: 401, creditRead: 0, gatewayModelCount: 5, unexpected: "secret" },
+      revocationHashes: ["token-hash-secret"], cookie: "cookie-secret" }, "FRA");
+    expect(evidence).toEqual({ http: 200, colo: "FRA", schemaValid: true, passed: false,
+      checks: { primaryLogin: false, authenticatedCreditRead: true }, status: { primaryLogin: 401, creditRead: 0, gatewayModelCount: 5 }, revocationHashCount: 1 });
+    expect(JSON.stringify(evidence)).not.toContain("secret");
+  });
   it("resumes only a proven pre-write checkpoint using the canonical same-intent recovery contract", async () => {
     state.checkpoint = { id: 1, isSensitive: true, updatedBy: 17, value: "encrypted:" + JSON.stringify({
       jobId: state.intent.submissionId, tenantId: state.intent.tenantId, projectId: state.intent.projectId, actorUserId: 17,
