@@ -49,7 +49,9 @@ export async function readHttpRuntimeOperation(db: DrizzleDB, scope: Scope, oper
     }
   }
   return { imageRepair, jobId: job.id, candidateJobId: String(job.inputJson?.candidateJobId), status: job.status, attempt: job.attempt, maxAttempts: job.maxAttempts,
-    errorCode: job.errorCode, receipt: job.outputJson, heartbeatAt: job.heartbeatAt, checkpoint };
+    errorCode: job.errorCode, receipt: job.outputJson, heartbeatAt: job.heartbeatAt, leaseExpiresAt: job.leaseExpiresAt,
+    createdAt: job.createdAt, startedAt: job.startedAt, finishedAt: job.finishedAt,
+    progressStage: typeof job.progressJson?.stage === "string" && /^[A-Z0-9_]{1,100}$/.test(job.progressJson.stage) ? job.progressJson.stage : null, checkpoint };
 }
 
 export async function readPendingHttpRuntimeIntent(db: DrizzleDB, scope: Scope, operation: "runtime" | "application" = "runtime") {

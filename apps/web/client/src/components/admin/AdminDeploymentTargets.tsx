@@ -20,6 +20,7 @@ import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { CloudflareImagePublication } from "./CloudflareImagePublication";
 import { CloudflareMigrationPreparation } from "./CloudflareMigrationPreparation";
+import { CloudflareLiveMissionStatus } from "./CloudflareLiveMissionStatus";
 
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
 const ENVIRONMENTS = ["preview", "staging", "production"] as const;
@@ -716,6 +717,7 @@ export default function AdminDeploymentTargets() {
 
   return (
     <VStack as="section" gap={4}>
+      {environment === "production" && validTenantId && projectId ? <CloudflareLiveMissionStatus tenantId={tenantId} projectId={projectId} /> : null}
       <VStack gap={1}>
         <h2>{text("Deployment targets", "Deployment targets")}</h2>
         <p>{text(
