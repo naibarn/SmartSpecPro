@@ -67,6 +67,22 @@ describe("bounded native runtime Owner operation", () => {
     await userEvent.click(screen.getByRole("button", { name: "Reconcile the same runtime test" }));
     expect(state.mutate.mock.calls[1][0]).toEqual(input);
   });
+  it("allows a fresh corrected-image runtime operation when the compensated prior intent expired", async () => {
+    state.continuation = true;
+    state.job = { jobId: "old-exhausted-runtime", status: "failed", attempt: 2, maxAttempts: 2 };
+    state.pending = { submissionId: state.job.jobId, planDigest: "old", candidateJobId: props.candidateJobId,
+      artifactRef: `sha256:${"e".repeat(64)}`, workerSourceSha: "f".repeat(40), revoked: false,
+      expiresAt: new Date(Date.now() - 60_000).toISOString() };
+    sessionStorage.setItem(`smartspec:native-runtime:${props.tenantId}:${props.projectId}:${props.candidateJobId}`,
+      JSON.stringify({ submissionId: state.job.jobId, planDigest: "old" }));
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    expect(screen.getByRole("button", { name: "Authorize corrected images and bounded runtime test" })).toBeEnabled();
+    expect(screen.getByText(/expired after its attempts were exhausted/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Authorize corrected images and bounded runtime test" }));
+    const input = state.mutate.mock.calls[0][0];
+    expect(input.submissionId).not.toBe(state.job.jobId);
+    expect(input.planDigest).toBe("a".repeat(64));
+  });
   it("never describes a successful boot job as M3 acceptance", () => {
     state.job = { jobId: "canonical-runtime-job", status: "succeeded", attempt: 1, maxAttempts: 1, receipt: { runtimeBootVerified: true, m3Accepted: false } };
     render(<CloudflareNativeRuntimeOperation {...props} />);

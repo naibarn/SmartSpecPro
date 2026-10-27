@@ -23,11 +23,19 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
   const mutation = trpc.infrastructure.prepareCloudflareHttpRuntime.useMutation();
   const preflight = state.data?.preflight, job = state.data?.job, pending = state.data?.pending;
   const continuation = job?.status === "failed" && preflight?.ready && preflight.plan.previousRuntime?.jobId === job.jobId;
+  const pendingExpired = Boolean(pending && Date.parse(pending.expiresAt) <= Date.now());
+  const pendingRevoked = Boolean(pending?.revoked);
+  // An expired intent for the fully compensated historical job is evidence,
+  // not renewable authority. A corrected-image continuation must receive a
+  // fresh submission ID and fresh Owner action instead of being disabled or
+  // replaying that exhausted job's ID.
+  const usablePending = pending && !pendingRevoked && !pendingExpired ? pending : null;
+  const canReplaceExpiredIntent = Boolean(continuation && pendingExpired && !pendingRevoked && pending?.submissionId === job?.jobId);
   const submit = async () => {
-    if (busy.current || job && !continuation || !preflight?.ready || pending?.revoked || pending && Date.parse(pending.expiresAt) <= Date.now()) return;
+    if (busy.current || job && !continuation || !preflight?.ready || pendingRevoked || pendingExpired && !canReplaceExpiredIntent) return;
     busy.current = true;
     const retained = submission?.submissionId === job?.jobId ? null : submission;
-    const request: ReviewedSubmission = pending ?? retained ?? { submissionId: crypto.randomUUID(), planDigest: preflight.planDigest,
+    const request: ReviewedSubmission = usablePending ?? (continuation && retained?.planDigest !== preflight.planDigest ? null : retained) ?? { submissionId: crypto.randomUUID(), planDigest: preflight.planDigest,
       candidateJobId, artifactRef: preflight.plan.artifactRef, workerSourceSha: preflight.plan.workerSourceSha };
     setSubmission(request);
     try { sessionStorage.setItem(key, JSON.stringify(request)); } catch { /* Server intent remains authoritative. */ }
@@ -52,13 +60,15 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     {continuation ? <Text role="status">{text("The previous test is fully compensated. This reviews the verified corrected images for the same applications, rotates the disabled application login, and performs a new bounded test. The historical job and its expired authority stay unchanged.",
       "งานเดิมคืนค่าเรียบร้อยแล้ว รอบนี้ใช้ image รุ่นแก้ไขกับ Container เดิม เปลี่ยนรหัส role ที่ปิด login และทดสอบแบบจำกัดขอบเขต โดยไม่แก้งานหรือสิทธิ์ที่หมดอายุของรอบเก่า")}</Text> : null}
     <Button type="button" onClick={() => void submit()} disabled={state.isLoading || Boolean(state.error) || !preflight?.ready || Boolean(job && !continuation) || mutation.isPending ||
-      Boolean(pending && (pending.revoked || Date.parse(pending.expiresAt) <= Date.now()))}>
+      pendingRevoked || pendingExpired && !canReplaceExpiredIntent}>
       {job && !continuation ? text("Tracking the existing runtime test", "กำลังติดตามงานทดสอบเดิม") : mutation.isPending ? text("Submitting…", "กำลังส่งงาน…")
-        : continuation && !pending && (!submission || submission.submissionId === job.jobId) ? text("Authorize corrected images and bounded runtime test", "อนุมัติใช้ image รุ่นแก้ไขและทดสอบ runtime")
-        : pending || submission ? text("Reconcile the same runtime test", "ตรวจและดำเนินงานทดสอบเดิม")
+        : continuation && !usablePending && (!submission || submission.submissionId === job.jobId || submission.planDigest !== preflight.planDigest) ? text("Authorize corrected images and bounded runtime test", "อนุมัติใช้ image รุ่นแก้ไขและทดสอบ runtime")
+        : usablePending || submission ? text("Reconcile the same runtime test", "ตรวจและดำเนินงานทดสอบเดิม")
           : text("Authorize and test Node/Python on Cloudflare", "อนุมัติและทดสอบ Node/Python บน Cloudflare")}
     </Button>
-    {pending && !job ? <Text role="status">{text("Admission pending canonical reconciliation", "กำลังตรวจผลรับงานจาก canonical registry")}: {pending.submissionId}</Text> : null}
+    {pending && (!pendingExpired || pending.submissionId !== job?.jobId) && !job ? <Text role="status">{text("Admission pending canonical reconciliation", "กำลังตรวจผลรับงานจาก canonical registry")}: {pending.submissionId}</Text> : null}
+    {canReplaceExpiredIntent ? <Text role="status">{text("The previous runtime authorization expired after its attempts were exhausted. This action creates a fresh bounded test authorization for the corrected images; it does not retry the old job.",
+      "สิทธิ์ทดสอบรอบก่อนหมดอายุหลังใช้ attempt ครบแล้ว การกดครั้งนี้จะสร้างคำขอทดสอบใหม่แบบจำกัดสำหรับ image ที่แก้ไข โดยไม่ retry งานเดิม")}</Text> : null}
     {job ? <Text role="status"><StatusDot variant={job.status === "failed" ? "error" : job.status === "succeeded" ? "success" : "accent"}
       label={job.status} isPulsing={job.status === "running"} /> {job.jobId} · {job.status} · {job.attempt}/{job.maxAttempts}{job.errorCode ? ` · ${job.errorCode}` : ""}</Text> : null}
     {job?.checkpoint ? <Text>{job.checkpoint.stage}{job.checkpoint.failure ? ` · ${job.checkpoint.failure}` : ""}{job.checkpoint.deploymentId ? ` · Deployment ${job.checkpoint.deploymentId}` : ""}</Text> : null}
