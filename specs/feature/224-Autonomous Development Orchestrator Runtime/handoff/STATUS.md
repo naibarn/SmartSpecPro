@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Implement the SPEC-224 delegated-child execution bridge: load the approved Goal grant and pinned execution configuration from trusted persisted state, bind the actual child attempt to a shared Goal budget and hold, revalidate at deferred release, then connect durable receipt reconciliation to phase admission. Verify with disposable PostgreSQL including replay, revocation, expiry, budget exhaustion and concurrency. Windows Live Acceptance is a separate downstream gate.
-- Manifest generation: 205
+- Next action: Implement server-side delegated child authorization in spec224AuthorizationService: load the current Goal approval and pinned configuration from persisted authority, resolve the current child job/attempt, provision the shared Goal budget, reserve its distinct hold, evaluate and persist the binding. Extend jobControlPlane release to revalidate the complete Goal scope atomically; current release deliberately permits only exact-job approvals. Then wire spec224RunnerContinuationReconciler to spec224PhaseController and authorize/release the admitted child, with crash/replay and concurrent PostgreSQL acceptance. Windows Live E2E remains downstream.
+- Manifest generation: 206
 
 ## Source-declared status and relationship claims
 
