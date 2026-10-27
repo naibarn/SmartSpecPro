@@ -8,7 +8,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `d4816a8d199cf2440776d513c49a3c7bdd79ef29`
+- Latest verified deployed implementation SHA: `d4816a8d199cf2440776d513c49a3c7bdd79ef29` (release g168)
+- The latest handoff update is documentation only; it does not change the g168 runtime release.
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
 - Next action: Release g168 from SHA `d4816a8d199cf2440776d513c49a3c7bdd79ef29` is deployed and verified. The generic `HTTP_RUNTIME_PREFLIGHT_UNAVAILABLE` masking is fixed: authenticated reads now return a sanitized failure stage (`CANDIDATE`, `M1_EVIDENCE`, `BOUNDED_RUNTIME_EVIDENCE`, `DATABASE_SCHEMA`, `DATABASE_ROLE`, `RUNTIME_CONFIGURATION`, `ARTIFACT`, `CLOUDFLARE_READBACK`, or `REGISTRY`) so the actual blocked prerequisite can be repaired. This session has no authenticated Owner browser session and observed no new application-acceptance submission/job. Refresh the authenticated Admin page and read the exact current preflight result; if READY, submit exactly “Authorize synthetic application acceptance” once and reconcile that same submission/job. Do not repeat M1/M2 or bounded boot/SQL. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.
