@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CloudflareImagePublication } from "./CloudflareImagePublication";
-const state = vi.hoisted(() => ({ mutate: vi.fn(), refetch: vi.fn(), ready: true, status: null as any, pending: false, error: null as any }));
+const state = vi.hoisted(() => ({ mutate: vi.fn(), refetch: vi.fn(), ready: true, status: null as any, statusLoading: false, pending: false, error: null as any }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
   getCloudflareHttpImagePairPreflight: { useQuery: () => ({ data: state.ready ? { ready: true, sourceSha: "a".repeat(40), accountRef: "b".repeat(32), planDigest: "c".repeat(64) }
     : { ready: false, reason: "HTTP_IMAGE_CREDENTIAL_DENIED" }, isLoading: false }) },
-  getCloudflareHttpImagePairSubmission: { useQuery: () => ({ data: state.status, refetch: state.refetch }) },
+  getCloudflareHttpImagePairSubmission: { useQuery: () => ({ data: state.status, isLoading: state.statusLoading, refetch: state.refetch }) },
   queueCloudflareHttpImagePair: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.pending, error: state.error }) },
 } } }));
 const props = { tenantId: "tenant-test", projectId: "project-test" };
-beforeEach(() => { sessionStorage.clear(); state.mutate.mockReset().mockResolvedValue(null); state.status = null; state.ready = true; state.pending = false; state.error = null; });
+beforeEach(() => { sessionStorage.clear(); state.mutate.mockReset().mockResolvedValue(null); state.status = null; state.statusLoading = false; state.ready = true; state.pending = false; state.error = null; });
 describe("image publication Owner action", () => {
   it("shows exact source and scopes one click to the two images without traffic activation", async () => {
     render(<CloudflareImagePublication {...props} />);
@@ -31,6 +31,23 @@ describe("image publication Owner action", () => {
     render(<CloudflareImagePublication {...props} />);
     await userEvent.click(screen.getByRole("button", { name: "Reconcile and continue the same publication" }));
     expect(state.mutate.mock.calls[1][0]).toEqual(input);
+  });
+  it("surfaces a stale browser-only ID and submits the current digest under a fresh ID", async () => {
+    const oldId = "22222222-2222-4222-8222-222222222222", publishedId = "33333333-3333-4333-8333-333333333333";
+    const key = `smartspec:cloudflare-image-repair:${props.tenantId}:${props.projectId}:e${"e".repeat(39)}`;
+    sessionStorage.setItem(key, JSON.stringify({ id: oldId, digest: "d".repeat(64) }));
+    state.status = { submissionId: publishedId, planDigest: "f".repeat(64), sourceSha: `e${"e".repeat(39)}`, published: true,
+      requestedPublication: null, requestedPublicationError: null, diagnostics: [], jobs: [] };
+    render(<CloudflareImagePublication {...props} replacementForSourceSha={`e${"e".repeat(39)}`} />);
+    expect(screen.getByRole("alert")).toHaveTextContent(oldId);
+    expect(screen.getByRole("alert")).toHaveTextContent("no canonical registry record");
+    const button = screen.getByRole("button", { name: "Authorize the current image plan" });
+    await userEvent.click(button);
+    expect(state.mutate).toHaveBeenCalledOnce();
+    const request = state.mutate.mock.calls[0][0];
+    expect(request.submissionId).not.toBe(oldId);
+    expect(request.planDigest).toBe("c".repeat(64));
+    expect(JSON.parse(sessionStorage.getItem(key)!)).toEqual({ id: request.submissionId, digest: "c".repeat(64) });
   });
   it("disables duplicate admission and shows real per-job registry receipts", () => {
     state.status = { published: true, diagnostics: [], jobs: ["node-http", "python-http"].map(runtime => ({ runtime, jobId: runtime,

@@ -27,6 +27,13 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
   { refetchInterval: 5000, retry: false });
   const current = replacementForSourceSha ? status.data?.requestedPublication ??
     (status.data?.published && status.data.sourceSha !== replacementForSourceSha ? status.data : null) : status.data;
+  // A browser-only stable ID is not canonical authority. If no registry row
+  // exists and the reviewed plan has changed, never keep submitting that old
+  // digest; show the precise state and require a fresh Owner click for the new
+  // immutable plan.
+  const canonicalSubmissionId = status.data?.requestedPublication?.submissionId ?? status.data?.submissionId;
+  const staleLocalPlan = Boolean(submission && !status.isLoading && !status.data?.requestedPublicationError &&
+    canonicalSubmissionId !== submission.id && preflight.data?.ready && submission.digest !== preflight.data.planDigest);
   useEffect(() => {
     if (current?.submissionId && current.planDigest &&
         (!submission || current.published && submission.id !== current.submissionId)) {
@@ -41,7 +48,9 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
   const admitted = jobs.length === 2 && jobs.every(job => job.status !== "NOT_ADMITTED");
   const submit = async () => {
     if (inFlight.current || !preflight.data?.ready || !correctedSourceReady) return;
-    const request = submission ?? { id: crypto.randomUUID(), digest: preflight.data.planDigest };
+    const request = staleLocalPlan || !submission
+      ? { id: crypto.randomUUID(), digest: preflight.data.planDigest }
+      : submission;
     // Save BEFORE dispatch. Reload/lost responses reconcile the same pair.
     setSubmission(request);
     try { sessionStorage.setItem(key, JSON.stringify(request)); } catch { /* Canonical intent remains authoritative. */ }
@@ -64,6 +73,10 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
     {replacementForSourceSha && preflight.data?.ready ? <Text>{text("Corrected source", "Source รุ่นแก้ไข")}: <code>{preflight.data.sourceSha}</code></Text> : null}
     <Text>{text("Publish two immutable images from one verified source. Production traffic continues through the accepted Linux bridge until runtime acceptance.",
       "เผยแพร่ image สองตัวจาก source ที่ตรวจสอบแล้วชุดเดียวกัน ระหว่างทดสอบ runtime ระบบจริงยังใช้ทางเข้า Linux ที่ผ่านการตรวจรับแล้ว")}</Text>
+    {staleLocalPlan ? <Text role="alert">{text(
+      `The saved browser request ${submission?.id} has no canonical registry record and its plan digest differs from the current plan. Review source ${preflight.data?.sourceSha} and digest ${preflight.data?.planDigest}; the next click creates a fresh authorized submission.`,
+      `คำขอที่บันทึกในเบราว์เซอร์ ${submission?.id} ไม่มีรายการใน canonical registry และ digest ไม่ตรงกับแผนปัจจุบัน ตรวจ source ${preflight.data?.sourceSha} และ digest ${preflight.data?.planDigest} แล้วกดอีกครั้งเพื่อสร้างคำขออนุมัติใหม่`)}
+    </Text> : null}
     {current?.published ? <Text>{text("Source", "Source")}: <code>{current.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{status.data?.accountRef}</code></Text>
       : preflight.data?.ready ? <Text>{text("Source", "Source")}: <code>{current?.sourceSha ?? preflight.data.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{preflight.data.accountRef}</code></Text>
       : <Text role="status">{preflight.isLoading ? text("Checking image publication readiness…", "กำลังตรวจความพร้อมเผยแพร่ image…")
@@ -71,12 +84,13 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
     {!hideAction ? <Button type="button" disabled={!preflight.data?.ready || !correctedSourceReady || status.isLoading || Boolean(status.error) || Boolean(status.data?.requestedPublicationError) || queue.isPending || admitted} onClick={() => void submit()}>
       {queue.isPending ? text("Submitting the paired publication…", "กำลังส่งงานเผยแพร่ทั้งคู่…")
         : admitted ? text("Publication jobs accepted", "รับงานเผยแพร่ทั้งคู่แล้ว")
+          : staleLocalPlan ? text("Authorize the current image plan", "อนุมัติแผน image ปัจจุบัน")
           : submission ? text("Reconcile and continue the same publication", "ตรวจและดำเนินงานเผยแพร่เดิมต่อ")
             : replacementForSourceSha ? text("Authorize corrected Node/Python image publication", "อนุมัติเผยแพร่ image Node/Python รุ่นแก้ไข")
               : text("Authorize and publish Node/Python images", "อนุมัติและเผยแพร่ image Node/Python")}
     </Button> : null}
     {current?.submissionId || submission ? <Text>{text("Submission", "คำขอ")}: <code>{current?.submissionId ?? submission?.id}</code></Text> : null}
-    {queue.error ? <Text role="alert">{queue.error.message}</Text> : null}
+    {queue.error && !staleLocalPlan ? <Text role="alert">{queue.error.message}</Text> : null}
     {status.data?.requestedPublicationError ? <Text role="alert">{status.data.requestedPublicationError}</Text> : null}
     {status.error ? <Text role="alert">{status.error.message}</Text> : null}
     {current?.diagnostics.map(item => <Text key={`${item.runtime}:${item.stage}`} role="alert">{item.runtime}: {item.stage} · {item.code}</Text>)}
