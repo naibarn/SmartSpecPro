@@ -382,6 +382,15 @@ describe("job control plane", () => {
     expect(repeated).toMatchObject({ attemptId: recovered?.attemptId, resumed: false });
     expect(state.attempts).toHaveLength(2);
     expect(state.outbox).toHaveLength(0);
+
+    const binding = { runnerId: "r", runnerSessionId: "s", capabilitySnapshotId: "c", capabilitySnapshotRevision: "1", authorizationGrantRef: "g", approvalRef: "a", budgetReservationRef: "b", workspaceRef: "w", deadline: new Date(Date.now() + 60_000).toISOString() };
+    job.inputJson.manifest.policyBinding = binding;
+    job.progressJson.spec224Authorization = { status: "READY_FOR_LIVE", binding };
+    expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
+    expect(state.events.find(event => event.eventType === "DISPATCH_REQUESTED")).toMatchObject({
+      eventIdempotencyKey: `dispatch-requested:${job.id}:2`, payloadJson: { attempt: 2 },
+    });
+    expect(state.outbox[0].envelopeJson.businessAttempt).toBe(2);
   });
 
   it("refuses to resume an expired SPEC-224 job after dispatch, under another owner, or for another run", async () => {

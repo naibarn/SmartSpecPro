@@ -2385,7 +2385,7 @@ export function createJobControlPlane(
           eventIdempotencyKey: `authorization-hold-released:${job.id}`, payloadJson: { runnerId: binding.runnerId,
             capabilitySnapshotId: binding.capabilitySnapshotId, approvalRef: binding.approvalRef, budgetReservationRef: binding.budgetReservationRef } });
         await repo.insertEvent({ workerJobId: job.id, eventType: "DISPATCH_REQUESTED",
-          eventIdempotencyKey: `dispatch-requested:${job.id}:1`, payloadJson: { attempt: 1 } });
+          eventIdempotencyKey: `dispatch-requested:${job.id}:${job.attempt}`, payloadJson: { attempt: job.attempt } });
         await repo.insertOutbox({ workerJobId: job.id, envelopeVersion: job.contractVersion,
           envelopeJson: { jobId: job.id, businessAttempt: job.attempt, contractVersion: job.contractVersion,
             dedupeKey: `job:${job.id}:attempt:${job.attempt}` }, dedupeKey: `job:${job.id}:attempt:${job.attempt}`, nextAttemptAt: new Date() });
