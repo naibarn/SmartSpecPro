@@ -83568,7 +83568,7 @@
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "73715abe3d522681c98802502af170b83769c19df672c6aa0d6b5e0d3e2721fb",
+      "digest": "507693664ba5ca173220ab6867fdefa4e8f2916ad3441095faaf17fa47728e77",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
@@ -90045,7 +90045,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
+      "canonical_sha": "5859261fc7eb56880920477e92176a021778d144",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -90205,6 +90205,7 @@
         "requirement REQ-AA6D6A340E63 is OPEN",
         "requirement REQ-D3E428A63830 is OPEN",
         "requirement REQ-35DBD22AAFC0 is OPEN",
+        "requirement REQ-3917D7A777B0 evidence is stale or not bound to canonical SHA",
         "requirement REQ-C42685D3C75D is OPEN",
         "requirement REQ-700F0597AD20 is OPEN",
         "requirement REQ-4C3CEC0DD52F is OPEN",
@@ -91303,10 +91304,15 @@
         "requirement REQ-02DADAA16ED9 is OPEN",
         "requirement REQ-C7565D4BEDE2 is OPEN",
         "requirement REQ-09D54E098C5F is PARTIAL",
+        "requirement REQ-B92C79FEA294 evidence is stale or not bound to canonical SHA",
+        "requirement REQ-6B95E2497188 evidence is stale or not bound to canonical SHA",
         "requirement REQ-99636C68BAEA is PARTIAL",
         "requirement REQ-AA925E33A229 is PARTIAL",
+        "requirement REQ-28DAED30E097 evidence is stale or not bound to canonical SHA",
         "requirement REQ-24575B1B523F is PARTIAL",
         "requirement REQ-23C689C1ACC7 is PARTIAL",
+        "requirement REQ-410EE0357FDC evidence is stale or not bound to canonical SHA",
+        "requirement REQ-F12D04357ED8 evidence is stale or not bound to canonical SHA",
         "requirement REQ-224-UWAC-01 is OPEN",
         "requirement REQ-224-UWAC-02 is OPEN",
         "requirement REQ-9032C703AC1E is OPEN",
@@ -91409,7 +91415,7 @@
       "implementation_last_touched_at": null,
       "last_reconciled": "2026-10-25T13:18:43.973118Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Continue exact-source and existing policy/budget admission after current Windows readiness PASS; do not repeat successful probe, install or closed pilot.",
+      "next_action": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": {
         "class": "AUTHORITY",
@@ -111646,7 +111652,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "ACTIVE_SUPPORTING",
-      "canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
+      "canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -111858,6 +111864,7 @@
         "requirement REQ-5CEE36BBB249 is OPEN",
         "requirement REQ-287-UWAC-01 is OPEN",
         "requirement REQ-287-UWAC-02 is OPEN",
+        "requirement REQ-287-UWAC-03 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -111876,7 +111883,7 @@
           "excerpt": "**Status:** PROPOSED / ADDITIVE",
           "line": 3,
           "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-          "source_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+          "source_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
           "value": "PROPOSED / ADDITIVE"
         }
       ],
@@ -111889,12 +111896,12 @@
           "excerpt": "**Status:** PROPOSED / ADDITIVE",
           "line": 3,
           "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-          "source_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+          "source_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
           "value": "PROPOSED / ADDITIVE"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+      "digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
       "disposition": "ACTIVE_SUPPORTING",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
@@ -111982,14 +111989,14 @@
             "excerpt": "**Status:** PROPOSED / ADDITIVE",
             "line": 3,
             "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-            "source_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+            "source_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
             "value": "PROPOSED / ADDITIVE"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+            "digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
           }
@@ -112000,9 +112007,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 207,
+        "open": 208,
         "pass": 0,
-        "total": 207
+        "total": 208
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.5",
@@ -113311,9 +113318,9 @@
       "verification": "UNKNOWN"
     },
     {
-      "acceptance": "UNKNOWN",
+      "acceptance": "NOT_VERIFIED",
       "authority": "UNRESOLVED",
-      "canonical_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
+      "canonical_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -113555,8 +113562,24 @@
         "requirement REQ-9E75E9387EEE is OPEN",
         "requirement REQ-2DB561EFF1DF is OPEN",
         "requirement REQ-A62D3617ADE8 is OPEN",
+        "requirement REQ-4EF48BC10675 is OPEN",
+        "requirement REQ-E4944601C54D is OPEN",
+        "requirement REQ-BE0E26E49F7E is OPEN",
+        "requirement REQ-AFC739775151 is OPEN",
+        "requirement REQ-A9535262D07B is OPEN",
+        "requirement REQ-E40E7D19C714 is OPEN",
+        "requirement REQ-6B824C48AEB9 is OPEN",
+        "requirement REQ-69E7E64A4A50 is OPEN",
+        "requirement REQ-901851A5071E is OPEN",
+        "requirement REQ-152F058BC27A is OPEN",
+        "requirement REQ-D5D1CD878DFA is OPEN",
+        "requirement REQ-20A99413E8A1 is OPEN",
+        "requirement REQ-F27B3DB513CB is OPEN",
+        "requirement REQ-B724C722F36D is OPEN",
         "requirement REQ-293-UWAC-01 is OPEN",
         "requirement REQ-293-UWAC-02 is OPEN",
+        "requirement REQ-080860F363EC is OPEN",
+        "requirement REQ-E36FF2A9FA23 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -113575,7 +113598,7 @@
           "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
           "line": 4,
           "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-          "source_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+          "source_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
           "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
         }
       ],
@@ -113588,16 +113611,16 @@
           "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
           "line": 4,
           "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-          "source_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+          "source_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
           "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+      "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-20T23:27:53.830553Z",
+      "last_reconciled": "2026-10-27T07:20:59.540922Z",
       "lifecycle": "PARTIAL_INTEGRATED",
       "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
       "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation",
@@ -113624,14 +113647,14 @@
             "excerpt": "**Status:** PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery",
             "line": 4,
             "source": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-            "source_digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+            "source_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
             "value": "PROPOSED / ADDITIVE / IMPLEMENTATION-READY — numeric slot verified against canonical `naibarn/SmartSpecPro/specs/feature` on 2026-10-06; implementation still performs G0 ownership discovery"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "43359e69cae03886f7ac1a85e0fdc23c3547cac1786155ec8076e46b792d7f4e",
+            "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md"
           }
@@ -113642,9 +113665,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 237,
+        "open": 253,
         "pass": 0,
-        "total": 237
+        "total": 253
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.4",
@@ -113663,7 +113686,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+      "canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114169,6 +114192,8 @@
         "requirement REQ-294-OBS-05 is PARTIAL",
         "requirement REQ-294-UWAC-01 is OPEN",
         "requirement REQ-294-UWAC-02 is OPEN",
+        "requirement REQ-83610882F326 is OPEN",
+        "requirement REQ-294-UWAC-03 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -114187,7 +114212,7 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "ba90eeee20e7265a4f9495783104915d68b8951a1ad2b9bd5ddfcc7932560e1a",
+          "source_digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
@@ -114200,12 +114225,12 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "ba90eeee20e7265a4f9495783104915d68b8951a1ad2b9bd5ddfcc7932560e1a",
+          "source_digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "ba90eeee20e7265a4f9495783104915d68b8951a1ad2b9bd5ddfcc7932560e1a",
+      "digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
@@ -114236,19 +114261,19 @@
             "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
             "line": 4,
             "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-            "source_digest": "ba90eeee20e7265a4f9495783104915d68b8951a1ad2b9bd5ddfcc7932560e1a",
+            "source_digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
             "value": "Proposed / Additive implementation-ready specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "ba90eeee20e7265a4f9495783104915d68b8951a1ad2b9bd5ddfcc7932560e1a",
+            "digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
           },
           {
-            "digest": "72f38b1f550abe585d2dbe752938cbad54dc75a2fe9b18f5fd1f26468fdd76fd",
+            "digest": "a84a76a4d407d11b82a4938254086cb4b847e9f18a01b323ec35bf1e656a9ee2",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-plan.md"
           },
@@ -114258,7 +114283,7 @@
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-spec.md"
           },
           {
-            "digest": "a5e30700e7bb48f93a8b0ad0488dd15da26849d8d8be275566e4c224912c4fa8",
+            "digest": "e723edbc3527bb15612453cf4e8f2fa5536c5a19637dffdc5cfc363ddfd95fa7",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/index.md"
           },
@@ -114298,7 +114323,7 @@
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-07-artifact-evidence.md"
           },
           {
-            "digest": "909b190a26d74a9a20a208d632bc07679a532b50a66ef208aea25cf37da97529",
+            "digest": "56dac0113abd493049c8d0a9f46c4ab836b0f0f0cb5e139e65210088489cd811",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-08-development-source-release.md"
           },
@@ -114314,9 +114339,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 499,
+        "open": 501,
         "pass": 0,
-        "total": 499
+        "total": 501
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.7",
@@ -130410,7 +130435,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+      "canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -130859,6 +130884,9 @@
         "requirement REQ-277-OBS-09 is PARTIAL",
         "requirement REQ-277-UWAC-01 is OPEN",
         "requirement REQ-277-UWAC-02 is OPEN",
+        "requirement REQ-FEEFBF1F00E9 is OPEN",
+        "requirement REQ-6F8C62E6A826 is OPEN",
+        "requirement REQ-277-UWAC-03 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -130873,11 +130901,11 @@
       "declared_relationship_claims": [],
       "declared_status_claims": [],
       "deployment": "UNKNOWN",
-      "digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+      "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "PARTIAL",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-20T23:27:53.664773Z",
+      "last_reconciled": "2026-10-27T13:01:56.640905Z",
       "lifecycle": "CONTINUATION_REQUIRED",
       "next_action": "Continue direct acceptance for provider receipt/outbox consistency within the existing worker_jobs/outbox authority; keep durable receipt schema work waiting for explicit SPEC-302 ownership and migration authorization. Continue remaining callback-producer attempt-correlation review where producers can supply attempt metadata. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
       "path": "specs/feature/277-task-control-experience-r1-6",
@@ -130900,7 +130928,7 @@
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+            "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
           }
@@ -130911,9 +130939,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 442,
+        "open": 445,
         "pass": 0,
-        "total": 442
+        "total": 445
       },
       "review_priority": "R5_NO_DIRECT_EVIDENCE",
       "revision": "1.8",

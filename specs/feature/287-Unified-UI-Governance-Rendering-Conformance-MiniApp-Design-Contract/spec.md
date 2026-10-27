@@ -2085,3 +2085,7 @@ Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-
 - REQ-287-UWAC-02: Acceptance MUST include rendered Desktop/Tablet/Mobile and keyboard/screen-reader checks for timeline expansion, task next actions, Skill states, no-Git context and conditional developer details, with measured loading/stale/error states. Source/CSS inspection and fixture tests alone MUST NOT certify responsive production acceptance.
 
 Acceptance coverage: `UW-13 UW-20 UW-22 UW-27 UW-33` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.
+
+## Primary Task Control visual acceptance — 2026-10-27
+
+- REQ-287-UWAC-03: Verify the actual primary Task Control route at 1440×900, 820×1180 and 390×844 in Thai and English, including keyboard access, responsive overflow, loading/error/empty states and equivalent Simple/Developer facts. Capture rendered evidence and assess whether a new user can identify active work, required attention and verified results within 3–5 seconds. Separate fixture, authenticated development, production-route and real-harness evidence; no one of these establishes the others.

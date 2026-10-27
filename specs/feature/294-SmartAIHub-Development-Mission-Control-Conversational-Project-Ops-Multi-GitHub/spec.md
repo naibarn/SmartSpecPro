@@ -4071,3 +4071,7 @@ Acceptance coverage: `UW-03 UW-09 UW-11 UW-12 UW-19 UW-20 UW-21 UW-22 UW-23 UW-2
 ## Presentation identity amendment — Mission Control and customer previews
 
 Mission Control and Chat projections MUST preserve SPEC-293 ownership provenance and current tenant authorization when presenting project/repository/workspace data. Simple customer presentation must omit platform-engineering identities, repository IDs, absolute paths, and protected diagnostics from DTOs and live events as well as rendered controls. Developer presentation may expose authorized user/tenant repository diagnostics; platform-engineering evidence requires separate operator authorization. Preserve same-name user-owned projects and keep raw protected evidence available only through existing authorized operator paths. Exports, notifications, and errors follow the same presentation boundary.
+
+## Live Work observation completion — 2026-10-27
+
+- REQ-294-UWAC-03: The existing authorized Work observation contract MUST provide source-linked activity for jobs, attempts, sessions and supported harnesses, with deterministic ordering and deduplication, bounded durable replay after reconnect, observation time, freshness and coverage. Process/session liveness, job status, progress, stop/blocker reasons and verified outputs MUST remain distinct. Missing producer fields or evidence MUST be reported as unknown or unavailable; observation failures MUST NOT alter or interrupt execution. Explicit provider selection MUST be shown as selected or unavailable without inventing a successful substitution.

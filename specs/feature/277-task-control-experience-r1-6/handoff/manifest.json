@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
-    "expected_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd"
+    "expected_canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
+    "expected_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27"
   },
   "continuation": {
-    "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor.",
+    "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
     "next_ready_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Integrated Task Control Simple/Developer mode at b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5; focused TaskObservabilityMonitor suite passed 10/10. Both views use the existing canonical task read model. Goal summary and final deliverables are absent from this projection and remain unknown; Developer mode explicitly reports that live terminal, file diff and harness identity telemetry are unavailable. This does not close callback producer review, authenticated parity, or live execution acceptance. Continue the existing callback producer/attempt-correlation review and add only trusted Goal/WorkUnit inputs and parity evidence when available.",
+    "resume_point": "Integrated Task Control Simple/Developer mode at b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5; focused TaskObservabilityMonitor suite passed 10/10. Both views use the existing canonical task read model. Goal summary and final deliverables are absent from this projection and remain unknown; Developer mode explicitly reports that live terminal, file diff and harness identity telemetry are unavailable. This does not close callback producer review, authenticated parity, or live execution acceptance. Continue the existing callback producer/attempt-correlation review and add only trusted Goal/WorkUnit inputs and parity evidence when available. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
     "waiting_predicate": "Provider polling, callback evidence safety, and outbox/terminal fencing now have direct native-PostgreSQL evidence. The next independent review is whether any actual producer sends callback attempt metadata. Durable receipt schema/migration waits on identified SPEC-302 owner and explicit authorization. Do not repeat primary workspace convergence while it remains dirty/stale."
   },
   "continuation_assessment": {
@@ -186,13 +186,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 76,
+  "generation": 80,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
-    "digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+    "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-20T23:27:53.664773Z",
+      "last_evidence_at": "2026-10-27T13:01:56.640905Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T09:55:22+07:00",
       "spec_last_changed_at": "2026-10-06T09:55:22+07:00"
@@ -219,7 +219,8 @@
       "1f9cda7857372f0e4369943cb257216658b84d0e",
       "86a16d13592b7be4063c0ab37044418a8212de7c",
       "f250326711d7d170e575d03b7c358f74891dfecc",
-      "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5"
+      "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
+      "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
     ],
     "mapping": [
       {
@@ -263,7 +264,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
+    "canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
     "integrated": true,
     "integrated_at": "2026-10-27T07:01:43+07:00"
   },
@@ -530,7 +531,7 @@
         "requirement_digest": "c6860e8b793a19835a5e81382c47cfa56d2d5bf3befc42d77be1fb7440a0b2d4",
         "requirement_id": "REQ-277-OBS-01",
         "requirement_text": "- REQ-277-OBS-01: Existing Task Detail MUST show execution/work/verified-goal progress separately, baseline revision, remaining/blocked/unverified acceptance scope, evidence coverage and next autonomous action through the SPEC-196 observation contract. No baseline MUST render BASELINE_MISSING, never guessed progress.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -604,7 +605,7 @@
         "requirement_digest": "6c7832be623d01ccb5e2bf1ed94d5241b51e2c5f33816272d4d1f4d6a570934b",
         "requirement_id": "REQ-277-OBS-02",
         "requirement_text": "- REQ-277-OBS-02: Task Detail MUST label UI Session Model, Canonical Worker Requested Model, Provider Effective Model and External Helper Model separately with source/binding/verification state. Requested/resolved/compatibility-normalized identities MUST NOT prove provider effective identity. Missing effective/helper evidence MUST remain UNKNOWN/UNVERIFIED. Historical model changes MUST preserve per-call policy/rationale/effort/time/evidence refs without changing Luna/Sol routing.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -665,7 +666,7 @@
         "requirement_digest": "22d663088ee1915ec9f988cb982cc6fa996e0db2dcf3de880c877256936dd9d9",
         "requirement_id": "REQ-277-OBS-03",
         "requirement_text": "- REQ-277-OBS-03: Usage MUST deduplicate physical consumption identities and replay; real physical retries MAY add their own measured usage. Cached input is a subset of input; total is input plus output under the source contract. Cumulative counters MUST use a proven same-session/counter-epoch baseline. Missing/reset/conflicting baselines and missing counts MUST remain unknown, not measured zero.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -753,7 +754,7 @@
         "requirement_digest": "ad2ceddf8ce26287c77884989fa72e48251f66fa56164e95148f9e9d4aea25c8",
         "requirement_id": "REQ-277-OBS-04",
         "requirement_text": "- REQ-277-OBS-04: A correction from 18,569 to 37,055 MUST display final 37,055 once plus correction history while preserving original receipts. Parent inclusive usage 100 including helper30 MUST total100; disjoint100+30 MUST total130; unproved overlap MUST withhold a complete total. Reservation estimate, measured usage, settled credits/currencies/funding and quota observations MUST remain separate with coverage counts and uncertainty. Local admission windows/default retry delays MUST NOT claim confirmed provider quota/reset.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -857,7 +858,7 @@
         "requirement_digest": "cfd943f4b21b5db767b04ea0f1bec2d7ccdcfde550a975e9105ad1c46a8f4696",
         "requirement_id": "REQ-277-OBS-05",
         "requirement_text": "- REQ-277-OBS-05: Public projections MUST use bounded allowlisted fields, immutable source refs, identity binding, source/ingest time, watermarks and freshness. Current-state quota/session evidence MUST expire according to source policy; historical measured usage remains historical evidence. Wrong-scope/conflicting identities MUST NOT enter totals. Credentials, lease tokens, raw prompts/selection/provider payloads and secret-bearing rationale MUST NOT be exposed.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -947,7 +948,7 @@
         "requirement_digest": "83ec95ac5f52d957cc504bfe30ca3d843b637018cd412071c37020428da8afd5",
         "requirement_id": "REQ-277-OBS-06",
         "requirement_text": "- REQ-277-OBS-06: Agent Monitor MUST provide Fleet, Runner/Agent Inspector, Activity/Recovery Timeline, Attention Center, Topology and model/resource history from existing worker_jobs/attempts/events/reservations/Runner records. Disconnection MUST affect observed liveness, not rewrite task failure. Retry/resume/recovery/capacity waits MUST be distinguished from human-required blockers. Attention Center MUST contain only evidence-backed human action, with existing owner links; it MUST NOT create an approval gate.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -1018,7 +1019,7 @@
         "requirement_digest": "f631efc848577f1fc1c9b6aa6b9f59b04a215ba95a7231962b88891a6b19a195",
         "requirement_id": "REQ-277-OBS-07",
         "requirement_text": "- REQ-277-OBS-07: Task Control and Agent Monitor MUST share read models/components and preserve existing controls. Desktop/tablet/mobile MUST expose equivalent facts, loading/error/empty/stale states, accessible keyboard interactions and evidence drilldown; mobile topology MUST offer a hierarchical list without forced horizontal tables. Browser fixtures MUST cover 1440,768,390 widths.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -1115,7 +1116,7 @@
         "requirement_digest": "d1dfaabb10de772858efc144fdae5a1d3146690544bc2b9f0620749afd326b20",
         "requirement_id": "REQ-277-OBS-08",
         "requirement_text": "- REQ-277-OBS-08: Authenticated APIs MUST enforce tenant/principal/current permission on every read and evidence dereference, with bounded pagination, snapshot expiry, replay/dedupe and source health. Monitoring GETs, reconnects and failures MUST invoke no execution/admission/billing/provider/authorization mutation, and MUST NOT become a runtime dependency of SPEC-224.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -1198,7 +1199,7 @@
         "requirement_digest": "509723b2ae3c1d13ccc9b2bb21de16650d370459e3060e8a0730f8bc9399ea3c",
         "requirement_id": "REQ-277-OBS-09",
         "requirement_text": "- REQ-277-OBS-09: Acceptance MUST cover four distinct model facets; replay/correction/cache/parent-overlap adversarial fixtures; weighted goal/live gates; cross-tenant and secret canaries; authenticated API→Web read path; UI controls and responsive evidence; and non-interference with existing execution. Mock/isolated tests MUST NOT be relabeled live Runner acceptance. All required P0/P1/P2 scope remains open until its evidence passes.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [
           {
@@ -1267,7 +1268,7 @@
         "requirement_digest": "1fb8580f7396865e873a1c8046443f788c5e245a8e9a2406ec42805c1febeee7",
         "requirement_id": "REQ-277-UWAC-01",
         "requirement_text": "- REQ-277-UWAC-01: Chat, Task Control and Mission Control MUST provide one responsive navigation/context model with Simple and Developer lenses over identical authorized projection facts. Task Control MUST show active work, blockers, next actor/action and outputs; Mission Control MUST expand cross-session/agent/harness/Skill activity with evidence drilldown.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Execute owner-scoped UW-13 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33; retain source/target/policy/evidence/time and distinct document/runtime evidence."
@@ -1289,10 +1290,44 @@
         "requirement_digest": "563d1905946a66338fa01bddc53b8a0066a481200e96359d5ed5ac44d49389e0",
         "requirement_id": "REQ-277-UWAC-02",
         "requirement_text": "- REQ-277-UWAC-02: Non-Git work MUST show source/output/Skill context with Git NOT_APPLICABLE and no Git error. Developer details MUST conditionally expose worktree/branch/SHA/logs/CI/diff/release evidence. Desktop/Tablet/Mobile MUST retain the same projection/as-of/outcome semantics, accessible controls and truthful stale/offline/unsupported states; monitoring failure MUST NOT pause execution.",
-        "source_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Execute owner-scoped UW-13 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-277-UWAC-03": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/277-task-control-experience-r1-6/spec.md#L3612"
+        ],
+        "authority_source": "specs/feature/277-task-control-experience-r1-6/spec.md#L3612",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "INTEGRATED_PARTIAL_IMPLEMENTATION",
+            "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md",
+            "source_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
+          }
+        ],
+        "implementation_status": "IMPLEMENTED_PARTIAL",
+        "next_action": "Continue missing Work/Skill entry, authorized producer contracts, full parity and actual live and production acceptance; preserve existing owner boundaries.",
+        "requirement_digest": "025106bb5626d60bae35190094de16c0a50aaf8067b21fecd4c1d79734521658",
+        "requirement_id": "REQ-277-UWAC-03",
+        "requirement_text": "- REQ-277-UWAC-03: The existing `/chat?panel=control-plane&view=full` route MUST present the current authorized Work Context, attention and next actions, running and waiting work, recently completed work, observed activity and source-backed verified deliverables before contextual development configuration. A single clear entry MUST start or continue work. CHAT, WORK, SKILLS and DEVELOP MUST use their existing authorities; ordinary chat and non-Git work MUST NOT create a DevelopmentRun. Simple and Developer views MUST preserve the same scoped execution facts and MUST NOT mutate work when switched. Simple view MUST omit technical identifiers and protected diagnostics; unavailable goals, activity or verification MUST remain explicitly unknown.",
+        "source_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "PARTIAL_DEVELOPMENT_UAT",
+            "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md",
+            "source_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
+          }
+        ],
+        "verification_method": "Focused component checks and authenticated development browser checks; see evidence for uncovered acceptance."
       },
       "REQ-35AED36D0B63": {
         "applicability": "APPLICABLE",
@@ -1411,10 +1446,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-20T23:27:53.664773Z",
+    "reconciled_at": "2026-10-27T13:01:56.640905Z",
     "sources": [
       {
-        "digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -1442,7 +1477,7 @@
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
+        "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
       }
@@ -1453,16 +1488,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 11,
+    "applicable": 0,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 442,
-    "unresolved": 442
+    "total": 445,
+    "unresolved": 445
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T00:02:33.095030Z",
+  "updated_at": "2026-10-27T13:01:56.640905Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."

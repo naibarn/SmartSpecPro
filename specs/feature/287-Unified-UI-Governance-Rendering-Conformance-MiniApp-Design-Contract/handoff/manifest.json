@@ -78,14 +78,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
-    "expected_spec_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f"
+    "expected_canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
+    "expected_spec_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0"
   },
   "continuation": {
-    "next_action": "Reconcile upstream handoffs and prepare P1 safe UI contract plan. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests.",
+    "next_action": "Reconcile upstream handoffs and prepare P1 safe UI contract plan. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
     "next_ready_workunit": "UWAC_WP33_SPEC287_DELTA_RECONCILIATION",
     "reactivation_predicate": null,
-    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
+    "resume_point": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-287, WP33/WP39). Reuse existing source/section state and valid evidence; do not restart the old plan. Keep upstream ownership reconciliation, then add scoped rendered conformance for the new lens/timeline interactions. Existing UI/render systems remain in place; no blanket redesign or completion from static tests. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -128,10 +128,10 @@
     "rationale": "The user explicitly designated SPEC-287 as the starting UI governance authority; R1.5 defines its supporting role in rendering conformance while leaving generated surface/runtime ownership with SPEC-240 and implementation status unresolved.",
     "value": "ACTIVE_SUPPORTING"
   },
-  "generation": 23,
+  "generation": 26,
   "identity": {
     "canonical_path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-    "digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+    "digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
     "metadata": {
       "implementation_last_touched_at": null,
       "last_evidence_at": "2026-10-20T23:27:53.790437Z",
@@ -145,7 +145,9 @@
     "title": "SPEC-287 — Unified UI Governance, Rendering Conformance & Mini App Design Contract"
   },
   "implementation": {
-    "checkpoint_shas": [],
+    "checkpoint_shas": [
+      "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
+    ],
     "mapping": [],
     "source_paths": [],
     "started": false,
@@ -153,7 +155,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ba0c3568f8e7fa9960f9f82b948525af8d2eb388",
+    "canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
     "integrated": true,
     "integrated_at": "2026-10-08T00:59:00Z"
   },
@@ -286,7 +288,7 @@
         "requirement_digest": "9e1035aa6d7ba44e97160847eb9db6b6c5d9c24adccdb91eedccd877108ac2e1",
         "requirement_id": "REQ-287-UWAC-01",
         "requirement_text": "- REQ-287-UWAC-01: Unified Work/Skill/Develop views MUST reuse the existing versioned Design Contract and SPEC-277 interaction semantics. Lenses and device layout MUST NOT change authorization, status meanings or evidence; no new UI renderer, action mapping protocol or parallel navigation app.",
-        "source_spec_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "source_spec_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Execute owner-scoped UW-13 UW-20 UW-22 UW-27 UW-33; retain source/target/policy/evidence/time and distinct document/runtime evidence."
@@ -308,10 +310,44 @@
         "requirement_digest": "43922ac22b42ae63a926fe41d13c690f14e61fac67d3d8a630f645c14b0a7798",
         "requirement_id": "REQ-287-UWAC-02",
         "requirement_text": "- REQ-287-UWAC-02: Acceptance MUST include rendered Desktop/Tablet/Mobile and keyboard/screen-reader checks for timeline expansion, task next actions, Skill states, no-Git context and conditional developer details, with measured loading/stale/error states. Source/CSS inspection and fixture tests alone MUST NOT certify responsive production acceptance.",
-        "source_spec_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "source_spec_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Execute owner-scoped UW-13 UW-20 UW-22 UW-27 UW-33; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      },
+      "REQ-287-UWAC-03": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2091"
+        ],
+        "authority_source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md#L2091",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "UNKNOWN",
+        "evidence_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          {
+            "kind": "INTEGRATED_PARTIAL_IMPLEMENTATION",
+            "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md",
+            "source_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
+          }
+        ],
+        "implementation_status": "IMPLEMENTED_PARTIAL",
+        "next_action": "Continue missing Work/Skill entry, authorized producer contracts, full parity and actual live and production acceptance; preserve existing owner boundaries.",
+        "requirement_digest": "a3b25cb9e90eb33fe93dbc96c5e2536647a4ef0d22034e64a60e0829320f38fb",
+        "requirement_id": "REQ-287-UWAC-03",
+        "requirement_text": "- REQ-287-UWAC-03: Verify the actual primary Task Control route at 1440×900, 820×1180 and 390×844 in Thai and English, including keyboard access, responsive overflow, loading/error/empty states and equivalent Simple/Developer facts. Capture rendered evidence and assess whether a new user can identify active work, required attention and verified results within 3–5 seconds. Separate fixture, authenticated development, production-route and real-harness evidence; no one of these establishes the others.",
+        "source_spec_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          {
+            "kind": "PARTIAL_DEVELOPMENT_UAT",
+            "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md",
+            "source_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
+          }
+        ],
+        "verification_method": "Focused component checks and authenticated development browser checks; see evidence for uncovered acceptance."
       },
       "REQ-5279118F5EDE": {
         "applicability": "APPLICABLE",
@@ -331,7 +367,7 @@
         "requirement_digest": "867b2931d741efe09da80587b77cbea796e3cc3cd56fd0a5c7c17477dba482dd",
         "requirement_id": "REQ-5279118F5EDE",
         "requirement_text": "- [ ] Every new Mini App resolves/creates a Design Contract.",
-        "source_spec_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "source_spec_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -354,7 +390,7 @@
         "requirement_digest": "df0e428fd95f3c1cb078e3873449be92e4c36db11637696f0c7b6e336f54c8e9",
         "requirement_id": "REQ-73819E491ECD",
         "requirement_text": "- [ ] Mini App passes the same core conformance gates.",
-        "source_spec_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "source_spec_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "successor_mapping": [],
         "verification_evidence": [],
         "verification_method": "Determine from current implementation and applicable lifecycle obligations."
@@ -372,7 +408,7 @@
     "reconciled_at": "2026-10-20T23:27:53.790437Z",
     "sources": [
       {
-        "digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
       },
@@ -384,7 +420,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 3,
         "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-        "source_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "source_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "value": "PROPOSED / ADDITIVE"
       }
     ],
@@ -415,14 +451,14 @@
         "excerpt": "**Status:** PROPOSED / ADDITIVE",
         "line": 3,
         "source": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-        "source_digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "source_digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "value": "PROPOSED / ADDITIVE"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "5791e4c351a6f0c2db6f3b1c165eb574f7876f7938bbd8c14b89b0a3dbeccb4f",
+        "digest": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md"
       }
@@ -433,16 +469,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 4,
+    "applicable": 5,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 207,
-    "unresolved": 207
+    "total": 208,
+    "unresolved": 208
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:39:55.264395Z",
+  "updated_at": "2026-10-27T12:59:55.082517Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],
