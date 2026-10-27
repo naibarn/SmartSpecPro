@@ -86,7 +86,7 @@ describe("Core goal readiness feedback", () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
 
     expect(screen.getByLabelText("1. เลือก Runner และ project workspace")).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /Runner runner-test · Test · workspace-test/ })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Test" })).toBeInTheDocument();
     expect(screen.getByText(/conversation นี้จะใช้ Runner\/workspace เดียวกัน/i)).toBeInTheDocument();
   });
 
