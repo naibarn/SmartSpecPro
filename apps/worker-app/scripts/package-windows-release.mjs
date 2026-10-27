@@ -91,6 +91,8 @@ function run(command, args, options = {}) {
     cwd: options.cwd ?? appDir,
     stdio: "inherit",
     env: process.env,
+    // On Windows, npm is exposed as npm.cmd and must be resolved by cmd.exe.
+    shell: process.platform === "win32",
   });
 }
 
