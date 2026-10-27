@@ -2369,6 +2369,8 @@ export function createJobControlPlane(
           [binding.runnerId, binding.runnerSessionId, binding.capabilitySnapshotId, binding.capabilitySnapshotRevision,
             binding.authorizationGrantRef, binding.approvalRef, binding.budgetReservationRef, binding.workspaceRef, binding.deadline]
             .some(value => typeof value !== "string" || !value.trim())) return false;
+        const deadline = Date.parse(binding.deadline);
+        if (!Number.isFinite(deadline) || deadline <= Date.now()) return false;
         const authorized = await repo.assertRunnerAuthorizationBinding?.({
           tenantId: input.tenantId, runnerId: binding.runnerId, runnerSessionId: binding.runnerSessionId,
           capabilitySnapshotId: binding.capabilitySnapshotId, capabilitySnapshotRevision: binding.capabilitySnapshotRevision,

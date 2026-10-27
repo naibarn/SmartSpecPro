@@ -321,6 +321,10 @@ describe("job control plane", () => {
 
     job.inputJson.manifest.policyBinding = { runnerId: "r", runnerSessionId: "s", capabilitySnapshotId: "c", capabilitySnapshotRevision: "1", authorizationGrantRef: "g", approvalRef: "a", budgetReservationRef: "b", workspaceRef: "w", deadline: new Date(Date.now() + 60_000).toISOString() };
     job.progressJson.spec224Authorization = { status: "READY_FOR_LIVE", binding: job.inputJson.manifest.policyBinding };
+    job.inputJson.manifest.policyBinding.deadline = new Date(Date.now() - 1000).toISOString();
+    expect(await controlPlane.releaseAuthorizationHold(reservation)).toBe(false);
+    expect(state.outbox).toHaveLength(0);
+    job.inputJson.manifest.policyBinding.deadline = new Date(Date.now() + 60_000).toISOString();
     expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
     expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(true);
     const lease = await controlPlane.claim({ jobId: job.id, runnerId: "r", adapter: "test" });
