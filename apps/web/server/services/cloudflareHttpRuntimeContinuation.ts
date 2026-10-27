@@ -19,8 +19,12 @@ export async function readCompensatedHttpRuntime(db: DrizzleDB, scope: Scope, ca
     ...(jobId ? [eq(workerJobs.id, jobId)] : []))).orderBy(sql`${workerJobs.createdAt} DESC`).limit(1);
   if (!job && !jobId) return null;
   const deny = (): never => { throw Error("HTTP_RUNTIME_PREVIOUS_EXECUTION_RECONCILE_REQUIRED"); };
-  if (!job || job.status !== "failed" || job.operatorReviewRequired || job.leaseExpiresAt || !job.finishedAt ||
-      job.inputJson?.candidateJobId !== candidateJobId) return deny();
+  if (!job || !["failed", "succeeded"].includes(job.status) || job.operatorReviewRequired || job.leaseExpiresAt ||
+      job.leaseOwnerToken || !job.finishedAt || job.attempt < 1 || job.maxAttempts < job.attempt ||
+      job.tenantId !== scope.tenantId || job.requestedByUserId !== scope.actorUserId ||
+      job.jobType !== HTTP_RUNTIME_JOB || job.contractVersion !== HTTP_RUNTIME_CONTRACT ||
+      job.inputJson?.projectId !== scope.projectId || job.inputJson?.candidateJobId !== candidateJobId ||
+      (job.inputJson?.operation !== undefined && job.inputJson.operation !== "runtime")) return deny();
   const [intent] = await db.select().from(systemSettings).where(and(eq(systemSettings.category, HTTP_RUNTIME_CATEGORY), eq(systemSettings.key, job.id))).limit(1);
   const [saved] = await db.select().from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_production_native_runtime_checkpoints"), eq(systemSettings.key, job.id))).limit(1);
   const value = intent?.valueJson;
@@ -28,15 +32,31 @@ export async function readCompensatedHttpRuntime(db: DrizzleDB, scope: Scope, ca
       value.actorUserId !== scope.actorUserId || value.submissionId !== job.id || value.planDigest !== job.inputJson.planDigest ||
       value.authority !== "existing-candidate-bounded-runtime-test-v1" || value.revokedAt !== null || value.trafficMutation !== false ||
       value.dnsMutation !== false || value.imagePublication !== false || value.applicationCreation !== false || value.fixtureCreation !== false ||
-      hash(value.plan) !== value.planDigest || value.plan.candidateJobId !== candidateJobId ||
+      hash(value.plan) !== value.planDigest || value.plan.candidateJobId !== candidateJobId || value.plan.operation === "application" ||
       saved?.updatedBy !== scope.actorUserId || !saved.isSensitive || !saved.value) return deny();
   let state: Record<string, any>;
   try { state = JSON.parse(decrypt(saved.value)); } catch { return deny(); }
+  const expectedStage = job.status === "succeeded" ? "TESTED_AND_COMPENSATED" : "FAILED";
+  const cleanupKeys = ["nodeStopped", "pythonStopped", "candidateRestored", "roleLoginRevoked", "m2Preserved"];
+  const output = job.outputJson as Record<string, any> | null;
+  const outputCleanup = output?.cleanup;
+  const probes = Array.isArray(output?.probes) ? output.probes : [];
+  const probeStatus = (name: string) => probes.find((probe: any) => probe?.probe === name)?.status;
   if (!state || state.jobId !== job.id || state.tenantId !== scope.tenantId || state.projectId !== scope.projectId || state.actorUserId !== scope.actorUserId ||
-      state.planDigest !== value.planDigest || state.stage !== "FAILED" || !state.rolePrepared ||
+      state.planDigest !== value.planDigest || state.stage !== expectedStage || !state.rolePrepared ||
       !["nodeStopped", "pythonStopped", "candidateRestored", "roleLoginRevoked", "m2Preserved"].every(key => state.cleanup?.[key] === true) ||
+      (job.status === "succeeded" && !cleanupKeys.every(key => outputCleanup?.[key] === true && outputCleanup[key] === state.cleanup[key])) ||
       state.cleanup.candidateVersionId !== value.plan.candidate.versionId ||
       !/^[a-f0-9-]{36}$/.test(state.cleanup.candidateDeploymentId ?? "")) return deny();
+  // A successful terminal job must carry the executor's immutable runtime
+  // receipt as well as its encrypted cleanup checkpoint. Reconcile health and
+  // database probes independently; TESTED_AND_COMPENSATED alone is not proof.
+  if (job.status === "succeeded" && (output?.jobId !== job.id || output?.candidateJobId !== candidateJobId ||
+      output.runtimeBootVerified !== true || output.imageReferencesVerified !== true || output.trafficMutation !== false ||
+      output.dnsMutation !== false || output.imagePublication !== false ||
+      probeStatus("node/health") !== 200 || probeStatus("node/database") !== 200 ||
+      probeStatus("python/health") !== 200 || probeStatus("python/database") !== 200 ||
+      state.probes?.length !== probes.length || hash(state.probes) !== hash(probes))) return deny();
   const rolePlan = applicationDatabaseRolePlanSchema.safeParse(state.rolePlan);
   if (!rolePlan.success || rolePlan.data.tenantId !== scope.tenantId || rolePlan.data.projectId !== scope.projectId ||
       state.roleSecret?.role !== applicationDatabaseRoleName(scope) || state.roleSecret?.planDigest !== applicationDatabaseRolePlanDigest(rolePlan.data) ||
