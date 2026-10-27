@@ -89,10 +89,15 @@ export function sanitizePlatformDiagnostic(value: string): string {
     .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "[redacted]");
 }
 
+export function presentCustomerDiagnostic(value: unknown, fallback: string): string {
+  if (typeof value !== "string" || !value.trim()) return fallback;
+  const safe = sanitizePlatformDiagnostic(value).trim();
+  return safe.length > 0 ? safe.slice(0, 240) : fallback;
+}
+
 export function presentCustomerError(error: unknown, fallback: string): string {
   if (!(error instanceof Error)) return fallback;
-  const safe = sanitizePlatformDiagnostic(error.message).trim();
-  return safe.length > 0 ? safe.slice(0, 240) : fallback;
+  return presentCustomerDiagnostic(error.message, fallback);
 }
 
 const DIAGNOSTIC_FIELDS = new Set(["error", "errormessage", "diagnostic", "stderr", "stack"]);

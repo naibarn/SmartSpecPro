@@ -24,6 +24,7 @@ import { buildMediaJobHandle, shouldPollAsyncJobHandle } from "../services/async
 import { classifyCreditFailure } from "../services/creditFailurePolicy";
 import { createControlPlaneJob } from "../services/jobControlPlaneGateway";
 import { createJobControlPlane } from "../services/jobControlPlane";
+import { presentCustomerDiagnostic, presentCustomerError } from "../../shared/projectIdentityPresentation";
 
 type MediaJobAssetAuth = { userId: string; tenantId: string | null };
 
@@ -237,6 +238,16 @@ type StoredMediaJobError = {
   message: string | null;
 };
 
+function presentMediaJobError(error: StoredMediaJobError): StoredMediaJobError {
+  return { ...error, message: presentCustomerDiagnostic(error.message, "Media job failed. Please try again.") };
+}
+
+function presentMediaJobStatus(status: StoredMediaJobStatus): StoredMediaJobStatus {
+  return status.status === "error" && typeof status.message === "string"
+    ? { ...status, message: presentCustomerDiagnostic(status.message, "Media job failed. Please try again.") }
+    : status;
+}
+
 function toStoredMediaJobResult(value: unknown): StoredMediaJobResult {
   const record = asRecord(value);
   const artifacts = Array.isArray(record.artifacts)
@@ -380,7 +391,7 @@ async function notifyJobFailure(
       userId: userIdNum,
       type: "alert",
       title: "Media Job Failed",
-      content: `Your media job (${jobId.slice(0, 8)}...) failed: ${errorMessage.slice(0, 200)}`,
+      content: `Your media job (${jobId.slice(0, 8)}...) failed: ${presentCustomerDiagnostic(errorMessage, "Media job failed. Please try again.")}`,
       priority: "high",
       relatedResourceType: "media_job",
       relatedResourceId: jobId,
@@ -390,7 +401,7 @@ async function notifyJobFailure(
       metadata: {
         source: "media_jobs",
         errorDetails: {
-          errorMessage: errorMessage.slice(0, 500),
+          errorMessage: presentCustomerDiagnostic(errorMessage, "Media job failed. Please try again."),
         },
       },
     });
@@ -922,8 +933,12 @@ export const mediaJobsRouter = router({
         status: status.status,
         submittedAt: meta.submittedAt,
         nextPollAt: meta.nextPollAt ?? null,
-        resultSummary: typeof status.message === "string" ? status.message : null,
-        failureReason: status.status === "error" ? (status.message ?? null) : null,
+        resultSummary: status.status === "error"
+          ? presentCustomerDiagnostic(status.message, "Media job failed. Please try again.")
+          : typeof status.message === "string" ? status.message : null,
+        failureReason: status.status === "error"
+          ? presentCustomerDiagnostic(status.message, "Media job failed. Please try again.")
+          : null,
       });
       const pollable = shouldPollAsyncJobHandle(jobHandle);
 
@@ -934,7 +949,7 @@ export const mediaJobsRouter = router({
       }
       if (status.status === "error") {
         const error = await getJobKey(input.jobId, "error");
-        return { ...status, error, jobHandle, pollable };
+        return { ...presentMediaJobStatus(status), error: error ? presentMediaJobError(error) : null, jobHandle, pollable };
       }
       return { ...status, jobHandle, pollable };
     }),
@@ -1140,8 +1155,10 @@ export const mediaJobsRouter = router({
         status: statusRaw.status,
         submittedAt: meta.submittedAt,
         nextPollAt: meta.nextPollAt ?? null,
-        resultSummary: typeof statusRaw.message === "string" ? statusRaw.message : null,
-        failureReason: errorMessage ?? null,
+        resultSummary: statusRaw.status === "error"
+          ? presentCustomerDiagnostic(statusRaw.message, "Media job failed. Please try again.")
+          : typeof statusRaw.message === "string" ? statusRaw.message : null,
+        failureReason: errorMessage ? presentCustomerDiagnostic(errorMessage, "Media job failed. Please try again.") : null,
       });
       const pollable = shouldPollAsyncJobHandle(jobHandle);
 
@@ -1149,12 +1166,12 @@ export const mediaJobsRouter = router({
         jobId,
         status: statusRaw.status || "unknown",
         progress: statusRaw.progress || 0,
-        message: statusRaw.message,
+        message: statusRaw.status === "error" ? presentCustomerDiagnostic(statusRaw.message, "Media job failed. Please try again.") : statusRaw.message,
         submittedAt: meta.submittedAt,
         jobType: spec?.jobType || "unknown",
         outputTarget: spec?.output?.target || "",
         resultUrl,
-        errorMessage,
+        errorMessage: errorMessage ? presentCustomerDiagnostic(errorMessage, "Media job failed. Please try again.") : undefined,
         jobHandle,
         pollable,
       });
@@ -1215,6 +1232,7 @@ export function registerMediaJobRoutes(app: Express) {
             const result = await getJobKey(jobId, "result");
             if (result) status = { ...status, result };
           }
+          if (status.status === "error") status = presentMediaJobStatus(status);
           const eventType =
             status.status === "done"
               ? "done"
@@ -1518,7 +1536,7 @@ export function registerMediaJobRoutes(app: Express) {
           console.error("[MediaJobs Upload] WARNING: 429 error from upload route - this should not happen!");
         }
 
-        res.status(statusCode).json({ error: e.message || "Upload failed" });
+        res.status(statusCode).json({ error: presentCustomerError(e, "Upload failed") });
       }
     },
   );
@@ -1532,7 +1550,7 @@ export function registerMediaJobRoutes(app: Express) {
       return;
     }
     if (err?.name === "MulterError" || err?.storageErrors) {
-      res.status(400).json({ error: err.message || "Upload error" });
+      res.status(400).json({ error: presentCustomerError(err, "Upload error") });
       return;
     }
     next(err);
@@ -1617,7 +1635,7 @@ export function registerMediaJobRoutes(app: Express) {
         });
       } catch (e: any) {
         console.error("[MediaJobs Upload/Init] Error:", e);
-        res.status(500).json({ error: e.message || "Init failed" });
+        res.status(500).json({ error: presentCustomerError(e, "Init failed") });
       }
     },
   );
@@ -1693,7 +1711,7 @@ export function registerMediaJobRoutes(app: Express) {
         });
       } catch (e: any) {
         console.error("[MediaJobs Upload/Complete] Error:", e);
-        res.status(500).json({ error: e.message || "Complete failed" });
+        res.status(500).json({ error: presentCustomerError(e, "Complete failed") });
       }
     },
   );
@@ -1819,7 +1837,7 @@ export function registerMediaJobRoutes(app: Express) {
         }
         const statusCode = e?.statusCode || (e?.name === "AbortError" ? 504 : 500);
         console.error("[MediaJobs ImportUrl] Error:", e?.message || e);
-        res.status(statusCode).json({ error: e?.message || "Remote asset import failed" });
+        res.status(statusCode).json({ error: presentCustomerError(e, "Remote asset import failed") });
       }
     },
   );
@@ -1843,7 +1861,7 @@ export function registerMediaJobRoutes(app: Express) {
 
       const validation = validateWebJobSpec(fullSpec, "web_backend");
       if (!validation.valid) {
-        res.status(400).json({ error: validation.errors.join("; ") });
+        res.status(400).json({ error: presentCustomerDiagnostic(validation.errors.join("; "), "Invalid media job request") });
         return;
       }
       try {
@@ -1864,13 +1882,13 @@ export function registerMediaJobRoutes(app: Express) {
         const errMsg = `Failed to dispatch to worker: ${detail}`;
         console.error("[MediaJobs] dispatch failed:", detail);
         notifyJobFailure(userId, jobId, errMsg);
-        res.status(502).json({ error: errMsg });
+        res.status(502).json({ error: presentCustomerDiagnostic(errMsg, "Failed to start media job. Please try again.") });
         return;
       }
 
       res.json({ jobId: canonicalJobId });
     } catch (e: any) {
-      res.status(500).json({ error: e.message || "Internal error" });
+      res.status(500).json({ error: presentCustomerError(e, "Internal error") });
     }
   });
 
@@ -1903,13 +1921,13 @@ export function registerMediaJobRoutes(app: Express) {
       }
       if (status.status === "error") {
         const error = await getJobKey(req.params.id, "error");
-        res.json({ ...status, error });
+        res.json({ ...presentMediaJobStatus(status), error: error ? presentMediaJobError(error) : null });
         return;
       }
 
       res.json(status);
     } catch (e: any) {
-      res.status(500).json({ error: e.message || "Internal error" });
+      res.status(500).json({ error: presentCustomerError(e, "Internal error") });
     }
   });
 
@@ -1940,7 +1958,7 @@ export function registerMediaJobRoutes(app: Express) {
       );
       res.json({ success: true });
     } catch (e: any) {
-      res.status(500).json({ error: e.message || "Internal error" });
+      res.status(500).json({ error: presentCustomerError(e, "Internal error") });
     }
   });
 

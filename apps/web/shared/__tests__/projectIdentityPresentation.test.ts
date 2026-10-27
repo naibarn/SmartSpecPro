@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   projectRunnerDisplayName,
   projectRunnerWorkspacePresentation,
+  presentCustomerDiagnostic,
   presentCustomerError,
   sanitizePlatformDiagnostic,
 } from "../projectIdentityPresentation";
@@ -84,5 +85,9 @@ describe("project identity presentation", () => {
   it("redacts credential-like values from customer diagnostics", () => {
     expect(sanitizePlatformDiagnostic("Smart Spec API key=sk-live_1234567890 Bearer abc.def.ghi"))
       .toBe("SmartAIHub API key=[redacted] Bearer [redacted]");
+    expect(presentCustomerDiagnostic(
+      "SmartSpecPro failed at /srv/smartspec/private.ts with api_key=abc123",
+      "Failed",
+    )).toBe("SmartAIHub failed at [filesystem path] with api_key=[redacted]");
   });
 });
