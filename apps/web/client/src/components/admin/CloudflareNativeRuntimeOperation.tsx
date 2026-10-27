@@ -14,6 +14,22 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
 }) {
   const { i18n } = useTranslation(), th = i18n.language?.startsWith("th");
   const text = (en: string, thai: string) => th ? thai : en;
+  const preflightHelp = (reason: string) => {
+    if (reason.includes("M1_EVIDENCE") || reason.startsWith("HTTP_APPLICATION_M1_")) return text(
+      "The accepted M1 synthetic tenant evidence could not be verified. No application job was submitted; review the existing M1 evidence record.",
+      "ตรวจหลักฐาน synthetic tenant ของ M1 ที่ผ่านการยอมรับไม่ได้ ระบบยังไม่ได้ส่ง application job ให้ตรวจหลักฐาน M1 เดิมก่อน");
+    if (reason.includes("CLOUDFLARE_READBACK")) return text(
+      "Cloudflare could not confirm the existing Candidate resources. No new resources or application job were created.",
+      "Cloudflare ยืนยันทรัพยากร Candidate เดิมไม่ได้ ระบบยังไม่ได้สร้างทรัพยากรหรือ application job ใหม่");
+    if (reason.includes("DATABASE_SCHEMA") || reason.includes("DATABASE_ROLE")) return text(
+      "The read-only database scope check failed. No role or production data was changed.",
+      "ตรวจ schema และขอบเขตฐานข้อมูลแบบอ่านอย่างเดียวไม่ผ่าน ระบบยังไม่ได้เปลี่ยน role หรือข้อมูล Production");
+    if (reason.includes("REGISTRY_UNAVAILABLE")) return text(
+      "The canonical job registry could not be read. Refresh to reconcile before submitting.",
+      "อ่าน canonical job registry ไม่สำเร็จ ให้ตรวจสถานะเดิมก่อนส่งคำขอ");
+    return text("Preflight failed at the stage shown above. No new application job was submitted.",
+      "การตรวจความพร้อมไม่ผ่านในขั้นที่ระบุด้านบน ระบบยังไม่ได้ส่ง application job ใหม่");
+  };
   const key = `smartspec:native-runtime:${tenantId}:${projectId}:${candidateJobId}`, busy = useRef(false);
   const [submission, setSubmission] = useState<ReviewedSubmission | null>(() => {
     try { return JSON.parse(sessionStorage.getItem(key) ?? "null"); } catch { return null; }
@@ -69,7 +85,7 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     catch { /* Retain the same ID so the canonical intent/job can be reconciled. */ }
     finally { busy.current = false; void applicationState.refetch(); }
   };
-  return <VStack as="section" gap={2} aria-label={text("Bounded native runtime test", "ทดสอบ native runtime แบบจำกัดขอบเขต")}>
+  return <VStack as="section" gap={2} id="cloudflare-m3-runtime-operation" aria-label={text("Bounded native runtime test", "ทดสอบ native runtime แบบจำกัดขอบเขต")}>
     <Heading level={4}>{text("Test the existing Node/Python Containers", "ทดสอบ Container Node/Python เดิม")}</Heading>
     <Text>{text("Prepares a separate application database role, encrypted bindings and the private VPC connection, then starts and tests the existing Containers. Stops both Containers, disables the test database login and restores the Candidate deployment afterward.",
       "ระบบจะเตรียม role ฐานข้อมูลแยก ผูก secret แบบเข้ารหัสและ VPC เดิม แล้วเริ่มทดสอบ Container ที่มีอยู่ เมื่อจบจะหยุด Container ปิด login ของ role ทดสอบ และคืน deployment ของ Candidate")}</Text>
@@ -114,7 +130,7 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
           : usableApplicationPending || applicationSubmission?.planDigest === appPreflight.planDigest ? text("Reconcile the same application acceptance", "ตรวจงาน application acceptance เดิม")
           : text("Authorize synthetic application acceptance", "อนุมัติทดสอบการใช้งานด้วยข้อมูลสังเคราะห์")}
       </Button>
-    </> : appPreflight ? <Text role="status">{appPreflight.reason}</Text> : null}
+    </> : appPreflight ? <VStack gap={1} role="status"><Text>{appPreflight.reason}</Text><Text>{preflightHelp(appPreflight.reason)}</Text></VStack> : null}
     {appPending && !appJob ? <Text role="status">{text("Admission pending canonical reconciliation", "กำลังตรวจผลรับงานจาก canonical registry")}: {appPending.submissionId}</Text> : null}
     {appJob ? <Text role="status"><StatusDot variant={appJob.status === "failed" ? "error" : appJob.status === "succeeded" ? "success" : "accent"}
       label={appJob.status} isPulsing={appJob.status === "running"} /> {appJob.jobId} · {appJob.status} · {appJob.attempt}/{appJob.maxAttempts}{appJob.errorCode ? ` · ${appJob.errorCode}` : ""}</Text> : null}

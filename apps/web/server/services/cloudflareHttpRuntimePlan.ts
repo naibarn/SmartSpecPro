@@ -19,6 +19,19 @@ import { CLOUDFLARE_PRODUCTION_DATABASE_JOB, CLOUDFLARE_PRODUCTION_DATABASE_CONT
 import { productionDatabaseEvidenceDigest } from "./cloudflareProductionDatabaseReconciliation";
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 type Scope = { tenantId: string; projectId: string; actorUserId: number };
+type RuntimePreflightStage = "CANDIDATE" | "M1_EVIDENCE" | "BOUNDED_RUNTIME_EVIDENCE" | "DATABASE_SCHEMA" |
+  "DATABASE_ROLE" | "RUNTIME_CONFIGURATION" | "ARTIFACT" | "CLOUDFLARE_READBACK";
+
+function safePreflightFailure(error: unknown, stage: RuntimePreflightStage) {
+  let cause: unknown = error;
+  for (let depth = 0; depth < 4 && cause; depth++, cause = (cause as { cause?: unknown }).cause) {
+    if (!(cause instanceof Error)) continue;
+    if (/^[A-Z0-9_]{5,120}$/.test(cause.message)) return cause.message;
+    const code = (cause as Error & { code?: unknown }).code;
+    if (typeof code === "string" && /^[0-9A-Z]{5}$/.test(code)) return `HTTP_RUNTIME_PREFLIGHT_${stage}_SQLSTATE_${code}`;
+  }
+  return `HTTP_RUNTIME_PREFLIGHT_${stage}_UNAVAILABLE`;
+}
 
 /** Same protected env file used by the running Linux Python service. Only
  * composeHttpRuntime's explicit application keys can leave this process.
@@ -59,6 +72,18 @@ export async function planHttpApplicationRelations(db: DrizzleDB) {
 export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJobId: string,
   reviewed?: Partial<{ artifactRef: string; workerSourceSha: string; previousRuntime: { jobId: string } | null; publication: { sourceSha: string };
     operation: "runtime" | "application" }>) {
+  let stage: RuntimePreflightStage = "CANDIDATE";
+  try {
+    return await buildHttpRuntimePlan(db, scope, candidateJobId, reviewed, next => { stage = next; });
+  } catch (error) {
+    throw Error(safePreflightFailure(error, stage));
+  }
+}
+
+async function buildHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJobId: string,
+  reviewed: Partial<{ artifactRef: string; workerSourceSha: string; previousRuntime: { jobId: string } | null; publication: { sourceSha: string };
+    operation: "runtime" | "application" }> | undefined, markStage: (stage: RuntimePreflightStage) => void) {
+  markStage("CANDIDATE");
   await assertHttpCandidateOwner(db, scope);
   const [job] = await db.execute(sql`SELECT id,"tenantId","requestedByUserId","jobType","contractVersion",status,"inputJson","outputJson","operatorReviewRequired"
     FROM worker_jobs WHERE id=${candidateJobId}`);
@@ -74,13 +99,14 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
   let previousApplicationAcceptance: Awaited<ReturnType<typeof readCompensatedHttpApplicationAcceptance>> = null;
   let priorRuntimeJobId = reviewed?.previousRuntime?.jobId;
   if (operation === "application") {
-    const m1 = await db.execute(sql`SELECT j.id, s."valueJson" AS fixture, s."updatedBy" AS fixture_owner, e."payloadJson" AS evidence
+    markStage("M1_EVIDENCE");
+    const m1 = await db.execute(sql`SELECT DISTINCT ON (j.id) j.id, s."valueJson" AS fixture, s."updatedBy" AS fixture_owner, e."payloadJson" AS evidence
       FROM worker_jobs j JOIN system_settings s ON s.category='cloudflare_production_tenant_fixtures' AND s.key=j.id
       JOIN worker_job_events e ON e."workerJobId"=j.id AND e."eventType"='PRODUCTION_DATABASE_TENANT_ISOLATION_VERIFIED'
       WHERE j."tenantId"=${scope.tenantId} AND j."requestedByUserId"=${scope.actorUserId} AND j."jobType"=${CLOUDFLARE_PRODUCTION_DATABASE_JOB}
         AND j."contractVersion"=${CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT} AND j."status"='failed' AND j."attempt"=4 AND j."maxAttempts"=4
         AND j."inputJson"->>'projectId'=${scope.projectId} AND e."payloadJson"->>'acceptance'='M1_ACCEPTED'
-      ORDER BY e."createdAt" DESC LIMIT 2`);
+      ORDER BY j.id, e."createdAt" DESC LIMIT 2`);
     if (m1.length !== 1) throw Error("HTTP_APPLICATION_M1_ACCEPTANCE_EVIDENCE_REQUIRED");
     const fixture = m1[0].fixture as Record<string, any>, observed = m1[0].evidence as Record<string, any>;
     const { evidenceDigest, ...evidenceBody } = observed ?? {};
@@ -92,6 +118,7 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
         typeof fixture.foreignTestTenantId !== "string" || fixture.foreignTestTenantId === scope.tenantId ||
         !/^tenant-codex-[a-f0-9-]{1,24}$/.test(fixture.foreignTestTenantId)) throw Error("HTTP_APPLICATION_M1_FIXTURE_EVIDENCE_INVALID");
     applicationFixture = { m1JobId: String(m1[0].id), foreignTestTenantId: fixture.foreignTestTenantId, evidenceDigest };
+    markStage("BOUNDED_RUNTIME_EVIDENCE");
     const prior = await db.execute(sql`SELECT id FROM worker_jobs WHERE "tenantId"=${scope.tenantId} AND "requestedByUserId"=${scope.actorUserId}
       AND "jobType"='cloudflare.production.native.runtime.verify' AND "contractVersion"='cloudflare-native-runtime-verify-v1'
       AND "status"='succeeded' AND "inputJson"->>'candidateJobId'=${candidateJobId}
@@ -101,6 +128,7 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
     priorRuntimeJobId = String(prior[0].id);
     previousApplicationAcceptance = await readCompensatedHttpApplicationAcceptance(db, scope, candidateJobId);
   }
+  markStage("DATABASE_SCHEMA");
   const network = await readHttpDatabaseNetwork(db, scope), relations = await planHttpApplicationRelations(db);
   const unsafeSchemas = await db.execute(sql`SELECT 1 FROM pg_namespace WHERE nspname NOT LIKE 'pg_%' AND nspname<>'information_schema'
     AND EXISTS(SELECT 1 FROM aclexplode(COALESCE(nspacl,acldefault('n',nspowner))) a WHERE a.grantee=0 AND a.privilege_type='CREATE')`);
@@ -108,6 +136,7 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
     WHERE p.prosecdef AND n.nspname NOT IN ('pg_catalog','information_schema')
     AND EXISTS(SELECT 1 FROM aclexplode(COALESCE(p.proacl,acldefault('f',p.proowner))) a WHERE a.grantee=0 AND a.privilege_type='EXECUTE')`);
   if (unsafeSchemas.length || unsafeDefiners.length) throw Error("HTTP_RUNTIME_PUBLIC_PRIVILEGE_BASELINE_DENIED");
+  markStage("DATABASE_ROLE");
   const oldRole = await db.execute(sql`SELECT 1 FROM pg_roles WHERE rolname=${applicationDatabaseRoleName(scope)}`);
   const previousRuntime = oldRole.length ? await readCompensatedHttpRuntime(db, scope, candidateJobId, priorRuntimeJobId) : null;
   if (oldRole.length && !previousRuntime) throw Error("HTTP_RUNTIME_EXISTING_APPLICATION_ROLE_RECONCILE_REQUIRED");
@@ -126,6 +155,7 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
   if (knownHttpNodeImageFailure(desired.settings.node.image)) throw Error("HTTP_RUNTIME_CORRECTED_PUBLISHED_IMAGES_REQUIRED");
   if (operation === "runtime" && previousRuntime && desired.settings.node.image === pkg.settings.node.image)
     throw Error("HTTP_RUNTIME_CORRECTED_PUBLISHED_IMAGES_REQUIRED");
+  markStage("RUNTIME_CONFIGURATION");
   const environments = await loadHttpRuntimeEnvironments();
   if (operation === "application" && (!environments.nodeEnvironment.JWT_SECRET ||
       environments.nodeEnvironment.JWT_SECRET !== environments.pythonEnvironment.JWT_SECRET))
@@ -141,6 +171,7 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
   // its fingerprint, never the secret values or the placeholder role password.
   const { DATABASE_URL: _nodeUrl, ...node } = composition.secrets.node;
   const { DATABASE_URL: _pythonUrl, ...python } = composition.secrets.python;
+  markStage("ARTIFACT");
   const artifact = reviewed?.artifactRef && reviewed.workerSourceSha ? await resolveCloudflareStagingArtifact(reviewed.artifactRef, reviewed.workerSourceSha)
     : await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) throw Error("HTTP_RUNTIME_ARTIFACT_REQUIRED");
@@ -149,6 +180,7 @@ export async function getHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJ
   const bundle = await resolveCloudflareStagingModules(artifact.artifactRef, artifact.sourceSha);
   const module = bundle?.moduleFiles[CANDIDATE_MODULE];
   if (!module || !Buffer.from(module.bytes).includes(Buffer.from("ApplicationDatabaseBridge"))) throw Error("HTTP_RUNTIME_VPC_ARTIFACT_REQUIRED");
+  markStage("CLOUDFLARE_READBACK");
   const access = await withCloudflareDeploymentCredential(db, { identity: { ...scope, provider: "cloudflare", environment: "production" },
     credentialRef: pkg.target.credentialRef }, token => verifyHttpCandidateProviderReceipt({ receipt: candidate, accountRef: pkg.target.accountRef, token,
       restoredBaseline: previousRuntime?.restoredBaseline }));

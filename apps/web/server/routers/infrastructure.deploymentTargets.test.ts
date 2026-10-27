@@ -6,6 +6,7 @@ vi.mock("../db", () => ({ getDb: getDbMock }));
 import { infrastructureRouter } from "./infrastructure";
 import { projectWikiHostedRoutePreflightProviders } from "../services/projectWikiHostedRoutePreflight";
 import { deploymentCredentialRef } from "../services/providerDeploymentTargetAuthority";
+import * as httpRuntimeAdmission from "../services/cloudflareHttpRuntimeAdmission";
 
 const tenantId = "8de1a509-6177-49b7-b57d-5d3b5228d75f";
 const projectId = "2fe8a309-8be6-4370-9813-8fb9cc4645a0";
@@ -35,6 +36,17 @@ describe("infrastructure deployment target project selector", () => {
       await expect(caller.getCloudflareHttpRuntimeOperation({ tenantId: request.tenantId, projectId, candidateJobId: request.candidateJobId })).rejects.toMatchObject({ code: "FORBIDDEN" });
     }
     expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it("returns a sanitized canonical registry stage for preflight lookup failures", async () => {
+    getDbMock.mockResolvedValue({});
+    vi.spyOn(httpRuntimeAdmission, "readHttpRuntimeOperation").mockRejectedValueOnce(new Error("database driver detail must not reach the UI"));
+    const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },
+      tenantId: "tenant-ZCSKEM9s" } as any);
+    const result = await caller.getCloudflareHttpRuntimeOperation({ tenantId: "tenant-ZCSKEM9s", projectId,
+      candidateJobId: "22222222-2222-4222-8222-222222222222", operation: "application" });
+    expect(result.preflight).toMatchObject({ ready: false, reason: "HTTP_RUNTIME_PREFLIGHT_REGISTRY_UNAVAILABLE" });
+    expect(JSON.stringify(result)).not.toContain("database driver detail");
   });
 
   it("accepts the complete automatic activation request through the serving API parser", async () => {

@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   resumeProductionDatabase: vi.fn(),
   ingressPreflight: null as any,
   ingressJob: null as any,
+  migrationMission: { migrationMode: "FIRST_MIGRATION", state: "IN_PROGRESS", currentMilestone: "M3_APPLICATION_ACCEPTANCE" } as any,
   queueProductionIngress: vi.fn(),
   verifyIngressBrowser:vi.fn(async()=>({passed:true})),
   databaseAdmissionUnknownOnce: false,
@@ -143,7 +144,7 @@ vi.mock("@/lib/trpc", () => ({
         isPending: false, error: null,
       }) },
       getCloudflareProductionIngressPreflight: {useQuery:()=>({data:mocks.ingressPreflight,isLoading:false,refetch:vi.fn()})},
-      getCloudflareMigrationMission: {useQuery:()=>({data:null,refetch:vi.fn()})},
+      getCloudflareMigrationMission: {useQuery:()=>({data:mocks.migrationMission,refetch:vi.fn()})},
       getLatestCloudflareProductionIngressJob: {useQuery:()=>({data:mocks.ingressJob,refetch:vi.fn()})},
       getCloudflareProductionIngressRollbackPreflight: {useQuery:()=>({data:null,refetch:vi.fn()})},
       queueCloudflareProductionIngress: {useMutation:()=>({isPending:false,mutate:mocks.queueProductionIngress,error:null})},
@@ -239,6 +240,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.latestProductionDatabaseJob = null;
     mocks.ingressPreflight = null;
     mocks.ingressJob = null;
+    mocks.migrationMission = { migrationMode: "FIRST_MIGRATION", state: "IN_PROGRESS", currentMilestone: "M3_APPLICATION_ACCEPTANCE" };
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
     mocks.productionTunnels = [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }];
@@ -257,6 +259,15 @@ describe("AdminDeploymentTargets", () => {
     mocks.stagingRuntime = { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", activation: "disabled", transport: "all", missing: ["JOB_WORKFLOW", "WORKER_APP"], jobHandlerConfigured: true, controlPlaneConfigured: false, reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" };
     mocks.originConfiguration = null;
     mocks.originConfigurationError = false;
+  });
+
+  it("puts the current M3 milestone first and keeps detailed provider history under advanced diagnostics", async () => {
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+    expect(screen.getByRole("region", { name: "Cloudflare migration control center" })).toHaveTextContent("M3_APPLICATION_ACCEPTANCE");
+    expect(screen.getByRole("link", { name: "Open the current M3 acceptance action" })).toHaveAttribute("href", "#cloudflare-m3-runtime-operation");
+    expect(screen.getByText("History and advanced diagnostics").closest("details")).not.toHaveAttribute("open");
   });
 
   it("defaults to active business tenants while preserving explicit access to other records", async () => {

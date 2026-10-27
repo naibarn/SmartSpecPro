@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 const state = vi.hoisted(() => ({ job: null as any, packet: null as any, target: null as any, settings: null as any,
-  module: true, verified: true, unsafe: false, oldRole: false, prior: null as any, previousApplicationAcceptance: null as any,
+  module: true, verified: true, providerFailure: false, unsafe: false, oldRole: false, prior: null as any, previousApplicationAcceptance: null as any,
   desired: null as any, m1Fixture: null as any, m1Evidence: null as any }));
 const scope = { tenantId: "tenant-fixture", projectId: "project-fixture", actorUserId: 17 };
 const secret = "fixture-application-secret-with-at-least-32-characters";
@@ -17,7 +17,10 @@ vi.mock("./cloudflareHttpDatabaseNetwork", () => ({ readHttpDatabaseNetwork: asy
 vi.mock("./cloudflareStagingArtifactAuthority", () => ({ resolveLatestPublishedCloudflareStagingArtifact: async () => ({ artifactRef: `sha256:${"a".repeat(64)}`, sourceSha: "b".repeat(40) }),
   resolveCloudflareStagingArtifact: async (ref: string, sha: string) => ({ artifactRef: ref, sourceSha: sha }),
   resolveCloudflareStagingModules: async () => ({ moduleFiles: state.module ? { "applicationHttpCandidateEntrypoint.js": { bytes: Buffer.from("export class ApplicationDatabaseBridge {}") } } : {} }) }));
-vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: async () => ({ status: "CONFIGURED", value: { verified: state.verified } }) }));
+vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: async () => {
+  if (state.providerFailure) throw Error("provider transport detail that must not reach the UI");
+  return { status: "CONFIGURED", value: { verified: state.verified } };
+} }));
 vi.mock("./cloudflareHttpRuntimeContinuation", () => ({ readCompensatedHttpRuntime: async () => state.prior,
   readCompensatedHttpApplicationAcceptance: async () => state.previousApplicationAcceptance }));
 vi.mock("./cloudflareApplicationDatabaseRole", async original => ({ ...(await original<any>()), assertReusableApplicationDatabaseRole: async () => {} }));
@@ -27,7 +30,7 @@ import { productionDatabaseEvidenceDigest } from "./cloudflareProductionDatabase
 beforeEach(() => {
   Object.assign(process.env, { JWT_SECRET: secret, API_KEY_HMAC_SECRET: secret, LLM_ENCRYPTION_KEY: secret, CONTROL_PLANE_API_KEY: secret,
     CLOUDFLARE_PRODUCTION_EXECUTOR_ID: "fixture-executor" });
-  state.module = true; state.verified = true; state.unsafe = false; state.oldRole = false; state.prior = null; state.previousApplicationAcceptance = null;
+  state.module = true; state.verified = true; state.providerFailure = false; state.unsafe = false; state.oldRole = false; state.prior = null; state.previousApplicationAcceptance = null;
   state.desired = null; state.m1Fixture = null; state.m1Evidence = null;
   const namespace = httpApplicationNamespace(scope.tenantId, scope.projectId), prod = httpApplicationNamespace(scope.tenantId, scope.projectId, "production");
   const account = "a".repeat(32), image = (runtime: string) => `registry.cloudflare.com/${account}/${namespace}-${runtime}-http@sha256:${"d".repeat(64)}`;
@@ -117,6 +120,15 @@ describe("non-mutating exact native runtime review", () => {
       workerSourceSha: "b".repeat(40), restoredBaseline: { deploymentId: "77777777-7777-4777-8777-777777777777", versionId: state.job.outputJson.versionId } };
     const retry = await getHttpRuntimePlan(db(true), scope, state.job.id, { operation: "application" });
     expect(retry.plan.previousApplicationAcceptance?.jobId).toBe(state.previousApplicationAcceptance.jobId);
+  });
+  it("reports a safe preflight phase when a non-coded Cloudflare readback failure is wrapped", async () => {
+    state.providerFailure = true;
+    await expect(getHttpRuntimePlan(db(), scope, state.job.id)).rejects.toThrow("HTTP_RUNTIME_PREFLIGHT_CLOUDFLARE_READBACK_UNAVAILABLE");
+    await expect(getHttpRuntimePlan(db(), scope, state.job.id)).rejects.not.toThrow("provider transport detail");
+  });
+  it("preserves sanitized provider HTTP status diagnostics instead of collapsing them", async () => {
+    state.verified = false;
+    await expect(getHttpRuntimePlan(db(), scope, state.job.id)).rejects.toThrow("HTTP_RUNTIME_CANDIDATE_READBACK_REQUIRED");
   });
   it("rejects a known incompatible published image before spending another runtime attempt", async () => {
     state.settings.node.image = state.settings.node.image.replace("d".repeat(64), "d8d5b38fca643300119684f11576b4b94c5bfa6e043f75e6a3bf7f471690140f");

@@ -15,6 +15,7 @@ import { Check, ChevronsUpDown } from "lucide-react";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
+import { Section } from "@astryxdesign/core/Section";
 import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
 import { Selector } from "@astryxdesign/core/Selector";
 import { CloudflareImagePublication } from "./CloudflareImagePublication";
@@ -778,6 +779,27 @@ export default function AdminDeploymentTargets() {
         </VStack>
       </HStack>
 
+      {validScope && environment === "production" ? <Section variant="muted" role="region" aria-label={text("Cloudflare migration control center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}>
+        <VStack gap={2}>
+          <h2>{text("Cloudflare Migration Control Center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}</h2>
+          <p>{text("Current milestone", "ขั้นปัจจุบัน")}: {migrationMission.data?.currentMilestone ?? text("Checking migration state…", "กำลังตรวจสถานะการย้ายระบบ…")}</p>
+          <HStack gap={3} wrap="wrap">
+            <Badge variant={productionDatabaseObservation?.tenantIsolationVerified ? "default" : "secondary"}>M1 {productionDatabaseObservation?.tenantIsolationVerified ? "ACCEPTED" : "IN PROGRESS"}</Badge>
+            <Badge variant={acceptedIngress ? "default" : "secondary"}>M2 {acceptedIngress ? "ACCEPTED" : "IN PROGRESS"}</Badge>
+            <Badge variant="secondary">M3 {text("APPLICATION ACCEPTANCE", "ตรวจรับการใช้งานแอป")}</Badge>
+          </HStack>
+          <p>{text("Linux remains available as the application fallback. The accepted Cloudflare ingress stays unchanged while M3 tests run.",
+            "Linux ยังคงพร้อมเป็นระบบสำรอง และทางเข้า Cloudflare ที่ผ่านการตรวจรับแล้วจะไม่เปลี่ยนระหว่างทดสอบ M3")}</p>
+          <p><a href="#cloudflare-m3-runtime-operation">{text("Open the current M3 acceptance action", "ไปยังขั้นตรวจรับ M3 ปัจจุบัน")}</a></p>
+          <details>
+            <summary>{text("History and advanced diagnostics", "ประวัติและรายละเอียดทางเทคนิค")}</summary>
+            <p>{text("M1 database and tenant isolation evidence, M2 ingress receipts, provider inventory, and canonical job history remain below.",
+              "หลักฐานฐานข้อมูลและการแยก tenant ของ M1, receipt ทางเข้าระบบ M2, inventory ของผู้ให้บริการ และประวัติ canonical job อยู่ด้านล่าง")}</p>
+            <p><a href="#cloudflare-provider-diagnostics">{text("Jump to provider and job diagnostics", "ไปยังรายละเอียด provider และ job")}</a></p>
+          </details>
+        </VStack>
+      </Section> : null}
+
       <VStack gap={1}>
         <CheckboxInput
           label={text("Show test, system, and inactive tenants", "แสดง tenant ทดสอบ ระบบ และที่ไม่ได้ใช้งาน")}
@@ -898,7 +920,7 @@ export default function AdminDeploymentTargets() {
             </VStack>;
           })() : null}
           <Divider />
-          <strong>{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
+          <strong id="cloudflare-provider-diagnostics">{text("What Cloudflare has actually provisioned", "ทรัพยากรที่มีอยู่จริงบน Cloudflare")}</strong>
           {productionDatabaseObservation?.databaseConnectionVerified && productionDatabaseJobData?.jobId ?
             <CloudflareMigrationPreparation key={`migration-preparation:${scope.tenantId}:${scope.projectId}`} tenantId={scope.tenantId}
               projectId={scope.projectId} jobId={productionDatabaseJobData.jobId} databaseAccepted={productionDatabaseObservation.tenantIsolationVerified} />
