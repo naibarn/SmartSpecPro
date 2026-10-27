@@ -74,6 +74,7 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
     {replacementForSourceSha ? <Text role="status">{text("The previous Node image contains 22.22.3; the application requires 22.23.4 or newer in Node 22. This publishes corrected images only. Existing Containers and production traffic remain unchanged.",
       "image Node เดิมเป็น 22.22.3 แต่แอปต้องใช้ 22.23.4 ขึ้นไปใน Node 22 ขั้นนี้เผยแพร่ image รุ่นแก้ไขเท่านั้น ใช้ Container เดิมและไม่เปลี่ยน traffic จริง")}</Text> : null}
     {replacementForSourceSha && preflight.data?.ready ? <Text>{text("Corrected source", "Source รุ่นแก้ไข")}: <code>{preflight.data.sourceSha}</code></Text> : null}
+    {preflight.data?.ready ? <Text>{text("Reviewed plan digest", "Digest ของแผนที่ตรวจแล้ว")}: <code>{preflight.data.planDigest}</code></Text> : null}
     <Text>{text("Publish two immutable images from one verified source. Production traffic continues through the accepted Linux bridge until runtime acceptance.",
       "เผยแพร่ image สองตัวจาก source ที่ตรวจสอบแล้วชุดเดียวกัน ระหว่างทดสอบ runtime ระบบจริงยังใช้ทางเข้า Linux ที่ผ่านการตรวจรับแล้ว")}</Text>
     {baselinePair ? <Text>{text("Last verified published source", "Source ล่าสุดที่เผยแพร่และตรวจสอบแล้ว")}: <code>{baselinePair.sourceSha}</code> · {text("Registry account", "บัญชี registry")}: <code>{baseline.data?.accountRef}</code></Text>

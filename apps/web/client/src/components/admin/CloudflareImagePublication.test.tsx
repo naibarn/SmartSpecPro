@@ -24,6 +24,7 @@ describe("image publication Owner action", () => {
   it("shows the reviewed source and submits one scoped pair without traffic activation", async () => {
     render(<CloudflareImagePublication {...props} />);
     expect(screen.getByText("a".repeat(40))).toBeInTheDocument();
+    expect(screen.getByText("c".repeat(64))).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Authorize and publish Node/Python images" }));
     expect(state.mutate).toHaveBeenCalledTimes(1);
     expect(state.mutate.mock.calls[0][0]).toEqual({ ...props, submissionId: expect.any(String), planDigest: "c".repeat(64) });
