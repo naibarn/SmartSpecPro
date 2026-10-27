@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
 - Next action: Complete Task Control Goal admission: startWorkspaceRun currently creates no goalId and calls job-scoped advanceStart; buildSpec224GoalGrantApprovalPayload has no production caller. Connect the existing Approval Authority and delegated authorization without widening a job approval. In parallel the Windows owner must refresh the expired Codex task probe and select an authorized isolated workspace on an approved source; then execute the bounded live two-phase pilot. See handoff/evidence/spec224-live-preflight-20261028.md. No live dispatch or Final Verify has been observed.
-- Manifest generation: 209
+- Manifest generation: 212
 
 ## Source-declared status and relationship claims
 
