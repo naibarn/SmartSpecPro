@@ -30,9 +30,9 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       await client.unsafe('CREATE TABLE tenant_identity_actions (id varchar(36) PRIMARY KEY, "userId" integer, "sourceTenantId" varchar(36), phase varchar(40))');
       process.env.DATABASE_URL = fixture.databaseUrl;
       const [{ createJobControlPlane }, { createDevelopmentRunService, createPersistedDevelopmentRun, defaultDevelopmentRunPersistenceAdapter },
-        { buildDevelopmentRun }, { reconcileAndContinueNextPhase }, { defaultJobExecutorRegistry }] = await Promise.all([
+        { buildDevelopmentRun }, { defaultJobExecutorRegistry }] = await Promise.all([
         import("../jobControlPlane"), import("../spec224DevelopmentRunPersistence"),
-        import("../spec224DevelopmentRunContracts"), import("../spec224PhaseController"), import("../jobExecutorRegistry"),
+        import("../spec224DevelopmentRunContracts"), import("../jobExecutorRegistry"),
       ]);
       const runId = randomUUID(), tenantId = randomUUID(), actorId = 22401;
       const controlPlane = createJobControlPlane();
@@ -50,9 +50,26 @@ describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — 
       const persistedOutcome = await createDevelopmentRunService(defaultDevelopmentRunPersistenceAdapter)
         .reconcile({ runId, tenantId, actorId });
       expect(persistedOutcome.action).toBe("CONTINUE");
-      const result = await reconcileAndContinueNextPhase({ ...base, runId, tenantId, actorId,
-        expectedRevision: 0, expectedFencingVersion: first.run.fencingVersion,
-        idempotencyKey: `held-phase:${runId}`, planRevision: 2, deferredAdmission: true });
+      const childScript = `
+        const [{ reconcileAndContinueNextPhase }, { defaultDevelopmentRunPersistenceAdapter }, { closeDb }] = await Promise.all([
+          import('./server/services/spec224PhaseController.ts'),
+          import('./server/services/spec224DevelopmentRunPersistence.ts'), import('./server/db.ts')]);
+        const result = await reconcileAndContinueNextPhase({
+          runId: process.env.TEST_RUN_ID, tenantId: process.env.TEST_TENANT_ID, actorId: 22401,
+          provider: 'codex', runtime: 'local_runner', planId: 'plan-' + process.env.TEST_RUN_ID,
+          planRevision: 2, skillIds: [], requestedCapabilities: ['workspace.edit'],
+          authorizationScope: 'spec224.development.run', persistence: defaultDevelopmentRunPersistenceAdapter,
+          expectedRevision: 0, expectedFencingVersion: 1,
+          idempotencyKey: 'held-phase:' + process.env.TEST_RUN_ID, deferredAdmission: true });
+        process.stdout.write('RESULT:' + JSON.stringify(result) + '\\n');
+        await closeDb();
+      `;
+      const child = await execFileAsync(process.execPath, ["--import", "tsx", "--input-type=module", "--eval", childScript], {
+        cwd: process.cwd(), env: { ...process.env, TEST_RUN_ID: runId, TEST_TENANT_ID: tenantId }, timeout: 20_000,
+      });
+      const resultLine = child.stdout.split(/\r?\n/).find(line => line.startsWith("RESULT:"));
+      if (!resultLine) throw new Error("SPEC224_HELD_CONTINUATION_RESULT_MISSING");
+      const result = JSON.parse(resultLine.slice("RESULT:".length));
       expect(result.continuation?.accepted).toBe(true);
       expect(result.reconcile.reason).toBe("worker_job_already_reconciled");
       const jobId = result.continuation!.jobRef.jobId;
