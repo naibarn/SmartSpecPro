@@ -191,6 +191,40 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.runnerInputStaging.preStageRunnerInput).not.toHaveBeenCalled();
     expect(mocks.advanceStart).toHaveBeenCalledWith(expect.objectContaining({ runId, runnerId: "runner-a" }));
   });
+
+  it("continues an existing owner-scoped Run by ID without creating a replacement", async () => {
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({ workspace: {
+      runnerId: "runner-a", workspaceId: "workspace-a",
+    } });
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId: "run-existing", workerJobId: "job-existing", state: "BLOCKED_RECOVERABLE", workspaceId: "workspace-a",
+    } });
+    mocks.advanceStart.mockResolvedValueOnce({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_REQUIRED"] });
+
+    const result = await (spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId: "run-existing", budgetCapMinorUnits: 100 },
+    });
+
+    expect(result).toMatchObject({ runId: "run-existing", jobId: "job-existing", resumedExistingRun: true, dispatchStatus: "PENDING_AUTHORIZATION" });
+    expect(mocks.developmentRunService.get).toHaveBeenCalledWith({ tenantId: "tenant-acme", actorId: 42, runId: "run-existing" });
+    expect(mocks.advanceStart).toHaveBeenCalledWith(expect.objectContaining({ runId: "run-existing", runnerId: "runner-a", budgetCapMinorUnits: 100 }));
+    expect(mocks.createRun).not.toHaveBeenCalled();
+  });
+
+  it("does not resume a Run that belongs to another conversation workspace", async () => {
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValueOnce({ workspace: {
+      runnerId: "runner-a", workspaceId: "workspace-a",
+    } });
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: {
+      runId: "run-other", workerJobId: "job-other", state: "DISCOVERY", workspaceId: "workspace-b",
+    } });
+
+    await expect((spec226DevelopmentControlRouter.resumeWorkspaceRun as unknown as Function)({
+      ctx: CTX, input: { conversationId: 233, runId: "run-other", budgetCapMinorUnits: 100 },
+    })).rejects.toMatchObject({ message: "RUN_WORKSPACE_BINDING_MISMATCH" });
+    expect(mocks.advanceStart).not.toHaveBeenCalled();
+  });
+
   it("lists candidates for a different authorized owner and bound repository", async () => {
     const appId = "app_synthetic_second";
     const repository = { mode: "USER_OWNED", owner: "synthetic-owner", name: "another-private-app", url: "https://github.com/synthetic-owner/another-private-app", revision: "c".repeat(40) };

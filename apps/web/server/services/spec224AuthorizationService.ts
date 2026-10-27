@@ -789,6 +789,13 @@ export function createSpec224AuthorizationService() {
         let current = await status();
         if (current.status === "NOT_CONFIGURED" && current.reasons.includes("RUN_CONFIGURATION_INCOMPLETE")) {
           const interrupted = await loadRun(input.context, input.runId);
+          if (interrupted.run.workerJobId) {
+            const resumed = await createJobControlPlane(defaultJobControlPlaneRepository).resumeUnstartedAuthorizationHold({
+              jobId: interrupted.run.workerJobId, runId: input.runId,
+              tenantId: input.context.tenantId, requestedByUserId: input.context.actorId,
+            });
+            if (resumed?.resumed) current = await status();
+          }
           if (!interrupted.attemptId && interrupted.run.workerJobId) {
             await createJobControlPlane().prepareAuthorizationAttempt({ jobId: interrupted.run.workerJobId,
               tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
@@ -807,7 +814,17 @@ export function createSpec224AuthorizationService() {
           return current;
         }
         if (!["APPROVAL_REQUIRED", "BUDGET_REQUIRED"].includes(current.status)) return current;
-        const loaded = await loadRun(input.context, input.runId);
+        let loaded = await loadRun(input.context, input.runId);
+        if (loaded.run.workerJobId) {
+          const resumed = await createJobControlPlane(defaultJobControlPlaneRepository).resumeUnstartedAuthorizationHold({
+            jobId: loaded.run.workerJobId, runId: input.runId,
+            tenantId: input.context.tenantId, requestedByUserId: input.context.actorId,
+          });
+          if (resumed?.resumed) {
+            current = await status();
+            loaded = await loadRun(input.context, input.runId);
+          }
+        }
         const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId,
           sourceCommit: /^git:([a-f0-9]{40})$/i.exec(loaded.run.baseRevision)?.[1] });
         if (!readiness.ready) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [readiness.code] };

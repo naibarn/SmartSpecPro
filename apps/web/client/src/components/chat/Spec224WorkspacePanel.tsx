@@ -160,6 +160,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   );
   const runnerReadiness = readinessQuery.data ?? preparation?.runnerReadiness;
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
+  const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const workspaces = workspacesQuery.data?.workspaces ?? [];
   const boundWorkspace = workspaceQuery.data?.workspace;
   const specSet = workspaceQuery.data?.specSet;
@@ -383,6 +384,25 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       toast.success(`เริ่มสร้าง Mini App แล้ว · ${result.previewUrl}`);
     } catch (error) {
       toast.error(presentCustomerError(error, "เริ่มสร้าง Mini App ไม่สำเร็จ"));
+    }
+  }
+
+  async function resumeExistingRun(runId: string) {
+    if (!conversationId || resumeRunMutation.isPending) return;
+    try {
+      const result = await resumeRunMutation.mutateAsync({ conversationId, runId, budgetCapMinorUnits });
+      await workspaceQuery.refetch();
+      if (result.dispatchStatus === "ENQUEUED") {
+        toast.success(`ทำงานต่อจาก DevelopmentRun เดิมแล้ว · ${result.runId}`);
+      } else if (result.dispatchStatus === "PENDING_AUTHORIZATION") {
+        const reasons = result.authorization.reasons.join(", ") || result.authorization.status;
+        toast.info(`DevelopmentRun เดิมยังรอ authorization · ${reasons}`);
+      } else {
+        const reasons = result.authorization.reasons.join(", ") || result.authorization.status;
+        toast.error(`ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasons}`);
+      }
+    } catch (error) {
+      toast.error(presentCustomerError(error, "ทำ DevelopmentRun เดิมต่อไม่สำเร็จ"));
     }
   }
 
@@ -610,6 +630,13 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
                     {run.workPackageExternalId ?? "Prompt"}
                     {run.specSetRevision ? ` · Spec r${run.specSetRevision}` : ""}
                     {` · ${developmentRunStateLabel(run.state)} · ${run.runId}`}
+                    {!(["COMPLETED", "CANCELLED"].includes(run.state)) ? (
+                      <Button type="button" variant="outline" size="sm" className="ml-2"
+                        disabled={resumeRunMutation.isPending || !boundWorkspace}
+                        onClick={() => void resumeExistingRun(run.runId)}>
+                        {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : "ทำงานเดิมต่อ"}
+                      </Button>
+                    ) : null}
                   </li>
                 ))}
               </ul>

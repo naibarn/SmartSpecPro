@@ -183,6 +183,8 @@ function makeRepository() {
         updateJob: async input => {
           const row = jobs.get(input.jobId);
           if (!row || row.status !== input.expectedStatus) return null;
+          if (input.expectedTenantId !== undefined && row.tenantId !== input.expectedTenantId) return null;
+          if (input.expectedRequestedByUserId !== undefined && row.requestedByUserId !== input.expectedRequestedByUserId) return null;
           if (
             input.expectedAttempt !== undefined &&
             row.attempt !== input.expectedAttempt
@@ -203,7 +205,9 @@ function makeRepository() {
               input.allowTerminalRecovery === true &&
               ["failed", "expired"].includes(row.status) &&
               input.values.status === "queued";
-            if (!terminalRecovery)
+            const authorizationHoldRecovery = input.allowAuthorizationHoldRecovery === true &&
+              row.status === "expired" && input.values.status === "pending";
+            if (!terminalRecovery && !authorizationHoldRecovery)
               assertCanonicalJobTransition(row.status, input.values.status);
             transitions.push(`${row.status}->${input.values.status}`);
           }
@@ -338,6 +342,64 @@ describe("job control plane", () => {
     }, { deferredAdmission: true, canonicalJobId: "job-b" });
     expect(await controlPlane.releaseAuthorizationHold({ jobId: created.jobId, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(false);
     expect(state.jobs.get(created.jobId)?.status).toBe("pending");
+    expect(state.outbox).toHaveLength(0);
+  });
+
+  it("keeps an unstarted SPEC-224 authorization hold from expiring and resumes the same job without dispatch", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: "deferred-spec224-expiry",
+      input: { manifest: {}, spec224Run: { runId: "run-a", tenantId: "tenant-a", actorId: 1, workerJobId: "job-a" } },
+    }, { deferredAdmission: true, canonicalJobId: "job-a" });
+    const job = state.jobs.get(created.jobId)!;
+    job.progressJson.spec224 = { runId: "run-a", tenantId: "tenant-a", actorId: 1, workerJobId: "job-a" };
+    job.createdAt = new Date(Date.now() - 60 * 60_000);
+    await controlPlane.prepareAuthorizationAttempt({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 });
+
+    await expect(controlPlane.expireDeadline(job.id, new Date())).resolves.toBe("ignored");
+    expect(job.status).toBe("pending");
+
+    job.status = "expired";
+    job.statusReason = "job_deadline";
+    job.errorCode = "JOB_DEADLINE_EXPIRED";
+    job.finishedAt = new Date();
+    state.attempts[0].finishedAt = new Date();
+    const recovered = await controlPlane.resumeUnstartedAuthorizationHold({ jobId: job.id, runId: "run-a", tenantId: "tenant-a", requestedByUserId: 1 });
+    expect(recovered).toMatchObject({ resumed: true });
+    expect(job).toMatchObject({ status: "pending", attempt: 2, errorCode: null, finishedAt: null });
+    expect(state.attempts).toHaveLength(2);
+    expect(state.outbox).toHaveLength(0);
+    expect(state.events.at(-1)).toMatchObject({ eventType: "SPEC224_AUTHORIZATION_HOLD_RESUMED" });
+
+    const repeated = await controlPlane.resumeUnstartedAuthorizationHold({ jobId: job.id, runId: "run-a", tenantId: "tenant-a", requestedByUserId: 1 });
+    expect(repeated).toMatchObject({ attemptId: recovered?.attemptId, resumed: false });
+    expect(state.attempts).toHaveLength(2);
+    expect(state.outbox).toHaveLength(0);
+  });
+
+  it("refuses to resume an expired SPEC-224 job after dispatch, under another owner, or for another run", async () => {
+    const state = makeRepository();
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({
+      ...definition,
+      jobType: "external_agent_task",
+      idempotencyKey: "deferred-spec224-expiry-guards",
+      input: { manifest: {}, spec224Run: { runId: "run-a", tenantId: "tenant-a", actorId: 1, workerJobId: "job-a" } },
+    }, { deferredAdmission: true, canonicalJobId: "job-a" });
+    const job = state.jobs.get(created.jobId)!;
+    job.progressJson.spec224 = { runId: "run-a", tenantId: "tenant-a", actorId: 1, workerJobId: "job-a" };
+    await controlPlane.prepareAuthorizationAttempt({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 });
+    Object.assign(job, { status: "expired", statusReason: "job_deadline", errorCode: "JOB_DEADLINE_EXPIRED", finishedAt: new Date() });
+
+    await expect(controlPlane.resumeUnstartedAuthorizationHold({ jobId: job.id, runId: "different-run", tenantId: "tenant-a", requestedByUserId: 1 })).resolves.toBeNull();
+    await expect(controlPlane.resumeUnstartedAuthorizationHold({ jobId: job.id, runId: "run-a", tenantId: "tenant-a", requestedByUserId: 2 })).resolves.toBeNull();
+    state.events.push({ workerJobId: job.id, eventIdempotencyKey: `authorization-hold-released:${job.id}` });
+    await expect(controlPlane.resumeUnstartedAuthorizationHold({ jobId: job.id, runId: "run-a", tenantId: "tenant-a", requestedByUserId: 1 })).resolves.toBeNull();
+    expect(job.status).toBe("expired");
+    expect(state.attempts).toHaveLength(1);
     expect(state.outbox).toHaveLength(0);
   });
 

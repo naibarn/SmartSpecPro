@@ -43,6 +43,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   mocks.eqCalls = [];
   mocks.limitCalls = [];
+  mocks.jobControlPlane.mockReturnValue({ resumeUnstartedAuthorizationHold: vi.fn().mockResolvedValue(null) });
   mocks.rows = [[{ id: "job-a", attempt: 1,
     progressJson: { spec224: { runId: "run-a", workerJobId: "job-a", workspaceId: "workspace-a", baseRevision: `git:${"a".repeat(40)}` } }, inputJson: {} }],
     [{ id: "attempt-a" }], [{ id: "budget-a" }]];
@@ -110,6 +111,36 @@ describe("owner Start authorization continuation", () => {
     expect(approval).toHaveBeenCalledWith(expect.objectContaining({ context, runId: "run-a", runnerId: "runner-a", policyOnly: true, policyId: "policy-a", budgetCapMinorUnits: 50 }));
     expect(reserve).toHaveBeenCalledWith(expect.objectContaining({ approvalRef: "approval-a", budgetId: "budget-a", amountMinorUnits: 50 }));
     expect(bind).toHaveBeenCalledWith({ ...request, approvalRef: "approval-a", budgetReservationRef: "hold-a" });
+  });
+
+  it("reconciles an expired unstarted hold for the same Run before evaluating its attempt-bound policy", async () => {
+    const runRow = { id: "job-a", attempt: 1,
+      progressJson: { spec224: { runId: "run-a", workerJobId: "job-a", workspaceId: "workspace-a", baseRevision: `git:${"a".repeat(40)}` } },
+      inputJson: {} };
+    mocks.rows = [[runRow], [{ id: "attempt-a" }], [runRow], [{ id: "attempt-b" }], [{ id: "budget-a" }]];
+    const resumeUnstartedAuthorizationHold = vi.fn().mockResolvedValue({ attemptId: "attempt-b", resumed: true });
+    mocks.jobControlPlane.mockReturnValue({ resumeUnstartedAuthorizationHold });
+    const service = createService();
+    vi.spyOn(service, "status").mockResolvedValueOnce(approvalRequired).mockResolvedValueOnce(budgetRequired);
+    mocks.policyRows = [{ id: "policy-a", definition: {
+      initiatorUserIds: [7], profileAllowlist: ["spec224-recovery-windows-x64-codex-nonprod"],
+      environmentAllowlist: ["development"], operations: ["spec224.development.run"],
+      resourceScopes: [
+        { kind: "development_run", id: "run-a" }, { kind: "worker_job", id: "job-a" },
+        { kind: "attempt", id: "attempt-b" }, { kind: "workspace", id: "workspace-a" },
+        { kind: "runner", id: "runner-a" }, { kind: "runner_session", id: "runner-session-a" },
+        { kind: "capability_snapshot", id: "snapshot-a" },
+      ], maxBudgetMinorUnits: 50, currency: "USD", maxTtlSeconds: 600,
+      expiresAt: new Date(Date.now() + 3600_000).toISOString(),
+    } }];
+    vi.spyOn(service, "requestApproval").mockResolvedValue({ approvalRef: "approval-a", status: "approved" } as any);
+    vi.spyOn(service, "reserveBudget").mockResolvedValue({ budgetReservationRef: "hold-a" } as any);
+    vi.spyOn(service, "bind").mockResolvedValue({ ...approvalRequired, status: "READY_FOR_LIVE" });
+
+    await expect(service.advanceStart(request)).resolves.toMatchObject({ status: "READY_FOR_LIVE" });
+    expect(resumeUnstartedAuthorizationHold).toHaveBeenCalledWith({
+      jobId: "job-a", runId: "run-a", tenantId: "tenant-a", requestedByUserId: 7,
+    });
   });
 
   it("reuses an existing approved reservation without another approval or charge", async () => {
@@ -193,7 +224,8 @@ describe("owner Start authorization continuation", () => {
       [{ id: "attempt-a" }],
     ];
     const releaseAuthorizationHold = vi.fn().mockResolvedValue(true);
-    mocks.jobControlPlane.mockReturnValue({ releaseAuthorizationHold });
+    const resumeUnstartedAuthorizationHold = vi.fn().mockResolvedValue(null);
+    mocks.jobControlPlane.mockReturnValue({ releaseAuthorizationHold, resumeUnstartedAuthorizationHold });
     const service = createService();
     vi.spyOn(service, "status").mockResolvedValue({ ...approvalRequired, status: "READY_FOR_LIVE" });
 

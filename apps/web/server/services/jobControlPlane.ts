@@ -168,6 +168,9 @@ export type TxRepo = {
     expectedFencingVersion?: number;
     /** Only controlled, audited recovery commands may reopen a terminal job. */
     allowTerminalRecovery?: boolean;
+    /** Only SPEC-224's owner-scoped, unstarted authorization hold may return
+     * from expired to pending without creating an outbox delivery. */
+    allowAuthorizationHoldRecovery?: boolean;
     values: Record<string, unknown>;
   }): Promise<WorkerJob | null>;
   insertAttempt(values: Record<string, unknown>): Promise<void>;
@@ -975,7 +978,10 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                       canonicalizeStoredStatus(input.expectedStatus)
                     ) &&
                     canonicalizeStoredStatus(requestedStatus) === "queued";
-                  if (!terminalRecovery) {
+                  const authorizationHoldRecovery = input.allowAuthorizationHoldRecovery === true &&
+                    canonicalizeStoredStatus(input.expectedStatus) === "expired" &&
+                    canonicalizeStoredStatus(requestedStatus) === "pending";
+                  if (!terminalRecovery && !authorizationHoldRecovery) {
                     assertCanonicalJobTransition(
                       canonicalizeStoredStatus(input.expectedStatus),
                       canonicalizeStoredStatus(requestedStatus)
@@ -2275,6 +2281,72 @@ export function createJobControlPlane(
         return attemptId;
       });
     },
+    /** Reopen the SAME SPEC-224 job only when it expired before authorization
+     * was released and before any dispatch/lease. The fresh attempt remains
+     * pending behind the authorization hold; this method never writes outbox. */
+    async resumeUnstartedAuthorizationHold(input: {
+      jobId: string;
+      runId: string;
+      tenantId: string;
+      requestedByUserId: number;
+    }): Promise<{ attemptId: string; resumed: boolean } | null> {
+      return repository.transaction(async repo => {
+        const job = await (repo.findJobForUpdate?.(input.jobId) ?? repo.findJob(input.jobId));
+        if (!job || job.tenantId !== input.tenantId || job.requestedByUserId !== input.requestedByUserId ||
+          job.jobType !== "external_agent_task") return null;
+        const run = job.inputJson?.spec224Run as Record<string, unknown> | undefined;
+        const projection = job.progressJson?.spec224 as Record<string, unknown> | undefined;
+        if (!run || !projection || run.runId !== input.runId || projection.runId !== input.runId ||
+          run.tenantId !== input.tenantId || Number(run.actorId) !== input.requestedByUserId ||
+          run.workerJobId !== job.id || projection.workerJobId !== job.id) return null;
+        if (await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`)) return null;
+        const authorization = job.progressJson?.spec224Authorization as Record<string, unknown> | undefined;
+        if (authorization?.binding || authorization?.approvalRef || authorization?.budgetReservationRef) return null;
+        if (job.status === "pending") {
+          const current = await repo.findAttempt(job.id, job.attempt);
+          return current ? { attemptId: current.id, resumed: false } : null;
+        }
+        if (job.status !== "expired" || job.errorCode !== "JOB_DEADLINE_EXPIRED" ||
+          job.statusReason !== "job_deadline" || job.attempt >= job.maxAttempts ||
+          job.startedAt != null || job.heartbeatAt != null || job.leaseOwnerToken != null ||
+          job.leaseExpiresAt != null || job.fencingVersion !== 0) return null;
+        const previousAttempt = await repo.findAttempt(job.id, job.attempt);
+        if (!previousAttempt || await repo.findEventByIdempotency(job.id, `lease:${previousAttempt.id}`) ||
+          await repo.findEventByIdempotency(job.id, `dispatch-requested:${job.id}:${job.attempt}`) ||
+          await repo.findOutboxForAttempt(job.id)) return null;
+        const nextAttempt = job.attempt + 1;
+        const attemptId = randomUUID();
+        const updated = await repo.updateJob({
+          jobId: job.id,
+          expectedStatus: "expired",
+          expectedAttempt: job.attempt,
+          expectedFencingVersion: 0,
+          expectedTenantId: input.tenantId,
+          expectedRequestedByUserId: input.requestedByUserId,
+          allowAuthorizationHoldRecovery: true,
+          values: {
+            status: "pending",
+            statusReason: "spec224_authorization_hold_resumed",
+            attempt: nextAttempt,
+            nextRetryAt: null,
+            errorCode: null,
+            errorMessage: null,
+            failureReason: null,
+            leaseOwnerToken: null,
+            leaseExpiresAt: null,
+            heartbeatAt: null,
+            finishedAt: null,
+          },
+        });
+        if (!updated) return null;
+        await repo.insertAttempt({ id: attemptId, workerJobId: job.id, attempt: nextAttempt, leaseGeneration: 0 });
+        await repo.insertEvent({ workerJobId: job.id, attemptId,
+          eventType: "SPEC224_AUTHORIZATION_HOLD_RESUMED",
+          eventIdempotencyKey: `spec224-auth-hold-resumed:${job.id}:${job.attempt}:${nextAttempt}`,
+          payloadJson: { runId: input.runId, previousAttempt: job.attempt, attempt: nextAttempt } });
+        return { attemptId, resumed: true };
+      });
+    },
     async releaseAuthorizationHold(input: { jobId: string; tenantId: string; requestedByUserId: number }): Promise<boolean> {
       return repository.transaction(async repo => {
         const job = await repo.findJob(input.jobId);
@@ -2304,7 +2376,7 @@ export function createJobControlPlane(
         });
         if (!authorized) return false;
         const updated = await repo.updateJob({ jobId: job.id, expectedStatus: "pending", expectedTenantId: input.tenantId,
-          expectedRequestedByUserId: input.requestedByUserId, values: { status: "queued", statusReason: null } });
+          expectedRequestedByUserId: input.requestedByUserId, values: { status: "queued", statusReason: null, scheduledAt: new Date() } });
         if (!updated) return false;
         await repo.insertEvent({ workerJobId: job.id, eventType: "QUEUED", eventIdempotencyKey: `queued:${job.id}` });
         await repo.insertEvent({ workerJobId: job.id, eventType: "AUTHORIZATION_HOLD_RELEASED",
@@ -7125,6 +7197,18 @@ export function createJobControlPlane(
           externalWait?.operationKey?.startsWith("storyboard.pause:")
         )
           return { outcome: "ignored" as const, jobType: undefined };
+        const spec224Run = job.inputJson?.spec224Run as Record<string, unknown> | undefined;
+        const spec224Projection = job.progressJson?.spec224 as Record<string, unknown> | undefined;
+        const isSpec224AuthorizationHold = job.jobType === "external_agent_task" &&
+          job.status === "pending" && Boolean(spec224Run && spec224Projection &&
+            typeof spec224Run.runId === "string" && spec224Projection.runId === spec224Run.runId &&
+            spec224Run.workerJobId === job.id && spec224Projection.workerJobId === job.id) &&
+          Boolean(await repo.findAttempt(job.id, job.attempt)) &&
+          !(await repo.findEventByIdempotency(job.id, `authorization-hold-released:${job.id}`));
+        // Approval time is not execution time. Keep the deferred job in its
+        // durable authorization hold until the bound grant/budget is released.
+        if (isSpec224AuthorizationHold)
+          return { outcome: "ignored" as const, jobType: undefined };
         const policy = (job.retryPolicyJson ?? {}) as Record<string, unknown>;
         // Keep pre-policy backlog untouched during rollout. Only jobs admitted
         // with an explicit deadline mode participate in automatic expiry.
@@ -7141,7 +7225,10 @@ export function createJobControlPlane(
           retryPolicy: policy as { deadlineMs?: number; deadlineMode?: "adaptive" | "fixed" },
           timeoutSeconds: job.timeoutSeconds, createdAt: job.createdAt, attempt: job.attempt,
         });
-        if (now.getTime() < job.createdAt.getTime() + deadlineMs)
+        const deadlineAnchor = job.jobType === "external_agent_task" && spec224Run && spec224Projection
+          ? job.scheduledAt ?? job.createdAt
+          : job.createdAt;
+        if (now.getTime() < deadlineAnchor.getTime() + deadlineMs)
           return { outcome: "ignored" as const, jobType: undefined };
         const updated = await repo.updateJob({
           jobId,

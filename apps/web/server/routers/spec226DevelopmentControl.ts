@@ -1111,6 +1111,7 @@ export const spec226DevelopmentControlRouter = router({
             profileId: runnerReadiness.profileId,
             environment: "development",
             spec224StartRequestDigest: requestDigest,
+            spec224BudgetCapMinorUnits: input.budgetCapMinorUnits,
             ...(factoryState ? { [MINI_APP_FACTORY_STATE_KEY]: factoryState } : {}),
             ...(factoryStageDocument && factoryPipeline && factoryState && firstFactoryStage ? {
               miniAppFactoryStage: {
@@ -1215,6 +1216,49 @@ export const spec226DevelopmentControlRouter = router({
             errorCode: errorCode(error),
             backendRuntime: getSpec224BackendRuntimeIdentity(),
           },
+        });
+        return asTrpcError(error);
+      }
+    }),
+
+  resumeWorkspaceRun: protectedProcedure
+    .input(z.object({ conversationId: z.number().int().positive(), runId: runIdSchema,
+      budgetCapMinorUnits: z.number().int().positive().max(100).default(100) }))
+    .mutation(async ({ ctx, input }) => {
+      const scope = requireScope(ctx);
+      const traceId = auditLogger.createTrace();
+      try {
+        const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({
+          ...scope, conversationId: input.conversationId,
+        });
+        if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        const record = await developmentRunService.get({ ...scope, runId: input.runId });
+        if (record.run.workspaceId !== binding.workspace.workspaceId)
+          throw new Error("RUN_WORKSPACE_BINDING_MISMATCH");
+        const persistedBudget = record.run.metadata?.spec224BudgetCapMinorUnits;
+        if (typeof persistedBudget === "number" && input.budgetCapMinorUnits > persistedBudget)
+          throw new Error("RUN_BUDGET_CAP_CANNOT_INCREASE");
+        const authorization = await advanceWorkspaceStartAuthorization({
+          context: authorizationContext(ctx), runId: input.runId, runnerId: binding.workspace.runnerId,
+          budgetCapMinorUnits: input.budgetCapMinorUnits,
+        });
+        const dispatchStatus = authorization.status === "READY_FOR_LIVE"
+          ? "ENQUEUED" as const
+          : ["APPROVAL_REQUIRED", "BUDGET_REQUIRED"].includes(authorization.status)
+            ? "PENDING_AUTHORIZATION" as const : "BLOCKED" as const;
+        auditLogger.log({ eventType: "spec226_development_control" as AuditEventType,
+          traceId, tenantId: scope.tenantId, userId: scope.actorId,
+          metadata: { runId: input.runId, jobId: record.run.workerJobId, action: "resume_existing_run",
+            dispatchStatus, authorizationStatus: authorization.status, reasons: authorization.reasons,
+            workspaceId: record.run.workspaceId, budgetCapMinorUnits: input.budgetCapMinorUnits },
+        });
+        return { runId: input.runId, jobId: record.run.workerJobId, state: record.run.state,
+          dispatchStatus, authorization, resumedExistingRun: true };
+      } catch (error) {
+        auditLogger.log({ eventType: "spec226_development_control" as AuditEventType,
+          traceId, tenantId: scope.tenantId, userId: scope.actorId,
+          metadata: { runId: input.runId, action: "resume_existing_run", accepted: false,
+            errorCode: errorCode(error) },
         });
         return asTrpcError(error);
       }

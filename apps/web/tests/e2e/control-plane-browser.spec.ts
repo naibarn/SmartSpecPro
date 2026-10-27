@@ -14,7 +14,7 @@ function procedureName(url: string): string {
   return new URL(url).pathname.replace(/^\/trpc\//, "").split(",")[0] ?? "";
 }
 
-async function mockControlPlaneRoutes(page: Page) {
+async function mockControlPlaneRoutes(page: Page, onResume?: (body: string) => void) {
   await page.route("**/trpc/**", async route => {
     const procedure = procedureName(route.request().url());
     let data: unknown = null;
@@ -35,6 +35,18 @@ async function mockControlPlaneRoutes(page: Page) {
       data = { id: 2001, title: "New Chat" };
     } else if (procedure === "tenantFeatureFlags.getFeatureFlags") {
       data = { chatBrowserSessionEntry: false, liveBrowser: false };
+    } else if (procedure === "spec226DevelopmentControl.availableWorkspaces") {
+      data = { workspaces: [{ runnerId: "customer-runner-id", workspaceId: "customer-workspace-id", displayName: "SmartSpecPro", status: "online", snapshotRevision: "1" }] };
+    } else if (procedure === "spec226DevelopmentControl.getConversationWorkspace") {
+      data = { workspace: { runnerId: "customer-runner-id", workspaceId: "customer-workspace-id", revision: 1 },
+        availability: { available: true, status: "current" }, specSet: null,
+        developmentRuns: [{ runId: "run-existing-224", state: "BLOCKED_RECOVERABLE", workPackageId: "pkg-224",
+          workPackageExternalId: "SPEC-224", specSetRevision: 1, revision: 2 }] };
+    } else if (procedure === "spec226DevelopmentControl.resumeWorkspaceRun") {
+      onResume?.(route.request().postData() ?? "");
+      data = { runId: "run-existing-224", jobId: "job-existing-224", state: "BLOCKED_RECOVERABLE",
+        dispatchStatus: "PENDING_AUTHORIZATION", resumedExistingRun: true,
+        authorization: { status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_REQUIRED"] } };
     } else if (procedure === "workerJobs.dashboardSummary") {
       data = {
         counts: {
@@ -203,6 +215,26 @@ async function mockControlPlaneRoutes(page: Page) {
     });
   });
 }
+
+test("continues the selected SPEC-224 run without sending another Start", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  let resumeBody = "";
+  await mockControlPlaneRoutes(page, body => { resumeBody = body; });
+  await page.goto("/chat?panel=control-plane&view=full&c=233");
+
+  const panel = page.getByTestId("control-plane-panel");
+  await expect(panel).toBeVisible();
+  const continueButton = panel.getByRole("button", { name: "ทำงานเดิมต่อ" });
+  await expect(continueButton).toBeVisible();
+  await continueButton.click();
+  await expect.poll(() => resumeBody).toContain("run-existing-224");
+  await expect(page.getByText(/DevelopmentRun เดิมยังรอ authorization/)).toBeVisible();
+  await expect(panel.getByRole("button", { name: "ทำงานเดิมต่อ" })).toBeVisible();
+});
 
 for (const viewport of VIEWPORTS) {
   test(`Task Control Center is reachable and responsive at ${viewport.name}`, async ({
