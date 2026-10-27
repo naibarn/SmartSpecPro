@@ -35,9 +35,9 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Root cause confirmed: readCompensatedHttpApplicationAcceptance emitted comma-separated WHERE predicates; PostgreSQL reproduced SQLSTATE 42601. Fixed to separate AND clauses; the corrected resolver query executed read-only against the current registry. Focused UI/runtime continuation tests pass 28/28. The UI now shows the exact sanitized result, asks before checking, presents checking/result state, and locks duplicate clicks. Integrate this slice, release exact main SHA through release:web:linux, verify live SHA/assets, then have the Owner use the new confirmation dialog for one authenticated read-only recheck. No application job exists until the READY-gated Owner action is used.",
-      "checkpoint_sha": "f1e24b294c6dcaa7137615ca5afdea2c926173bb",
-      "merged_main_sha": "228824e401315f7afb17c24519cc4095e78dada4",
+      "next_action": "g171 is serving source 651b9439d10232996c9ecf902c6bf51d9992095f (artifact sha256:11659538752e60f71e952876a0d6dc6cc6927c44cee3a130986ea9e59cd428bf); local/public /healthz and /admin/settings return 200, the public Admin asset sha256 is aa141c532d3b4b4d742888fb183d15e973fa5063ba81587b7711c002c6063207 and contains the confirmation workflow. SQLSTATE 42601 root cause was fixed; 28/28 focused tests pass; the exact application resolver query now executes read-only. No application Job or intent currently exists. Next: Owner reloads Admin and uses the dialog to perform one authenticated read-only preflight. Continue same mission only from its exact READY/blocked result; submit an application job only if READY and the existing Owner workflow admits it.",
+      "checkpoint_sha": "651b9439d10232996c9ecf902c6bf51d9992095f",
+      "merged_main_sha": "651b9439d10232996c9ecf902c6bf51d9992095f",
       "session_id": "codex-m3-preflight-reconcile-20261027"
     }
   },
@@ -50,20 +50,20 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 134,
-  "updated_at": "2026-10-27T09:48:20.263636+00:00",
+  "generation": 136,
+  "updated_at": "2026-10-27T09:59:19.799964+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Root cause confirmed: readCompensatedHttpApplicationAcceptance emitted comma-separated WHERE predicates; PostgreSQL reproduced SQLSTATE 42601. Fixed to separate AND clauses; the corrected resolver query executed read-only against the current registry. Focused UI/runtime continuation tests pass 28/28. The UI now shows the exact sanitized result, asks before checking, presents checking/result state, and locks duplicate clicks. Integrate this slice, release exact main SHA through release:web:linux, verify live SHA/assets, then have the Owner use the new confirmation dialog for one authenticated read-only recheck. No application job exists until the READY-gated Owner action is used.",
+    "next_action": "g171 is serving source 651b9439d10232996c9ecf902c6bf51d9992095f (artifact sha256:11659538752e60f71e952876a0d6dc6cc6927c44cee3a130986ea9e59cd428bf); local/public /healthz and /admin/settings return 200, the public Admin asset sha256 is aa141c532d3b4b4d742888fb183d15e973fa5063ba81587b7711c002c6063207 and contains the confirmation workflow. SQLSTATE 42601 root cause was fixed; 28/28 focused tests pass; the exact application resolver query now executes read-only. No application Job or intent currently exists. Next: Owner reloads Admin and uses the dialog to perform one authenticated read-only preflight. Continue same mission only from its exact READY/blocked result; submit an application job only if READY and the existing Owner workflow admits it.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
       "No live production application-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit settlement/job parity and separately authorized native activation are verified.",
       "g170 is live from 95c6a03b32aea6e36807116c998315a56129565c (artifact sha256:f85afdd92645dc15a151f5ae5cf99e01d5633224f24eab10fe99d384df48b00; AdminSettings-CoWxkfRh.js sha256:6a64e09a2d737d639052a6d0892dbe9e07e1d038a5f0b1165003f2e6e32403b2). Health/Admin and bundle checks pass, but no authenticated application preflight query/job evidence was observed after deployment. The Owner browser session is not accessible here: computer-use capabilities failed because the sidecar exited; do not infer or impersonate the Owner. Next: in the existing authenticated Admin session select Deployment targets and click the read-only “Recheck application preflight”; record the exact sanitized stage/reason. If READY, submit once via the existing Owner workflow and monitor the same canonical Job. No application job/acceptance receipt is verified yet; M3/final migration remain NOT_ACCEPTED. Focused verification on current application source SHA 95c6a03b32aea6e36807116c998315a56129565c: Vitest 8 files/225 tests PASS (runtime preflight/UI, credit authority, billing-adjacent and job control/recovery contracts); this is not live Cloudflare acceptance.",
       "Owner screenshot reports BLOCKED at BOUNDED_RUNTIME_EVIDENCE with SQLSTATE; fix SQL predicate, deploy, then verify authenticated preflight result and continue same M3 application acceptance.",
-      "Authenticated Owner preflight has not yet been rerun against the deployed SQL fix; no M3 application job/receipt exists. Continue after live release using Owner's normal session, do not simulate identity."
+      "Owner-authenticated application preflight has not yet been rerun after g171 deployment; canonical registry has zero application Jobs/intents. Use normal Owner session, do not simulate identity; after READY submit once and monitor its canonical Job."
     ],
-    "merged_main_sha": "228824e401315f7afb17c24519cc4095e78dada4",
+    "merged_main_sha": "651b9439d10232996c9ecf902c6bf51d9992095f",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
