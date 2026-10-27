@@ -444,12 +444,31 @@ mod tests {
             let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
             let mut request = Vec::new();
             let mut chunk = [0; 1024];
-            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+            let mut expected_request_len = None;
+            loop {
+                if let Some(header_end) = request
+                    .windows(4)
+                    .position(|window| window == b"\r\n\r\n")
+                {
+                    let content_length = String::from_utf8_lossy(&request[..header_end])
+                        .lines()
+                        .filter_map(|line| line.split_once(':'))
+                        .find(|(name, _)| name.trim().eq_ignore_ascii_case("content-length"))
+                        .and_then(|(_, value)| value.trim().parse::<usize>().ok())
+                        .unwrap_or(0);
+                    let total = header_end + 4 + content_length;
+                    expected_request_len = Some(total);
+                    if request.len() >= total {
+                        break;
+                    }
+                }
                 match stream.read(&mut chunk) {
                     Ok(0) | Err(_) => break,
                     Ok(read) => request.extend_from_slice(&chunk[..read]),
                 }
-                if request.len() > 16 * 1024 {
+                if request.len() > 16 * 1024
+                    || expected_request_len.is_some_and(|total| request.len() > total)
+                {
                     break;
                 }
             }
