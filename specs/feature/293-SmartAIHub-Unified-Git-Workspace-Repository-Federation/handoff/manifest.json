@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
+    "expected_canonical_sha": "7d37b44fe0e7aa93b48c50958771b4aa7f29298e",
     "expected_spec_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688"
   },
   "continuation": {
-    "next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current.",
-    "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
+    "next_action": "SPEC293 workspace isolation continuation: execute actual Windows Runner validation for reparse points, provisioning restart/recovery and project/run paths when a Windows host/toolchain is available; close any platform-specific defects. Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current.",
+    "next_ready_workunit": "SPEC293_WINDOWS_RUNNER_AND_WORKSPACE_AUTHORITY_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Resume from origin/main 78f6aa42f197d76a4df28eae81ac3a3cb99b57a6. PR #224 and #225 are integrated. The canonical user workspace is clean and resolver-verified at this SHA with receipt workspace-convergence:f88d5c50-b31f-4720-bf98-23cc5c1e756f. Evidence for this partial checkpoint: specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md. Remaining internal authority and migration-path wiring is open. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
+    "resume_point": "Resume from origin/main 7d37b44fe0e7aa93b48c50958771b4aa7f29298e. SPEC-293 Section 60.5 owns Runner Root → persistent Project Workspace → run execution workspace. Linux quick evidence is specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-workspace-isolation-7d37b44fe0.md. Workspace registry, run candidate integration, bounded Task Control projection and legacy migration are integrated. Actual Windows Runner/reparse/restart acceptance is open; the attempted GNU cross-target check was blocked by missing x86_64-w64-mingw32-gcc and is not Windows acceptance. Continue the existing P0 internal-gap actions after this platform acceptance slice: Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 75,
+  "generation": 76,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
@@ -214,7 +214,8 @@
       "f3703f06ba9ba8679838e7ab6c5b4b157f52d78e",
       "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
       "fb9012f80ef413f34180ccf294588155b0454ae7",
-      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9"
+      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+      "7d37b44fe0e7aa93b48c50958771b4aa7f29298e"
     ],
     "mapping": [],
     "source_paths": [
@@ -247,16 +248,21 @@
       "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
       "apps/web/server/services/jobExecutorRegistry.ts",
       "apps/web/server/services/runnerGateway.ts",
-      "apps/web/server/jobs/workspaceAuthoritySafeActionJob.test.ts"
+      "apps/web/server/jobs/workspaceAuthoritySafeActionJob.test.ts",
+      "apps/runner-app/src/workspace_registry.rs",
+      "apps/runner-app/src/spec224_candidate.rs",
+      "apps/runner-app/src/diagnostics.rs",
+      "apps/web/server/routers/runnerNodes.ts",
+      "apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
+    "canonical_sha": "7d37b44fe0e7aa93b48c50958771b4aa7f29298e",
     "integrated": true,
-    "integrated_at": "2026-10-07T13:26:20Z"
+    "integrated_at": "2026-10-27T01:11:27Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -654,7 +660,7 @@
     "unresolved": 253
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T01:04:58.341850Z",
+  "updated_at": "2026-10-27T01:11:27.544383Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -985,6 +991,13 @@
         "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/handoff/evidence/p0-policy-workspace-recovery-20261007.md",
         "scope": "Force-push recovery and policy regression test; dirty artifacts preserved with matching SHA-256; canonical user workspace converged and verified clean on main at the exact integrated SHA. This evidence does not close remaining P0 authority, migration, Mission Control, runtime-health, or SPEC-224 requirements.",
         "source_sha": "dc76f5423e039d117233889997dce73843907c7d",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_WORKSPACE_ISOLATION_QUICK",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-workspace-isolation-7d37b44fe0.md",
+        "scope": "SPEC-293 Section 60.5 Runner Root/project/run hierarchy, path boundaries, legacy recovery, concurrent candidate apply, sanitized Task Control projection; Linux quick checks pass. Actual Windows Runner acceptance remains open.",
+        "source_sha": "7d37b44fe0e7aa93b48c50958771b4aa7f29298e",
         "status": "PASS"
       }
     ],
