@@ -4,6 +4,7 @@ import { Button } from "@astryxdesign/core/Button";
 import { Heading } from "@astryxdesign/core/Heading";
 import { HStack } from "@astryxdesign/core/HStack";
 import { ProgressBar } from "@astryxdesign/core/ProgressBar";
+import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Section } from "@astryxdesign/core/Section";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Text } from "@astryxdesign/core/Text";
@@ -14,8 +15,12 @@ import { formatVerifiedPercentLabel } from "@shared/taskAcceptanceProjection";
 
 const metricLabel = (value: number | null): string => value === null ? "Unknown" : `${value.toFixed(1)}%`;
 const tokenLabel = (value: number | null): string => value === null ? "Unknown" : value.toLocaleString();
+const simpleStatusLabels: Record<string, string> = { running: "In progress", queued: "Waiting to start", completed: "Completed", failed: "Needs attention", cancelled: "Cancelled", waiting_approval: "Waiting for your review", retry_scheduled: "Retry scheduled" };
+const simpleStatusLabel = (status: string): string => simpleStatusLabels[status] ?? status.replaceAll("_", " ");
+const simpleStepLabel = (step: string | null): string => step ? step.toLowerCase().replaceAll("_", " ") : "Not reported";
 
 export default function TaskObservabilityMonitor() {
+  const [mode, setMode] = useState("simple");
   const [projectionToken, setProjectionToken] = useState(() => new URLSearchParams(window.location.search).get("projectionToken"));
   const [cursor, setCursor] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState("");
@@ -53,11 +58,37 @@ export default function TaskObservabilityMonitor() {
   return (
     <VStack as="main" gap={4} padding={4}>
       <VStack gap={1}>
-        <Heading level={1}>Task Control and Agent Monitor</Heading>
-        <Text type="supporting">Live task, runner, goal, model and resource evidence. Missing evidence remains unknown.</Text>
+        <Heading level={1}>{mode === "simple" ? "Task Control" : "Task Control and Agent Monitor"}</Heading>
+        <Text type="supporting">{mode === "simple" ? "See what is happening, what is verified, and whether anything needs your attention." : "Canonical task, runner, goal, model and resource evidence. Missing evidence remains unknown."}</Text>
+        <SegmentedControl label="Task Control view" value={mode} onChange={setMode}>
+          <SegmentedControlItem value="simple" label="Simple" />
+          <SegmentedControlItem value="developer" label="Developer" />
+        </SegmentedControl>
       </VStack>
 
-      <Section>
+      {mode === "simple" && items.length > 0 ? <Section>
+        <VStack gap={2}>
+          <Heading level={2}>Your tasks</Heading>
+          {items.map((item, index) => (
+            <HStack as="article" key={item.id} gap={2} wrap="wrap" padding={2}>
+              <Button label={`Task ${index + 1} · ${simpleStatusLabel(item.status)}`} variant={selected?.id === item.id ? "primary" : "secondary"} onClick={() => setSelectedId(item.id)} />
+              {item.operatorAttention.required ? <Badge variant="warning" label="Action needed" /> : null}
+              <Text type="supporting">Current step: {simpleStepLabel(item.stage)}</Text>
+            </HStack>
+          ))}
+        </VStack>
+      </Section> : null}
+
+      {mode === "simple" && (query.isLoading || query.error || items.length === 0) ? <Section>
+        <VStack gap={2}>
+          {query.isLoading ? <Text>Loading your tasks…</Text> : null}
+          {query.error ? <Text>{snapshotExpired ? "This task snapshot expired. Refresh to load current information." : "Your tasks could not be refreshed. Check your access and try again."}</Text> : null}
+          {!query.isLoading && !query.error && items.length === 0 ? <Text>No tasks are available in this account scope.</Text> : null}
+          {query.error || items.length === 0 ? <Button label="Refresh tasks" variant="secondary" onClick={() => { setProjectionToken(null); setCursor(null); setSelectedId(null); void query.refetch(); }} /> : null}
+        </VStack>
+      </Section> : null}
+
+      {mode === "developer" ? <Section>
         <VStack gap={3}>
           <Heading level={2}>{conversationId ? `Chat ${conversationId} evidence` : query.data?.scope === "tenant_fleet" ? "Tenant fleet and project scope" : "My tasks and project scope"}</Heading>
           {conversationId ? <Text type="supporting">Conversation scope is bound by the authenticated read API to the conversation owner and current tenant.</Text> : null}
@@ -94,9 +125,9 @@ export default function TaskObservabilityMonitor() {
             <Text type="supporting">Projection snapshot expires {query.data?.snapshot.expiresAt ?? "unknown"}; refresh to start a new snapshot shared with aggregate and detail reads.</Text>
           </HStack>
         </VStack>
-      </Section>
+      </Section> : null}
 
-      {projectFilter || specFilter ? (
+      {mode === "developer" && (projectFilter || specFilter) ? (
         <Section>
           <VStack gap={2}>
             <Heading level={2}>Project / SPEC usage union</Heading>
@@ -119,7 +150,7 @@ export default function TaskObservabilityMonitor() {
         </Section>
       ) : null}
 
-      <Section>
+      {mode === "developer" ? <Section>
         <VStack gap={2}>
           <Heading level={2}>Available runner fleet</Heading>
           {runnerQuery.error ? <Text>Runner fleet is unavailable in this account scope.</Text> : null}
@@ -155,13 +186,36 @@ export default function TaskObservabilityMonitor() {
             </VStack>
           ) : null}
         </VStack>
-      </Section>
+      </Section> : null}
 
       {selected ? (
         <VStack gap={3}>
           {detailQuery.isLoading ? <Section><Text>Loading task detail…</Text></Section> : null}
           {detailQuery.error ? <Section><Text>Task detail is unavailable in the current account scope.</Text></Section> : null}
+          {detail && mode === "simple" ? <Section>
+            <VStack gap={3}>
+              <HStack gap={2} wrap="wrap">
+                <Heading level={2}>Your task</Heading>
+                <Badge label={simpleStatusLabel(selected.status)} variant={selected.operatorAttention.required ? "warning" : "neutral"} />
+              </HStack>
+              <Text>Goal summary is not included in this task view.</Text>
+              <Text>Current step: {simpleStepLabel(selected.stage)}</Text>
+              <Text>Job status: {simpleStatusLabel(selected.status)} · Runner status: {detail.runner?.status ? simpleStatusLabel(detail.runner.status) : "Unknown"} · verification: {detail.goal.status === "PROJECTED" ? (detail.goal.verifiedGoalCompletion.percent === 100 ? "verified complete" : "in progress or pending evidence") : "Unknown"}</Text>
+              {detail.goal.status === "PROJECTED" && detail.goal.verifiedGoalCompletion.percent !== null ? (
+                <ProgressBar label="Verified progress" value={detail.goal.verifiedGoalCompletion.percent} hasValueLabel formatValueLabel={() => formatVerifiedPercentLabel(detail.goal)} variant={detail.goal.verifiedGoalCompletion.percent === 100 ? "success" : "accent"} />
+              ) : <Text>Verified progress: Unknown · {detail.goal.reason ?? "No trusted goal baseline or evidence is available."}</Text>}
+              <Heading level={3}>Next step</Heading>
+              {detail.operatorAttention.required ? <Text>Please review this task before it can continue.</Text> : detail.goal.status === "PROJECTED" && detail.goal.remainingScope[0]?.nextAction ? <Text>{detail.goal.remainingScope[0].nextAction}</Text> : <Text>No next step is recorded.</Text>}
+              <Heading level={3}>Blockers and your action</Heading>
+              {detail.goal.status === "PROJECTED" && detail.goal.blockedScope.length ? <Text>A blocker has been recorded for this task.</Text> : <Text>No verified blocker is recorded.</Text>}
+              <Text>{detail.operatorAttention.required ? "Action needed: Please review this task." : "No user action is recorded as required."}</Text>
+              <Heading level={3}>Deliverables</Heading>
+              {detail.acceptance?.graph.references.some((reference) => reference.kind === "evidence") ? <Text>{detail.acceptance.graph.references.filter((reference) => reference.kind === "evidence").length} evidence item(s) recorded. Open Developer mode for their source and verification details.</Text> : <Text>No final deliverable references are recorded in this task view.</Text>}
+            </VStack>
+          </Section> : null}
           {detail ? <>
+          {mode === "developer" ? <Text type="supporting">Developer telemetry refreshes from the canonical read model every 15 seconds. A live terminal stream, file diffs and harness identity are not exposed by this view; unavailable telemetry is not inferred.</Text> : null}
+          {mode === "developer" ? <>
           <Section>
             <VStack gap={3}>
               <HStack gap={2} wrap="wrap">
@@ -230,6 +284,7 @@ export default function TaskObservabilityMonitor() {
               {detail.timeline.length ? detail.timeline.map((event) => <Text key={event.id}>{event.at} · {event.type} · attempt {event.attempt ?? "unknown"}{"source" in event && event.source ? ` · ${event.source.kind} ${event.source.reference} · sequence ${event.source.sequence}` : ""} · {event.phase ?? event.reasonCode ?? "no detail recorded"}{event.correction ? ` · usage corrected ${event.correction.previousUsage.inputTokens ?? "Unknown"}/${event.correction.previousUsage.outputTokens ?? "Unknown"} → ${event.correction.correctedUsage.inputTokens ?? "Unknown"}/${event.correction.correctedUsage.outputTokens ?? "Unknown"}; additional ${event.correction.additionalCharge ?? "Unknown"} tokens` : ""}</Text>) : <Text>Timeline unavailable.</Text>}
             </VStack>
           </Section>
+          </> : null}
           </> : null}
         </VStack>
       ) : null}

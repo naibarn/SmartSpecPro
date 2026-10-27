@@ -23,6 +23,12 @@ vi.mock("@/lib/trpc", () => ({
 
 import TaskObservabilityMonitor from "./TaskObservabilityMonitor";
 
+function renderMonitor(mode: "simple" | "developer" = "simple") {
+  const result = render(<TaskObservabilityMonitor />);
+  if (mode === "developer") fireEvent.click(screen.getByText("Developer"));
+  return result;
+}
+
 const job = { id: "job-1", jobType: "spec224.development", status: "running", stage: "IMPLEMENT", attempt: 1, maxAttempts: 2, heartbeatAt: null, createdAt: "2026-10-17T00:00:00Z", workerId: null, runnerId: "runner-1", runnerSessionState: "running", projectId: null, specId: null, identityBinding: { status: "UNKNOWN", source: null }, operatorAttention: { required: false, reason: null }, recovery: { nextRetryAt: null, retryEligible: false } };
 
 beforeEach(() => {
@@ -48,8 +54,28 @@ beforeEach(() => {
 });
 
 describe("TaskObservabilityMonitor", () => {
+  it("defaults to a simple evidence summary and keeps unknown progress explicit", () => {
+    renderMonitor();
+    expect(screen.getByRole("heading", { name: "Task Control" })).toBeTruthy();
+    expect(screen.getAllByText("Current step: implement").length).toBeGreaterThan(0);
+    expect(screen.getByText(/Verified progress: Unknown · trusted_baseline_missing/)).toBeTruthy();
+    expect(screen.getByText("Action needed: Please review this task.")).toBeTruthy();
+    expect(screen.getByText("No final deliverable references are recorded in this task view.")).toBeTruthy();
+    expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
+  });
+
+  it("switches to developer evidence while retaining the same selected task", () => {
+    renderMonitor();
+    fireEvent.click(screen.getByText("Developer"));
+    expect(screen.getByText(/Current UI Session Model: ui-model/)).toBeTruthy();
+    expect(screen.getByText(/canonical read model every 15 seconds/)).toBeTruthy();
+    fireEvent.click(screen.getByText("Simple"));
+    expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
+    expect(screen.getAllByText("Current step: implement").length).toBeGreaterThan(0);
+  });
+
   it("shows unknown goal evidence and separates all four model identity facets", () => {
-    render(<TaskObservabilityMonitor />);
+    renderMonitor("developer");
     expect(screen.getByText(/no trusted goal baseline|trusted_baseline_missing/i)).toBeTruthy();
     expect(screen.getByText(/UI Session Unknown .* Worker requested worker-model .* Provider effective Unknown .* External helper Unknown/)).toBeTruthy();
     expect(screen.getByText(/Current UI Session Model: ui-model · source owned_conversation_current_config/)).toBeTruthy();
@@ -57,14 +83,14 @@ describe("TaskObservabilityMonitor", () => {
   });
 
   it("shows evidence-backed human attention and canonical recovery timeline", () => {
-    render(<TaskObservabilityMonitor />);
+    renderMonitor("developer");
     expect(screen.getByText(/Human attention: human_review_required/)).toBeTruthy();
     expect(screen.getByText(/CODEX_MODEL_USAGE_CORRECTED/)).toBeTruthy();
     expect(screen.getByText(/usage corrected 18447\/122 → 36933\/122/)).toBeTruthy();
   });
 
   it("shows runner fleet state from the canonical runner read model", () => {
-    render(<TaskObservabilityMonitor />);
+    renderMonitor("developer");
     expect(screen.getByText(/Available runner fleet/)).toBeTruthy();
     expect(screen.getAllByText(/Runner One/)).toHaveLength(2);
     expect(screen.getAllByText(/snapshot expires 2026-10-17T00:10:00Z/)).toHaveLength(2);
@@ -79,7 +105,7 @@ describe("TaskObservabilityMonitor", () => {
       resourceEstimates: { reservedTokenEstimate: 4000, observedReservationCount: 3, missingReservationTokenEstimateCount: 1, inferenceCostEstimateMicros: 0, missingInferenceCostEstimateCount: 0 },
       quotaCoverage: { status: "UNKNOWN" },
     }, isLoading: false, error: null };
-    render(<TaskObservabilityMonitor />);
+    renderMonitor("developer");
     fireEvent.change(screen.getByLabelText("Project ID"), { target: { value: "project-2" } });
     fireEvent.change(screen.getByLabelText("SPEC ID"), { target: { value: "SPEC-277" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply scope" }));
@@ -89,7 +115,7 @@ describe("TaskObservabilityMonitor", () => {
   });
 
   it("reuses the list projection token for Task Detail and Project/SPEC reads", () => {
-    render(<TaskObservabilityMonitor />);
+    renderMonitor("developer");
     expect(detailArgs.current[0]).toMatchObject({ jobId: "job-1", projectionToken: "shared.snapshot-token" });
     fireEvent.change(screen.getByLabelText("Project ID"), { target: { value: "project-2" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply scope" }));
@@ -98,7 +124,7 @@ describe("TaskObservabilityMonitor", () => {
 
   it("waits for a projection token before reading Project/SPEC aggregate", () => {
     listQuery.current = { data: { scope: "owner", items: [job], snapshot: { asOf: "2026-10-17T00:00:00Z", expiresAt: "2026-10-17T00:10:00Z" }, nextCursor: null }, isLoading: false, error: null };
-    render(<TaskObservabilityMonitor />);
+    renderMonitor("developer");
     fireEvent.change(screen.getByLabelText("Project ID"), { target: { value: "project-2" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply scope" }));
     expect(aggregateOptions.current.enabled).toBe(false);
@@ -106,7 +132,7 @@ describe("TaskObservabilityMonitor", () => {
 
   it("labels an expired projection snapshot and offers a fresh read", () => {
     listQuery.current = { data: undefined, isLoading: false, error: { data: { code: "PRECONDITION_FAILED" } }, refetch: vi.fn() };
-    render(<TaskObservabilityMonitor />);
+    renderMonitor("developer");
     expect(screen.getByText("Snapshot expired. Refresh snapshot to load current evidence.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Refresh snapshot" })).toBeTruthy();
   });
@@ -115,7 +141,7 @@ describe("TaskObservabilityMonitor", () => {
 
 it("withholds cached task detail after the authorized read fails", () => {
   detailQuery.current = { ...detailQuery.current, error: new Error("TASK_NOT_FOUND") };
-  render(<TaskObservabilityMonitor />);
+  renderMonitor("developer");
   expect(screen.getByText("Task detail is unavailable in the current account scope.")).toBeTruthy();
   expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
   expect(screen.queryByText(/Observed receipt total:/)).toBeNull();
