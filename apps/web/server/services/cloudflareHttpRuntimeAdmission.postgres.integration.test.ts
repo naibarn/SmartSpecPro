@@ -61,6 +61,21 @@ suite("Owner bounded runtime admission with real canonical PostgreSQL/outbox", (
     expect(intent.valueJson).toMatchObject({ operation: "application", authority: "existing-candidate-bounded-application-acceptance-v1",
       fixtureCreation: true, trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false });
     await client`UPDATE worker_jobs SET status='failed',"finishedAt"=now() WHERE id=${input.submissionId}`;
+    const previousKey = process.env.LLM_ENCRYPTION_KEY;
+    process.env.LLM_ENCRYPTION_KEY = "disposable-only-runtime-test-key";
+    try {
+      const encrypted = (await import("./crypto")).encrypt(JSON.stringify({ jobId: input.submissionId, tenantId: scope.tenantId,
+        projectId: scope.projectId, actorUserId: scope.actorUserId, stage: "FAILED", cleanup: { candidateRestored: true },
+        applicationProbe: { http: 200, schemaValid: true, passed: false, checks: { primaryLogin: false },
+          status: { primaryLogin: 401 }, revocationHashCount: 0, cookie: "never-expose" } }));
+      await client`INSERT INTO system_settings (category,key,value,"isSensitive","updatedBy") VALUES
+        ('cloudflare_production_native_runtime_checkpoints',${input.submissionId},${encrypted},true,1)`;
+      const readback = await service.readHttpRuntimeOperation(db, scope, "application");
+      expect(readback?.checkpoint?.applicationProbe).toMatchObject({ checks: { primaryLogin: false }, status: { primaryLogin: 401 } });
+      expect(JSON.stringify(readback)).not.toContain("never-expose");
+    } finally {
+      if (previousKey === undefined) delete process.env.LLM_ENCRYPTION_KEY; else process.env.LLM_ENCRYPTION_KEY = previousKey;
+    }
   });
   it("rejects foreign identity/scope and technical preflight failures before persisting an intent", async () => {
     await expect(service.prepareHttpRuntime(db, { ...request(), actorUserId: 2 })).rejects.toThrow("OWNER_SCOPE_DENIED");

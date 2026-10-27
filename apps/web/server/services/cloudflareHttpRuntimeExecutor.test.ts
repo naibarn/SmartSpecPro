@@ -42,7 +42,7 @@ vi.mock("./cloudflareHttpImageBuildOperator", () => ({ runHttpImageOperatorComma
   return "stdout is not a deployment receipt";
 } }));
 import { createHttpRuntimeExecutor, summarizeApplicationProbe } from "./cloudflareHttpRuntimeExecutor";
-import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT } from "./cloudflareHttpRuntimeContract";
+import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT, httpApplicationProbeSchema } from "./cloudflareHttpRuntimeContract";
 beforeEach(() => {
   vi.clearAllMocks(); state.phase = "baseline"; state.expired = false; state.revoked = false; state.probeFailure = false; state.uncertainWrite = false; state.checkpoint = null;
   state.paginatedHistory = false; state.paginatedApps = false; state.imageMismatch = false;
@@ -104,6 +104,9 @@ describe("canonical bounded existing-Candidate runtime executor", () => {
     expect(evidence).toEqual({ http: 200, colo: "FRA", schemaValid: true, passed: false,
       checks: { primaryLogin: false, authenticatedCreditRead: true }, status: { primaryLogin: 401, creditRead: 0, gatewayModelCount: 5 }, revocationHashCount: 1 });
     expect(JSON.stringify(evidence)).not.toContain("secret");
+    const readback = httpApplicationProbeSchema.parse({ ...evidence, cookie: "cookie-secret", status: { ...evidence.status, password: "secret" } });
+    expect(readback).toEqual(evidence);
+    expect(JSON.stringify(readback)).not.toContain("secret");
   });
   it("resumes only a proven pre-write checkpoint using the canonical same-intent recovery contract", async () => {
     state.checkpoint = { id: 1, isSensitive: true, updatedBy: 17, value: "encrypted:" + JSON.stringify({

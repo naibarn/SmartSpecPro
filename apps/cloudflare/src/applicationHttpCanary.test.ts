@@ -83,7 +83,12 @@ describe("bounded read-only API migration canary", () => {
       if (url.pathname === "/trpc/auth.login") {
         const { json } = await request.json() as any;
         if (json.email === "a@example.invalid" && json.password === "BadPassword123x") return Response.json({ error: { data: { code: "UNAUTHORIZED" } } }, { status: 401 });
-        if (json.email === "a@example.invalid" && json.password === "PrimaryPassword123") return Response.json({ result: { data: { json: { success: true } } } }, { headers: { "set-cookie": `app_session_id=${jwt("test-jti-a")}; HttpOnly` } });
+        if (json.email === "a@example.invalid" && json.password === "PrimaryPassword123") {
+          const headers = new Headers();
+          headers.append("set-cookie", "pending_2fa_challenge=; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly");
+          headers.append("set-cookie", `app_session_id=${jwt("test-jti-a")}; HttpOnly`);
+          return Response.json({ result: { data: { json: { success: true } } } }, { headers });
+        }
         return Response.json({ error: { data: { code: "UNAUTHORIZED" } } }, { status: 401 });
       }
       if (url.pathname === "/trpc/auth.me") {

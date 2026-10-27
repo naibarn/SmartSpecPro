@@ -57,9 +57,12 @@ async function runNodeSessionAcceptance(request: Request, env: ApplicationHttpBi
       method, headers, ...(body !== undefined ? { body: JSON.stringify(body) } : {}), redirect: "manual", signal: request.signal,
     }), runtime, env);
     let json: any = null; try { json = await response.json(); } catch { /* sanitized by the summary below */ }
-    const setCookie = (response.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.()[0] ?? response.headers.get("set-cookie");
-    const match = setCookie?.match(/^([^=;]+)=([^;]*)/);
-    return { status: response.status, json, cookie: match && match[2] ? `${match[1]}=${match[2]}` : null };
+    const cookies = (response.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.() ?? [];
+    // Login first clears the pending 2FA cookie, then issues the session.
+    // Some runtimes combine Set-Cookie headers, including Expires commas.
+    const values = cookies.length ? cookies : [response.headers.get("set-cookie") ?? ""];
+    const match = values.map(value => /(?:^|,\s*)app_session_id=([^;,\s]+)/.exec(value)).find(Boolean);
+    return { status: response.status, json, cookie: match ? `app_session_id=${match[1]}` : null };
   };
   const query = (path: string, value: unknown) => `${path}?input=${encodeURIComponent(JSON.stringify({ json: value }))}`;
   const invalid = await call("/trpc/auth.login", "POST", { json: { email: input.primary.email, password: `${input.primary.password}x` } });

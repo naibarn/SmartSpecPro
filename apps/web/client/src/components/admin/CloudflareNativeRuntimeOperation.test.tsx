@@ -159,6 +159,15 @@ describe("bounded native runtime Owner operation", () => {
     expect(request.operation).toBe("application"); expect(request.submissionId).not.toBe(state.appJob.jobId);
     expect(request.planDigest).toBe("9".repeat(64));
   });
+  it("shows recorded failed checks and safe response codes from the canonical checkpoint", () => {
+    state.appReady = true;
+    state.appJob = { jobId: "failed-application-job", status: "failed", attempt: 1, maxAttempts: 1,
+      checkpoint: { applicationProbe: { http: 200, checks: { primaryLogin: false, invalidLoginDenied: true }, status: { primaryLogin: 401 } } } };
+    state.appPreviousAcceptance = { jobId: state.appJob.jobId };
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    expect(screen.getByText(/Checks that failed: primaryLogin/)).toBeInTheDocument();
+    expect(screen.getByText(/Safe response statuses: primaryLogin=401/)).toBeInTheDocument();
+  });
   it("does not reuse a failed job ID even if its stored plan matches the reviewed plan", async () => {
     state.appReady = true;
     state.appJob = { jobId: "old-failed-job", status: "failed", attempt: 1, maxAttempts: 1 };
