@@ -233,7 +233,9 @@ jobs:
   publish:
     name: publish-runner-release
     needs: [build, container-manifest]
-    if: (inputs.publish == true || inputs.publish == 'true') && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.container-manifest.result == 'success' || needs.container-manifest.result == 'skipped')
+    # The shared container manifest is optional for platform-specific Runner releases.
+    # Use always() so a skipped optional dependency does not suppress publication.
+    if: always() && (inputs.publish == true || inputs.publish == 'true') && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.container-manifest.result == 'success' || needs.container-manifest.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
