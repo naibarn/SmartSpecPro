@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   buildAgentJobDefinition,
   type AgentProvider,
@@ -15,6 +17,14 @@ import {
 } from "./developmentLifecycleContracts";
 
 export const SPEC_224_RUN_CONTRACT_VERSION = "spec-224-v1" as const;
+
+/** The canonical worker_jobs primary key for a durable DevelopmentRun. */
+export function canonicalDevelopmentRunWorkerJobId(runId: string): string {
+  return createHash("sha256")
+    .update(`spec224-worker-job:run:${runId}`)
+    .digest("hex")
+    .slice(0, 32);
+}
 
 export type DevelopmentRunState =
   | "DISCOVERY"

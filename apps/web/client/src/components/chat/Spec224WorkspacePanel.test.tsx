@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), info: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: (...args: unknown[]) => mocks.info(...args) } }));
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { spec226DevelopmentControl: {
   availableWorkspaces: { useQuery: () => ({ data: { workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }] } }) },
   getConversationWorkspace: { useQuery: () => ({ data: mocks.workspace, refetch: vi.fn() }) },
@@ -167,5 +167,14 @@ describe("Core goal readiness feedback", () => {
     fireEvent.click(start);
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(2));
     expect(mocks.start.mock.calls[0][0].idempotencyKey).toBe(mocks.start.mock.calls[1][0].idempotencyKey);
+  });
+
+  it("reports a failed Start lookup as an error instead of claiming the run was saved", async () => {
+    mocks.start.mockRejectedValueOnce(new Error("Development run not found"));
+    await preparePanel();
+    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith("Development run not found"));
+    expect(mocks.info).not.toHaveBeenCalled();
   });
 });

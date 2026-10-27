@@ -41,6 +41,7 @@ import {
 import {
   bindWorkerJob,
   buildDevelopmentHarnessJob,
+  canonicalDevelopmentRunWorkerJobId,
   recordDevelopmentEvent,
   transitionDevelopmentRun,
   readSpec224WorkspaceLifecycleReceipts,
@@ -1516,13 +1517,6 @@ function projectionFromRun(
   };
 }
 
-function stableCanonicalJobId(operationKey: string): string {
-  return createHash("sha256")
-    .update(`spec224-worker-job:${operationKey}`)
-    .digest("hex")
-    .slice(0, 32);
-}
-
 function eventFromRow(row: {
   payloadJson: Record<string, unknown>;
 }): DevelopmentEvent | null {
@@ -1571,7 +1565,7 @@ function buildDatabaseAdapter(): DevelopmentRunPersistenceAdapter {
             .from(workerJobs)
             .where(
               and(
-                eq(workerJobs.id, stableCanonicalJobId(`run:${runId}`)),
+                eq(workerJobs.id, canonicalDevelopmentRunWorkerJobId(runId)),
                 eq(workerJobs.tenantId, scope.tenantId),
                 eq(workerJobs.requestedByUserId, scope.actorId)
               )
@@ -1853,7 +1847,7 @@ export async function createPersistedDevelopmentRun(input: {
   jobRef: { jobId: string; created: boolean };
 }> {
   const prepared = buildDevelopmentHarnessJob(input);
-  const canonicalJobId = stableCanonicalJobId(`run:${input.run.runId}`);
+  const canonicalJobId = canonicalDevelopmentRunWorkerJobId(input.run.runId);
   const jobRef = await createControlPlaneJob({
     context: {
       tenantId: input.run.tenantId,

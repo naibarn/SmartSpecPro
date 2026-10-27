@@ -1,8 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ rows: [] as unknown[][], policyRows: [] as unknown[], node: vi.fn(), jobControlPlane: vi.fn() }));
+const mocks = vi.hoisted(() => ({ rows: [] as unknown[][], policyRows: [] as unknown[], node: vi.fn(), jobControlPlane: vi.fn(), eqCalls: [] as Array<{ columnName?: string; value: unknown }>, limitCalls: [] as number[] }));
+vi.mock("drizzle-orm", async importOriginal => {
+  const actual = await importOriginal<typeof import("drizzle-orm")>();
+  return {
+    ...actual,
+    eq: (column: { name?: string }, value: unknown) => {
+      mocks.eqCalls.push({ columnName: column?.name, value });
+      return actual.eq(column as never, value as never);
+    },
+  };
+});
 vi.mock("../../db", () => {
-  const query: any = { from: () => query, where: () => query, orderBy: () => query, limit: async () => mocks.rows.shift() ?? [] };
+  const query: any = { from: () => query, where: () => query, orderBy: () => query, limit: async (size: number) => { mocks.limitCalls.push(size); return mocks.rows.shift() ?? []; } };
   const database = { select: () => query, execute: async () => mocks.policyRows };
   return { db: { ...database, instance: database }, getDb: () => database };
 });
@@ -16,6 +26,7 @@ vi.mock("../jobControlPlane", () => ({
 
 import { createSpec224AuthorizationService, Spec224AuthorizationError } from "../spec224AuthorizationService";
 import { provisionEconomicBudget } from "../economicProvisioningService";
+import { canonicalDevelopmentRunWorkerJobId } from "../spec224DevelopmentRunContracts";
 
 const context = { tenantId: "tenant-a", actorId: 7, userToken: "unit-test-owner-session" };
 const request = { context, runId: "run-a", runnerId: "runner-a" };
@@ -30,6 +41,8 @@ function createService() {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  mocks.eqCalls = [];
+  mocks.limitCalls = [];
   mocks.rows = [[{ id: "job-a", attempt: 1,
     progressJson: { spec224: { runId: "run-a", workerJobId: "job-a", workspaceId: "workspace-a", baseRevision: `git:${"a".repeat(40)}` } }, inputJson: {} }],
     [{ id: "attempt-a" }], [{ id: "budget-a" }]];
@@ -51,6 +64,42 @@ beforeEach(() => {
 });
 
 describe("owner Start authorization continuation", () => {
+  it("loads a newly created run by its canonical worker job ID", async () => {
+    const jobId = canonicalDevelopmentRunWorkerJobId("run-a");
+    mocks.rows = [[{
+      id: jobId,
+      attempt: 1,
+      progressJson: { spec224: { runId: "run-a", workerJobId: jobId, workspaceId: "workspace-a", baseRevision: `git:${"a".repeat(40)}` } },
+      inputJson: {},
+    }], []];
+
+    const result = await createService().status({ context, runId: "run-a" });
+
+    expect(result.reasons).not.toContain("RUN_NOT_FOUND");
+    expect(mocks.eqCalls).toContainEqual({ columnName: "id", value: jobId });
+    expect(mocks.eqCalls).not.toContainEqual({ columnName: "id", value: "run-a" });
+    expect(mocks.eqCalls).toContainEqual({ columnName: "tenantId", value: context.tenantId });
+    expect(mocks.eqCalls).toContainEqual({ columnName: "requestedByUserId", value: context.actorId });
+    expect(mocks.limitCalls).toEqual([1, 1]);
+  });
+
+  it("uses an exact scoped lookup for legacy root jobs instead of scanning the first 100 jobs", async () => {
+    const jobId = "legacy-root-job";
+    mocks.rows = [[], [{
+      id: jobId,
+      attempt: 1,
+      progressJson: { spec224: { runId: "run-a", workerJobId: jobId, workspaceId: "workspace-a", baseRevision: `git:${"a".repeat(40)}` } },
+      inputJson: {},
+    }], []];
+
+    const result = await createService().status({ context, runId: "run-a" });
+
+    expect(result.reasons).not.toContain("RUN_NOT_FOUND");
+    expect(mocks.eqCalls).toContainEqual({ columnName: "id", value: canonicalDevelopmentRunWorkerJobId("run-a") });
+    expect(mocks.limitCalls).toEqual([1, 1, 1]);
+    expect(mocks.limitCalls).not.toContain(100);
+  });
+
   it("continues approved policy, hold and binding in one Start without a manual approval", async () => {
     const service = createService();
     vi.spyOn(service, "status").mockResolvedValueOnce(approvalRequired).mockResolvedValueOnce(budgetRequired);

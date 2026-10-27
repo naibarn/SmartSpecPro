@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844 },
@@ -212,7 +212,7 @@ for (const viewport of VIEWPORTS) {
       .click();
     await expect(page.getByTestId("control-plane-panel")).toHaveCount(0);
     await page
-      .getByRole("button", { name: "Open AI Chat and Feedback" })
+      .getByRole("button", { name: "Open AI Chat & Feedback" })
       .click();
     await expect(
       page.getByRole("heading", { name: "AI Chat & Feedback" })
@@ -242,7 +242,7 @@ for (const viewport of VIEWPORTS) {
     });
 
     const task = `Review the control plane from ${viewport.name}`;
-    await panel.getByLabel("Task to run").fill(task);
+    await panel.getByLabel("Task instructions").fill(task);
     await panel.getByRole("button", { name: "Add to chat composer" }).click();
     await expect(
       page.getByPlaceholder("Type a message or / for skills...")
@@ -262,7 +262,7 @@ test("the single AI Chat and Feedback entry works outside the Chat route", async
 
   await page.goto("/dashboard");
   const button = page.getByRole("button", {
-    name: "Open AI Chat and Feedback",
+    name: "Open AI Chat & Feedback",
   });
   await expect(button).toBeVisible();
   const urlBeforeOpen = page.url();

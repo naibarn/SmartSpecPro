@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { and, eq, or, sql } from "drizzle-orm";
+import { and, asc, eq, or, sql } from "drizzle-orm";
 
 import {
   economicHolds,
@@ -41,7 +41,10 @@ import {
   type Spec224BudgetEvidence,
   type Spec224PolicyBinding,
 } from "./spec224AuthorizationBinding";
-import type { DevelopmentRun } from "./spec224DevelopmentRunContracts";
+import {
+  canonicalDevelopmentRunWorkerJobId,
+  type DevelopmentRun,
+} from "./spec224DevelopmentRunContracts";
 
 export class Spec224AuthorizationError extends Error {
   constructor(
@@ -389,7 +392,7 @@ async function loadRun(
     .from(workerJobs)
     .where(
       and(
-        eq(workerJobs.id, runId),
+        eq(workerJobs.id, canonicalDevelopmentRunWorkerJobId(runId)),
         eq(workerJobs.tenantId, ctx.tenantId),
         eq(workerJobs.requestedByUserId, ctx.actorId)
       )
@@ -398,7 +401,7 @@ async function loadRun(
 
   let job = row;
   if (!job) {
-    const rows = await db
+    const [legacyRoot] = await db
       .select({
         id: workerJobs.id,
         attempt: workerJobs.attempt,
@@ -409,15 +412,16 @@ async function loadRun(
       .where(
         and(
           eq(workerJobs.tenantId, ctx.tenantId),
-          eq(workerJobs.requestedByUserId, ctx.actorId)
+          eq(workerJobs.requestedByUserId, ctx.actorId),
+          or(
+            sql`${workerJobs.inputJson}->'spec224Run'->>'runId' = ${runId}`,
+            sql`${workerJobs.progressJson}->'spec224'->>'runId' = ${runId}`
+          )
         )
       )
-      .limit(100);
-    job = rows.find((candidate: { progressJson: unknown; inputJson: unknown }) => {
-      const projection = asRecord(asRecord(candidate.progressJson)?.spec224);
-      const inputRun = asRecord(asRecord(candidate.inputJson)?.spec224Run);
-      return projection?.runId === runId || inputRun?.runId === runId;
-    });
+      .orderBy(asc(workerJobs.createdAt), asc(workerJobs.id))
+      .limit(1);
+    job = legacyRoot;
   }
   if (!job) throw new Spec224AuthorizationError("RUN_NOT_FOUND");
   const projection = asRecord(job.progressJson?.spec224);
