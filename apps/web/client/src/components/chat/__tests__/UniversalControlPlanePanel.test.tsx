@@ -331,6 +331,18 @@ describe("UniversalControlPlanePanel", () => {
     expect(mocks.startWorkspaceMutateAsync).not.toHaveBeenCalled();
   });
 
+  it("shows authorized recent work without requiring a conversation or project", () => {
+    mocks.observabilityQuery.mockReturnValue({ ...emptyQuery, data: {
+      scope: "owner", snapshot: { projectionToken: "scope-token" }, nextCursor: null,
+      items: [{ id: "work-1", status: "running", operatorAttention: { required: false } }],
+    } });
+    render(<UniversalControlPlanePanel conversationId={null} fullPage onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    expect(mocks.observabilityQuery).toHaveBeenCalledWith({}, expect.objectContaining({ enabled: true }));
+    expect(screen.getByRole("heading", { name: "taskControl.overviewAllTitle" })).toBeVisible();
+    expect(screen.getByText("taskControl.activityUnknown")).toBeVisible();
+    expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
+  });
+
   it("prepares first, then starts prompt development only through the explicit user action", async () => {
     mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
       planId: "plan-1", planRevision: 1, requirementCount: 0,

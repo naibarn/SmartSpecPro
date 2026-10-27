@@ -334,7 +334,7 @@ export function UniversalControlPlanePanel({
   const trpcUtils = trpc.useUtils();
   const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
     conversationId ? { conversationId } : {},
-    { enabled: Boolean(conversationId), staleTime: 15_000, refetchInterval: 15_000, refetchIntervalInBackground: false, retry: false }
+    { enabled: Boolean(conversationId) || fullPage, staleTime: 15_000, refetchInterval: 15_000, refetchIntervalInBackground: false, retry: false }
   );
   const taskProjectionToken = taskObservabilityQuery.data?.snapshot.projectionToken;
   const conversationJobs = taskObservabilityQuery.error ? [] : taskObservabilityQuery.data?.items ?? [];
@@ -351,9 +351,10 @@ export function UniversalControlPlanePanel({
     },
   );
   const conversationTaskDetail = conversationTaskDetailQuery.error ? undefined : conversationTaskDetailQuery.data;
-  const taskMonitorHref = conversationId
-    ? `/agent-monitor?conversationId=${conversationId}${taskProjectionToken ? `&projectionToken=${encodeURIComponent(taskProjectionToken)}` : ""}`
-    : "";
+  const taskMonitorParams = new URLSearchParams();
+  if (conversationId) taskMonitorParams.set("conversationId", String(conversationId));
+  if (taskProjectionToken) taskMonitorParams.set("projectionToken", taskProjectionToken);
+  const taskMonitorHref = conversationId || fullPage ? `/agent-monitor${taskMonitorParams.size ? `?${taskMonitorParams}` : ""}` : "";
   const summaryQuery = trpc.workerJobs.dashboardSummary.useQuery(undefined, {
     refetchInterval: 10_000,
     refetchIntervalInBackground: false,
@@ -769,7 +770,7 @@ export function UniversalControlPlanePanel({
             {t("taskControl.title")}
           </h2>
           <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base">
-            {t("taskControl.description")}
+            {t(runnerViewMode === "simple" ? "taskControl.simpleDescription" : "taskControl.description")}
           </p>
           {conversationId && runnerViewMode === "developer" ? (
             <section className="mt-4 w-full space-y-3" aria-label={t("taskControl.evidenceLabel")}>
@@ -834,7 +835,9 @@ export function UniversalControlPlanePanel({
       {fullPage ? (
         <WorkOverview
           items={conversationJobs}
-          state={!conversationId ? "no-context" : taskObservabilityQuery.isLoading ? "loading" : taskObservabilityQuery.error || !taskObservabilityQuery.data ? "unavailable" : "ready"}
+          state={taskObservabilityQuery.isLoading ? "loading" : taskObservabilityQuery.error || !taskObservabilityQuery.data ? "unavailable" : "ready"}
+          hasContext={Boolean(conversationId)}
+          fleetScope={taskObservabilityQuery.data?.scope === "tenant_fleet"}
           hasMore={Boolean(taskObservabilityQuery.data?.nextCursor)}
           hasWorkspace={Boolean(conversationWorkspaceQuery.data?.workspace)}
           monitorHref={taskMonitorHref}
