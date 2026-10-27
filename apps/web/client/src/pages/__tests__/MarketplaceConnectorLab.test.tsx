@@ -337,7 +337,7 @@ describe("MarketplaceConnectorConnect", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/marketplace-connectors/shopee/authorize/complete", expect.objectContaining({
         method: "POST",
       }));
-      expect(toast.success).toHaveBeenCalledWith("Connector grant confirmed in SmartSpecPro");
+      expect(toast.success).toHaveBeenCalledWith("Connector grant confirmed in SmartAIHub");
       expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
     });
     expect(screen.getByText("abc123def456")).toBeInTheDocument();
@@ -419,7 +419,7 @@ describe("MarketplaceConnectorConnect", () => {
       expect(fetchMock).toHaveBeenCalledWith("/api/marketplace-connectors/shopee/authorize/complete", expect.objectContaining({
         method: "POST",
       }));
-      expect(toast.success).toHaveBeenCalledWith("Connector grant confirmed in SmartSpecPro");
+      expect(toast.success).toHaveBeenCalledWith("Connector grant confirmed in SmartAIHub");
       expect(screen.getAllByText("Connected").length).toBeGreaterThan(0);
     });
     expect(windowOpenMock).not.toHaveBeenCalled();

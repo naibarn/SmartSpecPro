@@ -338,7 +338,7 @@
   "localAi.handsFree.options.off": "Off",
   "localAi.handsFree.options.wake_phrase": "Wake phrase",
   "localAi.handsFree.wakePhraseLabel": "Wake phrase",
-  "localAi.handsFree.wakePhrasePlaceholder": "hey smartspec",
+  "localAi.handsFree.wakePhrasePlaceholder": "hey smartaihub",
   "localAi.handsFree.help": "Hands-free listening is desktop-only and stays opt-in. The chat view will only arm wake-phrase mode when Gemma 4 local voice is ready.",
   "localAi.save": "Save Local AI preferences",
   "localAi.device.title": "Downloads and storage",

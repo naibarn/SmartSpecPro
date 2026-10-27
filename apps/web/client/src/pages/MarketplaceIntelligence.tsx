@@ -242,7 +242,7 @@ export default function MarketplaceIntelligence() {
     setAnalysisStatus({
       tone: "info",
       message: `รอข้อมูล write-back สำหรับ "${keyword.trim()}"`,
-      detail: "ให้ใช้ OpenAI-hosted Shopee app ดึงผลค้นหา แล้วเรียก SmartSpecPro MCP tool/API เพื่อบันทึก snapshot ก่อน จากนั้นหน้านี้จะใช้ snapshot ที่บันทึกไว้สร้าง discovery/report ต่อ",
+      detail: "ให้ใช้ OpenAI-hosted Shopee app ดึงผลค้นหา แล้วเรียก SmartAIHub MCP tool/API เพื่อบันทึก snapshot ก่อน จากนั้นหน้านี้จะใช้ snapshot ที่บันทึกไว้สร้าง discovery/report ต่อ",
     });
   };
 
@@ -254,7 +254,7 @@ export default function MarketplaceIntelligence() {
       setAnalysisStatus({
         tone: "error",
         message: `ยังไม่มี snapshot จริงสำหรับ "${trimmedKeyword}"`,
-        detail: "ต้องส่งผลค้นหาจาก OpenAI-hosted Shopee app กลับมาเก็บที่ SmartSpecPro ผ่าน MCP tool/API ก่อน ระบบจะไม่สร้างข้อมูลจาก fixture หรือยิง direct live probe แทน",
+        detail: "ต้องส่งผลค้นหาจาก OpenAI-hosted Shopee app กลับมาเก็บที่ SmartAIHub ผ่าน MCP tool/API ก่อน ระบบจะไม่สร้างข้อมูลจาก fixture หรือยิง direct live probe แทน",
       });
       return;
     }
@@ -423,7 +423,7 @@ export default function MarketplaceIntelligence() {
                 </div>
               ) : (
                 <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-                  Snapshot จริงต้องมาจาก OpenAI-hosted Shopee app ที่เรียก SmartSpecPro MCP tool/API เพื่อ write-back เข้าระบบ ไม่มีการสร้าง sample อัตโนมัติ.
+                  Snapshot จริงต้องมาจาก OpenAI-hosted Shopee app ที่เรียก SmartAIHub MCP tool/API เพื่อ write-back เข้าระบบ ไม่มีการสร้าง sample อัตโนมัติ.
                 </div>
               )}
             </div>

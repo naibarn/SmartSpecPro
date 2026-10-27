@@ -304,7 +304,7 @@ function ModelCard({ model, locale, isSelected, onSelect }: ModelCardProps) {
       : (isThai ? "Grok Imagine ภาพ (ผ่าน Hermes)" : model.name);
   const description = isHermes
     ? (isThai
-        ? "สร้างด้วยบัญชี Grok ที่เชื่อมต่อผ่าน Worker ของคุณ ระบบจะเลือก connection ที่มีสิทธิ์จากฐานข้อมูลอัตโนมัติ และไม่หักเครดิต SmartSpecPro"
+        ? "สร้างด้วยบัญชี Grok ที่เชื่อมต่อผ่าน Worker ของคุณ ระบบจะเลือก connection ที่มีสิทธิ์จากฐานข้อมูลอัตโนมัติ และไม่หักเครดิต SmartAIHub"
         : model.description)
     : model.description;
   return (
@@ -399,7 +399,7 @@ function ModelCard({ model, locale, isSelected, onSelect }: ModelCardProps) {
               >
                 <Zap className="h-3 w-3 mr-0.5 inline" />
                 {isHermes && model.creditCost === 0
-                  ? (isThai ? "0 เครดิต SmartSpecPro" : "0 SmartSpecPro credits")
+                  ? (isThai ? "0 เครดิต SmartAIHub" : "0 SmartAIHub credits")
                   : `${model.creditCost} ${isThai ? "เครดิต" : "credits"}`}
               </Badge>
             )}

@@ -36,8 +36,8 @@ describe("desktop handoff pages", () => {
   it("renders desktop launch fallback UI", () => {
     render(<DesktopOpen />);
 
-    expect(screen.getByText("Open in SmartSpecPro Desktop")).toBeInTheDocument();
-    expect(screen.getByText(/smartspecpro:\/\/desktop\/open/i)).toBeInTheDocument();
+    expect(screen.getByText("Open in SmartAIHub Desktop")).toBeInTheDocument();
+    expect(screen.getByText(/smartaihub:\/\/desktop\/open/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Try opening Desktop again/i })).toBeInTheDocument();
   });
 

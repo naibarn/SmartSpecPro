@@ -338,7 +338,7 @@
   "localAi.handsFree.options.off": "ปิด",
   "localAi.handsFree.options.wake_phrase": "Wake phrase",
   "localAi.handsFree.wakePhraseLabel": "Wake phrase",
-  "localAi.handsFree.wakePhrasePlaceholder": "hey smartspec",
+  "localAi.handsFree.wakePhrasePlaceholder": "hey smartaihub",
   "localAi.handsFree.help": "โหมดฟังแบบ hands-free ใช้ได้เฉพาะเดสก์ท็อปและเป็นแบบ opt-in เท่านั้น หน้าแชตจะเปิดโหมด wake phrase ก็ต่อเมื่อ local voice ของ Gemma 4 พร้อมแล้ว",
   "localAi.save": "บันทึกการตั้งค่า Local AI",
   "localAi.device.title": "การดาวน์โหลดและพื้นที่เก็บ",

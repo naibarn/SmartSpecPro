@@ -22,7 +22,7 @@ export function McpTransportSelector({
         <Button type="button" size="sm" variant={value === "mcp" ? "default" : "outline"} disabled={disabled} onClick={() => onChange("mcp")}>
           MCP Connect
         </Button>
-        <Badge variant="outline">{value === "mcp" ? "Provider account credits" : "SmartSpecPro credits"}</Badge>
+        <Badge variant="outline">{value === "mcp" ? "Provider account credits" : "SmartAIHub credits"}</Badge>
       </div>
     </div>
   );

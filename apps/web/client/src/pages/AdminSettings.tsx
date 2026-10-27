@@ -755,8 +755,8 @@ export default function AdminSettings() {
         : "Enter token/secret",
       fromLabel: isThai ? "From Number / Sender ID" : "From Number / Sender ID",
       fromPlaceholder: isThai
-        ? "SMARTSPEC หรือ +1234567890"
-        : "SMARTSPEC or +1234567890",
+        ? "SMARTAIHUB หรือ +1234567890"
+        : "SMARTAIHUB or +1234567890",
       fromHint: isThai
         ? "กรอกเบอร์ที่ใช้ส่ง หรือ Sender ID ที่ลงทะเบียนและได้รับอนุมัติแล้วจากผู้ให้บริการ"
         : "Enter a sending number or the registered Sender ID approved by your provider.",

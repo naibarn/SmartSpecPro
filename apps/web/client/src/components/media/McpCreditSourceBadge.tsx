@@ -5,5 +5,5 @@ export function McpCreditSourceBadge({ metadata }: { metadata?: Partial<MediaTas
   if (metadata?.transport === "mcp") {
     return <Badge variant="outline">{metadata.providerDisplayName ?? metadata.providerKey ?? "Provider"} account credits</Badge>;
   }
-  return <Badge variant="secondary">SmartSpecPro credits</Badge>;
+  return <Badge variant="secondary">SmartAIHub credits</Badge>;
 }

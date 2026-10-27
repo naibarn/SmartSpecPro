@@ -213,6 +213,7 @@ describe("MarketplaceIntelligence detail routes", () => {
     expect(screen.getByRole("button", { name: "Analyze keyword" })).toBeInTheDocument();
     expect(screen.getByText(/Source: recorded_mcp_sample/)).toBeInTheDocument();
     expect(screen.getByText("Keyword search results snapshot")).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/SmartSpecPro|SmartSpec/i);
   });
 
   it("renders snapshot detail from deep link", () => {

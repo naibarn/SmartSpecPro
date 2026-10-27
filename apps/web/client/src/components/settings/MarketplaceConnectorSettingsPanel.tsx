@@ -121,7 +121,7 @@ export function MarketplaceConnectorSettingsPanel() {
 
   const checkWritebackReadiness = async () => {
     setLoading(true);
-    setLiveTest({ tone: "info", message: "Checking SmartSpecPro write-back readiness..." });
+    setLiveTest({ tone: "info", message: "Checking SmartAIHub write-back readiness..." });
     try {
       const next = await requestJson<GrantResponse>("/api/marketplace-connectors/shopee/status");
       setStatus(next);
@@ -130,7 +130,7 @@ export function MarketplaceConnectorSettingsPanel() {
       }
       setLiveTest({
         tone: "success",
-        message: "Write-back is ready. Use the Shopee app in the OpenAI host, then call SmartSpecPro MCP/API to save the returned search results.",
+        message: "Write-back is ready. Use the Shopee app in the OpenAI host, then save the returned search results to SmartAIHub.",
       });
       toast.success("Marketplace write-back is ready");
     } catch (error) {

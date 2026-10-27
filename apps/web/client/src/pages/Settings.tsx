@@ -1288,7 +1288,7 @@ export default function Settings() {
             <p className="mt-2 max-w-3xl text-sm font-medium leading-6 text-amber-800 md:text-base">
               {isThaiUi
                 ? 'กรุณากรอกข้อมูลทั้ง 2 ช่องให้ครบก่อนใช้งานหน้าปกติ เช่น Chat, Media Studio และพื้นที่ที่มีการควบคุมตามอายุ ระบบจะใช้ข้อมูลนี้เพื่อคำนวณอายุจริง ณ วันที่ใช้งานและเลือกนโยบายความปลอดภัยที่เหมาะสม'
-                : 'Complete both fields before using normal product areas such as Chat, Media Studio, and age-gated surfaces. SmartSpecPro uses this to calculate your current age and apply the right safety policy.'}
+                : 'Complete both fields before using normal product areas such as Chat, Media Studio, and age-gated surfaces. SmartAIHub uses this to calculate your current age and apply the right safety policy.'}
             </p>
           </div>
         </div>
@@ -1316,7 +1316,7 @@ export default function Settings() {
           <p className="mt-1 text-sm text-gray-600">
             {isThaiUi
               ? 'ระบบใช้ข้อมูลนี้เพื่อคำนวณอายุจริง ณ วันที่ใช้งาน และเลือกนโยบายความปลอดภัยที่เหมาะสมกับประเทศของคุณ'
-              : 'SmartSpecPro uses this to calculate your current age and apply the right safety policy for your country.'}
+              : 'SmartAIHub uses this to calculate your current age and apply the right safety policy for your country.'}
           </p>
           {!safetyProfileComplete && safetyProfileStatus.data?.missingFields?.length ? (
             <p className="mt-2 text-sm font-medium text-amber-700">

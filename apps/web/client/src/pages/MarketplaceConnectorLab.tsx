@@ -202,8 +202,8 @@ function copyFor(language: string) {
       ? "ตารางและ raw response ด้านล่างเป็นข้อมูล fixture สำหรับทดสอบ schema/field coverage ไม่ใช่ข้อมูลสดจาก Shopee"
       : "The table and raw response below are fixture data for schema and field coverage testing, not live Shopee data.",
     sourceLiveNote: th
-      ? "ข้อมูลสดต้องถูกดึงโดย OpenAI-hosted Shopee app แล้ว write-back กลับมาเป็น snapshot ใน SmartSpecPro"
-      : "Live data must be fetched by the OpenAI-hosted Shopee app and written back as a SmartSpecPro snapshot.",
+      ? "ข้อมูลสดต้องถูกดึงโดย OpenAI-hosted Shopee app แล้ว write-back กลับมาเป็น snapshot ใน SmartAIHub"
+      : "Live data must be fetched by the OpenAI-hosted Shopee app and written back as a SmartAIHub snapshot.",
     grantOnly: th
       ? "Grant active หมายถึงยืนยันสิทธิ์พร้อมใช้แล้ว แต่ยังไม่ได้รัน live data fetch ในหน้านี้"
       : "An active grant means permission is ready, but this page has not run a live data fetch.",
@@ -237,8 +237,8 @@ function copyFor(language: string) {
     writebackTokenExpires: th ? "Token expires" : "Token expires",
     writebackPayload: th ? "Write-back payload JSON" : "Write-back payload JSON",
     writebackPayloadHelp: th
-      ? "กดสร้าง package แล้วนำ prompt/token ไปใช้กับ OpenAI-hosted Shopee app เพื่อให้ write-back ผลค้นหาจริงกลับมา หรือวาง JSON ที่ได้แล้วกดบันทึกเพื่อสร้าง snapshot จริงใน SmartSpecPro"
-      : "Generate the package and use its prompt/token with the OpenAI-hosted Shopee app, or paste returned JSON and save it as a real SmartSpecPro snapshot.",
+      ? "กดสร้าง package แล้วนำ prompt/token ไปใช้กับ OpenAI-hosted Shopee app เพื่อให้ write-back ผลค้นหาจริงกลับมา หรือวาง JSON ที่ได้แล้วกดบันทึกเพื่อสร้าง snapshot จริงใน SmartAIHub"
+      : "Generate the package and use its prompt/token with the OpenAI-hosted Shopee app, or paste returned JSON and save it as a real SmartAIHub snapshot.",
     writebackSaved: th ? "บันทึก write-back snapshot แล้ว" : "Write-back snapshot saved",
     normalized: th ? "Normalized preview" : "Normalized preview",
     diagnostics: th ? "Diagnostics" : "Diagnostics",
@@ -252,8 +252,8 @@ function copyFor(language: string) {
       ? "Live connector ต้องใช้ grant ที่ active ก่อน ตอนนี้ใช้ fixture replay เพื่อทดสอบ UI และ schema ได้"
       : "Live connector requires an active grant. Fixture replay remains available for UI and schema testing.",
     liveNotImplemented: th
-      ? "Grant active แล้ว ข้อมูลสดต้องมาจาก OpenAI-hosted Shopee app แล้ว write-back ผ่าน SmartSpecPro MCP/API"
-      : "Grant is active. Live data must come from the OpenAI-hosted Shopee app and write back through SmartSpecPro MCP/API.",
+      ? "Grant active แล้ว ข้อมูลสดต้องมาจาก OpenAI-hosted Shopee app แล้ว write-back ผ่าน SmartAIHub"
+      : "Grant is active. Live data must come from the OpenAI-hosted Shopee app and write back through SmartAIHub.",
     executor: th ? "Write-back readiness" : "Write-back readiness",
     executorReady: th ? "พร้อมทดสอบ" : "Ready to test",
     executorNeedsGrant: th ? "ต้อง authorize ก่อน" : "Authorize first",
@@ -522,7 +522,7 @@ export default function MarketplaceConnectorLab() {
       return;
     }
     if (mode === "live") {
-      toast.info("Use the OpenAI-hosted Shopee app to fetch live results, then write them back to SmartSpecPro MCP/API. Connector Lab no longer calls Shopee directly.");
+      toast.info("Use the OpenAI-hosted Shopee app to fetch live results, then save them back to SmartAIHub. Connector Lab no longer calls Shopee directly.");
       return;
     }
     setIsRunning(true);

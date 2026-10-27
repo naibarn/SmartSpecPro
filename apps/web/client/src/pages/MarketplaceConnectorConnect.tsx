@@ -63,9 +63,9 @@ function copyFor(language: string) {
     scopeTitle: th ? "ขอบเขตข้อมูลที่จะใช้" : "Data scope",
     retentionTitle: th ? "Retention" : "Retention",
     retention: th ? "Raw payload จะถูก redacted และใช้เพื่อ field discovery เท่านั้น" : "Raw payloads are redacted and used for field discovery only.",
-    authorizeStartedToast: th ? "เปิดหน้าขอสิทธิ์แล้ว กลับมาที่ SmartSpecPro หลังยืนยันเสร็จ" : "Authorization page opened. Return to SmartSpecPro after completing the provider flow.",
+    authorizeStartedToast: th ? "เปิดหน้าขอสิทธิ์แล้ว กลับมาที่ SmartAIHub หลังยืนยันเสร็จ" : "Authorization page opened. Return to SmartAIHub after completing the provider flow.",
     complete: th ? "ฉันยืนยันใน provider แล้ว" : "I completed provider authorization",
-    completedToast: th ? "ยืนยันสิทธิ์ใน SmartSpecPro แล้ว" : "Connector grant confirmed in SmartSpecPro",
+    completedToast: th ? "ยืนยันสิทธิ์ใน SmartAIHub แล้ว" : "Connector grant confirmed in SmartAIHub",
     authorizeStartFailed: th ? "เริ่มขอสิทธิ์ไม่สำเร็จ" : "Could not start authorization",
     revokedToast: th ? "ยกเลิกสิทธิ์แล้ว" : "Access revoked",
     refresh: th ? "Refresh status" : "Refresh status",
@@ -271,7 +271,7 @@ export default function MarketplaceConnectorConnect() {
               <ul className="grid gap-3 text-sm text-slate-700">
                 <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" /> Search keyword result fields visible to the authorized connector.</li>
                 <li className="flex gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" /> Seller, rank, price, review, rating, badge, and raw field diagnostics when available.</li>
-                <li className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" /> No external account password or marketplace credential is stored in SmartSpecPro.</li>
+                <li className="flex gap-2"><AlertTriangle className="mt-0.5 h-4 w-4 text-amber-600" /> No external account password or marketplace credential is stored in SmartAIHub.</li>
               </ul>
               <section className="rounded-md bg-slate-100 p-3 text-sm leading-6 text-slate-700">
                 <p className="font-medium">{copy.retentionTitle}</p>
