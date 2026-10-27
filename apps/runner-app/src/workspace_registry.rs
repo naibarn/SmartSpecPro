@@ -1590,7 +1590,7 @@ pub fn create_project(
             return Err("RUNNER_PROJECT_PATH_BOUNDARY_VIOLATION".into());
         }
     };
-    if has_reparse_component(&root_path, &canonical)? {
+    if has_reparse_component(&root_path, &target)? {
         set_project_lifecycle(config, &workspace_id, "RECOVERY_REQUIRED")?;
         return Err("RUNNER_PROJECT_REPARSE_POINT_DENIED".into());
     }
@@ -1912,7 +1912,7 @@ pub fn recover_project_provisioning(
                 continue;
             }
         };
-        if has_reparse_component(&root, &canonical)? {
+        if has_reparse_component(&root, &path)? {
             records[index].lifecycle = Some("RECOVERY_REQUIRED".into());
             continue;
         }
