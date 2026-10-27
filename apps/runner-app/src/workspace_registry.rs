@@ -326,7 +326,7 @@ mod tests {
         fs::create_dir(&existing).unwrap();
         fs::write(existing.join("notes.txt"), "keep").unwrap();
         let junction = root.join("alias");
-        let ps_literal = |path: &Path| {
+        let ps_literal = |path: &std::path::Path| {
             format!("'{}'", path.to_string_lossy().replace('\'', "''"))
         };
         let command = format!(
