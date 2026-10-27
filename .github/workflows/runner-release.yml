@@ -28,6 +28,11 @@ on:
         required: true
         type: boolean
         default: false
+      prerelease:
+        description: "Publish as a prerelease candidate, not a latest production release"
+        required: true
+        type: boolean
+        default: false
       release_id:
         description: "Explicit release identifier when publish is enabled"
         required: false
@@ -259,14 +264,17 @@ jobs:
           RELEASE_ID: ${{ inputs.release_id }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           SOURCE_COMMIT: ${{ steps.publish_source.outputs.commit }}
+          PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
         run: |
           tag="runner-v${RELEASE_ID}"
           title="SmartAIHub Runner ${RELEASE_ID}"
+          release_flags=()
+          if [ "$PRERELEASE" = "true" ]; then release_flags+=(--prerelease); fi
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$tag" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
-            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "${RELEASE_NOTES:-Manual SmartAIHub Runner release}" --target "$SOURCE_COMMIT"
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --title "$title" --notes "${RELEASE_NOTES:-Manual SmartAIHub Runner release}" --target "$SOURCE_COMMIT" "${release_flags[@]}"
           else
-            gh release create "$tag" release-assets/* --repo "$GITHUB_REPOSITORY" --title "$title" --notes "${RELEASE_NOTES:-Manual SmartAIHub Runner release}" --target "$SOURCE_COMMIT"
+            gh release create "$tag" release-assets/* --repo "$GITHUB_REPOSITORY" --title "$title" --notes "${RELEASE_NOTES:-Manual SmartAIHub Runner release}" --target "$SOURCE_COMMIT" "${release_flags[@]}"
           fi
           echo "Published $tag from $SOURCE_COMMIT"
