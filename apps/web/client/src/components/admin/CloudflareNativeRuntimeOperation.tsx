@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
+import { HStack, Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Section } from "@astryxdesign/core/Section";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -50,9 +52,11 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
   // replaying that exhausted job's ID.
   const usablePending = pending && !pendingRevoked && !pendingExpired ? pending : null;
   const appPreflight = applicationState.data?.preflight, appJob = applicationState.data?.job, appPending = applicationState.data?.pending;
-  const appPreflightStage = appPreflight && !appPreflight.ready
-    ? /HTTP_RUNTIME_PREFLIGHT_([A-Z_]+)_/.exec(appPreflight.reason)?.[1] ?? null
-    : null;
+  const appPreflightStage = (() => {
+    if (!appPreflight || appPreflight.ready) return null;
+    if (appPreflight.reason.startsWith("HTTP_APPLICATION_M1_")) return "M1_EVIDENCE";
+    return /^HTTP_RUNTIME_PREFLIGHT_(CANDIDATE|M1_EVIDENCE|BOUNDED_RUNTIME_EVIDENCE|DATABASE_SCHEMA|DATABASE_ROLE|RUNTIME_CONFIGURATION|ARTIFACT|CLOUDFLARE_READBACK)_(?:UNAVAILABLE|SQLSTATE_[A-Z0-9]{5})$/.exec(appPreflight.reason)?.[1] ?? null;
+  })();
   const applicationContinuation = Boolean(appJob?.status === "failed" && appPreflight?.ready &&
     appPreflight.plan.previousApplicationAcceptance?.jobId === appJob.jobId);
   const previousFailedApplicationIntent = Boolean(applicationContinuation && appPending?.submissionId === appJob?.jobId);
@@ -61,6 +65,42 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
   const [applicationSubmission, setApplicationSubmission] = useState<ReviewedSubmission | null>(() => {
     try { return JSON.parse(sessionStorage.getItem(appKey) ?? "null"); } catch { return null; }
   });
+  const [preflightDialogOpen, setPreflightDialogOpen] = useState(false);
+  const [preflightRecheckState, setPreflightRecheckState] = useState<"idle" | "checking" | "ready" | "blocked" | "failed">("idle");
+  const [preflightRecheckResult, setPreflightRecheckResult] = useState<string | null>(null);
+  const recheckInFlight = useRef(false);
+  const openPreflightDialog = () => {
+    setPreflightRecheckState("idle");
+    setPreflightRecheckResult(null);
+    setPreflightDialogOpen(true);
+  };
+  const recheckApplicationPreflight = async () => {
+    if (recheckInFlight.current || (appJob && !applicationContinuation)) return;
+    recheckInFlight.current = true;
+    setPreflightRecheckState("checking");
+    setPreflightRecheckResult(null);
+    try {
+      const result = await applicationState.refetch();
+      if (result.error) {
+        setPreflightRecheckState("failed");
+        setPreflightRecheckResult("PREFLIGHT_REQUEST_FAILED");
+      } else {
+        const checked = result.data?.preflight;
+        if (checked?.ready) {
+          setPreflightRecheckState("ready");
+          setPreflightRecheckResult("READY");
+        } else {
+          setPreflightRecheckState("blocked");
+          setPreflightRecheckResult(checked?.reason ?? "PREFLIGHT_RESULT_UNAVAILABLE");
+        }
+      }
+    } catch {
+      setPreflightRecheckState("failed");
+      setPreflightRecheckResult("PREFLIGHT_REQUEST_FAILED");
+    } finally {
+      recheckInFlight.current = false;
+    }
+  };
   const canReplaceExpiredIntent = Boolean(continuation && pendingExpired && !pendingRevoked && pending?.submissionId === job?.jobId);
   const submit = async () => {
     if (busy.current || job && !continuation || !preflight?.ready || pendingRevoked || pendingExpired && !canReplaceExpiredIntent) return;
@@ -101,6 +141,9 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
           "ตอนนี้: ตรวจ login, API, การแยก tenant และ Gateway ที่ต้องเข้าสู่ระบบบน Candidate เดิม จากนั้นตรวจ billing และงานเบื้องหลัง ส่วนเปิด native production เป็นขั้นสุดท้ายและแยกอนุมัติ")}</Text>
         <progress aria-label={text("Migration progress", "ความคืบหน้าการย้ายระบบ")} max={5} value={completedCount} />
         <Text role="status">{text("Current status", "สถานะปัจจุบัน")}: {currentAppStatus}</Text>
+        {preflightRecheckResult ? <Text role={preflightRecheckState === "failed" ? "alert" : "status"}>
+          {text("Latest read-only check", "ผลตรวจแบบอ่านอย่างเดียวล่าสุด")}: {preflightRecheckState === "checking" ? text("Checking…", "กำลังตรวจ…") : preflightRecheckResult}
+        </Text> : null}
         {appPreflight?.ready ? <Text>{text("Next action: submit one synthetic-only application acceptance job. It does not charge credits or change production traffic.",
           "คำสั่งถัดไป: ส่งงานตรวจรับแอปด้วยข้อมูลสังเคราะห์หนึ่งครั้ง ไม่หักเครดิตและไม่เปลี่ยน production traffic")}</Text>
           : appPreflight ? <Text>{text("Next action: resolve the blocker below, then run the read-only preflight again.",
@@ -174,15 +217,15 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     </> : appPreflight ? <VStack gap={1} role="status">
       <Text>{appPreflightStage ? text(`Blocked at ${appPreflightStage}`, `ติดเงื่อนไขขั้น ${appPreflightStage}`) : text("Application preflight is not ready", "preflight ของแอปยังไม่พร้อม")}</Text>
       <Text>{preflightHelp(appPreflight.reason)}</Text>
-      <details><summary>{text("Exact sanitized preflight result", "ผล preflight แบบไม่เปิดเผยข้อมูลลับ")}</summary><Text>{appPreflight.reason}</Text></details>
-      <Button type="button" onClick={() => void applicationState.refetch()} disabled={applicationState.isFetching || Boolean(appJob && !applicationContinuation)}>
-        {applicationState.isFetching ? text("Rechecking the same Candidate…", "กำลังตรวจ Candidate เดิม…") : text("Recheck application preflight", "ตรวจ preflight แอปอีกครั้ง")}
+      <Text role="status">{text("Exact result", "ผลตรวจแบบเต็ม")}: {appPreflight.reason}</Text>
+      <Button type="button" onClick={openPreflightDialog} disabled={applicationState.isFetching || Boolean(appJob && !applicationContinuation)}>
+        {applicationState.isFetching ? text("Checking the same Candidate…", "กำลังตรวจ Candidate เดิม…") : text("Recheck application preflight", "ตรวจ preflight แอปอีกครั้ง")}
       </Button>
     </VStack> : applicationState.error ? <VStack gap={1} role="alert">
       <Text>{text("Authenticated application preflight request failed; no job was submitted.", "คำขอตรวจ preflight แอปที่ต้องเข้าสู่ระบบล้มเหลว และยังไม่มีการส่ง job")}</Text>
       <Text>{applicationState.error.message}</Text>
-      <Button type="button" onClick={() => void applicationState.refetch()} disabled={applicationState.isFetching}>
-        {applicationState.isFetching ? text("Rechecking the same Candidate…", "กำลังตรวจ Candidate เดิม…") : text("Retry read-only preflight", "ตรวจ preflight แบบอ่านอย่างเดียวอีกครั้ง")}
+      <Button type="button" onClick={openPreflightDialog} disabled={applicationState.isFetching}>
+        {applicationState.isFetching ? text("Checking the same Candidate…", "กำลังตรวจ Candidate เดิม…") : text("Retry read-only preflight", "ตรวจ preflight แบบอ่านอย่างเดียวอีกครั้ง")}
       </Button>
     </VStack> : null}
     {appPending && !appJob ? <Text role="status">{text("Admission pending canonical reconciliation", "กำลังตรวจผลรับงานจาก canonical registry")}: {appPending.submissionId}</Text> : null}
@@ -192,6 +235,32 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       {text("M3 acceptance", "ตรวจรับ M3")}: {appJob.receipt.runtimeAcceptance ? "PASS" : "PENDING"} · {text("Credit settlement, application jobs/recovery and native activation remain separate gates", "การ settle credit, application jobs/recovery และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text> : null}
     </VStack>
     </Section>
+    <Dialog isOpen={preflightDialogOpen} onOpenChange={open => { if (!recheckInFlight.current) setPreflightDialogOpen(open); }}
+      purpose={preflightRecheckState === "checking" ? "required" : "form"} width={520}>
+      <Layout
+        header={<DialogHeader title={text("Confirm read-only application preflight", "ยืนยันตรวจ preflight แอปแบบอ่านอย่างเดียว")}
+          subtitle={text("This checks the same Candidate only.", "ตรวจ Candidate เดิมเท่านั้น")}
+          onOpenChange={recheckInFlight.current ? undefined : setPreflightDialogOpen} />}
+        content={<LayoutContent><VStack gap={2}>
+          <Text>{text("No Job, grant, Cloudflare resource, database data, or production traffic will be created or changed. The result will appear here when the check finishes.",
+            "การตรวจนี้ไม่สร้างหรือเปลี่ยน Job, grant, ทรัพยากร Cloudflare, ข้อมูลฐานข้อมูล หรือ production traffic เมื่อเสร็จจะแสดงผลตรงนี้")}</Text>
+          {preflightRecheckState === "checking" ? <Text role="status">{text("Checking now… Keep this window open. The button is locked to prevent a duplicate request.",
+            "กำลังตรวจ… โปรดเปิดหน้าต่างนี้ไว้ ระบบล็อกปุ่มเพื่อป้องกันการส่งคำขอซ้ำ")}</Text> : null}
+          {preflightRecheckResult && preflightRecheckState !== "idle" && preflightRecheckState !== "checking" ? <Text role={preflightRecheckState === "failed" ? "alert" : "status"}>
+          {preflightRecheckState === "ready" ? text("Result: READY", "ผลตรวจ: พร้อม") : preflightRecheckState === "blocked" ? text("Result: BLOCKED", "ผลตรวจ: ติดเงื่อนไข") : text("Result: request failed", "ผลตรวจ: คำขอล้มเหลว")} · {preflightRecheckResult}
+          </Text> : null}
+        </VStack></LayoutContent>}
+        footer={<LayoutFooter><HStack gap={2} hAlign="end">
+          {preflightRecheckState === "idle" ? <>
+            <Button type="button" variant="secondary" onClick={() => setPreflightDialogOpen(false)}>{text("Cancel", "ยกเลิก")}</Button>
+            <Button type="button" onClick={() => void recheckApplicationPreflight()} disabled={applicationState.isFetching}>
+              {text("Start read-only check", "เริ่มตรวจแบบอ่านอย่างเดียว")}
+            </Button>
+          </> : preflightRecheckState === "checking" ? <Button type="button" disabled>{text("Checking…", "กำลังตรวจ…")}</Button>
+            : <Button type="button" onClick={() => setPreflightDialogOpen(false)}>{text("Close", "ปิด")}</Button>}
+        </HStack></LayoutFooter>}
+      />
+    </Dialog>
     {job?.imageRepair ? <>
       <Text role="alert">{job.imageRepair.code} · Node {job.imageRepair.observedVersion} · {text("Required", "ต้องใช้")} {job.imageRepair.requiredVersion}</Text>
       <CloudflareImagePublication tenantId={tenantId} projectId={projectId} replacementForSourceSha={job.imageRepair.sourceSha} />

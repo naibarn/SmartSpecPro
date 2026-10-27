@@ -22,7 +22,12 @@ vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
 const props = { tenantId: "tenant-fixture", projectId: "project-fixture", candidateJobId: "22222222-2222-4222-8222-222222222222" };
 beforeEach(() => { sessionStorage.clear(); state.ready = true; state.continuation = false; state.appReady = false; state.appReason = "application acceptance not prepared"; state.appJob = null; state.appPending = null;
   state.appPreviousAcceptance = null; state.job = null; state.pending = null; state.error = null; state.mutationError = null;
-  state.loading = false; state.busy = false; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted-runtime" }); state.refetch.mockClear(); });
+  if (typeof HTMLDialogElement !== "undefined") {
+    HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
+    HTMLDialogElement.prototype.close = function () { this.removeAttribute("open"); };
+  }
+  state.loading = false; state.busy = false; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted-runtime" });
+  state.refetch.mockReset().mockResolvedValue({ data: { preflight: { ready: false, reason: state.appReason } }, error: null }); });
 describe("bounded native runtime Owner operation", () => {
   it("reviews role, budgets, no traffic changes and incomplete full acceptance before one exact action", async () => {
     render(<CloudflareNativeRuntimeOperation {...props} />);
@@ -113,15 +118,33 @@ describe("bounded native runtime Owner operation", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("HTTP_RUNTIME_ADMISSION_UNKNOWN");
   });
   it("shows the exact blocked preflight stage and only offers a read-only recheck", async () => {
-    state.appReady = false; state.appReason = "HTTP_RUNTIME_PREFLIGHT_DATABASE_ROLE_UNAVAILABLE";
+    state.appReady = false; state.appReason = "HTTP_RUNTIME_PREFLIGHT_BOUNDED_RUNTIME_EVIDENCE_SQLSTATE_42601";
+    state.refetch.mockResolvedValueOnce({ data: { preflight: { ready: false, reason: state.appReason } }, error: null });
     const view = render(<CloudflareNativeRuntimeOperation {...props} />);
-    expect(screen.getByText("Blocked at DATABASE_ROLE")).toBeInTheDocument();
-    expect(screen.getByText("HTTP_RUNTIME_PREFLIGHT_DATABASE_ROLE_UNAVAILABLE")).toBeInTheDocument();
+    expect(screen.getByText("Blocked at BOUNDED_RUNTIME_EVIDENCE")).toBeInTheDocument();
+    expect(screen.getByText(/HTTP_RUNTIME_PREFLIGHT_BOUNDED_RUNTIME_EVIDENCE_SQLSTATE_42601/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recheck application preflight" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Authorize synthetic application acceptance" })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Recheck application preflight" }));
-    expect(state.refetch).toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(state.refetch).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Start read-only check" }));
+    await waitFor(() => expect(state.refetch).toHaveBeenCalledOnce());
+    expect(screen.getByRole("dialog")).toHaveTextContent("HTTP_RUNTIME_PREFLIGHT_BOUNDED_RUNTIME_EVIDENCE_SQLSTATE_42601");
+    expect(screen.getAllByRole("status").some(element => element.textContent?.includes("HTTP_RUNTIME_PREFLIGHT_BOUNDED_RUNTIME_EVIDENCE_SQLSTATE_42601"))).toBe(true);
     view.unmount();
+  });
+  it("locks the confirmation dialog while a read-only preflight request is in flight", async () => {
+    state.appReady = false;
+    let finish!: (value: any) => void;
+    state.refetch.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Recheck application preflight" }));
+    await userEvent.click(screen.getByRole("button", { name: "Start read-only check" }));
+    expect(screen.getByRole("button", { name: "Checking…" })).toBeDisabled();
+    expect(state.refetch).toHaveBeenCalledOnce();
+    finish({ data: { preflight: { ready: false, reason: "HTTP_RUNTIME_PREFLIGHT_DATABASE_ROLE_UNAVAILABLE" } }, error: null });
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveTextContent("HTTP_RUNTIME_PREFLIGHT_DATABASE_ROLE_UNAVAILABLE"));
   });
   it("offers a fresh application action only when the previous job is proven fully compensated", async () => {
     state.appReady = true;

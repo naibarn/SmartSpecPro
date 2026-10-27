@@ -54,7 +54,8 @@ export async function readCompensatedHttpApplicationAcceptance(db: DrizzleDB, sc
   const [job] = await db.select().from(workerJobs).where(and(eq(workerJobs.tenantId, scope.tenantId),
     eq(workerJobs.requestedByUserId, scope.actorUserId), eq(workerJobs.jobType, HTTP_RUNTIME_JOB),
     eq(workerJobs.contractVersion, HTTP_RUNTIME_CONTRACT), eq(workerJobs.status, "failed"), sql`${workerJobs.inputJson}->>'projectId'=${scope.projectId}`,
-    sql`${workerJobs.inputJson}->>'operation'='application', ${workerJobs.inputJson}->>'candidateJobId'=${candidateJobId}`,
+    sql`${workerJobs.inputJson}->>'operation'='application'`,
+    sql`${workerJobs.inputJson}->>'candidateJobId'=${candidateJobId}`,
     ...(jobId ? [eq(workerJobs.id, jobId)] : []))).orderBy(sql`${workerJobs.createdAt} DESC`).limit(1);
   if (!job && !jobId) return null;
   const deny = (): never => { throw Error("HTTP_APPLICATION_PREVIOUS_EXECUTION_RECONCILE_REQUIRED"); };
