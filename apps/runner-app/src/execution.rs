@@ -229,7 +229,7 @@ mod tests {
                 authenticated: true,
                 healthy: true,
                 available: true,
-                reason_codes: vec!["probe_ok".into()],
+                reason_codes: vec!["version_probe_ok".into(), "task_probe_ok".into()],
             },
         )
         .unwrap();

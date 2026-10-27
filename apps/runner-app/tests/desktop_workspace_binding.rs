@@ -20,19 +20,21 @@ fn fixture() -> (tempfile::TempDir, RunnerConfig, String) {
 fn desktop_binding_persists_clears_and_never_invents_task_or_git() {
     let (_root, config, id) = fixture();
     workspace_view::bind(&config, false, &id, Some("project-1"), Some("org/repo")).unwrap();
-    let views = workspace_view::list(&config).unwrap();
-    assert_eq!(views[0].facts.project_id.as_deref(), Some("project-1"));
-    assert_eq!(views[0].facts.repository_id.as_deref(), Some("org/repo"));
-    assert_eq!(views[0].facts.task_id, None);
-    assert_eq!(views[0].facts.git_head, None);
-    assert_eq!(views[0].facts.convergence_state, "NOT_REPORTED");
-    let snapshot = serde_json::to_string(&views[0].facts).unwrap();
+    let views = workspace_view::list(&config, true).unwrap();
+    let facts = views[0].facts.as_ref().unwrap();
+    assert_eq!(facts.project_id.as_deref(), Some("project-1"));
+    assert_eq!(facts.repository_id.as_deref(), Some("org/repo"));
+    assert_eq!(facts.task_id, None);
+    assert_eq!(facts.git_head, None);
+    assert_eq!(facts.convergence_state, "NOT_REPORTED");
+    let snapshot = serde_json::to_string(facts).unwrap();
     assert!(!snapshot.contains(&config.data_root));
     assert!(!snapshot.contains("localPath"));
     workspace_view::bind(&config, false, &id, None, None).unwrap();
-    let views = workspace_view::list(&config).unwrap();
-    assert_eq!(views[0].facts.project_id, None);
-    assert_eq!(views[0].facts.repository_id, None);
+    let views = workspace_view::list(&config, true).unwrap();
+    let facts = views[0].facts.as_ref().unwrap();
+    assert_eq!(facts.project_id, None);
+    assert_eq!(facts.repository_id, None);
 }
 
 #[test]
@@ -53,8 +55,10 @@ fn desktop_rejects_running_and_invalid_binding_without_changing_registry() {
         "RUNNER_WORKSPACE_NOT_REGISTERED"
     );
     assert_eq!(
-        workspace_view::list(&config).unwrap()[0]
+        workspace_view::list(&config, true).unwrap()[0]
             .facts
+            .as_ref()
+            .unwrap()
             .project_id
             .as_deref(),
         Some("original")
@@ -86,9 +90,14 @@ fn desktop_git_facts_follow_real_commit_and_dirty_state() {
         "fixture",
     ]);
     let head = git(&["rev-parse", "HEAD"]);
-    let views = workspace_view::list(&config).unwrap();
-    assert_eq!(views[0].facts.git_head.as_deref(), Some(head.as_str()));
-    assert!(!views[0].facts.dirty);
+    let views = workspace_view::list(&config, true).unwrap();
+    let facts = views[0].facts.as_ref().unwrap();
+    assert_eq!(facts.git_head.as_deref(), Some(head.as_str()));
+    assert!(!facts.dirty);
     fs::write(folder.join("change.txt"), "real change").unwrap();
-    assert!(workspace_view::list(&config).unwrap()[0].facts.dirty);
+    assert!(workspace_view::list(&config, true).unwrap()[0]
+        .facts
+        .as_ref()
+        .unwrap()
+        .dirty);
 }
