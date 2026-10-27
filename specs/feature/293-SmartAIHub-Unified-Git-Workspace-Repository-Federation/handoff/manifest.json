@@ -25,10 +25,10 @@
     "expected_spec_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688"
   },
   "continuation": {
-    "next_action": "SPEC293 workspace isolation continuation: execute actual Windows Runner validation for reparse points, provisioning restart/recovery and project/run paths when a Windows host/toolchain is available; close any platform-specific defects. Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current.",
+    "next_action": "SPEC293 Windows Runner acceptance remains NOT VERIFIED: reconnect an authorized registered Windows Runner and authenticated owner/browser session, verify its installed build, then perform the device-level root/project/import/legacy/restart/path/junction/concurrent-CAS/recovery/Task-Control/SPEC-224 checks. The CI artifact is unsigned-review and was not installed. After this acceptance slice, continue the existing P0 closure: SPEC293 workspace isolation continuation: execute actual Windows Runner validation for reparse points, provisioning restart/recovery and project/run paths when a Windows host/toolchain is available; close any platform-specific defects. Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current.",
     "next_ready_workunit": "SPEC293_WINDOWS_RUNNER_AND_WORKSPACE_AUTHORITY_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Resume from origin/main 7d37b44fe0e7aa93b48c50958771b4aa7f29298e. SPEC-293 Section 60.5 owns Runner Root → persistent Project Workspace → run execution workspace. Linux quick evidence is specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-workspace-isolation-7d37b44fe0.md. Workspace registry, run candidate integration, bounded Task Control projection and legacy migration are integrated. Actual Windows Runner/reparse/restart acceptance is open; the attempted GNU cross-target check was blocked by missing x86_64-w64-mingw32-gcc and is not Windows acceptance. Continue the existing P0 internal-gap actions after this platform acceptance slice: Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-293, WP38). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve P0 remaining authority wiring. Reuse existing canonical source/worktree fencing and add only optional Git/source-observation bindings; re-observe current workspace state rather than treating a historical clean-workspace receipt as current.",
+    "resume_point": "Resume from origin/main 486339f977c96c351b08f3d0c51753d1723b27da. Native Windows workflow 40446187471 passed the Runner crate suite, Windows build, and unsigned-review artifact upload. Artifact sourceCommit is 486339f977c96c351b08f3d0c51753d1723b27da; ZIP SHA-256 a5932c9fa978e49811cb9060519c150fdfd95b8b315dc97b7fe3623d74a60697; executable SHA-256 f2e8477fe2a00dfa48450862a7811e6f23a9ed20f4560c1d8754f664ebfee3a9. Artifact was not installed. No authorized registered Windows Runner host or authenticated session was available; last 0.2.41 observation is stale. Resume device acceptance when authenticated Runner access is available; verify installed build and real workspace lifecycle, Task Control projection, and SPEC-224 seam. Keep acceptance NOT VERIFIED until observed. Then continue the existing P0 closure, without changing SPEC-224 execution authority.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 76,
+  "generation": 77,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
@@ -660,7 +660,7 @@
     "unresolved": 253
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T01:11:27.544383Z",
+  "updated_at": "2026-10-27T03:53:58.743263Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -998,6 +998,34 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-workspace-isolation-7d37b44fe0.md",
         "scope": "SPEC-293 Section 60.5 Runner Root/project/run hierarchy, path boundaries, legacy recovery, concurrent candidate apply, sanitized Task Control projection; Linux quick checks pass. Actual Windows Runner acceptance remains open.",
         "source_sha": "7d37b44fe0e7aa93b48c50958771b4aa7f29298e",
+        "status": "PASS"
+      },
+      {
+        "kind": "NATIVE_WINDOWS_RUNNER_TEST_BUILD",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-windows-runner-acceptance-805d9b12-20261027.md",
+        "scope": "Windows workflow 40446187471 at exact canonical source 486339f: Runner library 199 passed/0 failed/2 ignored; desktop binding 4/4; session-host 8/8; root/project A-B identity, import, symlink/junction escape, legacy migration, interrupted recovery and concurrent candidate-apply tests; Windows build and unsigned-review artifact uploaded. Artifact SHA-256 and executable SHA-256 recorded in evidence. This is CI evidence, not enrolled-device acceptance.",
+        "source_sha": "486339f977c96c351b08f3d0c51753d1723b27da",
+        "status": "PASS"
+      },
+      {
+        "kind": "WINDOWS_REGISTERED_RUNNER_DEVICE_ACCEPTANCE",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-windows-runner-acceptance-805d9b12-20261027.md",
+        "scope": "Blocked: only local Linux host was available; authenticated Runner access returned 401, environment list empty, Runner service inactive. Installed build/current heartbeat/consent and real workspace lifecycle are not verified; do not infer acceptance from Windows CI artifact.",
+        "source_sha": "486339f977c96c351b08f3d0c51753d1723b27da",
+        "status": "BLOCKED"
+      },
+      {
+        "kind": "FOCUSED_LOCAL_REGRESSION",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-windows-runner-acceptance-805d9b12-20261027.md",
+        "scope": "Linux Runner full crate suites at 4962028 (217 passed, 0 failed, 2 ignored; desktop binding 4/4; session-host 8/8); final cross-platform Desktop JSON path assertion at 486339f verified desktop binding integration 4/4.",
+        "source_sha": "486339f977c96c351b08f3d0c51753d1723b27da",
+        "status": "PASS"
+      },
+      {
+        "kind": "FOCUSED_WEB_PROJECTION_REGRESSION",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-windows-runner-acceptance-805d9b12-20261027.md",
+        "scope": "Runner contracts, workspace projection, project identity presentation and Task Control panel: 4 Vitest files, 38 tests passed at source 805d9b125ff86fd1d8043019bbf446e79e0ac4bb; authenticated Playwright unavailable.",
+        "source_sha": "805d9b125ff86fd1d8043019bbf446e79e0ac4bb",
         "status": "PASS"
       }
     ],

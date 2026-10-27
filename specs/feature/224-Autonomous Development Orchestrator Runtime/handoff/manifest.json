@@ -1094,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 193,
+  "generation": 194,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -3704,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-26T23:59:11.322348Z",
+  "updated_at": "2026-10-27T03:55:15.663453Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4070,6 +4070,13 @@
         "path": "apps/web/server/routes/__tests__/runnerControl.test.ts",
         "scope": "Exact fix commit e8e8245c6ba838194f4ef503bb37cc2fe43867a8: runnerControl route tests 25/25; Runner transport focused tests 6/6 plus HTTP failure classification 1/1; Desktop capability projection tests 2/2; node --check apps/runner-desktop/ui/app.js, rustfmt check and git diff --check passed. Regression proves a durable capability snapshot remains acknowledged if the separate readiness projection fails. These are focused software tests, not live Runner ACK evidence.",
         "source_sha": "e8e8245c6ba838194f4ef503bb37cc2fe43867a8",
+        "status": "PASS"
+      },
+      {
+        "kind": "SPEC293_WORKSPACE_CONSUMER_SEAM_RECHECK",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-spec293-workspace-consumer-seam-20261027.md",
+        "scope": "Verified SPEC-224 source workspace_ref/job/attempt consumption through protected candidate create/reattach/apply, SPEC-293 run workspace registration and sanitized Task Control IDs/lifecycle projection; execution authority unchanged. Native Windows candidate/apply and registry tests passed; live enrolled Runner remains unavailable.",
+        "source_sha": "486339f977c96c351b08f3d0c51753d1723b27da",
         "status": "PASS"
       }
     ],
