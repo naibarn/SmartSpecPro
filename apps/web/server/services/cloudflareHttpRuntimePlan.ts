@@ -187,7 +187,7 @@ async function buildHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJobId:
   markStage("CLOUDFLARE_READBACK");
   const access = await withCloudflareDeploymentCredential(db, { identity: { ...scope, provider: "cloudflare", environment: "production" },
     credentialRef: pkg.target.credentialRef }, token => verifyHttpCandidateProviderReceipt({ receipt: candidate, accountRef: pkg.target.accountRef, token,
-      restoredBaseline: previousRuntime?.restoredBaseline }));
+      restoredBaseline: previousApplicationAcceptance?.restoredBaseline ?? previousRuntime?.restoredBaseline }));
   if (access.status !== "CONFIGURED" || !access.value?.verified) throw Error("HTTP_RUNTIME_CANDIDATE_READBACK_REQUIRED");
   const plan = { candidateJobId, candidate, previousRuntime, publication: desired.publishedPair, network, relations, role: applicationDatabaseRoleName(scope), roleLifetimeSeconds: 2700,
     maxStartsPerRuntime: 2, maxComputeSecondsPerRuntime: 1200, hardLifetimeSeconds: 600, instance: "basic",
