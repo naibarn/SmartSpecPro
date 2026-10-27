@@ -130,7 +130,7 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       // and these narrowly selected fields leave the process.
       return { status: response.status, colo: response.headers.get("cf-ray")?.split("-").at(-1), json };
     };
-    const captureDiagnostics = async () => {
+    const captureDiagnostics = async (key: "runtimeDiagnostics" | "preStartDiagnostics" = "runtimeDiagnostics") => {
       const snapshots = [];
       for (const runtime of ["node", "python"] as const) {
         try {
@@ -141,7 +141,7 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
           snapshots.push(parsed.success ? parsed.data : { runtime, http: result.status });
         } catch { snapshots.push({ runtime, http: 0 }); }
       }
-      state.runtimeDiagnostics = snapshots;
+      state[key] = snapshots;
     };
     let directory: string | undefined, roleReceipt: unknown, runtimeReceipt: Record<string, any> | undefined, failure: unknown;
     let applicationFixtures: Awaited<ReturnType<typeof createHttpApplicationAcceptanceFixtures>> | undefined;
@@ -224,6 +224,11 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         fail("EXISTING_APPLICATION_IDS_CHANGED");
       state.deploymentId = deployment.id; state.versionId = versionId; state.stage = "DEPLOYED"; await persist();
       await reporter.progress(lease, { progress: 45, stage: "NATIVE_RUNTIME_TESTING", measured: { deploymentId: deployment.id, versionId } });
+      // Fixed status RPCs never start a VM. Retain the previous ledger and
+      // configuration match before the first probe, then capture it again on
+      // failure before compensation changes the Candidate deployment.
+      await captureDiagnostics("preStartDiagnostics");
+      await persist();
       const results: Array<{ probe: string; status: number; colo?: string; error?: string }> = [];
       const diagnostics: Record<string, any> = {};
       for (const runtime of ["node", "python"]) {

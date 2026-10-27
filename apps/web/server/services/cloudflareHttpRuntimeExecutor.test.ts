@@ -132,7 +132,7 @@ describe("canonical bounded existing-Candidate runtime executor", () => {
     expect(result.probes).toHaveLength(6); expect(state.role).toHaveBeenCalledOnce(); expect(state.commands).toHaveBeenCalledTimes(2);
     const probes = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)).pathname).filter(path => path.includes("application-canary") && !path.endsWith("/stop"));
     expect(probes.map(path => path.split("application-canary/")[1])).toEqual([
-      "node/health", "node/database", "node/auth", "node/status", "python/health", "python/database", "python/auth", "python/status"]);
+      "node/status", "python/status", "node/health", "node/database", "node/auth", "node/status", "python/health", "python/database", "python/auth", "python/status"]);
     expect(JSON.stringify(result)).not.toContain("never-log"); expect(state.phase).toBe("baseline");
   });
   it.each(["expired", "revoked"] as const)("rejects %s intent before role or provider mutation", async mode => {
@@ -146,6 +146,7 @@ describe("canonical bounded existing-Candidate runtime executor", () => {
     state.probeFailure = true; await expect(run()).rejects.toThrow("HTTP_RUNTIME_PROBE_NODE_HEALTH_HTTP_503");
     expect(state.phase).toBe("baseline"); expect(state.commands).toHaveBeenCalledTimes(2);
     const saved = JSON.parse(state.checkpoint.value.slice("encrypted:".length));
+    expect(saved.preStartDiagnostics).toHaveLength(2);
     expect(saved.runtimeDiagnostics).toHaveLength(2);
     expect(saved.runtimeDiagnostics[0]).toMatchObject({ runtime: "node", http: 200, starts: 1,
       failure: { code: "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY", phase: "readiness", exitCode: 1 } });

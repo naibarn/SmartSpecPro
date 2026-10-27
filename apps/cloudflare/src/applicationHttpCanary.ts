@@ -152,7 +152,13 @@ export async function handleApplicationHttpCanary(request: Request, env: Applica
     const responseHeaders = new Headers(result.headers);
     responseHeaders.set("cache-control", "no-store"); responseHeaders.delete("set-cookie");
     return new Response(result.body, { status: result.status, headers: responseHeaders });
-  } catch {
-    return Response.json({ error: "APPLICATION_HTTP_CANARY_UNAVAILABLE" }, { status: 503, headers: { "cache-control": "no-store" } });
+  } catch (error) {
+    // The endpoint is capability-protected; expose only a fixed set of local
+    // bridge failure categories, never provider exception text or secrets.
+    const codes = new Set(["APPLICATION_HTTP_CALLER_CANCELLED", "APPLICATION_HTTP_BRIDGE_DISABLED",
+      "APPLICATION_HTTP_BRIDGE_PROFILE_MISMATCH", "APPLICATION_HTTP_BRIDGE_BINDING_REQUIRED",
+      "APPLICATION_HTTP_BRIDGE_DESTINATION_DENIED", "APPLICATION_HTTP_PROFILE_PAIR_DENIED", "APPLICATION_HTTP_PROFILE_DENIED"]);
+    const code = error instanceof Error && codes.has(error.message) ? error.message : "APPLICATION_HTTP_CANARY_UNAVAILABLE";
+    return Response.json({ error: code }, { status: 503, headers: { "cache-control": "no-store" } });
   }
 }

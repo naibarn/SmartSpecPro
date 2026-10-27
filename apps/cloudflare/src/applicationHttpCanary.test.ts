@@ -46,6 +46,14 @@ describe("bounded read-only API migration canary", () => {
     expect((await handleApplicationHttpCanary(f.request("node/health"), { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" })).status).toBe(503);
     expect(f.namespace.get).not.toHaveBeenCalled();
   });
+  it("reports only fixed bridge categories to the authenticated probe and redacts thrown details", async () => {
+    const f = fixture();
+    const disabled = await handleApplicationHttpCanary(f.request("node/health"), { ...f.env, CLOUDFLARE_CONTAINER_POLICY: "disabled" });
+    expect(await disabled.json()).toEqual({ error: "APPLICATION_HTTP_BRIDGE_DISABLED" });
+    f.fetch.mockRejectedValueOnce(new Error("private-provider-detail"));
+    const failed = await handleApplicationHttpCanary(f.request("node/health"), f.env);
+    expect(await failed.json()).toEqual({ error: "APPLICATION_HTTP_CANARY_UNAVAILABLE" });
+  });
   it.each(["node/auth", "node/database", "python/auth", "python/database"])("forwards only app credentials to the fixed %s probe", async path => {
     const f = fixture();
     const result = await handleApplicationHttpCanary(f.request(path, { headers: { authorization: "Bearer actual-user-fixture",
