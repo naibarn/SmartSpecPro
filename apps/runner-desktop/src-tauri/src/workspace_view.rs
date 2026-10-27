@@ -101,7 +101,13 @@ mod tests {
         assert!(!simple.contains("repository-internal"));
 
         let developer = serde_json::to_string(&list(&config, true).unwrap()).unwrap();
-        assert!(developer.contains(&workspace_path.to_string_lossy().to_string()));
+        assert!(developer.contains(
+            &workspace_path
+                .canonicalize()
+                .unwrap()
+                .to_string_lossy()
+                .to_string()
+        ));
         assert!(developer.contains("project-internal"));
         assert!(developer.contains("repository-internal"));
         fs::remove_dir_all(temp).unwrap();
