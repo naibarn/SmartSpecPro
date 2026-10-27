@@ -4435,6 +4435,7 @@ fn capability_snapshot(
         "capabilities": tools.iter().map(|tool| format!("tool.execute.{}", tool.tool_id)).collect::<Vec<_>>(),
         "workspaceIds": workspace_ids,
         "workspaces": workspace_facts,
+        "runWorkspaces": crate::workspace_registry::list_run_workspaces(config).unwrap_or_default(),
         "resourceClass": "medium",
         "platform": {
             "os": std::env::consts::OS,

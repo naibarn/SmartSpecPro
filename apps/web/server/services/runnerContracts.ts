@@ -284,6 +284,8 @@ export type RunnerWorkspaceFact = {
   workspaceId: string;
   projectId: string | null;
   repositoryId: string | null;
+  rootId?: string | null;
+  kind?: "workspace" | "project";
   displayName: string | null;
   gitHead: string | null;
   gitBranch: string | null;
@@ -292,6 +294,15 @@ export type RunnerWorkspaceFact = {
   taskId?: string | null;
   convergenceState?: typeof RUNNER_WORKSPACE_CONVERGENCE_STATES[number] | "NOT_REPORTED";
   convergenceCanonicalSha?: string | null;
+};
+
+export type RunnerRunWorkspaceFact = {
+  workspaceId: string;
+  runId: string;
+  attemptId: number;
+  sourceWorkspaceId: string;
+  projectId: string | null;
+  lifecycle: "ACTIVE" | "RECOVERY_REQUIRED" | "COMPLETED" | "CANCELLED" | "FAILED";
 };
 
 export function isRunnerWorkspaceConvergenceState(value: unknown): value is NonNullable<RunnerWorkspaceFact["convergenceState"]> {
@@ -317,6 +328,8 @@ export type RunnerCapabilitySnapshot = {
   workspaceIds: string[];
   /** Sanitized, Runner-authenticated workspace facts; workspace IDs remain the execution identity. */
   workspaces?: RunnerWorkspaceFact[];
+  /** Locally observed run contexts; never includes filesystem paths. */
+  runWorkspaces?: RunnerRunWorkspaceFact[];
   resourceClass: "small" | "medium" | "large";
   /** Redacted platform identity safe for Task Control and scheduling projection. */
   platform?: {
@@ -501,13 +514,17 @@ function workspaceFacts(value: unknown, workspaceIds: string[]): RunnerWorkspace
   return value.map((candidate, index) => {
     if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) invalid("snapshot.workspaces is invalid");
     const record = candidate as Record<string, unknown>;
-    if (Object.keys(record).some(key => !["workspaceId", "projectId", "repositoryId", "displayName", "gitHead", "gitBranch", "dirty", "contentFingerprint", "taskId", "convergenceState", "convergenceCanonicalSha"].includes(key))) invalid("snapshot.workspaces is invalid");
+    if (Object.keys(record).some(key => !["workspaceId", "projectId", "repositoryId", "rootId", "kind", "displayName", "gitHead", "gitBranch", "dirty", "contentFingerprint", "taskId", "convergenceState", "convergenceCanonicalSha"].includes(key))) invalid("snapshot.workspaces is invalid");
     const workspaceId = requiredText(record.workspaceId, `snapshot.workspaces[${index}].workspaceId`, 160);
     if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/.test(workspaceId) || !ids.has(workspaceId) || seen.has(workspaceId)) invalid("snapshot.workspaces is invalid");
     seen.add(workspaceId);
     const projectId = record.projectId === undefined || record.projectId === null ? null : requiredText(record.projectId, `snapshot.workspaces[${index}].projectId`, 200);
     const repositoryId = record.repositoryId === undefined || record.repositoryId === null ? null : requiredText(record.repositoryId, `snapshot.workspaces[${index}].repositoryId`, 200);
+    const rootId = record.rootId === undefined || record.rootId === null ? null : requiredText(record.rootId, `snapshot.workspaces[${index}].rootId`, 160);
+    const kind = record.kind === undefined ? undefined : requiredText(record.kind, `snapshot.workspaces[${index}].kind`, 32);
+    if (kind !== undefined && kind !== "workspace" && kind !== "project") invalid("snapshot.workspaces is invalid");
     if ([projectId, repositoryId].some(value => value !== null && (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(value) || value.includes("://") || value.includes("@") || value.includes("//") || value.includes("..")))) invalid("snapshot.workspaces is invalid");
+    if (rootId !== null && (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/.test(rootId) || rootId.includes(".."))) invalid("snapshot.workspaces is invalid");
     const displayName = record.displayName === undefined || record.displayName === null ? null : requiredText(record.displayName, `snapshot.workspaces[${index}].displayName`, 160);
     const gitHead = record.gitHead === undefined || record.gitHead === null ? null : requiredText(record.gitHead, `snapshot.workspaces[${index}].gitHead`, 64);
     if (gitHead !== null && !/^[a-f0-9]{40,64}$/.test(gitHead)) invalid("snapshot.workspaces is invalid");
@@ -527,7 +544,30 @@ function workspaceFacts(value: unknown, workspaceIds: string[]): RunnerWorkspace
       : requiredText(record.convergenceCanonicalSha, `snapshot.workspaces[${index}].convergenceCanonicalSha`, 64);
     if (convergenceCanonicalSha !== null && !/^[a-f0-9]{40,64}$/.test(convergenceCanonicalSha)) invalid("snapshot.workspaces is invalid");
     if (convergenceState === "USER_WORKSPACE_CONVERGED" && !convergenceCanonicalSha) invalid("snapshot.workspaces is invalid");
-    return { workspaceId, projectId, repositoryId, displayName, gitHead, gitBranch, dirty: record.dirty ?? null, contentFingerprint, taskId, convergenceState: convergenceState as RunnerWorkspaceFact["convergenceState"], convergenceCanonicalSha };
+    return { workspaceId, projectId, repositoryId, ...(rootId ? { rootId } : {}), ...(kind ? { kind } : {}), displayName, gitHead, gitBranch, dirty: record.dirty ?? null, contentFingerprint, taskId, convergenceState: convergenceState as RunnerWorkspaceFact["convergenceState"], convergenceCanonicalSha };
+  });
+}
+
+function runWorkspaceFacts(value: unknown): RunnerRunWorkspaceFact[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > 64) invalid("snapshot.runWorkspaces is invalid");
+  const seen = new Set<string>();
+  return value.map((candidate, index) => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) invalid("snapshot.runWorkspaces is invalid");
+    const record = candidate as Record<string, unknown>;
+    if (Object.keys(record).some(key => !["workspaceId", "runId", "attemptId", "sourceWorkspaceId", "projectId", "lifecycle"].includes(key))) invalid("snapshot.runWorkspaces is invalid");
+    const workspaceId = requiredText(record.workspaceId, `snapshot.runWorkspaces[${index}].workspaceId`, 160);
+    const runId = requiredText(record.runId, `snapshot.runWorkspaces[${index}].runId`, 160);
+    const sourceWorkspaceId = requiredText(record.sourceWorkspaceId, `snapshot.runWorkspaces[${index}].sourceWorkspaceId`, 160);
+    if (![workspaceId, runId, sourceWorkspaceId].every(value => /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(value) && !value.includes("..")) || seen.has(workspaceId)) invalid("snapshot.runWorkspaces is invalid");
+    seen.add(workspaceId);
+    const attemptId = record.attemptId;
+    if (!Number.isSafeInteger(attemptId) || (attemptId as number) < 1) invalid("snapshot.runWorkspaces is invalid");
+    const projectId = record.projectId === undefined || record.projectId === null ? null : requiredText(record.projectId, `snapshot.runWorkspaces[${index}].projectId`, 200);
+    if (projectId !== null && (!/^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(projectId) || projectId.includes("..") || projectId.includes("//") || projectId.includes("://") || projectId.includes("@"))) invalid("snapshot.runWorkspaces is invalid");
+    const lifecycle = requiredText(record.lifecycle, `snapshot.runWorkspaces[${index}].lifecycle`, 40);
+    if (!["ACTIVE", "RECOVERY_REQUIRED", "COMPLETED", "CANCELLED", "FAILED"].includes(lifecycle)) invalid("snapshot.runWorkspaces is invalid");
+    return { workspaceId, runId, attemptId: attemptId as number, sourceWorkspaceId, projectId, lifecycle: lifecycle as RunnerRunWorkspaceFact["lifecycle"] };
   });
 }
 
@@ -1123,6 +1163,7 @@ export function validateRunnerCapabilitySnapshot(
   }
   const workspaceIds = stringList(raw.workspaceIds, "snapshot.workspaceIds");
   const workspaces = workspaceFacts(raw.workspaces, workspaceIds);
+  const runWorkspaces = runWorkspaceFacts(raw.runWorkspaces);
   const toolInventory = raw.toolInventory === undefined
     ? []
     : validateRunnerToolInventory(raw.toolInventory);
@@ -1159,6 +1200,7 @@ export function validateRunnerCapabilitySnapshot(
     capabilities,
     workspaceIds,
     ...(raw.workspaces === undefined ? {} : { workspaces }),
+    ...(raw.runWorkspaces === undefined ? {} : { runWorkspaces }),
     resourceClass:
       raw.resourceClass as RunnerCapabilitySnapshot["resourceClass"],
     ...(platform ? { platform } : {}),

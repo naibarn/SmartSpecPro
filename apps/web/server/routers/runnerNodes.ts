@@ -96,6 +96,8 @@ export type SafeWorkspaceFact = {
   workspaceId: string;
   projectId: string | null;
   repositoryId: string | null;
+  rootId: string | null;
+  kind: "workspace" | "project" | null;
   displayName: string | null;
   gitHead: string | null;
   gitBranch: string | null;
@@ -133,6 +135,8 @@ export function safeWorkspaceFacts(
       workspaceId,
       projectId: safeIdentity(projectId),
       repositoryId: safeIdentity(repositoryId),
+      rootId: typeof raw.rootId === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$/.test(raw.rootId) && !raw.rootId.includes("..") ? raw.rootId : null,
+      kind: raw.kind === "workspace" || raw.kind === "project" ? raw.kind : null,
       displayName: boundedText(raw.displayName, 160),
       gitHead: gitHead && /^[a-f0-9]{40,64}$/i.test(gitHead) ? gitHead : null,
       gitBranch: gitBranch && /^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/.test(gitBranch) && !gitBranch.includes("..") && !gitBranch.includes("//") ? gitBranch : null,
@@ -141,6 +145,35 @@ export function safeWorkspaceFacts(
       convergenceState: convergenceState === "USER_WORKSPACE_CONVERGED" && !convergenceCanonicalSha ? "NOT_REPORTED" : convergenceState,
       convergenceCanonicalSha,
     }];
+  });
+}
+
+export type SafeRunWorkspaceLifecycle = "ACTIVE" | "RECOVERY_REQUIRED" | "COMPLETED" | "CANCELLED" | "FAILED";
+
+export function safeRunWorkspaceFacts(input: unknown, sourceWorkspaces?: SafeWorkspaceFact[]) {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const sources = sourceWorkspaces ? new Map(sourceWorkspaces.map(workspace => [workspace.workspaceId, workspace])) : null;
+  return input.slice(0, 64).flatMap(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const raw = item as Record<string, unknown>;
+    const identity = (value: unknown, max = 160) => typeof value === "string" && value.length <= max &&
+      /^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value) && !value.includes("..") ? value : null;
+    const workspaceId = identity(raw.workspaceId);
+    const runId = identity(raw.runId);
+    const sourceWorkspaceId = identity(raw.sourceWorkspaceId);
+    const attemptId = raw.attemptId;
+    const projectId = raw.projectId == null ? null : identity(raw.projectId, 200);
+    const source = sources?.get(sourceWorkspaceId ?? "");
+    const lifecycle = raw.lifecycle;
+    const lifecycles: readonly SafeRunWorkspaceLifecycle[] = ["ACTIVE", "RECOVERY_REQUIRED", "COMPLETED", "CANCELLED", "FAILED"];
+    if (!workspaceId || !runId || !sourceWorkspaceId || seen.has(workspaceId) ||
+      !Number.isSafeInteger(attemptId) || (attemptId as number) < 1 ||
+      (raw.projectId != null && !projectId) ||
+      typeof lifecycle !== "string" || !lifecycles.includes(lifecycle as SafeRunWorkspaceLifecycle)) return [];
+    if (sources && (!source || source.projectId !== projectId)) return [];
+    seen.add(workspaceId);
+    return [{ workspaceId, runId, attemptId: attemptId as number, sourceWorkspaceId, projectId, lifecycle: lifecycle as SafeRunWorkspaceLifecycle }];
   });
 }
 
@@ -178,6 +211,7 @@ export const runnerNodesRouter = router({
           capabilityInventory?: unknown[];
           workspaceIds?: unknown[];
           workspaces?: unknown[];
+          runWorkspaces?: unknown[];
           platform?: {
             os: string;
             architecture: string;
@@ -200,6 +234,9 @@ export const runnerNodesRouter = router({
             ...workspace,
           })
         );
+        const runWorkspaces = viewMode === "developer" && row.profile === "local_device" && row.ownerUserId === ctx.user.id
+          ? safeRunWorkspaceFacts(snapshot?.runWorkspaces, safeWorkspaceFacts(snapshot?.workspaces, workspaceIds))
+          : [];
         const snapshotExpired = Boolean(
           row.snapshotExpiresAt && row.snapshotExpiresAt.getTime() <= Date.now()
         );
@@ -237,6 +274,7 @@ export const runnerNodesRouter = router({
           capabilityCount: capabilityInventory.length,
           workspaceCount: workspaceIds.length,
           workspaces,
+          runWorkspaces,
           toolInventory,
           capabilityInventory,
         };

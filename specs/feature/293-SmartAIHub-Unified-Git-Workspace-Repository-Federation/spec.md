@@ -2293,6 +2293,64 @@ semantics. Cross-host ownership and Mission Control UI remain dependent on
 their registered runner/provider adapters and MUST report `UNKNOWN` when proof
 is stale or absent.
 
+## 60.5 Runner project and run workspace hierarchy
+
+For a local-device Runner, workspace storage has three distinct levels:
+`RUNNER_ROOT` → persistent `PROJECT_WORKSPACE` → identifiable
+`RUN_EXECUTION_WORKSPACE`. A Runner Root is a filesystem boundary explicitly
+authorized on that device; it is independent of the Runner's internal
+`data_root`. Each Project Workspace binds one existing canonical Project ID
+and, when available, one existing Repository ID. Runner-side provisioning
+MUST NOT create a second Project/Repository authority or accept a name as an
+identity. Project Workspace IDs remain stable across Runner restarts and
+legacy import.
+
+Root registration, project creation, import, lookup and run lifecycle MUST use
+the existing local Runner workspace registry and its SPEC-293 owner/device
+scope. New projects MUST be created as direct children of an authorized root;
+imports MUST preserve directory contents. Path resolution MUST reject
+traversal, symlinks and Windows reparse points that cross or alias the
+authorized boundary. A legacy workspace record upgraded to a project MUST
+retain its workspace ID and original path. Registry migration MUST remain
+readable from the legacy array representation and MUST preserve its records.
+
+Every run has a durable identity bound to its job, attempt, source Project
+Workspace and run path. When concurrent execution, source-isolation policy or
+an existing protected execution path requires separate writes, each run MUST
+write in its own execution workspace. Conflicting candidate applies to one
+Project Workspace MUST serialize and recheck the per-path source baseline
+under the lock; a stale candidate MUST fail without overwriting the winning
+write. Workspace provisioning interrupted mid-operation MUST be resumable or
+remain `RECOVERY_REQUIRED`; recovery MUST preserve user files and must not
+infer ownership from folder names.
+
+The SPEC-224 consumer seam is additive: the Runner resolves the existing
+`workspace_ref` as the source Project Workspace, uses the existing protected
+candidate creation/reattach and apply path for each `(jobId, attempt)`, and
+registers the resulting run workspace in the SPEC-293 Runner registry. Its
+Task Control projection contains only `workspaceId`, `runId` (the existing
+job ID), `attemptId`, `sourceWorkspaceId`, optional `projectId`, and lifecycle;
+it never contains a local path. SPEC-224 dispatch, settlement, Final Verify
+and execution state machine remain owned by SPEC-224 and are not changed by
+this seam. SPEC-277/294 may consume the same sanitized project and run facts.
+
+The local Runner exposes authorized root registration/listing, project
+create/import/list, run listing and interrupted-project recovery through its
+existing CLI. Capability snapshots and Task Control may expose authorized
+project/workspace facts under their current tenant, Runner-owner and
+presentation authorization. Simple presentation MUST omit repository IDs,
+filesystem paths and internal diagnostics; Developer presentation may expose
+user-authorized IDs but still MUST NOT expose local paths through capability
+snapshots.
+
+Acceptance for this hierarchy requires two-project separation, persistent
+identity after reopen, existing-directory import, registry migration,
+traversal and symlink/reparse rejection, same-project concurrent-write
+conflict, interrupted-provisioning recovery, and sanitized Task Control facts.
+Linux or mock checks do not establish Windows Runner acceptance; Windows
+reparse-point and restart validation remains open until recorded on an actual
+Windows Runner.
+
 
 # 2026-10-21 — Unified Work / Agents / Skills consolidation amendment
 

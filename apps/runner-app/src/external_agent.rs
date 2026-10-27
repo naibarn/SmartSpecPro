@@ -671,6 +671,9 @@ impl ExternalAgentProcess {
                 .map_err(|_| "RUNNER_AGENT_CANCEL_FAILED")?
                 .command_sequence;
             host.terminate(sequence + 1, "runner-cancel")?;
+            if let Some(candidate) = self.candidate.as_ref() {
+                candidate.mark_lifecycle("CANCELLED");
+            }
             return Ok(());
         }
         #[cfg(windows)]
@@ -691,12 +694,18 @@ impl ExternalAgentProcess {
         let _ = child.wait();
         let _ = std::fs::remove_file(&self.output_path);
         let _ = std::fs::remove_file(&self.error_path);
+        if let Some(candidate) = self.candidate.as_ref() {
+            candidate.mark_lifecycle("CANCELLED");
+        }
         Ok(())
     }
 
     fn with_recovery_ref(&self, error: &str) -> String {
         match &self.candidate {
-            Some(candidate) => format!("{error}:{}", candidate.recovery_ref()),
+            Some(candidate) => {
+                candidate.mark_lifecycle("RECOVERY_REQUIRED");
+                format!("{error}:{}", candidate.recovery_ref())
+            }
             None => error.to_string(),
         }
     }

@@ -1,5 +1,6 @@
 //! Local Spec 224 candidate workspaces. Provider writes remain under the
 //! Runner data root until the complete delta passes write-set and per-path CAS.
+use fs2::FileExt;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashSet};
@@ -20,6 +21,8 @@ pub struct Candidate {
     baseline: BTreeMap<String, Option<String>>,
     allowed: Vec<String>,
     manifest_path: PathBuf,
+    run_workspace_id: Option<String>,
+    registry_config: Option<crate::config::RunnerConfig>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -88,13 +91,26 @@ pub fn create_for_command(
             .as_deref()
             .ok_or_else(|| "RUNNER_WORKSPACE_REFERENCE_REQUIRED".to_string())?,
     )?;
-    Candidate::create(
+    let mut candidate = Candidate::create(
         &workspace,
         Path::new(&config.data_root),
         &command.command_id,
         fingerprint,
         allowed,
-    )
+    )?;
+    let run_workspace = crate::workspace_registry::register_run_workspace(
+        config,
+        command
+            .workspace_ref
+            .as_deref()
+            .ok_or("RUNNER_WORKSPACE_REFERENCE_REQUIRED")?,
+        &command.job_id,
+        command.attempt,
+        &candidate.root,
+    )?;
+    candidate.run_workspace_id = Some(run_workspace.workspace_id);
+    candidate.registry_config = Some(config.clone());
+    Ok(candidate)
 }
 
 fn safe_relative(path: &str) -> bool {
@@ -267,6 +283,16 @@ fn allowed(path: &str, set: &[String]) -> bool {
 }
 
 impl Candidate {
+    pub fn mark_lifecycle(&self, lifecycle: &str) {
+        if let (Some(config), Some(workspace_id)) = (&self.registry_config, &self.run_workspace_id)
+        {
+            let _ = crate::workspace_registry::update_run_workspace_lifecycle(
+                config,
+                workspace_id,
+                lifecycle,
+            );
+        }
+    }
     pub fn recovery_ref(&self) -> String {
         format!(
             "spec224-candidate:{}",
@@ -347,6 +373,8 @@ impl Candidate {
             baseline,
             allowed: allowed_write_set,
             manifest_path,
+            run_workspace_id: None,
+            registry_config: None,
         })
     }
 
@@ -457,17 +485,67 @@ impl Candidate {
         {
             return Err("SPEC224_CANDIDATE_MANIFEST_SCOPE_MISMATCH".into());
         }
-        Ok(Self {
+        let mut candidate = Self {
             original,
             root: canonical_root,
             baseline: manifest.baseline,
             allowed: manifest.allowed,
             manifest_path,
-        })
+            run_workspace_id: None,
+            registry_config: None,
+        };
+        let run_workspace = crate::workspace_registry::register_run_workspace(
+            config,
+            command
+                .workspace_ref
+                .as_deref()
+                .ok_or("RUNNER_WORKSPACE_REFERENCE_REQUIRED")?,
+            &command.job_id,
+            command.attempt,
+            &candidate.root,
+        )?;
+        candidate.run_workspace_id = Some(run_workspace.workspace_id);
+        candidate.registry_config = Some(config.clone());
+        Ok(candidate)
     }
     /// Apply only after provider success. Each target is rechecked against the
     /// original state captured before execution; conflicts retain the candidate.
     pub fn apply(self) -> Result<(), String> {
+        let result = self.apply_with_workspace_lock();
+        self.mark_lifecycle(if result.is_ok() {
+            "COMPLETED"
+        } else {
+            "RECOVERY_REQUIRED"
+        });
+        result
+    }
+
+    fn apply_with_workspace_lock(&self) -> Result<(), String> {
+        let data_root = self
+            .root
+            .parent()
+            .and_then(Path::parent)
+            .ok_or("SPEC224_JOURNAL_FAILED")?;
+        let lock_dir = data_root.join("spec224-project-locks");
+        fs::create_dir_all(&lock_dir).map_err(|_| "SPEC224_PROJECT_LOCK_FAILED")?;
+        set_private_dir(&lock_dir)?;
+        let mut hasher = Sha256::new();
+        hasher.update(self.original.as_os_str().to_string_lossy().as_bytes());
+        let lock_path = lock_dir.join(format!("{:x}.lock", hasher.finalize()));
+        let lock_file = OpenOptions::new()
+            .create(true)
+            .read(true)
+            .write(true)
+            .truncate(false)
+            .open(lock_path)
+            .map_err(|_| "SPEC224_PROJECT_LOCK_FAILED")?;
+        lock_file
+            .lock_exclusive()
+            .map_err(|_| "SPEC224_PROJECT_LOCK_FAILED")?;
+        self.apply_inner()
+    }
+
+    fn apply_inner(&self) -> Result<(), String> {
         let mut changed = Vec::new();
         let mut candidate_paths = Vec::new();
         collect_candidate(&self.root, &self.root, &mut candidate_paths)?;
@@ -564,10 +642,10 @@ impl Candidate {
                 }
             }
         }
-        let _ = fs::remove_dir_all(self.root);
+        let _ = fs::remove_dir_all(&self.root);
         let _ = fs::remove_dir_all(backup_root);
         let _ = fs::remove_file(journal);
-        let _ = fs::remove_file(self.manifest_path);
+        let _ = fs::remove_file(&self.manifest_path);
         Ok(())
     }
 }
@@ -848,6 +926,57 @@ mod tests {
             fs::read_to_string(workspace.join("src.txt")).unwrap(),
             "user"
         );
+    }
+
+    #[test]
+    fn serializes_conflicting_run_applies_for_one_project() {
+        let (_temp, workspace, data, fingerprint) = fixture();
+        let first = Candidate::create(
+            &workspace,
+            &data,
+            "concurrent-run-first",
+            &fingerprint,
+            vec!["src.txt".into()],
+        )
+        .unwrap();
+        let second = Candidate::create(
+            &workspace,
+            &data,
+            "concurrent-run-second",
+            &fingerprint,
+            vec!["src.txt".into()],
+        )
+        .unwrap();
+        fs::write(first.root.join("src.txt"), "first result").unwrap();
+        fs::write(second.root.join("src.txt"), "second result").unwrap();
+
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(3));
+        let first_barrier = barrier.clone();
+        let first_thread = std::thread::spawn(move || {
+            first_barrier.wait();
+            first.apply()
+        });
+        let second_barrier = barrier.clone();
+        let second_thread = std::thread::spawn(move || {
+            second_barrier.wait();
+            second.apply()
+        });
+        barrier.wait();
+
+        let results = [first_thread.join().unwrap(), second_thread.join().unwrap()];
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| matches!(result, Err(error) if error == "SPEC224_CAS_CONFLICT"))
+                .count(),
+            1
+        );
+        let final_contents = fs::read_to_string(workspace.join("src.txt")).unwrap();
+        assert!(matches!(
+            final_contents.as_str(),
+            "first result" | "second result"
+        ));
     }
 
     #[test]

@@ -76,6 +76,10 @@ that device:
 smartaihub-runner workspace add /absolute/path/to/project
 smartaihub-runner workspace add /absolute/path/to/project --project-id project-a --repository-id github.com/org/repository
 smartaihub-runner workspace list
+smartaihub-runner workspace root add /absolute/path/to/Projects
+smartaihub-runner workspace root list
+smartaihub-runner workspace project create <root-id> <project-id> <folder-name> [repository-id]
+smartaihub-runner workspace project import <root-id> <existing-folder> <project-id> [repository-id]
 smartaihub-runner rescan
 ```
 
@@ -83,8 +87,13 @@ The local registry stores the selected absolute path with owner-only file
 permissions where supported. SmartAIHub receives only the workspace ID, not
 the path. The workspace appears in Task Control after the Runner's next
 successful capability refresh. Project and repository IDs are optional and
-must be supplied explicitly; the Runner does not infer them from folder names
-or publish Git remote URLs. A current worker job is reported as its task ID.
+must be supplied explicitly from their existing Project/Repository authority;
+the Runner does not mint IDs, infer them from folder names, or publish Git
+remote URLs. Project IDs must be unique within this Runner registry. Run
+workspaces are listed with `smartaihub-runner workspace run list`, and
+interrupted project provisioning can be reconciled with
+`smartaihub-runner workspace recover`. A current worker job is reported as its
+task ID.
 Convergence remains `NOT_REPORTED` until the Runner has an authoritative local
 convergence receipt. Remove access with
 `smartaihub-runner workspace remove <workspace-id>`. The browser cannot browse

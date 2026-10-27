@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeWorkspaceFacts, safeWorkspaceIds } from "../runnerNodes";
+import { safeRunWorkspaceFacts, safeWorkspaceFacts, safeWorkspaceIds } from "../runnerNodes";
 
 describe("safeWorkspaceIds", () => {
   it("keeps bounded opaque workspace IDs and removes paths and duplicates", () => {
@@ -30,6 +30,8 @@ describe("safeWorkspaceFacts", () => {
         workspaceId: "ws-project-a1b2c3",
         projectId: "project-a",
         repositoryId: "owner/repository",
+        rootId: "root-projects-abcdef123456",
+        kind: "project",
         displayName: "SmartSpecPro",
         gitHead: "a".repeat(40),
         gitBranch: "feature/workspace-status",
@@ -60,6 +62,8 @@ describe("safeWorkspaceFacts", () => {
         workspaceId: "ws-project-a1b2c3",
         projectId: "project-a",
         repositoryId: "owner/repository",
+        rootId: "root-projects-abcdef123456",
+        kind: "project",
         displayName: "SmartSpecPro",
         gitHead: "a".repeat(40),
         gitBranch: "feature/workspace-status",
@@ -72,6 +76,8 @@ describe("safeWorkspaceFacts", () => {
         workspaceId: "workspace-legacy",
         projectId: "org/project",
         repositoryId: null,
+        rootId: null,
+        kind: null,
         displayName: "Malformed Git facts",
         gitHead: null,
         gitBranch: null,
@@ -81,5 +87,30 @@ describe("safeWorkspaceFacts", () => {
         convergenceCanonicalSha: null,
       },
     ]);
+  });
+});
+
+describe("safeRunWorkspaceFacts", () => {
+  it("keeps bounded run identity and lifecycle while dropping paths and malformed rows", () => {
+    expect(safeRunWorkspaceFacts([
+      { workspaceId: "run-1", runId: "job-1", attemptId: 2, sourceWorkspaceId: "ws-1", projectId: "project-1", lifecycle: "ACTIVE", localPath: "C:\\private" },
+      { workspaceId: "run-2", runId: "../escape", attemptId: 1, sourceWorkspaceId: "ws-1", lifecycle: "ACTIVE" },
+      { workspaceId: "run-3", runId: "job-3", attemptId: 0, sourceWorkspaceId: "ws-1", lifecycle: "ACTIVE" },
+      { workspaceId: "run-4", runId: "job-4", attemptId: 1, sourceWorkspaceId: "ws-1", lifecycle: "UNKNOWN" },
+    ])).toEqual([{
+      workspaceId: "run-1",
+      runId: "job-1",
+      attemptId: 2,
+      sourceWorkspaceId: "ws-1",
+      projectId: "project-1",
+      lifecycle: "ACTIVE",
+    }]);
+    expect(safeRunWorkspaceFacts([
+      { workspaceId: "run-1", runId: "job-1", attemptId: 2, sourceWorkspaceId: "ws-1", projectId: "project-other", lifecycle: "ACTIVE" },
+    ], [{
+      workspaceId: "ws-1", projectId: "project-1", repositoryId: null, rootId: null, kind: "project",
+      displayName: "Project", gitHead: null, gitBranch: null, dirty: null, taskId: null,
+      convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null,
+    }])).toEqual([]);
   });
 });

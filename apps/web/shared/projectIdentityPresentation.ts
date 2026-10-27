@@ -13,6 +13,8 @@ export type RunnerWorkspaceIdentityInput = {
   nodeKind: string;
   mode: IdentityPresentationMode;
   workspaceId: string;
+  rootId?: string | null;
+  kind?: "workspace" | "project" | null;
   displayName: string | null;
   projectId: string | null;
   repositoryId: string | null;
@@ -25,6 +27,8 @@ export type RunnerWorkspacePresentation = {
   provenance: WorkspaceIdentityProvenance;
   displayName: string;
   workspaceId?: string;
+  rootId?: string;
+  kind?: "workspace" | "project";
   projectId?: string;
   repositoryId?: string;
   gitHead?: string;
@@ -68,6 +72,8 @@ export function projectRunnerWorkspacePresentation(
     provenance,
     displayName,
     workspaceId: input.workspaceId,
+    ...(input.rootId ? { rootId: input.rootId } : {}),
+    ...(input.kind ? { kind: input.kind } : {}),
     ...(input.projectId ? { projectId: input.projectId } : {}),
     ...(input.repositoryId ? { repositoryId: input.repositoryId } : {}),
     ...(input.gitHead ? { gitHead: input.gitHead } : {}),

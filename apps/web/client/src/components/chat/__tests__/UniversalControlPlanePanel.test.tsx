@@ -28,6 +28,7 @@ const mocks = vi.hoisted(() => ({
   ingestFeatureSpecMutation: vi.fn(),
   prepareWorkspaceMutation: vi.fn(),
   startWorkspaceMutation: vi.fn(),
+  resumeWorkspaceMutation: vi.fn(),
   bindWorkspaceMutateAsync: vi.fn(),
   ingestSpecSetMutateAsync: vi.fn(),
   prepareWorkspaceMutateAsync: vi.fn(),
@@ -89,6 +90,9 @@ vi.mock("@/lib/trpc", () => ({
       },
       startWorkspaceRun: {
         useMutation: (...args: unknown[]) => mocks.startWorkspaceMutation(...args),
+      },
+      resumeWorkspaceRun: {
+        useMutation: (...args: unknown[]) => mocks.resumeWorkspaceMutation(...args),
       },
       list: {
         useQuery: (...args: unknown[]) => mocks.developmentRunsQuery(...args),
@@ -232,6 +236,7 @@ beforeEach(() => {
   mocks.prepareWorkspaceMutation.mockReturnValue({ mutateAsync: mocks.prepareWorkspaceMutateAsync, isPending: false });
   mocks.startWorkspaceMutateAsync.mockResolvedValue({ runId: "run-started", jobId: "job-started", dispatchStatus: "PENDING_AUTHORIZATION" });
   mocks.startWorkspaceMutation.mockReturnValue({ mutateAsync: mocks.startWorkspaceMutateAsync, isPending: false });
+  mocks.resumeWorkspaceMutation.mockReturnValue({ mutateAsync: vi.fn(), isPending: false });
 });
 
 describe("UniversalControlPlanePanel", () => {

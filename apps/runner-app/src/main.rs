@@ -83,9 +83,141 @@ fn main() {
                     }
                 }
             }
+            Some("root") => match args.get(2).map(String::as_str) {
+                Some("list") => match smartaihub_runner::workspace_registry::list_roots(&config) {
+                    Ok(roots) => println!(
+                        "{}",
+                        serde_json::to_string(&roots).unwrap_or_else(|_| "[]".into())
+                    ),
+                    Err(error) => {
+                        eprintln!("workspace root list failed: {error}");
+                        std::process::exit(3);
+                    }
+                },
+                Some("add") => {
+                    let Some(path) = args.get(3) else {
+                        eprintln!("usage: smartaihub-runner workspace root add <folder-path>");
+                        std::process::exit(2);
+                    };
+                    match smartaihub_runner::workspace_registry::register_root(
+                        &config,
+                        std::path::Path::new(path),
+                    ) {
+                        Ok(root) => println!(
+                            "{}",
+                            serde_json::to_string(&root).unwrap_or_else(|_| "{}".into())
+                        ),
+                        Err(error) => {
+                            eprintln!("workspace root registration failed: {error}");
+                            std::process::exit(3);
+                        }
+                    }
+                }
+                _ => {
+                    eprintln!("usage: smartaihub-runner workspace root <list|add <folder-path>>");
+                    std::process::exit(2);
+                }
+            },
+            Some("project") => {
+                match args.get(2).map(String::as_str) {
+                    Some("list") => match smartaihub_runner::workspace_registry::list(&config) {
+                        Ok(workspaces) => {
+                            let projects: Vec<_> = workspaces.into_iter().filter(|workspace| workspace.kind == smartaihub_runner::workspace_registry::WorkspaceKind::Project).collect();
+                            println!(
+                                "{}",
+                                serde_json::to_string(&projects).unwrap_or_else(|_| "[]".into())
+                            );
+                        }
+                        Err(error) => {
+                            eprintln!("workspace project list failed: {error}");
+                            std::process::exit(3);
+                        }
+                    },
+                    Some("create") if (6..=7).contains(&args.len()) => {
+                        let root_id = &args[3];
+                        let project_id = &args[4];
+                        let name = &args[5];
+                        let repository_id = if args.len() > 6 {
+                            Some(args[6].as_str())
+                        } else {
+                            None
+                        };
+                        match smartaihub_runner::workspace_registry::create_project(
+                            &config,
+                            root_id,
+                            project_id,
+                            name,
+                            repository_id,
+                        ) {
+                            Ok(project) => println!(
+                                "{}",
+                                serde_json::to_string(&project).unwrap_or_else(|_| "{}".into())
+                            ),
+                            Err(error) => {
+                                eprintln!("workspace project creation failed: {error}");
+                                std::process::exit(3);
+                            }
+                        }
+                    }
+                    Some("import") if (6..=7).contains(&args.len()) => {
+                        let root_id = &args[3];
+                        let path = &args[4];
+                        let project_id = &args[5];
+                        let repository_id = if args.len() > 6 {
+                            Some(args[6].as_str())
+                        } else {
+                            None
+                        };
+                        match smartaihub_runner::workspace_registry::import_project(
+                            &config,
+                            root_id,
+                            std::path::Path::new(path),
+                            project_id,
+                            repository_id,
+                        ) {
+                            Ok(project) => println!(
+                                "{}",
+                                serde_json::to_string(&project).unwrap_or_else(|_| "{}".into())
+                            ),
+                            Err(error) => {
+                                eprintln!("workspace project import failed: {error}");
+                                std::process::exit(3);
+                            }
+                        }
+                    }
+                    _ => {
+                        eprintln!("usage: smartaihub-runner workspace project <create <root-id> <project-id> <name> [repository-id]|import <root-id> <folder-path> <project-id> [repository-id]>");
+                        std::process::exit(2);
+                    }
+                }
+            }
+            Some("run") if args.get(2).map(String::as_str) == Some("list") => {
+                match smartaihub_runner::workspace_registry::list_run_workspaces(&config) {
+                    Ok(runs) => println!(
+                        "{}",
+                        serde_json::to_string(&runs).unwrap_or_else(|_| "[]".into())
+                    ),
+                    Err(error) => {
+                        eprintln!("run workspace list failed: {error}");
+                        std::process::exit(3);
+                    }
+                }
+            }
+            Some("recover") => {
+                match smartaihub_runner::workspace_registry::recover_project_provisioning(&config) {
+                    Ok(projects) => println!(
+                        "{}",
+                        serde_json::to_string(&projects).unwrap_or_else(|_| "[]".into())
+                    ),
+                    Err(error) => {
+                        eprintln!("workspace recovery failed: {error}");
+                        std::process::exit(3);
+                    }
+                }
+            }
             _ => {
                 eprintln!(
-                    "usage: smartaihub-runner workspace <list|add <folder-path>|remove <workspace-id>>"
+                    "usage: smartaihub-runner workspace <list|add <folder-path>|remove <workspace-id>|root <list|add <folder-path>>|project <list|create|import ...>|run list|recover>"
                 );
                 std::process::exit(2);
             }

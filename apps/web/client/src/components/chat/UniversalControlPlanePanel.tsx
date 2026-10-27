@@ -2115,6 +2115,8 @@ export function UniversalControlPlanePanel({
                               {runnerViewMode === "developer" && workspace.provenance === "user_owned" ? (
                                 <span className="mt-1 block break-all font-mono text-[10px] text-slate-500">
                                   {workspace.projectId ? `Project ${workspace.projectId}` : "Project identity unavailable"}
+                                  {workspace.rootId ? ` · Root ${workspace.rootId}` : ""}
+                                  {workspace.kind ? ` · ${workspace.kind}` : ""}
                                   {workspace.repositoryId ? ` · Repository ${workspace.repositoryId}` : " · Repository identity unavailable"}
                                   {workspace.gitHead ? ` · HEAD ${workspace.gitHead.slice(0, 12)}` : " · HEAD unavailable"}
                                   {workspace.gitBranch ? ` · ${workspace.gitBranch}` : " · branch unavailable"}
@@ -2132,6 +2134,19 @@ export function UniversalControlPlanePanel({
                         </p>
                       )}
                     </section>
+                    {runnerViewMode === "developer" && runner.runWorkspaces?.length ? (
+                      <section className="mt-3" aria-label="Run execution workspaces">
+                        <h5 className="text-xs font-medium text-slate-700">Run execution workspaces</h5>
+                        <ul className="mt-1 space-y-1 text-[10px] text-slate-600">
+                          {runner.runWorkspaces.map(run => (
+                            <li key={run.workspaceId} className="break-all rounded-md bg-slate-50 px-2 py-1.5">
+                              {run.runId} · attempt {run.attemptId} · {run.lifecycle}
+                              <span className="block">Project {run.projectId ?? "unbound"} · source {run.sourceWorkspaceId}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </section>
+                    ) : null}
                     <ul className="mt-2 space-y-1.5 text-xs">
                       {runner.toolInventory.map(tool => (
                         (() => {

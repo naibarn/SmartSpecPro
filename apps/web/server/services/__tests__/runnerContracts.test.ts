@@ -209,6 +209,57 @@ describe("Feature 197 Runner contracts", () => {
     );
   });
 
+  it("projects authorized project and run workspace identities without local paths", () => {
+    const normalized = validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      workspaceIds: ["workspace-project-a"],
+      workspaces: [{
+        workspaceId: "workspace-project-a",
+        projectId: "00000000-0000-4000-8000-000000000001",
+        repositoryId: "github.com/acme/project-a",
+        rootId: "root-projects-abcdef123456",
+        kind: "project",
+        displayName: "Project A",
+      }],
+      runWorkspaces: [{
+        workspaceId: "run-0123456789abcdef0123456789abcdef",
+        runId: "job-123",
+        attemptId: 2,
+        sourceWorkspaceId: "workspace-project-a",
+        projectId: "00000000-0000-4000-8000-000000000001",
+        lifecycle: "ACTIVE",
+      }],
+    });
+
+    expect(normalized.workspaces?.[0]).toMatchObject({
+      workspaceId: "workspace-project-a",
+      projectId: "00000000-0000-4000-8000-000000000001",
+      rootId: "root-projects-abcdef123456",
+      kind: "project",
+    });
+    expect(normalized.runWorkspaces?.[0]).toMatchObject({
+      runId: "job-123",
+      attemptId: 2,
+      sourceWorkspaceId: "workspace-project-a",
+      lifecycle: "ACTIVE",
+    });
+    expect(JSON.stringify(normalized)).not.toContain("localPath");
+
+    for (const runWorkspace of [
+      { workspaceId: "run-1", runId: "job-1", attemptId: 0, sourceWorkspaceId: "workspace-project-a", lifecycle: "ACTIVE" },
+      { workspaceId: "run-1", runId: "../outside", attemptId: 1, sourceWorkspaceId: "workspace-project-a", lifecycle: "ACTIVE" },
+      { workspaceId: "run-1", runId: "job-1", attemptId: 1, sourceWorkspaceId: "workspace-project-a", projectId: "../../tenant", lifecycle: "ACTIVE" },
+      { workspaceId: "run-1", runId: "job-1", attemptId: 1, sourceWorkspaceId: "workspace-project-a", lifecycle: "UNKNOWN" },
+    ]) {
+      expect(() => validateRunnerCapabilitySnapshot({
+        ...snapshot,
+        runWorkspaces: [runWorkspace],
+      } as unknown as RunnerCapabilitySnapshot)).toThrowError(
+        expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" })
+      );
+    }
+  });
+
   it("normalizes a redacted tool and derived capability inventory in one snapshot", () => {
     const normalized = validateRunnerCapabilitySnapshot({
       ...snapshot,
