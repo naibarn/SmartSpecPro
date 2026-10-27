@@ -136,6 +136,19 @@ function stableCanonicalJobId(operationKey: string): string {
   return createHash("sha256").update(`spec224-worker-job:${operationKey}`).digest("hex").slice(0, 32);
 }
 
+function admissionDigest(input: CreateAndBindNextPhaseInput): string {
+  return createHash("sha256").update(JSON.stringify({
+    schema: "spec224.phase-admission.v1",
+    provider: input.provider,
+    runtime: input.runtime,
+    planId: input.planId,
+    planRevision: input.planRevision,
+    skillIds: input.skillIds,
+    requestedCapabilities: input.requestedCapabilities,
+    authorizationScope: input.authorizationScope,
+  }), "utf8").digest("hex");
+}
+
 function duplicateResult(
   record: DevelopmentRunStoreRecord,
   event: DevelopmentEvent,
@@ -145,7 +158,9 @@ function duplicateResult(
   if (
     event.type !== "PHASE_STARTED" ||
     typeof workerJobId !== "string" ||
-    event.payload.planRevision !== input.planRevision
+    event.payload.planRevision !== input.planRevision ||
+    (typeof event.payload.admissionDigest === "string" &&
+      event.payload.admissionDigest !== admissionDigest(input))
   ) {
     throw new Spec224PhaseControllerError("PHASE_IDEMPOTENCY_CONFLICT");
   }
@@ -273,6 +288,7 @@ export async function createAndBindNextPhase(
           phase: phaseRun.state,
           phaseAttempt: phaseRun.phaseAttempt,
           planRevision: input.planRevision,
+          admissionDigest: admissionDigest(input),
         },
       });
       if (!recorded.event) {

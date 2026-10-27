@@ -159,6 +159,14 @@ describe("Spec 224 executable phase continuation", () => {
     });
     expect(admissions).toBe(1);
 
+    await expect(createAndBindNextPhase({
+      ...phaseInput({ provider: "claude_code" }),
+      persistence: memory.adapter,
+      controlPlane: controlPlane as never,
+      executorRegistry: { has: () => true } as never,
+    })).rejects.toMatchObject({ code: "PHASE_IDEMPOTENCY_CONFLICT" });
+    expect(admissions).toBe(1);
+
     const firstRecord = memory.read();
     const nextPhase = recordDevelopmentEvent(
       { ...firstRecord.run, state: "PLAN_VERIFY" },
