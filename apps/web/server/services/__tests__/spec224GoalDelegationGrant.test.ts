@@ -22,6 +22,7 @@ const baseInput = (): Spec224GoalDelegationInput => ({
       grantId: "grant-1",
       goalId: "goal-1",
       actorId: 11,
+      provider: "codex",
       workspaceId: "workspace-a",
       repositoryRef: "repo:naibarn/SmartSpecPro",
       sourceSha: "a".repeat(40),
@@ -41,6 +42,7 @@ const baseInput = (): Spec224GoalDelegationInput => ({
     goalId: "goal-1",
     tenantId: "tenant-a",
     actorId: 11,
+    provider: "codex",
     workspaceId: "workspace-a",
     repositoryRef: "repo:naibarn/SmartSpecPro",
     sourceSha: "a".repeat(40),
@@ -81,6 +83,7 @@ describe("SPEC-224 Goal delegation contract", () => {
       grantId: "grant-1",
       goalId: "goal-1",
       actorId: 11,
+      provider: "codex",
       workspaceId: "workspace-a",
       repositoryRef: "repo:naibarn/SmartSpecPro",
       sourceSha: "a".repeat(40),
@@ -119,6 +122,17 @@ describe("SPEC-224 Goal delegation contract", () => {
         currency: "USD",
       },
     });
+  });
+
+  it("requires the child provider to match the provider pinned in the Goal grant", () => {
+    const input = baseInput();
+    input.authority.payload.provider = "codex";
+    Object.assign(input.child, { provider: "claude_code" });
+    expect(evaluateSpec224GoalDelegation(input).status).toBe("SCOPE_DENIED");
+    Object.assign(input.child, { provider: "codex" });
+    expect(evaluateSpec224GoalDelegation(input)).toMatchObject({ status: "READY_FOR_DELEGATION", binding: { provider: "codex" } });
+    delete input.authority.payload.provider;
+    expect(evaluateSpec224GoalDelegation(input).status).toBe("AUTHORITY_DENIED");
   });
 
   it.each(["pending", "rejected", "expired", "cancelled"] as const)(

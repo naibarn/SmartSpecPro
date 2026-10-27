@@ -174,7 +174,7 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
   it("provisions one goal budget from the locked approved authority", async () => {
     const { provisionSpec224GoalBudget } = await import("../economicProvisioningService");
     const goalId = randomUUID(), approvalRef = randomUUID();
-    const payload = { kind: "spec224_goal_delegation_grant", grantId: randomUUID(), goalId, actorId: userId,
+    const payload = { kind: "spec224_goal_delegation_grant", provider: "codex", grantId: randomUUID(), goalId, actorId: userId,
       workspaceId: "workspace-test", repositoryRef: "repo:test", sourceSha: "a".repeat(40), allowedActions: ["test"],
       writeScope: ["src/**"], capabilities: ["agent.external_task"], budgetLimitMinorUnits: 100, currency: "USD",
       issuedAt: new Date(Date.now() - 60_000).toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString() };

@@ -417,6 +417,7 @@ export function evaluateSpec224Authorization(
         goalId: scope.goalId,
         tenantId: run.tenantId,
         actorId: run.actorId,
+        provider: run.provider,
         workspaceId: run.workspaceId,
         repositoryRef: scope.repositoryRef,
         sourceSha: scope.sourceSha,

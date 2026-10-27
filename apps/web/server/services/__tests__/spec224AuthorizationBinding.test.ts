@@ -171,6 +171,7 @@ describe("Spec 224 owner authorization binding", () => {
       expiresAt: "2026-09-23T10:30:00.000Z",
       payload: {
         kind: "spec224_goal_delegation_grant",
+        provider: "codex",
         grantId: "goal-grant-224",
         goalId: "goal-224",
         actorId: 11,
@@ -237,6 +238,7 @@ describe("Spec 224 owner authorization binding", () => {
       revokedAt: "2026-09-23T09:59:00.000Z",
       payload: {
         kind: "spec224_goal_delegation_grant",
+        provider: "codex",
         grantId: "goal-grant-224",
         goalId: "goal-224",
         actorId: 11,
@@ -289,6 +291,7 @@ describe("Spec 224 owner authorization binding", () => {
       expiresAt: "2026-09-23T10:30:00.000Z",
       payload: {
         kind: "spec224_goal_delegation_grant",
+        provider: "codex",
         grantId: "goal-grant-224",
         goalId: "goal-224",
         actorId: 11,
