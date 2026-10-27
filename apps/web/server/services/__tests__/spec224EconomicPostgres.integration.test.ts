@@ -202,6 +202,31 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
     }
   });
 
+  it("revalidates the exact job approval and attempt hold at the release boundary", async () => {
+    const { defaultJobControlPlaneRepository } = await import("../jobControlPlane");
+    const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-release`, limitMinorUnits: 100 });
+    const job = await createAttempt(false);
+    const intent = await makeIntent(job, 60, `release-${randomUUID()}`);
+    const hold = await reserveEconomicHold(db, { intent, budgetId: budget.budgetId, idempotencyKey: `release-hold-${randomUUID()}`,
+      journalLines: journalLines(budget, 60), journalDescription: "Release authority test" });
+    const approvalRef = randomUUID();
+    await sql`INSERT INTO approval_requests (id, request_type, title, tenant_id, execution_id, requester_id, status,
+      required_approvers, current_approvals, expires_at, created_at) VALUES (${approvalRef}, 'CUSTOM', 'Release', ${tenantId},
+      ${job.jobId}, ${userId}, 'APPROVED', 1, 1, ${new Date(Date.now() + 600_000)}, NOW())`;
+    const input = { tenantId, actorId: userId, jobId: job.jobId, attemptId: job.attemptId, approvalRef,
+      holdRef: hold.id, amount: 60, currency: "USD", now: new Date() };
+    const check = (value = input) => defaultJobControlPlaneRepository.transaction(repo => repo.assertSpec224ReleaseAuthority!(value));
+    try {
+      expect(await check()).toBe(true);
+      expect(await check({ ...input, attemptId: randomUUID() })).toBe(false);
+      expect(await check({ ...input, amount: 61 })).toBe(false);
+      await sql`UPDATE approval_requests SET revoked_at = NOW() WHERE id = ${approvalRef}`;
+      expect(await check()).toBe(false);
+    } finally {
+      await sql`DELETE FROM approval_requests WHERE id = ${approvalRef}`;
+    }
+  });
+
   it("serializes concurrent duplicate child reservations without double holding", async () => {
     const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-concurrent`, limitMinorUnits: 100 });
     const job = await createAttempt();

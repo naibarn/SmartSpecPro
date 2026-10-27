@@ -83,6 +83,7 @@ function makeRepository() {
             item => item.workerJobId === jobId && item.attempt === attempt
           ) ?? null,
         assertRunnerAuthorizationBinding: async () => true,
+        assertSpec224ReleaseAuthority: async () => true,
         findEventByIdempotency: async (jobId, key) =>
           events.find(
             event =>
@@ -346,6 +347,27 @@ describe("job control plane", () => {
     }, { deferredAdmission: true, canonicalJobId: "job-b" });
     expect(await controlPlane.releaseAuthorizationHold({ jobId: created.jobId, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(false);
     expect(state.jobs.get(created.jobId)?.status).toBe("pending");
+    expect(state.outbox).toHaveLength(0);
+  });
+
+  it("does not release a held job when its current approval or attempt hold is no longer valid", async () => {
+    const state = makeRepository();
+    const original = state.repository.transaction;
+    state.repository.transaction = work => original(repo => work({
+      ...repo, assertSpec224ReleaseAuthority: async () => false,
+    }));
+    const controlPlane = createJobControlPlane(state.repository);
+    const created = await controlPlane.create({ ...definition, jobType: "external_agent_task",
+      idempotencyKey: "revoked-deferred-external",
+      input: { manifest: {}, spec224Run: { runId: "run-a", tenantId: "tenant-a", actorId: 1, workerJobId: "job-a" } },
+    }, { deferredAdmission: true, canonicalJobId: "job-a" });
+    const job = state.jobs.get(created.jobId)!;
+    await controlPlane.prepareAuthorizationAttempt({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 });
+    const binding = { runnerId: "r", runnerSessionId: "s", capabilitySnapshotId: "c", capabilitySnapshotRevision: "1", authorizationGrantRef: "g", approvalRef: "a", budgetReservationRef: "b", workspaceRef: "w", deadline: new Date(Date.now() + 60_000).toISOString() };
+    job.inputJson.manifest.policyBinding = binding;
+    job.progressJson.spec224Authorization = { status: "READY_FOR_LIVE", binding };
+    expect(await controlPlane.releaseAuthorizationHold({ jobId: job.id, tenantId: "tenant-a", requestedByUserId: 1 })).toBe(false);
+    expect(job.status).toBe("pending");
     expect(state.outbox).toHaveLength(0);
   });
 

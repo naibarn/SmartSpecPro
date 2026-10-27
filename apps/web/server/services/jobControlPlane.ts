@@ -117,6 +117,10 @@ export type TxRepo = {
     capabilitySnapshotRevision: string;
     now: Date;
   }): Promise<boolean>;
+  assertSpec224ReleaseAuthority?(input: {
+    tenantId: string; actorId: number; jobId: string; attemptId: string;
+    approvalRef: string; holdRef: string; amount: number; currency: string; now: Date;
+  }): Promise<boolean>;
   markDispatchConsumed?(input: {
     jobId: string;
     attemptId?: string;
@@ -799,6 +803,25 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                   )
                   .limit(1);
                 return Boolean(snapshot);
+              },
+              async assertSpec224ReleaseAuthority(input) {
+                // Lock both source records until queue transition and outbox commit.
+                // Goal-scoped approval needs its own full scope evaluation before
+                // release; this path accepts only an approval for this exact job.
+                const approvals = await query.execute(sql`SELECT id FROM approval_requests
+                  WHERE id = ${input.approvalRef} AND tenant_id = ${input.tenantId}
+                    AND requester_id = ${input.actorId} AND execution_id = ${input.jobId}
+                    AND status::text = 'APPROVED' AND revoked_at IS NULL
+                    AND (expires_at IS NULL OR expires_at > (${input.now.toISOString()}::timestamptz AT TIME ZONE 'UTC'))
+                    AND required_approvers IS NOT NULL AND current_approvals >= required_approvers
+                  FOR UPDATE`);
+                if (Array.from(approvals as unknown as Iterable<unknown>).length !== 1) return false;
+                const holds = await query.execute(sql`SELECT id FROM economic_holds
+                  WHERE id = ${input.holdRef} AND "tenantId" = ${input.tenantId}
+                    AND "workerJobId" = ${input.jobId} AND "attemptId" = ${input.attemptId}
+                    AND status = 'held' AND "amountMinorUnits" = ${input.amount}
+                    AND currency = ${input.currency} FOR UPDATE`);
+                return Array.from(holds as unknown as Iterable<unknown>).length === 1;
               },
               async findAttemptDetails(jobId, attempt) {
                 const [row] = await query
@@ -2349,7 +2372,7 @@ export function createJobControlPlane(
     },
     async releaseAuthorizationHold(input: { jobId: string; tenantId: string; requestedByUserId: number }): Promise<boolean> {
       return repository.transaction(async repo => {
-        const job = await repo.findJob(input.jobId);
+        const job = await (repo.findJobForUpdate?.(input.jobId) ?? repo.findJob(input.jobId));
         if (!job || job.tenantId !== input.tenantId || job.requestedByUserId !== input.requestedByUserId) return false;
         // The hold release, queue transition and outbox insert commit together.
         // Treat their durable release event as idempotent proof even if a later
@@ -2377,6 +2400,12 @@ export function createJobControlPlane(
           now: new Date(),
         });
         if (!authorized) return false;
+        const attempt = await repo.findAttempt(job.id, job.attempt);
+        if (!attempt || !repo.assertSpec224ReleaseAuthority || !(await repo.assertSpec224ReleaseAuthority({
+          tenantId: input.tenantId, actorId: input.requestedByUserId, jobId: job.id, attemptId: attempt.id,
+          approvalRef: binding.approvalRef, holdRef: binding.budgetReservationRef,
+          amount: binding.budgetCapMinorUnits, currency: binding.currency, now: new Date(),
+        }))) return false;
         const updated = await repo.updateJob({ jobId: job.id, expectedStatus: "pending", expectedTenantId: input.tenantId,
           expectedRequestedByUserId: input.requestedByUserId, values: { status: "queued", statusReason: null, scheduledAt: new Date() } });
         if (!updated) return false;
