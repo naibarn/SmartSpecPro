@@ -202,6 +202,34 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
     }
   });
 
+  it("recovers only a currently approved unambiguous Goal grant from the authority", async () => {
+    const { recoverSpec224GoalGrant } = await import("../spec224AuthorizationService");
+    const goalId = randomUUID(), approvalRef = randomUUID();
+    const expiresAt = new Date(Date.now() + 600_000);
+    const payload = { kind: "spec224_goal_delegation_grant", provider: "codex", grantId: randomUUID(), goalId,
+      actorId: userId, workspaceId: "workspace-test", repositoryRef: "repo:test", sourceSha: "a".repeat(40),
+      allowedActions: ["test"], writeScope: ["src/**"], capabilities: ["agent.external_task"],
+      budgetLimitMinorUnits: 100, currency: "USD", issuedAt: new Date(Date.now() - 60_000).toISOString(),
+      expiresAt: expiresAt.toISOString() };
+    const insert = async (id: string) => sql`INSERT INTO approval_requests (id, request_type, title, tenant_id,
+      execution_id, requester_id, status, payload, required_approvers, current_approvals, expires_at, created_at)
+      VALUES (${id}, 'CUSTOM', 'Goal', ${tenantId}, ${goalId}, ${userId}, 'APPROVED', ${sql.json(payload)}, 1, 1, ${expiresAt}, NOW())`;
+    const duplicate = randomUUID();
+    await insert(approvalRef);
+    try {
+      const input = { tenantId, actorId: userId, goalId };
+      expect(await recoverSpec224GoalGrant(input)).toMatchObject({ approvalRef, payload: { provider: "codex" } });
+      await insert(duplicate);
+      await expect(recoverSpec224GoalGrant(input)).rejects.toMatchObject({ code: "SPEC224_GOAL_GRANT_AMBIGUOUS" });
+      await sql`UPDATE approval_requests SET revoked_at = NOW() WHERE id = ${duplicate}`;
+      expect((await recoverSpec224GoalGrant(input)).approvalRef).toBe(approvalRef);
+      await sql`UPDATE approval_requests SET revoked_at = NOW() WHERE id = ${approvalRef}`;
+      await expect(recoverSpec224GoalGrant(input)).rejects.toMatchObject({ code: "SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED" });
+    } finally {
+      await sql`DELETE FROM approval_requests WHERE id IN (${approvalRef}, ${duplicate})`;
+    }
+  });
+
   it("revalidates the exact job approval and attempt hold at the release boundary", async () => {
     const { defaultJobControlPlaneRepository } = await import("../jobControlPlane");
     const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-release`, limitMinorUnits: 100 });

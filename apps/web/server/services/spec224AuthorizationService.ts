@@ -24,6 +24,7 @@ import {
   type DurableReleaseInput,
 } from "./economicDurableService";
 import { provisionEconomicBudget } from "./economicProvisioningService";
+import { parseSpec224GoalGrant, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
 import {
   type AgentTaskManifest,
   validateAgentTaskManifest,
@@ -63,6 +64,36 @@ export type Spec224AuthorizationContext = {
   actorRole?: string;
   userToken?: string | null;
 };
+
+/** Recover the approval from the existing authority, never from a job payload.
+ * Release must independently lock and revalidate this record. */
+export async function recoverSpec224GoalGrant(input: {
+  tenantId: string; actorId: number; goalId: string;
+}): Promise<Spec224GoalGrantAuthorityEvidence> {
+  getDb();
+  const rows = await db.instance.execute(sql`SELECT id, tenant_id, execution_id, requester_id, status::text AS status,
+    current_approvals, required_approvers, expires_at AT TIME ZONE 'UTC' AS expires_at,
+    revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload FROM approval_requests
+    WHERE tenant_id = ${input.tenantId} AND requester_id = ${input.actorId}
+      AND execution_id = ${input.goalId} AND payload->>'kind' = 'spec224_goal_delegation_grant'`);
+  const iso = (value: unknown) => value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
+  const now = new Date();
+  const active: Spec224GoalGrantAuthorityEvidence[] = [];
+  for (const row of rows as unknown as Array<Record<string, any>>) {
+    const authority: Spec224GoalGrantAuthorityEvidence = {
+      approvalRef: String(row.id), tenantId: row.tenant_id, executionId: row.execution_id,
+      requesterId: Number(row.requester_id), status: String(row.status).toLowerCase() as Spec224GoalGrantAuthorityEvidence["status"],
+      currentApprovals: Number(row.current_approvals), requiredApprovers: Number(row.required_approvers),
+      expiresAt: iso(row.expires_at), revokedAt: iso(row.revoked_at), payload: asRecord(row.payload) ?? {},
+    };
+    const grant = parseSpec224GoalGrant(authority, now);
+    if (grant && grant.tenantId === input.tenantId && grant.actorId === input.actorId && grant.goalId === input.goalId)
+      active.push(authority);
+  }
+  if (active.length > 1) throw new Spec224AuthorizationError("SPEC224_GOAL_GRANT_AMBIGUOUS");
+  if (!active.length) throw new Spec224AuthorizationError("SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");
+  return active[0];
+}
 
 type LoadedRun = {
   run: DevelopmentRun;
