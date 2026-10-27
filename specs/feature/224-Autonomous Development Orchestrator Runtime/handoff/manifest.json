@@ -980,7 +980,7 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Owner action: in the existing authenticated SmartAIHub session, open https://smartaihub.app/chat → the existing Spec 224 conversation/workspace; select the registered Windows Runner and SmartSpecPro workspace, verify the cap is USD 1.00, and submit once: 'Read-only: report the live Windows workspace branch, HEAD, git status, upstream and ancestry to origin/main. Do not modify files, commit, merge, push, deploy or run migrations.' Admission must independently verify owner/tenant, device consent, policy and budget. Return the actual DevelopmentRun ID or exact denial response; do not retry a denied Start.",
+    "next_action": "Owner action: in the existing authenticated SmartAIHub session, open https://smartaihub.app/chat → the existing Spec 224 conversation/workspace; select the registered Windows Runner and SmartSpecPro workspace, verify the cap is USD 1.00, and submit once: 'Read-only: report the live Windows workspace branch, HEAD, git status, upstream and ancestry to origin/main. Do not modify files, commit, merge, push, deploy or run migrations.' Admission must independently verify owner/tenant, device consent, policy and budget. Return the actual DevelopmentRun ID or exact denial response; do not retry a denied Start. Independent runtime work remains: recover a goal-scoped authorized continuation contract, enforce cumulative budget and pinned provider, then connect existing receipt reconciliation to held phase admission and attempt-specific authorization; do not release on prior-job authority.",
     "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
     "reactivation_predicate": "Fresh production capability acknowledgement is confirmed as applied for runner local-runner session 6ddda9fe-0845-44af-9b9f-1e1cb11e1e62, revision snapshot:local-runner:2026-10-26T23:57:40.468Z, correlation runner:local-runner:capabilities:2026-10-26T23:57:40.469Z. Continue after an authenticated owner Start passes current owner/tenant, device consent, policy and USD 1.00 budget checks and creates one real DevelopmentRun.",
     "resume_point": "Canonical main 5859261fc7eb56880920477e92176a021778d144. Production Web generation 153 (9b48e5123f1272eb0dd598b07ec8a24cbe8551f9), Node Worker and Python source 2382582a072e91c283ca2bf3513228c049ade574 include ACK fix e8e8245c6ba838194f4ef503bb37cc2fe43867a8; services active and public /healthz returned 200. Real RunnerControl journal confirms capability ACK applied for local-runner/session 6ddda9fe-0845-44af-9b9f-1e1cb11e1e62 at revision snapshot:local-runner:2026-10-26T23:57:40.468Z and correlation runner:local-runner:capabilities:2026-10-26T23:57:40.469Z; executionReadiness=capability_ready. No per-run authorization or Start exists. Next is one authenticated owner Start in existing Spec 224 Chat workspace at USD 1.00, read-only workspace status/ancestry goal.",
@@ -1094,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 194,
+  "generation": 195,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -3704,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T03:55:15.663453Z",
+  "updated_at": "2026-10-27T13:59:12.149125Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4078,6 +4078,13 @@
         "scope": "Verified SPEC-224 source workspace_ref/job/attempt consumption through protected candidate create/reattach/apply, SPEC-293 run workspace registration and sanitized Task Control IDs/lifecycle projection; execution authority unchanged. Native Windows candidate/apply and registry tests passed; live enrolled Runner remains unavailable.",
         "source_sha": "486339f977c96c351b08f3d0c51753d1723b27da",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_HELD_PHASE_RECOVERY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/autonomous-path-continuation-20261027.md",
+        "scope": "Deferred phase admission remains pending without outbox and can resume after a persisted phase outcome in a fresh process using disposable PostgreSQL. Production caller, authorization, release, live Runner and Final Verify remain unverified.",
+        "source_sha": "061d5a790d2b8bd760bf79284ddb1373e5b3e8e6",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
