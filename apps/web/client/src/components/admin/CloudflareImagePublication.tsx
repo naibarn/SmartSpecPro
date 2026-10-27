@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -68,6 +68,20 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
     } catch { /* Keep the ID; visible mutation error and exact-ID polling reconcile ambiguity. */ }
     finally { inFlight.current = false; }
   };
+  const autoResumeAttempts = useRef(new Set<string>());
+  useEffect(() => {
+    const missingJob = activeJobs.find(job => job.status === "NOT_ADMITTED");
+    const hasCanonicalProgress = activeJobs.some(job => job.status !== "NOT_ADMITTED");
+    const rejected = missingJob && requestedRecord?.diagnostics?.some(item => item.runtime === missingJob.runtime);
+    const attemptKey = submission ? `${submission.id}:${submission.digest}` : "";
+    if (hideAction || !attemptKey || !activePlanMatches || !preflight.data?.ready || !hasCanonicalProgress ||
+        !missingJob || rejected || queue.isPending || inFlight.current || autoResumeAttempts.current.has(attemptKey)) return;
+    // The original Owner click authorized this exact paired submission. Resume
+    // its missing half once the registry confirms partial admission; keep the
+    // same plan and ID so a lost response cannot mint another grant or job.
+    autoResumeAttempts.current.add(attemptKey);
+    void submit();
+  }, [activeJobs, activePlanMatches, hideAction, preflight.data?.ready, queue.isPending, requestedRecord, submission]);
   return <VStack as="section" gap={2} aria-label={text("Cloudflare application images", "Image แอปสำหรับ Cloudflare")}>
     <Heading level={3}>{replacementForSourceSha ? text("Publish corrected Node/Python runtime images", "เผยแพร่ image Node/Python รุ่นแก้ไข")
       : text("Publish Node and Python applications", "เผยแพร่แอป Node และ Python")}</Heading>
@@ -85,6 +99,8 @@ export function CloudflareImagePublication({ tenantId, projectId, hideAction = f
       `คำขอ ${submission.id} เป็นของแผนเก่า (${submission.digest}) แผนที่ตรวจล่าสุดคือ ${preflight.data?.planDigest} เมื่อกดยืนยันแผนใหม่นี้จะใช้ Submission ID ใหม่`)}</Text> : null}
     {submission && !planChanged && !requestedRecord && !requested.isLoading ? <Text role="status">{text(`Reconciling submission ${submission.id} against the canonical registry.`,
       `กำลังตรวจคำขอ ${submission.id} กับ canonical registry`)}</Text> : null}
+    {submission && activePlanMatches && activeJobs.some(job => job.status !== "NOT_ADMITTED") && activeJobs.some(job => job.status === "NOT_ADMITTED")
+      ? <Text role="status">{text("Continuing the already authorized image pair from its canonical checkpoint.", "กำลังทำคู่ image ที่อนุมัติไว้ต่อจาก checkpoint ใน registry")}</Text> : null}
     {!hideAction ? <Button type="button" disabled={!preflight.data?.ready || !correctedSourceReady || baseline.isLoading || requested.isLoading || Boolean(baseline.error) || Boolean(requested.error) || Boolean(requested.data?.requestedPublicationError) || queue.isPending || admitted} onClick={() => void submit()}>
       {queue.isPending ? text("Submitting the paired publication…", "กำลังส่งงานเผยแพร่ทั้งคู่…")
         : admitted ? text("Publication jobs accepted", "รับงานเผยแพร่ทั้งคู่แล้ว")

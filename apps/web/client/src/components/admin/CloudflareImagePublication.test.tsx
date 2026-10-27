@@ -42,6 +42,32 @@ describe("image publication Owner action", () => {
     expect(state.mutate.mock.calls[1][0]).toEqual(request);
   });
 
+  it("automatically continues the same authorized pair after canonical partial admission", async () => {
+    const submissionId = "77777777-7777-4777-8777-777777777777";
+    const digest = "c".repeat(64), key = `smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`;
+    sessionStorage.setItem(key, JSON.stringify({ id: submissionId, digest }));
+    state.requestedStatus = { submissionId, sourceSha: "a".repeat(40), planDigest: digest, published: false, diagnostics: [],
+      jobs: [{ runtime: "node-http", jobId: "node-job", status: "succeeded" },
+        { runtime: "python-http", jobId: "python-job", status: "NOT_ADMITTED" }] };
+    render(<CloudflareImagePublication {...props} />);
+    await waitFor(() => expect(state.mutate).toHaveBeenCalledTimes(1));
+    expect(state.mutate.mock.calls[0][0]).toEqual({ ...props, submissionId, planDigest: digest });
+    expect(screen.getByText(/Continuing the already authorized image pair/)).toBeInTheDocument();
+  });
+
+  it("does not automatically retry a runtime rejected by the canonical policy", async () => {
+    const submissionId = "88888888-8888-4888-8888-888888888888";
+    const digest = "c".repeat(64), key = `smartspec:cloudflare-image-pair:${props.tenantId}:${props.projectId}`;
+    sessionStorage.setItem(key, JSON.stringify({ id: submissionId, digest }));
+    state.requestedStatus = { submissionId, sourceSha: "a".repeat(40), planDigest: digest, published: false,
+      diagnostics: [{ runtime: "python-http", stage: "POLICY_CREATE", code: "HTTP_IMAGE_APPROVAL_HTTP_403" }],
+      jobs: [{ runtime: "node-http", jobId: "node-job", status: "succeeded" },
+        { runtime: "python-http", jobId: "python-job", status: "NOT_ADMITTED" }] };
+    render(<CloudflareImagePublication {...props} />);
+    await waitFor(() => expect(screen.getByText(/python-http: POLICY_CREATE/)).toBeInTheDocument());
+    expect(state.mutate).not.toHaveBeenCalled();
+  });
+
   it("shows a verified pair matching the plan and prevents duplicate admission", () => {
     state.status = { published: true, planDigest: "c".repeat(64), diagnostics: [], jobs: pubJobs("published").map(job => ({ ...job,
       image: `registry.cloudflare.com/fixture/${job.runtime}@sha256:${"a".repeat(64)}` })) };
