@@ -6,6 +6,12 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-windows-runner-acceptance-805d9b12-20261027.md",
         "scope": "Owner UI reports an online Windows Runner, but no authenticated session or installed binary/source identity is available to execute real-device workspace acceptance.",
         "status": "NOT_VERIFIED"
+      },
+      {
+        "kind": "WINDOWS_RUNNER_DEVICE_ACCEPTANCE",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-local-workspace-acceptance-workflow-20261027.md",
+        "scope": "Local acceptance workflow is implemented through 1d4ab377. The enrolled Windows Runner has not executed it; device acceptance remains unverified.",
+        "status": "NOT_VERIFIED"
       }
     ],
     "required": false,
@@ -28,15 +34,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "7d37b44fe0e7aa93b48c50958771b4aa7f29298e",
+    "expected_canonical_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
     "expected_spec_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688"
   },
   "continuation": {
-    "next_action": "Windows Runner device acceptance is NOT VERIFIED. The owner reports Desktop Runner ONLINE at 0.2.45, but exact Runner ID, heartbeat, capability snapshot revision/reasons, installed binary/source digest, and authorized Playwright session remain unavailable. Expose the existing authenticated /admin/desktop-host browser session to the Playwright environment (or provide authorized sanitized telemetry export); do not re-enroll. Then run actual Windows root/project/import/legacy/restart/path/reparse/concurrent-CAS/recovery/Task-Control/SPEC-224 checks. Do not install CLI prerelease 0.2.43-rc.1 over Desktop Runner 0.2.45. Continue existing SPEC-293 P0 closure independently.",
+    "next_action": "On the existing enrolled Windows Desktop Runner, install a Desktop build produced by the approved release workflow (which embeds the checked-out source SHA), click “ตรวจรับ Workspace Isolation”, and return the sanitized JSON through the existing authorized transport. Then verify actual Task Control projection and the SPEC-224 consumer flow; keep Windows acceptance NOT VERIFIED until that evidence is recorded.",
     "next_ready_workunit": "SPEC293_WINDOWS_RUNNER_AND_WORKSPACE_AUTHORITY_ACCEPTANCE",
     "reactivation_predicate": "When the existing authenticated owner-browser session or its authorized telemetry export is available, resume real-device acceptance without re-enrollment.",
-    "resume_point": "Canonical source origin/main 8736de1ebd153252e7976a15d75cc5ca339ee82c. Signed Windows CLI prerelease workflow 40463989273 passed (199 tests, 0 failed, 2 ignored; workspace integration 4/4), signed assets published as runner-v0.2.43-rc.1; not installed. Owner UI reports a separate Windows Desktop Runner 0.2.45 online, but no authenticated machine/API/browser session or exact identity/build telemetry is available in this environment. The prior 401 was the owner-browser protected procedure returning Please login, not a device-auth rejection. Resume only when the existing authenticated owner browser or authorized sanitized telemetry export is available; then perform device-level SPEC-293 tests. Preserve the SPEC-224 consumer seam and execution authority. Session C UI issue recorded: RunnerReleasePanel compares Runner CLI catalog version to product-ambiguous reported runnerVersion.",
-    "waiting_predicate": "Existing authenticated /admin/desktop-host owner-browser session becomes available to Playwright, or user supplies its authorized sanitized telemetry export including Runner ID, heartbeat, snapshot revision/reasons, installed binary/source digest."
+    "resume_point": "Local scratch acceptance instrumentation and capability readiness detail are integrated at 1d4ab37795bd299eeafb52e406d0c9b9f14f84bb. Runner crate full suite at dd7727ff passed 218 tests, 0 failed, 2 ignored; final report sanitization at 1d4ab377 passed its focused acceptance test. Owner reports Desktop Runner 0.2.45 ONLINE, but no authenticated session or actual installed source/executable digest is available here. The Desktop acceptance button must be run on the enrolled Windows device; the resulting sanitized report must confirm installed identity/build and junction behavior. Do not access or transfer browser credentials and do not install the CLI prerelease over Desktop Runner.",
+    "waiting_predicate": "Owner runs “ตรวจรับ Workspace Isolation” on the existing Windows Desktop Runner and provides its sanitized JSON report through authorized transport, then provides/observes authenticated Task Control and SPEC-224 consumer evidence."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -146,13 +152,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 79,
+  "generation": 82,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-27T01:04:58.341850Z",
+      "last_evidence_at": "2026-10-27T07:20:59.540922Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -267,9 +273,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "7d37b44fe0e7aa93b48c50958771b4aa7f29298e",
+    "canonical_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
     "integrated": true,
-    "integrated_at": "2026-10-27T01:11:27Z"
+    "integrated_at": "2026-10-27T07:23:56Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -594,7 +600,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-27T01:04:58.341850Z",
+    "reconciled_at": "2026-10-27T07:20:59.540922Z",
     "sources": [
       {
         "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
@@ -667,7 +673,7 @@
     "unresolved": 253
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T07:01:54.793387Z",
+  "updated_at": "2026-10-27T07:24:11.745180Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1054,6 +1060,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-windows-runner-acceptance-805d9b12-20261027.md",
         "scope": "runnerControl.test.ts, runnerNodesWorkspaceProjection.test.ts, workspaceAuthorityProjectReadModel.test.ts: 48 tests passed using a throwaway test-only JWT_SECRET; verifies sanitized workspace projection and existing consumer contracts, not device/browser acceptance.",
         "source_sha": "8736de1ebd153252e7976a15d75cc5ca339ee82c",
+        "status": "PASS"
+      },
+      {
+        "kind": "LOCAL_WORKSPACE_ACCEPTANCE_WORKFLOW",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-local-workspace-acceptance-workflow-20261027.md",
+        "scope": "Runner Desktop scratch-root acceptance harness and capability readiness reason projection; full crate suite at prior implementation SHA dd7727ff, final path-sanitization fix focused-tested at this exact SHA, Linux only, no actual Windows device run.",
+        "source_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
         "status": "PASS"
       }
     ],
