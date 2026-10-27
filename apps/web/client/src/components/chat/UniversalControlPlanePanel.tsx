@@ -880,9 +880,10 @@ export function UniversalControlPlanePanel({
         {fullPage ? (
           <details>
             <summary>{t("taskControl.newDevelopmentTask")}</summary>
-            <Spec224WorkspacePanel conversationId={conversationId} />
+            <Spec224WorkspacePanel conversationId={conversationId} simpleMode={runnerViewMode === "simple"} />
           </details>
         ) : <Spec224WorkspacePanel conversationId={conversationId} />}
+        <section hidden={fullPage && runnerViewMode === "simple"}>
         {queryErrors.length > 0 ? (
           <section
             className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800"
@@ -2346,6 +2347,7 @@ export function UniversalControlPlanePanel({
             </Link>
           </Button>
         </nav>
+        </section>
       </section>
       </section>
     </aside>

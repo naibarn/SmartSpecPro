@@ -93,7 +93,7 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId }: { conversationId: number | null }) {
+export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { conversationId: number | null; simpleMode?: boolean }) {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const fileInput = useRef<HTMLInputElement>(null);
@@ -107,6 +107,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const [miniAppPreviewUrl, setMiniAppPreviewUrl] = useState<string | null>(null);
   const [mode, setMode] = useState<"prompt" | "spec_set">("prompt");
   const [specSource, setSpecSource] = useState<"upload" | "catalog">("upload");
+  const effectiveSpecSource = simpleMode && specSource === "catalog" ? "upload" : specSource;
   const [featureSpecSearch, setFeatureSpecSearch] = useState("");
   const [selectedFeatureSpec, setSelectedFeatureSpec] = useState("");
   const [pendingSpecFiles, setPendingSpecFiles] = useState<File[]>([]);
@@ -148,7 +149,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
   const ingestMutation = trpc.spec226DevelopmentControl.ingestSpecSet.useMutation();
   const featureSpecsQuery = trpc.spec226DevelopmentControl.listFeatureSpecs.useQuery(
     { search: featureSpecSearch.trim() || undefined },
-    { enabled: isAdmin && mode === "spec_set" && specSource === "catalog" }
+    { enabled: isAdmin && !simpleMode && mode === "spec_set" && effectiveSpecSource === "catalog" }
   );
   const ingestFeatureSpecMutation = trpc.spec226DevelopmentControl.ingestFeatureSpec.useMutation();
   const prepareMutation = trpc.spec226DevelopmentControl.prepareWorkspaceRun.useMutation();
@@ -356,7 +357,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
           : "บันทึก DevelopmentRun และส่งเข้าคิวแล้ว");
       } else {
         const reasons = "authorization" in result ? result.authorization?.reasons.join(", ") : result.dispatchStatus;
-        toast.info(`DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
+        toast.info(simpleMode ? "บันทึกงานแล้ว แต่ยังรอสิทธิ์หรือความพร้อมก่อนเริ่ม" : `DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
       }
     } catch (error) {
       toast.error(presentCustomerError(error, "สั่งพัฒนาไม่สำเร็จ"));
@@ -394,13 +395,13 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
       const result = await resumeRunMutation.mutateAsync({ conversationId, runId, budgetCapMinorUnits });
       await workspaceQuery.refetch();
       if (result.dispatchStatus === "ENQUEUED") {
-        toast.success(`ทำงานต่อจาก DevelopmentRun เดิมแล้ว · ${result.runId}`);
+        toast.success(simpleMode ? "ส่งงานเดิมเข้าคิวเพื่อทำต่อแล้ว" : `ทำงานต่อจาก DevelopmentRun เดิมแล้ว · ${result.runId}`);
       } else if (result.dispatchStatus === "PENDING_AUTHORIZATION") {
         const reasons = result.authorization.reasons.join(", ") || result.authorization.status;
-        toast.info(`DevelopmentRun เดิมยังรอ authorization · ${reasons}`);
+        toast.info(simpleMode ? "งานเดิมยังรอสิทธิ์ก่อนทำต่อ" : `DevelopmentRun เดิมยังรอ authorization · ${reasons}`);
       } else {
         const reasons = result.authorization.reasons.join(", ") || result.authorization.status;
-        toast.error(`ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasons}`);
+        toast.error(simpleMode ? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อม" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasons}`);
       }
     } catch (error) {
       toast.error(presentCustomerError(error, "ทำ DevelopmentRun เดิมต่อไม่สำเร็จ"));
@@ -409,7 +410,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
 
   return (
     <section id="task-control-workspace" className="mb-4 rounded-lg border border-[var(--color-border)] p-3" aria-labelledby="spec224-workspace-heading">
-      <h3 id="spec224-workspace-heading" className="text-sm font-semibold">Spec 224 workspace</h3>
+      <h3 id="spec224-workspace-heading" className="text-sm font-semibold">{simpleMode ? "พื้นที่งานพัฒนา" : "Spec 224 workspace"}</h3>
       <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
         Workspace คือ project folder ที่ Runner รายงานจากเครื่องของคุณ การเลือกจะผูก Runner และ folder นั้นกับ conversation ปัจจุบัน; การแนบ Spec จะบันทึก revision แต่ยังไม่เริ่มแก้โค้ดหรือ build/run
       </p>
@@ -459,13 +460,13 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
             <p className="mt-2 text-xs text-rose-700" role="alert">โหลด Runner workspace ไม่สำเร็จ โปรดลองใหม่หรือตรวจสอบสิทธิ์</p>
           ) : null}
           {workspaceQuery.error ? (
-            <p className="mt-2 text-xs text-rose-700" role="alert">โหลด workspace ที่ผูกไว้ไม่สำเร็จ: {sanitizePlatformDiagnostic(workspaceQuery.error.message)}</p>
+            <p className="mt-2 text-xs text-rose-700" role="alert">โหลด workspace ที่ผูกไว้ไม่สำเร็จ{simpleMode ? " โปรดลองใหม่" : `: ${sanitizePlatformDiagnostic(workspaceQuery.error.message)}`}</p>
           ) : null}
           {boundWorkspace ? (
             <p className={`mt-2 text-xs ${workspaceQuery.data?.availability?.available ? "text-emerald-700" : "text-amber-800"}`} role="status">
               {workspaceQuery.data?.availability?.available ? "Conversation นี้ผูกแล้ว:" : "Binding ปัจจุบัน:"} {workspaces.find(item => selectionKey(item) === boundKey)?.displayName ?? "workspace ที่บันทึกไว้"}
-              {workspaceQuery.data?.availability?.status ? ` · สถานะ ${workspaceQuery.data?.availability?.status}` : ""}
-              {specSet ? ` · Spec Set r${specSet.revision}` : " · ยังไม่มี Spec Set"}
+              {!simpleMode && workspaceQuery.data?.availability?.status ? ` · สถานะ ${workspaceQuery.data?.availability?.status}` : ""}
+              {!simpleMode ? (specSet ? ` · Spec Set r${specSet.revision}` : " · ยังไม่มี Spec Set") : ""}
             </p>
           ) : null}
           {selectedWorkspace ? (
@@ -564,16 +565,16 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
                 <fieldset className="space-y-2 rounded-md border border-[var(--color-border)] p-2" aria-label="Spec source">
                   <legend className="px-1 text-xs font-medium">เลือกแหล่ง Spec</legend>
                   <label className="flex items-center gap-2 text-xs">
-                    <input type="radio" name="spec224-source" checked={specSource === "upload"} onChange={() => setSpecSource("upload")} />
+                    <input type="radio" name="spec224-source" checked={effectiveSpecSource === "upload"} onChange={() => setSpecSource("upload")} />
                     อัปโหลด Spec files
                   </label>
-                  {isAdmin ? (
+                  {isAdmin && !simpleMode ? (
                     <label className="flex items-center gap-2 text-xs">
-                      <input type="radio" name="spec224-source" checked={specSource === "catalog"} onChange={() => setSpecSource("catalog")} />
+                      <input type="radio" name="spec224-source" checked={effectiveSpecSource === "catalog"} onChange={() => setSpecSource("catalog")} />
                       เลือก Feature Spec จากระบบ (specs/feature)
                     </label>
                   ) : null}
-                  {specSource === "upload" ? (
+                  {effectiveSpecSource === "upload" ? (
                     <>
                       <input ref={fileInput} className="sr-only" type="file" multiple accept=".md,.json,.zip" aria-label="แนบไฟล์ Spec 224" onChange={event => { selectSpecFiles(event.target.files); event.currentTarget.value = ""; }} />
                       <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -641,7 +642,7 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
             ) : null}
           </fieldset>
 
-          {specSet ? (
+          {specSet && !simpleMode ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="Spec Set manifest">
               <p className="text-xs font-medium">Revision {specSet.revision} · {specSet.files.length} files · {specSet.requirementCount} parsed requirements</p>
               <ul className="mt-1 list-inside list-disc text-xs">
@@ -655,9 +656,9 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
               <ul className="mt-1 list-inside list-disc text-xs">
                 {workspaceQuery.data.developmentRuns.map(run => (
                   <li key={run.runId}>
-                    {run.workPackageExternalId ?? "Prompt"}
-                    {run.specSetRevision ? ` · Spec r${run.specSetRevision}` : ""}
-                    {` · ${developmentRunStateLabel(run.state)} · ${run.runId}`}
+                    {simpleMode ? "งานพัฒนา" : run.workPackageExternalId ?? "Prompt"}
+                    {!simpleMode && run.specSetRevision ? ` · Spec r${run.specSetRevision}` : ""}
+                    {` · ${developmentRunStateLabel(run.state)}${simpleMode ? "" : ` · ${run.runId}`}`}
                     {!(["COMPLETED", "CANCELLED"].includes(run.state)) ? (
                       <Button type="button" variant="outline" size="sm" className="ml-2"
                         disabled={resumeRunMutation.isPending || !boundWorkspace}
@@ -688,22 +689,21 @@ export function Spec224WorkspacePanel({ conversationId }: { conversationId: numb
           ) : null}
           {preparation ? (
             <section className="mt-3 rounded-md border border-[var(--color-border)] p-2" aria-live="polite">
-              <p className="text-xs font-semibold">ผลการเตรียม · plan r{preparation.planRevision}</p>
+              <p className="text-xs font-semibold">ผลการเตรียม{simpleMode ? "" : ` · plan r${preparation.planRevision}`}</p>
               <p className="mt-1 text-xs">ข้อกำหนด {preparation.requirementCount} · work packages ที่พร้อมเริ่ม {preparation.runnableWorkPackageIds.length}</p>
               {runnerReadiness ? (
                 <Text role="status" type="supporting">
-                  Codex: {runnerReadiness.code} · นโยบาย: {runnerReadiness.policyDecision === "pending" ? "รอประเมินตามขอบเขตของ Start" : runnerReadiness.policyDecision}
-                  {runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}
+                  {simpleMode ? (runnerReadiness.ready ? "เครื่องมือพร้อมให้ตรวจสิทธิ์ก่อนเริ่ม" : "เครื่องมือยังไม่พร้อม ตรวจสอบการเชื่อมต่อและสิทธิ์ Runner") : <>Codex: {runnerReadiness.code} · นโยบาย: {runnerReadiness.policyDecision === "pending" ? "รอประเมินตามขอบเขตของ Start" : runnerReadiness.policyDecision}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</>}
                 </Text>
               ) : null}
-              {preparation.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
-              {preparation.workPackages.map(workPackage => (
-                <section key={workPackage.id} className="mt-2 border-t border-[var(--color-border)] pt-2" aria-label={`Work package ${workPackage.externalId}`}>
-                  <p className="text-xs font-medium">{workPackage.externalId} · {workPackage.readiness}</p>
-                  {workPackage.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
+              {preparation.blockers.length ? simpleMode ? <p className="mt-1 text-xs text-amber-800">ยังมีเงื่อนไขที่ต้องตรวจสอบก่อนเริ่มงาน</p> : <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
+              {preparation.workPackages.map((workPackage, index) => (
+                <section key={workPackage.id} className="mt-2 border-t border-[var(--color-border)] pt-2" aria-label={simpleMode ? `งานส่วนที่ ${index + 1}` : `Work package ${workPackage.externalId}`}>
+                  <p className="text-xs font-medium">{simpleMode ? `งานส่วนที่ ${index + 1}` : `${workPackage.externalId} · ${workPackage.readiness}`}</p>
+                  {workPackage.blockers.length && !simpleMode ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
                   {preparation.runnableWorkPackageIds.includes(workPackage.id) ? (
                     <Button type="button" className="mt-2" disabled={startMutation.isPending || !runnerReadiness?.ready || !preparation.runnerReadiness.ready} onClick={() => void startWorkPackage(workPackage.id)}>
-                      {startMutation.isPending ? "กำลังส่งคำสั่ง…" : mode === "prompt" ? "สั่งพัฒนา" : `สั่งพัฒนา ${workPackage.externalId}`}
+                      {startMutation.isPending ? "กำลังส่งคำสั่ง…" : mode === "prompt" || simpleMode ? "สั่งพัฒนา" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}
                 </section>

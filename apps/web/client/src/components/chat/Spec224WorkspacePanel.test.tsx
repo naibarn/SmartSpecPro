@@ -48,6 +48,23 @@ async function preparePanel() {
 }
 
 describe("Core goal readiness feedback", () => {
+  it("keeps continuation available without displaying internal run or package identifiers in simple mode", () => {
+    mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "private-run-123", state: "BLOCKED_RECOVERABLE", workPackageId: "pkg", workPackageExternalId: "SPEC-internal-123", specSetRevision: 1, revision: 2 }] };
+    render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
+    expect(screen.getByRole("button", { name: "ทำงานเดิมต่อ" })).toBeEnabled();
+    expect(screen.queryByText(/private-run-123|SPEC-internal-123/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the selected development source when switching presentation modes", () => {
+    const { rerender } = render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
+    rerender(<Spec224WorkspacePanel conversationId={8} simpleMode />);
+    expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
+    rerender(<Spec224WorkspacePanel conversationId={8} />);
+    expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
   it("shows the real-task probe action and disables Start without treating pending policy as denial", async () => {
     mocks.prepare.mockResolvedValue(preparation(false));
     await preparePanel();
