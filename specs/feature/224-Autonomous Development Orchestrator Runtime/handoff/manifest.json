@@ -980,11 +980,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "In spec224AuthorizationService implement delegated child authorization using recoverSpec224GoalGrant, the persisted root and current child manifests and current attempt; provision/recover the Goal budget, reserve an attempt-specific hold, evaluate scope and persist the binding. Extend jobControlPlane release to re-read and lock the Goal approval, budget and hold and re-evaluate the complete scope before outbox insertion. Then wire spec224RunnerContinuationReconciler through the phase controller and child authorization without marking an unfinished successor processed; prove the full production path with disposable PostgreSQL replay, restart and concurrency. Windows live acceptance remains separate.",
-    "next_ready_workunit": "SPEC224_DELEGATED_CHILD_EXECUTION_BRIDGE",
-    "reactivation_predicate": "Continue the backend bridge now; perform Windows Live Acceptance only after the connected backend path and current live authority are available.",
-    "resume_point": "origin/main 28e0e9a6dabd63506808915ede36f7919d13a873: recoverSpec224GoalGrant reads existing approval authority, rejects ambiguous/revoked grant; its focused disposable PostgreSQL integration passed 2026-10-27 UTC (available memory approximately 22.9 GiB). No production caller connects it to child authorization, release or phase progression. No connected two-child acceptance or live Runner evidence was produced.",
-    "waiting_predicate": "No external dependency blocks the backend bridge; Windows Live Acceptance requires a fresh authorized live Runner and remains downstream."
+    "next_action": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
+    "next_ready_workunit": "SPEC224_LIVE_RUNNER_ACCEPTANCE",
+    "reactivation_predicate": "Proceed when an authorized live Runner and workspace are available; preserve production-specific controls.",
+    "resume_point": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
+    "waiting_predicate": "Live Runner acceptance requires current authenticated Runner, workspace, Goal grant and budget authority; the connected PostgreSQL result is synthetic."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1015,7 +1015,7 @@
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
       }
     ],
-    "next_action": "In spec224AuthorizationService implement delegated child authorization using recoverSpec224GoalGrant, the persisted root and current child manifests and current attempt; provision/recover the Goal budget, reserve an attempt-specific hold, evaluate scope and persist the binding. Extend jobControlPlane release to re-read and lock the Goal approval, budget and hold and re-evaluate the complete scope before outbox insertion. Then wire spec224RunnerContinuationReconciler through the phase controller and child authorization without marking an unfinished successor processed; prove the full production path with disposable PostgreSQL replay, restart and concurrency. Windows live acceptance remains separate.",
+    "next_action": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
     "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -1094,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 207,
+  "generation": 208,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2214,7 +2214,7 @@
           "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
         }
       ],
-      "next_action": "In spec224AuthorizationService implement delegated child authorization using recoverSpec224GoalGrant, the persisted root and current child manifests and current attempt; provision/recover the Goal budget, reserve an attempt-specific hold, evaluate scope and persist the binding. Extend jobControlPlane release to re-read and lock the Goal approval, budget and hold and re-evaluate the complete scope before outbox insertion. Then wire spec224RunnerContinuationReconciler through the phase controller and child authorization without marking an unfinished successor processed; prove the full production path with disposable PostgreSQL replay, restart and concurrency. Windows live acceptance remains separate.",
+      "next_action": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
       "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -3704,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T17:43:16.960131Z",
+  "updated_at": "2026-10-27T17:57:51.015172Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

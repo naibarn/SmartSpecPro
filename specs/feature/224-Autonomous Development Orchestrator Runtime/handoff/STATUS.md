@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: In spec224AuthorizationService implement delegated child authorization using recoverSpec224GoalGrant, the persisted root and current child manifests and current attempt; provision/recover the Goal budget, reserve an attempt-specific hold, evaluate scope and persist the binding. Extend jobControlPlane release to re-read and lock the Goal approval, budget and hold and re-evaluate the complete scope before outbox insertion. Then wire spec224RunnerContinuationReconciler through the phase controller and child authorization without marking an unfinished successor processed; prove the full production path with disposable PostgreSQL replay, restart and concurrency. Windows live acceptance remains separate.
-- Manifest generation: 207
+- Next action: Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.
+- Manifest generation: 208
 
 ## Source-declared status and relationship claims
 
