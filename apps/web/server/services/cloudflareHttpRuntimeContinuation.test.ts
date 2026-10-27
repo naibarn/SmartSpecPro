@@ -18,12 +18,14 @@ beforeEach(() => {
   const rolePlan = { ...scope, databaseName: "fixture", tables: ["users"], sequences: [], connectionLimit: 10 as const,
     expiresAt: "2026-01-01T00:00:00Z" }; delete (rolePlan as any).actorUserId;
   const plan = { candidateJobId, candidate: { imageSourceSha: "a".repeat(40), versionId: candidateJobId },
+    publication: { submissionId: id, sourceSha: "c".repeat(40), jobs: [{ runtime: "node-http" }, { runtime: "python-http" }], verified: true },
     workerSourceSha: "b".repeat(40), relations: { tables: rolePlan.tables, sequences: [] } };
   const planDigest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
   state.job = { id, ...scope, requestedByUserId: 17, jobType: HTTP_RUNTIME_JOB, contractVersion: HTTP_RUNTIME_CONTRACT,
     status: "succeeded", attempt: 1, maxAttempts: 1, finishedAt: new Date(), leaseExpiresAt: null, leaseOwnerToken: null,
     operatorReviewRequired: false, inputJson: { ...scope, candidateJobId, planDigest },
     outputJson: { jobId: id, candidateJobId, imageReferencesVerified: true, runtimeBootVerified: true,
+      publication: plan.publication,
       trafficMutation: false, dnsMutation: false, imagePublication: false,
       probes: [{ colo: "SIN", status: 200, probe: "node/health" }, { colo: "SIN", status: 200, probe: "node/database" },
         { colo: "SIN", status: 200, probe: "python/health" }, { colo: "SIN", status: 200, probe: "python/database" }],
@@ -70,13 +72,14 @@ describe("read-only compensated Candidate continuation evidence", () => {
     }
     await expect(readCompensatedHttpRuntime(db(), scope, candidateJobId)).rejects.toThrow("RECONCILE_REQUIRED");
   });
-  it.each(["wrong-stage", "missing-runtime-receipt", "missing-sql-probe", "output-cleanup-mismatch", "foreign-project"])("rejects successful evidence with %s", async mode => {
+  it.each(["wrong-stage", "missing-runtime-receipt", "missing-sql-probe", "output-cleanup-mismatch", "foreign-project", "publication-mismatch"])("rejects successful evidence with %s", async mode => {
     const checkpoint = JSON.parse(state.checkpoint.value);
     if (mode === "wrong-stage") checkpoint.stage = "FAILED";
     if (mode === "missing-runtime-receipt") state.job.outputJson.runtimeBootVerified = false;
     if (mode === "missing-sql-probe") state.job.outputJson.probes[1].status = 503;
     if (mode === "output-cleanup-mismatch") state.job.outputJson.cleanup.roleLoginRevoked = false;
     if (mode === "foreign-project") state.job.inputJson.projectId = "foreign-project";
+    if (mode === "publication-mismatch") state.job.outputJson.publication = { ...state.job.outputJson.publication, sourceSha: "f".repeat(40) };
     state.checkpoint.value = JSON.stringify(checkpoint);
     await expect(readCompensatedHttpRuntime(db(), scope, candidateJobId)).rejects.toThrow("RECONCILE_REQUIRED");
   });

@@ -54,7 +54,7 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
   const plan = (await getHttpRuntimePlan(db, scope, input.candidateJobId, intent.plan)).plan;
   if (hash(plan) !== input.planDigest) fail("PLAN_CHANGED");
   const { target, packet, settings: originalSettings } = await resolveHttpCandidatePackage(db, scope,
-    { imageSourceSha: plan.publication.sourceSha });
+    { imageSourceSha: plan.publication.sourceSha, submissionId: plan.publication.submissionId });
   const bundle = await resolveCloudflareStagingModules(plan.artifactRef, plan.workerSourceSha);
   if (!bundle?.moduleFiles[CANDIDATE_MODULE]) fail("CANONICAL_MODULE_REQUIRED");
   const checkpointWhere = and(eq(systemSettings.category, CHECKPOINT), eq(systemSettings.key, context.jobId));

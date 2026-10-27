@@ -14,11 +14,12 @@ export type PublishedPairDiagnostic = { submissionId: string; code: string; runt
 /** Completed immutable receipts remain usable after their execution grants
  * expire. This read never renews a grant, publishes an image or admits a job.
  * A browser hint and a newer incomplete submission cannot shadow a valid pair. */
-export async function resolveVerifiedHttpImagePair(db: DrizzleDB, scope: Scope, baseline?: { imageSourceSha: string }) {
+export async function resolveVerifiedHttpImagePair(db: DrizzleDB, scope: Scope, baseline?: { imageSourceSha: string; submissionId?: string }) {
   // Trusted runtime services may reconcile an EXISTING canonical Candidate's
   // original images after newer images are published. Public Admin/Candidate
   // preparation callers still select the latest fully verified pair.
   if (baseline && !/^[a-f0-9]{40}$/.test(baseline.imageSourceSha)) throw Error("HTTP_IMAGE_BASELINE_SOURCE_DENIED");
+  if (baseline?.submissionId && !/^[a-f0-9-]{36}$/.test(baseline.submissionId)) throw Error("HTTP_IMAGE_BASELINE_SUBMISSION_DENIED");
   // Candidate admission also has a submissionId, but that identifies a
   // DIFFERENT operation. Never forward extra request fields as an image hint.
   scope = { tenantId: scope.tenantId, projectId: scope.projectId, actorUserId: scope.actorUserId };
@@ -39,6 +40,7 @@ export async function resolveVerifiedHttpImagePair(db: DrizzleDB, scope: Scope, 
     try {
       const submission = row.valueJson as Record<string, any>;
       if (baseline && submission.sourceSha !== baseline.imageSourceSha) continue;
+      if (baseline?.submissionId && row.key !== baseline.submissionId) continue;
       if (row.updatedBy !== scope.actorUserId) throw Error("HTTP_IMAGE_SUBMISSION_OWNER_DENIED");
       if (!accountRef || !/^[a-f0-9]{32}$/.test(accountRef) || submission.accountRef !== accountRef)
         throw Error("HTTP_IMAGE_SUBMISSION_ACCOUNT_DENIED");

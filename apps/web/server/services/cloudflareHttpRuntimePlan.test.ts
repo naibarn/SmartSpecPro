@@ -9,7 +9,7 @@ vi.mock("node:fs/promises", async original => ({ ...(await original<any>()), rea
   `JWT_SECRET=${secret}\nSECRET_KEY=${secret}\nENCRYPTION_MASTER_KEY=${secret}\nSMARTSPEC_WEB_GATEWAY_TOKEN=${secret}\n` }));
 vi.mock("./cloudflareHttpCandidatePreparation", () => ({ assertHttpCandidateOwner: async (_db: any, s: any) => {
   if (s.tenantId !== "tenant-fixture" || s.actorUserId !== 17) throw Error("OWNER_SCOPE_DENIED"); },
-  resolveHttpCandidatePackage: async (_db: any, _scope: any, baseline: any) => baseline ? ({ packet: state.packet, target: state.target, settings: state.settings,
+  resolveHttpCandidatePackage: async (_db: any, _scope: any, baseline: any) => baseline?.submissionId ? state.desired : baseline ? ({ packet: state.packet, target: state.target, settings: state.settings,
     publishedPair: state.desired?.publishedPair ?? { submissionId: "baseline-pair", sourceSha: state.settings.sourceSha, verified: true } })
     : state.desired ?? ({ packet: state.packet, target: state.target, settings: state.settings, publishedPair: { sourceSha: state.settings.sourceSha } }) }));
 vi.mock("./cloudflareHttpDatabaseNetwork", () => ({ readHttpDatabaseNetwork: async () => ({ transport: "private-vpc-websocket-v1",
@@ -21,7 +21,7 @@ vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredent
   if (state.providerFailure) throw Error("provider transport detail that must not reach the UI");
   return { status: "CONFIGURED", value: { verified: state.verified } };
 } }));
-vi.mock("./cloudflareHttpRuntimeContinuation", () => ({ readCompensatedHttpRuntime: async () => state.prior,
+vi.mock("./cloudflareHttpRuntimeContinuation", async original => ({ ...(await original<any>()), readCompensatedHttpRuntime: async () => state.prior,
   readCompensatedHttpApplicationAcceptance: async () => state.previousApplicationAcceptance }));
 vi.mock("./cloudflareApplicationDatabaseRole", async original => ({ ...(await original<any>()), assertReusableApplicationDatabaseRole: async () => {} }));
 import { getHttpRuntimePlan } from "./cloudflareHttpRuntimePlan";
@@ -102,17 +102,18 @@ describe("non-mutating exact native runtime review", () => {
     state.prior = { jobId: "88888888-8888-4888-8888-888888888888", imageSourceSha: state.settings.sourceSha, workerSourceSha: "b".repeat(40),
       rolePlan: { tables, sequences }, relationsDigest: (await import("node:crypto")).createHash("sha256").update(JSON.stringify(relations)).digest("hex"),
       restoredBaseline: { deploymentId: "restored", versionId: state.job.outputJson.versionId } };
-    // Application acceptance reuses the exact pair already tested by the
-    // bounded boot operation; no image transition is part of this plan.
-    state.desired = { target: state.target, packet: state.packet, settings: state.settings,
-      publishedPair: { submissionId: "corrected-pair", sourceSha: state.settings.sourceSha, verified: true } };
+    // The original Candidate is restored; application acceptance must select
+    // the corrected pair from the successful bounded runtime receipt.
+    state.desired = { target: state.target, packet: state.packet, settings: { ...state.settings, sourceSha: "f".repeat(40) },
+      publishedPair: { submissionId: "corrected-pair", sourceSha: "f".repeat(40), verified: true } };
+    state.prior.verifiedPublication = state.desired.publishedPair;
     state.prior.relationsDigest = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(relations)).digest("hex");
     const result = await getHttpRuntimePlan(db(true), scope, state.job.id, { operation: "application" });
     expect(result.ready).toBe(true);
     expect(result.plan).toMatchObject({ operation: "application", applicationAcceptance: true, fixtureCreation: true,
       applicationFixture: { m1JobId: "77777777-7777-4777-8777-777777777777", foreignTestTenantId: state.m1Fixture.foreignTestTenantId,
         evidenceDigest: state.m1Evidence.evidenceDigest }, trafficMutation: false, dnsMutation: false });
-    expect(result.plan.publication.sourceSha).toBe(state.settings.sourceSha);
+    expect(result.plan.publication.sourceSha).toBe("f".repeat(40));
     expect(result.plan.testScope).toContain("authenticated-gateway-model-routing");
     expect(result.plan.previousApplicationAcceptance).toBeNull();
     state.previousApplicationAcceptance = { jobId: "99999999-9999-4999-8999-999999999999", planDigest: "9".repeat(64),
@@ -120,6 +121,8 @@ describe("non-mutating exact native runtime review", () => {
       workerSourceSha: "b".repeat(40), restoredBaseline: { deploymentId: "77777777-7777-4777-8777-777777777777", versionId: state.job.outputJson.versionId } };
     const retry = await getHttpRuntimePlan(db(true), scope, state.job.id, { operation: "application" });
     expect(retry.plan.previousApplicationAcceptance?.jobId).toBe(state.previousApplicationAcceptance.jobId);
+    state.desired.publishedPair = { ...state.desired.publishedPair, submissionId: "foreign-pair" };
+    await expect(getHttpRuntimePlan(db(true), scope, state.job.id, { operation: "application" })).rejects.toThrow("HTTP_APPLICATION_RUNTIME_PUBLICATION_CHANGED");
   });
   it("reports a safe preflight phase when a non-coded Cloudflare readback failure is wrapped", async () => {
     state.providerFailure = true;

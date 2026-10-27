@@ -27,7 +27,7 @@ export async function assertHttpCandidateOwner(db: DrizzleDB, scope: Scope) {
 
 /** Exact completed publication receipts, rather than local tags or a new build
  * of the Node/Python images. No secret or runtime start profile is returned. */
-export async function resolveHttpCandidatePackage(db: DrizzleDB, scope: Scope, baseline?: { imageSourceSha: string }) {
+export async function resolveHttpCandidatePackage(db: DrizzleDB, scope: Scope, baseline?: { imageSourceSha: string; submissionId?: string }) {
   await assertHttpCandidateOwner(db, scope);
   const target = await resolveCloudflareProductionDeploymentTarget({ db, ...scope });
   if (!target) throw Error("HTTP_CANDIDATE_PRODUCTION_TARGET_REQUIRED");

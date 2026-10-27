@@ -24,6 +24,7 @@ suite("compensated runtime reconciliation against PostgreSQL worker registry", (
     const rolePlan = { tenantId: scope.tenantId, projectId: scope.projectId, databaseName: "fixture_db", tables: ["users"],
       sequences: [], connectionLimit: 10, expiresAt: "2025-01-01T00:00:00.000Z" };
     const plan = { candidateJobId, candidate: { imageSourceSha: "a".repeat(40), versionId: candidateJobId },
+      publication: { submissionId: jobId, sourceSha: "c".repeat(40), jobs: [{ runtime: "node-http" }, { runtime: "python-http" }], verified: true },
       workerSourceSha: "b".repeat(40), relations: { tables: rolePlan.tables, sequences: [] } };
     const planDigest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
     const probes = ["node/health", "node/database", "python/health", "python/database"].map(probe => ({ colo: "SIN", status: 200, probe }));
@@ -31,7 +32,7 @@ suite("compensated runtime reconciliation against PostgreSQL worker registry", (
     const cleanup = { nodeStopped: true, pythonStopped: true, candidateRestored: true, roleLoginRevoked: true, m2Preserved: true,
       candidateDeploymentId: deploymentId, candidateVersionId: candidateJobId };
     const output = { jobId, candidateJobId, imageReferencesVerified: true, runtimeBootVerified: true,
-      trafficMutation: false, dnsMutation: false, imagePublication: false, probes, cleanup };
+      publication: plan.publication, trafficMutation: false, dnsMutation: false, imagePublication: false, probes, cleanup };
     const intent = { ...scope, actorUserId: scope.actorUserId, submissionId: jobId, planDigest, plan,
       expiresAt: "2025-01-01T00:00:00.000Z", authority: "existing-candidate-bounded-runtime-test-v1", revokedAt: null,
       trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false, fixtureCreation: false };

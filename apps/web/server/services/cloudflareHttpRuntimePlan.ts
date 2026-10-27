@@ -8,7 +8,7 @@ import type { DrizzleDB } from "../db";
 import { assertHttpCandidateOwner, resolveHttpCandidatePackage } from "./cloudflareHttpCandidatePreparation";
 import { readHttpDatabaseNetwork } from "./cloudflareHttpDatabaseNetwork";
 import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, assertReusableApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
-import { readCompensatedHttpApplicationAcceptance, readCompensatedHttpRuntime } from "./cloudflareHttpRuntimeContinuation";
+import { readCompensatedHttpApplicationAcceptance, readCompensatedHttpRuntime, sameRuntimePublication } from "./cloudflareHttpRuntimeContinuation";
 import { knownHttpNodeImageFailure } from "./cloudflareHttpImageCompatibility";
 import { composeHttpRuntime } from "./cloudflareHttpRuntimeComposition";
 import { httpCandidateReceiptSchema, verifyHttpCandidateProviderReceipt } from "./cloudflareHttpCandidateReadback";
@@ -145,11 +145,15 @@ async function buildHttpRuntimePlan(db: DrizzleDB, scope: Scope, candidateJobId:
         JSON.stringify(previousRuntime.rolePlan.sequences) !== JSON.stringify(relations.sequences)) throw Error("HTTP_RUNTIME_ROLE_RELATIONS_CHANGED");
     await assertReusableApplicationDatabaseRole(db, previousRuntime.rolePlan);
   }
-  // Application acceptance tests the exact images already deployed to the
-  // existing Candidate. It must not demand a second image transition merely
-  // because the bounded boot test has already restored that accepted pair.
-  const desired = operation === "application" ? pkg :
+  // The successful bounded test restored the original Candidate baseline.
+  // Re-resolve the exact tested publication for the next bounded operation.
+  if (operation === "application" && !previousRuntime?.verifiedPublication)
+    throw Error("HTTP_APPLICATION_VERIFIED_RUNTIME_PUBLICATION_REQUIRED");
+  const desired = operation === "application" ? await resolveHttpCandidatePackage(db, scope, {
+    imageSourceSha: previousRuntime!.verifiedPublication.sourceSha, submissionId: previousRuntime!.verifiedPublication.submissionId }) :
     await resolveHttpCandidatePackage(db, scope, reviewed?.publication ? { imageSourceSha: reviewed.publication.sourceSha } : undefined);
+  if (operation === "application" && !sameRuntimePublication(desired.publishedPair, previousRuntime!.verifiedPublication))
+    throw Error("HTTP_APPLICATION_RUNTIME_PUBLICATION_CHANGED");
   if (desired.target.accountRef !== pkg.target.accountRef || desired.packet.config.name !== candidate.workerName)
     throw Error("HTTP_RUNTIME_IMAGE_TARGET_CHANGED");
   if (knownHttpNodeImageFailure(desired.settings.node.image)) throw Error("HTTP_RUNTIME_CORRECTED_PUBLISHED_IMAGES_REQUIRED");

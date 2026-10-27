@@ -8,6 +8,13 @@ import { HTTP_RUNTIME_CATEGORY, HTTP_RUNTIME_CONTRACT, HTTP_RUNTIME_JOB } from "
 
 type Scope = { tenantId: string; projectId: string; actorUserId: number };
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+function canonicalEvidence(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalEvidence).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, item]) => `${JSON.stringify(key)}:${canonicalEvidence(item)}`).join(",")}}`;
+  return JSON.stringify(value) ?? "undefined";
+}
+export const sameRuntimePublication = (left: unknown, right: unknown) => canonicalEvidence(left) === canonicalEvidence(right);
 function sameRuntimeProbes(left: unknown, right: unknown) {
   if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
   const summarize = (probes: any[]) => {
@@ -68,13 +75,19 @@ export async function readCompensatedHttpRuntime(db: DrizzleDB, scope: Scope, ca
       probeStatus("node/health") !== 200 || probeStatus("node/database") !== 200 ||
       probeStatus("python/health") !== 200 || probeStatus("python/database") !== 200 ||
       !sameRuntimeProbes(state.probes, probes))) return deny();
+  const publication = value.plan.publication;
+  if (job.status === "succeeded" && (!publication || publication.verified !== true ||
+      !/^[a-f0-9]{40}$/.test(publication.sourceSha ?? "") || !/^[a-f0-9-]{36}$/.test(publication.submissionId ?? "") ||
+      !Array.isArray(publication.jobs) || publication.jobs.length !== 2 ||
+      !sameRuntimePublication(publication, output?.publication))) return deny();
   const rolePlan = applicationDatabaseRolePlanSchema.safeParse(state.rolePlan);
   if (!rolePlan.success || rolePlan.data.tenantId !== scope.tenantId || rolePlan.data.projectId !== scope.projectId ||
       state.roleSecret?.role !== applicationDatabaseRoleName(scope) || state.roleSecret?.planDigest !== applicationDatabaseRolePlanDigest(rolePlan.data) ||
       JSON.stringify(rolePlan.data.tables) !== JSON.stringify(value.plan.relations.tables) ||
       JSON.stringify(rolePlan.data.sequences) !== JSON.stringify(value.plan.relations.sequences)) return deny();
   return { jobId: job.id, planDigest: value.planDigest, rolePlan: rolePlan.data, relationsDigest: hash(value.plan.relations),
-    imageSourceSha: String(value.plan.publication?.sourceSha ?? value.plan.candidate.imageSourceSha), workerSourceSha: String(value.plan.workerSourceSha),
+    imageSourceSha: String(publication?.sourceSha ?? value.plan.candidate.imageSourceSha),
+    verifiedPublication: job.status === "succeeded" ? publication : null, workerSourceSha: String(value.plan.workerSourceSha),
     restoredBaseline: { deploymentId: String(state.cleanup.candidateDeploymentId), versionId: String(state.cleanup.candidateVersionId) } };
 }
 
