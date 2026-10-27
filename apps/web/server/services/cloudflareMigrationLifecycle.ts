@@ -105,6 +105,9 @@ export async function recordMigrationContinuation(db: DrizzleDB, scope: Scope, v
 }
 
 export async function getCloudflareMigrationMission(db: DrizzleDB, scope: Scope) {
+  // Router input also contains environment; do not extend the exact evidence
+  // identity with unrelated request properties at runtime.
+  scope = { tenantId: scope.tenantId, projectId: scope.projectId };
   const rows = await readSubmissionRows(db, scope);
   const parsed = migrationContinuationSchema.safeParse((rows[0]?.valueJson as Record<string, unknown> | null)?.migrationContinuation);
   const jobs = await db.select().from(workerJobs).where(and(eq(workerJobs.tenantId, scope.tenantId),

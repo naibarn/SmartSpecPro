@@ -1,10 +1,22 @@
-import { describe, expect, it } from "vitest";
-import { migrationMissionId, projectCloudflareMigration, type MigrationContinuation } from "./cloudflareMigrationLifecycle";
+import { describe, expect, it, vi } from "vitest";
+import { getCloudflareMigrationMission, migrationMissionId, projectCloudflareMigration, type MigrationContinuation } from "./cloudflareMigrationLifecycle";
+const evidence = vi.hoisted(() => vi.fn());
+vi.mock("./cloudflareProductionDatabaseReconciliation", () => ({ readProductionDatabaseReadbackObservation: evidence }));
 const scope = { tenantId: "tenant-a", projectId: "project-a" };
 const continuation: MigrationContinuation = { migrationMode: "FIRST_MIGRATION", architecture: "HYBRID_INGRESS", agentCapacity: "AVAILABLE", engineeringCheckpoint: "ENGINEERING", handoffRef: "orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/implementation/HANDOFF.md" };
 const base = { id: "job-a", tenantId: scope.tenantId, status: "failed", jobType: "cloudflare.production.deploy", contractVersion: "cloudflare-production-ingress-v1", inputJson: { projectId: scope.projectId, targetId: "smartspec-cloudflare-runtime", environment: "production" }, outputJson: null, errorCode: "APPLICATION_PROBE_FAILED" };
 const accepted = { ...base, status: "succeeded", errorCode: null, outputJson: { productionTrafficShifted: true, authenticatedAcceptance: { verified: true }, routeId: "route", deploymentId: "deployment", versionId: "version" } };
 describe("First migration continuation over the existing canonical job authorities", () => {
+  it("uses only evidence identity fields when the router includes environment", async () => {
+    const database = { ...base, id: "database", jobType: "cloudflare.production.database.provision",
+      inputJson: { ...base.inputJson, planDigest: "a".repeat(64) } };
+    evidence.mockResolvedValueOnce({ acceptance: "M1_ACCEPTED", databaseConnectionVerified: true, tenantIsolationVerified: true });
+    let reads = 0;
+    const db = { select: () => ({ from: () => ({ where: () => ({ orderBy: async () => ++reads === 1 ? [] : [accepted, database] }) }) }) } as any;
+    const result = await getCloudflareMigrationMission(db, { ...scope, environment: "production" } as typeof scope);
+    expect(evidence).toHaveBeenCalledWith(db, { ...scope, jobId: "database", planDigest: "a".repeat(64) });
+    expect(result.completedCheckpoints).toEqual(["M2_ACCEPTED", "M1_ACCEPTED"]);
+  });
   it.each(["JOB_DEADLINE_EXPIRED", "GRANT_EXPIRED", "ATTEMPTS_EXHAUSTED", "APPLICATION_PROBE_FAILED"])("keeps the same durable mission after %s", errorCode => {
     const value = projectCloudflareMigration(scope, continuation, [{ ...base, errorCode }]);
     expect(value).toMatchObject({ campaignId: migrationMissionId(scope), missionExpiresAt: null, state: "REPAIR_REQUIRED", campaignAuthority: "NOT_AUTHORIZED" });
