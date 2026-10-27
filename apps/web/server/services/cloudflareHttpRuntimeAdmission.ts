@@ -114,12 +114,16 @@ export async function prepareHttpRuntime(db: DrizzleDB, input: Scope & { candida
       description: "Owner: exact existing Candidate role/bindings, bounded Container tests and compensation; no production traffic" });
     return value;
   });
+  console.info("cloudflare_http_runtime_admission", { stage: "INTENT_RECORDED", submissionId: input.submissionId,
+    tenantId: input.tenantId, projectId: input.projectId, actorUserId: input.actorUserId,
+    candidateJobId: input.candidateJobId, planDigest: input.planDigest, correlationId: input.correlationId, operation });
   const [job] = await db.select().from(workerJobs).where(eq(workerJobs.id, input.submissionId)).limit(1);
   if (job) {
     if (job.tenantId !== input.tenantId || job.requestedByUserId !== input.actorUserId || job.jobType !== HTTP_RUNTIME_JOB ||
         job.contractVersion !== HTTP_RUNTIME_CONTRACT || job.inputJson?.planDigest !== input.planDigest ||
       job.inputJson?.candidateJobId !== input.candidateJobId || (job.inputJson?.operation ?? "runtime") !== operation)
       throw Error("HTTP_RUNTIME_CANONICAL_JOB_SCOPE_DENIED");
+    console.info("cloudflare_http_runtime_admission", { stage: "JOB_RECONCILED", submissionId: input.submissionId, correlationId: input.correlationId });
     return { jobId: job.id, status: job.status };
   }
   if (intent.revokedAt !== null || !Number.isFinite(Date.parse(intent.expiresAt)) || Date.parse(intent.expiresAt) <= Date.now())
@@ -139,5 +143,6 @@ export async function prepareHttpRuntime(db: DrizzleDB, input: Scope & { candida
       timeoutPolicy: { softTimeoutMs: 20 * 60_000, hardTimeoutMs: 30 * 60_000 } },
     createOptions: { canonicalJobId: input.submissionId, runtimeType: "node_job_worker" } });
     if (admitted.jobId !== input.submissionId) throw Error("HTTP_RUNTIME_CANDIDATE_BUSY");
+    console.info("cloudflare_http_runtime_admission", { stage: "JOB_ADMITTED", submissionId: input.submissionId, correlationId: input.correlationId });
     return admitted;
 }

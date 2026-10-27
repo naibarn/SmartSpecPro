@@ -892,11 +892,16 @@ export const infrastructureRouter = router({
     .mutation(async ({ input, ctx }) => {
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_RUNTIME_AUTHENTICATED_TENANT_REQUIRED" });
-      try { const result = await prepareHttpRuntime(getDb(), { ...input, actorUserId: ctx.user.id,
-        correlationId: (ctx.req as typeof ctx.req & { requestId?: string }).requestId ?? input.submissionId });
+      const correlationId = (ctx.req as typeof ctx.req & { requestId?: string }).requestId ?? input.submissionId;
+      console.info("cloudflare_http_runtime_admission", { stage: "AUTHENTICATED", submissionId: input.submissionId,
+        tenantId: input.tenantId, projectId: input.projectId, actorUserId: ctx.user.id, candidateJobId: input.candidateJobId,
+        planDigest: input.planDigest, operation: input.operation ?? "runtime", correlationId });
+      try { const result = await prepareHttpRuntime(getDb(), { ...input, actorUserId: ctx.user.id, correlationId });
         return { jobId: result.jobId }; }
-      catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
-        ? error.message : "HTTP_RUNTIME_ADMISSION_UNKNOWN" }); }
+      catch (error) {
+        const reason = error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message) ? error.message : "HTTP_RUNTIME_ADMISSION_UNKNOWN";
+        console.info("cloudflare_http_runtime_admission", { stage: "ERROR", submissionId: input.submissionId, correlationId, reason });
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: reason }); }
     }),
 
   prepareCloudflareHttpCandidate: exactAdminProcedure

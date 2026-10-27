@@ -159,6 +159,41 @@ describe("bounded native runtime Owner operation", () => {
     expect(request.operation).toBe("application"); expect(request.submissionId).not.toBe(state.appJob.jobId);
     expect(request.planDigest).toBe("9".repeat(64));
   });
+  it("does not reuse a failed job ID even if its stored plan matches the reviewed plan", async () => {
+    state.appReady = true;
+    state.appJob = { jobId: "old-failed-job", status: "failed", attempt: 1, maxAttempts: 1 };
+    state.appPreviousAcceptance = { jobId: state.appJob.jobId };
+    sessionStorage.setItem(`smarthub:native-application:${props.tenantId}:${props.projectId}:${props.candidateJobId}`,
+      JSON.stringify({ submissionId: state.appJob.jobId, planDigest: "9".repeat(64) }));
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Authorize a fresh compensated application acceptance" }));
+    expect(state.mutate.mock.calls[0][0].submissionId).not.toBe(state.appJob.jobId);
+    expect(screen.getByText(/Submission status: ADMISSION_UNKNOWN/)).toBeInTheDocument();
+  });
+  it("keeps an uncertain submission when the reviewed plan changes", async () => {
+    state.appReady = true;
+    sessionStorage.setItem(`smarthub:native-application:${props.tenantId}:${props.projectId}:${props.candidateJobId}`,
+      JSON.stringify({ submissionId: "uncertain-submission", planDigest: "old-plan" }));
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Authorize synthetic application acceptance" }));
+    expect(state.mutate).not.toHaveBeenCalled();
+    expect(screen.getByText(/HTTP_RUNTIME_REVIEWED_PLAN_CHANGED/)).toHaveTextContent("uncertain-submission");
+  });
+  it("shows submitting immediately and reconciles a lost response with the same ID", async () => {
+    state.appReady = true;
+    let fail!: (reason: Error) => void;
+    state.mutate.mockReturnValueOnce(new Promise((_resolve, reject) => { fail = reject; }));
+    const view = render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Authorize synthetic application acceptance" }));
+    expect(screen.getByText(/Submission status: SUBMITTING/)).toBeInTheDocument();
+    fail(new Error("response lost"));
+    await waitFor(() => expect(screen.getByText(/Submission status: ADMISSION_UNKNOWN/)).toBeInTheDocument());
+    const request = state.mutate.mock.calls[0][0];
+    view.unmount();
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Reconcile the same application acceptance" }));
+    expect(state.mutate.mock.calls[1][0]).toEqual(request);
+  });
   it("shows the precise Node incompatibility and corrected publication action without repeating the failed runtime job", () => {
     state.job = { jobId: "canonical-runtime-job", status: "failed", attempt: 2, maxAttempts: 2, imageRepair: {
       code: "HTTP_IMAGE_NODE_RUNTIME_UNSUPPORTED", observedVersion: "22.22.3", requiredVersion: ">=22.23.4 <23", sourceSha: "d".repeat(40) } };

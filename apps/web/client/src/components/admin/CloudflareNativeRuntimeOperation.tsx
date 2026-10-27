@@ -65,6 +65,7 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
   const [applicationSubmission, setApplicationSubmission] = useState<ReviewedSubmission | null>(() => {
     try { return JSON.parse(sessionStorage.getItem(appKey) ?? "null"); } catch { return null; }
   });
+  const [applicationAdmission, setApplicationAdmission] = useState<{ phase: "submitting" | "unknown" | "rejected"; code?: string } | null>(null);
   const [preflightDialogOpen, setPreflightDialogOpen] = useState(false);
   const [preflightRecheckState, setPreflightRecheckState] = useState<"idle" | "checking" | "ready" | "blocked" | "failed">("idle");
   const [preflightRecheckResult, setPreflightRecheckResult] = useState<string | null>(null);
@@ -119,16 +120,45 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     if (busy.current || !appPreflight?.ready || appJob && !applicationContinuation || appPending?.revoked && !applicationContinuation ||
         appPending && !usableApplicationPending && !applicationContinuation) return;
     busy.current = true;
-    const request: ReviewedSubmission = usableApplicationPending ?? (applicationSubmission?.planDigest === appPreflight.planDigest ? applicationSubmission : null) ?? { submissionId: crypto.randomUUID(), planDigest: appPreflight.planDigest,
+    const retained = applicationSubmission?.submissionId === appJob?.jobId ? null : applicationSubmission;
+    if (retained && retained.planDigest !== appPreflight.planDigest && !usableApplicationPending) {
+      setApplicationAdmission({ phase: "unknown", code: "HTTP_RUNTIME_REVIEWED_PLAN_CHANGED" });
+      busy.current = false;
+      void applicationState.refetch();
+      return;
+    }
+    const request: ReviewedSubmission = usableApplicationPending ?? (retained?.planDigest === appPreflight.planDigest ? retained : null) ?? { submissionId: crypto.randomUUID(), planDigest: appPreflight.planDigest,
       candidateJobId, artifactRef: appPreflight.plan.artifactRef, workerSourceSha: appPreflight.plan.workerSourceSha };
-    if (request.planDigest !== appPreflight.planDigest) { busy.current = false; return; }
+    if (request.planDigest !== appPreflight.planDigest) {
+      setApplicationAdmission({ phase: "unknown", code: "HTTP_RUNTIME_REVIEWED_PLAN_CHANGED" });
+      busy.current = false;
+      void applicationState.refetch();
+      return;
+    }
     setApplicationSubmission(request);
     try { sessionStorage.setItem(appKey, JSON.stringify(request)); } catch { /* Server intent remains authoritative. */ }
+    setApplicationAdmission({ phase: "submitting" });
     try { await mutation.mutateAsync({ tenantId, projectId, candidateJobId, submissionId: request.submissionId,
-      planDigest: request.planDigest, artifactRef: request.artifactRef, workerSourceSha: request.workerSourceSha, operation: "application" }); }
-    catch { /* Retain the same ID so the canonical intent/job can be reconciled. */ }
+      planDigest: request.planDigest, artifactRef: request.artifactRef, workerSourceSha: request.workerSourceSha, operation: "application" });
+      // A response alone is not the canonical registry readback.
+      setApplicationAdmission({ phase: "unknown" });
+    } catch (error) {
+      const value = error as { message?: unknown; data?: { httpStatus?: unknown } };
+      const code = typeof value?.message === "string" && /^[A-Z0-9_]{5,120}$/.test(value.message) ? value.message : "HTTP_RUNTIME_ADMISSION_UNKNOWN";
+      const status = value?.data?.httpStatus;
+      const rejected = (status === 401 || status === 403) && code !== "HTTP_RUNTIME_ADMISSION_UNKNOWN";
+      setApplicationAdmission({ phase: rejected ? "rejected" : "unknown", code });
+    }
     finally { busy.current = false; void applicationState.refetch(); }
   };
+  const currentApplicationJob = applicationSubmission && applicationSubmission.submissionId !== appJob?.jobId ? null : appJob;
+  const currentPending = appPending && (!applicationSubmission || applicationSubmission.submissionId === appPending.submissionId) ? appPending : null;
+  const applicationPhase = applicationAdmission?.phase === "submitting" ? "SUBMITTING" : currentApplicationJob
+    ? currentApplicationJob.status === "succeeded" ? "JOB_SUCCEEDED" : currentApplicationJob.status === "failed" ? "JOB_FAILED"
+      : ["running", "leased", "claimed", "preparing"].includes(currentApplicationJob.status) ? "JOB_RUNNING" : "JOB_ACCEPTED"
+    : currentPending && currentPending.submissionId !== appJob?.jobId ? "SUBMISSION_RECORDED"
+    : applicationAdmission?.phase === "rejected" ? "ADMISSION_REJECTED"
+    : applicationSubmission && applicationSubmission.submissionId !== appJob?.jobId ? "ADMISSION_UNKNOWN" : "REQUEST_NOT_SENT";
   const completedCount = 2 + Number(Boolean(job?.receipt?.runtimeBootVerified)) + Number(Boolean(appJob?.receipt?.runtimeAcceptance));
   const currentAppStatus = appJob?.status ?? (appPreflight?.ready ? text("READY · awaiting Owner action", "พร้อม · รอคำสั่ง Owner")
     : appPreflight ? appPreflightStage ? `BLOCKED · ${appPreflightStage}` : text("Preflight blocked", "preflight ติดเงื่อนไข")
@@ -207,13 +237,20 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       {applicationContinuation ? <Text role="status">{text("The previous application attempt is terminal and fully compensated. A fresh Owner action will use the same Candidate and a new reviewed plan; the old Job and authority remain unchanged.",
         "งาน application รอบก่อนจบและคืนค่าครบแล้ว การกดครั้งนี้จะใช้ Candidate เดิมกับแผนที่ตรวจใหม่ โดยไม่แก้ Job หรือสิทธิ์รอบเก่า")}</Text> : null}
       <Button type="button" onClick={() => void submitApplicationAcceptance()} disabled={applicationState.isLoading || Boolean(applicationState.error) || Boolean(appJob && !applicationContinuation) ||
-        !appPreflight.ready || mutation.isPending || Boolean(appPending?.revoked && !applicationContinuation) ||
+        !appPreflight.ready || mutation.isPending || applicationAdmission?.phase === "submitting" || Boolean(appPending?.revoked && !applicationContinuation) ||
         Boolean(appPending && Date.parse(appPending.expiresAt) <= Date.now() && !applicationContinuation) ||
         Boolean(appPending && !usableApplicationPending && !applicationContinuation)}>
         {mutation.isPending ? text("Submitting…", "กำลังส่งงาน…") : applicationContinuation ? text("Authorize a fresh compensated application acceptance", "อนุมัติทดสอบใหม่หลังคืนค่ารอบก่อนแล้ว")
           : usableApplicationPending || applicationSubmission?.planDigest === appPreflight.planDigest ? text("Reconcile the same application acceptance", "ตรวจงาน application acceptance เดิม")
           : text("Authorize synthetic application acceptance", "อนุมัติทดสอบการใช้งานด้วยข้อมูลสังเคราะห์")}
       </Button>
+      <Text role={applicationPhase === "ADMISSION_REJECTED" || applicationPhase === "ADMISSION_UNKNOWN" ? "alert" : "status"}>
+        {text("Submission status", "สถานะคำขอ")}: {applicationPhase}
+        {currentApplicationJob ? ` · ${currentApplicationJob.jobId}${currentApplicationJob.errorCode ? ` · ${currentApplicationJob.errorCode}` : ""}` :
+          currentPending ? ` · ${currentPending.submissionId}` : applicationSubmission && applicationSubmission.submissionId !== appJob?.jobId ? ` · ${applicationSubmission.submissionId}` : ""}
+        {(applicationPhase === "ADMISSION_UNKNOWN" || applicationPhase === "ADMISSION_REJECTED") && applicationAdmission?.code ? ` · ${applicationAdmission.code}` : ""}
+        {applicationPhase === "ADMISSION_UNKNOWN" ? text(" · Reconcile this same submission before creating another.", " · ตรวจคำขอเดิมก่อนสร้างคำขอใหม่") : ""}
+      </Text>
     </> : appPreflight ? <VStack gap={1} role="status">
       <Text>{appPreflightStage ? text(`Blocked at ${appPreflightStage}`, `ติดเงื่อนไขขั้น ${appPreflightStage}`) : text("Application preflight is not ready", "preflight ของแอปยังไม่พร้อม")}</Text>
       <Text>{preflightHelp(appPreflight.reason)}</Text>
