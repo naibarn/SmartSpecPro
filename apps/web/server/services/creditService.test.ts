@@ -389,7 +389,7 @@ describe("deductCredits idempotency safety net", () => {
         where: vi.fn().mockReturnValue({
           limit: vi
             .fn()
-            .mockResolvedValue([{ id: 91834, amount: -35, balanceAfter: 375856 }]),
+            .mockResolvedValue([{ id: 91834, amount: -35, balanceAfter: 375856, userId: 1, tenantId: null, type: "usage" }]),
         }),
       }),
     });
@@ -423,6 +423,15 @@ describe("deductCredits idempotency safety net", () => {
       })
     ).rejects.toThrow();
   });
+
+  it.each([{ userId: 2 }, { tenantId: "other" }, { amount: -36 }, { type: "refund" }])("rejects a conflicting prior debit: %s", async conflict => {
+    mockTransaction.mockImplementation(async () => { throw drizzleWrappedUniqueViolation("credit_transactions_idempotency_key_unique"); });
+    mockSelect.mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([{ id: 91834, amount: -35, balanceAfter: 50, userId: 1, tenantId: null, type: "usage", ...conflict }]),
+    }) }) });
+    await expect(deductCredits({ userId: 1, amount: 35, description: "test", idempotencyKey: "same" }))
+      .rejects.toThrow("Credit idempotency key conflicts with prior transaction");
+  });
 });
 
 describe("addCredits idempotency safety net", () => {
@@ -435,7 +444,7 @@ describe("addCredits idempotency safety net", () => {
         where: vi.fn().mockReturnValue({
           limit: vi
             .fn()
-            .mockResolvedValue([{ id: 91915, amount: 35, balanceAfter: 375891 }]),
+            .mockResolvedValue([{ id: 91915, amount: 35, balanceAfter: 375891, userId: 1, tenantId: null, type: "refund" }]),
         }),
       }),
     });
@@ -454,6 +463,14 @@ describe("addCredits idempotency safety net", () => {
       newBalance: 375891,
       transactionId: 91915,
     });
+  });
+  it.each([{ userId: 2 }, { tenantId: "other" }, { amount: 36 }, { type: "bonus" }])("rejects a conflicting prior credit: %s", async conflict => {
+    mockTransaction.mockImplementation(async () => { throw drizzleWrappedUniqueViolation("credit_transactions_idempotency_key_unique"); });
+    mockSelect.mockReturnValue({ from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({
+      limit: vi.fn().mockResolvedValue([{ id: 91915, amount: 35, balanceAfter: 50, userId: 1, tenantId: null, type: "refund", ...conflict }]),
+    }) }) });
+    await expect(addCredits({ userId: 1, amount: 35, type: "refund", description: "test", idempotencyKey: "same" }))
+      .rejects.toThrow("Credit idempotency key conflicts with prior transaction");
   });
 });
 

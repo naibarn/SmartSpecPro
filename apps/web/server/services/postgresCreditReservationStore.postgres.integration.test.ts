@@ -84,4 +84,19 @@ suite("isolated PostgreSQL reservation settlement invariants", () => {
     const [ledger] = await client`SELECT sum(amount)::int total FROM credit_transactions WHERE "userId"=703`;
     expect(user.credits).toBe(3); expect(ledger.total).toBe(-7);
   });
+  it("rejects a debit retry with the same key for a different synthetic account or amount", async () => {
+    await client`INSERT INTO users(id,"openId",credits,"isDisabled") VALUES
+      (704,'synthetic-credit-704',20,false),(705,'synthetic-credit-705',20,false)`;
+    const credit = await import("./creditService");
+    const key = "synthetic-foreign-debit";
+    const first = await credit.deductCredits({ userId: 704, amount: 5, description: "synthetic", idempotencyKey: key });
+    const retry = await credit.deductCredits({ userId: 704, amount: 5, description: "synthetic", idempotencyKey: key });
+    expect(retry.transactionId).toBe(first.transactionId);
+    await expect(credit.deductCredits({ userId: 705, amount: 5, description: "synthetic", idempotencyKey: key }))
+      .rejects.toThrow("Credit idempotency key conflicts with prior transaction");
+    await expect(credit.deductCredits({ userId: 704, amount: 6, description: "synthetic", idempotencyKey: key }))
+      .rejects.toThrow("Credit idempotency key conflicts with prior transaction");
+    const rows = await client`SELECT id,credits FROM users WHERE id IN (704,705) ORDER BY id`;
+    expect(rows.map((row: any) => row.credits)).toEqual([15,20]);
+  });
 });

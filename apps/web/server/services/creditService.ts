@@ -747,14 +747,15 @@ function isIdempotencyKeyUniqueViolation(err: unknown): boolean {
   const candidate = err as {
     code?: string;
     constraint?: string;
-    cause?: { code?: string; constraint?: string };
+    constraint_name?: string;
+    cause?: { code?: string; constraint?: string; constraint_name?: string };
   };
   const code = candidate?.code ?? candidate?.cause?.code;
-  const constraint = candidate?.constraint ?? candidate?.cause?.constraint;
+  const constraint = candidate?.constraint ?? candidate?.constraint_name ?? candidate?.cause?.constraint ?? candidate?.cause?.constraint_name;
   return (
     code === "23505" &&
     typeof constraint === "string" &&
-    constraint.includes("idempotency")
+    constraint === "credit_transactions_idempotency_key_unique"
   );
 }
 
@@ -931,11 +932,18 @@ export async function deductCredits(params: DeductCreditsParams) {
           id: creditTransactions.id,
           amount: creditTransactions.amount,
           balanceAfter: creditTransactions.balanceAfter,
+          userId: creditTransactions.userId,
+          tenantId: creditTransactions.tenantId,
+          type: creditTransactions.type,
         })
         .from(creditTransactions)
         .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
         .limit(1);
       if (existing[0]) {
+        if (existing[0].userId !== userId || (existing[0].tenantId ?? null) !== (tenantId ?? null) ||
+            existing[0].amount !== -amount || existing[0].type !== "usage") {
+          throw new Error("Credit idempotency key conflicts with prior transaction");
+        }
         if (effectiveContextRef) {
           await attachCreditContextToTransaction({
             transactionId: existing[0].id,
@@ -1033,11 +1041,18 @@ export async function addCredits(params: AddCreditsParams) {
           id: creditTransactions.id,
           amount: creditTransactions.amount,
           balanceAfter: creditTransactions.balanceAfter,
+          userId: creditTransactions.userId,
+          tenantId: creditTransactions.tenantId,
+          type: creditTransactions.type,
         })
         .from(creditTransactions)
         .where(eq(creditTransactions.idempotencyKey, idempotencyKey))
         .limit(1);
       if (existing[0]) {
+        if (existing[0].userId !== userId || (existing[0].tenantId ?? null) !== (params.tenantId ?? null) ||
+            existing[0].amount !== amount || existing[0].type !== type) {
+          throw new Error("Credit idempotency key conflicts with prior transaction");
+        }
         if (effectiveContextRef) {
           await attachCreditContextToTransaction({
             transactionId: existing[0].id,
