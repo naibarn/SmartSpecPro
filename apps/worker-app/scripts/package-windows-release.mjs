@@ -285,9 +285,17 @@ async function assertPublishedRuntimeAvailable() {
     "/api/workers/runtime-pack/manifest?runtimeId=hyperframes-wsl2&channel=stable",
     publicUrl,
   );
-  const response = await fetch(manifestUrl, { headers: { accept: "application/json" } });
+  const response = await fetch(manifestUrl, {
+    headers: {
+      accept: "application/json",
+      "user-agent": "SmartAIHub-WorkerApp-Release/1.0",
+    },
+  });
   if (!response.ok) {
-    throw new Error(`Published Worker runtime manifest returned HTTP ${response.status}`);
+    const responseDetail = (await response.text()).slice(0, 300).replace(/\s+/g, " ").trim();
+    throw new Error(
+      `Published Worker runtime manifest returned HTTP ${response.status}${responseDetail ? `: ${responseDetail}` : ""}`,
+    );
   }
   const manifest = await response.json();
   const validDigest = (value) => typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
