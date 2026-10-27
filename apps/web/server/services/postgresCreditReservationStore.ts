@@ -65,6 +65,7 @@ export async function drawCreditReservation(
     const reservation = stored.payload as Record<string, any>;
     const settledCallAmounts = reservation.settledCallAmounts ?? {};
     if (settlementKey && Object.prototype.hasOwnProperty.call(settledCallAmounts, settlementKey)) {
+      if (settledCallAmounts[settlementKey] !== amount) throw new Error("Reservation settlement key conflicts with prior amount");
       return {
         drawn: 0,
         remaining: reservation.reservedAmount - reservation.drawnAmount,
