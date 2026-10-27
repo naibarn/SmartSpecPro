@@ -243,6 +243,10 @@ suite("paired images: Owner admission with real PostgreSQL canonical job/outbox"
     const before = await client`SELECT count(*)::int AS n FROM worker_jobs`;
     expect((await resolveVerifiedHttpImagePair(db, scope)).pair?.submissionId).toBe(ids[1]);
     expect((await resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: sources[0] })).pair?.submissionId).toBe(ids[0]);
+    expect((await resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: sources[0], submissionId: ids[0] })).pair?.submissionId).toBe(ids[0]);
+    expect((await resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: sources[0], submissionId: ids[1] })).pair).toBeNull();
+    expect((await resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: sources[0], submissionId: randomUUID() })).pair).toBeNull();
+    await expect(resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: sources[0], submissionId: "invalid" })).rejects.toThrow("HTTP_IMAGE_BASELINE_SUBMISSION_DENIED");
     expect((await resolveVerifiedHttpImagePair(db, scope, { imageSourceSha: "9".repeat(40) })).pair).toBeNull();
     await expect(resolveVerifiedHttpImagePair(db, { ...scope, actorUserId: 18 }, { imageSourceSha: sources[0] })).rejects.toThrow("OWNER_SCOPE_DENIED");
     expect(await client`SELECT count(*)::int AS n FROM worker_jobs`).toEqual(before);

@@ -30,6 +30,17 @@ describe("First migration continuation over the existing canonical job authoriti
   it("reconciles a crashed worker lease instead of authorizing a duplicate job", () => {
     expect(projectCloudflareMigration(scope, continuation, [{ ...base, status: "running", leaseExpiresAt: new Date(0) }])).toMatchObject({ state: "REPAIR_REQUIRED", nextOperation: "RECONCILE_CANONICAL_LEASE", activeJobId: base.id });
   });
+  it("tracks the exact canonical M3 application job and ignores foreign or malformed runtime work", () => {
+    const runtime = { ...base, id: "application-job", jobType: "cloudflare.production.native.runtime.verify",
+      contractVersion: "cloudflare-native-runtime-verify-v1", status: "running", errorCode: null,
+      inputJson: { contractVersion: "cloudflare-native-runtime-verify-v1", projectId: scope.projectId,
+        candidateJobId: "11111111-1111-4111-8111-111111111111", submissionId: "22222222-2222-4222-8222-222222222222",
+        planDigest: "a".repeat(64), operation: "application" }, leaseExpiresAt: new Date(Date.now() + 60_000) };
+    expect(projectCloudflareMigration(scope, continuation, [accepted, runtime])).toMatchObject({
+      state: "EXECUTING", nextOperation: "MONITOR_EXISTING_CANONICAL_JOB", activeJobId: "application-job" });
+    expect(projectCloudflareMigration(scope, continuation, [accepted, { ...runtime, tenantId: "foreign" }]).activeJobId).toBeNull();
+    expect(projectCloudflareMigration(scope, continuation, [accepted, { ...runtime, inputJson: { ...runtime.inputJson, planDigest: "bad" } }]).activeJobId).toBeNull();
+  });
   it("preserves successful ingress while M1 fails and never treats provider readback as SQL acceptance", () => {
     const value = projectCloudflareMigration(scope, continuation, [accepted, { ...base, id: "db-job", jobType: "cloudflare.production.database.provision", status: "succeeded", outputJson: { providerConfigurationVerified: true } }]);
     expect(value.completedCheckpoints).toEqual(["M2_ACCEPTED"]);

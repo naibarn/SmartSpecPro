@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { DrizzleDB } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { readProductionDatabaseReadbackObservation } from "./cloudflareProductionDatabaseReconciliation";
+import { HTTP_RUNTIME_JOB, HTTP_RUNTIME_CONTRACT, httpRuntimeJobSchema } from "./cloudflareHttpRuntimeContract";
 
 const modes = ["FIRST_MIGRATION", "STEADY_STATE_DEPLOYMENT"] as const;
 export const migrationContinuationSchema = z.object({
@@ -29,7 +30,8 @@ export function migrationMissionId(scope: Scope) {
  * checkpoints survive later failures, grant expiry, and agent replacement. */
 export function projectCloudflareMigration(scope: Scope, continuation: MigrationContinuation | null, jobs: Job[], now = new Date(), verifiedDatabaseJobIds: readonly string[] = []) {
   const scoped = jobs.filter(job => job.tenantId === scope.tenantId && job.inputJson.projectId === scope.projectId &&
-    job.inputJson.environment === "production" && job.inputJson.targetId === "smartspec-cloudflare-runtime");
+    ((job.inputJson.environment === "production" && job.inputJson.targetId === "smartspec-cloudflare-runtime") ||
+      (job.jobType === HTTP_RUNTIME_JOB && job.contractVersion === HTTP_RUNTIME_CONTRACT && httpRuntimeJobSchema.safeParse(job.inputJson).success)));
   const ingress = scoped.filter(job => job.jobType === "cloudflare.production.deploy" &&
     job.contractVersion === "cloudflare-production-ingress-v1");
   const acceptedIngress = ingress.findLast(job => job.status === "succeeded" &&
@@ -107,7 +109,7 @@ export async function getCloudflareMigrationMission(db: DrizzleDB, scope: Scope)
   const parsed = migrationContinuationSchema.safeParse((rows[0]?.valueJson as Record<string, unknown> | null)?.migrationContinuation);
   const jobs = await db.select().from(workerJobs).where(and(eq(workerJobs.tenantId, scope.tenantId),
     sql`${workerJobs.inputJson}->>'projectId' = ${scope.projectId}`,
-    sql`${workerJobs.jobType} IN ('cloudflare.production.deploy', 'cloudflare.production.database.provision')`)).orderBy(asc(workerJobs.createdAt));
+    sql`${workerJobs.jobType} IN ('cloudflare.production.deploy', 'cloudflare.production.database.provision', ${HTTP_RUNTIME_JOB})`)).orderBy(asc(workerJobs.createdAt));
   const verifiedDatabaseJobIds: string[] = [];
   for (const job of jobs) {
     if (job.jobType !== "cloudflare.production.database.provision" || typeof job.inputJson.planDigest !== "string") continue;
