@@ -1966,6 +1966,20 @@ export function registerRunnerControlRoutes(
                 reasonCodes: !readiness.snapshotCurrent ? ["capability_snapshot_not_current"] : Array.isArray(tool.reasonCodes) ? tool.reasonCodes.filter((code): code is string => typeof code === "string") : [],
               };
             }),
+            capabilityInventory: capabilityInventory.map(item => {
+              const capability = item && typeof item === "object" ? item as Record<string, unknown> : {};
+              return {
+                capabilityId: typeof capability.capabilityId === "string" ? capability.capabilityId : "unknown",
+                implementationId: typeof capability.implementationId === "string" ? capability.implementationId : "unknown",
+                availabilityState: !readiness.snapshotCurrent ? "stale" : typeof capability.availabilityState === "string" ? capability.availabilityState : "unknown",
+                policyDecision: typeof capability.policyDecision === "string" ? capability.policyDecision : "pending",
+                reasonCodes: !readiness.snapshotCurrent
+                  ? ["capability_snapshot_not_current"]
+                  : Array.isArray(capability.reasonCodes) && capability.reasonCodes.length > 0
+                    ? capability.reasonCodes.filter((code): code is string => typeof code === "string")
+                    : [capability.policyDecision === "pending" ? "policy_decision_pending" : capability.policyDecision === "denied" ? "policy_denied" : "capability_reason_unreported"],
+              };
+            }),
             toolCount: toolInventory.length,
             readyToolCount: toolInventory.filter(
               item =>

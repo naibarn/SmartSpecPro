@@ -9,6 +9,7 @@ const elements = Object.fromEntries(
     "app-version", "app-build-date", "first-launch-date", "access-token-expiry", "reauth-deadline",
     "credential-detail", "export-debug-button", "open-debug-folder-button", "debug-file-path",
     "workspace-simple-mode", "workspace-developer-mode",
+    "workspace-acceptance-button", "workspace-acceptance-report",
   ].map(id => [id, document.getElementById(id)])
 );
 
@@ -772,6 +773,22 @@ elements["add-workspace-button"].addEventListener("click", async () => {
     setNotice(elements["runtime-notice"], safeError(error));
   } finally {
     button.disabled = false;
+  }
+});
+elements["workspace-acceptance-button"].addEventListener("click", async () => {
+  const button = elements["workspace-acceptance-button"];
+  button.disabled = true;
+  button.textContent = "กำลังตรวจรับในพื้นที่ชั่วคราว…";
+  try {
+    const report = await invoke("run_workspace_acceptance");
+    const output = elements["workspace-acceptance-report"];
+    output.value = JSON.stringify(report, null, 2);
+    output.hidden = false;
+  } catch (error) {
+    setNotice(elements["runtime-notice"], safeError(error));
+  } finally {
+    button.disabled = false;
+    button.textContent = "ตรวจรับ Workspace Isolation";
   }
 });
 function setWorkspaceViewMode(mode) {

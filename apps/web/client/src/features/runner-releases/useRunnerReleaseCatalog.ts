@@ -22,6 +22,9 @@ export type RunnerSummary = {
   trustState: string;
   lastSeenAt: string | null;
   runnerVersion: string | null;
+  capabilitySnapshotPersisted: boolean;
+  capabilitySnapshotCurrent: boolean;
+  capabilitySnapshotRevision: string | null;
   platform: { os?: string; architecture?: string; target?: string } | null;
   toolInventory: Array<{
     toolId: string;
@@ -29,6 +32,13 @@ export type RunnerSummary = {
     version: string | null;
     availabilityState: string;
     trustState: string;
+    reasonCodes: string[];
+  }>;
+  capabilityInventory: Array<{
+    capabilityId: string;
+    implementationId: string;
+    availabilityState: string;
+    policyDecision: string;
     reasonCodes: string[];
   }>;
   toolCount: number;

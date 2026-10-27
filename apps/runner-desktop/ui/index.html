@@ -80,6 +80,11 @@
           <button class="button quiet" id="workspace-developer-mode" type="button" aria-pressed="false">Developer</button>
         </section>
         <p class="body-copy">เลือก workspace หลักสำหรับงานที่ไม่ได้ระบุ workspace มาโดยตรง เส้นทางโฟลเดอร์นี้เก็บไว้ในเครื่องเท่านั้น</p>
+        <section class="debug-export" aria-label="การตรวจรับ workspace ในเครื่อง">
+          <p class="body-copy">ตรวจรับบนเครื่องนี้ด้วย root ชั่วคราวที่แยกจาก projects และ jobs ที่ใช้งานอยู่ รายงานตัด absolute paths และ credentials ออก</p>
+          <button class="button quiet" id="workspace-acceptance-button" type="button">ตรวจรับ Workspace Isolation</button>
+          <textarea class="select-control" id="workspace-acceptance-report" aria-label="รายงานตรวจรับ Workspace" rows="10" readonly hidden></textarea>
+        </section>
         <label class="field-label" for="default-workspace">Workspace หลัก</label>
         <select id="default-workspace" class="select-control">
           <option value="">ไม่กำหนด workspace หลัก</option>

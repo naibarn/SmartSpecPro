@@ -377,6 +377,10 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
                   {t("dashboard:runnerReleases.toolReadiness", { ready: runner.readyToolCount, total: runner.toolCount })} · {t("dashboard:runnerReleases.capabilityReadiness", { ready: runner.readyCapabilityCount, total: runner.capabilityCount })}
                 </p>
                 <p className="mt-1 text-xs text-slate-400">{runner.lastSeenAt ? new Date(runner.lastSeenAt).toLocaleString() : t("dashboard:runnerReleases.neverSeen")}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Capability snapshot: {!runner.capabilitySnapshotPersisted ? "not published" : runner.capabilitySnapshotCurrent ? "current" : "stale"}
+                  {runner.capabilitySnapshotRevision ? ` · ${runner.capabilitySnapshotRevision}` : ""}
+                </p>
                 {previousRegistrations.length > 0 && (
                   <details className="mt-3 border-t border-amber-100 pt-2">
                     <summary className="cursor-pointer text-xs font-medium text-amber-800">
@@ -421,6 +425,28 @@ export function RunnerReleasePanel({ enabled = true }: { enabled?: boolean }) {
                           </li>
                         );
                       })}
+                    </ul>
+                  )}
+                </details>
+                <details className="mt-3 border-t border-slate-100 pt-2">
+                  <summary className="cursor-pointer text-xs font-medium text-sky-700">
+                    Capabilities: {runner.readyCapabilityCount} allowed / {runner.capabilityCount} reported
+                  </summary>
+                  {(runner.capabilityInventory ?? []).length === 0 ? (
+                    <p className="mt-2 text-xs text-slate-500">No capability snapshot entries were published.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {runner.capabilityInventory.map(capability => (
+                        <li key={capability.capabilityId} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-1 text-xs">
+                          <span className="min-w-0 break-words text-slate-700">
+                            <span className="block">{capability.capabilityId} · {capability.implementationId}</span>
+                            {capability.reasonCodes.length > 0 && <span className="mt-0.5 block text-[11px] text-slate-500">{capability.reasonCodes.join(", ")}</span>}
+                          </span>
+                          <span className={capability.policyDecision === "allowed" && capability.availabilityState === "available" ? "shrink-0 text-right text-emerald-700" : "shrink-0 text-right text-amber-700"}>
+                            {capability.policyDecision} · {capability.availabilityState}
+                          </span>
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </details>

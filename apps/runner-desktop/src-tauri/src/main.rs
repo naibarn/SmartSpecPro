@@ -792,6 +792,64 @@ async fn export_runner_debug_report(
 }
 
 #[tauri::command]
+async fn run_workspace_acceptance(
+    state: State<'_, RunnerState>,
+) -> Result<serde_json::Value, String> {
+    let config = state.config.clone();
+    let app_version = state.app_version.clone();
+    let publication = state
+        .readiness
+        .lock()
+        .map(|status| {
+            let safe_state = match status.capability_publication_state.as_str() {
+                "unknown" | "pending" | "acknowledged" | "failed" => {
+                    status.capability_publication_state.as_str()
+                }
+                _ => "unknown",
+            };
+            let safe_ack = match status.capability_publication_ack_state.as_deref() {
+                ack @ Some("accepted" | "applied" | "duplicate" | "rejected") => ack,
+                _ => None,
+            };
+            let safe_revision = status
+                .capability_snapshot_revision
+                .as_deref()
+                .filter(|value| {
+                    value.len() <= 160
+                        && value.bytes().all(|b| {
+                            b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.' | b':')
+                        })
+                });
+            let safe_ack_time = status
+                .capability_publication_acknowledged_at
+                .as_deref()
+                .filter(|value| {
+                    value.len() <= 40
+                        && value.bytes().all(|b| {
+                            b.is_ascii_digit()
+                                || matches!(b, b'-' | b':' | b'+' | b'.' | b'T' | b'Z')
+                        })
+                });
+            serde_json::json!({
+                "state": safe_state,
+                "snapshotRevision": safe_revision,
+                "ackState": safe_ack,
+                "httpStatus": status.capability_publication_http_status,
+                "errorCode": safe_debug_code(status.capability_publication_error_code.as_deref()),
+                "acknowledgedAt": safe_ack_time,
+            })
+        })
+        .unwrap_or_else(
+            |_| serde_json::json!({"state":"unknown","reasonCode":"RUNNER_READINESS_LOCK_FAILED"}),
+        );
+    tauri::async_runtime::spawn_blocking(move || {
+        smartaihub_runner::workspace_acceptance::run(&config, &app_version, publication)
+    })
+    .await
+    .map_err(|_| "WORKSPACE_ACCEPTANCE_TASK_FAILED".to_string())?
+}
+
+#[tauri::command]
 fn open_runner_debug_folder(state: State<'_, RunnerState>) -> Result<(), String> {
     let folder = PathBuf::from(&state.config.data_root).join("debug");
     fs::create_dir_all(&folder).map_err(safe_io_error)?;
@@ -1281,6 +1339,7 @@ fn main() {
             sync_runner_capabilities,
             verify_runner_tool,
             export_runner_debug_report,
+            run_workspace_acceptance,
             open_runner_debug_folder,
             start_runner,
             stop_runner,

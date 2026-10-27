@@ -184,6 +184,22 @@ describe("RunnerReleasePanel", () => {
     expect(screen.getByText("Show 1 previous registrations for this verified machine")).toBeInTheDocument();
   });
 
+  it("distinguishes pending capability policy from denial and shows reason codes", () => {
+    runnerState.runners = [{
+      runnerId: "capability-runner", deviceId: "device", machineFingerprintHash: null,
+      displayName: "Capability Runner", profile: "local_device", nodeKind: "local_device",
+      status: "online", trustState: "trusted", lastSeenAt: null, runnerVersion: "0.2.45",
+      platform: { os: "windows", architecture: "x64" }, toolInventory: [], toolCount: 0,
+      readyToolCount: 0, capabilityCount: 1, readyCapabilityCount: 0,
+      capabilityInventory: [{ capabilityId: "workspace.read", implementationId: "local.workspace", availabilityState: "available", policyDecision: "pending", reasonCodes: ["authorization_not_evaluated"] }],
+    }];
+    render(<RunnerReleasePanel />);
+    fireEvent.click(screen.getByText(/Capabilities: 0 allowed \/ 1 reported/i));
+    expect(screen.getByText("pending · available")).toBeInTheDocument();
+    expect(screen.getByText("authorization_not_evaluated")).toBeInTheDocument();
+    expect(screen.queryByText("denied · available")).not.toBeInTheDocument();
+  });
+
   it("collapses older same-name registrations with unverified identity and keeps them in history", () => {
     runnerState.runners = [
       { runnerId: "legacy-old", deviceId: "old-id", machineFingerprintHash: null, displayName: "SmartAIHub Runner", profile: "local_device", nodeKind: "local_device", status: "offline", trustState: "trusted", lastSeenAt: "2026-09-01T00:00:00.000Z", runnerVersion: "0.1.0", platform: { os: "windows", architecture: "x64" }, toolInventory: [], toolCount: 0, readyToolCount: 0, capabilityCount: 0, readyCapabilityCount: 0 },

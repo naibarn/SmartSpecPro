@@ -35,6 +35,7 @@ pub mod supervisor;
 pub mod transport;
 pub mod update;
 pub mod workspace;
+pub mod workspace_acceptance;
 pub mod workspace_registry;
 
 /// Release builds inject `SAH_RUNNER_BUILD_VERSION`; local builds use Cargo's
@@ -43,6 +44,8 @@ pub const RUNNER_VERSION: &str = match option_env!("SAH_RUNNER_BUILD_VERSION") {
     Some(version) => version,
     None => env!("CARGO_PKG_VERSION"),
 };
+/// Exact source commit embedded by the approved release build workflows.
+pub const RUNNER_SOURCE_SHA: Option<&str> = option_env!("SAH_RUNNER_SOURCE_SHA");
 
 pub const RUNNER_CONTROL_CONTRACT_VERSION: &str = "sah-runner-v1";
 pub const RUNNER_CONNECT_SCHEMA_REVISION: &str = "sah-runner-connect-v2";
