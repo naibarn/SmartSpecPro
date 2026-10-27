@@ -62,6 +62,20 @@ const baseInput = (): Spec224GoalDelegationInput => ({
 });
 
 describe("SPEC-224 Goal delegation contract", () => {
+  it.each(["discover", "plan", "implement", "build", "review"])(
+    "requires explicit delegation for the %s phase action",
+    action => {
+      const input = baseInput();
+      input.child.action = action;
+      expect(evaluateSpec224GoalDelegation(input).status).toBe("SCOPE_DENIED");
+      (input.authority.payload.allowedActions as string[]).push(action);
+      expect(evaluateSpec224GoalDelegation(input).status).toBe("READY_FOR_DELEGATION");
+      if (action === "implement") {
+        input.child.changedPaths = [];
+        expect(evaluateSpec224GoalDelegation(input).status).toBe("SCOPE_DENIED");
+      }
+    }
+  );
   it("builds an explicit bounded request for the existing Approval Authority", () => {
     const scope: Spec224GoalGrantScope = {
       grantId: "grant-1",

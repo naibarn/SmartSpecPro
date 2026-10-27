@@ -185,6 +185,21 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
       .rejects.toMatchObject({ code: "HOLD_IDEMPOTENCY_CONFLICT" });
   });
 
+  it("prevents distinct concurrent reservations from exceeding one budget", async () => {
+    const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-cap`, limitMinorUnits: 100 });
+    const job = await createAttempt();
+    const intents = await Promise.all([makeIntent(job, 60, "cap-intent-first"), makeIntent(job, 60, "cap-intent-second")]);
+    const results = await Promise.allSettled(intents.map((intent, index) => reserveEconomicHold(db, {
+      intent, budgetId: budget.budgetId, idempotencyKey: `cap-hold-${index}-key`,
+      journalLines: journalLines(budget, 60), journalDescription: "Concurrent budget cap",
+    })));
+    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    const failure = results.find(result => result.status === "rejected");
+    expect(failure).toMatchObject({ status: "rejected", reason: { code: "BUDGET_EXCEEDED" } });
+    const [row] = await db.select().from(economicSchema.economicBudgets).where(eq(economicSchema.economicBudgets.id, budget.budgetId));
+    expect(row.heldMinorUnits + row.capturedMinorUnits).toBe(60);
+  });
+
   it("reserves/releases idempotently and enforces tenant budget balance", async () => {
     const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-reserve`, limitMinorUnits: 1_000 });
     const job = await createAttempt();

@@ -144,6 +144,11 @@ export type Spec224GoalDelegationResult =
     };
 
 const ACTIONS = new Set([
+  "discover",
+  "plan",
+  "implement",
+  "build",
+  "review",
   "repair",
   "test",
   "commit",
@@ -153,7 +158,7 @@ const ACTIONS = new Set([
   "verify",
   "cleanup",
 ]);
-const WRITE_ACTIONS = new Set(["repair", "commit", "push"]);
+const WRITE_ACTIONS = new Set(["implement", "repair", "commit", "push"]);
 const SHA = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/i;
 const SECRET_KEY =
   /(?:access[_-]?token|api[_-]?key|authorization|credential|password|private[_-]?key|refresh[_-]?token|secret|token)/i;
