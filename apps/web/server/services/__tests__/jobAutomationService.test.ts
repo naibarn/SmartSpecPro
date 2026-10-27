@@ -28,7 +28,16 @@ vi.mock("../../db", () => {
   };
 });
 
+// This suite verifies the automation service's credit/idempotency boundary.
+// Canonical admission and recovery behavior are exercised in jobControlPlane
+// tests; keep this adapter deterministic instead of accidentally reaching the
+// production-shaped control-plane database implementation through this DB mock.
+vi.mock("../jobControlPlaneGateway", () => ({
+  createControlPlaneJob: vi.fn(async () => ({ id: "canonical-job-1", status: "queued" })),
+}));
+
 import { deductCredits, addCredits } from "../creditService";
+import { createControlPlaneJob } from "../jobControlPlaneGateway";
 import {
   createJob,
   cancelJob,
@@ -43,6 +52,7 @@ import * as dbModule from "../../db";
 
 const mockDeductCredits = vi.mocked(deductCredits);
 const mockAddCredits = vi.mocked(addCredits);
+const mockCreateControlPlaneJob = vi.mocked(createControlPlaneJob);
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -212,6 +222,10 @@ describe("createJob — credit reservation", () => {
     expect(mockDeductCredits).toHaveBeenCalledWith(
       expect.objectContaining({ sourceType: "api_job" }),
     );
+    expect(mockCreateControlPlaneJob).toHaveBeenCalledWith(expect.objectContaining({
+      context: expect.objectContaining({ tenantId: "t1", actorType: "user", actorId: 1,
+        authorizationScope: "automation:execute", idempotencyKey: expect.stringMatching(/^automation:t1:/) }),
+    }));
   });
 });
 
