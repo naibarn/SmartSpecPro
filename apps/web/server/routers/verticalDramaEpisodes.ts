@@ -28,6 +28,7 @@ import {
 import { router, protectedProcedure } from "../_core/trpc";
 import type { TrpcContext } from "../_core/context";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
+import { presentCustomerDiagnostic } from "../../shared/projectIdentityPresentation";
 import { auditLogger } from "../services/auditLogger";
 import { db } from "../db";
 import {
@@ -15785,8 +15786,10 @@ export const verticalDramaEpisodesRouter = router({
           if (terminalFailure) {
             const reason = !ffmpegJob
               ? "งานเรนเดอร์หายไปจากคิว (อาจถูกล้างหรือหมดอายุ)"
-              : (ffmpegJob.failureReason ??
-                "ตัวประกอบวิดีโอ (ffmpeg) รายงานว่างานล้มเหลว");
+              : presentCustomerDiagnostic(
+                ffmpegJob.failureReason,
+                "ตัวประกอบวิดีโอรายงานว่างานล้มเหลว",
+              );
             const nextManifest = {
               ...((row.assemblyManifest as Record<string, unknown> | null) ??
                 {}),

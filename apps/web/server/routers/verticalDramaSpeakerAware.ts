@@ -6,6 +6,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db";
 import { verticalDramaSeries, workerArtifacts, workerJobs } from "../../drizzle/schema";
 import { hashAdapterPolicy, speakerAwareJobPayloadSchema } from "../../shared/verticalDramaMedia/speakerAwareContracts";
+import { presentCustomerDiagnostic } from "../../shared/projectIdentityPresentation";
 import { queueSpeakerAwareWorkerJob } from "../services/workerSchedulerService";
 
 const speakerAwareProcedure = protectedProcedure.use(requireFeatureFlag("verticalDramaSeries"));
@@ -107,6 +108,8 @@ export const verticalDramaSpeakerAwareRouter = router({
     for (const artifact of artifacts) artifactsByJob.set(artifact.workerJobId, [...(artifactsByJob.get(artifact.workerJobId) ?? []), artifact]);
     const items: SpeakerAwareStatusItem[] = jobs.map((job) => ({
         ...job,
+        statusReason: job.statusReason ? presentCustomerDiagnostic(job.statusReason, "Task needs attention.") : null,
+        failureReason: job.failureReason ? presentCustomerDiagnostic(job.failureReason, "Task failed. Please try again.") : null,
         artifacts: (artifactsByJob.get(job.id) ?? []).map((artifact) => ({
           id: artifact.id,
           artifactType: artifact.artifactType,

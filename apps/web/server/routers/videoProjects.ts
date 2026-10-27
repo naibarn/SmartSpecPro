@@ -18,6 +18,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, ilike, inArray, isNotNull } from "drizzle-orm";
 
 import { router, protectedProcedure } from "../_core/trpc";
+import { presentCustomerDiagnostic } from "../../shared/projectIdentityPresentation";
 import { requireFeatureFlag } from "../middleware/requireFeatureFlag";
 import { createRateLimitMiddleware } from "../_core/rateLimitedProcedure";
 import { getTenantFeatureFlags } from "../services/tenantFeatureFlagService";
@@ -4509,7 +4510,9 @@ export const videoProjectsRouter = router({
         jobId,
         status: effectiveStatus,
         resultVideoUrl: effectiveStatus === "completed" ? outputUrl : null,
-        failureReason: effectiveStatus === "failed" ? (protectionFailure ?? jobRow.failureReason ?? null) : null,
+        failureReason: effectiveStatus === "failed"
+          ? presentCustomerDiagnostic(protectionFailure ?? jobRow.failureReason, "Video project failed. Please try again.")
+          : null,
         updatedAt: (jobRow.finishedAt ?? jobRow.startedAt ?? jobRow.createdAt)?.toISOString?.() ?? null,
       };
     }),
