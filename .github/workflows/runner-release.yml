@@ -233,7 +233,7 @@ jobs:
   publish:
     name: publish-runner-release
     needs: [build, container-manifest]
-    if: inputs.publish == true && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.container-manifest.result == 'success' || needs.container-manifest.result == 'skipped')
+    if: (inputs.publish == true || inputs.publish == 'true') && (needs.build.result == 'success' || needs.build.result == 'skipped') && (needs.container-manifest.result == 'success' || needs.container-manifest.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
