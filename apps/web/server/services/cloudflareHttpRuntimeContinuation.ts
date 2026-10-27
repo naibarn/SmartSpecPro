@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
 import { decrypt } from "./crypto";
@@ -91,19 +91,18 @@ export async function readCompensatedHttpRuntime(db: DrizzleDB, scope: Scope, ca
     restoredBaseline: { deploymentId: String(state.cleanup.candidateDeploymentId), versionId: String(state.cleanup.candidateVersionId) } };
 }
 
-/** A failed synthetic application pass may be followed by a fresh Owner
- * action only when its exact canonical job is terminal and every mutation was
- * compensated. Its old intent and attempt budget are evidence only. */
+/** Terminal application evidence is reusable only after exact compensation;
+ * successful acceptance never renews its previous execution authority. */
 export async function readCompensatedHttpApplicationAcceptance(db: DrizzleDB, scope: Scope, candidateJobId: string, jobId?: string) {
   const [job] = await db.select().from(workerJobs).where(and(eq(workerJobs.tenantId, scope.tenantId),
     eq(workerJobs.requestedByUserId, scope.actorUserId), eq(workerJobs.jobType, HTTP_RUNTIME_JOB),
-    eq(workerJobs.contractVersion, HTTP_RUNTIME_CONTRACT), eq(workerJobs.status, "failed"), sql`${workerJobs.inputJson}->>'projectId'=${scope.projectId}`,
+    eq(workerJobs.contractVersion, HTTP_RUNTIME_CONTRACT), inArray(workerJobs.status, ["failed", "succeeded"]), sql`${workerJobs.inputJson}->>'projectId'=${scope.projectId}`,
     sql`${workerJobs.inputJson}->>'operation'='application'`,
     sql`${workerJobs.inputJson}->>'candidateJobId'=${candidateJobId}`,
     ...(jobId ? [eq(workerJobs.id, jobId)] : []))).orderBy(sql`${workerJobs.createdAt} DESC`).limit(1);
   if (!job && !jobId) return null;
   const deny = (): never => { throw Error("HTTP_APPLICATION_PREVIOUS_EXECUTION_RECONCILE_REQUIRED"); };
-  if (!job || job.status !== "failed" || job.attempt !== 1 || job.maxAttempts !== 1 || job.operatorReviewRequired || job.leaseExpiresAt || !job.finishedAt ||
+  if (!job || !["failed", "succeeded"].includes(job.status) || job.attempt !== 1 || job.maxAttempts !== 1 || job.operatorReviewRequired || job.leaseExpiresAt || job.leaseOwnerToken || !job.finishedAt ||
       job.inputJson?.candidateJobId !== candidateJobId || job.inputJson?.operation !== "application") return deny();
   const [intent] = await db.select().from(systemSettings).where(and(eq(systemSettings.category, HTTP_RUNTIME_CATEGORY), eq(systemSettings.key, job.id))).limit(1);
   const [saved] = await db.select().from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_production_native_runtime_checkpoints"), eq(systemSettings.key, job.id))).limit(1);
@@ -118,17 +117,28 @@ export async function readCompensatedHttpApplicationAcceptance(db: DrizzleDB, sc
   let state: Record<string, any>;
   try { state = JSON.parse(decrypt(saved.value)); } catch { return deny(); }
   if (!state || state.jobId !== job.id || state.tenantId !== scope.tenantId || state.projectId !== scope.projectId || state.actorUserId !== scope.actorUserId ||
-      state.planDigest !== value.planDigest || state.operation !== "application" || state.stage !== "FAILED" || !state.rolePrepared ||
+      state.planDigest !== value.planDigest || state.operation !== "application" || state.stage !== (job.status === "succeeded" ? "TESTED_AND_COMPENSATED" : "FAILED") || !state.rolePrepared ||
       state.applicationFixtureCredentials || (Array.isArray(state.applicationFixtureUsers) && state.applicationFixtureUsers.length > 0) ||
       !["nodeStopped", "pythonStopped", "candidateRestored", "roleLoginRevoked", "applicationFixturesRemoved", "m2Preserved"]
         .every(key => state.cleanup?.[key] === true) || state.cleanup.candidateVersionId !== value.plan.candidate.versionId ||
       !/^[a-f0-9-]{36}$/.test(state.cleanup.candidateDeploymentId ?? "")) return deny();
+  if (job.status === "succeeded") {
+    const output = job.outputJson as Record<string, any> | null;
+    const checks = ["invalidLoginDenied", "primaryLogin", "primarySessionTenant", "authenticatedCreditRead", "authenticatedGatewayModelRouting", "crossTenantReadDenied", "pythonAuthenticatedUserRead", "logout", "revokedSessionDenied"];
+    const acceptance = output?.applicationAcceptance;
+    if (output?.jobId !== job.id || output?.candidateJobId !== candidateJobId || output?.authenticatedApplicationAcceptance !== true ||
+        output?.trafficMutation !== false || output?.dnsMutation !== false || output?.imagePublication !== false ||
+        acceptance?.schemaVersion !== "cloudflare-application-auth-acceptance-v1" || acceptance.passed !== true ||
+        acceptance.sessionRevocationPersisted !== true || !checks.every(name => acceptance.checks?.[name] === true) ||
+        !state.applicationAcceptance || !sameRuntimePublication(state.applicationAcceptance.checks, acceptance.checks) ||
+        !sameRuntimePublication(state.cleanup, output.cleanup)) return deny();
+  }
   const rolePlan = applicationDatabaseRolePlanSchema.safeParse(state.rolePlan);
   if (!rolePlan.success || rolePlan.data.tenantId !== scope.tenantId || rolePlan.data.projectId !== scope.projectId ||
       state.roleSecret?.role !== applicationDatabaseRoleName(scope) || state.roleSecret?.planDigest !== applicationDatabaseRolePlanDigest(rolePlan.data) ||
       JSON.stringify(rolePlan.data.tables) !== JSON.stringify(value.plan.relations.tables) ||
       JSON.stringify(rolePlan.data.sequences) !== JSON.stringify(value.plan.relations.sequences)) return deny();
-  return { jobId: job.id, planDigest: value.planDigest, rolePlan: rolePlan.data, relationsDigest: hash(value.plan.relations),
+  return { jobId: job.id, status: job.status, authenticatedApplicationAccepted: job.status === "succeeded", planDigest: value.planDigest, rolePlan: rolePlan.data, relationsDigest: hash(value.plan.relations),
     imageSourceSha: String(value.plan.publication?.sourceSha ?? value.plan.candidate.imageSourceSha), workerSourceSha: String(value.plan.workerSourceSha),
     restoredBaseline: { deploymentId: String(state.cleanup.candidateDeploymentId), versionId: String(state.cleanup.candidateVersionId) } };
 }

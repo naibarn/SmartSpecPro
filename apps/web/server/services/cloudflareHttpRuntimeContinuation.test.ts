@@ -111,6 +111,22 @@ describe("read-only compensated Candidate continuation evidence", () => {
     await readCompensatedHttpApplicationAcceptance(db(), scope, candidateJobId);
     const query = new PgDialect().sqlToQuery(state.whereClauses[0]).sql;
     expect(query).toMatch(/'operation'\s*=\s*'application'\s+and\s+.*'candidateJobId'\s*=\s*\$\d+/i);
-    expect(query).not.toContain(", ");
+    expect(query).toMatch(/"status"\s+in\s*\(\$\d+,\s*\$\d+\)/i);
+  });
+  it("retains a verified successful application acceptance without renewing authority", async () => {
+    const plan = { ...state.intent.valueJson.plan, operation: "application", applicationAcceptance: true };
+    const planDigest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
+    const checks = Object.fromEntries(["invalidLoginDenied", "primaryLogin", "primarySessionTenant", "authenticatedCreditRead", "authenticatedGatewayModelRouting", "crossTenantReadDenied", "pythonAuthenticatedUserRead", "logout", "revokedSessionDenied"].map(name => [name, true]));
+    const acceptance = { schemaVersion: "cloudflare-application-auth-acceptance-v1", passed: true, checks, sessionRevocationPersisted: true };
+    const checkpoint = { ...JSON.parse(state.checkpoint.value), operation: "application", planDigest, applicationAcceptance: acceptance,
+      applicationFixtureUsers: [], cleanup: { ...JSON.parse(state.checkpoint.value).cleanup, applicationFixturesRemoved: true } };
+    state.job = { ...state.job, inputJson: { candidateJobId, operation: "application", planDigest },
+      outputJson: { ...state.job.outputJson, authenticatedApplicationAcceptance: true, applicationAcceptance: acceptance, cleanup: checkpoint.cleanup } };
+    state.intent = { updatedBy: scope.actorUserId, valueJson: { ...state.intent.valueJson, operation: "application", plan, planDigest,
+      authority: "existing-candidate-bounded-application-acceptance-v1", fixtureCreation: true } };
+    state.checkpoint.value = JSON.stringify(checkpoint);
+    await expect(readCompensatedHttpApplicationAcceptance(db(), scope, candidateJobId)).resolves.toMatchObject({ jobId: id, authenticatedApplicationAccepted: true });
+    state.job.outputJson.applicationAcceptance = { ...acceptance, checks: { ...checks, logout: false } };
+    await expect(readCompensatedHttpApplicationAcceptance(db(), scope, candidateJobId)).rejects.toThrow("RECONCILE_REQUIRED");
   });
 });
