@@ -26,7 +26,8 @@ suite("compensated runtime reconciliation against PostgreSQL worker registry", (
     const plan = { candidateJobId, candidate: { imageSourceSha: "a".repeat(40), versionId: candidateJobId },
       workerSourceSha: "b".repeat(40), relations: { tables: rolePlan.tables, sequences: [] } };
     const planDigest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
-    const probes = ["node/health", "node/database", "python/health", "python/database"].map(probe => ({ probe, status: 200 }));
+    const probes = ["node/health", "node/database", "python/health", "python/database"].map(probe => ({ colo: "SIN", status: 200, probe }));
+    const checkpointProbes = probes.map(({ probe, status, colo }) => ({ probe, status, colo }));
     const cleanup = { nodeStopped: true, pythonStopped: true, candidateRestored: true, roleLoginRevoked: true, m2Preserved: true,
       candidateDeploymentId: deploymentId, candidateVersionId: candidateJobId };
     const output = { jobId, candidateJobId, imageReferencesVerified: true, runtimeBootVerified: true,
@@ -36,7 +37,7 @@ suite("compensated runtime reconciliation against PostgreSQL worker registry", (
       trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false, fixtureCreation: false };
     const { encrypt } = await import("./crypto");
     const checkpoint = encrypt(JSON.stringify({ ...scope, jobId, planDigest, stage: "TESTED_AND_COMPENSATED", rolePrepared: true,
-      probes, rolePlan, roleSecret: { role: applicationDatabaseRoleName(scope),
+      probes: checkpointProbes, rolePlan, roleSecret: { role: applicationDatabaseRoleName(scope),
         password: "fixture-only-secret", planDigest: applicationDatabaseRolePlanDigest(rolePlan) }, cleanup }), key);
     await db.insert(schema.workerJobs).values({ id: jobId, tenantId: scope.tenantId, requestedByUserId: scope.actorUserId,
       runtimeType: "node_job_worker", jobType: "cloudflare.production.native.runtime.verify", contractVersion: "cloudflare-native-runtime-verify-v1",

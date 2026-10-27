@@ -25,15 +25,15 @@ beforeEach(() => {
     operatorReviewRequired: false, inputJson: { ...scope, candidateJobId, planDigest },
     outputJson: { jobId: id, candidateJobId, imageReferencesVerified: true, runtimeBootVerified: true,
       trafficMutation: false, dnsMutation: false, imagePublication: false,
-      probes: [{ probe: "node/health", status: 200 }, { probe: "node/database", status: 200 },
-        { probe: "python/health", status: 200 }, { probe: "python/database", status: 200 }],
+      probes: [{ colo: "SIN", status: 200, probe: "node/health" }, { colo: "SIN", status: 200, probe: "node/database" },
+        { colo: "SIN", status: 200, probe: "python/health" }, { colo: "SIN", status: 200, probe: "python/database" }],
       cleanup: { nodeStopped: true, pythonStopped: true, candidateRestored: true, roleLoginRevoked: true, m2Preserved: true,
         candidateDeploymentId: candidateJobId, candidateVersionId: candidateJobId } } };
   state.intent = { updatedBy: 17, valueJson: { ...scope, submissionId: id, plan, planDigest, expiresAt: "2026-01-01T00:00:00Z",
     authority: "existing-candidate-bounded-runtime-test-v1", revokedAt: null, trafficMutation: false, dnsMutation: false,
     imagePublication: false, applicationCreation: false, fixtureCreation: false } };
   state.checkpoint = { updatedBy: 17, isSensitive: true, value: JSON.stringify({ ...scope, jobId: id, planDigest, stage: "TESTED_AND_COMPENSATED", rolePrepared: true,
-    probes: state.job.outputJson.probes,
+    probes: state.job.outputJson.probes.map(({ probe, status, colo }: any) => ({ probe, status, colo })),
     rolePlan, roleSecret: { role: applicationDatabaseRoleName(scope), password: "never-expose-prior-password", planDigest: applicationDatabaseRolePlanDigest(rolePlan) },
     cleanup: { nodeStopped: true, pythonStopped: true, candidateRestored: true, roleLoginRevoked: true, m2Preserved: true,
       candidateDeploymentId: candidateJobId, candidateVersionId: candidateJobId } }) };

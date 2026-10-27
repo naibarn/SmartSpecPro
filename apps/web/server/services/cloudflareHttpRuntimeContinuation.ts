@@ -8,6 +8,17 @@ import { HTTP_RUNTIME_CATEGORY, HTTP_RUNTIME_CONTRACT, HTTP_RUNTIME_JOB } from "
 
 type Scope = { tenantId: string; projectId: string; actorUserId: number };
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
+function sameRuntimeProbes(left: unknown, right: unknown) {
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+  const summarize = (probes: any[]) => {
+    const rows = probes.map(probe => ({ probe: probe?.probe, status: probe?.status, colo: probe?.colo ?? null }));
+    if (rows.some(row => typeof row.probe !== "string" || !Number.isInteger(row.status) ||
+        (row.colo !== null && typeof row.colo !== "string")) || new Set(rows.map(row => row.probe)).size !== rows.length) return null;
+    return rows.sort((a, b) => a.probe.localeCompare(b.probe));
+  };
+  const a = summarize(left), b = summarize(right);
+  return !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
+}
 
 /** Historical evidence is NOT renewed execution authority. A fresh reviewed
  * Owner intent may reuse only an exactly owned, fully compensated Candidate.
@@ -56,7 +67,7 @@ export async function readCompensatedHttpRuntime(db: DrizzleDB, scope: Scope, ca
       output.dnsMutation !== false || output.imagePublication !== false ||
       probeStatus("node/health") !== 200 || probeStatus("node/database") !== 200 ||
       probeStatus("python/health") !== 200 || probeStatus("python/database") !== 200 ||
-      state.probes?.length !== probes.length || hash(state.probes) !== hash(probes))) return deny();
+      !sameRuntimeProbes(state.probes, probes))) return deny();
   const rolePlan = applicationDatabaseRolePlanSchema.safeParse(state.rolePlan);
   if (!rolePlan.success || rolePlan.data.tenantId !== scope.tenantId || rolePlan.data.projectId !== scope.projectId ||
       state.roleSecret?.role !== applicationDatabaseRoleName(scope) || state.roleSecret?.planDigest !== applicationDatabaseRolePlanDigest(rolePlan.data) ||
