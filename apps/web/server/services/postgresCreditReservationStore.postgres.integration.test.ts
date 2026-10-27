@@ -58,4 +58,30 @@ suite("isolated PostgreSQL reservation settlement invariants", () => {
     const [ledger] = await client`SELECT sum(amount)::int total FROM credit_transactions WHERE "userId"=701`;
     expect(user.credits).toBe(17); expect(ledger.total).toBe(-3);
   });
+  it("recovers an interrupted refund without crediting the synthetic account twice", async () => {
+    await client`INSERT INTO users(id,"openId",credits,"isDisabled") VALUES (702,'synthetic-credit-702',20,false)`;
+    const credit = await import("./creditService");
+    const reservation = await credit.createCreditReservation(702, 8, "chat", undefined, "synthetic-interrupted-refund");
+    await credit.drawFromReservation(reservation.reservationId, 3, undefined, "synthetic-interrupted-call");
+    // Simulate a process interruption after the close intent was recorded.
+    expect(await store.beginCreditReservationClose(reservation.reservationId, "refunding")).not.toBeNull();
+    expect((await credit.refundReservation(reservation.reservationId)).refundedAmount).toBe(5);
+    expect((await credit.refundReservation(reservation.reservationId)).refundedAmount).toBe(0);
+    const [user] = await client`SELECT credits FROM users WHERE id=702`;
+    const [ledger] = await client`SELECT sum(amount)::int total FROM credit_transactions WHERE "userId"=702`;
+    expect(user.credits).toBe(17); expect(ledger.total).toBe(-3);
+  });
+  it("prevents concurrent reservations from spending more than the synthetic balance", async () => {
+    await client`INSERT INTO users(id,"openId",credits,"isDisabled") VALUES (703,'synthetic-credit-703',10,false)`;
+    const credit = await import("./creditService");
+    const outcomes = await Promise.allSettled([
+      credit.createCreditReservation(703, 7, "chat", undefined, "synthetic-concurrent-one"),
+      credit.createCreditReservation(703, 7, "chat", undefined, "synthetic-concurrent-two"),
+    ]);
+    expect(outcomes.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    expect(outcomes.filter(result => result.status === "rejected")).toHaveLength(1);
+    const [user] = await client`SELECT credits FROM users WHERE id=703`;
+    const [ledger] = await client`SELECT sum(amount)::int total FROM credit_transactions WHERE "userId"=703`;
+    expect(user.credits).toBe(3); expect(ledger.total).toBe(-7);
+  });
 });
