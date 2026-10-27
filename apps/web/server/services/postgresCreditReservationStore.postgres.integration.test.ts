@@ -8,6 +8,8 @@ suite("isolated PostgreSQL reservation settlement invariants", () => {
     disposable = await (await import("./__tests__/support/spec277DisposablePostgres")).createSpec277DisposablePostgres();
     process.env.DATABASE_URL = disposable.databaseUrl; process.env.NODE_ENV = "test";
     client = (await import("postgres")).default(disposable.databaseUrl, { max: 5 });
+    const schema = await import("../../drizzle/schema");
+    await (await import("./__tests__/support/spec277AutoTeamRuntimeSchema")).installSpec277AutoTeamRuntimeSchema(client, [schema.users, schema.creditTransactions]);
     await client.unsafe(`CREATE TABLE credit_reservation_snapshots (
       reservation_id text PRIMARY KEY, payload jsonb NOT NULL, status text NOT NULL DEFAULT 'active',
       expires_at timestamptz NOT NULL, updated_at timestamptz NOT NULL DEFAULT now())`);
@@ -38,5 +40,22 @@ suite("isolated PostgreSQL reservation settlement invariants", () => {
     await expect(store.drawCreditReservation("synthetic-invalid", 1, "key")).rejects.toThrow("snapshot is malformed");
     const [row] = await client`SELECT payload FROM credit_reservation_snapshots WHERE reservation_id='synthetic-invalid'`;
     expect(row.payload).toEqual({ reservedAmount: 5, drawnAmount: null });
+  });
+  it("uses the existing credit ledger to reserve, settle, refund and cancel synthetic credits", async () => {
+    await client`INSERT INTO users(id,"openId",credits,"isDisabled") VALUES (701,'synthetic-credit-701',20,false)`;
+    const credit = await import("./creditService");
+    const reservation = await credit.createCreditReservation(701, 8, "chat", undefined, "synthetic-ledger-reservation");
+    expect((await credit.createCreditReservation(701, 8, "chat", undefined, "synthetic-ledger-reservation")).transactionId).toBe(reservation.transactionId);
+    const settled = await Promise.all([credit.drawFromReservation(reservation.reservationId, 3, undefined, "synthetic-call"),
+      credit.drawFromReservation(reservation.reservationId, 3, undefined, "synthetic-call")]);
+    expect(settled.filter(result => result.duplicate === false)).toHaveLength(1);
+    expect(settled.filter(result => result.duplicate === true)).toHaveLength(1);
+    await expect(credit.drawFromReservation(reservation.reservationId, 4, undefined, "synthetic-call")).rejects.toThrow("conflicts with prior amount");
+    expect((await credit.refundReservation(reservation.reservationId)).refundedAmount).toBe(5);
+    const cancelled = await credit.createCreditReservation(701, 4, "chat", undefined, "synthetic-ledger-cancel");
+    expect((await credit.refundReservation(cancelled.reservationId)).refundedAmount).toBe(4);
+    const [user] = await client`SELECT credits FROM users WHERE id=701`;
+    const [ledger] = await client`SELECT sum(amount)::int total FROM credit_transactions WHERE "userId"=701`;
+    expect(user.credits).toBe(17); expect(ledger.total).toBe(-3);
   });
 });
