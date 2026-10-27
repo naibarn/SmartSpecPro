@@ -224,7 +224,7 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         fail("EXISTING_APPLICATION_IDS_CHANGED");
       state.deploymentId = deployment.id; state.versionId = versionId; state.stage = "DEPLOYED"; await persist();
       await reporter.progress(lease, { progress: 45, stage: "NATIVE_RUNTIME_TESTING", measured: { deploymentId: deployment.id, versionId } });
-      const results: Array<{ probe: string; status: number; colo?: string }> = [];
+      const results: Array<{ probe: string; status: number; colo?: string; error?: string }> = [];
       const diagnostics: Record<string, any> = {};
       for (const runtime of ["node", "python"]) {
         // Finish one runtime's receipt before the other cold start. Returning
@@ -232,7 +232,9 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
         // warm would defeat the explicit on-demand policy.
         for (const check of ["health", "database", "auth"]) {
           const path = `${runtime}/${check}`, result = await probe(path);
-          results.push({ probe: path, status: result.status, colo: result.colo });
+          const safeError = typeof result.json?.error === "string" && /^APPLICATION_HTTP_[A-Z0-9_]{1,100}$/.test(result.json.error)
+            ? result.json.error : undefined;
+          results.push({ probe: path, status: result.status, colo: result.colo, ...(safeError ? { error: safeError } : {}) });
           state.probes = results; await persist();
           if (check === "auth" ? ![401, 403].includes(result.status) && !(runtime === "node" && result.status === 200 &&
             (result.json?.result?.data?.json === null || result.json?.result?.data === null)) : result.status !== 200)

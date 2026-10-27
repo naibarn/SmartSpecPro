@@ -26,6 +26,9 @@ type LifecycleState = {
   starts: number;
   reservedSeconds: number;
   activeUntil: number | null;
+  operationRef?: string;
+  operationStarts?: number;
+  operationReservedSeconds?: number;
 };
 type Storage = {
   get<T>(key: string): Promise<T | undefined>;
@@ -190,7 +193,8 @@ export class ApplicationHttpContainerController {
     const failure = await this.storage.get<{ code: string; kind: string; phase: string; at: number; exitCode?: number }>(DIAGNOSTIC_KEY);
     return { runtime: this.profile.runtime, running: this.container.running,
       image: observed?.image === this.profile.image ? this.profile.image : null,
-      starts: state?.starts ?? 0, reservedSeconds: state?.reservedSeconds ?? 0,
+      starts: state?.operationRef === this.profile.configurationRef ? state.operationStarts ?? 0 : state?.starts ?? 0,
+      reservedSeconds: state?.operationRef === this.profile.configurationRef ? state.operationReservedSeconds ?? 0 : state?.reservedSeconds ?? 0,
       activeUntil: state?.activeUntil ?? null,
       maxStarts: this.profile.maxStarts, maxComputeSeconds: this.profile.maxComputeSeconds,
       containerState: await this.readContainerState(),
@@ -230,6 +234,11 @@ export class ApplicationHttpContainerController {
     if (previous && (!/^[a-f0-9]{64}$/.test(previous.scope) || !Number.isFinite(previous.issuedAt) ||
         !Number.isSafeInteger(previous.starts) || previous.starts < 0 || previous.starts > maxLifetimeStarts ||
         !Number.isSafeInteger(previous.reservedSeconds) || previous.reservedSeconds < 0 || previous.reservedSeconds > maxLifetimeCompute ||
+        ((previous.operationRef !== undefined || previous.operationStarts !== undefined || previous.operationReservedSeconds !== undefined) &&
+          (previous.operationRef === undefined || previous.operationStarts === undefined || previous.operationReservedSeconds === undefined)) ||
+        (previous.operationRef !== undefined && !/^cf-origin:[a-f0-9]{64}$/.test(previous.operationRef)) ||
+        (previous.operationStarts !== undefined && (!Number.isSafeInteger(previous.operationStarts) || previous.operationStarts < 0 || previous.operationStarts > previous.starts)) ||
+        (previous.operationReservedSeconds !== undefined && (!Number.isSafeInteger(previous.operationReservedSeconds) || previous.operationReservedSeconds < 0 || previous.operationReservedSeconds > previous.reservedSeconds)) ||
         (previous.budgetWindowStartedAt !== undefined && !Number.isFinite(previous.budgetWindowStartedAt)) ||
         (previous.activeUntil !== null && !Number.isFinite(previous.activeUntil)))) {
       if (this.container.running) await this.container.destroy("invalid application lifecycle state");
@@ -240,11 +249,15 @@ export class ApplicationHttpContainerController {
       // Only a newer exact deployment capability can replace configuration.
       // Preserve paid-usage counters through revisions within the same window.
       if (previous.issuedAt >= Date.parse(this.profile.issuedAt)) throw new Error("APPLICATION_HTTP_CONFIGURATION_CHANGED");
+      // A new configuration cannot refill the same operation's allowance by
+      // changing its secrets, image or issuedAt.
+      if (previous.operationRef === this.profile.configurationRef) throw new Error("APPLICATION_HTTP_CONFIGURATION_CHANGED");
       const budgetWindowStartedAt = previous.budgetWindowStartedAt ?? previous.issuedAt;
       const windowMs = production ? 31 * 86_400_000 : 3_600_000;
       previous = this.now() - budgetWindowStartedAt >= windowMs
         ? { scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt: this.now(), starts: 0, reservedSeconds: 0, activeUntil: null }
-        : { ...previous, scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt, activeUntil: null };
+        : { ...previous, scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt, activeUntil: null,
+          ...(production ? { operationRef: this.profile.configurationRef, operationStarts: 0, operationReservedSeconds: 0 } : {}) };
     }
     if (this.container.running) {
       if (!previous?.activeUntil || previous.activeUntil <= this.now()) {
@@ -272,14 +285,17 @@ export class ApplicationHttpContainerController {
     const deadline = Math.min(Date.parse(this.profile.expiresAt), this.now() + this.profile.hardLifetimeSeconds * 1000);
     const reservation = Math.ceil((deadline - this.now()) / 1000);
     const state: LifecycleState = previous ?? { scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt: this.now(), starts: 0, reservedSeconds: 0, activeUntil: null };
-    if (state.starts >= this.profile.maxStarts || reservation < 1 ||
-        state.reservedSeconds + reservation > this.profile.maxComputeSeconds) throw new Error("APPLICATION_HTTP_COMPUTE_BUDGET_EXHAUSTED");
+    const operationStarts = state.operationRef === this.profile.configurationRef ? state.operationStarts ?? 0 : state.starts;
+    const operationReserved = state.operationRef === this.profile.configurationRef ? state.operationReservedSeconds ?? 0 : state.reservedSeconds;
+    if (operationStarts >= this.profile.maxStarts || reservation < 1 || operationReserved + reservation > this.profile.maxComputeSeconds ||
+        state.starts >= maxLifetimeStarts || state.reservedSeconds + reservation > maxLifetimeCompute) throw new Error("APPLICATION_HTTP_COMPUTE_BUDGET_EXHAUSTED");
     const env = applicationEnvironment(this.profile, this.environment, deadline);
     const privateDatabase = this.environment.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT === "private-vpc-websocket-v1";
     if (privateDatabase && (this.profile.targetId !== "smartspec-cloudflare-runtime" ||
         new URL(this.environment.DATABASE_URL).username !== `sah_cf_app_${this.profile.namespace.slice(-12)}`))
       throw Error("APPLICATION_HTTP_DATABASE_SCOPE_DENIED");
-    await this.storage.put(KEY, { ...state, starts: state.starts + 1, reservedSeconds: state.reservedSeconds + reservation, activeUntil: deadline });
+    await this.storage.put(KEY, { ...state, starts: state.starts + 1, reservedSeconds: state.reservedSeconds + reservation, activeUntil: deadline,
+      ...(production ? { operationRef: this.profile.configurationRef, operationStarts: operationStarts + 1, operationReservedSeconds: operationReserved + reservation } : {}) });
     await this.storage.setAlarm(deadline);
     this.inactivityTimeoutPromise = null;
     this.phase = "start";

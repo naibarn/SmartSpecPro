@@ -291,6 +291,24 @@ describe("bounded private application HTTP compute", () => {
     expect(renewed).toMatchObject({ starts: 1, reservedSeconds: 600 });
   });
 
+  it("allows a newly authorized bounded operation without resetting cumulative usage or allowing the same operation to refill", async () => {
+    const f = fixture(); let now = Date.now();
+    Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345",
+      instance: "basic", maxStarts: 2, maxComputeSeconds: 120, hardLifetimeSeconds: 60 });
+    const controller = () => new ApplicationHttpContainerController(f.container as never, f.storage, f.profile, f.environment, () => now);
+    await controller().ensureRunning(); f.container.running = false;
+    await controller().ensureRunning(); f.container.running = false;
+    await expect(controller().ensureRunning()).rejects.toThrow("COMPUTE_BUDGET_EXHAUSTED");
+    now += 2000; f.profile.configurationRef = `cf-origin:${"e".repeat(64)}`; f.profile.issuedAt = new Date(now - 1).toISOString();
+    await controller().ensureRunning(); f.container.running = false;
+    expect(f.records.get("application-http-lifecycle-v1")).toMatchObject({ starts: 3, reservedSeconds: 180,
+      operationRef: f.profile.configurationRef, operationStarts: 1, operationReservedSeconds: 60 });
+    expect(await controller().diagnostics()).toMatchObject({ starts: 1, reservedSeconds: 60 });
+    now += 2000; f.profile.issuedAt = new Date(now - 1).toISOString();
+    await expect(controller().ensureRunning()).rejects.toThrow("CONFIGURATION_CHANGED");
+    expect(f.container.start).toHaveBeenCalledTimes(3);
+  });
+
   it("cannot adopt an unowned instance, reset budget by changing secrets, or run an unbound image", async () => {
     const f = fixture(); f.container.running = true;
     await expect(f.controller.ensureRunning()).rejects.toThrow("ACTIVE_SCOPE_REQUIRED");
