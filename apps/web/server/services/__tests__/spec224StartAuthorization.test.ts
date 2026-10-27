@@ -43,6 +43,28 @@ describe("Spec 224 reservation identity", () => {
   });
 });
 
+describe("Spec 224 child authorization identity", () => {
+  it("loads the current child attempt instead of the root attempt", async () => {
+    const binding = { runId: "run-a", workerJobId: "child-a", tenantId: "tenant-a", actorId: 7, workspaceId: "workspace-a" };
+    mocks.rows = [
+      [{ id: "root-a", attempt: 1, progressJson: { spec224: binding }, inputJson: {} }],
+      [{ id: "child-a", attempt: 2, progressJson: { spec224: binding }, inputJson: { spec224Run: binding } }],
+      [{ id: "child-attempt" }],
+    ];
+    await createSpec224AuthorizationService().status(request);
+    expect(mocks.eqCalls).toContainEqual(expect.objectContaining({ columnName: "workerJobId", value: "child-a" }));
+    expect(mocks.eqCalls).toContainEqual(expect.objectContaining({ columnName: "attempt", value: 2 }));
+  });
+  it("rejects a projected child whose persisted run binding differs", async () => {
+    mocks.rows = [
+      [{ id: "root-a", attempt: 1, progressJson: { spec224: { runId: "run-a", workerJobId: "child-a" } }, inputJson: {} }],
+      [{ id: "child-a", attempt: 2, progressJson: { spec224: { runId: "other-run", workerJobId: "child-a", tenantId: "tenant-a", actorId: 7 } },
+        inputJson: { spec224Run: { runId: "run-a", workerJobId: "child-a", tenantId: "tenant-a", actorId: 7 } } }],
+    ];
+    await expect(createSpec224AuthorizationService().status(request)).rejects.toMatchObject({ code: "RUN_CHILD_BINDING_MISMATCH" });
+  });
+});
+
 function createService() {
   const service = createSpec224AuthorizationService();
   vi.spyOn(service, "runnerReadiness").mockResolvedValue({ ready: true, code: "RUNNER_READY" } as any);

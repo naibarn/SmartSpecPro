@@ -427,6 +427,27 @@ async function loadRun(
   const projection = asRecord(job.progressJson?.spec224);
   if (!projection) throw new Spec224AuthorizationError("RUN_NOT_FOUND");
   const run = projection as unknown as DevelopmentRun;
+  if (run.workerJobId && run.workerJobId !== job.id) {
+    const [child] = await db.select({
+      id: workerJobs.id,
+      attempt: workerJobs.attempt,
+      inputJson: workerJobs.inputJson,
+      progressJson: workerJobs.progressJson,
+    }).from(workerJobs).where(and(
+      eq(workerJobs.id, run.workerJobId),
+      eq(workerJobs.tenantId, ctx.tenantId),
+      eq(workerJobs.requestedByUserId, ctx.actorId),
+    )).limit(1);
+    const childRun = asRecord(child?.inputJson?.spec224Run);
+    const childProjection = asRecord(child?.progressJson?.spec224);
+    if (!child || !childRun || !childProjection ||
+      childRun.runId !== runId || childProjection.runId !== runId ||
+      childRun.workerJobId !== child.id || childProjection.workerJobId !== child.id ||
+      childRun.tenantId !== ctx.tenantId || Number(childRun.actorId) !== ctx.actorId ||
+      childProjection.tenantId !== ctx.tenantId || Number(childProjection.actorId) !== ctx.actorId)
+      throw new Spec224AuthorizationError("RUN_CHILD_BINDING_MISMATCH");
+    job = child;
+  }
   const [attempt] = await db
     .select({ id: workerJobAttempts.id })
     .from(workerJobAttempts)
