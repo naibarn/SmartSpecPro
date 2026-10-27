@@ -9,6 +9,8 @@ describe("bounded M3 parity plan", () => {
   it("binds the exact reviewed operation and budget to an immutable digest", () => {
     expect(digestM3ParityPlan(plan).digest).toMatch(/^[a-f0-9]{64}$/);
     expect(digestM3ParityPlan({ ...plan, operation: "queue_recovery_acceptance" }).digest).not.toBe(digestM3ParityPlan(plan).digest);
+    expect(m3ParityPlanSchema.safeParse({ ...plan, queueId: undefined }).success).toBe(true);
+    expect(m3ParityPlanSchema.safeParse({ ...plan, operation: "queue_recovery_acceptance", queueId: undefined }).success).toBe(false);
   });
   it.each([{ realCharges: true }, { syntheticOnly: false }, { trafficMutation: true }, { providerCalls: true }, { maxSyntheticCredits: 101 },
     { maxSyntheticJobs: 21 }, { maxContainerStarts: 3 }, { compensationRequired: false }, { extra: "unexpected" }])("rejects unbounded or unrelated authority %o", value => {
