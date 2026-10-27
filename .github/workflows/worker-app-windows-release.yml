@@ -51,13 +51,14 @@ jobs:
         id: build
         env:
           RELEASE_VERSION: ${{ inputs.release_version }}
+          SMARTAIHUB_PUBLIC_URL: https://smartaihub.app
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           if ($env:RELEASE_VERSION) {
-            npm --workspace apps/worker-app run release:windows -- --release-version $env:RELEASE_VERSION --skip-frontend-typecheck
+            npm --workspace apps/worker-app run release:windows -- --release-version $env:RELEASE_VERSION --skip-frontend-typecheck --runtime-from-server
           } else {
-            npm --workspace apps/worker-app run release:windows -- --skip-frontend-typecheck
+            npm --workspace apps/worker-app run release:windows -- --skip-frontend-typecheck --runtime-from-server
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $version = node -p "require('./apps/worker-app/package.json').version"

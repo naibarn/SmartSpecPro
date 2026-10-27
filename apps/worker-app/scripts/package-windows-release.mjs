@@ -19,6 +19,7 @@ const checkRuntime = args.has("--check-runtime");
 const skipBuild = args.has("--skip-build");
 const skipFrontendTypecheck = args.has("--skip-frontend-typecheck");
 const allowPlaceholderRuntime = args.has("--allow-placeholder-runtime");
+const runtimeFromServer = args.has("--runtime-from-server");
 
 function argValue(flag) {
   const index = process.argv.indexOf(flag);
@@ -278,6 +279,45 @@ function assertReleaseRuntimePack() {
   }
 }
 
+async function assertPublishedRuntimeAvailable() {
+  const publicUrl = process.env.SMARTAIHUB_PUBLIC_URL || "https://smartaihub.app";
+  const manifestUrl = new URL(
+    "/api/workers/runtime-pack/manifest?runtimeId=hyperframes-wsl2&channel=stable",
+    publicUrl,
+  );
+  const response = await fetch(manifestUrl, { headers: { accept: "application/json" } });
+  if (!response.ok) {
+    throw new Error(`Published Worker runtime manifest returned HTTP ${response.status}`);
+  }
+  const manifest = await response.json();
+  const validDigest = (value) => typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+  const blockedReasons = [];
+  if (manifest.allowed !== true) blockedReasons.push("stable runtime manifest is not allowed");
+  if (manifest.runtimeId !== "hyperframes-wsl2") blockedReasons.push("stable runtime id is not hyperframes-wsl2");
+  if (manifest.runtimePlatform !== "wsl2-linux-x64") blockedReasons.push("stable runtime platform is not WSL2 Linux x64");
+  if (manifest.architecture !== "x64") blockedReasons.push("stable runtime architecture is not x64");
+  if (typeof manifest.version !== "string" || manifest.version.trim() === "") blockedReasons.push("stable runtime version is missing");
+  if (typeof manifest.archiveUrl !== "string" || !manifest.archiveUrl.startsWith("/api/workers/runtime-pack/download/")) {
+    blockedReasons.push("stable runtime archive URL is missing or invalid");
+  }
+  if (!validDigest(manifest.archiveSha256)) blockedReasons.push("stable runtime archive SHA-256 is missing or invalid");
+  if (!validDigest(manifest.sidecarSha256)) blockedReasons.push("stable runtime sidecar SHA-256 is missing or invalid");
+  if (manifest.rendererKind !== "hyperframes_cli_official") blockedReasons.push("official HyperFrames renderer is not published");
+  if (manifest.remotionSidecarScriptPath !== "remotion-sidecar/render.mjs") {
+    blockedReasons.push("Remotion sidecar is not included in the published runtime manifest");
+  }
+  if (typeof manifest.signatureFile !== "string" || manifest.signatureFile.trim() === "") {
+    blockedReasons.push("published runtime signature file is missing");
+  }
+  if (blockedReasons.length > 0) {
+    throw new Error([
+      "Refusing to build Worker App without an approved published runtime.",
+      ...blockedReasons.map((reason) => `- ${reason}`),
+    ].join("\n"));
+  }
+  console.log(`[worker-app] published runtime is release-ready: ${manifest.runtimeId}@${manifest.version}`);
+}
+
 const packageJson = readJson(packagePath);
 const tauriConfig = readJson(tauriConfigPath);
 const publishedVersions = listPublishedVersions();
@@ -307,6 +347,11 @@ if (checkRuntime) {
   process.exit(0);
 }
 
+if (args.has("--check-published-runtime")) {
+  await assertPublishedRuntimeAvailable();
+  process.exit(0);
+}
+
 if (dryRun) {
   console.log("[worker-app] dry run does not validate runtime readiness; use --check-runtime for the release gate.");
   console.log(`[worker-app] dry run only; would write ${sourceReleasePath}`);
@@ -326,9 +371,15 @@ writeJson(packagePath, packageJson);
 writeJson(tauriConfigPath, tauriConfig);
 updateCargoVersion(nextVersion);
 
-run("npm", ["run", "runtime:pack"]);
+if (!runtimeFromServer) {
+  run("npm", ["run", "runtime:pack"]);
+}
 console.log("[worker-app] Content Protection is published as an optional runtime and is not bundled in the Worker App installer.");
-assertReleaseRuntimePack();
+if (runtimeFromServer) {
+  await assertPublishedRuntimeAvailable();
+} else {
+  assertReleaseRuntimePack();
+}
 
 if (!skipBuild) {
   const tauriBuildArgs = [

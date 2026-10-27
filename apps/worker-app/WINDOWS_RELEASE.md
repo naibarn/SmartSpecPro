@@ -13,6 +13,12 @@ the release version, filename, installer signature bytes, and SHA-256 before
 publishing. The workflow then confirms the Dashboard latest release has the
 same version, filename, size, and SHA-256 as the build artifact.
 
+Before building, the workflow checks the Dashboard's stable WSL2 runtime
+manifest. The installer downloads that signed runtime when a worker is set up;
+the multi-gigabyte runtime archive is not embedded in the Windows installer.
+The release stops if the published runtime is missing, denied, or has an
+unexpected platform, renderer contract, or checksum.
+
 The server defaults the trusted repository to `naibarn/SmartSpecPro`. Set
 `SMARTAIHUB_WORKER_APP_RELEASE_REPOSITORY` if the repository is renamed or the
 release workflow is hosted elsewhere. Deploy the server route before running
