@@ -862,14 +862,15 @@ export const infrastructureRouter = router({
     }),
 
   getCloudflareHttpRuntimeOperation: exactAdminProcedure
-    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), candidateJobId: z.string().uuid() }).strict())
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), candidateJobId: z.string().uuid(),
+      operation: z.enum(["runtime", "application"]).optional() }).strict())
     .query(async ({ input, ctx }) => {
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_RUNTIME_AUTHENTICATED_TENANT_REQUIRED" });
-      const db = getDb(), scope = { ...input, actorUserId: ctx.user.id }, job = await readHttpRuntimeOperation(db, scope);
+      const operation = input.operation ?? "runtime", db = getDb(), scope = { ...input, actorUserId: ctx.user.id }, job = await readHttpRuntimeOperation(db, scope, operation);
       if (job && job.status !== "failed") return { job, preflight: null, pending: null };
-      const retained = await readPendingHttpRuntimeIntent(db, scope), pending = retained?.submissionId === job?.jobId ? null : retained;
-      try { return { job, pending, preflight: await getHttpRuntimePlan(db, scope, input.candidateJobId, pending ?? undefined) }; }
+      const retained = await readPendingHttpRuntimeIntent(db, scope, operation), pending = retained?.submissionId === job?.jobId ? null : retained;
+      try { return { job, pending, preflight: await getHttpRuntimePlan(db, scope, input.candidateJobId, { ...(pending ?? {}), operation }) }; }
       catch (error) { return { job, pending, preflight: { ready: false as const, reason: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
         ? error.message : "HTTP_RUNTIME_PREFLIGHT_UNAVAILABLE" } }; }
     }),
@@ -877,7 +878,8 @@ export const infrastructureRouter = router({
   prepareCloudflareHttpRuntime: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), candidateJobId: z.string().uuid(),
       submissionId: z.string().uuid(), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
-      artifactRef: z.string().regex(/^sha256:[a-f0-9]{64}$/), workerSourceSha: z.string().regex(/^[a-f0-9]{40}$/) }).strict())
+      artifactRef: z.string().regex(/^sha256:[a-f0-9]{64}$/), workerSourceSha: z.string().regex(/^[a-f0-9]{40}$/),
+      operation: z.enum(["runtime", "application"]).optional() }).strict())
     .mutation(async ({ input, ctx }) => {
       if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
         throw new TRPCError({ code: "FORBIDDEN", message: "HTTP_RUNTIME_AUTHENTICATED_TENANT_REQUIRED" });

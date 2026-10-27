@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createHash } from "node:crypto";
 const state = vi.hoisted(() => ({ job: null as any, intent: null as any, checkpoint: null as any }));
 vi.mock("./crypto", () => ({ decrypt: (value: string) => value }));
-import { readCompensatedHttpRuntime } from "./cloudflareHttpRuntimeContinuation";
+import { readCompensatedHttpApplicationAcceptance, readCompensatedHttpRuntime } from "./cloudflareHttpRuntimeContinuation";
 import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest } from "./cloudflareApplicationDatabaseRole";
 import { HTTP_RUNTIME_CONTRACT, HTTP_RUNTIME_JOB } from "./cloudflareHttpRuntimeContract";
 const scope = { tenantId: "tenant-fixture", projectId: "project-fixture", actorUserId: 17 };
@@ -51,5 +51,19 @@ describe("read-only compensated Candidate continuation evidence", () => {
       state.checkpoint.value = JSON.stringify(value);
     }
     await expect(readCompensatedHttpRuntime(db(), scope, candidateJobId)).rejects.toThrow("RECONCILE_REQUIRED");
+  });
+  it("allows a fresh application attempt only after exact fixture, runtime and M2 compensation", async () => {
+    const plan = { ...state.intent.valueJson.plan, operation: "application", applicationAcceptance: true };
+    const planDigest = createHash("sha256").update(JSON.stringify(plan)).digest("hex");
+    state.job = { ...state.job, attempt: 1, maxAttempts: 1, inputJson: { candidateJobId, operation: "application", planDigest } };
+    state.intent = { updatedBy: scope.actorUserId, valueJson: { ...state.intent.valueJson, operation: "application", plan, planDigest,
+      authority: "existing-candidate-bounded-application-acceptance-v1", fixtureCreation: true } };
+    state.checkpoint.value = JSON.stringify({ ...JSON.parse(state.checkpoint.value), operation: "application", planDigest,
+      applicationFixtureUsers: [], cleanup: { ...JSON.parse(state.checkpoint.value).cleanup, applicationFixturesRemoved: true } });
+    await expect(readCompensatedHttpApplicationAcceptance(db(), scope, candidateJobId)).resolves.toMatchObject({ jobId: id,
+      restoredBaseline: { versionId: candidateJobId } });
+    const value = JSON.parse(state.checkpoint.value); value.cleanup.applicationFixturesRemoved = false;
+    state.checkpoint.value = JSON.stringify(value);
+    await expect(readCompensatedHttpApplicationAcceptance(db(), scope, candidateJobId)).rejects.toThrow("RECONCILE_REQUIRED");
   });
 });

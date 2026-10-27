@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertHttpCandidateOwner } from "./cloudflareHttpCandidatePreparation";
@@ -14,11 +14,12 @@ export const httpRuntimeIntentWhere = (id: string) => and(eq(systemSettings.cate
 export async function readHttpRuntimeIntent(db: DrizzleDB, id: string) {
   const [row] = await db.select().from(systemSettings).where(httpRuntimeIntentWhere(id)).limit(1); return row;
 }
-export async function readHttpRuntimeOperation(db: DrizzleDB, scope: Scope) {
+export async function readHttpRuntimeOperation(db: DrizzleDB, scope: Scope, operation: "runtime" | "application" = "runtime") {
   await assertHttpCandidateOwner(db, scope);
   const [job] = await db.select().from(workerJobs).where(and(eq(workerJobs.tenantId, scope.tenantId),
     eq(workerJobs.jobType, HTTP_RUNTIME_JOB), eq(workerJobs.contractVersion, HTTP_RUNTIME_CONTRACT),
-    eq(workerJobs.requestedByUserId, scope.actorUserId), sql`${workerJobs.inputJson}->>'projectId'=${scope.projectId}`))
+    eq(workerJobs.requestedByUserId, scope.actorUserId), sql`${workerJobs.inputJson}->>'projectId'=${scope.projectId}`,
+    sql`COALESCE(${workerJobs.inputJson}->>'operation','runtime')=${operation}`))
     .orderBy(sql`${workerJobs.createdAt} DESC`).limit(1);
   if (!job) return null;
   let checkpoint: { stage: string; failure?: string; deploymentId?: string; versionId?: string; rolePrepared: boolean; probes: unknown; cleanup: unknown; runtimeDiagnostics?: unknown } | null = null;
@@ -48,15 +49,17 @@ export async function readHttpRuntimeOperation(db: DrizzleDB, scope: Scope) {
     errorCode: job.errorCode, receipt: job.outputJson, heartbeatAt: job.heartbeatAt, checkpoint };
 }
 
-export async function readPendingHttpRuntimeIntent(db: DrizzleDB, scope: Scope) {
+export async function readPendingHttpRuntimeIntent(db: DrizzleDB, scope: Scope, operation: "runtime" | "application" = "runtime") {
   await assertHttpCandidateOwner(db, scope);
   const [row] = await db.select().from(systemSettings).where(and(eq(systemSettings.category, HTTP_RUNTIME_CATEGORY),
     eq(systemSettings.updatedBy, scope.actorUserId), sql`${systemSettings.valueJson}->>'tenantId'=${scope.tenantId}`,
-    sql`${systemSettings.valueJson}->>'projectId'=${scope.projectId}`)).orderBy(sql`${systemSettings.createdAt} DESC`).limit(1);
+    sql`${systemSettings.valueJson}->>'projectId'=${scope.projectId}`,
+    sql`COALESCE(${systemSettings.valueJson}->>'operation','runtime')=${operation}`)).orderBy(sql`${systemSettings.createdAt} DESC`).limit(1);
   const value = row?.valueJson;
   if (!value || value.actorUserId !== scope.actorUserId) return null;
   return { submissionId: row.key, planDigest: String(value.planDigest), candidateJobId: String(value.plan.candidateJobId),
     artifactRef: String(value.plan.artifactRef), workerSourceSha: String(value.plan.workerSourceSha),
+    operation: value.operation === "application" ? "application" as const : "runtime" as const,
     ...(value.plan.publication?.sourceSha ? { publication: { sourceSha: String(value.plan.publication.sourceSha) } } : {}),
     ...(value.plan.previousRuntime?.jobId ? { previousRuntime: { jobId: String(value.plan.previousRuntime.jobId) } } : {}),
     expiresAt: String(value.expiresAt), revoked: value.revokedAt !== null };
@@ -67,32 +70,45 @@ export async function readPendingHttpRuntimeIntent(db: DrizzleDB, scope: Scope) 
  * Stable submission ID survives uncertain admission; NEVER delete its intent
  * or submit another job to compensate for a lost HTTP response. */
 export async function prepareHttpRuntime(db: DrizzleDB, input: Scope & { candidateJobId: string; submissionId: string;
-  planDigest: string; artifactRef: string; workerSourceSha: string; correlationId: string }) {
+  planDigest: string; artifactRef: string; workerSourceSha: string; correlationId: string; operation?: "runtime" | "application" }) {
   await assertHttpCandidateOwner(db, input);
+  const operation = input.operation ?? "runtime";
   const intent = await db.transaction(async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`native-runtime:${input.tenantId}:${input.projectId}`}))`);
     const old = await readHttpRuntimeIntent(tx as unknown as DrizzleDB, input.submissionId);
     if (old) {
       const value = old.valueJson as Record<string, any>;
       if (old.updatedBy !== input.actorUserId || value.actorUserId !== input.actorUserId || value.tenantId !== input.tenantId ||
-          value.projectId !== input.projectId || value.planDigest !== input.planDigest || value.plan.candidateJobId !== input.candidateJobId)
+          value.projectId !== input.projectId || value.planDigest !== input.planDigest || value.plan.candidateJobId !== input.candidateJobId ||
+          (value.operation === "application" ? "application" : "runtime") !== operation)
         throw Error("HTTP_RUNTIME_SUBMISSION_SCOPE_DENIED");
       return value;
     }
+    const [activeCandidateOperation] = await tx.select({ id: workerJobs.id, inputJson: workerJobs.inputJson }).from(workerJobs).where(and(
+      eq(workerJobs.tenantId, input.tenantId), eq(workerJobs.jobType, HTTP_RUNTIME_JOB),
+      eq(workerJobs.contractVersion, HTTP_RUNTIME_CONTRACT), sql`${workerJobs.inputJson}->>'projectId'=${input.projectId}`,
+      sql`${workerJobs.inputJson}->>'candidateJobId'=${input.candidateJobId}`, inArray(workerJobs.status,
+        ["pending", "queued", "leased", "claimed", "preparing", "running", "waiting_external", "retry_scheduled", "uploading", "publishing", "indexing"] as any),
+      sql`${workerJobs.id}<>${input.submissionId}`)).limit(1);
+    if (activeCandidateOperation) throw Error(((activeCandidateOperation.inputJson as any)?.operation ?? "runtime") === operation
+      ? "HTTP_RUNTIME_EXISTING_SUBMISSION_RECONCILE_REQUIRED" : "HTTP_RUNTIME_CANDIDATE_BUSY");
     const [previous] = await tx.select().from(systemSettings).where(and(eq(systemSettings.category, HTTP_RUNTIME_CATEGORY),
-      sql`${systemSettings.valueJson}->>'tenantId'=${input.tenantId}`, sql`${systemSettings.valueJson}->>'projectId'=${input.projectId}`))
+      sql`${systemSettings.valueJson}->>'tenantId'=${input.tenantId}`, sql`${systemSettings.valueJson}->>'projectId'=${input.projectId}`,
+      sql`COALESCE(${systemSettings.valueJson}->>'operation','runtime')=${operation}`))
       .orderBy(sql`${systemSettings.createdAt} DESC`).limit(1);
-    const preflight = await getHttpRuntimePlan(db, input, input.candidateJobId, input);
+    const preflight = await getHttpRuntimePlan(db, input, input.candidateJobId, { ...input, operation });
     // Fresh Owner-reviewed corrected images, never an extension of an expired
     // intent or terminal attempt budget. Reconcile pending submissions first.
-    if (previous && (previous.updatedBy !== input.actorUserId || preflight.plan.previousRuntime?.jobId !== previous.key))
+    if (previous && (previous.updatedBy !== input.actorUserId ||
+        (operation === "application" ? preflight.plan.previousApplicationAcceptance?.jobId !== previous.key
+          : preflight.plan.previousRuntime?.jobId !== previous.key)))
       throw Error("HTTP_RUNTIME_EXISTING_SUBMISSION_RECONCILE_REQUIRED");
     if (preflight.planDigest !== input.planDigest) throw Error("HTTP_RUNTIME_REVIEWED_PLAN_CHANGED");
     const value = { tenantId: input.tenantId, projectId: input.projectId, actorUserId: input.actorUserId,
       submissionId: input.submissionId, planDigest: preflight.planDigest, plan: preflight.plan,
       issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 45 * 60_000).toISOString(), revokedAt: null,
-      authority: "existing-candidate-bounded-runtime-test-v1", trafficMutation: false, dnsMutation: false,
-      imagePublication: false, applicationCreation: false, fixtureCreation: false };
+      operation, authority: operation === "application" ? "existing-candidate-bounded-application-acceptance-v1" : "existing-candidate-bounded-runtime-test-v1",
+      trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false, fixtureCreation: operation === "application" };
     await tx.insert(systemSettings).values({ category: HTTP_RUNTIME_CATEGORY, key: input.submissionId,
       valueJson: value, updatedBy: input.actorUserId,
       description: "Owner: exact existing Candidate role/bindings, bounded Container tests and compensation; no production traffic" });
@@ -102,19 +118,26 @@ export async function prepareHttpRuntime(db: DrizzleDB, input: Scope & { candida
   if (job) {
     if (job.tenantId !== input.tenantId || job.requestedByUserId !== input.actorUserId || job.jobType !== HTTP_RUNTIME_JOB ||
         job.contractVersion !== HTTP_RUNTIME_CONTRACT || job.inputJson?.planDigest !== input.planDigest ||
-        job.inputJson?.candidateJobId !== input.candidateJobId) throw Error("HTTP_RUNTIME_CANONICAL_JOB_SCOPE_DENIED");
+      job.inputJson?.candidateJobId !== input.candidateJobId || (job.inputJson?.operation ?? "runtime") !== operation)
+      throw Error("HTTP_RUNTIME_CANONICAL_JOB_SCOPE_DENIED");
     return { jobId: job.id, status: job.status };
   }
   if (intent.revokedAt !== null || !Number.isFinite(Date.parse(intent.expiresAt)) || Date.parse(intent.expiresAt) <= Date.now())
     throw Error("HTTP_RUNTIME_AUTHORIZATION_EXPIRED");
-  return createControlPlaneJob({ context: { tenantId: input.tenantId, actorType: "user", actorId: input.actorUserId,
+    const admitted = await createControlPlaneJob({ context: { tenantId: input.tenantId, actorType: "user", actorId: input.actorUserId,
     authorizationScope: "infrastructure.cloudflare_production_native_runtime_verify", correlationId: input.correlationId,
-    idempotencyKey: `native-runtime:${input.submissionId}` }, definition: {
+    idempotencyKey: `${operation === "application" ? "native-application-acceptance" : "native-runtime"}:${input.submissionId}` }, definition: {
       jobType: HTTP_RUNTIME_JOB, contractVersion: HTTP_RUNTIME_CONTRACT, executionClass: "long", priority: 45,
       input: { contractVersion: HTTP_RUNTIME_CONTRACT, projectId: input.projectId, candidateJobId: input.candidateJobId,
-        submissionId: input.submissionId, planDigest: input.planDigest },
-      idempotencyKey: `native-runtime:${input.submissionId}`, activeDedupeKey: `native-runtime:${input.tenantId}:${input.projectId}`,
+        submissionId: input.submissionId, planDigest: input.planDigest, ...(operation === "application" ? { operation } : {}) },
+      idempotencyKey: `${operation === "application" ? "native-application-acceptance" : "native-runtime"}:${input.submissionId}`,
+      // Both operations mutate the same existing Candidate deployment and
+      // named Container Durable Objects. Share one active fence so the control
+      // plane cannot alias one operation's intent to the other job.
+      activeDedupeKey: `native-runtime:${input.tenantId}:${input.projectId}`,
       retryPolicy: { maxAttempts: 1, baseDelayMs: 2000, maxDelayMs: 5000, jitter: "bounded", deadlineMs: 30 * 60_000, allowedErrorClasses: [] },
       timeoutPolicy: { softTimeoutMs: 20 * 60_000, hardTimeoutMs: 30 * 60_000 } },
     createOptions: { canonicalJobId: input.submissionId, runtimeType: "node_job_worker" } });
+    if (admitted.jobId !== input.submissionId) throw Error("HTTP_RUNTIME_CANDIDATE_BUSY");
+    return admitted;
 }

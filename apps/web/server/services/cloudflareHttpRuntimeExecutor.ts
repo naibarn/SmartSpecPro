@@ -2,9 +2,9 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdtemp, mkdir, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { sql, and, eq } from "drizzle-orm";
+import { sql, and, eq, inArray, gt } from "drizzle-orm";
 import { getDb, type DrizzleDB } from "../db";
-import { systemSettings } from "../../drizzle/schema";
+import { systemSettings, revokedTokenJtis } from "../../drizzle/schema";
 import type { JobExecutor } from "./jobExecutor";
 import { withCloudflareStagingLeaseHeartbeat } from "./cloudflareStagingLeaseHeartbeat";
 import { assertHttpCandidateOwner, resolveHttpCandidatePackage } from "./cloudflareHttpCandidatePreparation";
@@ -19,6 +19,7 @@ import { resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuth
 import { runHttpImageOperatorCommand } from "./cloudflareHttpImageBuildOperator";
 import { classifyHttpCandidateWranglerFailure } from "./cloudflareHttpCandidateDiagnostics";
 import { encrypt, decrypt } from "./crypto";
+import { createHttpApplicationAcceptanceFixtures, removeHttpApplicationAcceptanceFixtures } from "./cloudflareHttpApplicationAcceptance";
 
 const CHECKPOINT = "cloudflare_production_native_runtime_checkpoints";
 const hash = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -33,13 +34,15 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
   const parsed = httpRuntimeJobSchema.safeParse(context.input);
   if (!parsed.success || context.jobType !== HTTP_RUNTIME_JOB || context.contractVersion !== HTTP_RUNTIME_CONTRACT ||
       context.executionClass !== "long" || !context.requestedByUserId || context.jobId !== parsed.data.submissionId) fail("JOB_DENIED");
-  const input = parsed.data, db = getDb(), scope = { tenantId: context.tenantId, projectId: input.projectId, actorUserId: context.requestedByUserId };
+  const input = parsed.data, operation = parsed.data.operation ?? "runtime", db = getDb(), scope = { tenantId: context.tenantId, projectId: input.projectId, actorUserId: context.requestedByUserId };
   const row = await readHttpRuntimeIntent(db, context.jobId), intent = row?.valueJson as Record<string, any> | undefined;
   if (!intent || row?.updatedBy !== scope.actorUserId || intent.actorUserId !== scope.actorUserId || intent.tenantId !== scope.tenantId ||
       intent.projectId !== scope.projectId || intent.submissionId !== context.jobId || intent.planDigest !== input.planDigest ||
       hash(intent.plan) !== input.planDigest || intent.plan.candidateJobId !== input.candidateJobId ||
-      intent.authority !== "existing-candidate-bounded-runtime-test-v1" || intent.trafficMutation !== false || intent.dnsMutation !== false ||
-      intent.imagePublication !== false || intent.applicationCreation !== false || intent.fixtureCreation !== false) fail("AUTHORIZATION_DENIED");
+      (intent.operation ?? "runtime") !== operation || (operation === "application" ? intent.authority !== "existing-candidate-bounded-application-acceptance-v1" ||
+        intent.plan.operation !== "application" || intent.plan.applicationAcceptance !== true || intent.fixtureCreation !== true
+        : intent.authority !== "existing-candidate-bounded-runtime-test-v1" || intent.plan.operation === "application" || intent.fixtureCreation !== false) ||
+      intent.trafficMutation !== false || intent.dnsMutation !== false || intent.imagePublication !== false || intent.applicationCreation !== false) fail("AUTHORIZATION_DENIED");
   const assertAuthorized = async () => {
     await reporter.assertActive(lease); await assertHttpCandidateOwner(db, scope);
     const current = await readHttpRuntimeIntent(db, context.jobId);
@@ -55,7 +58,7 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
   const bundle = await resolveCloudflareStagingModules(plan.artifactRef, plan.workerSourceSha);
   if (!bundle?.moduleFiles[CANDIDATE_MODULE]) fail("CANONICAL_MODULE_REQUIRED");
   const checkpointWhere = and(eq(systemSettings.category, CHECKPOINT), eq(systemSettings.key, context.jobId));
-  const state: Record<string, any> = { jobId: context.jobId, ...scope, candidateJobId: input.candidateJobId, planDigest: input.planDigest, stage: "PREPARING", rolePrepared: false,
+  const state: Record<string, any> = { jobId: context.jobId, ...scope, operation, candidateJobId: input.candidateJobId, planDigest: input.planDigest, stage: "PREPARING", rolePrepared: false,
     providerWriteIntent: false, runtimeAcceptance: false, trafficMutation: false, candidateBaseline: plan.candidate };
   const persist = async (transaction: DrizzleDB = db) => {
     await reporter.assertActive(lease);
@@ -116,10 +119,11 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
     if (!/^[a-z0-9][a-z0-9-]{0,62}$/.test(subdomain?.subdomain ?? "")) fail("WORKERS_SUBDOMAIN_INVALID");
     const candidateOrigin = `https://${plan.candidate.workerName}.${subdomain.subdomain}.workers.dev`;
     const canaryToken = randomBytes(32).toString("hex");
-    const probe = async (path: string, method = "GET", timeoutMs = 160_000) => {
+    const probe = async (path: string, method = "GET", timeoutMs = 160_000, body?: unknown) => {
       await assertAuthorized();
       const response = await fetch(`${candidateOrigin}/_ops/application-canary/${path}`, { method,
-        headers: { "x-smartaihub-application-canary-token": canaryToken, accept: "application/json" },
+        headers: { "x-smartaihub-application-canary-token": canaryToken, accept: "application/json", ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
         redirect: "error", cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });
       let json: any; try { json = await response.json(); } catch { json = null; }
       // Raw response bodies may include application detail; only assertions
@@ -140,7 +144,12 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       state.runtimeDiagnostics = snapshots;
     };
     let directory: string | undefined, roleReceipt: unknown, runtimeReceipt: Record<string, any> | undefined, failure: unknown;
-    const cleanup: Record<string, any> = { nodeStopped: false, pythonStopped: false, candidateRestored: false, roleLoginRevoked: false, m2Preserved: false };
+    let applicationFixtures: Awaited<ReturnType<typeof createHttpApplicationAcceptanceFixtures>> | undefined;
+    const cleanup: Record<string, any> = { nodeStopped: false, pythonStopped: false, candidateRestored: false, roleLoginRevoked: false,
+      // No fixture rows means cleanup is already complete. Fixture creation
+      // flips this to false only after the transactional checkpoint records
+      // the exact synthetic user ID, so pre-fixture failures remain recoverable.
+      applicationFixturesRemoved: true, m2Preserved: false };
     try {
       await assertAuthorized();
       const relations = await planHttpApplicationRelations(db);
@@ -151,6 +160,19 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
       roleReceipt = await prepareApplicationDatabaseRole(db, { plan: rolePlan, reuse: plan.previousRuntime?.rolePlan, assertAuthorized,
         saveSecret: async (tx, secret) => { Object.assign(state, { rolePrepared: true, rolePlan, roleSecret: secret, stage: "ROLE_PREPARED" }); await persist(tx); } });
       await reporter.progress(lease, { progress: 15, stage: "NATIVE_RUNTIME_ROLE_PREPARED", measured: { role: plan.role, policiesChanged: false } });
+      if (operation === "application") {
+        const fixturePlan = plan.applicationFixture;
+        if (!fixturePlan || fixturePlan.m1JobId !== intent.plan.applicationFixture?.m1JobId ||
+            fixturePlan.evidenceDigest !== intent.plan.applicationFixture?.evidenceDigest ||
+            fixturePlan.foreignTestTenantId !== intent.plan.applicationFixture?.foreignTestTenantId) fail("APPLICATION_FIXTURE_PLAN_DENIED");
+        applicationFixtures = await createHttpApplicationAcceptanceFixtures(db, { ...scope, jobId: context.jobId }, fixturePlan, async (transaction, fixture) => {
+          Object.assign(state, { applicationFixtureCredentials: fixture, applicationFixtureUsers: fixture.users, stage: "APPLICATION_FIXTURES_CREATED" });
+          cleanup.applicationFixturesRemoved = false;
+          await persist(transaction);
+        });
+        if (applicationFixtures.primary.tenantId !== scope.tenantId || applicationFixtures.foreignTenantId !== fixturePlan.foreignTestTenantId)
+          fail("APPLICATION_FIXTURE_SCOPE_DENIED");
+      }
       const settings = { ...originalSettings, issuedAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 9 * 60_000).toISOString() };
       const environments = await loadHttpRuntimeEnvironments();
       // This immutable configuration is owned by the same encrypted canonical
@@ -223,12 +245,35 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
           fail(`${runtime.toUpperCase()}_RUNNING_RECEIPT_DENIED`);
         diagnostics[runtime] = { running: d.running, image: d.image, starts: d.starts, reservedSeconds: d.reservedSeconds, activeUntil: d.activeUntil };
       }
+      let applicationAcceptance: Record<string, any> | undefined;
+      if (operation === "application") {
+        if (!applicationFixtures) fail("APPLICATION_FIXTURE_RECEIPT_REQUIRED");
+        const result = await probe("node/application-auth", "POST", 160_000, { version: "application-auth-acceptance-v1",
+          primary: applicationFixtures.primary, foreignTenantId: applicationFixtures.foreignTenantId });
+        const receipt = result.json;
+        const checkNames = ["invalidLoginDenied", "primaryLogin", "primarySessionTenant", "authenticatedCreditRead", "authenticatedGatewayModelRouting", "crossTenantReadDenied",
+          "pythonAuthenticatedUserRead", "logout", "revokedSessionDenied"] as const;
+        const hashes = Array.isArray(receipt?.revocationHashes) ? receipt.revocationHashes : [];
+        if (result.status !== 200 || receipt?.schemaVersion !== "cloudflare-application-auth-acceptance-v1" || receipt.passed !== true ||
+            !checkNames.every(name => receipt.checks?.[name] === true) || hashes.length !== 1 || !/^[a-f0-9]{64}$/.test(hashes[0]))
+          fail("APPLICATION_AUTH_ACCEPTANCE_FAILED");
+        const revocations = await db.select({ jtiHash: revokedTokenJtis.jtiHash }).from(revokedTokenJtis).where(and(
+          inArray(revokedTokenJtis.jtiHash, hashes), gt(revokedTokenJtis.expiresAt, new Date())));
+        if (revocations.length !== 1) fail("APPLICATION_SESSION_REVOCATION_NOT_PERSISTED");
+        applicationAcceptance = { schemaVersion: receipt.schemaVersion, passed: true, checks: receipt.checks,
+          status: receipt.status, sessionRevocationPersisted: true, colo: result.colo };
+        state.applicationAcceptance = applicationAcceptance;
+        state.applicationFixtureUsers = applicationFixtures.users;
+        delete state.applicationFixtureCredentials;
+        await persist();
+      }
       runtimeReceipt = { schemaVersion: "cloudflare-native-runtime-test-receipt-v1", jobId: context.jobId, candidateJobId: input.candidateJobId,
         workerName: plan.candidate.workerName, deploymentId: deployment.id, versionId, applications: plan.candidate.applications,
         publication: plan.publication, imageReferencesVerified: true,
         role: plan.role, databaseRoleReceipt: roleReceipt, transport: plan.network.transport, configurationRef,
-        probes: results, diagnostics, runtimeBootVerified: true, authenticatedApplicationAcceptance: false, runtimeAcceptance: false,
-        pending: ["authenticated-positive-and-cross-tenant-API", "Gateway-billing-jobs-recovery", "independent-native-activation"],
+        probes: results, diagnostics, runtimeBootVerified: true, authenticatedApplicationAcceptance: operation === "application" && applicationAcceptance?.passed === true,
+        applicationAcceptance, runtimeAcceptance: false,
+        pending: ["credit-reserve-settlement", "application-job-queue-cancel-retry-recovery", "independent-native-activation"],
         trafficMutation: false, dnsMutation: false, imagePublication: false, m3Accepted: false };
     } catch (error) {
       failure = error; state.failure = safeCode(error);
@@ -269,13 +314,21 @@ export const createHttpRuntimeExecutor = (): JobExecutor => withCloudflareStagin
           cleanup.roleLoginRevoked = true;
         } catch (error) { state.roleCleanupFailure = safeCode(error); }
       } else cleanup.roleLoginRevoked = true;
+      if (operation === "application" && Array.isArray(state.applicationFixtureUsers) && state.applicationFixtureUsers.length) {
+        try {
+          await assertAuthorized();
+          const removed = await removeHttpApplicationAcceptanceFixtures(db, { ...scope, jobId: context.jobId }, state.applicationFixtureUsers);
+          cleanup.applicationFixturesRemoved = removed.removed === state.applicationFixtureUsers.length;
+          if (cleanup.applicationFixturesRemoved) { state.applicationFixtureUsers = []; delete state.applicationFixtureCredentials; }
+        } catch (error) { state.fixtureCleanupFailure = safeCode(error); }
+      }
       try { cleanup.m2Preserved = hash(m2Route(await api(routesPath))) === hash(baseline) &&
         hash((await api(`${root}/workers/scripts/smartspec-cloudflare-runtime/deployments`))?.deployments?.[0]) === hash(m2Baseline); }
       catch { cleanup.m2Preserved = false; }
       state.cleanup = cleanup; state.stage = failure ? "FAILED" : "TESTED_AND_COMPENSATED"; await persist();
       if (directory) await rm(directory, { recursive: true, force: true });
     }
-    if (!cleanup.candidateRestored || !cleanup.roleLoginRevoked || !cleanup.m2Preserved) fail("COMPENSATION_RECONCILIATION_REQUIRED");
+    if (!cleanup.candidateRestored || !cleanup.roleLoginRevoked || !cleanup.applicationFixturesRemoved || !cleanup.m2Preserved) fail("COMPENSATION_RECONCILIATION_REQUIRED");
     if (failure) throw Object.assign(Error(safeCode(failure)), { diagnosticCode: safeCode(failure), class: "permanent" });
     if (!runtimeReceipt || !cleanup.nodeStopped || !cleanup.pythonStopped) fail("CONTAINER_STOP_READBACK_REQUIRED");
     return { ...runtimeReceipt, cleanup };

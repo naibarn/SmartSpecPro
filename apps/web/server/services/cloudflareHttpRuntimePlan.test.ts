@@ -1,28 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 const state = vi.hoisted(() => ({ job: null as any, packet: null as any, target: null as any, settings: null as any,
-  module: true, verified: true, unsafe: false, oldRole: false, prior: null as any, desired: null as any }));
+  module: true, verified: true, unsafe: false, oldRole: false, prior: null as any, previousApplicationAcceptance: null as any,
+  desired: null as any, m1Fixture: null as any, m1Evidence: null as any }));
 const scope = { tenantId: "tenant-fixture", projectId: "project-fixture", actorUserId: 17 };
 const secret = "fixture-application-secret-with-at-least-32-characters";
 vi.mock("node:fs/promises", async original => ({ ...(await original<any>()), readFile: async () =>
   `JWT_SECRET=${secret}\nSECRET_KEY=${secret}\nENCRYPTION_MASTER_KEY=${secret}\nSMARTSPEC_WEB_GATEWAY_TOKEN=${secret}\n` }));
 vi.mock("./cloudflareHttpCandidatePreparation", () => ({ assertHttpCandidateOwner: async (_db: any, s: any) => {
   if (s.tenantId !== "tenant-fixture" || s.actorUserId !== 17) throw Error("OWNER_SCOPE_DENIED"); },
-  resolveHttpCandidatePackage: async (_db: any, _scope: any, baseline: any) => baseline ? ({ packet: state.packet, target: state.target, settings: state.settings }) : state.desired ?? ({ packet: state.packet, target: state.target, settings: state.settings, publishedPair: { sourceSha: state.settings.sourceSha } }) }));
+  resolveHttpCandidatePackage: async (_db: any, _scope: any, baseline: any) => baseline ? ({ packet: state.packet, target: state.target, settings: state.settings,
+    publishedPair: state.desired?.publishedPair ?? { submissionId: "baseline-pair", sourceSha: state.settings.sourceSha, verified: true } })
+    : state.desired ?? ({ packet: state.packet, target: state.target, settings: state.settings, publishedPair: { sourceSha: state.settings.sourceSha } }) }));
 vi.mock("./cloudflareHttpDatabaseNetwork", () => ({ readHttpDatabaseNetwork: async () => ({ transport: "private-vpc-websocket-v1",
   providerReadbackVerified: true, m1Preserved: true, tunnelId: "191d047e-674a-48f4-b105-b37269c2dad6", hostname: "db.smartaihub.app", port: 5433, databaseName: "fixture" }) }));
 vi.mock("./cloudflareStagingArtifactAuthority", () => ({ resolveLatestPublishedCloudflareStagingArtifact: async () => ({ artifactRef: `sha256:${"a".repeat(64)}`, sourceSha: "b".repeat(40) }),
   resolveCloudflareStagingArtifact: async (ref: string, sha: string) => ({ artifactRef: ref, sourceSha: sha }),
   resolveCloudflareStagingModules: async () => ({ moduleFiles: state.module ? { "applicationHttpCandidateEntrypoint.js": { bytes: Buffer.from("export class ApplicationDatabaseBridge {}") } } : {} }) }));
 vi.mock("./cloudflareCredentialCenter", () => ({ withCloudflareDeploymentCredential: async () => ({ status: "CONFIGURED", value: { verified: state.verified } }) }));
-vi.mock("./cloudflareHttpRuntimeContinuation", () => ({ readCompensatedHttpRuntime: async () => state.prior }));
+vi.mock("./cloudflareHttpRuntimeContinuation", () => ({ readCompensatedHttpRuntime: async () => state.prior,
+  readCompensatedHttpApplicationAcceptance: async () => state.previousApplicationAcceptance }));
 vi.mock("./cloudflareApplicationDatabaseRole", async original => ({ ...(await original<any>()), assertReusableApplicationDatabaseRole: async () => {} }));
 import { getHttpRuntimePlan } from "./cloudflareHttpRuntimePlan";
 import { HTTP_CANDIDATE_JOB, HTTP_CANDIDATE_CONTRACT } from "./cloudflareHttpCandidateContract";
+import { productionDatabaseEvidenceDigest } from "./cloudflareProductionDatabaseReconciliation";
 beforeEach(() => {
   Object.assign(process.env, { JWT_SECRET: secret, API_KEY_HMAC_SECRET: secret, LLM_ENCRYPTION_KEY: secret, CONTROL_PLANE_API_KEY: secret,
     CLOUDFLARE_PRODUCTION_EXECUTOR_ID: "fixture-executor" });
-  state.module = true; state.verified = true; state.unsafe = false; state.oldRole = false; state.prior = null; state.desired = null;
+  state.module = true; state.verified = true; state.unsafe = false; state.oldRole = false; state.prior = null; state.previousApplicationAcceptance = null;
+  state.desired = null; state.m1Fixture = null; state.m1Evidence = null;
   const namespace = httpApplicationNamespace(scope.tenantId, scope.projectId), prod = httpApplicationNamespace(scope.tenantId, scope.projectId, "production");
   const account = "a".repeat(32), image = (runtime: string) => `registry.cloudflare.com/${account}/${namespace}-${runtime}-http@sha256:${"d".repeat(64)}`;
   state.settings = { mode: "private-canary", namespace: prod, sourceSha: "c".repeat(40), issuedAt: new Date(Date.now()-1000).toISOString(),
@@ -39,14 +45,18 @@ beforeEach(() => {
         applicationId: "f".repeat(32), namespaceId: "f".repeat(32), name: `${prod}-${runtime}-http`, images: { [runtime]: image(runtime) } })),
       containerStarts: 0, runtimeConfigured: false, runtimeAcceptance: false, dnsMutation: false, trafficMutation: false, m2Preserved: true } };
 });
-function db() {
+function db(application = false) {
   let n = 0;
   const tables = ["users", "tenants", "system_settings", "worker_jobs", "credit_transactions", "model_provider_map"];
   return { execute: vi.fn(async () => {
-    n++; if (n === 1) return [state.job]; if (n === 2) return tables.map(relname => ({ relname }));
-    if (n === 3) return [{ relname: "delegated_worker_concurrency_leases_fencingToken_seq" }];
-    if (n === 5) return state.unsafe ? [{ unsafe: true }] : [];
-    if (n === 7) return state.oldRole ? [{ existing: true }] : [];
+    n++; if (n === 1) return [state.job];
+    if (application && n === 2) return [{ id: "77777777-7777-4777-8777-777777777777", fixture: state.m1Fixture, fixture_owner: 17, evidence: state.m1Evidence }];
+    if (application && n === 3) return [{ id: "88888888-8888-4888-8888-888888888888" }];
+    const offset = application ? 2 : 0;
+    if (n === 2 + offset) return tables.map(relname => ({ relname }));
+    if (n === 3 + offset) return [{ relname: "delegated_worker_concurrency_leases_fencingToken_seq" }];
+    if (n === 5 + offset || n === 6 + offset) return state.unsafe ? [{ unsafe: true }] : [];
+    if (n === 7 + offset) return state.oldRole ? [{ existing: true }] : [];
     return [];
   }) } as any;
 }
@@ -75,6 +85,38 @@ describe("non-mutating exact native runtime review", () => {
     expect(result.plan.candidate).toEqual(state.job.outputJson);
     expect(result.plan.publication).toEqual(state.desired.publishedPair);
     expect(result.plan.trafficMutation).toBe(false);
+  });
+  it("prepares application acceptance only from the exact M1 synthetic fixture and accepted isolation evidence", async () => {
+    const tables = ["users", "tenants", "system_settings", "worker_jobs", "credit_transactions", "model_provider_map"];
+    const sequences = ["delegated_worker_concurrency_leases_fencingToken_seq"], relationPolicies = [];
+    const relations = { tables, sequences, rlsBaselineDigest: (await import("node:crypto")).createHash("sha256").update(JSON.stringify(relationPolicies)).digest("hex"),
+      rlsPolicyCount: 0, rlsMutations: false };
+    state.oldRole = true;
+    const evidenceBody = { tenantId: scope.tenantId, projectId: scope.projectId, observedBy: "authorized_service_cli", tenantIsolationVerified: true,
+      fixtureOnly: true, providerMutations: 0, businessRowsRead: 0, businessWrites: 0, acceptance: "M1_ACCEPTED" };
+    state.m1Fixture = { tenantId: scope.tenantId, foreignTestTenantId: "tenant-codex-123456abcdef", acceptance: "NOT_ACCEPTED" };
+    state.m1Evidence = { ...evidenceBody, evidenceDigest: productionDatabaseEvidenceDigest(evidenceBody) };
+    state.prior = { jobId: "88888888-8888-4888-8888-888888888888", imageSourceSha: state.settings.sourceSha, workerSourceSha: "b".repeat(40),
+      rolePlan: { tables, sequences }, relationsDigest: (await import("node:crypto")).createHash("sha256").update(JSON.stringify(relations)).digest("hex"),
+      restoredBaseline: { deploymentId: "restored", versionId: state.job.outputJson.versionId } };
+    // Application acceptance reuses the exact pair already tested by the
+    // bounded boot operation; no image transition is part of this plan.
+    state.desired = { target: state.target, packet: state.packet, settings: state.settings,
+      publishedPair: { submissionId: "corrected-pair", sourceSha: state.settings.sourceSha, verified: true } };
+    state.prior.relationsDigest = (await import("node:crypto")).createHash("sha256").update(JSON.stringify(relations)).digest("hex");
+    const result = await getHttpRuntimePlan(db(true), scope, state.job.id, { operation: "application" });
+    expect(result.ready).toBe(true);
+    expect(result.plan).toMatchObject({ operation: "application", applicationAcceptance: true, fixtureCreation: true,
+      applicationFixture: { m1JobId: "77777777-7777-4777-8777-777777777777", foreignTestTenantId: state.m1Fixture.foreignTestTenantId,
+        evidenceDigest: state.m1Evidence.evidenceDigest }, trafficMutation: false, dnsMutation: false });
+    expect(result.plan.publication.sourceSha).toBe(state.settings.sourceSha);
+    expect(result.plan.testScope).toContain("authenticated-gateway-model-routing");
+    expect(result.plan.previousApplicationAcceptance).toBeNull();
+    state.previousApplicationAcceptance = { jobId: "99999999-9999-4999-8999-999999999999", planDigest: "9".repeat(64),
+      rolePlan: { tables, sequences }, relationsDigest: "8".repeat(64), imageSourceSha: state.settings.sourceSha,
+      workerSourceSha: "b".repeat(40), restoredBaseline: { deploymentId: "77777777-7777-4777-8777-777777777777", versionId: state.job.outputJson.versionId } };
+    const retry = await getHttpRuntimePlan(db(true), scope, state.job.id, { operation: "application" });
+    expect(retry.plan.previousApplicationAcceptance?.jobId).toBe(state.previousApplicationAcceptance.jobId);
   });
   it("rejects a known incompatible published image before spending another runtime attempt", async () => {
     state.settings.node.image = state.settings.node.image.replace("d".repeat(64), "d8d5b38fca643300119684f11576b4b94c5bfa6e043f75e6a3bf7f471690140f");

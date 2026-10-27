@@ -7,6 +7,8 @@ vi.mock("./cloudflareHttpRuntimePlan", () => ({ getHttpRuntimePlan: async (_db: 
   if (reviewed.artifactRef !== state.artifactRef || reviewed.workerSourceSha !== state.workerSourceSha) throw Error("HTTP_RUNTIME_ARTIFACT_CHANGED");
   return { ready: true, planDigest: state.planDigest, plan: { candidateJobId, artifactRef: state.artifactRef, workerSourceSha: state.workerSourceSha,
     previousRuntime: state.recoveryId ? { jobId: state.recoveryId } : null,
+    ...(reviewed.operation === "application" ? { operation: "application", applicationAcceptance: true, fixtureCreation: true,
+      applicationFixture: { m1JobId: "44444444-4444-4444-8444-444444444444", foreignTestTenantId: "tenant-codex-fixture", evidenceDigest: "d".repeat(64) } } : {}),
     role: "sah_cf_app_abcdef012345", maxStartsPerRuntime: 2, maxComputeSecondsPerRuntime: 1200, trafficMutation: false } };
 } }));
 vi.mock("./jobControlPlaneGateway", async original => { const actual = await original<any>(); return { ...actual, createControlPlaneJob: async (input: any) => {
@@ -47,18 +49,33 @@ suite("Owner bounded runtime admission with real canonical PostgreSQL/outbox", (
     expect(isPostgresNodeJobType(HTTP_RUNTIME_JOB)).toBe(true);
     expect(new PostgresPullJobTransportAdapter().supports({ jobType: HTTP_RUNTIME_JOB, executionClass: "long", contractVersion: HTTP_RUNTIME_CONTRACT })).toBe(true);
   });
+  it("keeps authenticated application acceptance distinct from the prior boot-test submission", async () => {
+    const input = { ...request(), operation: "application" as const };
+    expect((await service.prepareHttpRuntime(db, input)).jobId).toBe(input.submissionId);
+    const [job] = await client`SELECT * FROM worker_jobs WHERE id=${input.submissionId}`;
+    expect(job.inputJson).toMatchObject({ operation: "application", planDigest: state.planDigest });
+    expect(await client`SELECT 1 FROM worker_job_outbox WHERE "workerJobId"=${input.submissionId}`).toHaveLength(1);
+    expect((await service.readHttpRuntimeOperation(db, scope, "application"))?.jobId).toBe(input.submissionId);
+    expect(await service.readHttpRuntimeOperation(db, scope, "runtime")).toBeNull();
+    const [intent] = await client`SELECT "valueJson" FROM system_settings WHERE category='cloudflare_production_native_runtime' AND key=${input.submissionId}`;
+    expect(intent.valueJson).toMatchObject({ operation: "application", authority: "existing-candidate-bounded-application-acceptance-v1",
+      fixtureCreation: true, trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false });
+    await client`UPDATE worker_jobs SET status='failed',"finishedAt"=now() WHERE id=${input.submissionId}`;
+  });
   it("rejects foreign identity/scope and technical preflight failures before persisting an intent", async () => {
     await expect(service.prepareHttpRuntime(db, { ...request(), actorUserId: 2 })).rejects.toThrow("OWNER_SCOPE_DENIED");
     await expect(service.prepareHttpRuntime(db, { ...request(), tenantId: "foreign" })).rejects.toThrow("OWNER_SCOPE_DENIED");
     state.preflightDenied = true;
     await expect(service.prepareHttpRuntime(db, request())).rejects.toThrow("VPC_ARTIFACT_REQUIRED"); state.preflightDenied = false;
     await expect(service.prepareHttpRuntime(db, { ...request(), planDigest: "f".repeat(64) })).rejects.toThrow("REVIEWED_PLAN_CHANGED");
-    expect(await client`SELECT 1 FROM system_settings WHERE category='cloudflare_production_native_runtime'`).toHaveLength(0);
+    expect(await client`SELECT 1 FROM system_settings WHERE category='cloudflare_production_native_runtime'
+      AND COALESCE("valueJson"->>'operation','runtime')='runtime'`).toHaveLength(0);
   });
   it("reconciles rejected admission and a lost successful response into one job, one intent and one outbox", async () => {
     const input = request(); state.admissionDenied = true;
     await expect(service.prepareHttpRuntime(db, input)).rejects.toThrow("FIXTURE_ADMISSION_REJECTED");
-    expect(await client`SELECT 1 FROM system_settings WHERE category='cloudflare_production_native_runtime'`).toHaveLength(1);
+    expect(await client`SELECT 1 FROM system_settings WHERE category='cloudflare_production_native_runtime'
+      AND COALESCE("valueJson"->>'operation','runtime')='runtime'`).toHaveLength(1);
     expect(await client`SELECT 1 FROM worker_jobs WHERE id=${input.submissionId}`).toHaveLength(0);
     state.responseLost = true;
     await expect(service.prepareHttpRuntime(db, input)).rejects.toThrow("FIXTURE_RESPONSE_LOST");
@@ -74,7 +91,8 @@ suite("Owner bounded runtime admission with real canonical PostgreSQL/outbox", (
     expect(intent.valueJson).toMatchObject({ trafficMutation: false, dnsMutation: false, imagePublication: false, applicationCreation: false });
   });
   it("admits a fresh exact Owner-reviewed corrected plan once while leaving the exhausted historical job unchanged", async () => {
-    const [old] = await client`SELECT id,attempt,"maxAttempts" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB} LIMIT 1`;
+    const [old] = await client`SELECT id,attempt,"maxAttempts" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB}
+      AND COALESCE("inputJson"->>'operation','runtime')='runtime' LIMIT 1`;
     await client`UPDATE worker_jobs SET status='failed',"finishedAt"=now() WHERE id=${old.id}`;
     state.recoveryId = old.id;
     const input = request();
@@ -86,7 +104,8 @@ suite("Owner bounded runtime admission with real canonical PostgreSQL/outbox", (
     state.recoveryId = null;
   });
   it("exposes the known immutable Node incompatibility only from the matching canonical failed intent", async () => {
-    const [row] = await client`SELECT id,"inputJson" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB} ORDER BY "createdAt" DESC LIMIT 1`;
+    const [row] = await client`SELECT id,"inputJson" FROM worker_jobs WHERE "jobType"=${HTTP_RUNTIME_JOB}
+      AND COALESCE("inputJson"->>'operation','runtime')='runtime' ORDER BY "createdAt" DESC LIMIT 1`;
     const [saved] = await client`SELECT "valueJson" FROM system_settings WHERE category='cloudflare_production_native_runtime' AND key=${row.id}`;
     const plan = { ...saved.valueJson.plan, candidate: { imageSourceSha: "d".repeat(40), applications: [{ images: {
       node: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-abcdef012345-node-http@sha256:d8d5b38fca643300119684f11576b4b94c5bfa6e043f75e6a3bf7f471690140f` } }] } };
@@ -102,5 +121,19 @@ suite("Owner bounded runtime admission with real canonical PostgreSQL/outbox", (
     await client`UPDATE system_settings SET "valueJson"=${JSON.stringify({ ...value, actorUserId: 2 })}::json WHERE category='cloudflare_production_native_runtime' AND key=${row.id}`;
     expect((await service.readHttpRuntimeOperation(db, scope))?.imageRepair).toBeNull();
   });
-
+  it("serializes boot and application operations against the same Candidate", async () => {
+    state.preflightDenied = false;
+    state.recoveryId = null;
+    await client`DELETE FROM worker_job_outbox WHERE "workerJobId" IN (SELECT id FROM worker_jobs WHERE "tenantId"=${scope.tenantId}
+      AND "jobType"=${HTTP_RUNTIME_JOB} AND "inputJson"->>'projectId'=${scope.projectId})`;
+    await client`DELETE FROM worker_jobs WHERE "tenantId"=${scope.tenantId} AND "jobType"=${HTTP_RUNTIME_JOB} AND "inputJson"->>'projectId'=${scope.projectId}`;
+    await client`DELETE FROM system_settings WHERE category='cloudflare_production_native_runtime'
+      AND "valueJson"->>'tenantId'=${scope.tenantId} AND "valueJson"->>'projectId'=${scope.projectId}`;
+    const boot = request();
+    expect((await service.prepareHttpRuntime(db, boot)).jobId).toBe(boot.submissionId);
+    const acceptance = { ...request(), operation: "application" as const };
+    await expect(service.prepareHttpRuntime(db, acceptance)).rejects.toThrow("HTTP_RUNTIME_CANDIDATE_BUSY");
+    expect(await client`SELECT 1 FROM worker_jobs WHERE id=${acceptance.submissionId}`).toHaveLength(0);
+    expect(await client`SELECT 1 FROM system_settings WHERE category='cloudflare_production_native_runtime' AND key=${acceptance.submissionId}`).toHaveLength(0);
+  });
 });

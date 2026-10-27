@@ -6,7 +6,7 @@ function fixture() {
     image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-abcdef012345-node-http@sha256:${"b".repeat(64)}`,
     issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 600000).toISOString(),
     maxStarts: 1, maxComputeSeconds: 120, hardLifetimeSeconds: 120, idleTimeoutSeconds: 10, instance: "basic", networkAccess: "application-outbound" };
-  const token = "fixture-canary-" + "c".repeat(32), fetch = vi.fn(async () => Response.json({ actual: "app" }, { headers: { "set-cookie": "session=fixture" } }));
+  const token = "fixture-canary-" + "c".repeat(32), fetch = vi.fn(async (_request: Request) => Response.json({ actual: "app" }, { headers: { "set-cookie": "session=fixture" } }));
   const namespace = { idFromName: vi.fn(name => name), get: vi.fn(() => ({ fetch })) };
   const env = { CLOUDFLARE_ENVIRONMENT: "staging", CLOUDFLARE_CONTAINER_POLICY: "on-demand", CLOUDFLARE_APPLICATION_CANARY_TOKEN: token,
     CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(profile), CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify({ ...profile, runtime: "python-http", image: profile.image.replace("-node-http@", "-python-http@") }),
@@ -65,6 +65,62 @@ describe("bounded read-only API migration canary", () => {
       expect([404, 405]).toContain((await handleApplicationHttpCanary(request, f.env)).status);
     }
     expect(f.namespace.get).not.toHaveBeenCalled();
+  });
+  it("runs only the fixed synthetic login/session/tenant-isolation sequence and returns no credentials", async () => {
+    const f = fixture();
+    const revoked = new Set<string>();
+    const jwt = (jti: string) => `header.${btoa(JSON.stringify({ jti })).replaceAll("=", "").replaceAll("+", "-").replaceAll("/", "_")}.signature`;
+    f.fetch.mockImplementation(async (request: Request) => {
+      const url = new URL(request.url), cookie = request.headers.get("cookie"), auth = request.headers.get("authorization");
+      if (url.pathname === "/trpc/auth.login") {
+        const { json } = await request.json() as any;
+        if (json.email === "a@example.invalid" && json.password === "BadPassword123x") return Response.json({ error: { data: { code: "UNAUTHORIZED" } } }, { status: 401 });
+        if (json.email === "a@example.invalid" && json.password === "PrimaryPassword123") return Response.json({ result: { data: { json: { success: true } } } }, { headers: { "set-cookie": `app_session_id=${jwt("test-jti-a")}; HttpOnly` } });
+        return Response.json({ error: { data: { code: "UNAUTHORIZED" } } }, { status: 401 });
+      }
+      if (url.pathname === "/trpc/auth.me") {
+        return Response.json({ result: { data: { json: cookie === `app_session_id=${jwt("test-jti-a")}`
+          && !revoked.has(cookie) ? { id: 1001, currentTenantId: "tenant-a" } : null } } });
+      }
+      if (url.pathname === "/trpc/credits.balance") return Response.json({ result: { data: { json: { credits: 0, plan: "free" } } } });
+      if (url.pathname === "/v1/models") return Response.json({ object: "list", data: [{ id: "fixture-model", object: "model" }] });
+      if (url.pathname === "/trpc/tenantFeatureFlags.getFeatureFlags") return Response.json({ error: { data: { code: "FORBIDDEN" } } }, { status: 403 });
+      if (url.pathname === "/api/users/me") return Response.json({ id: "1001", email: "a@example.invalid" }, { status: auth === `Bearer ${jwt("test-jti-a")}` ? 200 : 401 });
+      if (url.pathname === "/trpc/auth.logout") { if (cookie) revoked.add(cookie); return Response.json({ result: { data: { json: { success: true } } } }); }
+      throw new Error("unexpected acceptance path");
+    });
+    const response = await handleApplicationHttpCanary(f.request("node/application-auth", { method: "POST", body: JSON.stringify({
+      version: "application-auth-acceptance-v1",
+      primary: { email: "a@example.invalid", password: "PrimaryPassword123", tenantId: "tenant-a", userId: 1001 },
+      foreignTenantId: "tenant-b",
+    }) }), f.env);
+    expect(response.status).toBe(200);
+    const receipt = await response.json() as any;
+    expect(receipt.passed, JSON.stringify(receipt)).toBe(true);
+    expect(receipt.checks).toEqual({ invalidLoginDenied: true, primaryLogin: true, primarySessionTenant: true,
+      authenticatedCreditRead: true, authenticatedGatewayModelRouting: true, crossTenantReadDenied: true, pythonAuthenticatedUserRead: true, logout: true,
+      revokedSessionDenied: true });
+    expect(JSON.stringify(receipt)).not.toMatch(/PrimaryPassword|test-jti-a|example\.invalid/);
+    expect(f.fetch).toHaveBeenCalledTimes(9);
+    const forwardedLogin = f.fetch.mock.calls.find(([request]) => new URL(request.url).pathname === "/trpc/auth.login")?.[0] as Request;
+    expect(forwardedLogin.headers.get("x-smartaihub-application-canary-token")).toBeNull();
+    expect(forwardedLogin.url).toBe("http://127.0.0.1:3000/trpc/auth.login");
+    const forwardedPython = f.fetch.mock.calls.find(([request]) => new URL(request.url).pathname === "/api/users/me")?.[0] as Request;
+    expect(forwardedPython.url).toBe("http://127.0.0.1:8000/api/users/me");
+    expect(JSON.stringify(receipt.revocationHashes)).toMatch(/^\["[a-f0-9]{64}"\]$/);
+  });
+  it("rejects broad or cross-scope application acceptance input before resolving a Container", async () => {
+    const f = fixture();
+    const response = await handleApplicationHttpCanary(f.request("node/application-auth", { method: "POST", body: JSON.stringify({
+      version: "application-auth-acceptance-v1", primary: { email: "a@example.invalid", password: "x", tenantId: "tenant-a", userId: 1001 },
+      foreignTenantId: "tenant-a", path: "https://example.com",
+    }) }), f.env);
+    expect(response.status).toBe(400); expect(f.namespace.get).not.toHaveBeenCalled();
+  });
+  it("rejects oversized acceptance payloads before resolving a Container", async () => {
+    const f = fixture();
+    const response = await handleApplicationHttpCanary(f.request("node/application-auth", { method: "POST", body: "x".repeat(4097) }), f.env);
+    expect(response.status).toBe(400); expect(f.namespace.get).not.toHaveBeenCalled();
   });
   it("denies an expired deployment capability before any namespace access", async () => {
     const f = fixture();f.env.CLOUDFLARE_NODE_HTTP_PROFILE = JSON.stringify({ ...f.profile, expiresAt: f.profile.issuedAt });

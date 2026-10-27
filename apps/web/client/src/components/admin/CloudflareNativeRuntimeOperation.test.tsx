@@ -5,17 +5,23 @@ import userEvent from "@testing-library/user-event";
 import { CloudflareNativeRuntimeOperation } from "./CloudflareNativeRuntimeOperation";
 vi.mock("./CloudflareImagePublication", () => ({ CloudflareImagePublication: ({ replacementForSourceSha }: any) => <p>corrected-images:{replacementForSourceSha}</p> }));
 const state = vi.hoisted(() => ({ continuation: false, ready: true, job: null as any, pending: null as any, error: null as any, mutationError: null as any,
+  appReady: false, appJob: null as any, appPending: null as any, appPreviousAcceptance: null as any,
   loading: false, busy: false, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
-  getCloudflareHttpRuntimeOperation: { useQuery: () => ({ isLoading: state.loading, error: state.error, refetch: state.refetch,
-    data: { job: state.job, pending: state.pending, preflight: state.job && !state.continuation ? null : state.ready ? { ready: true, planDigest: "a".repeat(64),
+  getCloudflareHttpRuntimeOperation: { useQuery: (input: any) => ({ isLoading: state.loading, error: state.error, refetch: state.refetch,
+      data: input.operation === "application" ? { job: state.appJob, pending: state.appPending,
+      preflight: state.appReady ? { ready: true, planDigest: "9".repeat(64), plan: { applicationFixture: { foreignTestTenantId: "tenant-codex-test" },
+        previousApplicationAcceptance: state.appPreviousAcceptance,
+        artifactRef: `sha256:${"b".repeat(64)}`, workerSourceSha: "c".repeat(40) } } : { ready: false, reason: "application acceptance not prepared" } }
+      : { job: state.job, pending: state.pending, preflight: state.job && !state.continuation ? null : state.ready ? { ready: true, planDigest: "a".repeat(64),
       plan: { previousRuntime: state.continuation ? { jobId: state.job?.jobId } : null, candidate: { workerName: "existing-candidate" }, role: "sah_cf_app_fixture", relations: { tables: ["users", "worker_jobs"], rlsPolicyCount: 17 },
         artifactRef: `sha256:${"b".repeat(64)}`, workerSourceSha: "c".repeat(40) } } : { ready: false, reason: "HTTP_RUNTIME_VPC_ARTIFACT_REQUIRED" } } }) },
   prepareCloudflareHttpRuntime: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.busy, error: state.mutationError }) },
 } } }));
 const props = { tenantId: "tenant-fixture", projectId: "project-fixture", candidateJobId: "22222222-2222-4222-8222-222222222222" };
-beforeEach(() => { sessionStorage.clear(); state.ready = true; state.continuation = false; state.job = null; state.pending = null; state.error = null; state.mutationError = null;
+beforeEach(() => { sessionStorage.clear(); state.ready = true; state.continuation = false; state.appReady = false; state.appJob = null; state.appPending = null;
+  state.appPreviousAcceptance = null; state.job = null; state.pending = null; state.error = null; state.mutationError = null;
   state.loading = false; state.busy = false; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted-runtime" }); state.refetch.mockClear(); });
 describe("bounded native runtime Owner operation", () => {
   it("reviews role, budgets, no traffic changes and incomplete full acceptance before one exact action", async () => {
@@ -40,20 +46,20 @@ describe("bounded native runtime Owner operation", () => {
     state.pending = { submissionId: "original-owner-intent", planDigest: "d".repeat(64), candidateJobId: props.candidateJobId,
       artifactRef: `sha256:${"e".repeat(64)}`, workerSourceSha: "f".repeat(40), revoked: false, expiresAt: new Date(Date.now()+60_000).toISOString() };
     render(<CloudflareNativeRuntimeOperation {...props} />);
-    expect(screen.getByRole("status")).toHaveTextContent("original-owner-intent");
+    expect(screen.getByText(/original-owner-intent/)).toHaveAttribute("role", "status");
     await userEvent.click(screen.getByRole("button"));
     expect(state.mutate.mock.calls[0][0]).toMatchObject({ submissionId: "original-owner-intent", planDigest: "d".repeat(64), workerSourceSha: "f".repeat(40) });
   });
   it("disables technical failure, revoked authority and existing canonical jobs", () => {
     state.ready = false;
     const view = render(<CloudflareNativeRuntimeOperation {...props} />);
-    expect(screen.getByRole("status")).toHaveTextContent("VPC_ARTIFACT_REQUIRED"); expect(screen.getByRole("button")).toBeDisabled();
+    expect(screen.getByText(/VPC_ARTIFACT_REQUIRED/)).toHaveAttribute("role", "status"); expect(screen.getByRole("button", { name: "Authorize and test Node/Python on Cloudflare" })).toBeDisabled();
     state.ready = true; state.pending = { revoked: true, expiresAt: new Date(Date.now()+60_000).toISOString() };
-    view.rerender(<CloudflareNativeRuntimeOperation {...props} />); expect(screen.getByRole("button")).toBeDisabled();
+    view.rerender(<CloudflareNativeRuntimeOperation {...props} />); expect(screen.getByRole("button", { name: "Authorize and test Node/Python on Cloudflare" })).toBeDisabled();
     state.pending = null; state.job = { jobId: "canonical-runtime-job", status: "running", attempt: 1, maxAttempts: 1,
       checkpoint: { stage: "NATIVE_RUNTIME_TESTING", deploymentId: "actual-deployment" } };
     view.rerender(<CloudflareNativeRuntimeOperation {...props} />);
-    expect(screen.getByRole("button")).toBeDisabled(); expect(screen.getByRole("status")).toHaveTextContent("canonical-runtime-job · running");
+    expect(screen.getByRole("button", { name: "Tracking the existing runtime test" })).toBeDisabled(); expect(screen.getByText(/canonical-runtime-job · running/)).toHaveAttribute("role", "status");
     expect(screen.getByText(/actual-deployment/)).toBeInTheDocument(); expect(state.mutate).not.toHaveBeenCalled();
   });
   it("reviews a fresh corrected plan without reusing the expired job ID and reconciles a lost response", async () => {
@@ -87,6 +93,37 @@ describe("bounded native runtime Owner operation", () => {
     state.job = { jobId: "canonical-runtime-job", status: "succeeded", attempt: 1, maxAttempts: 1, receipt: { runtimeBootVerified: true, m3Accepted: false } };
     render(<CloudflareNativeRuntimeOperation {...props} />);
     expect(screen.getByText(/M3_ACCEPTED: NO/)).toBeInTheDocument(); expect(screen.getByRole("button")).toBeDisabled();
+  });
+  it("submits one separate synthetic-only application acceptance under its own stable ID", async () => {
+    state.appReady = true;
+    const view = render(<CloudflareNativeRuntimeOperation {...props} />);
+    expect(screen.getByText(/one temporary synthetic login/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Authorize synthetic application acceptance" }));
+    expect(state.mutate).toHaveBeenCalledOnce();
+    const request = state.mutate.mock.calls[0][0];
+    expect(request).toMatchObject({ ...props, operation: "application", submissionId: expect.any(String), planDigest: "9".repeat(64) });
+    expect(request.submissionId).not.toBe(state.job?.jobId);
+    view.unmount(); render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Reconcile the same application acceptance" }));
+    expect(state.mutate.mock.calls[1][0]).toEqual(request);
+  });
+  it("shows the exact admission failure instead of silently swallowing the Owner action result", () => {
+    state.appReady = true; state.mutationError = new Error("HTTP_RUNTIME_ADMISSION_UNKNOWN");
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("HTTP_RUNTIME_ADMISSION_UNKNOWN");
+  });
+  it("offers a fresh application action only when the previous job is proven fully compensated", async () => {
+    state.appReady = true;
+    state.appJob = { jobId: "failed-application-job", status: "failed", attempt: 1, maxAttempts: 1, errorCode: "APPLICATION_AUTH_ACCEPTANCE_FAILED" };
+    state.appPreviousAcceptance = { jobId: state.appJob.jobId };
+    state.appPending = { submissionId: state.appJob.jobId, planDigest: "old-plan", candidateJobId: props.candidateJobId,
+      artifactRef: `sha256:${"e".repeat(64)}`, workerSourceSha: "f".repeat(40), revoked: false,
+      expiresAt: new Date(Date.now() + 60_000).toISOString() };
+    render(<CloudflareNativeRuntimeOperation {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "Authorize a fresh compensated application acceptance" }));
+    const request = state.mutate.mock.calls[0][0];
+    expect(request.operation).toBe("application"); expect(request.submissionId).not.toBe(state.appJob.jobId);
+    expect(request.planDigest).toBe("9".repeat(64));
   });
   it("shows the precise Node incompatibility and corrected publication action without repeating the failed runtime job", () => {
     state.job = { jobId: "canonical-runtime-job", status: "failed", attempt: 2, maxAttempts: 2, imageRepair: {

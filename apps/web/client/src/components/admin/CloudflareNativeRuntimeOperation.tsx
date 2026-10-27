@@ -20,6 +20,8 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
   });
   const state = trpc.infrastructure.getCloudflareHttpRuntimeOperation.useQuery({ tenantId, projectId, candidateJobId },
     { refetchInterval: query => ["queued", "running", "retry_wait"].includes(query.state.data?.job?.status ?? "") ? 5000 : 30_000, retry: false });
+  const applicationState = trpc.infrastructure.getCloudflareHttpRuntimeOperation.useQuery({ tenantId, projectId, candidateJobId, operation: "application" },
+    { refetchInterval: query => ["queued", "running", "retry_wait"].includes(query.state.data?.job?.status ?? "") ? 5000 : 30_000, retry: false });
   const mutation = trpc.infrastructure.prepareCloudflareHttpRuntime.useMutation();
   const preflight = state.data?.preflight, job = state.data?.job, pending = state.data?.pending;
   const continuation = job?.status === "failed" && preflight?.ready && preflight.plan.previousRuntime?.jobId === job.jobId;
@@ -30,6 +32,15 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
   // fresh submission ID and fresh Owner action instead of being disabled or
   // replaying that exhausted job's ID.
   const usablePending = pending && !pendingRevoked && !pendingExpired ? pending : null;
+  const appPreflight = applicationState.data?.preflight, appJob = applicationState.data?.job, appPending = applicationState.data?.pending;
+  const applicationContinuation = Boolean(appJob?.status === "failed" && appPreflight?.ready &&
+    appPreflight.plan.previousApplicationAcceptance?.jobId === appJob.jobId);
+  const previousFailedApplicationIntent = Boolean(applicationContinuation && appPending?.submissionId === appJob?.jobId);
+  const usableApplicationPending = appPending && !previousFailedApplicationIntent && !appPending.revoked && Date.parse(appPending.expiresAt) > Date.now() ? appPending : null;
+  const appKey = `smarthub:native-application:${tenantId}:${projectId}:${candidateJobId}`;
+  const [applicationSubmission, setApplicationSubmission] = useState<ReviewedSubmission | null>(() => {
+    try { return JSON.parse(sessionStorage.getItem(appKey) ?? "null"); } catch { return null; }
+  });
   const canReplaceExpiredIntent = Boolean(continuation && pendingExpired && !pendingRevoked && pending?.submissionId === job?.jobId);
   const submit = async () => {
     if (busy.current || job && !continuation || !preflight?.ready || pendingRevoked || pendingExpired && !canReplaceExpiredIntent) return;
@@ -43,6 +54,20 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       planDigest: request.planDigest, artifactRef: request.artifactRef, workerSourceSha: request.workerSourceSha }); }
     catch { /* Show the sanitized error; reconcile the same canonical intent. */ }
     finally { busy.current = false; void state.refetch(); }
+  };
+  const submitApplicationAcceptance = async () => {
+    if (busy.current || !appPreflight?.ready || appJob && !applicationContinuation || appPending?.revoked && !applicationContinuation ||
+        appPending && !usableApplicationPending && !applicationContinuation) return;
+    busy.current = true;
+    const request: ReviewedSubmission = usableApplicationPending ?? (applicationSubmission?.planDigest === appPreflight.planDigest ? applicationSubmission : null) ?? { submissionId: crypto.randomUUID(), planDigest: appPreflight.planDigest,
+      candidateJobId, artifactRef: appPreflight.plan.artifactRef, workerSourceSha: appPreflight.plan.workerSourceSha };
+    if (request.planDigest !== appPreflight.planDigest) { busy.current = false; return; }
+    setApplicationSubmission(request);
+    try { sessionStorage.setItem(appKey, JSON.stringify(request)); } catch { /* Server intent remains authoritative. */ }
+    try { await mutation.mutateAsync({ tenantId, projectId, candidateJobId, submissionId: request.submissionId,
+      planDigest: request.planDigest, artifactRef: request.artifactRef, workerSourceSha: request.workerSourceSha, operation: "application" }); }
+    catch { /* Retain the same ID so the canonical intent/job can be reconciled. */ }
+    finally { busy.current = false; void applicationState.refetch(); }
   };
   return <VStack as="section" gap={2} aria-label={text("Bounded native runtime test", "ทดสอบ native runtime แบบจำกัดขอบเขต")}>
     <Heading level={4}>{text("Test the existing Node/Python Containers", "ทดสอบ Container Node/Python เดิม")}</Heading>
@@ -73,6 +98,29 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       label={job.status} isPulsing={job.status === "running"} /> {job.jobId} · {job.status} · {job.attempt}/{job.maxAttempts}{job.errorCode ? ` · ${job.errorCode}` : ""}</Text> : null}
     {job?.checkpoint ? <Text>{job.checkpoint.stage}{job.checkpoint.failure ? ` · ${job.checkpoint.failure}` : ""}{job.checkpoint.deploymentId ? ` · Deployment ${job.checkpoint.deploymentId}` : ""}</Text> : null}
     {job?.receipt ? <Text>{text("Runtime boot test", "ผลทดสอบเริ่ม runtime")}: {job.receipt.runtimeBootVerified ? "VERIFIED" : "UNVERIFIED"} · M3_ACCEPTED: {job.receipt.m3Accepted ? "YES" : "NO"}</Text> : null}
+    <Heading level={4}>{text("Authenticated application acceptance", "ทดสอบการใช้งานแอปเมื่อเข้าสู่ระบบ")}</Heading>
+    <Text>{text("Runs a synthetic-only login/session test through the existing Node and Python APIs, checks cross-tenant denial, session revocation and authenticated Gateway model-catalog routing without calling a model provider. It creates one temporary synthetic login in the active tenant; no business rows, credit reservation, billing writes, real charges, DNS, or production traffic are changed. The temporary user is deleted and test role disabled afterward. Credit reserve/settlement, application job delivery/recovery and native traffic activation remain separate acceptance gates.",
+      "ทดสอบ login/session ด้วยข้อมูลสังเคราะห์ผ่าน API ของ Node/Python ตรวจการปฏิเสธข้าม tenant การเพิกถอน session และ Gateway model catalog ที่ต้อง login โดยไม่เรียก model provider ระบบสร้างบัญชีทดสอบชั่วคราวหนึ่งบัญชีใน tenant ที่เลือก โดยไม่อ่าน/เขียนข้อมูลธุรกิจ ไม่จอง credit ไม่เขียน billing ไม่เรียกเก็บเงินจริง ไม่แก้ DNS หรือ production traffic จากนั้นลบบัญชีและปิด role ทดสอบ ส่วน reserve/settle credit การส่งและกู้คืน application job และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text>
+    {appPreflight?.ready ? <>
+      <Text>{text("Application preflight READY", "ตรวจความพร้อม acceptance แล้ว")}: {appPreflight.planDigest}</Text>
+      <Text>{text("Existing M1 synthetic tenant", "Tenant สังเคราะห์ M1 เดิม")}: {appPreflight.plan.applicationFixture.foreignTestTenantId} · {text("existing Candidate", "Candidate เดิม")}: {candidateJobId}</Text>
+      {applicationContinuation ? <Text role="status">{text("The previous application attempt is terminal and fully compensated. A fresh Owner action will use the same Candidate and a new reviewed plan; the old Job and authority remain unchanged.",
+        "งาน application รอบก่อนจบและคืนค่าครบแล้ว การกดครั้งนี้จะใช้ Candidate เดิมกับแผนที่ตรวจใหม่ โดยไม่แก้ Job หรือสิทธิ์รอบเก่า")}</Text> : null}
+      <Button type="button" onClick={() => void submitApplicationAcceptance()} disabled={applicationState.isLoading || Boolean(applicationState.error) || Boolean(appJob && !applicationContinuation) ||
+        !appPreflight.ready || mutation.isPending || Boolean(appPending?.revoked && !applicationContinuation) ||
+        Boolean(appPending && Date.parse(appPending.expiresAt) <= Date.now() && !applicationContinuation) ||
+        Boolean(appPending && !usableApplicationPending && !applicationContinuation)}>
+        {mutation.isPending ? text("Submitting…", "กำลังส่งงาน…") : applicationContinuation ? text("Authorize a fresh compensated application acceptance", "อนุมัติทดสอบใหม่หลังคืนค่ารอบก่อนแล้ว")
+          : usableApplicationPending || applicationSubmission?.planDigest === appPreflight.planDigest ? text("Reconcile the same application acceptance", "ตรวจงาน application acceptance เดิม")
+          : text("Authorize synthetic application acceptance", "อนุมัติทดสอบการใช้งานด้วยข้อมูลสังเคราะห์")}
+      </Button>
+    </> : appPreflight ? <Text role="status">{appPreflight.reason}</Text> : null}
+    {appPending && !appJob ? <Text role="status">{text("Admission pending canonical reconciliation", "กำลังตรวจผลรับงานจาก canonical registry")}: {appPending.submissionId}</Text> : null}
+    {appJob ? <Text role="status"><StatusDot variant={appJob.status === "failed" ? "error" : appJob.status === "succeeded" ? "success" : "accent"}
+      label={appJob.status} isPulsing={appJob.status === "running"} /> {appJob.jobId} · {appJob.status} · {appJob.attempt}/{appJob.maxAttempts}{appJob.errorCode ? ` · ${appJob.errorCode}` : ""}</Text> : null}
+    {appJob?.receipt ? <Text>{text("Authenticated application checks", "ผลตรวจ authenticated application")}: {appJob.receipt.authenticatedApplicationAcceptance ? "PASS" : "FAIL"} ·
+      {text("M3 acceptance", "ตรวจรับ M3")}: {appJob.receipt.runtimeAcceptance ? "PASS" : "PENDING"} · {text("Credit settlement, application jobs/recovery and native activation remain separate gates", "การ settle credit, application jobs/recovery และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text> : null}
+    {applicationState.error ? <Text role="alert">{applicationState.error.message}</Text> : null}
     {job?.imageRepair ? <>
       <Text role="alert">{job.imageRepair.code} · Node {job.imageRepair.observedVersion} · {text("Required", "ต้องใช้")} {job.imageRepair.requiredVersion}</Text>
       <CloudflareImagePublication tenantId={tenantId} projectId={projectId} replacementForSourceSha={job.imageRepair.sourceSha} />
