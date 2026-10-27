@@ -8206,12 +8206,18 @@ async fn start_worker_connect_session(
     server_url: &str,
     payload: &WorkerAppRegistrationPayload,
 ) -> Result<WorkerConnectSession, String> {
-    let url = format!(
-        "{}/api/workers/connect/start",
-        server_url.trim().trim_end_matches('/')
-    );
+    let base_url = server_url.trim().trim_end_matches('/');
+    let url = format!("{base_url}/api/workers/connect/start");
+    let origin = reqwest::Url::parse(base_url)
+        .map_err(|error| format!("invalid Worker server URL: {error}"))?
+        .origin()
+        .ascii_serialization();
     let response = reqwest::Client::new()
         .post(url)
+        // This native request starts the same browser approval flow as the
+        // web client. Send the configured server origin so production CSRF
+        // protection can validate it before returning the approval URL.
+        .header(reqwest::header::ORIGIN, origin)
         .json(&json!({ "payload": payload }))
         .send()
         .await
@@ -8223,12 +8229,15 @@ async fn poll_worker_connect_session(
     server_url: &str,
     device_code: &str,
 ) -> Result<WorkerConnectPollResponse, String> {
-    let url = format!(
-        "{}/api/workers/connect/token",
-        server_url.trim().trim_end_matches('/')
-    );
+    let base_url = server_url.trim().trim_end_matches('/');
+    let url = format!("{base_url}/api/workers/connect/token");
+    let origin = reqwest::Url::parse(base_url)
+        .map_err(|error| format!("invalid Worker server URL: {error}"))?
+        .origin()
+        .ascii_serialization();
     let response = reqwest::Client::new()
         .post(url)
+        .header(reqwest::header::ORIGIN, origin)
         .json(&json!({ "deviceCode": device_code }))
         .send()
         .await
