@@ -1094,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 196,
+  "generation": 197,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -3704,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T15:27:48.162536Z",
+  "updated_at": "2026-10-27T15:39:39.536879Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4091,6 +4091,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/autonomous-path-continuation-20261027.md",
         "scope": "Delegated policy deadline is bounded by the earlier canonical approval and grant expiry; 42 focused unit tests passed. No production continuation or live acceptance asserted.",
         "source_sha": "8a10fab9cd216a7ba95036d019d0f70496994d6c",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_ECONOMIC_CONCURRENT_REPLAY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/autonomous-path-continuation-20261027.md",
+        "scope": "Unit 3/3 and isolated PostgreSQL 1/1: concurrent identical hold requests replay once and a mismatched attempt is rejected. Goal cumulative authority and dispatch are not verified.",
+        "source_sha": "52c3f921f953c160179ba923ac3d0d09fe37384d",
         "status": "PARTIAL"
       }
     ],
