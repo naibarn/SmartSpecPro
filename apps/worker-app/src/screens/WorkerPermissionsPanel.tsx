@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useWorkerAppContext } from "../app/workerContext";
 
@@ -23,18 +23,37 @@ function flattenLabels(value: unknown): string[] {
   return [...new Set(result)].slice(0, 100);
 }
 
-export function WorkerPermissionsPanel() {
+export function WorkerPermissionsPanel({ connectionKey }: { connectionKey: string | null }) {
   const { locale } = useWorkerAppContext();
   const th = locale === "th";
   const [policy, setPolicy] = useState<Policy | null>(null);
   const [error, setError] = useState("");
-  const load = () => void invoke<Policy>("worker_app_get_worker_policy").then(value => { setPolicy(value); setError(""); }).catch(value => { setPolicy(null); setError(String(value)); });
-  useEffect(() => { load(); }, []);
+  const requestId = useRef(0);
+  const load = useCallback(() => {
+    if (!connectionKey) return;
+    const current = ++requestId.current;
+    void invoke<Policy>("worker_app_get_worker_policy").then(value => {
+      if (requestId.current !== current) return;
+      setPolicy(value);
+      setError("");
+    }).catch(value => {
+      if (requestId.current !== current) return;
+      setPolicy(null);
+      setError(String(value));
+    });
+  }, [connectionKey]);
+  useEffect(() => {
+    setPolicy(null);
+    setError("");
+    if (connectionKey) load();
+    return () => { requestId.current += 1; };
+  }, [connectionKey, load]);
   const scopes = policy?.authorization?.effectiveScopes || [];
   const capabilityLabels = flattenLabels(policy?.capabilities);
   return <article className="panel wide" data-testid="worker-permissions-panel">
-    <div className="panel-heading"><div><p className="eyebrow">{th ? "สิทธิ์ของ Worker" : "Worker permissions"}</p><h3>{th ? "สิทธิ์ที่ connection นี้ใช้งานได้" : "Permissions available to this connection"}</h3></div><button type="button" className="secondary-button" onClick={load}>{th ? "ตรวจสอบใหม่" : "Refresh"}</button></div>
+    <div className="panel-heading"><div><p className="eyebrow">{th ? "สิทธิ์ของ Worker" : "Worker permissions"}</p><h3>{th ? "สิทธิ์ที่ connection นี้ใช้งานได้" : "Permissions available to this connection"}</h3></div><button type="button" className="secondary-button" onClick={load} disabled={!connectionKey}>{th ? "ตรวจสอบใหม่" : "Refresh"}</button></div>
     <p className="subtle">{th ? "อ่านจาก policy ปัจจุบันของ Server · เพิ่มสิทธิ์ด้วยการเชื่อมต่อใหม่" : "Read from the current Server policy. Reconnect to request additional scopes."}</p>
+    {!connectionKey ? <p className="subtle">{th ? "เชื่อมต่อ Worker เพื่อดูสิทธิ์" : "Connect the Worker to view its permissions."}</p> : null}
     {error ? <p className="connect-message error" role="alert">{th ? `อ่านสิทธิ์ไม่สำเร็จ: ${error}` : `Unable to read permissions: ${error}`}</p> : null}
     {policy ? <><div className="workspace-status-card"><span>{th ? "สถานะ" : "Status"}: {policy.status || "unknown"}</span><span>{th ? "Runtime" : "Runtime"}: {policy.runtimeType || "unknown"}</span><span>{th ? "ขอบเขตไฟล์" : "File scope"}: {policy.fileScopeMode || "unknown"}</span><span>{th ? "ตรวจเมื่อ" : "Checked"}: {policy.authorization?.checkedAt ? new Date(policy.authorization.checkedAt).toLocaleString(th ? "th-TH" : "en-US") : "—"}</span></div><div className="permission-list" aria-label={th ? "สิทธิ์ที่อนุญาต" : "Granted permissions"}>{scopes.length ? scopes.map(scope => <label key={scope}><input type="checkbox" checked readOnly />{scope}</label>) : <span>{th ? "ไม่พบ scope ที่ token นี้อนุญาต" : "No scopes are granted to this token"}</span>}</div>{capabilityLabels.length ? <details className="workspace-status-card"><summary>{th ? "ความสามารถของ Worker" : "Worker capabilities"}</summary><span>{capabilityLabels.join(", ")}</span></details> : null}</> : null}
   </article>;

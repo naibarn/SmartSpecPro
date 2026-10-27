@@ -2462,7 +2462,11 @@ function App() {
               </button>
             </div>
           </article>
-          <WorkerPermissionsPanel />
+          <WorkerPermissionsPanel
+            connectionKey={connectionState === "connected" && savedConnection
+              ? JSON.stringify([savedConnection.serverUrl, savedConnection.worker.id, savedConnection.connectedAt])
+              : null}
+          />
         </section>
       ) : null}
 
