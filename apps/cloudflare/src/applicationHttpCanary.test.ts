@@ -99,7 +99,7 @@ describe("bounded read-only API migration canary", () => {
       if (url.pathname === "/v1/models") return Response.json({ object: "list", data: [{ id: "fixture-model", object: "model" }] });
       if (url.pathname === "/trpc/tenantFeatureFlags.getFeatureFlags") return Response.json({ error: { data: { code: "FORBIDDEN" } } }, { status: 403 });
       if (url.pathname === "/api/users/me") return Response.json({ id: "1001", email: "a@example.invalid" }, { status: auth === `Bearer ${jwt("test-jti-a")}` ? 200 : 401 });
-      if (url.pathname === "/trpc/auth.logout") { if (cookie) revoked.add(cookie); return Response.json({ result: { data: { json: { success: true } } } }); }
+      if (url.pathname === "/trpc/auth.logout") { if (request.headers.get("origin") !== "https://staging.smartaihub.app") return Response.json({ error: "csrf" }, { status: 403 }); if (cookie) revoked.add(cookie); return Response.json({ result: { data: { json: { success: true } } } }); }
       throw new Error("unexpected acceptance path");
     });
     const response = await handleApplicationHttpCanary(f.request("node/application-auth", { method: "POST", body: JSON.stringify({

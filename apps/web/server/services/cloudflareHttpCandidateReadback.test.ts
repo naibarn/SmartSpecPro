@@ -53,4 +53,22 @@ describe("canonical native Candidate provider readback",()=>{
     const f=fixture();f.fetchImpl.mockImplementationOnce(async()=>Response.json({success:false,result:[]},{status:403}));
     await expect(verifyHttpCandidateProviderReceipt(f.input)).rejects.toThrow("READBACK_HTTP_403");
   });
+  it("reads the active deployment on page one even when older deployment history is paginated",async()=>{
+    const f=fixture(), original=f.fetchImpl.getMockImplementation()!;
+    f.fetchImpl.mockImplementation(async (url:any,init:any)=>{
+      const response=await original(url,init), body=await response.json();
+      if (new URL(String(url)).pathname.endsWith('/deployments')) body.result_info={total_pages:3};
+      return Response.json(body);
+    });
+    expect((await verifyHttpCandidateProviderReceipt(f.input)).verified).toBe(true);
+  });
+  it("rejects incomplete container inventory even when its HTTP response is 200",async()=>{
+    const f=fixture(), original=f.fetchImpl.getMockImplementation()!;
+    f.fetchImpl.mockImplementation(async (url:any,init:any)=>{
+      const response=await original(url,init), body=await response.json();
+      if (new URL(String(url)).pathname.endsWith('/applications')) body.result_info={total_pages:2};
+      return Response.json(body);
+    });
+    await expect(verifyHttpCandidateProviderReceipt(f.input)).rejects.toThrow("READBACK_INVENTORY_INCOMPLETE");
+  });
 });

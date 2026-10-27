@@ -6,7 +6,7 @@ export const HTTP_RUNTIME_CATEGORY = "cloudflare_production_native_runtime";
 const applicationCheckNames = ["invalidLoginDenied", "primaryLogin", "primarySessionTenant", "authenticatedCreditRead", "authenticatedGatewayModelRouting", "crossTenantReadDenied", "pythonAuthenticatedUserRead", "logout", "revokedSessionDenied"] as const;
 const applicationStatusNames = ["invalidLogin", "primaryLogin", "primarySession", "creditRead", "gatewayModels", "crossTenantRead", "pythonAuthenticatedRead", "logout", "gatewayModelCount", "revokedSession"] as const;
 export const httpApplicationProbeSchema = z.object({
-  http: z.number().int().min(0).max(599), colo: z.string().regex(/^[A-Z]{3}$/).optional(), schemaValid: z.boolean(), passed: z.boolean(),
+  http: z.number().int().min(0).max(599), colo: z.string().regex(/^[A-Z]{3}$/).optional(), pythonError: z.string().regex(/^APPLICATION_HTTP_[A-Z0-9_]{1,100}$/).optional(), schemaValid: z.boolean(), passed: z.boolean(),
   checks: z.object(Object.fromEntries(applicationCheckNames.map(k => [k, z.boolean().optional()])) as Record<typeof applicationCheckNames[number], z.ZodOptional<z.ZodBoolean>>),
   status: z.object(Object.fromEntries(applicationStatusNames.map(k => [k, z.number().int().min(0).max(k === "gatewayModelCount" ? 100000 : 599).optional()])) as Record<typeof applicationStatusNames[number], z.ZodOptional<z.ZodNumber>>),
   revocationHashCount: z.number().int().min(0).max(2),

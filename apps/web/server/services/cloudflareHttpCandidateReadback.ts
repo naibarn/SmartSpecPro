@@ -30,7 +30,9 @@ export async function verifyHttpCandidateProviderReceipt(input: { receipt: HttpC
       method: "GET", headers: { authorization: `Bearer ${input.token}` }, redirect: "error", cache: "no-store", signal: AbortSignal.timeout(12_000),
     });
     const body = await res.json();
-    if (!res.ok || body.success !== true || (body.result_info?.total_pages ?? 1) > 1) throw Error(`HTTP_CANDIDATE_READBACK_HTTP_${res.status}`);
+    if (!res.ok || body.success !== true) throw Error(`HTTP_CANDIDATE_READBACK_HTTP_${res.status}`);
+    const deploymentHistory = path === `${script}/deployments`;
+    if (!deploymentHistory && (body.result_info?.total_pages ?? 1) > 1) throw Error("HTTP_CANDIDATE_READBACK_INVENTORY_INCOMPLETE");
     return body.result;
   };
   const root = `/accounts/${receipt.accountRef}`, script = `${root}/workers/scripts/${receipt.workerName}`;

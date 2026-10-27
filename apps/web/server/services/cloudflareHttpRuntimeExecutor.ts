@@ -31,6 +31,7 @@ const applicationStatuses = ["invalidLogin", "primaryLogin", "primarySession", "
 /** Never persist response bodies, credentials, cookies or token hashes. */
 export function summarizeApplicationProbe(http: number, receipt: any, colo?: string) {
   return { http, ...(typeof colo === "string" && /^[A-Z]{3}$/.test(colo) ? { colo } : {}),
+    ...(typeof receipt?.pythonError === "string" && /^APPLICATION_HTTP_[A-Z0-9_]{1,100}$/.test(receipt.pythonError) ? { pythonError: receipt.pythonError } : {}),
     schemaValid: receipt?.schemaVersion === "cloudflare-application-auth-acceptance-v1",
     passed: receipt?.passed === true,
     checks: Object.fromEntries(applicationChecks.filter(k => typeof receipt?.checks?.[k] === "boolean").map(k => [k, receipt.checks[k]])),

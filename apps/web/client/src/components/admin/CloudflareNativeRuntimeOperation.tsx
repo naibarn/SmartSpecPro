@@ -270,6 +270,7 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       label={appJob.status} isPulsing={appJob.status === "running"} /> {appJob.jobId} · {appJob.status} · {appJob.attempt}/{appJob.maxAttempts}{appJob.errorCode ? ` · ${appJob.errorCode}` : ""}</Text> : null}
     {appJob?.checkpoint?.applicationProbe ? <VStack gap={1} role="status">
       <Text>{text("Application probe HTTP", "ผล HTTP ของการตรวจแอป")}: {appJob.checkpoint.applicationProbe.http}</Text>
+      {appJob.checkpoint.applicationProbe.pythonError ? <Text>{text("Python bridge", "Python bridge")}: {appJob.checkpoint.applicationProbe.pythonError}</Text> : null}
       <Text>{text("Checks that failed", "ข้อที่ตรวจไม่ผ่าน")}: {Object.entries(appJob.checkpoint.applicationProbe.checks).filter(([, passed]) => passed === false).map(([name]) => name).join(", ") || text("none recorded", "ไม่มีข้อมูลที่บันทึก")}</Text>
       <Text>{text("Safe response statuses", "รหัสผลตรวจ")}: {Object.entries(appJob.checkpoint.applicationProbe.status).map(([name, value]) => `${name}=${value}`).join(" · ") || "—"}</Text>
     </VStack> : null}

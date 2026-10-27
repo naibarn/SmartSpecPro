@@ -50,6 +50,7 @@ async function runNodeSessionAcceptance(request: Request, env: ApplicationHttpBi
   const call = async (path: string, method = "GET", body?: unknown, cookie?: string, bearer?: string, runtime: "node-http" | "python-http" = "node-http") => {
     const headers = new Headers({ accept: "application/json" });
     if (body !== undefined) headers.set("content-type", "application/json");
+    if (method === "POST" && cookie) headers.set("origin", env.CLOUDFLARE_ENVIRONMENT === "production" ? "https://smartaihub.app" : "https://staging.smartaihub.app");
     if (cookie) headers.set("cookie", cookie);
     if (bearer) headers.set("authorization", `Bearer ${bearer}`);
     const host = runtime === "node-http" ? "node.application.internal" : "python.application.internal";
@@ -95,6 +96,7 @@ async function runNodeSessionAcceptance(request: Request, env: ApplicationHttpBi
   };
   return Response.json({ schemaVersion: "cloudflare-application-auth-acceptance-v1", passed,
     checks, revocationHashes: [await sessionJtiHash(cookieA)].filter(Boolean),
+    pythonError: typeof pythonMe?.json?.error === "string" && /^APPLICATION_HTTP_[A-Z0-9_]{1,100}$/.test(pythonMe.json.error) ? pythonMe.json.error : undefined,
     status: { invalidLogin: invalid.status, primaryLogin: loginA.status, primarySession: meA?.status ?? 0,
       creditRead: balanceA?.status ?? 0, gatewayModels: gatewayModels?.status ?? 0, crossTenantRead: foreignRead?.status ?? 0,
       pythonAuthenticatedRead: pythonMe?.status ?? 0, logout: logoutA?.status ?? 0,
