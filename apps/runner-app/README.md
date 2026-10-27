@@ -95,9 +95,10 @@ interrupted project provisioning can be reconciled with
 `smartaihub-runner workspace recover`. A current worker job is reported as its
 task ID.
 Convergence remains `NOT_REPORTED` until the Runner has an authoritative local
-convergence receipt. Remove access with
-`smartaihub-runner workspace remove <workspace-id>`. The browser cannot browse
-the Runner device's filesystem, so folder selection must be confirmed locally.
+convergence receipt. The legacy `workspace remove <workspace-id>` command
+removes standalone workspace registrations; managed Roots and Project
+Workspaces retain their lifecycle records. The browser cannot browse the
+Runner device's filesystem, so folder selection must be confirmed locally.
 
 The process host invokes an approved absolute executable directly (never via a
 shell), confines the working directory to the assignment scope, and supports
