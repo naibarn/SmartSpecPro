@@ -159,12 +159,21 @@ describe("Spec 224 executable phase continuation", () => {
     });
     expect(admissions).toBe(1);
 
-    await expect(createAndBindNextPhase({
-      ...phaseInput({ provider: "claude_code" }),
-      persistence: memory.adapter,
-      controlPlane: controlPlane as never,
-      executorRegistry: { has: () => true } as never,
-    })).rejects.toMatchObject({ code: "PHASE_IDEMPOTENCY_CONFLICT" });
+    for (const change of [
+      { provider: "claude_code" },
+      { runtime: "cloud_runtime" },
+      { planId: "another-plan" },
+      { skillIds: ["skill:other"] },
+      { requestedCapabilities: ["workspace.read"] },
+      { authorizationScope: "another-scope" },
+    ]) {
+      await expect(createAndBindNextPhase({
+        ...phaseInput(change),
+        persistence: memory.adapter,
+        controlPlane: controlPlane as never,
+        executorRegistry: { has: () => true } as never,
+      })).rejects.toMatchObject({ code: "PHASE_IDEMPOTENCY_CONFLICT" });
+    }
     expect(admissions).toBe(1);
 
     const firstRecord = memory.read();
