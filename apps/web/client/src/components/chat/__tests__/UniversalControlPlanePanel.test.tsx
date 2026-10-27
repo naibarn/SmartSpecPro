@@ -336,11 +336,30 @@ describe("UniversalControlPlanePanel", () => {
       scope: "owner", snapshot: { projectionToken: "scope-token" }, nextCursor: null,
       items: [{ id: "work-1", status: "running", operatorAttention: { required: false } }],
     } });
+    mocks.observabilityDetailQuery.mockReturnValue({ ...emptyQuery, data: {
+      timeline: [
+        { id: "event-2", type: "HEARTBEAT", at: "2026-10-27T08:02:00Z" },
+        { id: "event-1", type: "QUEUED", at: "2026-10-27T08:01:00Z" },
+        { id: "event-2", type: "HEARTBEAT", at: "2026-10-27T08:02:00Z" },
+      ],
+    } });
     render(<UniversalControlPlanePanel conversationId={null} fullPage onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
     expect(mocks.observabilityQuery).toHaveBeenCalledWith({}, expect.objectContaining({ enabled: true }));
     expect(screen.getByRole("heading", { name: "taskControl.overviewAllTitle" })).toBeVisible();
-    expect(screen.getByText("taskControl.activityUnknown")).toBeVisible();
+    expect(screen.getAllByText(/taskControl.activityHeartbeat/)).toHaveLength(1);
+    expect(screen.getByText(/taskControl.activityQueued/)).toBeVisible();
+    expect(mocks.observabilityDetailQuery).toHaveBeenCalledWith(
+      { jobId: "work-1", projectionToken: "scope-token" }, expect.objectContaining({ enabled: true }),
+    );
     expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("does not turn an observation error into an empty work or activity claim", () => {
+    mocks.observabilityQuery.mockReturnValue({ ...emptyQuery, error: new Error("unavailable") });
+    render(<UniversalControlPlanePanel conversationId={null} fullPage onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    expect(screen.getByText("taskControl.overviewUnavailable")).toBeVisible();
+    expect(screen.getByText("taskControl.activityUnavailable")).toBeVisible();
+    expect(screen.queryByText("taskControl.activityUnknown")).toBeNull();
   });
 
   it("prepares first, then starts prompt development only through the explicit user action", async () => {

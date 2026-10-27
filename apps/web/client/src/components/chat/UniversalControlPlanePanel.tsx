@@ -338,14 +338,14 @@ export function UniversalControlPlanePanel({
   );
   const taskProjectionToken = taskObservabilityQuery.data?.snapshot.projectionToken;
   const conversationJobs = taskObservabilityQuery.error ? [] : taskObservabilityQuery.data?.items ?? [];
-  const latestConversationJob = conversationJobs[0];
+  const latestConversationJob = conversationJobs.find(job => ["running", "claimed", "leased", "preparing", "uploading", "publishing", "indexing"].includes(job.status)) ?? conversationJobs[0];
   const conversationTaskDetailQuery = trpc.workerJobs.observabilityDetail.useQuery(
     {
       jobId: latestConversationJob?.id ?? "",
       ...(taskProjectionToken ? { projectionToken: taskProjectionToken } : {}),
     },
     {
-      enabled: Boolean(conversationId && latestConversationJob && taskProjectionToken),
+      enabled: Boolean((conversationId || fullPage) && latestConversationJob && taskProjectionToken),
       staleTime: 15_000,
       retry: false,
     },
@@ -783,7 +783,7 @@ export function UniversalControlPlanePanel({
                 {latestConversationJob && conversationTaskDetailQuery.error ? <p>{t("taskControl.latestTaskUnavailable")}</p> : null}
                 {conversationTaskDetail ? (
                   <section className="mt-1 space-y-1">
-                    <p>Latest linked task {conversationTaskDetail.id} · {conversationTaskDetail.status} · snapshot {taskObservabilityQuery.data?.snapshot.asOf ?? "unknown"}</p>
+                    <p>Selected linked task {conversationTaskDetail.id} · {conversationTaskDetail.status} · snapshot {taskObservabilityQuery.data?.snapshot.asOf ?? "unknown"}</p>
                     <p>UI Session {conversationTaskDetail.modelSelection.uiSessionModel ?? "Unknown"} ({conversationTaskDetail.modelSelection.source}, observed {conversationTaskDetail.modelSelection.asOf ?? "unknown"})</p>
                     <p>Worker requested {conversationTaskDetail.usage.receipts.at(-1)?.model.requested ?? "Unknown"} · Provider effective {conversationTaskDetail.usage.receipts.at(-1)?.model.effective ?? "Unknown / unverified"} · External helper {conversationTaskDetail.usage.receipts.at(-1)?.model.helper ?? "Unknown / unverified"}</p>
                     <p>Measured linked tokens {conversationTaskDetail.usage.completeTotalTokens === null ? "Unknown" : conversationTaskDetail.usage.completeTotalTokens.toLocaleString()} · known subtotal {conversationTaskDetail.usage.knownSubtotalTokens.toLocaleString()} · calls {conversationTaskDetail.usage.counts.unique} · missing {conversationTaskDetail.usage.counts.missing} · quota {conversationTaskDetail.quotaCoverage.status}</p>
@@ -841,6 +841,10 @@ export function UniversalControlPlanePanel({
           hasMore={Boolean(taskObservabilityQuery.data?.nextCursor)}
           hasWorkspace={Boolean(conversationWorkspaceQuery.data?.workspace)}
           monitorHref={taskMonitorHref}
+          activity={conversationTaskDetail?.timeline ?? []}
+          activityState={taskObservabilityQuery.isLoading ? "loading" : taskObservabilityQuery.error || !taskObservabilityQuery.data ? "unavailable" : !latestConversationJob ? "no-task" : conversationTaskDetailQuery.isLoading ? "loading" : conversationTaskDetailQuery.error || !conversationTaskDetail ? "unavailable" : "ready"}
+          snapshotAt={taskObservabilityQuery.data?.snapshot.asOf ?? null}
+          developer={runnerViewMode === "developer"}
         />
       ) : null}
       <section
