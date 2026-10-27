@@ -47,6 +47,7 @@ import type { DevelopmentDependencyEvidence } from "./developmentLifecycleContra
 import { runJobSettlementHooks } from "./jobSettlementHooks";
 import { buildRunnerCancellationCommand } from "./runnerCancellationCommand";
 import { applyWorkerJobRetryDeadline, getEffectiveWorkerJobDeadlineMs, withSafeWorkerJobDeadline } from "./workerJobDeadlinePolicy";
+import { evaluateSpec224GoalDelegation, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
 
 const DEFAULT_LEASE_DURATION_MS: Record<string, number> = {
   short: 90_000,
@@ -116,10 +117,13 @@ export type TxRepo = {
     capabilitySnapshotId: string;
     capabilitySnapshotRevision: string;
     now: Date;
+    requireOnline?: boolean;
   }): Promise<boolean>;
   assertSpec224ReleaseAuthority?(input: {
     tenantId: string; actorId: number; jobId: string; attemptId: string;
-    approvalRef: string; holdRef: string; amount: number; currency: string; now: Date;
+    approvalRef: string; holdRef: string; amount: number; currency: string; now: Date; deadline?: string;
+    goal?: { goalId: string; provider: "codex" | "claude_code"; workspaceId: string; repositoryRef: string;
+      sourceSha: string; action: string; changedPaths: string[]; allowedWriteSet?: string[]; requiredCapabilities: string[] };
   }): Promise<boolean>;
   markDispatchConsumed?(input: {
     jobId: string;
@@ -758,6 +762,7 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                 const [runner] = await query
                   .select({
                     trustState: runnerNodes.trustState,
+                    status: runnerNodes.status,
                     activeSessionId: runnerNodes.activeSessionId,
                     currentSnapshotRevision:
                       runnerNodes.currentSnapshotRevision,
@@ -771,10 +776,12 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                       eq(runnerNodes.tenantId, input.tenantId)
                     )
                   )
+                  .for("update")
                   .limit(1);
                 if (
                   !runner ||
                   runner.trustState !== "trusted" ||
+                  (input.requireOnline && runner.status !== "online") ||
                   runner.activeSessionId !== input.runnerSessionId ||
                   runner.currentSnapshotRevision !==
                     input.capabilitySnapshotRevision ||
@@ -805,23 +812,42 @@ function buildDefaultRepository(): JobControlPlaneRepository {
                 return Boolean(snapshot);
               },
               async assertSpec224ReleaseAuthority(input) {
-                // Lock both source records until queue transition and outbox commit.
-                // Goal-scoped approval needs its own full scope evaluation before
-                // release; this path accepts only an approval for this exact job.
-                const approvals = await query.execute(sql`SELECT id FROM approval_requests
+                const approvals = await query.execute(sql`SELECT id, tenant_id, execution_id, requester_id, status::text AS status,
+                    current_approvals, required_approvers, expires_at AT TIME ZONE 'UTC' AS expires_at,
+                    revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload FROM approval_requests
                   WHERE id = ${input.approvalRef} AND tenant_id = ${input.tenantId}
-                    AND requester_id = ${input.actorId} AND execution_id = ${input.jobId}
+                    AND requester_id = ${input.actorId}
                     AND status::text = 'APPROVED' AND revoked_at IS NULL
                     AND (expires_at IS NULL OR expires_at > (${input.now.toISOString()}::timestamptz AT TIME ZONE 'UTC'))
                     AND required_approvers IS NOT NULL AND current_approvals >= required_approvers
                   FOR UPDATE`);
-                if (Array.from(approvals as unknown as Iterable<unknown>).length !== 1) return false;
-                const holds = await query.execute(sql`SELECT id FROM economic_holds
-                  WHERE id = ${input.holdRef} AND "tenantId" = ${input.tenantId}
-                    AND "workerJobId" = ${input.jobId} AND "attemptId" = ${input.attemptId}
-                    AND status = 'held' AND "amountMinorUnits" = ${input.amount}
-                    AND currency = ${input.currency} FOR UPDATE`);
-                return Array.from(holds as unknown as Iterable<unknown>).length === 1;
+                const approval = (approvals as unknown as Array<Record<string, any>>)[0];
+                if (!approval) return false;
+                const holds = await query.execute(sql`SELECT h.id, b."scopeType", b."scopeRef", b.status AS "budgetStatus",
+                    b."limitMinorUnits", b."heldMinorUnits", b."capturedMinorUnits", b.currency AS "budgetCurrency"
+                  FROM economic_holds h JOIN economic_budgets b ON b.id = h."budgetId" AND b."tenantId" = h."tenantId"
+                  WHERE h.id = ${input.holdRef} AND h."tenantId" = ${input.tenantId}
+                    AND h."workerJobId" = ${input.jobId} AND h."attemptId" = ${input.attemptId}
+                    AND h.status = 'held' AND h."amountMinorUnits" = ${input.amount}
+                    AND h.currency = ${input.currency} FOR UPDATE OF h, b`);
+                const hold = (holds as unknown as Array<Record<string, any>>)[0];
+                if (!hold) return false;
+                if (approval.execution_id === input.jobId && approval.payload?.kind !== "spec224_goal_delegation_grant") return true;
+                if (!input.goal || approval.execution_id !== input.goal.goalId || hold.scopeType !== "spec224_goal" ||
+                  hold.scopeRef !== `goal:${createHash("sha256").update(input.goal.goalId).digest("hex")}` ||
+                  hold.budgetStatus !== "active" || hold.budgetCurrency !== input.currency ||
+                  Number(hold.heldMinorUnits) + Number(hold.capturedMinorUnits) > Number(hold.limitMinorUnits)) return false;
+                const iso = (value: unknown) => value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
+                const authority: Spec224GoalGrantAuthorityEvidence = { approvalRef: input.approvalRef, tenantId: approval.tenant_id,
+                  executionId: approval.execution_id, requesterId: Number(approval.requester_id), status: "approved",
+                  currentApprovals: Number(approval.current_approvals), requiredApprovers: Number(approval.required_approvers),
+                  expiresAt: iso(approval.expires_at), revokedAt: iso(approval.revoked_at), payload: approval.payload ?? {} };
+                const result = evaluateSpec224GoalDelegation({ now: input.now, authority, child: { ...input.goal,
+                  tenantId: input.tenantId, actorId: input.actorId, workerJobId: input.jobId, attemptId: input.attemptId,
+                  budgetHold: { reservationRef: input.holdRef, tenantId: input.tenantId, workerJobId: input.jobId,
+                    attemptId: input.attemptId, status: "held", amountMinorUnits: input.amount, currency: input.currency } } });
+                return result.status === "READY_FOR_DELEGATION" && Number(hold.limitMinorUnits) === Number(authority.payload.budgetLimitMinorUnits) &&
+                  typeof input.deadline === "string" && Date.parse(input.deadline) <= Date.parse(result.binding.expiresAt);
               },
               async findAttemptDetails(jobId, attempt) {
                 const [row] = await query
@@ -2397,14 +2423,39 @@ export function createJobControlPlane(
         const authorized = await repo.assertRunnerAuthorizationBinding?.({
           tenantId: input.tenantId, runnerId: binding.runnerId, runnerSessionId: binding.runnerSessionId,
           capabilitySnapshotId: binding.capabilitySnapshotId, capabilitySnapshotRevision: binding.capabilitySnapshotRevision,
-          now: new Date(),
+          now: new Date(), requireOnline: Boolean(specRun.goalId),
         });
         if (!authorized) return false;
         const attempt = await repo.findAttempt(job.id, job.attempt);
+        const rootId = typeof specRun.runId === "string" ? createHash("sha256").update(`spec224-worker-job:run:${specRun.runId}`).digest("hex").slice(0, 32) : "";
+        const root = rootId ? await repo.findJob(rootId) : null;
+        const rootManifest = (root?.inputJson as Record<string, any> | undefined)?.manifest;
+        const rootRun = (root?.inputJson as Record<string, any> | undefined)?.spec224Run;
+        const execution = specRun.metadata?.spec224Execution;
+        const sourceSha = typeof specRun.baseRevision === "string" ? /^git:([a-f0-9]{40}|[a-f0-9]{64})$/i.exec(specRun.baseRevision)?.[1] : undefined;
+        const actions: Record<string, string> = { DISCOVERY: "discover", PLANNING: "plan", PLAN_VERIFY: "verify", IMPLEMENT: "implement", BUILD: "build", TEST: "test", DEBUG_REPAIR: "repair", REVIEW: "review", FIX_REVIEW_FINDINGS: "repair", VERIFY: "verify", REGRESSION: "test", FINAL_VERIFY: "verify" };
+        const goal = root && root.tenantId === input.tenantId && root.requestedByUserId === input.requestedByUserId &&
+          rootManifest?.goalId === specRun.goalId && manifest.goalId === specRun.goalId && rootManifest.provider === manifest.provider &&
+          rootManifest.runtime === manifest.runtime && rootManifest.planId === manifest.planId &&
+          rootManifest.planRevision === manifest.planRevision && isDeepStrictEqual(rootManifest.skillIds, manifest.skillIds) &&
+          isDeepStrictEqual(rootManifest.requestedCapabilities, manifest.requestedCapabilities) &&
+          rootRun?.runId === specRun.runId && rootRun.repositoryRef === specRun.repositoryRef &&
+          rootRun.baseRevision === specRun.baseRevision && rootRun.workspaceId === specRun.workspaceId &&
+          isDeepStrictEqual(rootRun.metadata?.spec224Execution, specRun.metadata?.spec224Execution) &&
+          rootRun.metadata?.spec224Workspace?.runnerId === binding.runnerId &&
+          ["codex", "claude_code"].includes(manifest.provider) &&
+          manifest.workspaceId === specRun.workspaceId && binding.workspaceRef === specRun.workspaceId &&
+          typeof specRun.repositoryRef === "string" && sourceSha && actions[specRun.state] &&
+          Array.isArray(execution?.allowedWriteSet) && execution.allowedWriteSet.every((p: unknown) => typeof p === "string") &&
+          Array.isArray(manifest.requestedCapabilities) && manifest.requestedCapabilities.every((c: unknown) => typeof c === "string")
+          ? { goalId: specRun.goalId as string, provider: manifest.provider as "codex" | "claude_code", workspaceId: specRun.workspaceId as string,
+            repositoryRef: specRun.repositoryRef as string, sourceSha, action: actions[specRun.state],
+            changedPaths: [], allowedWriteSet: execution.allowedWriteSet as string[], requiredCapabilities: manifest.requestedCapabilities as string[] }
+          : undefined;
         if (!attempt || !repo.assertSpec224ReleaseAuthority || !(await repo.assertSpec224ReleaseAuthority({
           tenantId: input.tenantId, actorId: input.requestedByUserId, jobId: job.id, attemptId: attempt.id,
           approvalRef: binding.approvalRef, holdRef: binding.budgetReservationRef,
-          amount: binding.budgetCapMinorUnits, currency: binding.currency, now: new Date(),
+          amount: binding.budgetCapMinorUnits, currency: binding.currency, now: new Date(), deadline: binding.deadline, goal,
         }))) return false;
         const updated = await repo.updateJob({ jobId: job.id, expectedStatus: "pending", expectedTenantId: input.tenantId,
           expectedRequestedByUserId: input.requestedByUserId, values: { status: "queued", statusReason: null, scheduledAt: new Date() } });

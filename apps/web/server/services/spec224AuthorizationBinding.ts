@@ -40,6 +40,7 @@ export type Spec224AuthorizationRun = {
     sourceSha: string;
     action: string;
     changedPaths: string[];
+    allowedWriteSet?: string[];
     requiredCapabilities: string[];
   };
 };
@@ -423,6 +424,7 @@ export function evaluateSpec224Authorization(
         sourceSha: scope.sourceSha,
         action: scope.action,
         changedPaths: scope.changedPaths,
+        ...(scope.allowedWriteSet ? { allowedWriteSet: scope.allowedWriteSet } : {}),
         requiredCapabilities: scope.requiredCapabilities,
         workerJobId: run.workerJobId,
         attemptId: run.attemptId,

@@ -135,6 +135,15 @@ describe("SPEC-224 Goal delegation contract", () => {
     expect(evaluateSpec224GoalDelegation(input).status).toBe("AUTHORITY_DENIED");
   });
 
+  it("accepts an explicitly delegated write pattern without accepting a wider pattern", () => {
+    const input = baseInput();
+    input.child.changedPaths = [];
+    Object.assign(input.child, { allowedWriteSet: ["apps/web/server/services/**"] });
+    expect(evaluateSpec224GoalDelegation(input).status).toBe("READY_FOR_DELEGATION");
+    Object.assign(input.child, { allowedWriteSet: ["apps/web/**"] });
+    expect(evaluateSpec224GoalDelegation(input).status).toBe("SCOPE_DENIED");
+  });
+
   it.each(["pending", "rejected", "expired", "cancelled"] as const)(
     "denies %s authority evidence",
     status => {

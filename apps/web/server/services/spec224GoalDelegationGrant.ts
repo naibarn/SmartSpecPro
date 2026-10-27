@@ -106,6 +106,7 @@ export type Spec224GoalDelegationInput = {
     sourceSha: string;
     action: string;
     changedPaths: string[];
+    allowedWriteSet?: string[];
     requiredCapabilities: string[];
     workerJobId: string;
     attemptId: string;
@@ -126,6 +127,7 @@ export type Spec224GoalDelegationBinding = {
   sourceSha: string;
   action: string;
   changedPaths: string[];
+  allowedWriteSet?: string[];
   capabilities: string[];
   workerJobId: string;
   attemptId: string;
@@ -332,6 +334,7 @@ export function evaluateSpec224GoalDelegation(
   const child = input.child;
   if (
     !Array.isArray(child.changedPaths) ||
+    (child.allowedWriteSet !== undefined && !Array.isArray(child.allowedWriteSet)) ||
     !Array.isArray(child.requiredCapabilities) ||
     child.requiredCapabilities.some(capability => !isText(capability, 160))
   ) return denial("SCOPE_DENIED", "CHILD_SCOPE_MALFORMED");
@@ -348,7 +351,7 @@ export function evaluateSpec224GoalDelegation(
     !grant.allowedActions.includes(child.action) ||
     !isText(child.workerJobId, 160) ||
     !isText(child.attemptId, 160) ||
-    (WRITE_ACTIONS.has(child.action) && child.changedPaths.length === 0) ||
+    (WRITE_ACTIONS.has(child.action) && child.changedPaths.length === 0 && !child.allowedWriteSet?.length) ||
     child.changedPaths.length > 256 ||
     child.changedPaths.some(
       path =>
@@ -356,6 +359,10 @@ export function evaluateSpec224GoalDelegation(
         !isSafeRelativePath(path) ||
         !grant.writeScope.some(pattern => globMatches(pattern, path))
     ) ||
+    (child.allowedWriteSet !== undefined && (child.allowedWriteSet.length > 256 || child.allowedWriteSet.some(
+      path => typeof path !== "string" || !isSafeGlob(path) ||
+        !grant.writeScope.some(pattern => path.includes("*") || path.includes("?") ? pattern === path : globMatches(pattern, path))
+    ))) ||
     child.requiredCapabilities.some(
       capability => !grant.capabilities.includes(capability)
     )
@@ -392,6 +399,7 @@ export function evaluateSpec224GoalDelegation(
     sourceSha: grant.sourceSha,
     action: child.action,
     changedPaths: [...child.changedPaths].sort(),
+    ...(child.allowedWriteSet ? { allowedWriteSet: [...child.allowedWriteSet].sort() } : {}),
     capabilities: [...child.requiredCapabilities].sort(),
     workerJobId: child.workerJobId,
     attemptId: child.attemptId,
