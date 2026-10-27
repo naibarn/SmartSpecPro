@@ -196,3 +196,4 @@
 {"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 200, "observed_at": "2026-10-27T16:38:21.365805Z", "provenance": "OBSERVED"}
 {"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 201, "observed_at": "2026-10-27T16:51:32.100221Z", "provenance": "OBSERVED"}
 {"changes": ["verification.evidence"], "event_type": "CURRENT_TRANSITION", "generation": 202, "observed_at": "2026-10-27T16:55:51.848324Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action"], "event_type": "CURRENT_TRANSITION", "generation": 203, "observed_at": "2026-10-27T17:27:48.472423Z", "provenance": "OBSERVED"}
