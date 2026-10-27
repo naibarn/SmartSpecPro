@@ -35,10 +35,10 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "g181 serves 7da97d1b6dea05c1bc20a57d03358262ce355c95; public Admin asset verified and web/worker healthy. Production registry contains only application job 95961f8d-309f-4037-8963-40955d4f2730 failed 1/1, its old expired intent, and no new application job; earlier browser dispatch remains unproven. g181 preserves uncertain submission IDs, avoids reuse of the failed ID and logs sanitized authenticated/intent/job stages. Owner must use the existing bounded synthetic acceptance action once after reload if no unresolved submission is shown; reconcile exact ID and monitor. Do not fabricate Owner authority or repeat M1/M2. Node 503 root cause remains unconfirmed; collect encrypted runtime diagnostics on any authorized new attempt. Gateway/billing and jobs/recovery plus native activation remain unaccepted.",
-      "checkpoint_sha": "7da97d1b6dea05c1bc20a57d03358262ce355c95",
-      "merged_main_sha": "7da97d1b6dea05c1bc20a57d03358262ce355c95",
-      "session_id": "codex-owner-admission-g181"
+      "next_action": "Production application job bede9587-d517-43a4-a239-82c7d1ff1300 admitted; outbox published once, worker claimed fenced attempt 1/1, then failed HTTP_RUNTIME_APPLICATION_AUTH_ACCEPTANCE_FAILED. Cloudflare FRA Node/Python health, SQL, and expected unauthenticated probes passed; exact application-auth result was not retained by g181. Both containers stopped, fixture removed, test role disabled, Candidate restored version 7c144824-ccef-44b4-989b-c9c634e0e27c deployment c804bbc4-ae9d-4751-83d5-ed5eb86c39e6, M2 preserved. g182 serves beef552518e67563254939cae86e33e9b5be5cef and adds sanitized encrypted application probe checkpoint for future authorized execution; original details cannot be recovered from checkpoint. Do not retry exhausted job or fabricate authority; investigate existing evidence and continue independent M3. Gateway/billing and jobs/recovery and separate native activation remain unaccepted.",
+      "checkpoint_sha": "beef552518e67563254939cae86e33e9b5be5cef",
+      "merged_main_sha": "beef552518e67563254939cae86e33e9b5be5cef",
+      "session_id": "codex-m3-bede9587"
     }
   },
   "pre_commit": {
@@ -50,18 +50,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 141,
-  "updated_at": "2026-10-27T14:19:57.414989+00:00",
+  "generation": 143,
+  "updated_at": "2026-10-27T14:39:15.534647+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "g181 serves 7da97d1b6dea05c1bc20a57d03358262ce355c95; public Admin asset verified and web/worker healthy. Production registry contains only application job 95961f8d-309f-4037-8963-40955d4f2730 failed 1/1, its old expired intent, and no new application job; earlier browser dispatch remains unproven. g181 preserves uncertain submission IDs, avoids reuse of the failed ID and logs sanitized authenticated/intent/job stages. Owner must use the existing bounded synthetic acceptance action once after reload if no unresolved submission is shown; reconcile exact ID and monitor. Do not fabricate Owner authority or repeat M1/M2. Node 503 root cause remains unconfirmed; collect encrypted runtime diagnostics on any authorized new attempt. Gateway/billing and jobs/recovery plus native activation remain unaccepted.",
+    "next_action": "Production application job bede9587-d517-43a4-a239-82c7d1ff1300 admitted; outbox published once, worker claimed fenced attempt 1/1, then failed HTTP_RUNTIME_APPLICATION_AUTH_ACCEPTANCE_FAILED. Cloudflare FRA Node/Python health, SQL, and expected unauthenticated probes passed; exact application-auth result was not retained by g181. Both containers stopped, fixture removed, test role disabled, Candidate restored version 7c144824-ccef-44b4-989b-c9c634e0e27c deployment c804bbc4-ae9d-4751-83d5-ed5eb86c39e6, M2 preserved. g182 serves beef552518e67563254939cae86e33e9b5be5cef and adds sanitized encrypted application probe checkpoint for future authorized execution; original details cannot be recovered from checkpoint. Do not retry exhausted job or fabricate authority; investigate existing evidence and continue independent M3. Gateway/billing and jobs/recovery and separate native activation remain unaccepted.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
       "No live production application-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit settlement/job parity and separately authorized native activation are verified.",
       "Application job 95961f8d-309f-4037-8963-40955d4f2730 failed 1/1 with HTTP_RUNTIME_PROBE_NODE_HEALTH_HTTP_503; cleanup and M2 verified. Exact 503 cause unconfirmed; old ledger exhaustion reproduced offline, fix and diagnostics are deployed in g180. Cloudflare observability GET-equivalent query denied 403 CF10000. No fresh application job exists at checkpoint. Fresh Owner-scoped one-attempt synthetic acceptance is required; capture exact stage and compensation. Credit/billing, jobs/recovery and native activation remain unverified."
     ],
-    "merged_main_sha": "7da97d1b6dea05c1bc20a57d03358262ce355c95",
+    "merged_main_sha": "beef552518e67563254939cae86e33e9b5be5cef",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
