@@ -32,4 +32,11 @@ suite("isolated PostgreSQL reservation settlement invariants", () => {
     const [row] = await client`SELECT payload FROM credit_reservation_snapshots WHERE reservation_id='synthetic-one'`;
     expect(row.payload).toMatchObject({ reservedAmount: 5, drawnAmount: 2, settledCallAmounts: { "same-key": 2 } });
   });
+  it("rejects malformed stored amounts before any settlement write", async () => {
+    await client`INSERT INTO credit_reservation_snapshots(reservation_id,payload,expires_at)
+      VALUES ('synthetic-invalid', ${client.json({ reservedAmount: 5, drawnAmount: null })}::jsonb, now() + interval '10 minutes')`;
+    await expect(store.drawCreditReservation("synthetic-invalid", 1, "key")).rejects.toThrow("snapshot is malformed");
+    const [row] = await client`SELECT payload FROM credit_reservation_snapshots WHERE reservation_id='synthetic-invalid'`;
+    expect(row.payload).toEqual({ reservedAmount: 5, drawnAmount: null });
+  });
 });

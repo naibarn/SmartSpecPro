@@ -63,6 +63,12 @@ export async function drawCreditReservation(
     if (!stored) throw new Error(`Reservation ${reservationId} not found or expired`);
     if (stored.status !== "active") throw new Error(`Reservation ${reservationId} is already closed`);
     const reservation = stored.payload as Record<string, any>;
+    if (!reservation || typeof reservation !== "object" || Array.isArray(reservation) ||
+        !Number.isSafeInteger(reservation.reservedAmount) || reservation.reservedAmount <= 0 ||
+        !Number.isSafeInteger(reservation.drawnAmount) || reservation.drawnAmount < 0 || reservation.drawnAmount > reservation.reservedAmount ||
+        (reservation.settledCallAmounts !== undefined && (!reservation.settledCallAmounts || typeof reservation.settledCallAmounts !== "object" || Array.isArray(reservation.settledCallAmounts)))) {
+      throw new Error("Credit reservation snapshot is malformed");
+    }
     const settledCallAmounts = reservation.settledCallAmounts ?? {};
     if (settlementKey && Object.prototype.hasOwnProperty.call(settledCallAmounts, settlementKey)) {
       if (settledCallAmounts[settlementKey] !== amount) throw new Error("Reservation settlement key conflicts with prior amount");
