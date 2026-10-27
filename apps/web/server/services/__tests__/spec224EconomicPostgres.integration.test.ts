@@ -170,6 +170,28 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
     await (db as any)?.$client?.end?.({ timeout: 1 });
   });
 
+  it("provisions one goal budget from the locked approved authority", async () => {
+    const { provisionSpec224GoalBudget } = await import("../economicProvisioningService");
+    const goalId = randomUUID(), approvalRef = randomUUID();
+    const payload = { kind: "spec224_goal_delegation_grant", grantId: randomUUID(), goalId, actorId: userId,
+      workspaceId: "workspace-test", repositoryRef: "repo:test", sourceSha: "a".repeat(40), allowedActions: ["test"],
+      writeScope: ["src/**"], capabilities: ["agent.external_task"], budgetLimitMinorUnits: 100, currency: "USD",
+      issuedAt: new Date(Date.now() - 60_000).toISOString(), expiresAt: new Date(Date.now() + 600_000).toISOString() };
+    await sql`INSERT INTO approval_requests (id, request_type, title, tenant_id, execution_id, requester_id, status, payload,
+      required_approvers, current_approvals, expires_at, created_at) VALUES (${approvalRef}, 'CUSTOM', 'Goal', ${tenantId},
+      ${goalId}, ${userId}, 'APPROVED', ${sql.json(payload)}, 1, 1, ${new Date(Date.now() + 600_000)}, NOW())`;
+    try {
+      const input = { tenantId, actorId: userId, goalId, approvalRef };
+      const [first, second] = await Promise.all([provisionSpec224GoalBudget(db, input), provisionSpec224GoalBudget(db, input)]);
+      expect(first.budgetId).toBe(second.budgetId);
+      expect([first.replayed, second.replayed].sort()).toEqual([false, true]);
+      await sql`UPDATE approval_requests SET revoked_at = NOW() WHERE id = ${approvalRef}`;
+      await expect(provisionSpec224GoalBudget(db, input)).rejects.toMatchObject({ code: "SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED" });
+    } finally {
+      await sql`DELETE FROM approval_requests WHERE id = ${approvalRef}`;
+    }
+  });
+
   it("serializes concurrent duplicate child reservations without double holding", async () => {
     const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-concurrent`, limitMinorUnits: 100 });
     const job = await createAttempt();

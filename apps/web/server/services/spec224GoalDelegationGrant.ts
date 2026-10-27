@@ -181,8 +181,7 @@ function isText(value: unknown, max = 255): value is string {
   );
 }
 
-function parseGrant(input: Spec224GoalDelegationInput, now: Date) {
-  const authority = input.authority;
+export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEvidence, now: Date) {
   const payload = authority.payload;
   const expiresAt =
     typeof payload.expiresAt === "string"
@@ -320,7 +319,7 @@ export function evaluateSpec224GoalDelegation(
   const now = input.now ?? new Date();
   if (!Number.isFinite(now.getTime()))
     return denial("AUTHORITY_DENIED", "AUTHORITY_CLOCK_INVALID");
-  const grant = parseGrant(input, now);
+  const grant = parseSpec224GoalGrant(input.authority, now);
   if (!grant)
     return denial("AUTHORITY_DENIED", "GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");
 

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   economicBudgets,
   economicEvents,
@@ -7,6 +7,7 @@ import {
   workerJobs,
 } from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
+import { parseSpec224GoalGrant, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
 
 export class EconomicProvisioningError extends Error {
   constructor(readonly code: string) {
@@ -262,5 +263,49 @@ export async function provisionEconomicBudget(
       scopeRef: budget.scopeRef, currency: budget.currency, limitMinorUnits: budget.limitMinorUnits,
       heldMinorUnits: budget.heldMinorUnits, capturedMinorUnits: budget.capturedMinorUnits,
       status: budget.status, replayed: audit.replayed || Boolean(existing) };
+  });
+}
+
+/** Resolve the approved Goal and its single cumulative budget under database locks. */
+export async function provisionSpec224GoalBudget(database: DrizzleDB, input: {
+  tenantId: string; actorId: number; goalId: string; approvalRef: string;
+}) {
+  if (!input.tenantId || !input.goalId || !input.approvalRef || !Number.isSafeInteger(input.actorId) || input.actorId <= 0)
+    throw new EconomicProvisioningError("ECONOMIC_PROVISIONING_SCOPE_REQUIRED");
+  return database.transaction(async tx => {
+    // Serialize even the first creation and all approvals for the same Goal.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`spec224-goal-budget:${input.tenantId}:${input.goalId}`}, 0))`);
+    const rows = await tx.execute(sql`SELECT id, tenant_id, execution_id, requester_id, status::text AS status,
+      current_approvals, required_approvers, expires_at AT TIME ZONE 'UTC' AS expires_at,
+      revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload
+      FROM approval_requests WHERE id = ${input.approvalRef} AND tenant_id = ${input.tenantId} FOR UPDATE`);
+    const result = rows as unknown as { rows?: Array<Record<string, any>> } | Array<Record<string, any>>;
+    const row = (Array.isArray(result) ? result : result.rows ?? [])[0];
+    const asIso = (value: unknown): string | null => value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
+    const authority: Spec224GoalGrantAuthorityEvidence | null = row ? {
+      approvalRef: String(row.id), tenantId: row.tenant_id, executionId: row.execution_id,
+      requesterId: Number(row.requester_id), status: String(row.status).toLowerCase() as Spec224GoalGrantAuthorityEvidence["status"],
+      currentApprovals: Number(row.current_approvals), requiredApprovers: Number(row.required_approvers),
+      expiresAt: asIso(row.expires_at), revokedAt: asIso(row.revoked_at),
+      payload: row.payload && typeof row.payload === "object" && !Array.isArray(row.payload) ? row.payload : {},
+    } : null;
+    const grant = authority && parseSpec224GoalGrant(authority, new Date());
+    if (!grant || grant.tenantId !== input.tenantId || grant.actorId !== input.actorId || grant.goalId !== input.goalId)
+      throw new EconomicProvisioningError("SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");
+    const scopeRef = `goal:${createHash("sha256").update(input.goalId).digest("hex")}`;
+    const [existing] = await tx.select().from(economicBudgets).where(and(
+      eq(economicBudgets.tenantId, input.tenantId), eq(economicBudgets.scopeType, "spec224_goal"),
+      eq(economicBudgets.scopeRef, scopeRef),
+    )).for("update").limit(1);
+    if (existing && (existing.status !== "active" || existing.currency !== grant.currency || existing.limitMinorUnits !== grant.budgetLimitMinorUnits))
+      throw new EconomicProvisioningError("ECONOMIC_PROVISIONING_BUDGET_SCOPE_CONFLICT");
+    if (existing) return { budgetId: existing.id, goalId: grant.goalId, replayed: true };
+    const budgetId = stableResourceId("budget", { tenantId: input.tenantId, scopeType: "spec224_goal", scopeRef, currency: grant.currency });
+    await tx.insert(economicBudgets).values({ id: budgetId, tenantId: input.tenantId, scopeType: "spec224_goal", scopeRef,
+      currency: grant.currency, limitMinorUnits: grant.budgetLimitMinorUnits, status: "active" });
+    await insertProvisioningEvent(tx, { tenantId: input.tenantId, actorId: String(input.actorId), actorType: "system_agent", policyVersion: "economic-provisioning-admin-v1" },
+      "budget.provisioned", `spec224-goal:${createHash("sha256").update(input.goalId).digest("hex")}`, budgetId,
+      { scopeType: "spec224_goal", scopeRef, currency: grant.currency, limitMinorUnits: grant.budgetLimitMinorUnits, approvalRef: input.approvalRef });
+    return { budgetId, goalId: grant.goalId, replayed: false };
   });
 }
