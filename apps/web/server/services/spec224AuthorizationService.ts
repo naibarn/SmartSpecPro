@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 
 import { and, asc, eq, or, sql } from "drizzle-orm";
 
@@ -532,6 +532,13 @@ async function readBudget(
   return mapHold(row);
 }
 
+export function spec224ReservationIntentId(tenantId: string, idempotencyKey: string): string {
+  const hex = createHash("sha256")
+    .update(JSON.stringify(["spec224-reservation-intent-v1", tenantId, idempotencyKey]))
+    .digest("hex").slice(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 function reserveInput(
   ctx: Spec224AuthorizationContext,
   loaded: LoadedRun,
@@ -559,7 +566,7 @@ function reserveInput(
     budgetId,
     idempotencyKey,
     intent: {
-      intentId: randomUUID(),
+      intentId: spec224ReservationIntentId(ctx.tenantId, idempotencyKey),
       tenantId: ctx.tenantId,
       actorId: String(ctx.actorId),
       actorType: "user",
@@ -1118,16 +1125,21 @@ export function createSpec224AuthorizationService() {
           input.currency.trim().toUpperCase()
       )
         throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_MISMATCH");
-      const hold = await reserveEconomicHold(
-        db.instance,
-        reserveInput(
+      const reservation = reserveInput(
           input.context,
           loaded,
           input.budgetId,
           input.amountMinorUnits,
           input.currency
-        )
-      );
+        );
+      // Preserve the identity of holds created before deterministic intent IDs.
+      const [previousHold] = await db.select({ intentId: economicHolds.intentId })
+        .from(economicHolds).where(and(
+          eq(economicHolds.tenantId, input.context.tenantId),
+          eq(economicHolds.idempotencyKey, reservation.idempotencyKey)
+        )).limit(1);
+      if (previousHold) reservation.intent.intentId = previousHold.intentId;
+      const hold = await reserveEconomicHold(db.instance, reservation);
       await persistAuthorizationProjection(
         input.context,
         loaded,

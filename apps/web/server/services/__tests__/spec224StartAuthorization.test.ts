@@ -24,7 +24,7 @@ vi.mock("../jobControlPlane", () => ({
   defaultJobControlPlaneRepository: {},
 }));
 
-import { createSpec224AuthorizationService, Spec224AuthorizationError } from "../spec224AuthorizationService";
+import { createSpec224AuthorizationService, Spec224AuthorizationError, spec224ReservationIntentId } from "../spec224AuthorizationService";
 import { provisionEconomicBudget } from "../economicProvisioningService";
 import { canonicalDevelopmentRunWorkerJobId } from "../spec224DevelopmentRunContracts";
 
@@ -32,6 +32,16 @@ const context = { tenantId: "tenant-a", actorId: 7, userToken: "unit-test-owner-
 const request = { context, runId: "run-a", runnerId: "runner-a" };
 const approvalRequired = { version: "spec-224-authorization-binding-v1" as const, status: "APPROVAL_REQUIRED" as const, reasons: [] };
 const budgetRequired = { ...approvalRequired, status: "BUDGET_REQUIRED" as const, references: { approvalRef: "approval-a" } };
+
+describe("Spec 224 reservation identity", () => {
+  it("is stable across retries and scoped by tenant and attempt key", () => {
+    const first = spec224ReservationIntentId("tenant-a", "run:attempt-a");
+    expect(first).toMatch(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/);
+    expect(spec224ReservationIntentId("tenant-a", "run:attempt-a")).toBe(first);
+    expect(spec224ReservationIntentId("tenant-b", "run:attempt-a")).not.toBe(first);
+    expect(spec224ReservationIntentId("tenant-a", "run:attempt-b")).not.toBe(first);
+  });
+});
 
 function createService() {
   const service = createSpec224AuthorizationService();
