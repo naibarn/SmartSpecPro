@@ -35,10 +35,10 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "g173 serves d347e1487cd05d6827ccd1f67c7cbc037886e2c8; production job 89489511-c363-4209-b9d9-f828024e5e41 reconciles successfully through readCompensatedHttpRuntime, role permissions and current relation/RLS snapshots match, and public health/Admin assets are verified. No authenticated application preflight or application job exists. Next: Owner refreshes authenticated Admin and runs the read-only application preflight once; if READY, use its existing scoped action and monitor the same canonical job. Keep M1/M2 and Linux fallback unchanged.",
-      "checkpoint_sha": "d347e1487cd05d6827ccd1f67c7cbc037886e2c8",
-      "merged_main_sha": "d347e1487cd05d6827ccd1f67c7cbc037886e2c8",
-      "session_id": "codex-runtime-reconcile-20261027"
+      "next_action": "g176 serves c1d740e77cd191a9b23e02d803b82d5bac5795b1; live read-only application preflight READY with provider readback and publication c7e2ed17-348f-4394-a342-3e91777a5c8e reconciled to successful runtime job 89489511-c363-4209-b9d9-f828024e5e41. M1/M2 preserved and no application job found at verification. Owner refreshes authenticated Admin and selects อนุมัติทดสอบการใช้งานด้วยข้อมูลสังเคราะห์ once. Reconcile and monitor the resulting same canonical job; do not recreate Candidate, publication, VPC or ingress.",
+      "checkpoint_sha": "c1d740e77cd191a9b23e02d803b82d5bac5795b1",
+      "merged_main_sha": "c1d740e77cd191a9b23e02d803b82d5bac5795b1",
+      "session_id": "codex-m3-image-reconcile-20261027"
     }
   },
   "pre_commit": {
@@ -50,19 +50,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 137,
-  "updated_at": "2026-10-27T12:13:04.594999+00:00",
+  "generation": 138,
+  "updated_at": "2026-10-27T13:11:52.276308+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "g173 serves d347e1487cd05d6827ccd1f67c7cbc037886e2c8; production job 89489511-c363-4209-b9d9-f828024e5e41 reconciles successfully through readCompensatedHttpRuntime, role permissions and current relation/RLS snapshots match, and public health/Admin assets are verified. No authenticated application preflight or application job exists. Next: Owner refreshes authenticated Admin and runs the read-only application preflight once; if READY, use its existing scoped action and monitor the same canonical job. Keep M1/M2 and Linux fallback unchanged.",
+    "next_action": "g176 serves c1d740e77cd191a9b23e02d803b82d5bac5795b1; live read-only application preflight READY with provider readback and publication c7e2ed17-348f-4394-a342-3e91777a5c8e reconciled to successful runtime job 89489511-c363-4209-b9d9-f828024e5e41. M1/M2 preserved and no application job found at verification. Owner refreshes authenticated Admin and selects อนุมัติทดสอบการใช้งานด้วยข้อมูลสังเคราะห์ once. Reconcile and monitor the resulting same canonical job; do not recreate Candidate, publication, VPC or ingress.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
       "No live production application-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit settlement/job parity and separately authorized native activation are verified.",
-      "Owner-authenticated application preflight has not yet been rerun after g171 deployment; canonical registry has zero application Jobs/intents. Use normal Owner session, do not simulate identity; after READY submit once and monitor its canonical Job.",
-      "Authenticated application preflight after g173 is not available in this CLI session; do not simulate the Owner. Exact next action is the existing read-only preflight in the Owner authenticated Admin session."
+      "Authenticated application acceptance requires the existing scoped Owner operation. No application job or live application acceptance was observed at the g176 checkpoint. Credit/billing and job/recovery parity and separate native activation remain unverified. Existing Runner heartbeat is online, but an autonomous engineering job was not verified."
     ],
-    "merged_main_sha": "d347e1487cd05d6827ccd1f67c7cbc037886e2c8",
+    "merged_main_sha": "c1d740e77cd191a9b23e02d803b82d5bac5795b1",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
