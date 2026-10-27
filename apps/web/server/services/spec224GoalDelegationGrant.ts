@@ -259,7 +259,8 @@ function parseGrant(input: Spec224GoalDelegationInput, now: Date) {
     capabilities: payload.capabilities as string[],
     budgetLimitMinorUnits: payload.budgetLimitMinorUnits as number,
     currency: (payload.currency as string).toUpperCase(),
-    expiresAt,
+    expiresAt: authority.expiresAt && Date.parse(authority.expiresAt) < Date.parse(expiresAt)
+      ? authority.expiresAt : expiresAt,
   };
 }
 

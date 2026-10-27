@@ -187,6 +187,8 @@ describe("Spec 224 owner authorization binding", () => {
       },
     };
 
+    input.run.deadline = "2026-09-23T10:50:00.000Z";
+    input.goalDelegationAuthority.expiresAt = "2026-09-23T10:20:00.000Z";
     expect(evaluateSpec224Authorization(input)).toMatchObject({
       status: "READY_FOR_LIVE",
       binding: {
@@ -194,6 +196,7 @@ describe("Spec 224 owner authorization binding", () => {
         budgetReservationRef: "hold-a",
         budgetCapMinorUnits: 500,
         workspaceRef: "workspace-a",
+        deadline: "2026-09-23T10:20:00.000Z",
       },
     });
 

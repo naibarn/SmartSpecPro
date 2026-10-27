@@ -365,6 +365,7 @@ export function evaluateSpec224Authorization(
 
   let approvalRef: string;
   let delegatedBudgetCap: number | null = null;
+  let delegatedExpiresAt: string | null = null;
   if (approval && input.goalDelegationAuthority) {
     return result("APPROVAL_REQUIRED", ["AMBIGUOUS_AUTHORITY_EVIDENCE"]);
   }
@@ -463,6 +464,7 @@ export function evaluateSpec224Authorization(
     }
     approvalRef = delegated.binding.authorityRef;
     delegatedBudgetCap = delegated.binding.budgetCapMinorUnits;
+    delegatedExpiresAt = delegated.binding.expiresAt;
   } else {
     return result("APPROVAL_REQUIRED", ["APPROVAL_NOT_FOUND"]);
   }
@@ -502,7 +504,8 @@ export function evaluateSpec224Authorization(
     budgetCapMinorUnits: budget.amountMinorUnits,
     currency: budget.currency,
     workspaceRef: run.workspaceId,
-    deadline: run.deadline,
+    deadline: delegatedExpiresAt && Date.parse(delegatedExpiresAt) < Date.parse(run.deadline)
+      ? delegatedExpiresAt : run.deadline,
   };
   return result("READY_FOR_LIVE", [], binding);
 }
