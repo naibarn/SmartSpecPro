@@ -135,6 +135,8 @@ function assertExistingHoldMatches(
   if (
     row.intentId !== input.intent.intentId ||
     row.budgetId !== input.budgetId ||
+    row.workerJobId !== input.intent.jobId ||
+    row.attemptId !== input.intent.attemptId ||
     row.amountMinorUnits !== input.intent.amount.minorUnits ||
     row.currency !== input.intent.amount.currency.trim().toUpperCase()
   ) {
@@ -196,6 +198,21 @@ export async function reserveEconomicHoldInTransaction(
     .for("update")
     .limit(1);
   if (!budget) throw new EconomicDurableError("BUDGET_NOT_FOUND");
+  // A concurrent reservation may have committed while this transaction was
+  // waiting for the budget row. Re-read under the same budget lock so replay
+  // does not race the unique hold key or consume capacity twice.
+  const [concurrentHold] = await query
+    .select()
+    .from(economicHolds)
+    .where(and(
+      eq(economicHolds.tenantId, intent.tenantId),
+      eq(economicHolds.idempotencyKey, input.idempotencyKey),
+    ))
+    .limit(1);
+  if (concurrentHold) {
+    assertExistingHoldMatches(concurrentHold, input);
+    return toHoldState(concurrentHold, true);
+  }
   if (budget.status !== "active")
     throw new EconomicDurableError("BUDGET_NOT_ACTIVE");
   if (budget.currency !== currency)
