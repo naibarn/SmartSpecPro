@@ -50,12 +50,23 @@ form.set("file", new Blob([installer], { type: "application/vnd.microsoft.portab
 
 const uploadResponse = await fetch(`${baseUrl}/api/desktop-releases/worker-app/windows/upload`, {
   method: "POST",
-  headers: { Authorization: `Bearer ${oidcPayload.value}` },
+  headers: {
+    Authorization: `Bearer ${oidcPayload.value}`,
+    "User-Agent": "Mozilla/5.0 SmartAIHub-WorkerApp-Release/1.0",
+  },
   body: form,
 });
-const uploadPayload = await uploadResponse.json().catch(() => ({}));
+const uploadResponseText = await uploadResponse.text();
+let uploadPayload = {};
+try {
+  uploadPayload = JSON.parse(uploadResponseText);
+} catch {
+  // Preserve a short server response in the error below for WAF diagnostics.
+}
 if (!uploadResponse.ok) {
-  const error = typeof uploadPayload.error === "string" ? uploadPayload.error : `HTTP ${uploadResponse.status}`;
+  const error = typeof uploadPayload.error === "string"
+    ? uploadPayload.error
+    : `${uploadResponse.status}${uploadResponseText ? `: ${uploadResponseText.slice(0, 300).replace(/\s+/g, " ").trim()}` : ""}`;
   fail(`Dashboard rejected the Worker App release: ${error}`);
 }
 
@@ -72,7 +83,10 @@ if (
 const latestUrl = new URL(`${baseUrl}/api/desktop-releases/worker-app/latest`);
 latestUrl.searchParams.set("platform", "windows");
 latestUrl.searchParams.set("architecture", "x64");
-const latestResponse = await fetch(latestUrl, { cache: "no-store" });
+const latestResponse = await fetch(latestUrl, {
+  cache: "no-store",
+  headers: { "User-Agent": "Mozilla/5.0 SmartAIHub-WorkerApp-Release/1.0" },
+});
 const latestPayload = await latestResponse.json().catch(() => ({}));
 if (!latestResponse.ok) {
   fail(`Could not verify the published Dashboard release (HTTP ${latestResponse.status}).`);
