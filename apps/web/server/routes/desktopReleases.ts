@@ -1,4 +1,5 @@
 import { Router } from "express";
+import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -47,6 +48,7 @@ import {
   syncDesktopReleasePortalNow,
   suggestDesktopReleaseBuildVersion,
 } from "../services/desktopReleaseBuildService";
+import { isAuthorizedWorkerAppWindowsReleaseWorkflow } from "../services/githubActionsWorkerReleaseAuth";
 
 const TEMP_UPLOAD_DIR = path.join(os.tmpdir(), "smartspec-desktop-releases");
 const MAX_RELEASE_FILE_SIZE_BYTES = 600 * 1024 * 1024;
@@ -188,6 +190,7 @@ type PublicDashboardRelease = {
   fileName: string;
   filePath: string;
   fileSizeBytes: number;
+  fileSha256?: string;
   updatedAt: string;
   downloadUrl: string;
   installerFormat?: "exe" | "msi" | "dmg" | "pkg" | "zip";
@@ -454,6 +457,7 @@ function serializeWorkerAppRelease(
     version: release.version,
     fileName: release.fileName,
     fileSizeBytes: release.fileSizeBytes,
+    fileSha256: release.fileSha256,
     updatedAt: release.updatedAt,
     // Self-update must pass through the target-aware route so the native
     // client can validate both the origin and the platform/architecture.
@@ -561,6 +565,99 @@ export function createDesktopReleaseRouter(): Router {
       fileSize: MAX_RELEASE_FILE_SIZE_BYTES,
     },
   });
+
+  router.post(
+    "/worker-app/windows/upload",
+    async (req, res, next) => {
+      const authorization = req.headers.authorization;
+      const token = typeof authorization === "string"
+        ? authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? ""
+        : "";
+      if (!(await isAuthorizedWorkerAppWindowsReleaseWorkflow(token))) {
+        res.status(401).json({ error: "worker_app_release_workflow_unauthorized" });
+        return;
+      }
+      next();
+    },
+    upload.single("file") as any,
+    async (req, res) => {
+      const file = (req as any).file as any | undefined;
+      try {
+        if (!file?.path) {
+          res.status(400).json({ error: "desktop_release_file_missing" });
+          return;
+        }
+
+        const version = typeof req.body?.version === "string" ? req.body.version.trim() : "";
+        if (!/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/.test(version)) {
+          res.status(400).json({ error: "worker_app_release_version_invalid" });
+          return;
+        }
+
+        const expectedFileName = `smart-ai-hub-worker-app-${version}-x64-setup.exe`;
+        if (file.originalname !== expectedFileName || file.size < 2) {
+          res.status(400).json({ error: "worker_app_release_file_invalid" });
+          return;
+        }
+        const fileHandle = await fs.promises.open(file.path, "r");
+        const signature = Buffer.alloc(2);
+        try {
+          await fileHandle.read(signature, 0, signature.length, 0);
+        } finally {
+          await fileHandle.close();
+        }
+        if (signature[0] !== 0x4d || signature[1] !== 0x5a) {
+          res.status(400).json({ error: "worker_app_release_not_windows_installer" });
+          return;
+        }
+
+        const fileSha256 = await new Promise<string>((resolve, reject) => {
+          const hash = crypto.createHash("sha256");
+          const stream = fs.createReadStream(file.path);
+          stream.on("data", (chunk) => hash.update(chunk));
+          stream.on("error", reject);
+          stream.on("end", () => resolve(hash.digest("hex")));
+        });
+
+        const catalog = await listDesktopReleaseCatalog({ includeUnpublished: true, platform: "windows" });
+        const existing = catalog.releases.find((release) => release.version === version);
+        if (existing) {
+          if (existing.fileName === expectedFileName && existing.fileSha256 === fileSha256 && existing.isPublished) {
+            res.status(200).json({ release: existing, idempotent: true });
+            return;
+          }
+          res.status(409).json({ error: "worker_app_release_version_already_exists" });
+          return;
+        }
+
+        const latest = await getLatestWorkerAppReleaseForTarget({ platform: "windows", architecture: "x64" });
+        if (latest && compareDesktopReleaseVersions(version, latest.version) <= 0) {
+          res.status(409).json({ error: "worker_app_release_version_not_newer" });
+          return;
+        }
+
+        const release = await persistDesktopReleaseUpload({
+          version,
+          platform: "windows",
+          channel: "stable",
+          installerFormat: "exe",
+          releaseNotes: typeof req.body?.releaseNotes === "string" ? req.body.releaseNotes : null,
+          publish: true,
+          uploadedByUserId: null,
+          filePath: file.path,
+          fileName: expectedFileName,
+          contentType: "application/vnd.microsoft.portable-executable",
+        });
+        res.status(201).json({ release });
+      } catch (error) {
+        res.status(400).json({
+          error: error instanceof Error ? error.message : "worker_app_release_publish_failed",
+        });
+      } finally {
+        if (file?.path) cleanupUploadTempFile(req);
+      }
+    },
+  );
 
   router.get("/", async (req, res) => {
     try {

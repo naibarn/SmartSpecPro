@@ -2,6 +2,7 @@ export type WorkerAppRelease = {
   version: string;
   fileName: string;
   fileSizeBytes: number;
+  fileSha256?: string;
   updatedAt: string;
   downloadUrl: string;
   platform?: "windows" | "macos" | "linux";

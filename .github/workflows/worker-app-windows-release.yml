@@ -7,9 +7,14 @@ on:
         description: "Worker App version (leave empty to use the next patch version)"
         required: false
         type: string
+      release_notes:
+        description: "Optional release notes shown in the Dashboard"
+        required: false
+        type: string
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   build-windows-worker-app:
@@ -42,33 +47,45 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and sign Worker App installer
+      - name: Build Worker App installer
+        id: build
         env:
           RELEASE_VERSION: ${{ inputs.release_version }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         shell: pwsh
         run: |
-          if (-not $env:TAURI_SIGNING_PRIVATE_KEY) { throw "TAURI_SIGNING_PRIVATE_KEY is required for a production Worker App release" }
+          $ErrorActionPreference = "Stop"
           if ($env:RELEASE_VERSION) {
             npm --workspace apps/worker-app run release:windows -- --release-version $env:RELEASE_VERSION --skip-frontend-typecheck
           } else {
             npm --workspace apps/worker-app run release:windows -- --skip-frontend-typecheck
           }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = node -p "require('./apps/worker-app/package.json').version"
+          "release_version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Verify installer artifact
+        id: verify
+        env:
+          RELEASE_VERSION: ${{ steps.build.outputs.release_version }}
         shell: pwsh
         run: |
-          $installer = Get-ChildItem apps/web/client/public/releases -Filter "smart-ai-hub-worker-app-*-x64-setup.exe" | Sort-Object LastWriteTime | Select-Object -Last 1
-          if (-not $installer -or $installer.Length -le 0) { throw "Worker App installer was not produced" }
-          $bytes = [System.IO.File]::ReadAllBytes($installer.FullName)
-          if ($bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw "Worker App installer is not a Windows PE executable" }
-          Get-FileHash $installer.FullName -Algorithm SHA256
+          $installerPath = "apps/web/client/public/releases/smart-ai-hub-worker-app-$env:RELEASE_VERSION-x64-setup.exe"
+          if (-not (Test-Path $installerPath)) { throw "Expected installer was not produced: $installerPath" }
+          $bytes = [System.IO.File]::ReadAllBytes($installerPath)
+          if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4d -or $bytes[1] -ne 0x5a) { throw "Worker App installer is not a Windows PE executable" }
+          Get-FileHash $installerPath -Algorithm SHA256
 
-      - name: Upload signed Worker App installer
+      - name: Preserve installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: smart-ai-hub-worker-app-windows-x64
-          path: apps/web/client/public/releases/smart-ai-hub-worker-app-*-x64-setup.exe
+          path: apps/web/client/public/releases/smart-ai-hub-worker-app-${{ steps.build.outputs.release_version }}-x64-setup.exe
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish installer to Dashboard
+        env:
+          RELEASE_VERSION: ${{ steps.build.outputs.release_version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          SMARTAIHUB_PUBLIC_URL: https://smartaihub.app
+        run: node scripts/publish-worker-app-windows-release.mjs
