@@ -336,7 +336,8 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
     expect(entries.filter((entry: any) => entry.idempotencyKey === "reserve:hold-main-001")).toHaveLength(1);
     expect(entries.filter((entry: any) => entry.idempotencyKey === "release:release-main-01")).toHaveLength(1);
     const auditEvents = await db.select().from(economicSchema.economicEvents).where(
-      eq(economicSchema.economicEvents.tenantId, tenantId),
+      and(eq(economicSchema.economicEvents.tenantId, tenantId),
+        drizzleSql`${economicSchema.economicEvents.payloadJson}->>'holdId' = ${reserved.id}`),
     );
     expect(auditEvents.map((event: any) => event.eventType).sort()).toEqual(["hold_released", "hold_reserved"]);
     expect(auditEvents.every((event: any) => event.actorId === String(userId))).toBe(true);
@@ -555,7 +556,7 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
   });
 
   it("serializes concurrent captures and prevents a second full settlement", async () => {
-    const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-concurrent`, limitMinorUnits: 600 });
+    const budget = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-capture-concurrent`, limitMinorUnits: 600 });
     const job = await createAttempt();
     const intent = await makeIntent(job, 600, "reserve-concurrent-01");
     const hold = await reserveEconomicHold(db, {
