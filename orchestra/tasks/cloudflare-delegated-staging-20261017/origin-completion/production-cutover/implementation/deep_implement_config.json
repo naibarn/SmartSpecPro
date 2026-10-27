@@ -35,10 +35,10 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Verified release g167 from SHA 753a893c9ae3109b113b92124360bc168e0d6fb9 is live: Linux web and Node worker healthy, health 200, anonymous diagnostics 403, public Admin bundle 200 and contains the synthetic application acceptance controls. Refresh the authenticated Admin page and inspect the operation preflight. If READY, the Owner submits exactly “Authorize synthetic application acceptance”; then reconcile and monitor that same canonical job through cleanup. If not READY, fix the exact reported prerequisite without repeating M1/M2/boot. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.",
+      "next_action": "g170 (origin/main SHA 95c6a03b32aea6e36807116c998315a56129565c) is deployed and Admin bundle verified. The UI contains current progress, exact sanitized application preflight, read-only Recheck, canonical job state, and shows Owner submission only when READY. No authenticated Owner query was observed after deployment; browser sidecar is unavailable (computer-use reported sidecar exited), and logs provide no matching preflight line, so the failed stage is UNKNOWN/NOT_OBSERVED. Do not guess or impersonate. Next: use the existing authenticated Owner Admin session to click “Recheck application preflight” (read-only) and capture its exact sanitized code/stage. Repair only that reported prerequisite. If READY, submit exactly “Authorize synthetic application acceptance” once, then reconcile/monitor that same canonical job through cleanup. M1/M2, on-demand Containers, accepted Cloudflare ingress and Linux fallback remain unchanged. Gateway/Credit/Billing, jobs/recovery and separate native activation remain NOT_ACCEPTED.",
       "checkpoint_sha": "f1e24b294c6dcaa7137615ca5afdea2c926173bb",
-      "merged_main_sha": "dcb23c005290f0c87df42df15c3fd741cb332757",
-      "session_id": "codex-m3-application-acceptance-20261027"
+      "merged_main_sha": "95c6a03b32aea6e36807116c998315a56129565c",
+      "session_id": "codex-m3-preflight-reconcile-20261027"
     }
   },
   "pre_commit": {
@@ -50,18 +50,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 130,
-  "updated_at": "2026-10-27T04:28:17.584052+00:00",
+  "generation": 131,
+  "updated_at": "2026-10-27T08:07:15.048256+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Verified release g167 from SHA 753a893c9ae3109b113b92124360bc168e0d6fb9 is live: Linux web and Node worker healthy, health 200, anonymous diagnostics 403, public Admin bundle 200 and contains the synthetic application acceptance controls. Refresh the authenticated Admin page and inspect the operation preflight. If READY, the Owner submits exactly “Authorize synthetic application acceptance”; then reconcile and monitor that same canonical job through cleanup. If not READY, fix the exact reported prerequisite without repeating M1/M2/boot. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.",
+    "next_action": "g170 (origin/main SHA 95c6a03b32aea6e36807116c998315a56129565c) is deployed and Admin bundle verified. The UI contains current progress, exact sanitized application preflight, read-only Recheck, canonical job state, and shows Owner submission only when READY. No authenticated Owner query was observed after deployment; browser sidecar is unavailable (computer-use reported sidecar exited), and logs provide no matching preflight line, so the failed stage is UNKNOWN/NOT_OBSERVED. Do not guess or impersonate. Next: use the existing authenticated Owner Admin session to click “Recheck application preflight” (read-only) and capture its exact sanitized code/stage. Repair only that reported prerequisite. If READY, submit exactly “Authorize synthetic application acceptance” once, then reconcile/monitor that same canonical job through cleanup. M1/M2, on-demand Containers, accepted Cloudflare ingress and Linux fallback remain unchanged. Gateway/Credit/Billing, jobs/recovery and separate native activation remain NOT_ACCEPTED.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
       "No live production application-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit settlement/job parity and separately authorized native activation are verified.",
-      "Release g167 is live and healthy, but this session has no authenticated Owner browser session, so live app preflight and canonical application job were not observed or submitted. No production acceptance receipt exists yet; M3 and final migration remain NOT_ACCEPTED."
+      "g170 is live from 95c6a03b32aea6e36807116c998315a56129565c (artifact sha256:f85afdd92645dc15a151f5ae5cf99e01d5633224f24eab10fe99d384df48b00; AdminSettings-CoWxkfRh.js sha256:6a64e09a2d737d639052a6d0892dbe9e07e1d038a5f0b1165003f2e6e32403b2). Health/Admin and bundle checks pass, but no authenticated application preflight query/job evidence was observed after deployment. The Owner browser session is not accessible here: computer-use capabilities failed because the sidecar exited; do not infer or impersonate the Owner. Next: in the existing authenticated Admin session select Deployment targets and click the read-only “Recheck application preflight”; record the exact sanitized stage/reason. If READY, submit once via the existing Owner workflow and monitor the same canonical Job. No application job/acceptance receipt is verified yet; M3/final migration remain NOT_ACCEPTED."
     ],
-    "merged_main_sha": "dcb23c005290f0c87df42df15c3fd741cb332757",
+    "merged_main_sha": "95c6a03b32aea6e36807116c998315a56129565c",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
