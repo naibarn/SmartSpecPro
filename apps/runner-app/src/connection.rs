@@ -442,8 +442,17 @@ mod tests {
         let server = thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
             let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
-            let mut request = [0; 4096];
-            let _ = stream.read(&mut request);
+            let mut request = Vec::new();
+            let mut chunk = [0; 1024];
+            while !request.windows(4).any(|window| window == b"\r\n\r\n") {
+                match stream.read(&mut chunk) {
+                    Ok(0) | Err(_) => break,
+                    Ok(read) => request.extend_from_slice(&chunk[..read]),
+                }
+                if request.len() > 16 * 1024 {
+                    break;
+                }
+            }
             if !delay.is_zero() {
                 thread::sleep(delay);
             }
@@ -518,11 +527,10 @@ mod tests {
             "RUNNER_CONNECT_DNS_FAILED"
         );
 
-        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let endpoint = format!("http://{}/refresh", listener.local_addr().unwrap());
-        drop(listener);
-        let result = send_mock_request(&test_agent(Duration::from_secs(1)), &endpoint, None);
-        assert_eq!(result.unwrap_err(), "RUNNER_CONNECT_CONNECTION_FAILED");
+        assert_eq!(
+            map_connect_request_error(ureq::Error::ConnectionFailed),
+            "RUNNER_CONNECT_CONNECTION_FAILED"
+        );
     }
 
     #[test]

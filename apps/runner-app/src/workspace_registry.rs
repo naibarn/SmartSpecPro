@@ -326,16 +326,23 @@ mod tests {
         fs::create_dir(&existing).unwrap();
         fs::write(existing.join("notes.txt"), "keep").unwrap();
         let junction = root.join("alias");
+        let ps_literal = |path: &Path| {
+            format!("'{}'", path.to_string_lossy().replace('\'', "''"))
+        };
         let command = format!(
-            "mklink /J \"{}\" \"{}\"",
-            junction.display(),
-            existing.display()
+            "New-Item -ItemType Junction -Path {} -Target {} | Out-Null",
+            ps_literal(&junction),
+            ps_literal(&existing)
         );
-        let status = std::process::Command::new("cmd.exe")
-            .args(["/C", &command])
-            .status()
+        let output = std::process::Command::new("pwsh.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &command])
+            .output()
             .unwrap();
-        assert!(status.success(), "failed to create test junction");
+        assert!(
+            output.status.success(),
+            "failed to create test junction: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
 
         let config = RunnerConfig {
             data_root: temp.path().join("runner-data").to_string_lossy().into_owned(),
