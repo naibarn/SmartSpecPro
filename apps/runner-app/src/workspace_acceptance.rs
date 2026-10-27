@@ -172,8 +172,13 @@ pub fn run(config: &RunnerConfig, app_version: &str, publication: Value) -> Resu
     ));
     let facts = workspace_registry::snapshot_facts(&isolated)?;
     let run_facts = workspace_registry::list_run_workspaces(&isolated)?;
-    let serialized = serde_json::to_string(&facts)
-        .map_err(|_| "WORKSPACE_ACCEPTANCE_REPORT_SERIALIZE_FAILED")?;
+    let serialized = format!(
+        "{}{}",
+        serde_json::to_string(&facts)
+            .map_err(|_| "WORKSPACE_ACCEPTANCE_REPORT_SERIALIZE_FAILED")?,
+        serde_json::to_string(&run_facts)
+            .map_err(|_| "WORKSPACE_ACCEPTANCE_REPORT_SERIALIZE_FAILED")?
+    );
     let no_path = !serialized.contains(&base.to_string_lossy().to_string());
     cases.push(outcome(
         "sanitized_workspace_projection",
