@@ -980,11 +980,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Runtime recovery checkpoint 8dae9cc063e3fc50b8a221fac6ac9fd56816d284: resumed authorization hold now emits the actual attempt in DISPATCH_REQUESTED; quick profile jobControlPlane.test.ts passed 118/118 on 2026-10-27 UTC (available memory 23.4 GiB before test). Remaining: implement current approval and attempt-hold revalidation atomically at deferred release, server-side Goal delegation bridge and receipt-driven phase admission; verify connected PostgreSQL and real harness. Spec amendment reconcile currently resets existing evidence and must be repaired or safely reconciled without erasing it. Live Windows and deployed-runtime acceptance remain unverified by this checkpoint. Owner action: in the existing authenticated SmartAIHub session, open https://smartaihub.app/chat → the existing Spec 224 conversation/workspace; select the registered Windows Runner and SmartSpecPro workspace, verify the cap is USD 1.00, and submit once: 'Read-only: report the live Windows workspace branch, HEAD, git status, upstream and ancestry to origin/main. Do not modify files, commit, merge, push, deploy or run migrations.' Admission must independently verify owner/tenant, device consent, policy and budget. Return the actual DevelopmentRun ID or exact denial response; do not retry a denied Start. Independent runtime work remains: recover a goal-scoped authorized continuation contract, enforce cumulative budget and pinned provider, then connect existing receipt reconciliation to held phase admission and attempt-specific authorization; do not release on prior-job authority.",
-    "next_ready_workunit": "SPEC224_CORE_RUNNER_REV24_LIVE_ACCEPTANCE",
-    "reactivation_predicate": "Fresh production capability acknowledgement is confirmed as applied for runner local-runner session 6ddda9fe-0845-44af-9b9f-1e1cb11e1e62, revision snapshot:local-runner:2026-10-26T23:57:40.468Z, correlation runner:local-runner:capabilities:2026-10-26T23:57:40.469Z. Continue after an authenticated owner Start passes current owner/tenant, device consent, policy and USD 1.00 budget checks and creates one real DevelopmentRun.",
-    "resume_point": "Canonical main 5859261fc7eb56880920477e92176a021778d144. Production Web generation 153 (9b48e5123f1272eb0dd598b07ec8a24cbe8551f9), Node Worker and Python source 2382582a072e91c283ca2bf3513228c049ade574 include ACK fix e8e8245c6ba838194f4ef503bb37cc2fe43867a8; services active and public /healthz returned 200. Real RunnerControl journal confirms capability ACK applied for local-runner/session 6ddda9fe-0845-44af-9b9f-1e1cb11e1e62 at revision snapshot:local-runner:2026-10-26T23:57:40.468Z and correlation runner:local-runner:capabilities:2026-10-26T23:57:40.469Z; executionReadiness=capability_ready. No per-run authorization or Start exists. Next is one authenticated owner Start in existing Spec 224 Chat workspace at USD 1.00, read-only workspace status/ancestry goal.",
-    "waiting_predicate": "Waiting for one authenticated owner Start through the existing Spec 224 Chat workspace. Control Plane must verify tenant/user, device consent, development policy and USD 1.00 budget. If admitted, continue the returned DevelopmentRun through protected Windows dispatch and collect durable execution, audit, settlement, reconnect recovery and independent Final Verify receipts. If denied, repair only the exact denied admission component; do not duplicate Start."
+    "next_action": "Implement the SPEC-224 delegated-child execution bridge: load the approved Goal grant and pinned execution configuration from trusted persisted state, bind the actual child attempt to a shared Goal budget and hold, revalidate at deferred release, then connect durable receipt reconciliation to phase admission. Verify with disposable PostgreSQL including replay, revocation, expiry, budget exhaustion and concurrency. Windows Live Acceptance is a separate downstream gate.",
+    "next_ready_workunit": "SPEC224_DELEGATED_CHILD_EXECUTION_BRIDGE",
+    "reactivation_predicate": "Continue the backend bridge now; perform Windows Live Acceptance only after the connected backend path and current live authority are available.",
+    "resume_point": "Backend implementation begins on origin/main after checkpoint 678ad556b4e8ef55750980ef178a252b9f2a036f; the prior dispatch-attempt correction is integrated. Existing live runtime receipts and source references are historical, not current acceptance.",
+    "waiting_predicate": "No external dependency blocks the backend bridge; Windows Live Acceptance requires a fresh authorized live Runner and remains downstream."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1015,8 +1015,8 @@
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
       }
     ],
-    "next_action": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
-    "rationale": "Production release source 08b508284eabe621292ab95a5b1cc6a63bca5fd1 remains verified at Web generation 128; public health/readiness is live. Playwright Chromium verified the unauthenticated /chat-to-/login flow and login UI in a fresh context; no owner session was available and no login was submitted. Existing repository UAT fixtures issue synthetic sessions and were not used against production. Authenticated Runner/workspace state, device consent, source cleanliness/fingerprint and run budget remain unverified. No DevelopmentRun, dispatch, settlement, recovery or independent Final Verify was created by this check.",
+    "next_action": "Implement the SPEC-224 delegated-child execution bridge: load the approved Goal grant and pinned execution configuration from trusted persisted state, bind the actual child attempt to a shared Goal budget and hold, revalidate at deferred release, then connect durable receipt reconciliation to phase admission. Verify with disposable PostgreSQL including replay, revocation, expiry, budget exhaustion and concurrency. Windows Live Acceptance is a separate downstream gate.",
+    "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1094,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 203,
+  "generation": 204,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2214,8 +2214,8 @@
           "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
         }
       ],
-      "next_action": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
-      "rationale": "Production release source 08b508284eabe621292ab95a5b1cc6a63bca5fd1 remains verified at Web generation 128; public health/readiness is live. Playwright Chromium verified the unauthenticated /chat-to-/login flow and login UI in a fresh context; no owner session was available and no login was submitted. Existing repository UAT fixtures issue synthetic sessions and were not used against production. Authenticated Runner/workspace state, device consent, source cleanliness/fingerprint and run budget remain unverified. No DevelopmentRun, dispatch, settlement, recovery or independent Final Verify was created by this check.",
+      "next_action": "Implement the SPEC-224 delegated-child execution bridge: load the approved Goal grant and pinned execution configuration from trusted persisted state, bind the actual child attempt to a shared Goal budget and hold, revalidate at deferred release, then connect durable receipt reconciliation to phase admission. Verify with disposable PostgreSQL including replay, revocation, expiry, budget exhaustion and concurrency. Windows Live Acceptance is a separate downstream gate.",
+      "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3704,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T17:27:48.472423Z",
+  "updated_at": "2026-10-27T17:33:16.466346Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

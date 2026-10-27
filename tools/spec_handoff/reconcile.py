@@ -289,6 +289,34 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
                     saved = saved_requirements.get(requirement.get("requirement_id"))
                     if isinstance(saved, dict) and saved.get("source_spec_digest") == digest:
                         requirement.update(saved)
+        # Preserve evidence from the authoritative ledger when a Spec changes.
+        # Only uniquely matching statements carry forward; their source locations
+        # remain those freshly extracted from the current Spec.
+        old_by_digest: dict[str, list[dict[str, Any]]] = {}
+        for old in old_ledger.get("requirements", []):
+            old_by_digest.setdefault(old.get("requirement_digest", ""), []).append(old)
+        matched: set[str] = set()
+        fields = ("applicability", "current_relevance", "successor_mapping", "implementation_status",
+                  "implementation_evidence", "verification_method", "verification_evidence", "evidence_sha",
+                  "evidence_freshness", "blocker", "next_action", "final_state", "applicability_rationale")
+        for requirement in ledger["requirements"]:
+            candidates = old_by_digest.get(requirement["requirement_digest"], [])
+            if len(candidates) != 1:
+                continue
+            old = candidates[0]
+            matched.add(old["requirement_id"])
+            for field in fields:
+                if field in old:
+                    requirement[field] = copy.deepcopy(old[field])
+            if old_ledger.get("spec_digest") != digest and (old.get("implementation_evidence") or old.get("verification_evidence")):
+                requirement["evidence_freshness"] = "STALE"
+                if requirement.get("final_state") == "PASS":
+                    requirement["final_state"] = "STALE_EVIDENCE"
+                    requirement["next_action"] = "Revalidate retained evidence against the current Spec and canonical revision."
+        historical = list(old_ledger.get("historical_requirements", []))
+        historical.extend(old for old in old_ledger.get("requirements", []) if old.get("requirement_id") not in matched)
+        if historical:
+            ledger["historical_requirements"] = historical
     if old_ledger is not None:
         old_generation = old_ledger.get("generation", 0)
         old_compare = copy.deepcopy(old_ledger)
@@ -299,6 +327,7 @@ def reconcile_one(spec_dir: Path, repo: Path, *, write: bool = False, inventory_
     summary = {"total": len(ledger["requirements"]), "applicable": 0, "pass": 0, "fail": 0, "unresolved": 0, "blocked_true_external": 0, "not_applicable": 0}
     for requirement in ledger["requirements"]:
         state = requirement.get("final_state", "OPEN")
+        if requirement.get("applicability") == "APPLICABLE": summary["applicable"] += 1
         if state == "PASS": summary["pass"] += 1
         elif state == "FAIL": summary["fail"] += 1
         elif state == "BLOCKED_TRUE_EXTERNAL": summary["blocked_true_external"] += 1

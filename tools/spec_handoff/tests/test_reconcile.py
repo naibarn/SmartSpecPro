@@ -145,6 +145,26 @@ class ReconciliationTests(unittest.TestCase):
             rerun = reconcile_one(spec, repo, write=True)
             self.assertEqual(rerun["ledger"]["generation"], 1)
 
+    def test_additive_spec_change_preserves_prior_evidence_across_reconciliation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            spec = self.make_spec(repo, "# Legacy\nThe feature must retain evidence.\n")
+            first = reconcile_one(spec, repo, write=True)
+            row = first["ledger"]["requirements"][0]
+            row.update({"applicability": "APPLICABLE", "implementation_status": "IMPLEMENTED",
+                        "implementation_evidence": ["source.ts"], "verification_evidence": ["test.ts"],
+                        "evidence_sha": "old-sha", "evidence_freshness": "FRESH", "final_state": "PASS"})
+            (spec / "handoff/requirement-ledger.json").write_text(json.dumps(first["ledger"]))
+            (spec / "spec.md").write_text("# Legacy\nThe feature must retain evidence.\nThe service must add a new requirement.\n")
+            result = reconcile_one(spec, repo, write=True)
+            retained = next(r for r in result["ledger"]["requirements"] if r["requirement_digest"] == row["requirement_digest"])
+            self.assertEqual(retained["verification_evidence"], ["test.ts"])
+            self.assertEqual(retained["evidence_sha"], "old-sha")
+            self.assertEqual(retained["final_state"], "STALE_EVIDENCE")
+            self.assertEqual(retained["evidence_freshness"], "STALE")
+            repeated = reconcile_one(spec, repo, write=True)
+            self.assertEqual(repeated["ledger"]["requirements"][0]["verification_evidence"], ["test.ts"])
+
     def test_full_supersession_requires_manual_decision_and_preserves_implementation_history(self):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)

@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.
-- Manifest generation: 203
+- Next action: Implement the SPEC-224 delegated-child execution bridge: load the approved Goal grant and pinned execution configuration from trusted persisted state, bind the actual child attempt to a shared Goal budget and hold, revalidate at deferred release, then connect durable receipt reconciliation to phase admission. Verify with disposable PostgreSQL including replay, revocation, expiry, budget exhaustion and concurrency. Windows Live Acceptance is a separate downstream gate.
+- Manifest generation: 204
 
 ## Source-declared status and relationship claims
 
