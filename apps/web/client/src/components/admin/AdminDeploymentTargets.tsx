@@ -967,7 +967,7 @@ export default function AdminDeploymentTargets() {
                 productionIngressMutation.mutate({tenantId,projectId,environment:"production",...submission,exposure:"100-percent-http-origin-bridge"});
               }}>{productionIngressMutation.isPending?text("Submitting the same ingress operation…", "กำลังส่งคำขอย้ายทางเข้าเว็บ…"):canReplaceTerminalIngressJob?text("Approve corrected Cloudflare ingress migration", "ยืนยันย้ายทางเข้าเว็บด้วยรุ่นที่แก้ไขแล้ว"):text("Approve Cloudflare ingress canary and start migration", "ยืนยัน canary ทางเข้าผ่าน Cloudflare และเริ่มย้าย")}</Button>
             </> : productionIngressPreflight.data && !acceptedIngress ? <VStack gap={1} role="status"><p>{ingressBlockerText(productionIngressPreflight.data.reason)}</p><details><summary>{text("Technical reason", "เหตุผลทางเทคนิค")}</summary><code>{productionIngressPreflight.data.reason}</code></details></VStack> : null}
-            {productionIngressRollback.data?.ready&&latestProductionIngressJob.data ? <Button type="button" disabled={productionIngressMutation.isPending} onClick={()=>{
+            {productionIngressRollback.data?.ready&&latestProductionIngressJob.data ? <Button type="button" variant="destructive" disabled={productionIngressMutation.isPending} onClick={()=>{
               const key=`smartaihub-production-ingress-rollback:${productionScopeKey}:${latestProductionIngressJob.data!.jobId}`;
               const submission=ingressSubmission(key,productionIngressRollback.data!.ready?productionIngressRollback.data!.planDigest:"");
               productionIngressMutation.mutate({tenantId,projectId,environment:"production",...submission,
