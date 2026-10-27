@@ -35,9 +35,9 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Admin/Node g167 is serving SHA 753a893c9ae3109b113b92124360bc168e0d6fb9 and its bundle contains the synthetic application acceptance action. Refresh the authenticated Admin page and inspect application preflight. If READY, submit the one exact action “Authorize synthetic application acceptance”; then reconcile and monitor that same canonical job through cleanup. If preflight is not READY, capture its exact database-specific reason and repair that blocker without repeating M1/M2/boot. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.",
+      "next_action": "Verified release g167 from SHA 753a893c9ae3109b113b92124360bc168e0d6fb9 is live: Linux web and Node worker healthy, health 200, anonymous diagnostics 403, public Admin bundle 200 and contains the synthetic application acceptance controls. Refresh the authenticated Admin page and inspect the operation preflight. If READY, the Owner submits exactly “Authorize synthetic application acceptance”; then reconcile and monitor that same canonical job through cleanup. If not READY, fix the exact reported prerequisite without repeating M1/M2/boot. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.",
       "checkpoint_sha": "f1e24b294c6dcaa7137615ca5afdea2c926173bb",
-      "merged_main_sha": "753a893c9ae3109b113b92124360bc168e0d6fb9",
+      "merged_main_sha": "dcb23c005290f0c87df42df15c3fd741cb332757",
       "session_id": "codex-m3-application-acceptance-20261027"
     }
   },
@@ -50,20 +50,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 129,
-  "updated_at": "2026-10-27T04:26:51.749230+00:00",
+  "generation": 130,
+  "updated_at": "2026-10-27T04:28:17.584052+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Admin/Node g167 is serving SHA 753a893c9ae3109b113b92124360bc168e0d6fb9 and its bundle contains the synthetic application acceptance action. Refresh the authenticated Admin page and inspect application preflight. If READY, submit the one exact action “Authorize synthetic application acceptance”; then reconcile and monitor that same canonical job through cleanup. If preflight is not READY, capture its exact database-specific reason and repair that blocker without repeating M1/M2/boot. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.",
+    "next_action": "Verified release g167 from SHA 753a893c9ae3109b113b92124360bc168e0d6fb9 is live: Linux web and Node worker healthy, health 200, anonymous diagnostics 403, public Admin bundle 200 and contains the synthetic application acceptance controls. Refresh the authenticated Admin page and inspect the operation preflight. If READY, the Owner submits exactly “Authorize synthetic application acceptance”; then reconcile and monitor that same canonical job through cleanup. If not READY, fix the exact reported prerequisite without repeating M1/M2/boot. Credit reserve/settlement, canonical job queue/cancel/retry/recovery and separately authorized native activation remain distinct gates.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
-      "Production application acceptance and cutover remain unverified: canonical app acceptance job, live Cloudflare API/runtime receipts, billing reserve/settle, application job queue/cancel/recovery, and separate activation authority are still required.",
-      "No live production app-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit/job parity, and separately authorized native activation are verified.",
       "No live production application-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit settlement/job parity and separately authorized native activation are verified.",
       "Release g167 is live and healthy, but this session has no authenticated Owner browser session, so live app preflight and canonical application job were not observed or submitted. No production acceptance receipt exists yet; M3 and final migration remain NOT_ACCEPTED."
     ],
-    "merged_main_sha": "753a893c9ae3109b113b92124360bc168e0d6fb9",
+    "merged_main_sha": "dcb23c005290f0c87df42df15c3fd741cb332757",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
