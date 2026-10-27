@@ -27,6 +27,7 @@ describe("Spec 224 DevelopmentRun kernel", () => {
     const run = buildDevelopmentRun(baseRun);
     expect(run).toMatchObject({
       contractVersion: "spec-224-v1",
+      goalId: "goal:run-224-001",
       state: "DISCOVERY",
       phaseAttempt: 0,
       workerJobId: null,

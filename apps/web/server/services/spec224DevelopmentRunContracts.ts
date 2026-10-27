@@ -469,10 +469,12 @@ export function buildDevelopmentRun(input: {
   if (input.metadata && containsRawSecret(input.metadata)) {
     throw new DevelopmentRunContractError("RAW_SECRET_FORBIDDEN");
   }
+  const runId = id(input.runId, "RUN_ID_INVALID");
+  const goalId = id(input.goalId ?? `goal:${runId}`, "GOAL_ID_INVALID");
   return {
     contractVersion: SPEC_224_RUN_CONTRACT_VERSION,
-    runId: id(input.runId, "RUN_ID_INVALID"),
-    ...(input.goalId === undefined ? {} : { goalId: id(input.goalId, "GOAL_ID_INVALID") }),
+    runId,
+    goalId,
     tenantId: id(input.tenantId, "TENANT_ID_INVALID"),
     actorId: input.actorId,
     goal: text(input.goal, "GOAL_INVALID", 4_000),
