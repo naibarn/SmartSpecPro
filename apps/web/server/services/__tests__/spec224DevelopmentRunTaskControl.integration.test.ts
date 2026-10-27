@@ -16,6 +16,54 @@ const execFileAsync = promisify(execFile);
 describe("Spec 224 DevelopmentRun synthetic implementation and Task Control — PostgreSQL", () => {
   afterEach(async () => closeDb());
 
+  it("persists a deferred next phase without a runnable outbox delivery", async () => {
+    if (process.env.DATABASE_URL) throw new Error("SPEC224_REFUSES_INHERITED_DATABASE_URL");
+    const fixture = await createSpec277DisposablePostgres();
+    const client = postgres(fixture.databaseUrl, { max: 3, connect_timeout: 3 });
+    try {
+      await fixture.assertOwned();
+      await client.unsafe("CREATE EXTENSION IF NOT EXISTS pgcrypto");
+      await installSpec277AutoTeamRuntimeSchema(client);
+      await client.unsafe("CREATE TABLE users (id integer PRIMARY KEY)");
+      await client.unsafe("INSERT INTO users (id) VALUES (22401)");
+      await client.unsafe('CREATE TABLE tenant_data_transfer_plans ("operationId" varchar(36), "tenantId" varchar(36), "sourceUserId" integer)');
+      await client.unsafe('CREATE TABLE tenant_identity_actions (id varchar(36) PRIMARY KEY, "userId" integer, "sourceTenantId" varchar(36), phase varchar(40))');
+      process.env.DATABASE_URL = fixture.databaseUrl;
+      const [{ createJobControlPlane }, { createPersistedDevelopmentRun, defaultDevelopmentRunPersistenceAdapter },
+        { buildDevelopmentRun }, { reconcileAndContinueNextPhase }, { defaultJobExecutorRegistry }] = await Promise.all([
+        import("../jobControlPlane"), import("../spec224DevelopmentRunPersistence"),
+        import("../spec224DevelopmentRunContracts"), import("../spec224PhaseController"), import("../jobExecutorRegistry"),
+      ]);
+      const runId = randomUUID(), tenantId = randomUUID(), actorId = 22401;
+      const controlPlane = createJobControlPlane();
+      const run = buildDevelopmentRun({ runId, tenantId, actorId, goal: "Verify held continuation",
+        repositoryRef: "repo:test", baseRevision: "git:test", contextPackHash: "a".repeat(64), workspaceId: `workspace-${runId}` });
+      const base = { provider: "codex" as const, runtime: "local_runner" as const, planId: `plan-${runId}`,
+        planRevision: 1, skillIds: [], requestedCapabilities: ["workspace.edit"], authorizationScope: "spec224.development.run",
+        persistence: defaultDevelopmentRunPersistenceAdapter, controlPlane, executorRegistry: defaultJobExecutorRegistry };
+      const first = await createPersistedDevelopmentRun({ ...base, run });
+      const lease = await controlPlane.claim({ jobId: first.jobRef.jobId, runnerId: "synthetic-runner", adapter: "test" });
+      if (!lease) throw new Error("SPEC224_SYNTHETIC_JOB_NOT_CLAIMED");
+      await controlPlane.start(lease);
+      await controlPlane.complete(lease, { resultRef: "evidence:held-phase" });
+      const result = await reconcileAndContinueNextPhase({ ...base, runId, tenantId, actorId,
+        expectedRevision: 0, expectedFencingVersion: first.run.fencingVersion,
+        idempotencyKey: `held-phase:${runId}`, planRevision: 2, deferredAdmission: true });
+      expect(result.continuation?.accepted).toBe(true);
+      const jobId = result.continuation!.jobRef.jobId;
+      const [job] = await client.unsafe('SELECT status FROM worker_jobs WHERE id = $1', [jobId]);
+      const [outbox] = await client.unsafe('SELECT COUNT(*)::int AS count FROM worker_job_outbox WHERE "workerJobId" = $1', [jobId]);
+      expect(job.status).toBe("pending");
+      expect(outbox.count).toBe(0);
+      expect(await controlPlane.claim({ jobId, runnerId: "synthetic-runner", adapter: "test" })).toBeNull();
+    } finally {
+      await closeDb();
+      delete process.env.DATABASE_URL;
+      await client.end();
+      await fixture.close();
+    }
+  }, 30_000);
+
   it("executes the persisted phase lifecycle through bounded repair and refuses Final Verify without workspace receipts", async () => {
     if (process.env.DATABASE_URL)
       throw new Error("SPEC224_REFUSES_INHERITED_DATABASE_URL");

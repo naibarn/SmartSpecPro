@@ -52,6 +52,8 @@ export type CreateAndBindNextPhaseInput = {
   skillIds: string[];
   requestedCapabilities: string[];
   authorizationScope: string;
+  /** Hold the job until its own attempt, approval and budget are bound. */
+  deferredAdmission?: boolean;
   correlationId?: string;
   persistence: DevelopmentRunPersistenceAdapter;
   controlPlane?: JobControlPlane;
@@ -136,7 +138,7 @@ function stableCanonicalJobId(operationKey: string): string {
   return createHash("sha256").update(`spec224-worker-job:${operationKey}`).digest("hex").slice(0, 32);
 }
 
-function admissionDigest(input: CreateAndBindNextPhaseInput): string {
+function admissionDigest(input: CreateAndBindNextPhaseInput, legacy = false): string {
   return createHash("sha256").update(JSON.stringify({
     schema: "spec224.phase-admission.v1",
     provider: input.provider,
@@ -146,6 +148,7 @@ function admissionDigest(input: CreateAndBindNextPhaseInput): string {
     skillIds: input.skillIds,
     requestedCapabilities: input.requestedCapabilities,
     authorizationScope: input.authorizationScope,
+    ...(!legacy ? { deferredAdmission: input.deferredAdmission === true } : {}),
   }), "utf8").digest("hex");
 }
 
@@ -160,7 +163,8 @@ function duplicateResult(
     typeof workerJobId !== "string" ||
     event.payload.planRevision !== input.planRevision ||
     (typeof event.payload.admissionDigest === "string" &&
-      event.payload.admissionDigest !== admissionDigest(input))
+      event.payload.admissionDigest !== admissionDigest(input) &&
+      (input.deferredAdmission === true || event.payload.admissionDigest !== admissionDigest(input, true)))
   ) {
     throw new Spec224PhaseControllerError("PHASE_IDEMPOTENCY_CONFLICT");
   }
@@ -274,7 +278,11 @@ export async function createAndBindNextPhase(
         },
         controlPlane: input.controlPlane,
         executorRegistry: input.executorRegistry,
-        createOptions: { runtimeType: "external_runtime", canonicalJobId },
+        createOptions: {
+          runtimeType: "external_runtime",
+          canonicalJobId,
+          ...(input.deferredAdmission ? { deferredAdmission: true } : {}),
+        },
       });
 
       const admittedJob = admission.job!;

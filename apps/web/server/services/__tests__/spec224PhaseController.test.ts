@@ -106,6 +106,33 @@ function phaseInput(overrides: Record<string, unknown> = {}) {
 }
 
 describe("Spec 224 executable phase continuation", () => {
+  it("passes the deferred admission option to the job control plane", async () => {
+    const memory = memoryAdapter(reconciledRun());
+    const calls: Array<Record<string, unknown>> = [];
+    const controlPlane = {
+      create: async (_definition: unknown, options: Record<string, unknown>) => {
+        calls.push(options);
+        return { jobId: "worker-held-phase", created: true };
+      },
+    };
+    const result = await createAndBindNextPhase({
+      ...phaseInput(), deferredAdmission: true,
+      persistence: memory.adapter,
+      controlPlane: controlPlane as never,
+      executorRegistry: { has: () => true } as never,
+    });
+    expect(result.jobRef.jobId).toBe("worker-held-phase");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ deferredAdmission: true, runtimeType: "external_runtime" });
+    await expect(createAndBindNextPhase({
+      ...phaseInput(), deferredAdmission: false,
+      persistence: memory.adapter,
+      controlPlane: controlPlane as never,
+      executorRegistry: { has: () => true } as never,
+    })).rejects.toMatchObject({ code: "PHASE_IDEMPOTENCY_CONFLICT" });
+    expect(calls).toHaveLength(1);
+  });
+
   it("binds distinct canonical jobs for consecutive reconciled phases and makes the first command idempotent", async () => {
     const memory = memoryAdapter(reconciledRun());
     const definitions: Array<{ idempotencyKey?: string }> = [];
