@@ -200,6 +200,7 @@ function capabilityAcknowledged(status) {
 }
 
 function applyRunnerStatus(status) {
+  const previousError = latestRunnerStatus?.lastError;
   latestRunnerStatus = status;
   elements["app-version"].textContent = status.appVersion ?? "—";
   elements["app-build-date"].textContent = formatDate(status.buildDate);
@@ -266,6 +267,9 @@ function applyRunnerStatus(status) {
   elements["runtime-state"].textContent = runtimeLabel;
   elements["runtime-state"].className = `state-pill${status.running && controlPlaneConnected && !status.stopping && !status.lastError ? " good" : status.stopping || status.lastError || status.running && !controlPlaneConnected ? " warn" : ""}`;
   if (status.lastError) setNotice(elements["runtime-notice"], safeError(status.lastError));
+  else if (previousError && elements["runtime-notice"].textContent === safeError(previousError)) {
+    setNotice(elements["runtime-notice"]);
+  }
 
   const canChangeAccount = !status.running && !status.stopping && !capabilitySyncing;
   updateButton(elements["connect-button"], {
@@ -285,11 +289,12 @@ function applyRunnerStatus(status) {
     pending: refreshPending,
     label: refreshPending ? "กำลังรีเฟรช…" : "รีเฟรชสถานะ",
   });
+  const canRetryControl = status.running && status.lastError === "RUNNER_CONNECTION_INTERRUPTED";
   updateButton(elements["start-button"], {
-    disabled: !credentialsReady || status.running || status.stopping || startPending || capabilitySyncing,
+    disabled: !credentialsReady || (status.running && !canRetryControl) || status.stopping || startPending || capabilitySyncing,
     pending: startPending,
-    label: startPending ? "กำลังเริ่ม…" : status.running ? "Runner กำลังทำงาน" : "เริ่ม Runner",
-    title: status.running ? "Runner กำลังทำงานอยู่" : "",
+    label: startPending ? "กำลังดำเนินการ…" : canRetryControl ? "ลองเชื่อมต่ออีกครั้ง" : status.running ? "Runner กำลังทำงาน" : "เริ่ม Runner",
+    title: status.running && !canRetryControl ? "Runner กำลังทำงานอยู่" : "",
   });
   updateButton(elements["stop-button"], {
     disabled: stopPending || (!status.running && !status.stopping),
@@ -727,12 +732,13 @@ elements["open-debug-folder-button"].addEventListener("click", async () => {
 });
 elements["start-button"].addEventListener("click", async () => {
   if (startPending) return;
+  const retryControl = latestRunnerStatus?.running && latestRunnerStatus?.lastError === "RUNNER_CONNECTION_INTERRUPTED";
   invalidatePendingStatus();
   startPending = true;
   updateButton(elements["start-button"], { disabled: true, pending: true, label: "กำลังเริ่ม…" });
   try {
-    await invoke("start_runner");
-    setNotice(elements["runtime-notice"], "เริ่ม Runner แล้ว กำลังเชื่อมต่อกับ SmartAIHub");
+    await invoke(retryControl ? "retry_runner_control" : "start_runner");
+    setNotice(elements["runtime-notice"], retryControl ? "ขอให้ Runner ลองเชื่อมต่ออีกครั้งแล้ว" : "เริ่ม Runner แล้ว กำลังเชื่อมต่อกับ SmartAIHub");
   } catch (error) {
     setNotice(elements["runtime-notice"], safeError(error));
   } finally {

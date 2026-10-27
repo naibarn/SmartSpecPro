@@ -87,3 +87,39 @@ test('a stale heartbeat is shown as reconnecting when the local control loop has
     await browser.close();
   }
 });
+
+test('a confirmed reconnect clears the error and restores the running UI without restarting the app', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.addInitScript(() => {
+      window.runnerRecovered = false;
+      window.retryCount = 0;
+      window.__TAURI__ = { core: { invoke: async name => {
+        if (name === 'runner_status' || name === 'retry_runner_credentials') return {
+          credentialsReady: true, controlPlaneConnected: window.runnerRecovered,
+          running: true, stopping: false, runnerId: 'local-runner', credentialState: 'valid',
+          lastError: window.runnerRecovered ? null : 'RUNNER_CONNECTION_INTERRUPTED',
+          lastControlPlaneHeartbeatAcknowledgedAtMs: Date.now(),
+          readiness: { capabilityPublicationState: 'pending' },
+        };
+        if (name === 'retry_runner_control') { window.retryCount += 1; return null; }
+        if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
+        return null;
+      } } };
+    });
+    await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
+    await page.waitForFunction(() => document.getElementById('runtime-state').textContent === 'พบข้อผิดพลาด');
+    assert.equal(await page.locator('#start-button').textContent(), 'ลองเชื่อมต่ออีกครั้ง');
+    await page.locator('#start-button').click();
+    assert.equal(await page.evaluate(() => window.retryCount), 1);
+    await page.evaluate(() => { window.runnerRecovered = true; });
+    await page.locator('#refresh-button').click();
+    await page.waitForFunction(() => document.getElementById('connection-state').textContent === 'เชื่อมต่อแล้ว');
+    assert.equal(await page.locator('#runtime-state').textContent(), 'กำลังทำงาน');
+    assert.doesNotMatch(await page.locator('#runtime-notice').textContent(), /การเชื่อมต่อขาดหาย/);
+    assert.equal(await page.locator('#stop-button').isEnabled(), true);
+  } finally {
+    await browser.close();
+  }
+});

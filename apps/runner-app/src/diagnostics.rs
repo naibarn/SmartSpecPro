@@ -47,13 +47,20 @@ const TASK_PROBE_EVIDENCE_TTL: Duration = Duration::from_secs(60 * 60);
 const TASK_PROBE_EVIDENCE_RETENTION: Duration = Duration::from_secs(30 * 24 * 60 * 60);
 const MAX_TASK_PROBE_EVIDENCE_BYTES: u64 = 256 * 1024;
 static RUNNER_CREDENTIAL_DIAGNOSTICS: OnceLock<Mutex<serde_json::Value>> = OnceLock::new();
+static LAST_CONTROL_FAILURE: OnceLock<Mutex<Option<(&'static str, String)>>> = OnceLock::new();
 static TASK_PROBE_EVIDENCE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 static CAPABILITY_REFRESH_REQUESTED: AtomicBool = AtomicBool::new(false);
+static CONTROL_RETRY_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+/// Wake a control reconnect backoff without creating a second Runner worker.
+pub fn request_control_retry() {
+    CONTROL_RETRY_REQUESTED.store(true, Ordering::Release);
+}
 
 /// Returns the current process-local credential handoff status for sanitized
 /// Desktop debug export. The object never contains credentials or key material.
 pub fn runner_credential_diagnostics() -> serde_json::Value {
-    RUNNER_CREDENTIAL_DIAGNOSTICS
+    let mut diagnostics = RUNNER_CREDENTIAL_DIAGNOSTICS
         .get_or_init(|| {
             Mutex::new(json!({
                 "credentialRevision": 0,
@@ -76,7 +83,32 @@ pub fn runner_credential_diagnostics() -> serde_json::Value {
         })
         .lock()
         .map(|value| value.clone())
-        .unwrap_or_else(|_| json!({ "diagnosticsState": "unavailable" }))
+        .unwrap_or_else(|_| json!({ "diagnosticsState": "unavailable" }));
+    if let Ok(failure) = LAST_CONTROL_FAILURE.get_or_init(|| Mutex::new(None)).lock() {
+        if let Some((code, at)) = failure.as_ref() {
+            diagnostics["lastControlLoopFailureCode"] = json!(code);
+            diagnostics["lastControlLoopFailureAt"] = json!(at);
+        }
+    }
+    diagnostics
+}
+
+fn record_control_loop_failure(error: &str) {
+    // Export only fixed categories, never raw error strings or remote data.
+    let code = if error.starts_with("RUNNER_CONTROL_CHANNEL_") {
+        "RUNNER_CONTROL_CHANNEL_FAILED"
+    } else if error.starts_with("RUNNER_KEEPALIVE_") {
+        "RUNNER_KEEPALIVE_FAILED"
+    } else if error.starts_with("RUNNER_CAPABILITY_REFRESH_") {
+        "RUNNER_CAPABILITY_REFRESH_FAILED"
+    } else if error.starts_with("RUNNER_RECEIPT_") {
+        "RUNNER_RECEIPT_DELIVERY_FAILED"
+    } else {
+        runtime_error_reason(error)
+    };
+    if let Ok(mut failure) = LAST_CONTROL_FAILURE.get_or_init(|| Mutex::new(None)).lock() {
+        *failure = Some((code, current_time_iso()));
+    }
 }
 
 /// Invalidates the process-local capability acknowledgment after the local
@@ -759,7 +791,7 @@ fn apply_bounded_probe(tool: &mut ToolCandidate) {
 }
 
 pub fn connection_status(config: &RunnerConfig, command: &str) -> Result<String, String> {
-    connection_status_inner(config, command, None)
+    connection_status_inner(config, command, None, &mut || {})
 }
 
 pub fn connection_status_cancellable(
@@ -767,7 +799,7 @@ pub fn connection_status_cancellable(
     command: &str,
     stop: &AtomicBool,
 ) -> Result<String, String> {
-    connection_status_inner(config, command, Some(stop))
+    connection_status_inner(config, command, Some(stop), &mut || {})
 }
 
 fn scan_capability_tools(
@@ -907,6 +939,7 @@ fn connection_status_inner(
     config: &RunnerConfig,
     command: &str,
     stop: Option<&AtomicBool>,
+    on_control_recovered: &mut dyn FnMut(),
 ) -> Result<String, String> {
     let control_url = config
         .control_url
@@ -1137,6 +1170,7 @@ fn connection_status_inner(
             &mut execution_snapshot,
             browser_grant,
             stop,
+            on_control_recovered,
         );
     }
     let report = coordinator.reconcile("runner_startup");
@@ -1707,6 +1741,7 @@ fn run_live_control_loop(
     snapshot: &mut serde_json::Value,
     browser_grant: Option<BrowserAuthorizationGrant>,
     stop: Option<&AtomicBool>,
+    on_control_recovered: &mut dyn FnMut(),
 ) -> Result<String, String> {
     let mut external_processes = std::collections::HashMap::<String, ActiveExternalAgent>::new();
     let mut browser_processes = std::collections::HashMap::<String, ActiveBrowserExecution>::new();
@@ -1722,6 +1757,7 @@ fn run_live_control_loop(
             snapshot,
             browser_grant,
             stop,
+            on_control_recovered,
             &mut external_processes,
             &mut browser_processes,
         )
@@ -1729,6 +1765,9 @@ fn run_live_control_loop(
     match result {
         Ok(result) => {
             if result.is_err() {
+                if let Err(error) = &result {
+                    record_control_loop_failure(error);
+                }
                 finish_active_processes(&mut external_processes, &mut browser_processes);
             }
             result
@@ -1819,6 +1858,7 @@ fn run_live_control_loop_inner(
     snapshot: &mut serde_json::Value,
     mut browser_grant: Option<BrowserAuthorizationGrant>,
     stop: Option<&AtomicBool>,
+    on_control_recovered: &mut dyn FnMut(),
     external_processes: &mut std::collections::HashMap<String, ActiveExternalAgent>,
     browser_processes: &mut std::collections::HashMap<String, ActiveBrowserExecution>,
 ) -> Result<String, String> {
@@ -1862,6 +1902,16 @@ fn run_live_control_loop_inner(
         &mut receipt_journal,
         external_processes,
     )?;
+    // The durable startup reconciliation can use HTTPS, but assignments need
+    // an authenticated WSS channel. Do not announce recovery before pending
+    // receipts and interrupted commands have also been reconciled.
+    if transport.inner.wss_auth_acknowledged()
+        && transport
+            .last_control_plane_heartbeat_acknowledged_at_ms
+            .is_some()
+    {
+        on_control_recovered();
+    }
     let mut last_keepalive = std::time::Instant::now();
     let mut last_capability_refresh = std::time::Instant::now();
     let mut revision = snapshot
@@ -1893,6 +1943,7 @@ fn run_live_control_loop_inner(
             match transport.send_wss(&endpoint.wss_url, &keepalive) {
                 Ok(AckState::Accepted | AckState::Applied | AckState::Duplicate) => {
                     last_keepalive = std::time::Instant::now();
+                    on_control_recovered();
                 }
                 Ok(other) => return Err(format!("RUNNER_KEEPALIVE_REJECTED_{other:?}")),
                 Err(error) => {
@@ -3192,14 +3243,15 @@ where
     }
     let interval = refresh_interval_seconds()?;
     let mut consecutive_refresh_failures = 0_u32;
+    CONTROL_RETRY_REQUESTED.store(false, Ordering::Release);
     loop {
         if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
             return Ok(());
         }
-        let status = match stop {
-            Some(stop) => connection_status_cancellable(config, "run", stop),
-            None => connection_status(config, "run"),
-        };
+        let status = connection_status_inner(config, "run", stop, &mut || {
+            consecutive_refresh_failures = 0;
+            observer(None);
+        });
         match status {
             Ok(status) => {
                 consecutive_refresh_failures = 0;
@@ -3208,6 +3260,7 @@ where
             }
             Err(error) => {
                 consecutive_refresh_failures = consecutive_refresh_failures.saturating_add(1);
+                record_control_loop_failure(&error);
                 observer(Some(runtime_error_reason(&error)));
                 eprintln!("runner refresh error: {error}");
                 if error.contains("RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH") {
@@ -3232,20 +3285,40 @@ where
                 }
             }
         }
-        let mut remaining = if consecutive_refresh_failures == 0 {
+        let delay = if consecutive_refresh_failures == 0 {
             interval
         } else {
             control_retry_delay(interval, consecutive_refresh_failures)
         };
-        while !remaining.is_zero() {
-            if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
-                return Ok(());
-            }
-            let slice = remaining.min(Duration::from_millis(250));
-            std::thread::sleep(slice);
-            remaining = remaining.saturating_sub(slice);
+        if !wait_for_control_retry(
+            delay,
+            consecutive_refresh_failures > 0,
+            stop,
+            &CONTROL_RETRY_REQUESTED,
+        ) {
+            return Ok(());
         }
     }
+}
+
+fn wait_for_control_retry(
+    mut remaining: Duration,
+    retrying: bool,
+    stop: Option<&AtomicBool>,
+    requested: &AtomicBool,
+) -> bool {
+    while !remaining.is_zero() {
+        if stop.is_some_and(|stop| stop.load(Ordering::Acquire)) {
+            return false;
+        }
+        if retrying && requested.swap(false, Ordering::AcqRel) {
+            return true;
+        }
+        let slice = remaining.min(Duration::from_millis(250));
+        std::thread::sleep(slice);
+        remaining = remaining.saturating_sub(slice);
+    }
+    true
 }
 
 fn control_retry_delay(refresh_interval: Duration, consecutive_failures: u32) -> Duration {
@@ -3283,7 +3356,8 @@ fn runtime_error_reason(error: &str) -> &'static str {
 
 #[cfg(test)]
 mod refresh_runtime_reason_tests {
-    use super::{control_retry_delay, runtime_error_reason};
+    use super::{control_retry_delay, runtime_error_reason, wait_for_control_retry};
+    use std::sync::atomic::AtomicBool;
     use std::time::Duration;
 
     #[test]
@@ -3329,6 +3403,27 @@ mod refresh_runtime_reason_tests {
             control_retry_delay(Duration::from_secs(15), 20),
             Duration::from_secs(15)
         );
+    }
+
+    #[test]
+    fn manual_retry_wakes_backoff_and_stop_takes_precedence() {
+        let requested = AtomicBool::new(true);
+        let started = std::time::Instant::now();
+        assert!(wait_for_control_retry(
+            Duration::from_secs(5),
+            true,
+            None,
+            &requested
+        ));
+        assert!(started.elapsed() < Duration::from_secs(1));
+        let stop = AtomicBool::new(true);
+        requested.store(true, std::sync::atomic::Ordering::Release);
+        assert!(!wait_for_control_retry(
+            Duration::from_secs(5),
+            true,
+            Some(&stop),
+            &requested
+        ));
     }
 }
 

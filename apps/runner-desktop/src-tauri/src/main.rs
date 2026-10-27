@@ -10,7 +10,7 @@ use smartaihub_runner::{
         safe_refresh_error_code, token_expiry_ms,
     },
     diagnostics::{
-        connection_status_cancellable, discover_local_tools,
+        connection_status_cancellable, discover_local_tools, request_control_retry,
         reset_control_plane_heartbeat_diagnostics, run_local_entrypoint_desktop,
         runner_credential_diagnostics, verify_local_tool,
     },
@@ -426,9 +426,19 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
     let last_control_plane_heartbeat_acknowledged_at_ms = runtime_diagnostics
         .get("lastControlPlaneHeartbeatAcknowledgedAtMs")
         .and_then(serde_json::Value::as_u64);
+    let last_error = state
+        .lifecycle
+        .last_error
+        .lock()
+        .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
+        .clone();
     let control_plane_connected = credentials_ready
         && running
         && !stopping
+        && !matches!(
+            last_error.as_deref(),
+            Some("RUNNER_CONNECTION_INTERRUPTED" | "RUNNER_CONNECTION_REQUIRED")
+        )
         && control_plane_heartbeat_is_fresh(
             last_control_plane_heartbeat_acknowledged_at_ms,
             now_ms,
@@ -448,12 +458,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         runner_id: state.config.runner_id.clone(),
         default_workspace_id: settings.default_workspace_id.clone(),
         auto_start_enabled: settings.auto_start_enabled,
-        last_error: state
-            .lifecycle
-            .last_error
-            .lock()
-            .map_err(|_| "RUNNER_LIFECYCLE_LOCK_FAILED")?
-            .clone(),
+        last_error,
         app_version: state.app_version.clone(),
         build_date: state.build_date.clone(),
         first_launch_at_ms: settings.first_launch_at_ms,
@@ -876,6 +881,31 @@ fn start_runner_inner(state: &RunnerState) -> Result<(), String> {
     )
 }
 
+#[tauri::command]
+fn retry_runner_control(state: State<'_, RunnerState>) -> Result<(), String> {
+    if !state.lifecycle.running.load(Ordering::Acquire)
+        || state.lifecycle.stopping.load(Ordering::Acquire)
+    {
+        return Err("RUNNER_SHUTDOWN_IN_PROGRESS".into());
+    }
+    request_control_retry();
+    Ok(())
+}
+
+fn update_runtime_error(error: &mut Option<String>, reason: Option<&str>) {
+    match reason {
+        Some(reason) => *error = Some(reason.to_string()),
+        None if matches!(
+            error.as_deref(),
+            Some("RUNNER_CONNECTION_INTERRUPTED" | "RUNNER_CONNECTION_REQUIRED")
+        ) =>
+        {
+            *error = None
+        }
+        None => {}
+    }
+}
+
 fn start_runner_parts(
     config: RunnerConfig,
     settings: DesktopSettings,
@@ -923,7 +953,7 @@ fn start_runner_parts(
         .spawn(move || {
             let result = run_local_entrypoint_desktop(&config, &stop, |reason| {
                 if let Ok(mut error) = last_error.lock() {
-                    *error = reason.map(str::to_string);
+                    update_runtime_error(&mut error, reason);
                 }
             });
             running.store(false, Ordering::Release);
@@ -1334,6 +1364,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             runner_status,
             retry_runner_credentials,
+            retry_runner_control,
             connect_runner,
             rescan_runner,
             sync_runner_capabilities,
@@ -1440,7 +1471,22 @@ mod credential_retry_tests {
 
 #[cfg(test)]
 mod control_plane_heartbeat_tests {
-    use super::control_plane_heartbeat_is_fresh;
+    use super::{control_plane_heartbeat_is_fresh, update_runtime_error};
+
+    #[test]
+    fn acknowledged_recovery_clears_connection_errors_but_preserves_stop_errors() {
+        let mut error = None;
+        update_runtime_error(&mut error, Some("RUNNER_CONNECTION_INTERRUPTED"));
+        assert_eq!(error.as_deref(), Some("RUNNER_CONNECTION_INTERRUPTED"));
+        update_runtime_error(&mut error, None);
+        assert_eq!(error, None);
+        update_runtime_error(&mut error, Some("RUNNER_CONNECTION_REQUIRED"));
+        update_runtime_error(&mut error, None);
+        assert_eq!(error, None);
+        update_runtime_error(&mut error, Some("RUNNER_STOP_TIMEOUT"));
+        update_runtime_error(&mut error, None);
+        assert_eq!(error.as_deref(), Some("RUNNER_STOP_TIMEOUT"));
+    }
 
     #[test]
     fn heartbeat_requires_a_recent_acknowledgment_and_rejects_future_or_missing_times() {
