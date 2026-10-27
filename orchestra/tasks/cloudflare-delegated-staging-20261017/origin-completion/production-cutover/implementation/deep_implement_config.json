@@ -35,9 +35,9 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Integrate the synthetic authenticated application acceptance path, release the Admin/Node service through the existing Linux release workflow, verify serving SHA and live preflight, then monitor one exact Owner-authorized application acceptance job. Keep M2 and Linux fallback unchanged; leave credit settlement/job parity and native activation as separate remaining gates.",
-      "checkpoint_sha": "b4d046cc93982c26a0a7eef3b28c55e1576e8276",
-      "merged_main_sha": "b4d046cc93982c26a0a7eef3b28c55e1576e8276",
+      "next_action": "Build and release the integrated Admin/Node code with pnpm run release:web:linux; verify actual serving SHA and live application preflight. Once the existing Admin page shows READY, the Owner submits the single synthetic application acceptance action. Reconcile/monitor that exact canonical job; complete billing/job parity and separately authorized native activation afterward.",
+      "checkpoint_sha": "f1e24b294c6dcaa7137615ca5afdea2c926173bb",
+      "merged_main_sha": "f1e24b294c6dcaa7137615ca5afdea2c926173bb",
       "session_id": "codex-m3-application-acceptance-20261027"
     }
   },
@@ -50,18 +50,19 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 127,
-  "updated_at": "2026-10-27T04:17:05.814205+00:00",
+  "generation": 128,
+  "updated_at": "2026-10-27T04:18:51.498083+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Integrate the synthetic authenticated application acceptance path, release the Admin/Node service through the existing Linux release workflow, verify serving SHA and live preflight, then monitor one exact Owner-authorized application acceptance job. Keep M2 and Linux fallback unchanged; leave credit settlement/job parity and native activation as separate remaining gates.",
+    "next_action": "Build and release the integrated Admin/Node code with pnpm run release:web:linux; verify actual serving SHA and live application preflight. Once the existing Admin page shows READY, the Owner submits the single synthetic application acceptance action. Reconcile/monitor that exact canonical job; complete billing/job parity and separately authorized native activation afterward.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
       "Production application acceptance and cutover remain unverified: canonical app acceptance job, live Cloudflare API/runtime receipts, billing reserve/settle, application job queue/cancel/recovery, and separate activation authority are still required.",
-      "No live production app-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit/job parity, and separately authorized native activation are verified."
+      "No live production app-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit/job parity, and separately authorized native activation are verified.",
+      "No live production application-acceptance submission or Cloudflare acceptance receipt is accessible in this session. M3 and final migration remain NOT_ACCEPTED until actual authorized job execution, application acceptance, credit settlement/job parity and separately authorized native activation are verified."
     ],
-    "merged_main_sha": "b4d046cc93982c26a0a7eef3b28c55e1576e8276",
+    "merged_main_sha": "f1e24b294c6dcaa7137615ca5afdea2c926173bb",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
