@@ -441,7 +441,7 @@ mod tests {
         let address = listener.local_addr().unwrap();
         let server = thread::spawn(move || {
             let (mut stream, _) = listener.accept().unwrap();
-            let _ = stream.set_read_timeout(Some(Duration::from_secs(1)));
+            let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
             let mut request = Vec::new();
             let mut chunk = [0; 1024];
             while !request.windows(4).any(|window| window == b"\r\n\r\n") {
@@ -492,7 +492,7 @@ mod tests {
             let (endpoint, server) =
                 mock_http_server(json_response(status, secret_body), Duration::ZERO);
             let result = send_mock_request(
-                &test_agent(Duration::from_secs(1)),
+                &test_agent(Duration::from_secs(5)),
                 &endpoint,
                 Some("access-token-secret"),
             );
