@@ -656,6 +656,9 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         factory_pipeline = repo / "orchestra/programs/autonomous-mini-app-factory/factory-pipeline.v1.json"
         factory_pipeline.parent.mkdir(parents=True)
         factory_pipeline.write_text('{"schemaVersion":"mini-app-factory-pipeline.v1","pipelineId":"fixture","stages":[]}\n')
+        feature_spec = repo / "specs/feature/001-release-fixture/spec.md"
+        feature_spec.parent.mkdir(parents=True)
+        feature_spec.write_text("# Release fixture\n")
         (web / "dist/public/index.html").write_text("<html>packaged frontend</html>")
         (web / "tsconfig.json").write_text(json.dumps({
             "extends": "../../tsconfig.base.json",
@@ -729,6 +732,10 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertFalse((runtime / ".env").exists())
         self.assertTrue((runtime / ".env.example").exists())
         self.assertTrue((runtime / "server/_core/index.ts").is_file())
+        self.assertEqual(
+            (runtime / "server/feature-spec-catalog/001-release-fixture/spec.md").read_bytes(),
+            feature_spec.read_bytes(),
+        )
         self.assertEqual(
             (runtime / "server/services/mini-app-factory-pipeline.v1.json").read_bytes(),
             factory_pipeline.read_bytes(),
