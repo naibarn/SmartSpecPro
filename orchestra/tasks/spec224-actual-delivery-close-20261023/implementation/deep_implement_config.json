@@ -30,9 +30,9 @@
     "section-04-release-final-verify": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Active Dev database contract repair and startup migration-plus-strict-catalog preflight are integrated at 1841dfc07cc5d6aa3cbb02ae811c5d873fd3d52a. Dev Web restart and Python readiness passed; authenticated local Playwright navigation passed 5/5. Continue protected Windows Runner DevelopmentRun acceptance; do not repeat Mini-App V1/V2 or database work. Isolated Revision-24 artifact tests need S3/R2 configuration.",
-      "checkpoint_sha": "9c9d77adc4a23eda9cb884d3b5789c2c15967439",
-      "merged_main_sha": "1841dfc07cc5d6aa3cbb02ae811c5d873fd3d52a"
+      "next_action": "In SmartAIHub Chat conversation 233, open the existing DevelopmentRun run-547f17fa98a3bc44ccc517c84c60ffeadf3fc77 and click ทำงานเดิมต่อ once; review the USD 1.00 cap and return the resulting authorization/dispatch state. Then verify same-run Windows receipts, settlement, reconnect recovery, and independent Final Verify.",
+      "checkpoint_sha": "8b00f448b6a80def5212034357a1e39b4ec3bb93",
+      "merged_main_sha": "45de316855cd5ce11b20bd39de5b6caf33c6b9c6"
     },
     "section-03-real-browser-acceptance": {
       "status": "checkpointed",
@@ -78,17 +78,18 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-23T11:54:52.232432+00:00",
-  "generation": 40,
-  "updated_at": "2026-10-26T09:41:23.855570+00:00",
+  "generation": 41,
+  "updated_at": "2026-10-27T00:58:15.530346+00:00",
   "progress": {
     "active_section": "section-04-release-final-verify",
-    "next_action": "Active Dev database contract repair and startup migration-plus-strict-catalog preflight are integrated at 1841dfc07cc5d6aa3cbb02ae811c5d873fd3d52a. Dev Web restart and Python readiness passed; authenticated local Playwright navigation passed 5/5. Continue protected Windows Runner DevelopmentRun acceptance; do not repeat Mini-App V1/V2 or database work. Isolated Revision-24 artifact tests need S3/R2 configuration.",
+    "next_action": "In SmartAIHub Chat conversation 233, open the existing DevelopmentRun run-547f17fa98a3bc44ccc517c84c60ffeadf3fc77 and click ทำงานเดิมต่อ once; review the USD 1.00 cap and return the resulting authorization/dispatch state. Then verify same-run Windows receipts, settlement, reconnect recovery, and independent Final Verify.",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
     "gaps": [
       "Protected Windows Runner live DevelopmentRun with run-bound execution, settlement, interruption recovery and independent Final Verify remains unverified; this database parity checkpoint did not create a production owner run.",
-      "Revision-24 Mini-App artifact UAT cannot use this local filesystem storage provider; isolated non-production S3/R2 configuration is required to exercise content-addressed artifact writes."
+      "Revision-24 Mini-App artifact UAT cannot use this local filesystem storage provider; isolated non-production S3/R2 configuration is required to exercise content-addressed artifact writes.",
+      "Run run-547f17fa98a3bc44ccc517c84c60ffeadf3fc77 exists but its authorization hold expired before dispatch; the production recovery path is deployed. Owner-authenticated continuation has not yet been exercised in this session, so no Windows execution or settlement receipt exists."
     ],
-    "merged_main_sha": "1841dfc07cc5d6aa3cbb02ae811c5d873fd3d52a"
+    "merged_main_sha": "45de316855cd5ce11b20bd39de5b6caf33c6b9c6"
   },
   "merged_main_sha": "a6748b9a58915f6a2b5704e62323d8e3b8b2e082"
 }
