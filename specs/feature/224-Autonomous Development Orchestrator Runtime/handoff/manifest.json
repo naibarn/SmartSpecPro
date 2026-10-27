@@ -980,11 +980,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
-    "next_ready_workunit": "SPEC224_LIVE_RUNNER_ACCEPTANCE",
-    "reactivation_predicate": "Proceed when an authorized live Runner and workspace are available; preserve production-specific controls.",
-    "resume_point": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
-    "waiting_predicate": "Live Runner acceptance requires current authenticated Runner, workspace, Goal grant and budget authority; the connected PostgreSQL result is synthetic."
+    "next_action": "Complete Task Control Goal admission: startWorkspaceRun currently creates no goalId and calls job-scoped advanceStart; buildSpec224GoalGrantApprovalPayload has no production caller. Connect the existing Approval Authority and delegated authorization without widening a job approval. In parallel the Windows owner must refresh the expired Codex task probe and select an authorized isolated workspace on an approved source; then execute the bounded live two-phase pilot. See handoff/evidence/spec224-live-preflight-20261028.md. No live dispatch or Final Verify has been observed.",
+    "next_ready_workunit": "SPEC224_TASK_CONTROL_GOAL_ADMISSION",
+    "reactivation_predicate": "Resume live admission after Goal authority, workspace/source and Runner readiness are current; retain production and tenant authorization checks.",
+    "resume_point": "Source 5f17f75e4be0ab7bbb6640c1e21d4b6ee8e236a0; economic fixture fix 10726d5314fb2647bf49a2253a7da647820ec33d integrated and full economic PostgreSQL 13/13 passed. Live preflight evidence is in spec224-live-preflight-20261028.md.",
+    "waiting_predicate": "Goal admission backend work is independently runnable. Live dispatch additionally requires a current authorized Goal grant/budget and a fresh Windows Codex probe and approved isolated workspace."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1015,7 +1015,7 @@
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
       }
     ],
-    "next_action": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
+    "next_action": "Complete Task Control Goal admission: startWorkspaceRun currently creates no goalId and calls job-scoped advanceStart; buildSpec224GoalGrantApprovalPayload has no production caller. Connect the existing Approval Authority and delegated authorization without widening a job approval. In parallel the Windows owner must refresh the expired Codex task probe and select an authorized isolated workspace on an approved source; then execute the bounded live two-phase pilot. See handoff/evidence/spec224-live-preflight-20261028.md. No live dispatch or Final Verify has been observed.",
     "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -1094,7 +1094,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 208,
+  "generation": 209,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2214,7 +2214,7 @@
           "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
         }
       ],
-      "next_action": "Connected synthetic PostgreSQL acceptance passed for delegated child authorization, receipt-driven next phase, replay, budget and restart on source 742c5c3b981067cd015e4a2c8265a8d2a45ec2b5; see handoff/evidence/spec224-delegated-child-postgres-20261028.md. Continue separately with authorized live Codex Runner execution and Windows/deployed-runtime acceptance; synthetic receipts are not live evidence.",
+      "next_action": "Complete Task Control Goal admission: startWorkspaceRun currently creates no goalId and calls job-scoped advanceStart; buildSpec224GoalGrantApprovalPayload has no production caller. Connect the existing Approval Authority and delegated authorization without widening a job approval. In parallel the Windows owner must refresh the expired Codex task probe and select an authorized isolated workspace on an approved source; then execute the bounded live two-phase pilot. See handoff/evidence/spec224-live-preflight-20261028.md. No live dispatch or Final Verify has been observed.",
       "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -3704,7 +3704,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T17:57:51.015172Z",
+  "updated_at": "2026-10-27T18:11:24.826320Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
