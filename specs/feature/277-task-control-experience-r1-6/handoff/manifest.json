@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+    "expected_canonical_sha": "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
     "expected_spec_digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd"
   },
   "continuation": {
     "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor.",
     "next_ready_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
-    "resume_point": "Latest live-readiness continuation:PR1036 f250326711d7d170e575d03b7c358f74891dfecc.41/41 scopedtests; latestknownactivity fix and realSQL isolation/paging/currentownership/readonly verification passed. Liveauth/Runner NOTACCEPTED:0freshRunner,0unexpiredcapability,0requestedprofile,0approvedunrevokedrecoveryapproval candidates. Currentlocalreadroute404; primarydirtysource preserved. No selfissuedauthority, sharedDBwrites, migrations, newGoalstore or Pilotrerun. Canonical evidence orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json. Earlier broader continuation: Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: PR #673 integrated at 07a30fb838ba82ac3f3c8f435170692dfe27dcc2 repairs DevelopmentRun phase persistence and Task Control projection across separately admitted worker jobs. Exact synthetic evidence is in specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/r9-developmentrun-phase-restart-20261011.json. No SPEC-277 requirement was promoted to PASS; its callback producer/attempt-correlation review remains the next independent WorkUnit. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers.",
+    "resume_point": "Integrated Task Control Simple/Developer mode at b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5; focused TaskObservabilityMonitor suite passed 10/10. Both views use the existing canonical task read model. Goal summary and final deliverables are absent from this projection and remain unknown; Developer mode explicitly reports that live terminal, file diff and harness identity telemetry are unavailable. This does not close callback producer review, authenticated parity, or live execution acceptance. Continue the existing callback producer/attempt-correlation review and add only trusted Goal/WorkUnit inputs and parity evidence when available.",
     "waiting_predicate": "Provider polling, callback evidence safety, and outbox/terminal fencing now have direct native-PostgreSQL evidence. The next independent review is whether any actual producer sends callback attempt metadata. Durable receipt schema/migration waits on identified SPEC-302 owner and explicit authorization. Do not repeat primary workspace convergence while it remains dirty/stale."
   },
   "continuation_assessment": {
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 75,
+  "generation": 76,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "141826cc6d578b9f3960118efb74b642d99c02fef064891bb1c627c4f13af5fd",
@@ -218,7 +218,8 @@
       "47235563d14d6a4c861c04127e77e6dd655283db",
       "1f9cda7857372f0e4369943cb257216658b84d0e",
       "86a16d13592b7be4063c0ab37044418a8212de7c",
-      "f250326711d7d170e575d03b7c358f74891dfecc"
+      "f250326711d7d170e575d03b7c358f74891dfecc",
+      "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5"
     ],
     "mapping": [
       {
@@ -253,16 +254,18 @@
       "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json",
       "apps/web/shared/taskAcceptanceProjection.ts",
       "apps/web/server/services/taskObservabilityAcceptance.ts",
-      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx"
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+      "apps/web/client/src/pages/TaskObservabilityMonitor.test.tsx"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
+    "canonical_sha": "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
     "integrated": true,
-    "integrated_at": "2026-10-17T07:04:29Z"
+    "integrated_at": "2026-10-27T07:01:43+07:00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -1459,7 +1462,7 @@
     "unresolved": 442
   },
   "schema_version": 1,
-  "updated_at": "2026-10-22T04:27:00.583225Z",
+  "updated_at": "2026-10-27T00:02:33.095030Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
@@ -1695,6 +1698,14 @@
         "source_sha": "f250326711d7d170e575d03b7c358f74891dfecc",
         "status": "PASS_SCOPED",
         "summary": "PR1036 nativeSQL readprerequisites and persistedactivity repair:41/41 scopedchecks atf250326711d7d170e575d03b7c358f74891dfecc;6 realSQL cases and9 admissioncases. ReadonlySQL enforcement and ownerclustercleanup verified. Caller scopes/signinginputs TEST_ONLY; liveauth/Runner remainunverified."
+      },
+      {
+        "canonical_sha": "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
+        "kind": "TASK_CONTROL_SIMPLE_DEVELOPER_MODE_CHECKPOINT",
+        "path": "apps/web/client/src/pages/TaskObservabilityMonitor.test.tsx",
+        "source_sha": "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
+        "status": "PASS_SCOPED",
+        "summary": "Simple mode is the default and both modes consume the existing authorized task read model. Focused TaskObservabilityMonitor suite passed 10/10; developer mode retains current evidence detail. No live terminal, file diff, harness identity or authenticated execution acceptance is claimed."
       }
     ],
     "freshness": "PARTIAL",
@@ -1702,7 +1713,7 @@
       "quick",
       "integration"
     ],
-    "sha": "a3521d7e42e36b2e905ce4c3f228d326d05b2def",
+    "sha": "b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5",
     "status": "PARTIAL",
     "task_regressions": []
   }
