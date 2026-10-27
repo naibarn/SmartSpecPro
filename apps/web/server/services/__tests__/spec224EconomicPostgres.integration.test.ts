@@ -39,8 +39,8 @@ let economicSchema: typeof import("../../../drizzle/schema");
 let createdJobs: string[] = [];
 let sharedAttempt: { jobId: string; attemptId: string } | undefined;
 
-async function createAttempt() {
-  if (sharedAttempt) return sharedAttempt;
+async function createAttempt(reuse = true) {
+  if (reuse && sharedAttempt) return sharedAttempt;
   const taskId = randomUUID();
   const definition = buildAgentJobDefinition({
     taskId,
@@ -79,8 +79,9 @@ async function createAttempt() {
     adapter: "postgres-pull",
   });
   expect(lease).not.toBeNull();
-  sharedAttempt = { jobId: created.jobId, attemptId: lease.attemptId };
-  return sharedAttempt;
+  const result = { jobId: created.jobId, attemptId: lease.attemptId };
+  if (reuse) sharedAttempt = result;
+  return result;
 }
 
 function makeIntent(job: { jobId: string; attemptId: string }, amountMinorUnits: number, idempotencyKey: string) {
@@ -185,6 +186,15 @@ suite("Spec 224 — PostgreSQL economic certification", () => {
       const [first, second] = await Promise.all([provisionSpec224GoalBudget(db, input), provisionSpec224GoalBudget(db, input)]);
       expect(first.budgetId).toBe(second.budgetId);
       expect([first.replayed, second.replayed].sort()).toEqual([false, true]);
+      const accounts = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: `${scopeId}-goal-accounts`, limitMinorUnits: 100 });
+      const [childA, childB] = await Promise.all([createAttempt(false), createAttempt(false)]);
+      const [intentA, intentB] = await Promise.all([makeIntent(childA, 60, "goal-child-a"), makeIntent(childB, 60, "goal-child-b")]);
+      const holds = await Promise.allSettled([intentA, intentB].map((intent, index) => reserveEconomicHold(db, {
+        intent, budgetId: first.budgetId, idempotencyKey: `goal-child-hold-${index}`, journalLines: journalLines(accounts, 60),
+        journalDescription: "Goal child reservation",
+      })));
+      expect(holds.filter(value => value.status === "fulfilled")).toHaveLength(1);
+      expect(holds.find(value => value.status === "rejected")).toMatchObject({ reason: { code: "BUDGET_EXCEEDED" } });
       await sql`UPDATE approval_requests SET revoked_at = NOW() WHERE id = ${approvalRef}`;
       await expect(provisionSpec224GoalBudget(db, input)).rejects.toMatchObject({ code: "SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED" });
     } finally {
