@@ -1009,8 +1009,9 @@ async fn stop_runner(state: State<'_, RunnerState>) -> Result<(), String> {
 #[tauri::command]
 fn list_workspaces(
     state: State<'_, RunnerState>,
+    mode: Option<String>,
 ) -> Result<Vec<workspace_view::WorkspaceView>, String> {
-    workspace_view::list(&state.config)
+    workspace_view::list(&state.config, mode.as_deref() == Some("developer"))
 }
 
 #[tauri::command]

@@ -256,3 +256,12 @@ MORE CLI:
   swizzle <Name>     eject component source for deep customization
   upgrade --apply    run after any Astryx or integration dependency bump
 <!-- ASTRYX:END -->
+
+## SmartAIHub presentation identity and disclosure
+
+- Customer-facing product branding is `SmartAIHub`, `SmartAIHub Runner`, and `SmartAIHub Mini Apps`, plus user-owned or user-configured workspace/project names. `SmartSpec`, `SmartSpecPro`, and formatting/case variants are internal project identifiers and must not be presented as SmartAIHub-owned product identity.
+- Keep immutable repository/project/workspace IDs, paths, execution receipts, provenance, and audit facts unchanged in storage and internal control contracts. Apply presentation mapping at shared DTO/read-model/export/event boundaries and at local Runner projections; never rename physical repositories or infer ownership from a display string.
+- Classify identities from trusted provenance and authorization (including the repository ownership scopes in SPEC-293). Do not blanket-mask a user/tenant/customer-owned name because it equals an internal legacy name. Map legacy persisted labels only when the record is proven platform-engineering-owned; preserve the original value for authorized internal diagnostics.
+- Simple/User presentation must not expose platform-engineering repository identity, repository IDs, absolute filesystem paths, or internal diagnostics. Developer presentation may show user-authorized repository/path diagnostics; platform-engineering details require separate operator authorization. UI mode selection is not an authorization grant.
+- Sanitize customer-facing errors, live events, notification bodies, API presentation DTOs, and exports before delivery. Keep protected raw evidence behind existing operator authorization and never place secrets or internal diagnostics in public error text.
+- Add regression coverage for case/format variants, legacy persisted labels, user-owned same-name records, tenant isolation, DTO/event/export presentation, and Simple/Developer disclosure. Preserve SPEC-224 execution bindings and source-SHA verification.

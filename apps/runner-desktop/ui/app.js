@@ -3,11 +3,12 @@ const invoke = window.__TAURI__.core.invoke;
 const elements = Object.fromEntries(
   [
     "connection-state", "connection-detail", "connection-notice", "connect-button",
-    "refresh-button", "runtime-state", "runtime-notice", "start-button", "stop-button",
+    "refresh-button", "runtime-state", "runtime-notice", "readiness-detail", "start-button", "stop-button",
     "rescan-button", "workspace-list", "default-workspace", "tool-list", "tool-count",
     "add-workspace-button", "auto-start", "global-notice", "quit-button",
     "app-version", "app-build-date", "first-launch-date", "access-token-expiry", "reauth-deadline",
     "credential-detail", "export-debug-button", "open-debug-folder-button", "debug-file-path",
+    "workspace-simple-mode", "workspace-developer-mode",
   ].map(id => [id, document.getElementById(id)])
 );
 
@@ -27,6 +28,7 @@ let uiStateRevision = 0;
 let latestRunnerStatus = null;
 let latestToolInventory = [];
 let lastToolRenderKey = "";
+let workspaceViewMode = localStorage.getItem("runner-workspace-view") === "developer" ? "developer" : "simple";
 const taskVerifiableAdapters = new Set([
   "codex.v1", "claude.v1", "deepseek.v1", "antigravity.v1", "openclaw.v1", "hermes.v1",
 ]);
@@ -348,7 +350,7 @@ function formatDate(timestamp) {
 
 async function refreshWorkspaces() {
   try {
-    const workspaces = await invoke("list_workspaces");
+    const workspaces = await invoke("list_workspaces", { mode: workspaceViewMode });
     const select = elements["default-workspace"];
     const selectedWorkspaceId = select.value;
     select.replaceChildren(new Option("ไม่กำหนด workspace หลัก", ""));
@@ -373,59 +375,62 @@ async function refreshWorkspaces() {
       description.className = "workspace-name";
       const name = document.createElement("p");
       name.textContent = workspace.displayName;
-      const path = document.createElement("output");
-      path.className = "path";
-      path.textContent = workspace.localPath;
-      const facts = workspace.facts;
-      const git = document.createElement("p");
-      git.className = "body-copy";
-      git.textContent = facts.gitHead
-        ? `Git ${facts.gitBranch ?? "detached HEAD"} · ${facts.gitHead} · ${facts.dirty ? "มีไฟล์เปลี่ยนแปลง" : "ไม่มีไฟล์เปลี่ยนแปลง"}`
-        : "ยังยืนยัน Git HEAD ไม่ได้ — เลือกโฟลเดอร์ Git ที่ตรงกับงานก่อนรับงานพัฒนา";
-      const identity = document.createElement("form");
-      identity.className = "workspace-binding";
-      const inputs = {};
-      for (const [key, title] of [["projectId", "Project ID"], ["repositoryId", "Repository ID"]]) {
-        const label = document.createElement("label");
-        label.className = "field-label";
-        label.textContent = title;
-        const input = document.createElement("input");
-        input.className = "select-control";
-        input.type = "text";
-        input.maxLength = 200;
-        input.autocomplete = "off";
-        input.value = facts[key] ?? "";
-        label.append(input);
-        identity.append(label);
-        inputs[key] = input;
-      }
-      const hint = document.createElement("p");
-      hint.className = "body-copy";
-      hint.textContent = "ใช้ ID จริงจากงานที่ได้รับมอบหมาย เว้นว่างเพื่อล้าง binding; การบันทึกนี้ไม่อนุมัติสิทธิ์รันงาน ต้องหยุด Runner ก่อนแก้ไข";
-      const save = document.createElement("button");
-      save.type = "submit";
-      save.className = "button quiet";
-      save.textContent = "บันทึก Project / Repository";
-      identity.append(hint, save);
-      identity.addEventListener("submit", async event => {
-        event.preventDefault();
-        invalidatePendingStatus();
-        save.disabled = true;
-        try {
-          await invoke("bind_workspace_identity", {
-            workspaceId: workspace.workspaceId,
-            projectId: inputs.projectId.value.trim() || null,
-            repositoryId: inputs.repositoryId.value.trim() || null,
-          });
-          await refreshWorkspaces();
-          setNotice(elements["runtime-notice"], "บันทึก binding แล้ว เริ่ม Runner เพื่อส่งข้อมูลใหม่; สิทธิ์และ Lease ยังต้องผ่านการตรวจจากระบบ");
-        } catch (error) {
-          setNotice(elements["runtime-notice"], safeError(error));
-        } finally {
-          save.disabled = false;
+      description.append(name);
+      if (workspaceViewMode === "developer") {
+        const path = document.createElement("output");
+        path.className = "path";
+        path.textContent = workspace.localPath;
+        const facts = workspace.facts;
+        const git = document.createElement("p");
+        git.className = "body-copy";
+        git.textContent = facts.gitHead
+          ? `Git ${facts.gitBranch ?? "detached HEAD"} · ${facts.gitHead} · ${facts.dirty ? "มีไฟล์เปลี่ยนแปลง" : "ไม่มีไฟล์เปลี่ยนแปลง"}`
+          : "ยังยืนยัน Git HEAD ไม่ได้ — เลือกโฟลเดอร์ Git ที่ตรงกับงานก่อนรับงานพัฒนา";
+        const identity = document.createElement("form");
+        identity.className = "workspace-binding";
+        const inputs = {};
+        for (const [key, title] of [["projectId", "Project ID"], ["repositoryId", "Repository ID"]]) {
+          const label = document.createElement("label");
+          label.className = "field-label";
+          label.textContent = title;
+          const input = document.createElement("input");
+          input.className = "select-control";
+          input.type = "text";
+          input.maxLength = 200;
+          input.autocomplete = "off";
+          input.value = facts[key] ?? "";
+          label.append(input);
+          identity.append(label);
+          inputs[key] = input;
         }
-      });
-      description.append(name, path, git, identity);
+        const hint = document.createElement("p");
+        hint.className = "body-copy";
+        hint.textContent = "ใช้ ID จริงจากงานที่ได้รับมอบหมาย เว้นว่างเพื่อล้าง binding; การบันทึกนี้ไม่อนุมัติสิทธิ์รันงาน ต้องหยุด Runner ก่อนแก้ไข";
+        const save = document.createElement("button");
+        save.type = "submit";
+        save.className = "button quiet";
+        save.textContent = "บันทึก Project / Repository";
+        identity.append(hint, save);
+        identity.addEventListener("submit", async event => {
+          event.preventDefault();
+          invalidatePendingStatus();
+          save.disabled = true;
+          try {
+            await invoke("bind_workspace_identity", {
+              workspaceId: workspace.workspaceId,
+              projectId: inputs.projectId.value.trim() || null,
+              repositoryId: inputs.repositoryId.value.trim() || null,
+            });
+            await refreshWorkspaces();
+            setNotice(elements["runtime-notice"], "บันทึก binding แล้ว เริ่ม Runner เพื่อส่งข้อมูลใหม่; สิทธิ์และ Lease ยังต้องผ่านการตรวจจากระบบ");
+          } catch (error) {
+            setNotice(elements["runtime-notice"], safeError(error));
+          } finally {
+            save.disabled = false;
+          }
+        });
+        description.append(path, git, identity);
+      }
       const remove = document.createElement("button");
       remove.className = "button quiet";
       remove.type = "button";
@@ -699,7 +704,10 @@ elements["export-debug-button"].addEventListener("click", async () => {
       reasonCode: report.taskCheck?.reasonCode ?? report.tool?.reason_codes?.[0] ?? null,
     }));
     const result = await invoke("export_runner_debug_report", { verificationResults });
-    elements["debug-file-path"].textContent = `บันทึกไฟล์แล้ว: ${result.path}`;
+    elements["debug-file-path"].dataset.path = `บันทึกไฟล์แล้ว: ${result.path}`;
+    elements["debug-file-path"].textContent = workspaceViewMode === "developer"
+      ? elements["debug-file-path"].dataset.path
+      : "บันทึกไฟล์ Debug ไว้ในเครื่องแล้ว";
     elements["open-debug-folder-button"].hidden = false;
     setNotice(elements["runtime-notice"], "สร้างไฟล์ Debug แล้ว ตรวจสอบ PATH/ตำแหน่ง CLI และ error code ได้ โดยไม่มี token หรือคำตอบจากเครื่องมือ");
   } catch (error) {
@@ -766,6 +774,22 @@ elements["add-workspace-button"].addEventListener("click", async () => {
     button.disabled = false;
   }
 });
+function setWorkspaceViewMode(mode) {
+  workspaceViewMode = mode === "developer" ? "developer" : "simple";
+  localStorage.setItem("runner-workspace-view", workspaceViewMode);
+  elements["workspace-simple-mode"].className = `button ${workspaceViewMode === "simple" ? "primary" : "quiet"}`;
+  elements["workspace-simple-mode"].setAttribute("aria-pressed", String(workspaceViewMode === "simple"));
+  elements["workspace-developer-mode"].className = `button ${workspaceViewMode === "developer" ? "primary" : "quiet"}`;
+  elements["workspace-developer-mode"].setAttribute("aria-pressed", String(workspaceViewMode === "developer"));
+  if (elements["debug-file-path"].dataset.path) {
+    elements["debug-file-path"].textContent = workspaceViewMode === "developer"
+      ? elements["debug-file-path"].dataset.path
+      : "บันทึกไฟล์ Debug ไว้ในเครื่องแล้ว";
+  }
+  void refreshWorkspaces();
+}
+elements["workspace-simple-mode"].addEventListener("click", () => setWorkspaceViewMode("simple"));
+elements["workspace-developer-mode"].addEventListener("click", () => setWorkspaceViewMode("developer"));
 elements["default-workspace"].addEventListener("change", async event => {
   invalidatePendingStatus();
   try {
@@ -800,6 +824,7 @@ elements["quit-button"].addEventListener("click", async () => {
 });
 
 async function showWindowIfReady() {
+  setWorkspaceViewMode(workspaceViewMode);
   await refreshStatus();
   await refreshWorkspaces();
   await scanTools();
