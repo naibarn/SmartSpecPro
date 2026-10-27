@@ -316,6 +316,50 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
+    #[test]
+    fn import_rejects_junction_alias_inside_authorized_root() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("Projects");
+        fs::create_dir(&root).unwrap();
+        let existing = root.join("existing");
+        fs::create_dir(&existing).unwrap();
+        fs::write(existing.join("notes.txt"), "keep").unwrap();
+        let junction = root.join("alias");
+        let command = format!(
+            "mklink /J \"{}\" \"{}\"",
+            junction.display(),
+            existing.display()
+        );
+        let status = std::process::Command::new("cmd.exe")
+            .args(["/C", &command])
+            .status()
+            .unwrap();
+        assert!(status.success(), "failed to create test junction");
+
+        let config = RunnerConfig {
+            data_root: temp.path().join("runner-data").to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        let authorized = workspace_registry::register_root(&config, &root).unwrap();
+        assert_eq!(
+            workspace_registry::import_project(
+                &config,
+                &authorized.workspace_id,
+                &junction,
+                "project-alias",
+                None,
+            )
+            .unwrap_err(),
+            "RUNNER_PROJECT_PATH_BOUNDARY_VIOLATION"
+        );
+        assert_eq!(
+            fs::read_to_string(existing.join("notes.txt")).unwrap(),
+            "keep"
+        );
+        assert!(workspace_registry::list(&config).unwrap().is_empty());
+    }
+
     #[test]
     fn import_upgrades_a_legacy_registration_in_place_and_keeps_its_workspace_id() {
         let temp = tempfile::tempdir().unwrap();
@@ -1621,7 +1665,9 @@ pub fn import_project(
             .map_err(|_| "RUNNER_PROJECT_PATH_NOT_FOUND")?
             .join(path)
     };
-    if selected_path.parent() != Some(root.local_path.as_path())
+    if selected_path
+        .components()
+        .any(|component| matches!(component, std::path::Component::ParentDir))
         || has_reparse_component(&root.local_path, &selected_path)?
     {
         return Err("RUNNER_PROJECT_PATH_BOUNDARY_VIOLATION".into());
@@ -1993,12 +2039,11 @@ fn require_local_device(config: &RunnerConfig) -> Result<(), String> {
 }
 
 fn has_reparse_component(root: &Path, target: &Path) -> Result<bool, String> {
-    let relative = target
-        .strip_prefix(root)
-        .map_err(|_| "RUNNER_PROJECT_PATH_BOUNDARY_VIOLATION")?;
-    let mut current = root.to_path_buf();
-    for part in relative.components() {
-        current.push(part);
+    let canonical_root = root
+        .canonicalize()
+        .map_err(|_| "RUNNER_ROOT_PATH_NOT_FOUND")?;
+    let mut current = target.to_path_buf();
+    loop {
         let metadata =
             fs::symlink_metadata(&current).map_err(|_| "RUNNER_PROJECT_PATH_NOT_FOUND")?;
         if metadata.file_type().is_symlink() {
@@ -2011,8 +2056,18 @@ fn has_reparse_component(root: &Path, target: &Path) -> Result<bool, String> {
                 return Ok(true);
             }
         }
+        if current
+            .canonicalize()
+            .map_err(|_| "RUNNER_PROJECT_PATH_NOT_FOUND")?
+            == canonical_root
+        {
+            return Ok(false);
+        }
+        current = current
+            .parent()
+            .ok_or("RUNNER_PROJECT_PATH_BOUNDARY_VIOLATION")?
+            .to_path_buf();
     }
-    Ok(false)
 }
 
 fn load_records(config: &RunnerConfig) -> Result<Vec<WorkspaceRecord>, String> {
