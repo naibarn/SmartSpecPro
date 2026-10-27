@@ -138,6 +138,7 @@ import {
 } from "../services/smartCharacterPromptOutput";
 import { resolveExternalMediaReferenceUrls } from "../services/mediaGenerationService";
 import type { UnifiedExecutionResult } from "../services/executors/types";
+import { presentCustomerError } from "../../shared/projectIdentityPresentation";
 
 type SmartCharacterPromptValidation = ReturnType<
   typeof validateSmartCharacterPromptOutput
@@ -3916,7 +3917,10 @@ export const chatRouter = router({
                     ? inputJson.skillId
                     : "",
                 type: "text" as const,
-                error: job.failureReason,
+                error: presentCustomerError(
+                  new Error(job.failureReason),
+                  "Skill execution failed. Please try again.",
+                ),
               }
             : null),
       };

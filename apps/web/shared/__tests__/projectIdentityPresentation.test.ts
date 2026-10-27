@@ -80,4 +80,9 @@ describe("project identity presentation", () => {
     expect(presentCustomerError(new Error("SmartSpecPro could not read /mnt/SmartSpecDev/projects/SmartSpecPro/file.ts"), "Failed"))
       .toBe("SmartAIHub could not read [filesystem path]");
   });
+
+  it("redacts credential-like values from customer diagnostics", () => {
+    expect(sanitizePlatformDiagnostic("Smart Spec API key=sk-live_1234567890 Bearer abc.def.ghi"))
+      .toBe("SmartAIHub API key=[redacted] Bearer [redacted]");
+  });
 });

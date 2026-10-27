@@ -83,7 +83,10 @@ const LEGACY_BRAND = /smart[\s._-]*spec(?:[\s._-]*pro)?/gi;
 export function sanitizePlatformDiagnostic(value: string): string {
   return value
     .replace(ABSOLUTE_PATH, "[filesystem path]")
-    .replace(LEGACY_BRAND, "SmartAIHub");
+    .replace(LEGACY_BRAND, "SmartAIHub")
+    .replace(/\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret|secret|password|authorization)\b\s*[:=]\s*["']?[^\s,;"']+/gi, "$1=[redacted]")
+    .replace(/\bbearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
+    .replace(/\bsk-[A-Za-z0-9_-]{8,}\b/g, "[redacted]");
 }
 
 export function presentCustomerError(error: unknown, fallback: string): string {

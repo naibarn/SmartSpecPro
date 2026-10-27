@@ -3680,7 +3680,7 @@ function ModelForm({
               <p className="text-xs text-muted-foreground">
                 {formData.transport === "hermes_worker"
                   ? "Hermes rows are provisioned by the seed script; editing the route here is disabled to prevent clobbering the model to Gateway API."
-                  : "Users choose the model; SmartSpecPro calls this route automatically."}
+                  : "Users choose the model; SmartAIHub calls this route automatically."}
               </p>
             </div>
             <div className="grid gap-2">
