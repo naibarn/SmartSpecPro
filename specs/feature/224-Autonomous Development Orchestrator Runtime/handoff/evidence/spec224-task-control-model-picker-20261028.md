@@ -18,9 +18,10 @@ Simple Mode keeps Auto and displays the resolved default model. Developer Mode e
 - Focused Task Control Vitest: `Spec224WorkspacePanel.test.tsx`, 22/22 passed on source SHA `e0009508f94195928ffb65bfc7ed3bbf6256575d`.
 - Playwright authenticated UAT command: `SMARTSPEC_UAT_RUN_ID=spec224-model-picker-20261028 npm --workspace apps/web run test:uat:chromium -- --grep "Developer Task Control selects only the connected Runner model catalog"`.
 - Playwright reached Task Control but skipped the model interaction because the isolated UAT database returned no authorized Runner. It did not verify a live catalog or select a model.
+- Read-only transaction on the configured local development database at 2026-10-28T13:40:34Z found 16 registered Runner records, one trusted/online/current Runner, and zero trusted current snapshots with a discovered model catalog. The query did not return Runner IDs and made no database changes.
 - No DevelopmentRun was started. No real model inference, pinned live execution, or remote Runner ACK was established by this evidence.
 - `git diff --check` passed. Prettier was unavailable in this checkout (`prettier: not found`); no repository-wide typecheck was run.
 
 ## Remaining acceptance
 
-Run the authenticated Playwright selection against a current authorized Runner and its real account-scoped catalog. Then complete the existing isolated PostgreSQL dispatch check and bounded Debian Codex task, and verify current configured-endpoint Runner capability acknowledgement. Keep SPEC-224 acceptance partial until those checks have fresh evidence.
+Use the approved Runner release/update path to publish a fresh account-scoped model catalog and current capability ACK. Then run the authenticated Playwright selection against that catalog, complete the existing isolated PostgreSQL dispatch check, and verify a bounded Debian Codex task. Keep SPEC-224 acceptance partial until those checks have fresh evidence.

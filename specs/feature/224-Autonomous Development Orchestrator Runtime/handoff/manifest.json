@@ -1004,14 +1004,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "e672aae611c0a17b42602b18b690f4a6585952d4",
+    "expected_canonical_sha": "8ebf4df4f84b210ce32733c4ba6b32d7b6358849",
     "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
-    "next_action": "Implement the run/attempt-bound path-scoped lease through the existing SPEC-293 workspace_authority.py authority and canonical worker_jobs/outbox; bind and revalidate its fence at authorization, release and Runner apply, and release idempotently on terminal/recovery. Then use the structured rejection diagnostics and authorized runtime evidence to establish the configured endpoint actual serving revision and resolve the same current Runner session/snapshot ACK. Task Control model picker/refresh UI is integrated at e0009508f94195928ffb65bfc7ed3bbf6256575d; focused panel tests passed 22/22, while authenticated UAT skipped model selection because its isolated database had no authorized Runner. After the P0 lease and ACK prerequisites, establish an isolated current-schema PostgreSQL test target through the repository migration workflow, rerun model-selection dispatch integration, rerun Playwright against a current authorized Runner/account catalog, and verify a bounded real Debian Codex task. Keep acceptance PARTIAL until fresh live evidence passes; do not admit a Goal before source admission passes.",
+    "next_action": "Implement the run/attempt-bound path-scoped lease through the existing SPEC-293 workspace_authority.py authority and canonical worker_jobs/outbox; bind and revalidate its fence at authorization, release and Runner apply, and release idempotently on terminal/recovery. Then use the structured rejection diagnostics and authorized runtime evidence to establish the configured endpoint actual serving revision and resolve the same current Runner session/snapshot ACK. Task Control model picker/refresh UI is integrated at e0009508f94195928ffb65bfc7ed3bbf6256575d with focused panel tests 22/22; authenticated UAT skipped selection because its isolated DB had no Runner. The configured dev DB currently has one trusted/online/current Runner but no discovered model catalog. Use the approved Runner release/update path to publish the account-scoped catalog and ACK. After the P0 lease/ACK prerequisites, establish an isolated current-schema PostgreSQL target, rerun model-selection dispatch integration, run Playwright against a current authorized Runner/account catalog, and verify a bounded real Debian Codex task. Keep acceptance PARTIAL until fresh live evidence passes; do not admit a Goal before source admission passes.",
     "next_ready_workunit": "SPEC224_RUN_SCOPED_WRITER_LEASE_AND_RUNNER_EVENT_ACK",
     "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
-    "resume_point": "Canonical main was e672aae611c0a17b42602b18b690f4a6585952d4 at evidence capture. Dynamic Task Control model picker/refresh UI is integrated from source e0009508f94195928ffb65bfc7ed3bbf6256575d; focused panel tests passed 22/22. Authenticated UAT reached Task Control but skipped model selection because its isolated dev database had no authorized Runner. Backend Codex model discovery and pinned selection are implemented; no live catalog selection or model execution was verified here. Resume with the run/attempt path-scoped SPEC-293 lease and configured-endpoint Runner ACK, then current-schema PostgreSQL dispatch integration, real Runner Playwright selection, and a bounded Debian Codex task. No Goal or live write-capable run was started.",
+    "resume_point": "Canonical main before this handoff checkpoint was 8ebf4df4f84b210ce32733c4ba6b32d7b6358849. Dynamic Task Control model picker/refresh UI is integrated from source e0009508f94195928ffb65bfc7ed3bbf6256575d; focused panel tests passed 22/22. Authenticated UAT skipped model selection because its isolated database had no authorized Runner. A read-only query on the configured dev database found one trusted/online/current Runner but zero discovered model catalogs. Backend Codex discovery and pinned selection are implemented; no live catalog selection or model execution was verified. Resume with the run/attempt path-scoped SPEC-293 lease and configured-endpoint Runner ACK, publish a fresh model catalog through the approved Runner update path, then current-schema PostgreSQL dispatch integration, real Runner Playwright selection, and a bounded Debian Codex task. No Goal or live write-capable run was started.",
     "waiting_predicate": "Resume live Goal preparation only after (1) the existing Debian device Control Plane accepts its current Runner session and acknowledges the capability/workspace snapshot with complete dirtyPaths, (2) a run/attempt-bound SPEC-293 path-scoped writer lease is integrated and revalidated at outbox release and Runner apply with terminal/recovery cleanup, and (3) server-authoritative source admission confirms the bounded scope is SAFE_CLEAN or SAFE_DISJOINT_DIRTY. Codex task probe is currently locally passed; actual approval and Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
@@ -1159,7 +1159,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 239,
+  "generation": 240,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -1391,9 +1391,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e672aae611c0a17b42602b18b690f4a6585952d4",
+    "canonical_sha": "8ebf4df4f84b210ce32733c4ba6b32d7b6358849",
     "integrated": true,
-    "integrated_at": "2026-10-28T20:37:33+07:00",
+    "integrated_at": "2026-10-28T20:39:00+07:00",
     "pull_request": null,
     "source_sha": "e0009508f94195928ffb65bfc7ed3bbf6256575d"
   },
@@ -3885,7 +3885,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T13:38:51.444583Z",
+  "updated_at": "2026-10-28T13:40:54.869776Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4363,7 +4363,7 @@
       {
         "kind": "SPEC224_TASK_CONTROL_MODEL_PICKER",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-control-model-picker-20261028.md",
-        "scope": "Task Control UI uses only the authorized Runner modelCatalog; focused panel tests pass 22/22. Authenticated Playwright against the isolated dev UAT server reached Task Control but skipped selection because no authorized Runner was available. No real catalog selection, Start, inference or live ACK was verified.",
+        "scope": "Task Control UI uses only the authorized Runner modelCatalog; focused panel tests pass 22/22. Authenticated UAT skipped model selection because its isolated database had no authorized Runner. A read-only query on the configured dev DB found 16 registered Runners, one trusted/online/current, and zero current discovered model catalogs. No real catalog selection, Start, inference or live ACK was verified.",
         "source_sha": "e0009508f94195928ffb65bfc7ed3bbf6256575d",
         "status": "PARTIAL"
       }
