@@ -229,6 +229,7 @@ export const runnerNodesRouter = router({
             os: string;
             architecture: string;
             target: string;
+            machineName?: string | null;
           };
         } | null;
         const toolInventory = safeInventory(snapshot?.toolInventory, "tool");

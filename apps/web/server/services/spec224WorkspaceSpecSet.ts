@@ -510,6 +510,12 @@ function summary(revision: Spec224WorkspaceSpecSetRevision) {
   return { revision: revision.revision, digest: revision.digest, files: revision.files.map(file => ({ path: file.path, digest: file.digest })), replacedPaths: revision.replacedPaths, requirementCount: revision.requirementCount, runnableWorkPackageCount: revision.runnableWorkPackageCount, blockedWorkPackageCount: revision.blockedWorkPackageCount };
 }
 
+export function presentWorkspaceDisplayName(displayName: string | null | undefined, scope?: string | null): string {
+  return scope === "PLATFORM_ENGINEERING"
+    ? "SmartAIHub Development Workspace"
+    : displayName?.trim() || "Workspace";
+}
+
 class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStore {
   async listTrustedWorkspaces(input: { tenantId: string; actorId: number }): Promise<Spec224TrustedWorkspace[]> {
     const db = getDb();
@@ -539,13 +545,13 @@ class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStor
             scopeBinding.projectId !== workspace.projectId || scopeBinding.repositoryId !== workspace.repositoryId)) return [];
         return [{
           runnerId: row.runnerId,
-          displayName: scopeBinding?.projectTitle ?? workspace.displayName ?? row.displayName,
+          displayName: presentWorkspaceDisplayName(scopeBinding?.projectTitle ?? workspace.displayName ?? row.displayName, scopeBinding?.scope),
           status: row.status,
           snapshotRevision: row.currentSnapshotRevision!,
           workspaceId: workspace.workspaceId,
           projectId: workspace.projectId,
           repositoryId: workspace.repositoryId,
-          ...(scopeBinding ? { scope: scopeBinding.scope, canonicalProjectId: scopeBinding.projectId, canonicalProjectTitle: scopeBinding.projectTitle } : {}),
+          ...(scopeBinding ? { scope: scopeBinding.scope, canonicalProjectId: scopeBinding.projectId, canonicalProjectTitle: "SmartAIHub Development Workspace" } : {}),
           gitHead: workspace.gitHead,
           gitBranch: workspace.gitBranch,
           dirty: workspace.dirty,

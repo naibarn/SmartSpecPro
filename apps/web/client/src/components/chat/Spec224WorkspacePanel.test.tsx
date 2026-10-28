@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
-import { Spec224WorkspacePanel } from "./Spec224WorkspacePanel";
+import { Spec224WorkspacePanel, readinessMessage } from "./Spec224WorkspacePanel";
 
 const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), refetchWorkspaces: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } } }), runnerNodes: {
-  list: { useQuery: () => ({ data: { runners: [{ runnerId: "runner-test", displayName: "Test Runner", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1" }] } }) },
+  list: { useQuery: () => ({ data: { runners: [{ runnerId: "runner-test", displayName: "Test Runner", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1", platform: { os: "windows", architecture: "x86_64", target: "x86_64-pc-windows-msvc", machineName: "DEV-PC-01" } }] } }) },
   workspaceReadiness: { useQuery: () => ({ data: mocks.readiness, isLoading: false, error: null }) },
 }, spec226DevelopmentControl: {
   availableWorkspaces: { useQuery: () => ({ data: { workspaces: mocks.workspaces }, isLoading: false, isFetching: false, error: null, refetch: mocks.refetchWorkspaces }) },
@@ -64,6 +64,11 @@ async function preparePanel() {
 }
 
 describe("Core goal readiness feedback", () => {
+  it("explains stale probe publication and missing workspace source facts separately", () => {
+    expect(readinessMessage("CODEX_TASK_PROBE_EXPIRED", "stale")).toMatch(/ยังไม่ถูกรับรอง.*ACK/);
+    expect(readinessMessage("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE", "applied")).toMatch(/Git revision และ source fingerprint/);
+  });
+
   it("renders only Runner-discovered models and sends the chosen model and supported effort with Start", async () => {
     mocks.workspaces[0].modelCatalog = {
       state: "discovered", adapterId: "codex.v1", cliVersion: "1.2.3", observedAt: new Date().toISOString(),
@@ -165,6 +170,8 @@ describe("Core goal readiness feedback", () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
 
     expect(screen.getByLabelText("1. เลือก Runner")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("1. เลือก Runner"), { target: { value: "runner-test" } });
+    expect(screen.getByLabelText("สถานะ Runner ที่เลือก").textContent).toContain("Windows · DEV-PC-01");
     expect(screen.getByLabelText("2. เลือก Project Workspace")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Test" })).toBeInTheDocument();
     expect(screen.getByText(/Conversation นี้ผูกแล้ว: Test · สถานะ current/i)).toBeInTheDocument();

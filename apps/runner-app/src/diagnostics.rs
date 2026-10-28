@@ -4783,6 +4783,11 @@ fn capability_snapshot(
             "os": std::env::consts::OS,
             "architecture": std::env::consts::ARCH,
             "target": target_triple(),
+            "machineName": std::env::var("COMPUTERNAME")
+                .or_else(|_| std::env::var("HOSTNAME"))
+                .ok()
+                .map(|name| name.trim().chars().take(80).collect::<String>())
+                .filter(|name| !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))),
         },
         "toolInventory": tool_inventory,
         "capabilityInventory": capability_inventory,

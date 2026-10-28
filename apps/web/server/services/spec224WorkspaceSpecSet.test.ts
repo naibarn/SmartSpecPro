@@ -6,6 +6,7 @@ import {
   Spec224WorkspaceSpecSetError,
   createSpec224WorkspaceSpecSetService,
   parseSpec224WorkspaceArtifacts,
+  presentWorkspaceDisplayName,
   workspaceFactsFromSnapshot,
   type Spec224WorkspaceSpecSetStore,
 } from "./spec224WorkspaceSpecSet";
@@ -61,6 +62,20 @@ function memoryStore(): Spec224WorkspaceSpecSetStore & {
 }
 
 describe("spec224 workspace Spec Set", () => {
+  it("hides platform repository titles while preserving user workspace names", () => {
+    expect(presentWorkspaceDisplayName("SmartSpecPro", "PLATFORM_ENGINEERING")).toBe("SmartAIHub Development Workspace");
+    expect(presentWorkspaceDisplayName("SmartSpecPro", "USER_WORKSPACE")).toBe("SmartSpecPro");
+  });
+
+  it("accepts a bounded machine name from the authenticated Runner platform facts", () => {
+    const snapshot = validateRunnerCapabilitySnapshot({
+      runnerId: "runner-a", revision: "1", observedAt: "2026-10-28T12:00:00.000Z", expiresAt: "2026-10-28T12:05:00.000Z",
+      capabilities: [], workspaceIds: [], resourceClass: "medium",
+      platform: { os: "windows", architecture: "x86_64", target: "x86_64-pc-windows-msvc", machineName: "DEV-PC-01" },
+    });
+    expect(snapshot.platform?.machineName).toBe("DEV-PC-01");
+  });
+
   it("uses sanitized additive workspace facts without deriving repository data", () => {
     expect(workspaceFactsFromSnapshot({
       runnerId: "runner-a",

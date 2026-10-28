@@ -363,6 +363,7 @@ export type RunnerCapabilitySnapshot = {
     os: string;
     architecture: string;
     target: string;
+    machineName?: string | null;
   };
   /** Additive fields; omitted by legacy snapshots and normalized to empty lists. */
   toolInventory?: RunnerToolInventoryEntry[];
@@ -1269,6 +1270,9 @@ export function validateRunnerCapabilitySnapshot(
         40
       ),
       target: requiredText(rawPlatform.target, "snapshot.platform.target", 80),
+      ...(rawPlatform.machineName === undefined || rawPlatform.machineName === null
+        ? {}
+        : { machineName: requiredText(rawPlatform.machineName, "snapshot.platform.machineName", 80) }),
     };
   }
   const workspaceIds = stringList(raw.workspaceIds, "snapshot.workspaceIds");

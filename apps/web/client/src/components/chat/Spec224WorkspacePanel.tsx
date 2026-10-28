@@ -59,6 +59,7 @@ type RunnerOption = {
   capabilityAckState: "applied" | "stale" | "missing";
   readinessStatus: string;
   snapshotRevision: string | null;
+  platform?: { os: string; architecture: string; target: string; machineName?: string | null } | null;
 };
 
 type ImageReferenceDraft = {
@@ -110,6 +111,33 @@ function selectionKey(workspace: WorkspaceOption): string {
 function harnessLabel(adapterId: string): string {
   const name = adapterId.split(".")[0]?.replace(/[-_]/g, " ") ?? adapterId;
   return name.replace(/\b\w/g, character => character.toUpperCase());
+}
+
+export function readinessMessage(code: string, capabilityAckState?: RunnerOption["capabilityAckState"], simpleMode = false): string {
+  if (code === "CODEX_TASK_PROBE_EXPIRED" && capabilityAckState !== "applied") {
+    return "ผลทดสอบล่าสุดยังไม่ถูกรับรองใน Control Plane; snapshot ที่เห็นยังไม่มีผลทดสอบใหม่ รอ Runner ส่งและรับ ACK";
+  }
+  if (code === "WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE") {
+    return "Runner ยังไม่รายงาน Git revision และ source fingerprint ของ workspace นี้ ตรวจรายการ workspace ใน Runner แล้วโหลดรายการใหม่";
+  }
+  if (code === "RUNNER_READY") return "Codex และ source ของ workspace พร้อมสำหรับตรวจสิทธิ์ก่อนเริ่มงาน";
+  const messages: Record<string, string> = {
+    CODEX_TASK_PROBE_NOT_RUN: "ยังไม่ได้ทดสอบส่งงานจริงจาก Runner",
+    CODEX_TASK_PROBE_FAILED: "การทดสอบส่งงานจริงจาก Runner ไม่ผ่าน",
+    CODEX_AUTHENTICATION_REQUIRED: "ต้องเข้าสู่ระบบ Codex บน Runner ก่อน",
+    CODEX_NOT_INSTALLED: "ไม่พบ Codex CLI บน Runner",
+    CODEX_READINESS_PUBLICATION_REQUIRED: "รอ Runner เผยแพร่ผลตรวจ Codex และรับ ACK ล่าสุด",
+    RUNNER_OFFLINE: "Runner ไม่ได้เชื่อมต่ออยู่",
+    RUNNER_NOT_TRUSTED: "Runner ยังไม่ได้รับอนุญาต",
+    WORKSPACE_BINDING_MISMATCH: "workspace นี้ไม่มีอยู่ใน snapshot ปัจจุบันของ Runner",
+    WORKSPACE_SOURCE_REVISION_MISMATCH: "Git revision ของ workspace ไม่ตรงกับ revision ที่งานต้องใช้",
+    WORKSPACE_SOURCE_FINGERPRINT_MISMATCH: "source fingerprint ของ workspace เปลี่ยนไปจากตอนตรวจสอบ",
+  };
+  return messages[code] ?? (simpleMode ? "Runner หรือ workspace ยังไม่พร้อม ตรวจสอบการเชื่อมต่อและโหลดสถานะใหม่" : code);
+}
+
+function runnerPlatformLabel(os?: string): string {
+  return ({ windows: "Windows", linux: "Linux", macos: "macOS" } as Record<string, string>)[os ?? ""] ?? os ?? "OS ไม่ทราบ";
 }
 
 function imageMimeType(file: File): "image/png" | "image/jpeg" | "image/webp" | null {
@@ -644,7 +672,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
             const online = selectedRunner.readinessStatus === "online" && selectedRunner.trustState === "trusted" && heartbeatFresh;
             return (
               <section className="mt-2 rounded-md bg-[var(--color-background-subtle)] px-3 py-2 text-xs" aria-label="สถานะ Runner ที่เลือก">
-                <p className="font-medium">{selectedRunner.displayName} · {online ? "ออนไลน์" : selectedRunner.trustState !== "trusted" ? "ยังไม่ trust" : "ออฟไลน์หรือ heartbeat เก่า"}</p>
+                <p className="font-medium">{selectedRunner.displayName} · {runnerPlatformLabel(selectedRunner.platform?.os)}{selectedRunner.platform?.machineName ? ` · ${selectedRunner.platform.machineName}` : " · ยังไม่มีชื่อเครื่องจาก Runner"} · {online ? "ออนไลน์" : selectedRunner.trustState !== "trusted" ? "ยังไม่ trust" : "ออฟไลน์หรือ heartbeat เก่า"}</p>
                 <p className="mt-1 text-[var(--color-text-secondary)]">Heartbeat: {heartbeatFresh ? `สด · ${new Date(heartbeatAt).toLocaleString()}` : selectedRunner.lastSeenAt ? `เก่า · ${new Date(heartbeatAt).toLocaleString()}` : "ไม่มีข้อมูล"}</p>
                 <p className="mt-1 text-[var(--color-text-secondary)]">Capability ACK: {selectedRunner.capabilityAckState === "applied" && selectedRunner.capabilitySnapshotPersisted && selectedRunner.capabilitySnapshotCurrent ? "applied · snapshot ปัจจุบัน" : selectedRunner.capabilityAckState === "stale" ? "snapshot เก่า ต้องรอ Runner เผยแพร่ใหม่" : "ยังไม่มี ACK/snapshot ที่ยืนยันได้"}</p>
                 {!online ? <p className="mt-1 text-amber-800" role="status">เหตุผลที่รอ: {selectedRunner.trustState !== "trusted" ? "RUNNER_NOT_TRUSTED" : selectedRunner.readinessStatus !== "online" ? selectedRunner.readinessStatus : "RUNNER_HEARTBEAT_STALE"}</p> : null}
@@ -714,7 +742,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
               {workspaceReadinessQuery.isLoading ? <p role="status">กำลังตรวจสอบ readiness จาก Runner registry…</p> : null}
               {workspaceReadinessQuery.error ? <p role="alert">ตรวจสอบ readiness ไม่สำเร็จ โปรดลองโหลดรายการใหม่</p> : null}
               {!workspaceReadinessQuery.isLoading && !workspaceReadinessQuery.error && runnerReadiness ? (
-                <p role="status">{runnerReadiness.ready ? "พร้อม" : `รอ · ${runnerReadiness.code}`}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</p>
+                <p role="status">{runnerReadiness.ready ? "พร้อม" : `รอ · ${readinessMessage(runnerReadiness.code, runners.find(item => item.runnerId === readinessTarget?.runnerId)?.capabilityAckState, simpleMode)}`}{!runnerReadiness.ready && !simpleMode ? ` · ${runnerReadiness.code}` : ""}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</p>
               ) : null}
             </section>
           ) : null}
