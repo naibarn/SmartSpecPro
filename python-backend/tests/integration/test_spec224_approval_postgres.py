@@ -5,6 +5,7 @@ import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import text
@@ -19,6 +20,66 @@ def _test_database_url() -> str:
 
 
 pytestmark = pytest.mark.asyncio
+
+
+async def test_postgres_spec224_goal_grant_request_is_immutable_and_idempotent():
+    from app.api.approvals import Spec224GoalGrantApprovalCreate, create_spec224_goal_grant_approval
+    from app.models.approval import ApprovalStatus, ApprovalRequest
+    from sqlalchemy import select
+
+    engine = create_async_engine(_test_database_url(), pool_pre_ping=True)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+    suffix = uuid.uuid4().hex
+    tenant_id = str(uuid.uuid4())
+    approval_id = None
+    try:
+        async with engine.begin() as connection:
+            await connection.execute(text("INSERT INTO tenants (id, slug, name) VALUES (:id, :slug, :name)"),
+                {"id": tenant_id, "slug": f"spec224-goal-{suffix}", "name": "Spec224 Goal Approval Test"})
+            result = await connection.execute(text('INSERT INTO users ("openId") VALUES (:open_id) RETURNING id'),
+                {"open_id": f"spec224-goal-requester-{suffix}"})
+            requester_id = result.scalar_one()
+
+        issued = datetime.now(timezone.utc)
+        expires = issued + timedelta(hours=1)
+        goal_id = str(uuid.uuid4())
+        payload = {
+            "kind": "spec224_goal_delegation_grant", "grantId": goal_id, "goalId": goal_id,
+            "actorId": requester_id, "provider": "codex", "workspaceId": "workspace-test",
+            "repositoryRef": "repo:owner/test", "sourceSha": "a" * 40,
+            "allowedActions": ["implement", "test"], "writeScope": ["src/**"],
+            "capabilities": ["agent.external_task"], "budgetLimitMinorUnits": 500,
+            "currency": "USD", "issuedAt": issued.isoformat(), "expiresAt": expires.isoformat(),
+        }
+        request = Spec224GoalGrantApprovalCreate(project_id="project-test", goal_id=goal_id, payload=payload)
+        actor = SimpleNamespace(id=requester_id)
+
+        async def issue():
+            async with sessions() as session:
+                return await create_spec224_goal_grant_approval(request, actor, tenant_id, session)
+
+        first, replay = await asyncio.gather(issue(), issue())
+        approval_id = first.id
+        assert replay.id == first.id
+        assert first.status == ApprovalStatus.PENDING
+        assert first.payload == payload
+
+        async with sessions() as session:
+            conflict = Spec224GoalGrantApprovalCreate(project_id="project-test", goal_id=goal_id,
+                payload={**payload, "budgetLimitMinorUnits": 900})
+            with pytest.raises(Exception) as error:
+                await create_spec224_goal_grant_approval(conflict, actor, tenant_id, session)
+            assert getattr(error.value, "status_code", None) == 409
+            rows = (await session.execute(select(ApprovalRequest).where(ApprovalRequest.execution_id == goal_id))).scalars().all()
+            assert len(rows) == 1
+    finally:
+        async with engine.begin() as connection:
+            if approval_id:
+                await connection.execute(text("DELETE FROM approval_responses WHERE request_id = :id"), {"id": approval_id})
+                await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": approval_id})
+            await connection.execute(text("DELETE FROM users WHERE \"openId\" LIKE :pattern"), {"pattern": f"spec224-goal-requester-{suffix}"})
+            await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})
+        await engine.dispose()
 
 
 async def test_postgres_approval_decision_delivery_and_recovery():

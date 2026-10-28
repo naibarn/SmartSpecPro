@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   createRun: vi.fn(),
   runnerReadiness: vi.fn(),
   advanceStart: vi.fn(),
+  authorizeDelegatedChild: vi.fn(),
+  requestGoalGrantApproval: vi.fn(),
   createDeveloperFastLaneJob: vi.fn(),
   requestFullVerification: vi.fn(),
   workspaceSpecSets: {
@@ -84,8 +86,14 @@ vi.mock("../../services/spec224AuthorizationService", () => ({
   defaultSpec224AuthorizationService: {
     runnerReadiness: (...args: unknown[]) => mocks.runnerReadiness(...args),
     advanceStart: (...args: unknown[]) => mocks.advanceStart(...args),
+    authorizeDelegatedChild: (...args: unknown[]) => mocks.authorizeDelegatedChild(...args),
   },
 }));
+
+vi.mock("../../services/spec224GoalDelegationGrant", async () => {
+  const actual = await vi.importActual<typeof import("../../services/spec224GoalDelegationGrant")>("../../services/spec224GoalDelegationGrant");
+  return { ...actual, requestSpec224GoalGrantApproval: (...args: unknown[]) => mocks.requestGoalGrantApproval(...args) };
+});
 
 vi.mock("../../services/spec224DeveloperFastLane", () => ({
   DEVELOPER_FAST_LANE_JOB: "developer.fast_lane",
@@ -151,6 +159,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.runnerReadiness.mockReset().mockResolvedValue({ ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null, projectId: "project-a", profileId: "spec224-recovery-windows-x64-codex-nonprod" });
   mocks.advanceStart.mockReset().mockResolvedValue({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_PENDING"] });
+  mocks.authorizeDelegatedChild.mockReset().mockResolvedValue({ status: "READY_FOR_LIVE", reasons: [] });
+  mocks.requestGoalGrantApproval.mockReset().mockResolvedValue({ approvalRef: "goal-approval-1", status: "pending", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
   mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({ workspace: { workspaceId: "workspace-a", runnerId: "runner-a" } });
   mocks.featureSpecCatalog.list.mockReset().mockResolvedValue({ specs: [{ id: "224-example", title: "Example", path: "specs/feature/224-example/spec.md", summary: "Example spec" }] });
   mocks.featureSpecCatalog.load.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", content: "# Example\n" });
@@ -684,6 +694,7 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.createRun).toHaveBeenCalledWith(expect.objectContaining({
       deferredAdmission: true,
       run: expect.objectContaining({
+        goalId: expect.stringMatching(/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/),
         repositoryRef: "runner:runner-a/workspace-a",
         baseRevision: `git:${"a".repeat(40)}`,
         workPackageId: "prompt",
@@ -699,6 +710,11 @@ describe("spec226DevelopmentControlRouter", () => {
       inputSourceRef: "spec224-source:run-1",
       workerJobId: "canonical-job-1",
     });
+    expect(mocks.requestGoalGrantApproval).toHaveBeenCalledWith(expect.objectContaining({
+      projectId: "project-a",
+      goalId: expect.stringMatching(/^[0-9a-f-]{36}$/),
+      payload: expect.objectContaining({ kind: "spec224_goal_delegation_grant", goalId: expect.stringMatching(/^[0-9a-f-]{36}$/), provider: "codex" }),
+    }));
     expect(JSON.stringify(mocks.auditLog.mock.calls)).not.toContain("private request");
   });
   it("requires authenticated tenant scope and records full verification requests", async () => {

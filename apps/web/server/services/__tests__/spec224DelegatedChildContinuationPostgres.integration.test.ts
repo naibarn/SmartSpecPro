@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { resolve } from "node:path";
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { provisionSpec224EconomicTestBudget } from "./helpers/spec224EconomicTestProvisioning";
@@ -13,14 +14,60 @@ if (enabled && (!/^(localhost|127\.0\.0\.1)$/.test(target.hostname) || !/^spec22
 process.env.DATABASE_URL = databaseUrl;
 const sql = postgres(databaseUrl, { max: 8 });
 const suite = enabled ? describe : describe.skip;
+const execFileAsync = promisify(execFile);
+const createGoalApprovalScript = `
+import asyncio, json, os, sys
+from types import SimpleNamespace
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from app.api.approvals import Spec224GoalGrantApprovalCreate, create_spec224_goal_grant_approval
+async def main():
+    tenant_id, actor_id, project_id, goal_id, payload = sys.argv[1], int(sys.argv[2]), sys.argv[3], sys.argv[4], json.loads(sys.argv[5])
+    engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            request = await create_spec224_goal_grant_approval(Spec224GoalGrantApprovalCreate(project_id=project_id, goal_id=goal_id, payload=payload), SimpleNamespace(id=actor_id), tenant_id, session)
+            print(json.dumps({"id": request.id, "status": request.status.value}))
+    finally:
+        await engine.dispose()
+asyncio.run(main())
+`;
+const approveGoalScript = `
+import asyncio, json, os, sys
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from app.services.approval_db_service import ApprovalDBService
+async def main():
+    approval_ref, tenant_id, approver_id = sys.argv[1], sys.argv[2], int(sys.argv[3])
+    engine = create_async_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            request = await ApprovalDBService(session).submit_decision(approval_ref, approver_id, "approved", tenant_id=tenant_id)
+            print(json.dumps({"requestId": request.request_id, "decision": request.decision}))
+    finally:
+        await engine.dispose()
+asyncio.run(main())
+`;
 
-async function setup(limit = 200) {
+async function runApprovalAuthorityScript(script: string, args: string[]) {
+  const pythonRoot = resolve(process.cwd(), "../../python-backend");
+  const result = await execFileAsync("uv", ["run", "--project", pythonRoot, "python", "-c", script, ...args], {
+    cwd: pythonRoot,
+    env: { ...process.env, DATABASE_URL: databaseUrl.replace(/^postgresql:/, "postgresql+asyncpg:"), DEBUG: "false" },
+    maxBuffer: 2 * 1024 * 1024,
+  });
+  const jsonLine = result.stdout.trim().split(/\r?\n/).reverse().find(line => line.trim().startsWith("{"));
+  if (!jsonLine) throw new Error("SPEC224_APPROVAL_AUTHORITY_TEST_RESPONSE_INVALID");
+  return JSON.parse(jsonLine) as Record<string, string>;
+}
+
+async function setup(limit = 200, options: { approved?: boolean; withApprover?: boolean } = {}) {
   const tenantId = randomUUID(), runId = randomUUID(), goalId = randomUUID(), approvalRef = randomUUID();
   const runnerId = `runner-${randomUUID()}`, sessionId = `session-${randomUUID()}`, snapshotId = randomUUID();
   const workspaceId = `workspace-${randomUUID()}`, revision = `rev-${randomUUID()}`;
   const expires = new Date(Date.now() + 600_000), observed = new Date(Date.now() - 1_000);
   const [user] = await sql`INSERT INTO users ("openId", role, plan, credits, "isDisabled") VALUES (${randomUUID()}, 'user', 'free', 0, false) RETURNING id`;
   const actorId = Number(user.id);
+  const approverRows = options.withApprover ? await sql`INSERT INTO users ("openId", role, plan, credits, "isDisabled") VALUES (${randomUUID()}, 'admin', 'free', 0, false) RETURNING id` : [];
+  const approverId = approverRows.length ? Number(approverRows[0].id) : null;
   await sql`INSERT INTO tenants (id, slug, name, "isActive", status, plan, created_at, "createdAt", "updatedAt") VALUES (${tenantId}, ${randomUUID()}, 'Disposable bridge', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;
   const snapshot = { runnerId, tenantId, runnerSessionId: sessionId, capabilitySnapshotId: snapshotId, revision,
     observedAt: observed.toISOString(), expiresAt: expires.toISOString(), capabilities: ["agent.external_task"], workspaceIds: [workspaceId], resourceClass: "medium",
@@ -29,7 +76,7 @@ async function setup(limit = 200) {
   await sql`INSERT INTO runner_nodes ("runnerId", "tenantId", "ownerUserId", "nodeKind", profile, "displayName", "trustState", status, "currentSnapshotRevision", "currentSnapshotJson", "snapshotExpiresAt", "activeSessionId") VALUES (${runnerId}, ${tenantId}, ${actorId}, 'rust_runner', 'development', 'Test runner', 'trusted', 'online', ${revision}, ${sql.json(snapshot)}, ${expires}, ${sessionId})`;
   await sql`INSERT INTO runner_capability_snapshots (id, "runnerId", "tenantId", revision, "idempotencyKey", "observedAt", "expiresAt", "snapshotJson") VALUES (${snapshotId}, ${runnerId}, ${tenantId}, ${revision}, ${randomUUID()}, ${observed}, ${expires}, ${sql.json(snapshot)})`;
   const payload = { kind: "spec224_goal_delegation_grant", provider: "codex", grantId: randomUUID(), goalId, actorId, workspaceId, repositoryRef: "repo:test", sourceSha: "a".repeat(40), allowedActions: ["discover", "plan", "implement", "test", "repair", "verify"], writeScope: ["src/**"], capabilities: ["agent.external_task"], budgetLimitMinorUnits: limit, currency: "USD", issuedAt: observed.toISOString(), expiresAt: expires.toISOString() };
-  await sql`INSERT INTO approval_requests (id, request_type, title, tenant_id, execution_id, requester_id, status, payload, required_approvers, current_approvals, expires_at, created_at) VALUES (${approvalRef}, 'CUSTOM', 'Approved Goal', ${tenantId}, ${goalId}, ${actorId}, 'APPROVED', ${sql.json(payload)}, 1, 1, ${expires}, NOW())`;
+  if (options.approved !== false) await sql`INSERT INTO approval_requests (id, request_type, title, tenant_id, execution_id, requester_id, status, payload, required_approvers, current_approvals, expires_at, created_at) VALUES (${approvalRef}, 'CUSTOM', 'Approved Goal', ${tenantId}, ${goalId}, ${actorId}, 'APPROVED', ${sql.json(payload)}, 1, 1, ${expires}, NOW())`;
   const [{ getDb }, { buildDevelopmentRun }, { createPersistedDevelopmentRun }, { provisionSpec224GoalBudget }] = await Promise.all([
     import("../../db"), import("../spec224DevelopmentRunContracts"), import("../spec224DevelopmentRunPersistence"), import("../economicProvisioningService"),
   ]);
@@ -37,14 +84,14 @@ async function setup(limit = 200) {
   const accounts = await provisionSpec224EconomicTestBudget(db, { tenantId, scopeId: runId, limitMinorUnits: limit });
   process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID = accounts.sourceAccountId;
   process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID = accounts.targetAccountId;
-  const budget = await provisionSpec224GoalBudget(db, { tenantId, actorId, goalId, approvalRef });
+  const budget = options.approved === false ? null : await provisionSpec224GoalBudget(db, { tenantId, actorId, goalId, approvalRef });
   const run = buildDevelopmentRun({ runId, goalId, tenantId, actorId, goal: "Implement bounded test", repositoryRef: "repo:test", baseRevision: `git:${"a".repeat(40)}`, contextPackHash: "c".repeat(64), workspaceId,
-    metadata: { spec224BudgetCapMinorUnits: 50, spec224Workspace: { runnerId }, spec224Execution: { sourceFingerprint: "b".repeat(64), mode: "prompt", allowedWriteSet: ["src/**"] } } });
+    metadata: { spec224BudgetCapMinorUnits: 50, spec224GoalGrantPayload: payload, spec224Workspace: { runnerId }, spec224Execution: { sourceFingerprint: "b".repeat(64), mode: "prompt", allowedWriteSet: ["src/**"] } } });
   const created = await createPersistedDevelopmentRun({ run, provider: "codex", runtime: "local_runner", planId: `plan-${runId}`, planRevision: 1, skillIds: [], requestedCapabilities: ["agent.external_task"], deferredAdmission: true, authorizationScope: "spec224.development.run" });
   const { defaultSpec224AuthorizationService } = await import("../spec224AuthorizationService");
   // This production entry point is the missing bridge under test.
   const authorize = (defaultSpec224AuthorizationService as unknown as { authorizeDelegatedChild(input: { context: { tenantId: string; actorId: number }; runId: string }): Promise<{ status: string }> }).authorizeDelegatedChild;
-  return { tenantId, actorId, runId, goalId, approvalRef, runnerId, sessionId, snapshotId, revision, budgetId: budget.budgetId, jobId: created.jobRef.jobId, expires, authorize };
+  return { tenantId, actorId, approverId, runId, goalId, approvalRef, payload, runnerId, sessionId, snapshotId, revision, budgetId: budget?.budgetId ?? null, jobId: created.jobRef.jobId, expires, authorize };
 }
 
 afterAll(async () => { await sql.end(); const { closeDb } = await import("../../db"); await closeDb(); });
@@ -63,6 +110,62 @@ async function recordCompletedReceipt(f: Awaited<ReturnType<typeof setup>>) {
 }
 
 suite("SPEC-224 connected delegated child continuation", () => {
+  it("connects Start-persisted Goal, canonical approval, shared budget, Child 1 receipt and automatic Child 2", async () => {
+    const f = await setup(10_000, { approved: false, withApprover: true });
+    if (!f.approverId) throw new Error("SPEC224_TEST_APPROVER_REQUIRED");
+    const requestArgs = [f.tenantId, String(f.actorId), "project-test", f.goalId, JSON.stringify(f.payload)];
+    const [created, replay] = await Promise.all([
+      runApprovalAuthorityScript(createGoalApprovalScript, requestArgs),
+      runApprovalAuthorityScript(createGoalApprovalScript, requestArgs),
+    ]);
+    expect(created.id).toBe(replay.id);
+    expect(created.status).toBe("pending");
+    f.approvalRef = created.id;
+    const decision = await runApprovalAuthorityScript(approveGoalScript, [f.approvalRef, f.tenantId, String(f.approverId)]);
+    expect(decision).toMatchObject({ requestId: f.approvalRef, decision: "approved" });
+
+    const { reconcileSpec224GoalAdmissions, reconcileSpec224RunnerContinuations } = await import("../spec224RunnerContinuationReconciler");
+    const admission = await reconcileSpec224GoalAdmissions();
+    expect(admission.dispatched).toBe(1);
+    const [firstOutbox] = await sql`SELECT COUNT(*)::int AS count FROM worker_job_outbox WHERE "workerJobId" = ${f.jobId}`;
+    expect(firstOutbox.count).toBe(1);
+    const { control, receipt } = await recordCompletedReceipt(f);
+    expect(await control.recordRunnerReceipt(receipt)).toBe("duplicate");
+    await Promise.all([reconcileSpec224RunnerContinuations(), reconcileSpec224RunnerContinuations()]);
+    const jobs = await sql`SELECT id, status FROM worker_jobs WHERE "tenantId" = ${f.tenantId} AND "inputJson"->'spec224Run'->>'runId' = ${f.runId} ORDER BY "createdAt"`;
+    const [proof] = await sql`SELECT COUNT(DISTINCT h.id)::int AS holds, COUNT(DISTINCT h."attemptId")::int AS attempts,
+      COUNT(DISTINCT o.id)::int AS outbox FROM economic_holds h JOIN worker_job_outbox o ON o."workerJobId" = h."workerJobId"
+      WHERE h."tenantId" = ${f.tenantId}`;
+    const [budget] = await sql`SELECT COUNT(*)::int AS count FROM economic_budgets WHERE "tenantId" = ${f.tenantId} AND "scopeType" = 'spec224_goal'`;
+    expect(jobs).toHaveLength(2);
+    expect(jobs[1].status).toBe("queued");
+    expect(jobs[0].id).not.toBe(jobs[1].id);
+    expect(proof).toEqual({ holds: 2, attempts: 2, outbox: 2 });
+    expect(budget.count).toBe(1);
+    const [{ getDb }, { readSpec224GoalBudgetStatus }] = await Promise.all([
+      import("../../db"), import("../economicProvisioningService"),
+    ]);
+    expect(await readSpec224GoalBudgetStatus(getDb(), { tenantId: f.tenantId, goalId: f.goalId })).toMatchObject({
+      status: "active", limitMinorUnits: 10_000, currency: "USD",
+    });
+  }, 90_000);
+
+  it("recovers an approved durable Goal admission through the worker reconciler exactly once", async () => {
+    const f = await setup();
+    const { reconcileSpec224GoalAdmissions } = await import("../spec224RunnerContinuationReconciler");
+    const [first, replay] = await Promise.all([
+      reconcileSpec224GoalAdmissions(),
+      reconcileSpec224GoalAdmissions(),
+    ]);
+    const [outbox] = await sql`SELECT COUNT(*)::int AS count FROM worker_job_outbox WHERE "workerJobId" = ${f.jobId}`;
+    const [holds] = await sql`SELECT COUNT(*)::int AS count FROM economic_holds WHERE "tenantId" = ${f.tenantId} AND "workerJobId" = ${f.jobId}`;
+    const [event] = await sql`SELECT COUNT(*)::int AS count FROM worker_job_events WHERE "workerJobId" = ${f.jobId} AND "eventType" = 'SPEC224_GOAL_ADMISSION_DISPATCHED'`;
+    expect(first.scanned + replay.scanned).toBeGreaterThan(0);
+    expect(outbox.count).toBe(1);
+    expect(holds.count).toBe(1);
+    expect(event.count).toBe(1);
+  }, 60_000);
+
   it("authorizes Child 1 and automatically authorizes and dispatches Child 2 after its receipt, once under replay and concurrency", async () => {
     const f = await setup();
     expect(typeof f.authorize, "production delegated-child authorization operation").toBe("function");

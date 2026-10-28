@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { getAppRuntimeConfig } from "./appRuntimeConfig";
 
 export const SPEC224_GOAL_DELEGATION_GRANT_VERSION =
   "spec224.goal-delegation-grant.v1" as const;
@@ -90,6 +91,32 @@ export function buildSpec224GoalGrantApprovalPayload(
     capabilities: [...scope.capabilities].sort(),
     currency: scope.currency.toUpperCase(),
   };
+}
+
+export async function requestSpec224GoalGrantApproval(input: {
+  userToken: string | null | undefined;
+  projectId: string;
+  goalId: string;
+  payload: Record<string, unknown>;
+}): Promise<{ approvalRef: string; status: string; expiresAt: string | null }> {
+  if (!input.userToken?.trim()) throw new Error("APPROVAL_AUTHENTICATION_REQUIRED");
+  const runtime = await getAppRuntimeConfig();
+  const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/spec224/goal-grants`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${input.userToken}` },
+    body: JSON.stringify({ project_id: input.projectId, goal_id: input.goalId, payload: input.payload, timeout_minutes: 1440 }),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { detail?: unknown } | null;
+    const detail = typeof body?.detail === "string" && /^SPEC224_[A-Z0-9_]+$/.test(body.detail)
+      ? body.detail : response.status === 403 ? "APPROVAL_AUTHORITY_FORBIDDEN" : "APPROVAL_AUTHORITY_UNAVAILABLE";
+    throw new Error(detail);
+  }
+  const result = await response.json() as Record<string, unknown>;
+  if (typeof result.id !== "string" || typeof result.status !== "string")
+    throw new Error("APPROVAL_AUTHORITY_RESPONSE_INVALID");
+  return { approvalRef: result.id, status: result.status.toLowerCase(),
+    expiresAt: typeof result.expires_at === "string" ? result.expires_at : null };
 }
 
 export type Spec224GoalDelegationInput = {

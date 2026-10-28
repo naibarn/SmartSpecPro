@@ -96,6 +96,33 @@ export async function recoverSpec224GoalGrant(input: {
   return active[0];
 }
 
+export async function readSpec224GoalGrantStatus(input: {
+  tenantId: string; actorId: number; goalId: string; approvalRef?: string;
+}): Promise<{ status: "not_requested" | "pending" | "approved" | "rejected" | "expired" | "revoked" | "cancelled"; expiresAt: string | null }> {
+  getDb();
+  const rows = input.approvalRef
+    ? await db.instance.execute(sql`SELECT status::text AS status, expires_at AT TIME ZONE 'UTC' AS expires_at,
+      revoked_at AT TIME ZONE 'UTC' AS revoked_at FROM approval_requests WHERE id = ${input.approvalRef}
+      AND tenant_id = ${input.tenantId} AND requester_id = ${input.actorId} AND execution_id = ${input.goalId}
+      AND payload->>'kind' = 'spec224_goal_delegation_grant' LIMIT 1`)
+    : await db.instance.execute(sql`SELECT status::text AS status, expires_at AT TIME ZONE 'UTC' AS expires_at,
+      revoked_at AT TIME ZONE 'UTC' AS revoked_at FROM approval_requests WHERE tenant_id = ${input.tenantId}
+      AND requester_id = ${input.actorId} AND execution_id = ${input.goalId}
+      AND payload->>'kind' = 'spec224_goal_delegation_grant' ORDER BY created_at DESC LIMIT 1`);
+  const result = rows as unknown as { rows?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>;
+  const row = (Array.isArray(result) ? result : result.rows ?? [])[0];
+  if (!row) return { status: "not_requested", expiresAt: null };
+  const iso = (value: unknown) => value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
+  const expiresAt = iso(row.expires_at);
+  const status = String(row.status).toLowerCase();
+  return {
+    status: row.revoked_at ? "revoked" : status === "pending" && expiresAt && Date.parse(expiresAt) <= Date.now()
+      ? "expired" : ["pending", "approved", "rejected", "expired", "cancelled"].includes(status)
+        ? status as "pending" | "approved" | "rejected" | "expired" | "cancelled" : "expired",
+    expiresAt,
+  };
+}
+
 type LoadedRun = {
   run: DevelopmentRun;
   attemptId: string | null;

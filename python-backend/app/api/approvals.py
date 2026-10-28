@@ -4,7 +4,10 @@ Phase 3: Human-in-the-loop Approval Endpoints
 """
 
 import asyncio
+import hashlib
+import json
 import os
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -15,6 +18,7 @@ import httpx
 import structlog
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr, field_validator, model_validator
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
@@ -79,6 +83,16 @@ class ApprovalRequestCreate(BaseModel):
     risk_level: RiskLevel = RiskLevel.MEDIUM
     required_approvers: int = Field(1, ge=1, le=10)
     timeout_minutes: int = Field(60, ge=5, le=10080)  # 5 min to 1 week
+
+
+class Spec224GoalGrantApprovalCreate(BaseModel):
+    """Idempotent request for the existing Approval Authority to review a Goal Grant."""
+    model_config = ConfigDict(extra="forbid")
+
+    project_id: str = Field(..., min_length=1, max_length=255)
+    goal_id: str = Field(..., min_length=1, max_length=160)
+    payload: dict
+    timeout_minutes: int = Field(1440, ge=5, le=10080)
 
 
 class Spec224RecoveryGrantIssue(BaseModel):
@@ -1716,6 +1730,90 @@ async def create_approval_request(
         )
 
     return request
+
+
+@router.post("/spec224/goal-grants", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
+async def create_spec224_goal_grant_approval(
+    data: Spec224GoalGrantApprovalCreate,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Persist one immutable Goal Grant request through the canonical approval authority."""
+    if not tenant_id:
+        raise HTTPException(status_code=403, detail="tenant_id is required")
+    payload = data.payload
+    allowed_actions = {"discover", "plan", "implement", "build", "review", "repair", "test", "commit", "push", "create_pr", "merge", "verify", "cleanup"}
+    write_scope = payload.get("writeScope")
+    actions = payload.get("allowedActions")
+    capabilities = payload.get("capabilities")
+    source_sha = payload.get("sourceSha")
+    currency = payload.get("currency")
+    budget_limit = payload.get("budgetLimitMinorUnits")
+    if (payload.get("kind") != "spec224_goal_delegation_grant"
+            or payload.get("goalId") != data.goal_id
+            or payload.get("actorId") != int(current_user.id)
+            or not isinstance(payload.get("grantId"), str) or not payload["grantId"]
+            or payload.get("provider") not in ("codex", "claude_code")
+            or not isinstance(payload.get("workspaceId"), str) or not payload["workspaceId"]
+            or not isinstance(payload.get("repositoryRef"), str) or not payload["repositoryRef"]
+            or not isinstance(source_sha, str) or not re.fullmatch(r"(?:[a-fA-F0-9]{40}|[a-fA-F0-9]{64})", source_sha)
+            or not isinstance(actions, list) or not actions or not set(actions).issubset(allowed_actions)
+            or len(actions) != len(set(actions))
+            or not isinstance(write_scope, list) or not write_scope
+            or any(not isinstance(path, str) or len(path) > 240 or path.startswith("/") or "\\" in path
+                   or any(part in ("", ".", "..") for part in path.split("/"))
+                   or not re.fullmatch(r"[A-Za-z0-9*?._/-]+", path) for path in write_scope)
+            or len(write_scope) != len(set(write_scope))
+            or not isinstance(capabilities, list) or not capabilities
+            or any(not isinstance(value, str) or not value or len(value) > 160 for value in capabilities)
+            or len(capabilities) != len(set(capabilities))
+            or type(budget_limit) is not int or budget_limit <= 0
+            or not isinstance(currency, str) or not re.fullmatch(r"[A-Za-z]{3}", currency)
+            or not isinstance(payload.get("issuedAt"), str)
+            or not isinstance(payload.get("expiresAt"), str)):
+        raise HTTPException(status_code=422, detail="SPEC224_GOAL_GRANT_SCOPE_INVALID")
+    try:
+        expires_at = datetime.fromisoformat(payload["expiresAt"].replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="SPEC224_GOAL_GRANT_EXPIRY_INVALID")
+    if expires_at.tzinfo is None or expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(status_code=422, detail="SPEC224_GOAL_GRANT_EXPIRY_INVALID")
+    try:
+        issued_at = datetime.fromisoformat(payload["issuedAt"].replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="SPEC224_GOAL_GRANT_SCOPE_INVALID")
+    if issued_at.tzinfo is None or issued_at > datetime.now(timezone.utc) or issued_at >= expires_at:
+        raise HTTPException(status_code=422, detail="SPEC224_GOAL_GRANT_SCOPE_INVALID")
+
+    correlation_key = "spec224-goal-grant:" + hashlib.sha256(
+        f"{tenant_id}:{int(current_user.id)}:{data.goal_id}".encode("utf-8")
+    ).hexdigest()
+    action_digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    service = ApprovalDBService(db)
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"), {"lock_key": correlation_key})
+    existing = await service.get_request_by_correlation(correlation_key, tenant_id)
+    if existing:
+        if existing.action_digest != action_digest or existing.payload != payload:
+            raise HTTPException(status_code=409, detail="SPEC224_GOAL_GRANT_IDEMPOTENCY_CONFLICT")
+        return existing
+    return await service.create_request(
+        request_type=ApprovalType.CUSTOM,
+        title=f"Approve bounded development Goal {data.goal_id[:48]}",
+        description="Review the pinned provider, workspace, source, capabilities, write scope, budget and expiry before autonomous child execution.",
+        tenant_id=tenant_id,
+        requester_id=int(current_user.id),
+        requester_type="user",
+        project_id=data.project_id,
+        execution_id=data.goal_id,
+        payload=payload,
+        action_digest=action_digest,
+        correlation_key=correlation_key,
+        risk_level="high",
+        required_approvers=1,
+        expires_at=expires_at.astimezone(timezone.utc).replace(tzinfo=None),
+        timeout_action="reject",
+    )
 
 
 @router.get("/requests", response_model=ApprovalListResponse)

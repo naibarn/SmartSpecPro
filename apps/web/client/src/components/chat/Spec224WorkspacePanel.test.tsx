@@ -110,6 +110,22 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByText(/conversation นี้จะใช้ Runner\/workspace เดียวกัน/i)).toBeInTheDocument();
   });
 
+  it("shows Goal approval, Runner readiness, cumulative budget and evidence in the shared workspace read model", () => {
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "workspace-test" },
+      availability: { available: true, status: "current" }, specSet: null,
+      developmentRuns: [{ runId: "goal-run", state: "IMPLEMENT", goalApproval: { status: "pending", approvalRef: "approval-1" },
+        runnerReadiness: { ready: true, code: "RUNNER_READY", ownerAction: null },
+        budgetStatus: { limitMinorUnits: 500, heldMinorUnits: 100, capturedMinorUnits: 50, availableMinorUnits: 350, currency: "USD" },
+        intermediateReceipts: ["receipt:phase-1"] }],
+    };
+    render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
+    expect(screen.getByText(/รออนุมัติ Goal/)).toBeInTheDocument();
+    expect(screen.getByText(/Runner พร้อม/)).toBeInTheDocument();
+    expect(screen.getByText(/งบ Goal USD 5\.00/)).toBeInTheDocument();
+    expect(screen.getByText(/หลักฐาน 1/)).toBeInTheDocument();
+  });
+
   it("shows a clear multi-image mock-up attachment control while developing from a Spec Set", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));

@@ -17,6 +17,30 @@ export class EconomicProvisioningError extends Error {
   }
 }
 
+export async function readSpec224GoalBudgetStatus(database: DrizzleDB, input: { tenantId: string; goalId: string }) {
+  const scopeRef = `goal:${createHash("sha256").update(input.goalId).digest("hex")}`;
+  const [budget] = await database.select({
+    currency: economicBudgets.currency,
+    limitMinorUnits: economicBudgets.limitMinorUnits,
+    heldMinorUnits: economicBudgets.heldMinorUnits,
+    capturedMinorUnits: economicBudgets.capturedMinorUnits,
+    status: economicBudgets.status,
+  }).from(economicBudgets).where(and(
+    eq(economicBudgets.tenantId, input.tenantId),
+    eq(economicBudgets.scopeType, "spec224_goal"),
+    eq(economicBudgets.scopeRef, scopeRef),
+  )).limit(1);
+  if (!budget) return null;
+  return {
+    currency: budget.currency,
+    status: budget.status,
+    limitMinorUnits: budget.limitMinorUnits,
+    heldMinorUnits: budget.heldMinorUnits,
+    capturedMinorUnits: budget.capturedMinorUnits,
+    availableMinorUnits: Math.max(0, budget.limitMinorUnits - budget.heldMinorUnits - budget.capturedMinorUnits),
+  };
+}
+
 export type EconomicProvisioningAuthorization = {
   tenantId: string;
   actorId: number;

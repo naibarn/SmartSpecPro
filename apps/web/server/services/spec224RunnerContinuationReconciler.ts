@@ -479,3 +479,54 @@ export async function reconcileSpec224RunnerContinuations(
   }
   return { scanned: intents.length, reconciled, reviewRequired, ignored };
 }
+
+/** Recover approved initial Goal admissions from the durable Run and Approval Authority state. */
+export async function reconcileSpec224GoalAdmissions(input: { limit?: number } = {}): Promise<{ scanned: number; dispatched: number; pending: number }> {
+  getDb();
+  const limit = Math.max(1, Math.min(input.limit ?? 50, 200));
+  const queryResult = await db.instance.execute(sql`
+    SELECT j.id AS job_id, j."tenantId" AS tenant_id, j."requestedByUserId" AS actor_id,
+      j."inputJson"->'spec224Run'->>'runId' AS run_id,
+      j."inputJson"->'spec224Run'->>'goalId' AS goal_id
+    FROM worker_jobs j
+    JOIN approval_requests a ON a.execution_id = j."inputJson"->'spec224Run'->>'goalId'
+      AND a.tenant_id = j."tenantId" AND a.requester_id = j."requestedByUserId"
+      AND a.payload->>'kind' = 'spec224_goal_delegation_grant'
+      AND a.status::text = 'APPROVED' AND a.revoked_at IS NULL AND a.expires_at > NOW()
+    WHERE j."inputJson"->'spec224Run'->'metadata'->'spec224GoalGrantPayload' IS NOT NULL
+      AND j.status IN ('queued', 'pending')
+      AND NOT EXISTS (SELECT 1 FROM worker_job_events e WHERE e."workerJobId" = j.id
+        AND e."eventType" = 'SPEC224_GOAL_ADMISSION_DISPATCHED')
+    ORDER BY j."createdAt" ASC LIMIT ${limit}
+  `);
+  const rows = Array.isArray(queryResult) ? queryResult : (queryResult as unknown as { rows?: Array<Record<string, unknown>> }).rows ?? [];
+  let dispatched = 0;
+  let pending = 0;
+  for (const row of rows) {
+    const runId = String(row.run_id ?? "");
+    const goalId = String(row.goal_id ?? "");
+    const tenantId = String(row.tenant_id ?? "");
+    const actorId = Number(row.actor_id);
+    if (!runId || !goalId || !tenantId || !Number.isSafeInteger(actorId)) continue;
+    await db.instance.transaction(async tx => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`spec224-goal-admission:${tenantId}:${runId}`}, 0))`);
+      const existingResult = await tx.execute(sql`SELECT id FROM worker_job_events WHERE "workerJobId" = ${String(row.job_id)}
+        AND "eventType" = 'SPEC224_GOAL_ADMISSION_DISPATCHED' LIMIT 1`);
+      const existing = Array.isArray(existingResult) ? existingResult : (existingResult as unknown as { rows?: Array<Record<string, unknown>> }).rows ?? [];
+      if (existing.length) return;
+      const result = await defaultSpec224AuthorizationService.authorizeDelegatedChild({ context: { tenantId, actorId }, runId });
+      if (result.status !== "READY_FOR_LIVE") {
+        pending += 1;
+        return;
+      }
+      await appendJobEvent(tx, {
+        workerJobId: String(row.job_id),
+        eventType: "SPEC224_GOAL_ADMISSION_DISPATCHED",
+        eventIdempotencyKey: `spec224-goal-admission-dispatched:${runId}`,
+        payloadJson: { runId, goalId, authorizationStatus: result.status, dispatchedAt: new Date().toISOString() },
+      });
+      dispatched += 1;
+    });
+  }
+  return { scanned: rows.length, dispatched, pending };
+}

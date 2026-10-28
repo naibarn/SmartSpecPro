@@ -356,8 +356,13 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
           ? `ส่ง Mini App Factory stage แรกแล้ว · ${result.dispatchStatus}`
           : "บันทึก DevelopmentRun และส่งเข้าคิวแล้ว");
       } else {
-        const reasons = "authorization" in result ? result.authorization?.reasons.join(", ") : result.dispatchStatus;
-        toast.info(simpleMode ? "บันทึกงานแล้ว แต่ยังรอสิทธิ์หรือความพร้อมก่อนเริ่ม" : `DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
+        const status = result.goalAdmissionStatus ?? result.dispatchStatus;
+        const authorization = "authorization" in result ? result.authorization : null;
+        const reasons = authorization && typeof authorization === "object" && "reasons" in authorization && Array.isArray(authorization.reasons)
+          ? authorization.reasons.join(", ") : status;
+        toast.info(status === "GOAL_APPROVAL_PENDING"
+          ? "บันทึก Goal แล้ว รอผู้มีสิทธิ์อนุมัติขอบเขตก่อนเริ่มงาน"
+          : simpleMode ? "บันทึกงานแล้ว แต่ยังรอสิทธิ์หรือความพร้อมก่อนเริ่ม" : `DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
       }
     } catch (error) {
       toast.error(presentCustomerError(error, "สั่งพัฒนาไม่สำเร็จ"));
@@ -659,6 +664,10 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
                     {simpleMode ? "งานพัฒนา" : run.workPackageExternalId ?? "Prompt"}
                     {!simpleMode && run.specSetRevision ? ` · Spec r${run.specSetRevision}` : ""}
                     {` · ${developmentRunStateLabel(run.state)}${simpleMode ? "" : ` · ${run.runId}`}`}
+                    {run.goalApproval?.status === "pending" ? " · รออนุมัติ Goal" : ""}
+                    {run.runnerReadiness ? ` · Runner ${run.runnerReadiness.ready ? "พร้อม" : run.runnerReadiness.code}` : ""}
+                    {run.budgetStatus?.limitMinorUnits ? ` · งบ Goal USD ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)}` : ""}
+                    {run.intermediateReceipts?.length ? ` · หลักฐาน ${run.intermediateReceipts.length}` : ""}
                     {!(["COMPLETED", "CANCELLED"].includes(run.state)) ? (
                       <Button type="button" variant="outline" size="sm" className="ml-2"
                         disabled={resumeRunMutation.isPending || !boundWorkspace}
@@ -708,7 +717,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
                   ) : null}
                 </section>
               ))}
-              <p className="mt-2 text-xs text-[var(--color-text-secondary)]">Start ตรวจ Codex และ workspace ก่อนบันทึกงาน จากนั้นใช้ policy และ budget ที่ตั้งค่าไว้เพื่อส่งงานอัตโนมัติภายในขอบเขตเดิม</p>
+              <p className="mt-2 text-xs text-[var(--color-text-secondary)]">Start จะบันทึกขอบเขต Goal และขออนุมัติผ่าน Approval Authority ก่อนส่ง Child แรก จากนั้นระยะถัดไปจะทำงานอัตโนมัติภายใน provider, workspace, source, write scope, budget และเวลาที่อนุมัติไว้</p>
             </section>
           ) : null}
         </>

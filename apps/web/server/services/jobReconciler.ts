@@ -9,7 +9,7 @@ import { classifyWaitingExternal, type WaitingExternalDecision } from "./jobReco
 import { publishPendingJobOutbox, type JobAdapterResolver } from "./jobOutboxPublisher";
 import type { JobTransportAdapter } from "./jobTransportAdapters";
 import { createSpec224ApprovalContinuation, createSpec224ExternalApprovalAuthority } from "./spec224ApprovalContinuation";
-import { reconcileSpec224RunnerContinuations } from "./spec224RunnerContinuationReconciler";
+import { reconcileSpec224GoalAdmissions, reconcileSpec224RunnerContinuations } from "./spec224RunnerContinuationReconciler";
 import {
   reconcileDevelopmentLifecycleWaiters,
   type DevelopmentDependencyPredicateRecheck,
@@ -473,6 +473,14 @@ export async function runJobReconciler(options: JobReconcilerOptions = {}): Prom
   } catch (error) {
     reconciliationErrors += 1;
     console.error("[Feature186] Spec 224 Runner continuation reconciliation failed", {
+      error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
+    });
+  }
+  try {
+    await reconcileSpec224GoalAdmissions({ limit });
+  } catch (error) {
+    reconciliationErrors += 1;
+    console.error("[Feature186] Spec 224 Goal admission recovery failed", {
       error: error instanceof Error ? error.message.slice(0, 300) : "unknown_error",
     });
   }
