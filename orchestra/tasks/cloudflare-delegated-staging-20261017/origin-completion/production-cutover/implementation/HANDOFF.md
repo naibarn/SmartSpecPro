@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `172`
-- Updated (UTC): `2026-10-28T08:33:46.635231+00:00`
+- State generation: `173`
+- Updated (UTC): `2026-10-28T08:39:21.262477+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `68c58bd1a607f0b66301c957315ac19309605f93`
+- Latest recorded merged Main SHA: `c617f65d6cdf0e19cee494fddddb45f609e095c7`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: Phase 7 milestone projection/UI is integrated and the latest canonical SHA is 68c58bd1a607f0b66301c957315ac19309605f93. Next: implement a single authenticated tenant Owner mandate enrollment/revocation through the existing approval store, with exact resource/action/budget limits and admission enforcement; do not treat the chat directive as the enrolled grant. In parallel, production Queue/Consumer/DLQ and active Worker readback need the Owner's normal authenticated Admin session; no such identity is available here. Origin revision is expired and baseline-digest bound; design new immutable revision + baseline reconciliation, then request enrollment once.
+- Next action: Linux Admin/backend release g203 is deployed and verified from source a509b116824274acf36ce358bffc9dcb5be944f7 (health 200, Node 22.23.4, public JS asset byte-match). Continue M3 only after resolving the actual authority boundary: there is no enrolled FIRST_MIGRATION_MANDATE in the existing approval store, and this CLI has no authenticated Owner session. Inspect existing approval contracts and implement only a bounded, revocable enrollment via the authenticated Admin path; never infer enrollment from chat. Then use Owner authenticated Admin reads to verify Production Queue queue_id, Consumer, DLQ, active Worker baseline and origin revision. Keep route and traffic unchanged until separate native-activation authority.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-mission-reset-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | 68c58bd1a607f0b66301c957315ac19309605f93 | 68c58bd1a607f0b66301c957315ac19309605f93 | Phase 7 milestone projection/UI is integrated and the latest canonical SHA is 68c58bd1a607f0b66301c957315ac19309605f93. Next: implement a single authenticated tenant Owner mandate enrollment/revocation through the existing approval store, with exact resource/action/budget limits and admission enforcement; do not treat the chat directive as the enrolled grant. In parallel, production Queue/Consumer/DLQ and active Worker readback need the Owner's normal authenticated Admin session; no such identity is available here. Origin revision is expired and baseline-digest bound; design new immutable revision + baseline reconciliation, then request enrollment once. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-mission-reset-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | c617f65d6cdf0e19cee494fddddb45f609e095c7 | c617f65d6cdf0e19cee494fddddb45f609e095c7 | Linux Admin/backend release g203 is deployed and verified from source a509b116824274acf36ce358bffc9dcb5be944f7 (health 200, Node 22.23.4, public JS asset byte-match). Continue M3 only after resolving the actual authority boundary: there is no enrolled FIRST_MIGRATION_MANDATE in the existing approval store, and this CLI has no authenticated Owner session. Inspect existing approval contracts and implement only a bounded, revocable enrollment via the authenticated Admin path; never infer enrollment from chat. Then use Owner authenticated Admin reads to verify Production Queue queue_id, Consumer, DLQ, active Worker baseline and origin revision. Keep route and traffic unchanged until separate native-activation authority. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -50,6 +50,9 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No authenticated production Cloudflare provider readback was available in this session. Actual Queue ID, Consumer, DLQ, Worker identity and active baseline remain unverified until normal Owner Admin read-only preflight.
 - Production origin configuration is reported EXPIRED. Canary preflight requires STORED status, baseline-matching digest and >20 minutes validity; renewal changes immutable configuration digest, so baseline-compatible configuration and Worker version/deployment reconciliation must precede a Canary grant.
 - No FIRST_MIGRATION_MANDATE record or admission enforcement exists; current campaignAuthority remains NOT_AUTHORIZED.
+- Production Worker/Queue/Consumer/DLQ live preflight is not verified in this CLI session; no Cloudflare provider write or traffic change was made.
+- The requested durable FIRST_MIGRATION_MANDATE has not been enrolled; chat instructions do not create a canonical grant. No Owner browser identity is available here.
+- Origin configuration currently reported EXPIRED and digest-bound to its previous active baseline; renewal must use a new immutable revision and reconcile deployment baseline before any Worker deployment.
 
 ## Resume
 
