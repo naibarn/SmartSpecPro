@@ -62,11 +62,11 @@ const tableColumns = [
 const constraints = [
   ["canonical_project_workspace_bindings_pkey", "PRIMARY KEY (id)"],
   ["canonical_project_workspace_bindings_project_fk", "FOREIGN KEY (tenant_id, project_id) REFERENCES canonical_projects(tenant_id, project_id) ON DELETE CASCADE"],
-  ["canonical_project_workspace_bindings_runner_fk", "FOREIGN KEY (tenant_id, runner_id) REFERENCES runner_nodes(tenantId, runnerId) ON DELETE RESTRICT"],
+  ["canonical_project_workspace_bindings_runner_fk", "FOREIGN KEY (tenant_id, runner_id) REFERENCES runner_nodes(\"tenantId\", \"runnerId\") ON DELETE RESTRICT"],
   ["canonical_project_workspace_bindings_identity_unique", "UNIQUE (tenant_id, project_id, repository_id, scope, runner_id, workspace_id)"],
-  ["canonical_project_workspace_bindings_scope_check", "CHECK (scope IN ('PLATFORM_ENGINEERING', 'PLATFORM_MANAGED', 'ADMIN_CREATOR', 'TENANT', 'USER', 'CUSTOMER_EXTERNAL_ORG'))"],
-  ["canonical_project_workspace_bindings_lifecycle_check", "CHECK ((lifecycle = 'ACTIVE' AND revoked_at IS NULL) OR (lifecycle = 'REVOKED' AND revoked_at IS NOT NULL))"],
-  ["canonical_project_workspace_bindings_creator_check", "CHECK (length(btrim(created_by_principal_id)) > 0)"],
+  ["canonical_project_workspace_bindings_scope_check", "CHECK (((scope)::text = ANY ((ARRAY['PLATFORM_ENGINEERING'::character varying, 'PLATFORM_MANAGED'::character varying, 'ADMIN_CREATOR'::character varying, 'TENANT'::character varying, 'USER'::character varying, 'CUSTOMER_EXTERNAL_ORG'::character varying])::text[])))"],
+  ["canonical_project_workspace_bindings_lifecycle_check", "CHECK (((((lifecycle)::text = 'ACTIVE'::text) AND (revoked_at IS NULL)) OR (((lifecycle)::text = 'REVOKED'::text) AND (revoked_at IS NOT NULL))))"],
+  ["canonical_project_workspace_bindings_creator_check", "CHECK ((length(btrim((created_by_principal_id)::text)) > 0))"],
 ].map(([name, definition]) => ({ name: String(name), valid: true, definition: String(definition) }));
 const indexes = [
   ["canonical_project_workspace_bindings_pkey", true, "CREATE UNIQUE INDEX canonical_project_workspace_bindings_pkey ON public.canonical_project_workspace_bindings USING btree (id)"],

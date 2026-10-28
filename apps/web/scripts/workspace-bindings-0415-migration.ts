@@ -83,7 +83,8 @@ const expectedColumnTypes: Record<string, { type: string; maxLength: number | nu
 };
 
 function definitionMatches(name: string, definition: string) {
-  const normalized = definition.toLowerCase().replaceAll('"', "").replace(/\s+/g, " ");
+  const normalized = definition.toLowerCase().replaceAll('"', "").replace(/\s+/g, " ")
+    .replace(/\(([_a-z][a-z0-9_]*)\)::text/g, "$1");
   const requiredFragments: Record<string, string[]> = {
     canonical_project_workspace_bindings_project_fk: ["foreign key (tenant_id, project_id)", "references canonical_projects(tenant_id, project_id) on delete cascade"],
     canonical_project_workspace_bindings_runner_fk: ["foreign key (tenant_id, runner_id)", "references runner_nodes(tenantid, runnerid) on delete restrict"],
@@ -106,24 +107,37 @@ function indexDefinitionMatches(name: string, definition: string) {
   return normalized.includes(expected[name] ?? "__missing_index_definition__");
 }
 
-function schemaMatches(schema: WorkspaceSchemaState) {
-  return schema.prerequisites.runnerNodes && schema.prerequisites.runnerIdentityColumns &&
-    schema.prerequisites.canonicalProjects && schema.prerequisites.canonicalProjectCompositeKey && schema.prerequisites.auditEvents &&
-    schema.bindingTableExists && JSON.stringify(schema.bindingColumns.map(column => column.name).sort()) === JSON.stringify(requiredColumns) &&
-    schema.bindingColumns.every(column => {
+function schemaMismatchReasons(schema: WorkspaceSchemaState) {
+  const reasons: string[] = [];
+  if (!schema.prerequisites.runnerNodes) reasons.push("runner_nodes");
+  if (!schema.prerequisites.runnerIdentityColumns) reasons.push("runner_identity_columns");
+  if (!schema.prerequisites.canonicalProjects) reasons.push("canonical_projects");
+  if (!schema.prerequisites.canonicalProjectCompositeKey) reasons.push("canonical_project_composite_key");
+  if (!schema.prerequisites.auditEvents) reasons.push("api_audit_events");
+  if (!schema.bindingTableExists) reasons.push("binding_table");
+  if (JSON.stringify(schema.bindingColumns.map(column => column.name).sort()) !== JSON.stringify(requiredColumns)) reasons.push("binding_column_set");
+  for (const column of schema.bindingColumns) {
       const expected = expectedColumnTypes[column.name];
-      if (!expected || column.type !== expected.type || column.maxLength !== expected.maxLength || column.nullable !== expected.nullable) return false;
+      if (!expected || column.type !== expected.type || column.maxLength !== expected.maxLength || column.nullable !== expected.nullable) {
+        reasons.push(`binding_column_contract:${column.name}`);
+        continue;
+      }
       const defaultValue = column.defaultValue?.toLowerCase().replace(/::[a-z ]+$/, "") ?? null;
       const expectedDefaults: Record<string, string | null> = {
         id: "gen_random_uuid()", lifecycle: "'active'", created_at: "now()", updated_at: "now()",
         tenant_id: null, project_id: null, repository_id: null, scope: null, runner_id: null,
         workspace_id: null, created_by_principal_id: null, revoked_at: null,
       };
-      return defaultValue === expectedDefaults[column.name];
-    }) &&
-    requiredConstraints.every(name => schema.bindingConstraints.some(item => item.name === name && item.valid && definitionMatches(name, item.definition))) &&
-    requiredIndexes.every(name => schema.bindingIndexes.some(item => item.name === name && item.valid && indexDefinitionMatches(name, item.definition) &&
-      (["canonical_project_workspace_bindings_pkey", "canonical_project_workspace_bindings_identity_unique", "runner_nodes_tenant_runner_unique"].includes(name) ? item.unique : !item.unique)));
+      if (defaultValue !== expectedDefaults[column.name]) reasons.push(`binding_column_default:${column.name}`);
+  }
+  for (const name of requiredConstraints) {
+    if (!schema.bindingConstraints.some(item => item.name === name && item.valid && definitionMatches(name, item.definition))) reasons.push(`constraint:${name}`);
+  }
+  for (const name of requiredIndexes) {
+    const shouldBeUnique = ["canonical_project_workspace_bindings_pkey", "canonical_project_workspace_bindings_identity_unique", "runner_nodes_tenant_runner_unique"].includes(name);
+    if (!schema.bindingIndexes.some(item => item.name === name && item.valid && item.unique === shouldBeUnique && indexDefinitionMatches(name, item.definition))) reasons.push(`index:${name}`);
+  }
+  return reasons;
 }
 
 export function evaluateWorkspaceBindings0415Preflight(input: {
@@ -183,7 +197,7 @@ export function evaluateWorkspaceBindings0415Preflight(input: {
     reasons.push("environment_not_allowed");
   }
 
-  const completeSchema = schemaMatches(input.schema);
+  const schemaMismatches = schemaMismatchReasons(input.schema);
   const targetIsApplied = targetRows.length === 1 && targetRows[0].hash === WORKSPACE_BINDINGS_0415_TARGET.hash;
   if (input.schema.duplicateRunnerIdentityGroups > 0) reasons.push("duplicate_runner_identities_block_unique_index");
   if (!input.schema.prerequisites.runnerNodes) reasons.push("runner_nodes_prerequisite_missing");
@@ -191,7 +205,7 @@ export function evaluateWorkspaceBindings0415Preflight(input: {
   if (!input.schema.prerequisites.canonicalProjects) reasons.push("canonical_projects_prerequisite_missing");
   if (!input.schema.prerequisites.canonicalProjectCompositeKey) reasons.push("canonical_project_composite_key_missing");
   if (!input.schema.prerequisites.auditEvents) reasons.push("migration_receipt_table_missing");
-  if (targetIsApplied && !completeSchema) reasons.push("applied_ledger_schema_postcondition_mismatch");
+  if (targetIsApplied && schemaMismatches.length) reasons.push(`applied_ledger_schema_postcondition_mismatch:${schemaMismatches.join(",")}`);
   if (!targetIsApplied && input.schema.bindingTableExists) reasons.push("binding_table_exists_without_applied_migration");
   if (targetIsApplied && !input.successfulReceiptExists) reasons.push("successful_migration_receipt_missing");
 
