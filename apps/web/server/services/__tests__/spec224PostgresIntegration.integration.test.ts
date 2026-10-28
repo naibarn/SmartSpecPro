@@ -151,7 +151,7 @@ function makeManifest(input: {
       runnerId: "runner-spec224-db",
       runnerSessionId: `session-${input.taskId}`,
       capabilitySnapshotId: `snapshot-${input.taskId}`,
-      capabilitySnapshotRevision: "1",
+      capabilitySnapshotRevision: "snapshot-spec224-pg-test",
       authorizationGrantRef: `grant-${input.taskId}`,
       approvalRef: `approval-${input.taskId}`,
       budgetReservationRef: `budget-${input.taskId}`,
