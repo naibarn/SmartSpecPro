@@ -258,6 +258,39 @@ describe("Cloudflare production provider inventory", () => {
     expect(JSON.stringify(result)).not.toContain("credentials_file");
   });
 
+  it("reports the exact Queue consumer read failure without treating it as an empty consumer list", async () => {
+    const queueId = "d".repeat(32);
+    const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
+      const url = new URL(String(request));
+      if (url.pathname.endsWith("/queues")) return response([{ id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
+      if (url.pathname.endsWith(`/queues/${queueId}/consumers`)) return response(null, 403);
+      if (url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") || url.pathname.endsWith("/cfd_tunnel") ||
+          url.pathname.endsWith("/containers/applications") || url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) return response([]);
+      if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
+      throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
+    });
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result).toMatchObject({ productionQueueConsumerInventory: { complete: false, reason: "PRODUCTION_QUEUE_CONSUMER_READ_HTTP_403", queueId, consumers: [] },
+      accessChecks: { productionQueueConsumers: { httpStatus: 403, complete: false, diagnosticCode: "CLOUDFLARE_HTTP_403" } } });
+  });
+
+  it("distinguishes a readable Production Queue with no consumer from a denied consumer read", async () => {
+    const queueId = "d".repeat(32);
+    const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
+      const url = new URL(String(request));
+      if (url.pathname.endsWith("/queues")) return response([{ id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
+      if (url.pathname.endsWith(`/queues/${queueId}/consumers`)) return response([]);
+      if (url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") || url.pathname.endsWith("/cfd_tunnel") ||
+          url.pathname.endsWith("/containers/applications") || url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) return response([]);
+      if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
+      throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
+    });
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result.productionQueueConsumerInventory).toMatchObject({ complete: true, reason: "PRODUCTION_QUEUE_CONSUMER_MISSING", consumers: [] });
+  });
+
   it("does not call Cloudflare when target or scoped credential is unavailable", async () => {
     resolveTarget.mockResolvedValueOnce(null);
     const fetchImpl = vi.fn();

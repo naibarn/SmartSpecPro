@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   storedJob: null as Record<string, any> | null,
   readCount: 0,
   workerReadbackReason: null as string | null,
+  queueReadbackReason: null as string | null,
 }));
 
 vi.mock("./cloudflareProductionDeploymentContract", async original => ({
@@ -28,7 +29,7 @@ vi.mock("./cloudflareProductionProviderInventory", () => ({ probeCloudflareProdu
     hasVerifiedReleaseIdentity: true, bindingNames: [],
     hasProductionQueueBinding: false, hasVersionMetadataBinding: false, checked: true,
   }] },
-  productionQueueConsumerInventory: { complete: true, consumers: [{ consumerId: "33333333333333333333333333333333",
+  productionQueueConsumerInventory: { complete: !mocks.queueReadbackReason, reason: mocks.queueReadbackReason, consumers: mocks.queueReadbackReason ? [] : [{ consumerId: "33333333333333333333333333333333",
     queueName: "smartspec-canonical-job-queue-production", scriptName: "smartspec-cloudflare-runtime",
     deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq" }] },
 }) }));
@@ -53,7 +54,7 @@ function database() {
 }
 
 describe("Production Worker canary admission", () => {
-  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); mocks.grantRequest = null; mocks.storedJob = null; mocks.readCount = 0; mocks.workerReadbackReason = null; });
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); mocks.grantRequest = null; mocks.storedJob = null; mocks.readCount = 0; mocks.workerReadbackReason = null; mocks.queueReadbackReason = null; });
 
   it("preflights the exact active route, single-version rollback, immutable artifact and Queue consumer", async () => {
     vi.stubEnv("CLOUDFLARE_PRODUCTION_EXECUTOR_ID", "production-executor-fixture");
@@ -72,6 +73,15 @@ describe("Production Worker canary admission", () => {
     const { getProductionWorkerCanaryPreflight } = await import("./cloudflareProductionWorkerDeploymentAdmission");
     await expect(getProductionWorkerCanaryPreflight(database() as never, { tenantId: "tenant-a", projectId: "project-a" }))
       .resolves.toMatchObject({ ready: false, reason: "WORKER_DEPLOYMENT_PAGINATION_INCOMPLETE" });
+  });
+
+  it("returns the exact sanitized Queue consumer readback blocker", async () => {
+    vi.stubEnv("CLOUDFLARE_PRODUCTION_EXECUTOR_ID", "production-executor-fixture");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ grantSchemas: ["cloudflare.production-deployment-grant.v2"] })));
+    mocks.queueReadbackReason = "PRODUCTION_QUEUE_CONSUMER_READ_HTTP_403";
+    const { getProductionWorkerCanaryPreflight } = await import("./cloudflareProductionWorkerDeploymentAdmission");
+    await expect(getProductionWorkerCanaryPreflight(database() as never, { tenantId: "tenant-a", projectId: "project-a" }))
+      .resolves.toMatchObject({ ready: false, reason: "PRODUCTION_QUEUE_CONSUMER_READ_HTTP_403" });
   });
 
   it("creates one scoped canonical job from the authenticated Owner grant and reconciles the same submission", async () => {

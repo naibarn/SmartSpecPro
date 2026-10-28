@@ -28,7 +28,8 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
   const prepare = trpc.infrastructure.prepareCloudflareHttpCandidate.useMutation();
   const preflight = state.data?.preflight, job = state.data?.job;
   const runtime = trpc.infrastructure.getCloudflareHttpRuntimeReadiness.useQuery({ tenantId, projectId,
-    jobId: job?.jobId ?? "00000000-0000-4000-8000-000000000000" }, { enabled: job?.status === "succeeded", refetchInterval: 30_000, retry: false });
+    jobId: job?.jobId ?? "00000000-0000-4000-8000-000000000000" }, { enabled: job?.status === "succeeded",
+      refetchInterval: query => query.state.error ? false : 30_000, retry: false });
   const submit = async () => {
     if (busy.current || job || !preflight?.ready) return;
     busy.current = true;
@@ -90,7 +91,15 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
             : th ? runtimeActions[check.code] ?? check.nextAction : check.nextAction}</Text>
         </li>)}</VStack>
       </> : null}
-      {runtime.error ? <Text role="alert">{runtime.error.message}</Text> : null}
+      {runtime.error ? <>
+        <Text role="alert">{runtime.error.message === "HTTP_CANDIDATE_DEPLOYMENT_CHANGED"
+          ? text("This Candidate no longer matches its deployed baseline. Automatic checks have stopped; refresh this read-only check when you need a new snapshot.",
+            "Candidate นี้ไม่ตรงกับ deployment baseline ปัจจุบันแล้ว ระบบหยุดตรวจซ้ำอัตโนมัติ กดตรวจใหม่เมื่อต้องการอ่านสถานะล่าสุด")
+          : runtime.error.message}</Text>
+        <Button type="button" variant="outline" onClick={() => void runtime.refetch()}>
+          {text("Recheck Candidate readback", "ตรวจ Candidate readback อีกครั้ง")}
+        </Button>
+      </> : null}
       </VStack>
     </details> : null}
     {prepare.error ? <Text role="alert">{prepare.error.message}</Text> : null}

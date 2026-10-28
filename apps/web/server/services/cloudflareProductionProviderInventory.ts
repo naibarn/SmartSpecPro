@@ -214,6 +214,24 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const consumerRows = Array.isArray(productionQueueConsumers?.result)
       ? productionQueueConsumers.result as Array<{ consumer_id?: unknown; queue_name?: unknown; script_name?: unknown; dead_letter_queue?: unknown; type?: unknown; settings?: { max_retries?: unknown } }>
       : [];
+    const validQueueConsumerRows = consumerRows.filter(row => typeof row.consumer_id === "string" && /^[a-f0-9]{32}$/i.test(row.consumer_id) &&
+      row.queue_name === "smartspec-canonical-job-queue-production" && typeof row.script_name === "string" &&
+      /^[a-z0-9-]{1,63}$/.test(row.script_name) && typeof row.dead_letter_queue === "string" &&
+      /^[a-z0-9-]{0,63}$/.test(row.dead_letter_queue) && row.type === "worker");
+    const productionQueueConsumerReason = !queues.complete
+      ? queues.status ? `PRODUCTION_QUEUE_INVENTORY_HTTP_${queues.status}` : "PRODUCTION_QUEUE_INVENTORY_UNAVAILABLE"
+      : !productionQueue ? "PRODUCTION_QUEUE_NOT_FOUND"
+        : typeof productionQueue.id !== "string" || !/^[a-f0-9]{32}$/i.test(productionQueue.id)
+          ? "PRODUCTION_QUEUE_ID_INVALID"
+          : !productionQueueConsumers?.complete
+            ? productionQueueConsumers?.status ? `PRODUCTION_QUEUE_CONSUMER_READ_HTTP_${productionQueueConsumers.status}`
+              : "PRODUCTION_QUEUE_CONSUMER_READ_UNAVAILABLE"
+            : consumerRows.length === 0 ? "PRODUCTION_QUEUE_CONSUMER_MISSING"
+              : consumerRows.length !== 1 ? "PRODUCTION_QUEUE_CONSUMER_COUNT_MISMATCH"
+                : validQueueConsumerRows.length !== 1 ? "PRODUCTION_QUEUE_CONSUMER_RESPONSE_INVALID"
+                  : validQueueConsumerRows[0]?.script_name !== target.workerRef ? "PRODUCTION_QUEUE_CONSUMER_WORKER_MISMATCH"
+                    : validQueueConsumerRows[0]?.dead_letter_queue !== "smartspec-canonical-job-queue-production-dlq"
+                      ? "PRODUCTION_QUEUE_DEAD_LETTER_QUEUE_MISMATCH" : null;
     const inventoryComplete = queues.complete && hyperdrive.complete && zones.complete && Boolean(routes?.complete) &&
       deployments.complete && Array.isArray(deploymentRows) && activeDeploymentIsUnambiguous && validWeights && versionDetails.every(version => version.checked) &&
       Boolean(productionQueueConsumers?.complete) &&
@@ -236,7 +254,8 @@ export async function probeCloudflareProductionProviderInventory(input: {
         workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows),
           ...(workerDeploymentReadbackReason ? { diagnosticCode: workerDeploymentReadbackReason } : {}) },
         workerVersions: versionDetails.map(version => ({ httpStatus: version.checked ? 200 : null, complete: version.checked })),
-        productionQueueConsumers: { httpStatus: productionQueueConsumers?.status ?? null, complete: Boolean(productionQueueConsumers?.complete) },
+        productionQueueConsumers: { httpStatus: productionQueueConsumers?.status ?? null, complete: Boolean(productionQueueConsumers?.complete),
+          ...(productionQueueConsumers?.diagnosticCode ? { diagnosticCode: productionQueueConsumers.diagnosticCode } : {}) },
         vpcServices: { httpStatus: vpcServices.status, complete: vpcServices.complete },
         tunnels: { httpStatus: tunnels.status, complete: tunnels.complete },
         containers: { httpStatus: containers.status, complete: containers.complete },
@@ -282,18 +301,11 @@ export async function probeCloudflareProductionProviderInventory(input: {
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
       productionQueueConsumerInventory: {
         complete: Boolean(productionQueueConsumers?.complete),
+        reason: productionQueueConsumerReason,
         queueId: typeof productionQueue?.id === "string" && /^[a-f0-9]{32}$/i.test(productionQueue.id) ? productionQueue.id : null,
-        consumers: consumerRows.flatMap(row =>
-          typeof row.consumer_id === "string" && /^[a-f0-9]{32}$/i.test(row.consumer_id) &&
-          row.queue_name === "smartspec-canonical-job-queue-production" &&
-          typeof row.script_name === "string" && /^[a-z0-9-]{1,63}$/.test(row.script_name) &&
-          typeof row.dead_letter_queue === "string" && /^[a-z0-9-]{0,63}$/.test(row.dead_letter_queue) &&
-          row.type === "worker"
-            ? [{ consumerId: row.consumer_id, queueName: row.queue_name, scriptName: row.script_name,
-                deadLetterQueueName: row.dead_letter_queue,
-                ...(typeof row.settings?.max_retries === "number" ? { maxRetries: row.settings.max_retries } : {}) }]
-            : []
-        ),
+        consumers: validQueueConsumerRows.map(row => ({ consumerId: row.consumer_id as string, queueName: row.queue_name as string,
+          scriptName: row.script_name as string, deadLetterQueueName: row.dead_letter_queue as string,
+          ...(typeof row.settings?.max_retries === "number" ? { maxRetries: row.settings.max_retries } : {}) })),
       },
       hyperdriveInventoryComplete: hyperdrive.complete,
       hyperdrives: hyperdriveDetails.flatMap(row => typeof row.name === "string" && /^[a-z0-9][a-z0-9-]{0,127}$/.test(row.name)

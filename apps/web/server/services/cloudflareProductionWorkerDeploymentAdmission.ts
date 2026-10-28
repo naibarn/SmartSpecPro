@@ -69,7 +69,7 @@ export async function getProductionWorkerCanaryPreflight(db: DrizzleDB, scope: S
   const queue = inventory.productionQueueConsumerInventory;
   if (!queue.complete || queue.consumers.length !== 1 || queue.consumers[0]?.scriptName !== target.workerRef ||
       queue.consumers[0]?.queueName !== "smartspec-canonical-job-queue-production" || !queue.consumers[0]?.deadLetterQueueName) {
-    return blocked("PRODUCTION_QUEUE_CONSUMER_NOT_VERIFIED");
+    return blocked(queue.reason ?? "PRODUCTION_QUEUE_CONSUMER_NOT_VERIFIED");
   }
   if (!target.runtimePolicy) return blocked("PRODUCTION_ORIGIN_CONFIGURATION_NOT_BOUND");
   const origin = await getCloudflareOriginConfiguration(db, { identity: { tenantId: scope.tenantId,

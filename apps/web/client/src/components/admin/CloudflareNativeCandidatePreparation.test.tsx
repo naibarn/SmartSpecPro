@@ -6,7 +6,8 @@ import { CloudflareNativeCandidatePreparation } from "./CloudflareNativeCandidat
 vi.mock("./CloudflareNativeRuntimeOperation", () => ({ CloudflareNativeRuntimeOperation: ({ candidateJobId }: { candidateJobId: string }) =>
   <section data-testid="current-runtime-action">Authenticated acceptance · {candidateJobId}</section> }));
 const state = vi.hoisted(() => ({ ready: true, job: null as any, error: null as any, loading: false,
-  runtime: null as any, runtimeError: null as any, pairDiagnostics: [] as any[], pending: false, mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
+  runtime: null as any, runtimeError: null as any, runtimeRefetch: vi.fn(), pairDiagnostics: [] as any[], pending: false,
+  mutationError: null as any, mutate: vi.fn(), refetch: vi.fn() }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ i18n: { language: "en" } }) }));
 vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
   getCloudflareHttpCandidatePreparation: { useQuery: () => ({ isLoading: state.loading, error: state.error, refetch: state.refetch,
@@ -14,12 +15,12 @@ vi.mock("@/lib/trpc", () => ({ trpc: { infrastructure: {
       plan: { workerName: "isolated-candidate", imageSourceSha: "b".repeat(40), artifactRef: `sha256:${"c".repeat(64)}`,
         workerSourceSha: "d".repeat(40), images: ["node@sha256:fixture", "python@sha256:fixture"] } }
       : { ready: false, reason: "HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED", pairDiagnostics: state.pairDiagnostics } } }) },
-  getCloudflareHttpRuntimeReadiness: { useQuery: () => ({ data: state.runtime, error: state.runtimeError, isLoading: false }) },
+  getCloudflareHttpRuntimeReadiness: { useQuery: () => ({ data: state.runtime, error: state.runtimeError, isLoading: false, refetch: state.runtimeRefetch }) },
   prepareCloudflareHttpCandidate: { useMutation: () => ({ mutateAsync: state.mutate, isPending: state.pending, error: state.mutationError }) },
 } } }));
 const props = { tenantId: "tenant-fixture", projectId: "project-fixture" };
 beforeEach(() => { sessionStorage.clear(); state.ready = true; state.job = null; state.error = null; state.loading = false;
-  state.runtime = null; state.runtimeError = null; state.pairDiagnostics = []; state.pending = false; state.mutationError = null; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted" }); });
+  state.runtime = null; state.runtimeError = null; state.runtimeRefetch.mockReset(); state.pairDiagnostics = []; state.pending = false; state.mutationError = null; state.mutate.mockReset().mockResolvedValue({ jobId: "accepted" }); });
 describe("native metadata Owner action", () => {
   it("shows exact independent scope without claiming runtime or DNS readiness", async () => {
     render(<CloudflareNativeCandidatePreparation {...props} />);
@@ -87,6 +88,17 @@ describe("native metadata Owner action", () => {
     expect(screen.getByText(/Runtime acceptance: NOT VERIFIED/)).toBeInTheDocument();
     expect(screen.queryByText("HTTP_CANDIDATE_CANONICAL_MODULE_REQUIRED")).not.toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument(); expect(state.mutate).not.toHaveBeenCalled();
+  });
+
+  it("explains a changed historical Candidate and offers explicit read-only recheck", async () => {
+    state.job = { jobId: "canonical-job", status: "succeeded", attempt: 1, maxAttempts: 1 };
+    state.runtimeError = { message: "HTTP_CANDIDATE_DEPLOYMENT_CHANGED" };
+    render(<CloudflareNativeCandidatePreparation {...props} />);
+    await userEvent.click(screen.getByText("Candidate resources and technical readiness details"));
+    expect(screen.getByRole("alert")).toHaveTextContent("no longer matches its deployed baseline");
+    await userEvent.click(screen.getByRole("button", { name: "Recheck Candidate readback" }));
+    expect(state.runtimeRefetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /Prepare isolated/ })).not.toBeInTheDocument();
   });
 
 });
