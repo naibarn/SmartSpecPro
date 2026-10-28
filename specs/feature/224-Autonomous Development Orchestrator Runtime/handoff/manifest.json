@@ -1004,14 +1004,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e",
-    "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
+    "expected_canonical_sha": "e672aae611c0a17b42602b18b690f4a6585952d4",
+    "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
-    "next_action": "Extend scripts/development-lifecycle/workspace_authority.py to issue a run/attempt-bound, path-scoped lease for registered Project Workspaces. Connect claim, renewal, validation/fencing and idempotent release through the existing workspace.authority.safe_action and canonical worker_jobs/outbox lifecycle; bind the lease receipt at SPEC-224 authorization, outbox release, Runner candidate apply, and terminal/recovery. Add connected contention, disjoint-path, stale-fence, crash/replay and duplicate-release tests. Then use the structured rejection code and authorized release/runtime evidence to establish the configured endpoint's actual serving revision and resolve the live Runner ACK. Then complete the Session C Task Control picker/refresh integration, run connected PostgreSQL integration, verify a bounded real Codex task on the Debian Runner, and prove current configured-endpoint Runner snapshot ACK; keep acceptance PARTIAL until those pass. First establish an isolated current-schema PostgreSQL test target through the repo migration workflow, then rerun the model-selection dispatch integration. Keep P0 lease and configured-endpoint ACK prerequisites ahead of live Goal admission.",
+    "next_action": "Implement the run/attempt-bound path-scoped lease through the existing SPEC-293 workspace_authority.py authority and canonical worker_jobs/outbox; bind and revalidate its fence at authorization, release and Runner apply, and release idempotently on terminal/recovery. Then use the structured rejection diagnostics and authorized runtime evidence to establish the configured endpoint actual serving revision and resolve the same current Runner session/snapshot ACK. Task Control model picker/refresh UI is integrated at e0009508f94195928ffb65bfc7ed3bbf6256575d; focused panel tests passed 22/22, while authenticated UAT skipped model selection because its isolated database had no authorized Runner. After the P0 lease and ACK prerequisites, establish an isolated current-schema PostgreSQL test target through the repository migration workflow, rerun model-selection dispatch integration, rerun Playwright against a current authorized Runner/account catalog, and verify a bounded real Debian Codex task. Keep acceptance PARTIAL until fresh live evidence passes; do not admit a Goal before source admission passes.",
     "next_ready_workunit": "SPEC224_RUN_SCOPED_WRITER_LEASE_AND_RUNNER_EVENT_ACK",
     "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
-    "resume_point": "Canonical main is 2fa582001e5d409768a492960d0f3fed0ac93b7e. Backend Codex selection is implemented and focused Web/Rust checks plus read-only live model/list passed. The PostgreSQL dispatch assertion is integrated but not verified: local smartspec_test has an empty Drizzle migration ledger and lacks worker_jobs.activeDedupeKey. Do not run a broad historical migration set for this task. Prepare an isolated schema using the approved migration lifecycle, then rerun the opt-in PostgreSQL suite. Task Control UI remains Session C-owned; actual bounded Codex task and configured-endpoint Runner ACK remain pending. P0 run/attempt path-scoped SPEC-293 lease and current acknowledged snapshot are required before live Goal admission.",
+    "resume_point": "Canonical main was e672aae611c0a17b42602b18b690f4a6585952d4 at evidence capture. Dynamic Task Control model picker/refresh UI is integrated from source e0009508f94195928ffb65bfc7ed3bbf6256575d; focused panel tests passed 22/22. Authenticated UAT reached Task Control but skipped model selection because its isolated dev database had no authorized Runner. Backend Codex model discovery and pinned selection are implemented; no live catalog selection or model execution was verified here. Resume with the run/attempt path-scoped SPEC-293 lease and configured-endpoint Runner ACK, then current-schema PostgreSQL dispatch integration, real Runner Playwright selection, and a bounded Debian Codex task. No Goal or live write-capable run was started.",
     "waiting_predicate": "Resume live Goal preparation only after (1) the existing Debian device Control Plane accepts its current Runner session and acknowledges the capability/workspace snapshot with complete dirtyPaths, (2) a run/attempt-bound SPEC-293 path-scoped writer lease is integrated and revalidated at outbox release and Runner apply with terminal/recovery cleanup, and (3) server-authoritative source admission confirms the bounded scope is SAFE_CLEAN or SAFE_DISJOINT_DIRTY. Codex task probe is currently locally passed; actual approval and Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
@@ -1159,13 +1159,13 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 236,
+  "generation": 239,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-    "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+    "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-28T00:26:38.389692Z",
+      "last_evidence_at": "2026-10-28T13:38:13.085578Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -1179,7 +1179,8 @@
     "checkpoint_shas": [
       "0dbde80ae8935ef42ddae7c76144dda20ae524a8",
       "2fa582001e5d409768a492960d0f3fed0ac93b7e",
-      "988909d0583462bcc5e8289b7fbc4a5eb70a70d2"
+      "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
+      "e0009508f94195928ffb65bfc7ed3bbf6256575d"
     ],
     "mapping": [
       {
@@ -1390,11 +1391,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e",
+    "canonical_sha": "e672aae611c0a17b42602b18b690f4a6585952d4",
     "integrated": true,
-    "integrated_at": "2026-10-28T13:00:15Z",
+    "integrated_at": "2026-10-28T20:37:33+07:00",
     "pull_request": null,
-    "source_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e"
+    "source_sha": "e0009508f94195928ffb65bfc7ed3bbf6256575d"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3630,10 +3631,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-28T00:26:38.389692Z",
+    "reconciled_at": "2026-10-28T13:38:13.085578Z",
     "sources": [
       {
-        "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -3737,7 +3738,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "source_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
@@ -3807,14 +3808,14 @@
         "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
         "line": 4,
         "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-        "source_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "source_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
         "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
       },
@@ -3880,11 +3881,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 1284,
-    "unresolved": 1283
+    "total": 1302,
+    "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T13:00:20.106664Z",
+  "updated_at": "2026-10-28T13:38:51.444583Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4358,13 +4359,20 @@
         "scope": "Connected opt-in test attempted against local smartspec_test. postgres hostname was unresolved from this checkout; localhost connected but the worker_jobs query failed because activeDedupeKey is absent. Read-only migration ledger query returned no applied rows. No successful PostgreSQL dispatch evidence.",
         "source_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_TASK_CONTROL_MODEL_PICKER",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-control-model-picker-20261028.md",
+        "scope": "Task Control UI uses only the authorized Runner modelCatalog; focused panel tests pass 22/22. Authenticated Playwright against the isolated dev UAT server reached Task Control but skipped selection because no authorized Runner was available. No real catalog selection, Start, inference or live ACK was verified.",
+        "source_sha": "e0009508f94195928ffb65bfc7ed3bbf6256575d",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
+    "sha": "e0009508f94195928ffb65bfc7ed3bbf6256575d",
     "status": "PARTIAL",
     "task_regressions": []
   }
