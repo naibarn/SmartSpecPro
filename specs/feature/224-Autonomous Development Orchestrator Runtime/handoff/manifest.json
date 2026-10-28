@@ -120,6 +120,14 @@
         "scope": "Read-only check of the shared smartspec_dev runtime found 0 SPEC-224 Goal Grant requests and 0 worker_jobs for tenant tenant-001; the prior handoff candidate run has no current canonical worker job. Runner is active but its latest capability snapshot expired at 2026-10-28T17:41:34Z. No live execution or acceptance is claimed.",
         "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_FIRST_GOAL_ACTIVATION_SOURCE_REPAIR",
+        "observed_at": "2026-10-28T18:50:18Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-first-goal-activation-20261029.md",
+        "scope": "Task Control primary Start flow and bounded Platform prompt scope are repaired; connected disposable PostgreSQL verifies tRPC Start, Approval Authority, Child 1 and automatic Child 2 continuation. No live Goal or owner decision was produced.",
+        "source_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1049,14 +1057,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3",
+    "expected_canonical_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9",
     "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
     "next_action": "WAITING_FOR_GOAL_APPROVAL: start the bounded Goal through authenticated Task Control and approve the resulting Goal Grant in the existing Approval Authority. Once an approved request exists, refresh the existing Runner snapshot, re-evaluate source/writer admission, then trace Child 1, automatic Child 2 and independent Final Verify from persisted runtime records.",
     "next_ready_workunit": "SPEC224_OBSERVE_APPROVED_GOAL_AND_TRACE_AUTONOMOUS_CHILD_EXECUTION",
     "reactivation_predicate": "An approved, unrevoked, unexpired Goal Grant and corresponding DevelopmentRun/Job/Attempt are visible in tenant tenant-001; before release the same Runner session has a fresh applied snapshot/ACK at the current source SHA, Codex readiness passes, and the bounded scope has SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission with no active writer conflict.",
-    "resume_point": "At 2026-10-29T00:46:35+07:00, read-only queries against the shared smartspec_dev database found zero SPEC-224 Goal Grant approval requests, zero worker_jobs for tenant tenant-001, and no canonical worker job for the previously recorded run-547f17fa98a3bc44ccc517c84c60ffeadf3fc77. The Runner service is active but the last snapshot expired at 2026-10-29T00:41:34+07:00. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md.",
+    "resume_point": "Source SHA fdd490d0ebeea543edb50df46a47f3d04ba9a5f9 integrated the Task Control one-action Start repair and passed the connected disposable PostgreSQL Goal Admission/Child 1/Child 2 path. No real Goal was created in the shared runtime. Resume at authenticated owner Task Control Start and approval; capture only real Runner receipts for LIVE acceptance.",
     "waiting_predicate": "No Goal Grant request with payload.kind=spec224_goal_delegation_grant exists in the current smartspec_dev database. Wait for the authenticated owner to start the Goal and approve its exact scope through the existing Task Control and Approval Authority path."
   },
   "continuation_assessment": {
@@ -1216,7 +1224,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 243,
+  "generation": 244,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -1448,11 +1456,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3",
+    "canonical_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9",
     "integrated": true,
-    "integrated_at": "2026-10-28T14:39:02Z",
+    "integrated_at": "2026-10-28T18:50:18Z",
     "pull_request": null,
-    "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
+    "source_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3954,7 +3962,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T17:48:22.441906Z",
+  "updated_at": "2026-10-28T18:51:54.946262Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4441,6 +4449,12 @@
         "observed_at": "2026-10-28T14:39:02Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
         "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
+      },
+      {
+        "kind": "SPEC224_CONNECTED_INGRESS_AND_CONTINUATION_PASS",
+        "observed_at": "2026-10-28T18:50:18Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-first-goal-activation-20261029.md",
+        "source_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9"
       }
     ],
     "freshness": "FRESH",
