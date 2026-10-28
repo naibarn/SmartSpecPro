@@ -27,6 +27,74 @@ pub struct ExternalAgentProcess {
     candidate: Option<crate::spec224_candidate::Candidate>,
 }
 
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PinnedCodexModelSelection {
+    adapter_id: String,
+    policy: String,
+    selected_model_id: Option<String>,
+    resolved_model_id: String,
+    reasoning_effort: String,
+    account_provider_fingerprint: Option<String>,
+    capability_snapshot_revision: String,
+}
+
+fn pinned_codex_model_selection(
+    command: &RunnerJobCommand,
+) -> Result<Option<PinnedCodexModelSelection>, String> {
+    let Some(value) = command.payload.get("spec224ModelSelection") else {
+        return Ok(None);
+    };
+    let selection: PinnedCodexModelSelection = serde_json::from_value(value.clone())
+        .map_err(|_| "RUNNER_MODEL_SELECTION_INVALID".to_string())?;
+    if command.adapter_id != "codex.v1"
+        || selection.adapter_id != "codex.v1"
+        || !matches!(selection.policy.as_str(), "auto" | "explicit")
+        || selection.resolved_model_id.trim().is_empty()
+        || selection.resolved_model_id.len() > 160
+        || selection.reasoning_effort.trim().is_empty()
+        || selection.reasoning_effort.len() > 32
+        || selection.account_provider_fingerprint.is_none()
+        || selection.capability_snapshot_revision != command.capability_snapshot_revision
+        || (selection.policy == "explicit"
+            && selection.selected_model_id.as_deref() != Some(selection.resolved_model_id.as_str()))
+        || (selection.policy == "auto" && selection.selected_model_id.is_some())
+    {
+        return Err("RUNNER_MODEL_SELECTION_INVALID".into());
+    }
+    Ok(Some(selection))
+}
+
+fn verify_live_codex_model_selection(
+    command: &RunnerJobCommand,
+    candidate: &ToolCandidate,
+) -> Result<Option<PinnedCodexModelSelection>, String> {
+    let Some(selection) = pinned_codex_model_selection(command)? else {
+        return Ok(None);
+    };
+    crate::adapters::verify_selected_model(
+        candidate,
+        &selection.resolved_model_id,
+        &selection.reasoning_effort,
+        selection
+            .account_provider_fingerprint
+            .as_deref()
+            .unwrap_or_default(),
+        Duration::from_secs(10),
+    )
+    .map_err(|error| {
+        if error == "RUNNER_MODEL_ACCOUNT_SCOPE_CHANGED"
+            || error == "RUNNER_SELECTED_MODEL_UNAVAILABLE"
+            || error == "RUNNER_SELECTED_MODEL_REASONING_UNSUPPORTED"
+        {
+            error
+        } else {
+            "RUNNER_MODEL_CATALOG_REFRESH_FAILED".to_string()
+        }
+    })?;
+    Ok(Some(selection))
+}
+
 pub(crate) fn workspace_path(config: &RunnerConfig, reference: &str) -> Result<PathBuf, String> {
     let reference = if reference.trim().is_empty() {
         std::env::var("SAH_RUNNER_DEFAULT_WORKSPACE_ID").unwrap_or_default()
@@ -153,16 +221,30 @@ pub fn fixed_provider_args(command: &RunnerJobCommand) -> Result<Vec<String>, St
         )
     };
     match command.adapter_id.as_str() {
-        "codex.v1" => Ok(vec![
-            "exec".into(),
-            "--json".into(),
-            "--sandbox".into(),
-            "workspace-write".into(),
-            "--ephemeral".into(),
-            "--skip-git-repo-check".into(),
-            "--".into(),
-            instruction,
-        ]),
+        "codex.v1" => {
+            let selection = pinned_codex_model_selection(command)?;
+            let mut args = Vec::new();
+            if let Some(selection) = selection.as_ref() {
+                args.extend([
+                    "-c".into(),
+                    format!("model_reasoning_effort=\"{}\"", selection.reasoning_effort),
+                ]);
+            }
+            args.push("exec".into());
+            if let Some(selection) = selection {
+                args.extend(["--model".into(), selection.resolved_model_id]);
+            }
+            args.extend([
+                "--json".into(),
+                "--sandbox".into(),
+                "workspace-write".into(),
+                "--ephemeral".into(),
+                "--skip-git-repo-check".into(),
+                "--".into(),
+                instruction,
+            ]);
+            Ok(args)
+        }
         "claude.v1" => Ok(vec![
             "-p".into(),
             "--permission-mode".into(),
@@ -220,6 +302,9 @@ pub fn start_external_agent(
                 .ok_or_else(|| "RUNNER_WORKSPACE_REFERENCE_REQUIRED".to_string())?,
         )?
     };
+    if command.adapter_id == "codex.v1" {
+        verify_live_codex_model_selection(command, candidate)?;
+    }
     let args = fixed_provider_args(command)?;
     if command.adapter_id == "claude.v1" {
         ensure_claude_sandbox_available()?;
@@ -795,5 +880,55 @@ mod tests {
         assert!(settings.contains("\"allowUnsandboxedCommands\":false"));
         assert!(settings.contains("\"failIfUnavailable\":true"));
         assert!(fixed_provider_args(&command("shell.v1")).is_err());
+    }
+
+    #[test]
+    fn codex_launch_pins_model_and_reasoning_without_global_config_changes() {
+        let mut command = command("codex.v1");
+        command.payload["spec224ModelSelection"] = serde_json::json!({
+            "adapterId": "codex.v1",
+            "policy": "explicit",
+            "selectedModelId": "gpt-6.1-terra",
+            "resolvedModelId": "gpt-6.1-terra",
+            "reasoningEffort": "high",
+            "catalogRevision": "catalog:sha256:abcdef",
+            "accountProviderFingerprint": "codex-account:sha256:abcdef",
+            "capabilityProfile": ["text"],
+            "cliVersion": "codex-cli 0.165.0",
+            "capabilitySnapshotRevision": "revision-1"
+        });
+        let args = fixed_provider_args(&command).unwrap();
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["-c", "model_reasoning_effort=\"high\""]));
+        assert!(args
+            .windows(2)
+            .any(|pair| pair == ["--model", "gpt-6.1-terra"]));
+        assert!(!args.iter().any(|arg| arg.contains("config.toml")));
+    }
+
+    #[test]
+    fn codex_launch_rejects_unscoped_or_mismatched_model_selection() {
+        let mut command = command("codex.v1");
+        command.payload["spec224ModelSelection"] = serde_json::json!({
+            "adapterId": "claude.v1",
+            "policy": "explicit",
+            "selectedModelId": "model-a",
+            "resolvedModelId": "model-a",
+            "reasoningEffort": "high",
+            "accountProviderFingerprint": "codex-account:sha256:abcdef",
+            "capabilitySnapshotRevision": "revision-1"
+        });
+        assert_eq!(
+            fixed_provider_args(&command).unwrap_err(),
+            "RUNNER_MODEL_SELECTION_INVALID"
+        );
+        command.payload["spec224ModelSelection"]["adapterId"] = serde_json::json!("codex.v1");
+        command.payload["spec224ModelSelection"]["accountProviderFingerprint"] =
+            serde_json::Value::Null;
+        assert_eq!(
+            fixed_provider_args(&command).unwrap_err(),
+            "RUNNER_MODEL_SELECTION_INVALID"
+        );
     }
 }

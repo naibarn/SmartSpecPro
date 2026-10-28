@@ -13,7 +13,10 @@ import { getDb } from "../db";
 import { compileSpec224IncrementalSpecSet } from "./spec224IncrementalSpecCompiler";
 import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
 import { SPEC224_RUNNER_INPUT_MAX_BYTES } from "./spec224RunnerInputStaging";
-import { isRunnerWorkspaceConvergenceState } from "./runnerContracts";
+import {
+  isRunnerWorkspaceConvergenceState,
+  type RunnerModelCatalog,
+} from "./runnerContracts";
 import {
   listAuthorizedWorkspaceScopeBindings,
   listRestrictedPlatformWorkspaceKeys,
@@ -41,7 +44,7 @@ export class Spec224WorkspaceSpecSetError extends Error {
 
 export type Spec224WorkspaceArtifactInput = { path: string; contentBase64: string };
 export type Spec224WorkspaceSpecFile = { path: string; digest: string; content: string };
-export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths?: string[] | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null };
+export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths?: string[] | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null; modelCatalog?: RunnerModelCatalog | null };
 export type Spec224ConversationWorkspace = {
   conversationId: number; tenantId: string; actorId: number; runnerId: string; workspaceId: string;
   snapshotRevision: string; revision: number;
@@ -376,7 +379,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         }));
         return {
           workspace: binding,
-          runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths ?? null, contentFingerprint: workspace.contentFingerprint },
+          runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths ?? null, contentFingerprint: workspace.contentFingerprint, modelCatalog: workspace.modelCatalog ?? null },
           goal: `Implement the requested change from the staged prompt.md in this existing workspace. Keep changes scoped to the request and preserve unrelated workspace content.`,
           planId: `plan:${contextPackHash.slice(0, 40)}`,
           planRevision: binding.revision,
@@ -448,7 +451,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       }));
       return {
         workspace: binding,
-        runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths ?? null, contentFingerprint: workspace.contentFingerprint },
+        runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths ?? null, contentFingerprint: workspace.contentFingerprint, modelCatalog: workspace.modelCatalog ?? null },
         goal,
         planId: `plan:${contextPackHash.slice(0, 40)}`,
         planRevision: revision.revision,
@@ -518,8 +521,12 @@ class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStor
     const restrictedKeys = new Set(restrictedPlatformKeys.map(binding => JSON.stringify([binding.tenantId, binding.runnerId, binding.workspaceId])));
     const rows = await db.select().from(runnerNodes).where(and(eq(runnerNodes.tenantId, input.tenantId), or(isNull(runnerNodes.ownerUserId), eq(runnerNodes.ownerUserId, input.actorId)), eq(runnerNodes.trustState, "trusted"), eq(runnerNodes.status, "online"), isNull(runnerNodes.revokedAt), gt(runnerNodes.snapshotExpiresAt, new Date())));
     return rows.flatMap(row => {
-      const snapshot = row.currentSnapshotJson as { runnerId?: unknown; runnerSessionId?: unknown } | null;
+      const snapshot = row.currentSnapshotJson as { runnerId?: unknown; runnerSessionId?: unknown; toolInventory?: unknown } | null;
       if (!row.currentSnapshotRevision || !snapshot || snapshot.runnerId !== row.runnerId || (row.activeSessionId && snapshot.runnerSessionId !== row.activeSessionId)) return [];
+      const modelCatalog = Array.isArray(snapshot.toolInventory)
+        ? (snapshot.toolInventory as Array<{ adapterId?: unknown; modelCatalog?: unknown }>)
+            .find(tool => tool.adapterId === "codex.v1")?.modelCatalog as RunnerModelCatalog | undefined
+        : undefined;
       return workspaceFactsFromSnapshot(snapshot).flatMap(workspace => {
         const identity = { tenantId: row.tenantId, projectId: workspace.projectId ?? "", repositoryId: workspace.repositoryId ?? "", runnerId: row.runnerId, workspaceId: workspace.workspaceId };
         const restricted = restrictedKeys.has(JSON.stringify([row.tenantId, row.runnerId, workspace.workspaceId]));
@@ -546,6 +553,7 @@ class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStor
           convergenceState: workspace.convergenceState,
           convergenceCanonicalSha: workspace.convergenceCanonicalSha,
           contentFingerprint: workspace.contentFingerprint,
+          ...(modelCatalog ? { modelCatalog } : { modelCatalog: null }),
         }];
       });
     });

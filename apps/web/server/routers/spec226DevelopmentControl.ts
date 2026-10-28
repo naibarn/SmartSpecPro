@@ -45,6 +45,7 @@ import {
 import { getSpec224BackendRuntimeIdentity } from "../services/spec224BackendRuntimeIdentity";
 import { loadRepositoryFeatureSpec, loadRepositoryFeatureSpecContext, listRepositoryFeatureSpecs } from "../services/spec224FeatureSpecCatalog";
 import { buildSpec224GoalGrantApprovalPayload, requestSpec224GoalGrantApproval } from "../services/spec224GoalDelegationGrant";
+import { resolveSpec224ModelSelection } from "../services/spec224ModelSelection";
 import { db, getDb } from "../db";
 import { readSpec224GoalBudgetStatus } from "../services/economicProvisioningService";
 
@@ -892,6 +893,11 @@ export const spec226DevelopmentControlRouter = router({
       idempotencyKey: z.string().trim().min(16).max(160),
       budgetCapMinorUnits: z.number().int().positive().max(10_000_000).default(100),
       provider: z.enum(["codex", "claude_code"]).default("codex"),
+      modelSelection: z.object({
+        policy: z.enum(["auto", "explicit"]),
+        modelId: z.string().trim().min(1).max(160).optional(),
+        reasoningEffort: z.string().trim().min(1).max(32).optional(),
+      }).strict().optional(),
       visualReferences: z.array(z.record(z.string(), z.unknown())).max(6).default([]),
       designPreferences: designPreferencesSchema.default({}),
       visualFiles: z.array(z.object({
@@ -1077,6 +1083,7 @@ export const spec226DevelopmentControlRouter = router({
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
           provider: input.provider ?? "codex", visualReferences: input.visualReferences ?? [],
           visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
+          modelSelection: input.modelSelection ?? { policy: "auto" },
           budgetCapMinorUnits: input.budgetCapMinorUnits,
         })).digest("hex");
         const existing = await developmentRunService.get({ ...scope, runId }).catch(error => {
@@ -1100,7 +1107,9 @@ export const spec226DevelopmentControlRouter = router({
             dispatchStatus: ["READY_FOR_LIVE", "READY_FOR_DELEGATION"].includes(authorization.status) ? "ENQUEUED" as const
               : ["GOAL_APPROVAL_PENDING", "APPROVAL_REQUIRED", "BUDGET_REQUIRED"].includes(authorization.status) ? "PENDING_AUTHORIZATION" as const : "BLOCKED" as const,
             authorization, goalAdmissionStatus: authorization.status, inputDigest: source.inputDigest, specSetRevision: workspace.specSetRevision,
-            workPackageId: workspace.workPackageId, idempotent: true };
+            workPackageId: workspace.workPackageId,
+            modelSelection: existing.run.metadata?.spec224ModelSelection ?? null,
+            idempotent: true };
         }
         const prepared = await defaultSpec224WorkspaceSpecSetService.resolveWorkspaceRunInput({
           ...scope,
@@ -1111,6 +1120,12 @@ export const spec226DevelopmentControlRouter = router({
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           ...(input.specSetRevision === undefined ? {} : { specSetRevision: input.specSetRevision }),
           ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
+        });
+        const modelSelection = resolveSpec224ModelSelection({
+          request: input.modelSelection,
+          adapterId: "codex.v1",
+          catalog: prepared.runner.modelCatalog,
+          capabilitySnapshotRevision: prepared.runner.snapshotRevision,
         });
         const workPackageId = prepared.workPackageId ?? "prompt";
         const visualInputs = prepareSpec224VisualReferenceInputs({
@@ -1221,6 +1236,7 @@ export const spec226DevelopmentControlRouter = router({
           executionMode: prepared.workPackageId ? "work_package" : "prompt",
           allowedWriteSet: prepared.allowedWriteSet,
           visualReferenceIds: visualInputs.manifest.references.map((reference) => reference.id),
+          modelSelection,
         };
         const sourceShaForGrant = /^git:([a-f0-9]{40}|[a-f0-9]{64})$/i.exec(prepared.baseRevision)?.[1]?.toLowerCase();
         if (!sourceShaForGrant || !runnerReadiness.projectId) throw new Error("SPEC224_GOAL_SOURCE_BINDING_REQUIRED");
@@ -1238,6 +1254,7 @@ export const spec226DevelopmentControlRouter = router({
           capabilities: ["agent.external_task"],
           budgetLimitMinorUnits: input.budgetCapMinorUnits ?? 100,
           currency: "USD",
+          modelSelection,
           issuedAt: issuedAt.toISOString(),
           expiresAt: new Date(issuedAt.getTime() + 24 * 60 * 60 * 1000).toISOString(),
         });
@@ -1308,6 +1325,7 @@ export const spec226DevelopmentControlRouter = router({
               mode: prepared.workPackageId ? "work_package" : "prompt",
               allowedWriteSet: prepared.allowedWriteSet,
             },
+            spec224ModelSelection: modelSelection,
           },
         });
         const created = await createPersistedDevelopmentRun({
@@ -1375,6 +1393,7 @@ export const spec226DevelopmentControlRouter = router({
           authorization,
           goalAdmissionStatus: authorization.status,
           inputDigest: stagedSource.inputDigest,
+          modelSelection,
           specSetRevision: prepared.specSetRevision,
           workPackageId: prepared.workPackageId,
         };

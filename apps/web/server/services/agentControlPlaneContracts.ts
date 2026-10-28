@@ -4,6 +4,10 @@ import {
   JobControlPlaneError,
   type JobDefinition,
 } from "./jobControlPlaneTypes";
+import {
+  validateSpec224ResolvedModelSelection,
+  type Spec224ResolvedModelSelection,
+} from "./spec224ModelSelection";
 
 export const AGENT_CONTROL_PLANE_CONTRACT_VERSION =
   "sah-agent-control-plane-v1";
@@ -56,6 +60,7 @@ export type AgentTaskManifest = {
     sourceSnapshotRevision?: string;
     sourceSha?: string;
   };
+  spec224ModelSelection?: Spec224ResolvedModelSelection;
   policyBinding?: AgentTaskPolicyBinding;
 };
 
@@ -231,6 +236,11 @@ export function validateAgentTaskManifest(
       ...(typeof execution.sourceSha === "string" ? { sourceSha: execution.sourceSha } : {}),
     };
   }
+  const spec224ModelSelection = raw.spec224ModelSelection === undefined
+    ? undefined
+    : validateSpec224ResolvedModelSelection(raw.spec224ModelSelection);
+  if (spec224ModelSelection && spec224ModelSelection.adapterId !== (raw.provider === "codex" ? "codex.v1" : raw.provider === "claude_code" ? "claude.v1" : ""))
+    invalid("model selection adapter does not match provider");
   if (containsSecret(manifest))
     invalid("agent manifest cannot contain credentials");
   const policyBinding = raw.policyBinding === undefined
@@ -253,6 +263,7 @@ export function validateAgentTaskManifest(
     requestedCapabilities,
     ...(spec224Input ? { spec224Input } : {}),
     ...(spec224Execution ? { spec224Execution } : {}),
+    ...(spec224ModelSelection ? { spec224ModelSelection } : {}),
     ...(policyBinding ? { policyBinding } : {}),
   };
 }

@@ -45,6 +45,18 @@ export type Spec224GoalGrantScope = {
   capabilities: string[];
   budgetLimitMinorUnits: number;
   currency: string;
+  modelSelection?: {
+    adapterId: string;
+    policy: "auto" | "explicit";
+    selectedModelId: string | null;
+    resolvedModelId: string;
+    reasoningEffort: string;
+    catalogRevision: string;
+    accountProviderFingerprint: string | null;
+    capabilitySnapshotRevision: string;
+    capabilityProfile: string[];
+    cliVersion: string | null;
+  };
   issuedAt: string;
   expiresAt: string;
 };
@@ -82,6 +94,22 @@ export function buildSpec224GoalGrantApprovalPayload(
     new Set(scope.capabilities).size !== scope.capabilities.length
   )
     throw new Error("SPEC224_GOAL_GRANT_SCOPE_INVALID");
+  if (scope.modelSelection && (
+    !isText(scope.modelSelection.adapterId, 128) ||
+    !["auto", "explicit"].includes(scope.modelSelection.policy) ||
+    (scope.modelSelection.selectedModelId !== null && !isText(scope.modelSelection.selectedModelId, 160)) ||
+    !isText(scope.modelSelection.resolvedModelId, 160) ||
+    !isText(scope.modelSelection.reasoningEffort, 32) ||
+    !isText(scope.modelSelection.catalogRevision, 160) ||
+    (scope.modelSelection.accountProviderFingerprint !== null && !isText(scope.modelSelection.accountProviderFingerprint, 128)) ||
+    !isText(scope.modelSelection.capabilitySnapshotRevision, 160) ||
+    !Array.isArray(scope.modelSelection.capabilityProfile) ||
+    scope.modelSelection.capabilityProfile.length > 32 ||
+    scope.modelSelection.capabilityProfile.some(item => !isText(item, 80)) ||
+    (scope.modelSelection.cliVersion !== null && !isText(scope.modelSelection.cliVersion, 80)) ||
+    (scope.modelSelection.policy === "explicit" && scope.modelSelection.selectedModelId !== scope.modelSelection.resolvedModelId) ||
+    (scope.modelSelection.policy === "auto" && scope.modelSelection.selectedModelId !== null)
+  )) throw new Error("SPEC224_GOAL_GRANT_MODEL_SELECTION_INVALID");
 
   return {
     kind: "spec224_goal_delegation_grant",

@@ -28,6 +28,28 @@ const manifest: AgentTaskManifest = {
 };
 
 describe("Feature 200 Agent control-plane contracts", () => {
+  it("preserves the approved resolved model selection in the agent manifest", () => {
+    const selection = {
+      adapterId: "codex.v1",
+      policy: "explicit" as const,
+      selectedModelId: "gpt-6.1-terra",
+      resolvedModelId: "gpt-6.1-terra",
+      reasoningEffort: "high",
+      catalogRevision: "catalog:sha256:abc",
+      accountProviderFingerprint: "codex-account:sha256:abc",
+      capabilitySnapshotRevision: "revision-1",
+      capabilityProfile: ["text"],
+      cliVersion: "codex-cli 0.165.0",
+    };
+    expect(validateAgentTaskManifest({ ...manifest, spec224ModelSelection: selection })).toMatchObject({
+      spec224ModelSelection: selection,
+    });
+    expect(() => validateAgentTaskManifest({
+      ...manifest,
+      spec224ModelSelection: { ...selection, adapterId: "claude.v1" },
+    })).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+  });
+
   it("validates provider-neutral manifests and rejects credential leakage", () => {
     expect(validateAgentTaskManifest(manifest)).toMatchObject({
       provider: "codex",

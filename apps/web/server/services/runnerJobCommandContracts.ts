@@ -10,6 +10,7 @@ import {
   type RunnerExecutionSessionBinding,
 } from "./runnerExecutionSessionContracts";
 import { validateRunnerExecutionAuthorityGrant } from "./runnerExecutionAuthorityGrantService";
+import { validateSpec224ResolvedModelSelection } from "./spec224ModelSelection";
 
 export type RunnerExecutionEligibility = {
   runnerId: string;
@@ -158,6 +159,16 @@ export function validateRunnerJobCommand(
   )
     throw new Error("RUNNER_COMMAND_PAYLOAD_INVALID");
   safePayload(raw.payload);
+  if (raw.payload.spec224ModelSelection !== undefined) {
+    let selection;
+    try {
+      selection = validateSpec224ResolvedModelSelection(raw.payload.spec224ModelSelection);
+    } catch {
+      throw new Error("RUNNER_MODEL_SELECTION_INVALID");
+    }
+    if (selection.adapterId !== raw.adapterId || selection.capabilitySnapshotRevision !== raw.capabilitySnapshotRevision)
+      throw new Error("RUNNER_MODEL_SELECTION_BINDING_MISMATCH");
+  }
   if (raw.payload.executionSession !== undefined) {
     const invalidSession = validateRunnerExecutionSessionBinding(
       raw.payload.executionSession,

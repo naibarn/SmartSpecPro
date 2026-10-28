@@ -360,6 +360,8 @@ describe("Feature 197 Runner contracts", () => {
             displayName: "Model Z",
             capabilities: ["text"],
             reasoningEfforts: ["low", "high"],
+            defaultReasoningEffort: "high",
+            isDefault: true,
           }],
         },
         observedAt: "2026-09-17T00:00:00Z",

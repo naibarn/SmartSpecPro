@@ -681,6 +681,7 @@ export function buildDevelopmentHarnessJob(input: {
 } {
   const spec224Input = input.run.metadata?.spec224Input;
   const spec224Execution = input.run.metadata?.spec224Execution;
+  const spec224ModelSelection = input.run.metadata?.spec224ModelSelection;
   const manifest: AgentTaskManifest = {
     taskId: input.run.runId,
     tenantId: input.run.tenantId,
@@ -703,6 +704,9 @@ export function buildDevelopmentHarnessJob(input: {
       : {}),
     ...(spec224Execution && typeof spec224Execution === "object" && !Array.isArray(spec224Execution)
       ? { spec224Execution: spec224Execution as AgentTaskManifest["spec224Execution"] }
+      : {}),
+    ...(spec224ModelSelection && typeof spec224ModelSelection === "object" && !Array.isArray(spec224ModelSelection)
+      ? { spec224ModelSelection: spec224ModelSelection as AgentTaskManifest["spec224ModelSelection"] }
       : {}),
     ...(input.policyBinding ? { policyBinding: input.policyBinding } : {}),
   };

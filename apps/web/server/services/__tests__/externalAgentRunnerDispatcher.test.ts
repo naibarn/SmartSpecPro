@@ -351,6 +351,38 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
     expect(state.waitForExternal).toHaveBeenCalledOnce();
   });
 
+  it("passes approved model selection through the canonical Runner command", async () => {
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({
+      status: "accepted",
+      commandId: "command-model-1",
+      runnerId: "runner-1",
+      runnerSessionId: "session-1",
+    });
+    const dispatcher = createExternalAgentTaskDispatcher({
+      dispatch,
+      now: () => new Date("2026-09-23T00:00:00.000Z"),
+      commandId: () => "command-model-1",
+      controlPlaneOrigin: "http://localhost:3000",
+    });
+    const selection = {
+      adapterId: "codex.v1",
+      policy: "auto" as const,
+      selectedModelId: null,
+      resolvedModelId: "gpt-6.1-sol",
+      reasoningEffort: "medium",
+      catalogRevision: "catalog:sha256:abc",
+      accountProviderFingerprint: "codex-account:sha256:abc",
+      capabilitySnapshotRevision: "revision-1",
+      capabilityProfile: ["text"],
+      cliVersion: "codex-cli 0.165.0",
+    };
+    await dispatcher({ ...state, manifest: { ...state.manifest, spec224ModelSelection: selection } } as any);
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({ spec224ModelSelection: selection }),
+    }));
+  });
+
   it("keeps canonical Runner dispatch available when the shadow projection store fails", async () => {
     const state = input();
     const dispatch = vi.fn().mockResolvedValue({

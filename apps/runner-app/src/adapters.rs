@@ -19,6 +19,8 @@ pub struct AvailableModel {
     pub display_name: String,
     pub capabilities: Vec<String>,
     pub reasoning_efforts: Vec<String>,
+    pub default_reasoning_effort: Option<String>,
+    pub is_default: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -33,6 +35,17 @@ pub struct CodexModelCatalog {
     /// evidence that the current account is entitled to execute the model.
     pub verification_state: String,
     pub models: Vec<AvailableModel>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectedModelVerification {
+    pub model: AvailableModel,
+    pub catalog_revision: String,
+    pub account_provider_fingerprint: String,
+    /// Catalog visibility is not proof of billing entitlement. Successful
+    /// execution is the only entitlement signal currently available.
+    pub verification_state: String,
 }
 
 #[derive(Debug, Clone)]
@@ -979,6 +992,53 @@ pub fn refresh_model_catalog(
     list_available_models(candidate, timeout)
 }
 
+pub fn get_model_capabilities(
+    candidate: &ToolCandidate,
+    model_id: &str,
+    timeout: Duration,
+) -> Result<Vec<String>, String> {
+    let catalog = refresh_model_catalog(candidate, timeout)?;
+    catalog
+        .models
+        .into_iter()
+        .find(|model| model.id == model_id)
+        .map(|model| model.capabilities)
+        .ok_or_else(|| "RUNNER_SELECTED_MODEL_UNAVAILABLE".into())
+}
+
+/// Revalidates selection against the current Runner CLI and account catalog.
+/// It does not claim the provider will grant execution entitlement.
+pub fn verify_selected_model(
+    candidate: &ToolCandidate,
+    model_id: &str,
+    reasoning_effort: &str,
+    expected_account_fingerprint: &str,
+    timeout: Duration,
+) -> Result<SelectedModelVerification, String> {
+    let catalog = refresh_model_catalog(candidate, timeout)?;
+    if catalog.account_provider_fingerprint.as_deref() != Some(expected_account_fingerprint) {
+        return Err("RUNNER_MODEL_ACCOUNT_SCOPE_CHANGED".into());
+    }
+    let model = catalog
+        .models
+        .into_iter()
+        .find(|model| model.id == model_id)
+        .ok_or_else(|| "RUNNER_SELECTED_MODEL_UNAVAILABLE".to_string())?;
+    if !model
+        .reasoning_efforts
+        .iter()
+        .any(|effort| effort == reasoning_effort)
+    {
+        return Err("RUNNER_SELECTED_MODEL_REASONING_UNSUPPORTED".into());
+    }
+    Ok(SelectedModelVerification {
+        model,
+        catalog_revision: catalog.revision,
+        account_provider_fingerprint: expected_account_fingerprint.to_string(),
+        verification_state: "catalog_visible_only".into(),
+    })
+}
+
 fn discover_codex_model_catalog(
     program: &Path,
     cli_version: Option<&str>,
@@ -1172,7 +1232,7 @@ fn parse_codex_model_list(
                     .collect()
             })
             .unwrap_or_default();
-        let reasoning_efforts = row
+        let reasoning_efforts: Vec<String> = row
             .get("supportedReasoningEfforts")
             .and_then(Value::as_array)
             .map(|values| {
@@ -1190,11 +1250,21 @@ fn parse_codex_model_list(
                     .collect()
             })
             .unwrap_or_default();
+        let default_reasoning_effort = row
+            .get("defaultReasoningEffort")
+            .and_then(Value::as_str)
+            .filter(|value| reasoning_efforts.iter().any(|effort| effort == value))
+            .map(str::to_string);
         models.push(AvailableModel {
             id: id.to_string(),
             display_name: display_name.to_string(),
             capabilities,
             reasoning_efforts,
+            default_reasoning_effort,
+            is_default: row
+                .get("isDefault")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
         });
     }
     models.sort_by(|left, right| left.id.cmp(&right.id));
@@ -1235,6 +1305,15 @@ fn parse_codex_model_list(
         revision_hasher.update(model.id.as_bytes());
         revision_hasher.update([0]);
         revision_hasher.update(model.display_name.as_bytes());
+        revision_hasher.update([u8::from(model.is_default)]);
+        if let Some(default_effort) = model.default_reasoning_effort.as_deref() {
+            revision_hasher.update([0]);
+            revision_hasher.update(default_effort.as_bytes());
+        }
+        for capability in &model.capabilities {
+            revision_hasher.update([0]);
+            revision_hasher.update(capability.as_bytes());
+        }
         for effort in &model.reasoning_efforts {
             revision_hasher.update([0]);
             revision_hasher.update(effort.as_bytes());
@@ -2429,6 +2508,7 @@ mod tests {
                         {"reasoningEffort": "low"},
                         {"reasoningEffort": "high"}
                     ]
+                    ,"defaultReasoningEffort": "high", "isDefault": true
                 }]
             }),
             Some(&json!({"account": {"type": "chatgpt", "email": "owner@example.test"}})),
@@ -2447,6 +2527,11 @@ mod tests {
         assert_eq!(catalog.models[0].display_name, "Model Z");
         assert_eq!(catalog.models[0].capabilities, ["text", "image"]);
         assert_eq!(catalog.models[0].reasoning_efforts, ["low", "high"]);
+        assert_eq!(
+            catalog.models[0].default_reasoning_effort.as_deref(),
+            Some("high")
+        );
+        assert!(catalog.models[0].is_default);
         let serialized = serde_json::to_string(&catalog).unwrap();
         assert!(!serialized.contains("owner@example.test"));
     }

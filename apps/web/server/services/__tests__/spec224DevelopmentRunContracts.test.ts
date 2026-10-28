@@ -202,6 +202,34 @@ describe("Spec 224 DevelopmentRun kernel", () => {
     expect(stagedJob.definition.input).not.toHaveProperty("inputFetchGrant");
   });
 
+  it("preserves the pinned model through DevelopmentRun job construction", () => {
+    const selection = {
+      adapterId: "codex.v1",
+      policy: "auto" as const,
+      selectedModelId: null,
+      resolvedModelId: "gpt-6.1-sol",
+      reasoningEffort: "medium",
+      catalogRevision: "catalog:sha256:abc",
+      accountProviderFingerprint: "codex-account:sha256:abc",
+      capabilitySnapshotRevision: "snapshot-1",
+      capabilityProfile: ["text"],
+      cliVersion: "codex-cli 0.165.0",
+    };
+    const run = buildDevelopmentRun({
+      ...baseRun,
+      metadata: { spec224ModelSelection: selection },
+    });
+    expect(buildDevelopmentHarnessJob({
+      run,
+      provider: "codex",
+      runtime: "local_runner",
+      planId: "plan-model-1",
+      planRevision: 1,
+      skillIds: [],
+      requestedCapabilities: ["agent.external_task"],
+    }).manifest.spec224ModelSelection).toEqual(selection);
+  });
+
   it("admits the harness only through the canonical worker control-plane gateway", async () => {
     const run = buildDevelopmentRun(baseRun);
     const definitions: unknown[] = [];

@@ -132,6 +132,34 @@ describe("Runner Job Command/Receipt contract", () => {
     ).toThrow("RUNNER_COMMAND_ADAPTER_UNSUPPORTED");
   });
 
+  it("binds a pinned model selection to its adapter and capability snapshot", () => {
+    const external: RunnerJobCommand = {
+      ...command(),
+      executionKind: "external_agent_task",
+      adapterId: "codex.v1",
+      payload: {
+        taskId: "task-model",
+        spec224ModelSelection: {
+          adapterId: "codex.v1",
+          policy: "auto",
+          selectedModelId: null,
+          resolvedModelId: "gpt-6.1-sol",
+          reasoningEffort: "medium",
+          catalogRevision: "catalog:sha256:abc",
+          accountProviderFingerprint: "codex-account:sha256:abc",
+          capabilitySnapshotRevision: "snapshot:p213:1",
+          capabilityProfile: ["text"],
+          cliVersion: "codex-cli 0.165.0",
+        },
+      },
+    };
+    expect(validateRunnerJobCommand(external).payload.spec224ModelSelection).toBeDefined();
+    expect(() => validateRunnerJobCommand({
+      ...external,
+      capabilitySnapshotRevision: "snapshot:p213:2",
+    })).toThrow("RUNNER_MODEL_SELECTION_BINDING_MISMATCH");
+  });
+
   it("accepts only a session contract bound to the canonical command identity", () => {
     const external = {
       ...command(),

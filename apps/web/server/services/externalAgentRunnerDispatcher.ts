@@ -163,6 +163,9 @@ export function createExternalAgentTaskDispatcher(
         ...(input.manifest.spec224Execution
           ? { spec224Execution: input.manifest.spec224Execution }
           : {}),
+        ...(input.manifest.spec224ModelSelection
+          ? { spec224ModelSelection: input.manifest.spec224ModelSelection }
+          : {}),
         approvalRef: binding.approvalRef,
         budgetReservationRef: binding.budgetReservationRef,
         budgetCapMinorUnits: binding.budgetCapMinorUnits,

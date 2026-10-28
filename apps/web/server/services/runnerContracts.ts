@@ -228,6 +228,8 @@ export type RunnerModelCatalog = {
     displayName: string;
     capabilities: string[];
     reasoningEfforts: string[];
+    defaultReasoningEffort?: string | null;
+    isDefault: boolean;
   }>;
 };
 
@@ -815,6 +817,12 @@ function validateRunnerModelCatalog(
       displayName: requiredText(model.displayName, `${prefix}.models[${index}].displayName`, 160),
       capabilities: stringList(model.capabilities ?? [], `${prefix}.models[${index}].capabilities`, 16, 48),
       reasoningEfforts: stringList(model.reasoningEfforts ?? [], `${prefix}.models[${index}].reasoningEfforts`, 16, 32),
+      defaultReasoningEffort: model.defaultReasoningEffort === undefined || model.defaultReasoningEffort === null
+        ? null
+        : requiredText(model.defaultReasoningEffort, `${prefix}.models[${index}].defaultReasoningEffort`, 32),
+      isDefault: typeof model.isDefault === "boolean"
+        ? model.isDefault
+        : invalid(`${prefix}.models[${index}].isDefault is invalid`),
     };
   });
   const ids = new Set<string>();
