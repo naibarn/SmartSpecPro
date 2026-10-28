@@ -136,6 +136,14 @@
         "scope": "Development service uses smartspec_dev and serves 06035531a6be96a45f379188385b1fa759ff28a4-dirty; same trusted Debian Runner session had fresh heartbeat/snapshot and Codex authenticated task probe passed. Workspace snapshot matched origin/main and showed 818 dirty paths, none intersecting the bounded pilot path. No Goal Grant request or SPEC-224 Job exists; SAFE_DISJOINT_DIRTY must still be revalidated before lease acquisition.",
         "source_sha": "06035531a6be96a45f379188385b1fa759ff28a4",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_FIRST_LIVE_GOAL_READINESS_AND_WAIT",
+        "observed_at": "2026-10-28T23:28:55Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-first-goal-activation-20261029.md",
+        "scope": "Latest dev Runner heartbeat, source snapshot, APPLIED capability ACK, Codex 0.165 task probe and SAFE_DISJOINT_DIRTY source admission are verified. SPEC-293 execution lease table exists with no overlapping active lease and next fence generation 1. No actual Goal Grant, Run, Job, Attempt, or live execution evidence exists; wait at authenticated Task Control Start and Approval Authority.",
+        "source_sha": "0d2b9443b050c60902f7f9bc8eb2e820bbe46323",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1232,7 +1240,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 245,
+  "generation": 246,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -3970,7 +3978,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T18:59:23.741509Z",
+  "updated_at": "2026-10-28T23:29:28.564205Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
