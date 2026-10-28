@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   createJob: vi.fn(),
+  issueMandateGrant: vi.fn(async () => ({ grantRef: "66666666-6666-4666-8666-666666666666", expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() })),
   grantRequest: null as Record<string, any> | null,
   storedJob: null as Record<string, any> | null,
   readCount: 0,
@@ -40,6 +41,7 @@ vi.mock("./cloudflareOriginConfiguration", () => ({ getCloudflareOriginConfigura
   configurationDigest: "d".repeat(64), descriptor: { expiresAt: new Date(Date.now() + 60 * 60_000).toISOString() } }) }));
 vi.mock("./appRuntimeConfig", () => ({ getAppRuntimeConfig: async () => ({ pythonBackendUrl: "https://approval.example", webGatewayToken: "internal-test-token" }) }));
 vi.mock("./cloudflareExecutionReadiness", () => ({ checkCloudflareExecutionReadiness: async () => ({ ready: true }) }));
+vi.mock("./cloudflareProductionMigrationMandate", () => ({ issueCloudflareMigrationOperationGrant: mocks.issueMandateGrant }));
 vi.mock("./jobControlPlaneGateway", () => ({ createControlPlaneJob: mocks.createJob }));
 
 function database() {
@@ -125,5 +127,30 @@ describe("Production Worker canary admission", () => {
     expect(mocks.grantRequest).toMatchObject({ jobId: mocks.storedJob.id, targetId: "smartspec-cloudflare-runtime",
       environment: "production", actions: ["deploy"], candidateVersionId: null,
       rollbackDeploymentId: "11111111-1111-4111-8111-111111111111" });
+  });
+
+  it("admits the same Worker canary job through the active mandate grant without a second Owner grant request", async () => {
+    vi.stubEnv("CLOUDFLARE_PRODUCTION_EXECUTOR_ID", "production-executor-fixture");
+    const submissionId = "77777777-7777-4777-8777-777777777777";
+    mocks.storedJob = { id: submissionId, tenantId: "tenant-a", requestedByUserId: 17,
+      jobType: "cloudflare.production.deploy", contractVersion: "cloudflare-production-deploy-v1",
+      inputJson: { projectId: "project-a" }, status: "queued" };
+    mocks.createJob.mockResolvedValue({ created: true, jobId: submissionId });
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ grantSchemas: ["cloudflare.production-deployment-grant.v2"] })));
+    const { queueProductionWorkerCanary, getProductionWorkerCanaryPreflight } = await import("./cloudflareProductionWorkerDeploymentAdmission");
+    const plan = await getProductionWorkerCanaryPreflight(database() as never, { tenantId: "tenant-a", projectId: "project-a" });
+    if (!plan.ready) throw new Error(plan.reason);
+    const result = await queueProductionWorkerCanary(database() as never, { tenantId: "tenant-a", projectId: "project-a",
+      actorUserId: 17, userToken: "owner-session-token", submissionId, planDigest: plan.planDigest,
+      correlationId: "mandate-trace", mandateRef: "88888888-8888-4888-8888-888888888888" });
+    expect(result).toEqual({ jobId: submissionId, status: "queued" });
+    expect(mocks.issueMandateGrant).toHaveBeenCalledWith({ mandateRef: "88888888-8888-4888-8888-888888888888",
+      tenantId: "tenant-a", projectId: "project-a", jobId: submissionId, operation: "worker_canary", planDigest: plan.planDigest });
+    expect(mocks.createJob).toHaveBeenCalledWith(expect.objectContaining({
+      definition: expect.objectContaining({ input: expect.objectContaining({ grantRef: "66666666-6666-4666-8666-666666666666",
+        mandateGrantRef: "66666666-6666-4666-8666-666666666666", mandateOperation: "worker_canary",
+        mandatePlanDigest: plan.planDigest }) }),
+    }));
+    expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
   });
 });

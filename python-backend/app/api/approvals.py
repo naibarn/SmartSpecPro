@@ -430,7 +430,8 @@ class CloudflareMigrationOperationGrantIssue(BaseModel):
     tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=36)
     project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
     job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[0-9a-fA-F-]{36}$")
-    operation: Literal["credit_billing_acceptance", "queue_recovery_acceptance"]
+    operation: Literal["rotate_origin_configuration", "deploy_worker", "worker_canary", "credit_billing_acceptance",
+                       "queue_recovery_acceptance", "native_runtime_activation", "rollback"]
     plan_digest: StrictStr = Field(..., alias="planDigest", pattern=r"^[a-f0-9]{64}$")
     idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
     usage: CloudflareMigrationOperationUsage

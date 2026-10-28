@@ -93,7 +93,7 @@ export async function getProductionWorkerCanaryPreflight(db: DrizzleDB, scope: S
       artifactRef: `sha256:${baseline.buildDigest}`, sourceSha: baseline.sourceSha, buildDigest: baseline.buildDigest,
       configurationRef: target.runtimePolicy, configurationDigest: baseline.configurationDigest },
     routePreserved: true as const, candidateTrafficPercent: 1 as const,
-    queue: { name: queue.consumers[0]!.queueName, consumerId: queue.consumers[0]!.consumerId,
+    queue: { id: queue.queueId, name: queue.consumers[0]!.queueName, consumerId: queue.consumers[0]!.consumerId,
       scriptName: queue.consumers[0]!.scriptName, deadLetterQueueName: queue.consumers[0]!.deadLetterQueueName },
   };
   return { ready: true as const, reason: null, ...plan,
@@ -107,7 +107,7 @@ function sameScope(job: typeof workerJobs.$inferSelect, scope: Scope, actorUserI
 }
 
 export async function queueProductionWorkerCanary(db: DrizzleDB, input: Scope & {
-  actorUserId: number; userToken: string; submissionId: string; planDigest: string; correlationId: string;
+  actorUserId: number; userToken: string; submissionId: string; planDigest: string; correlationId: string; mandateRef?: string;
 }) {
   if (!UUID.test(input.submissionId)) throw new Error("PRODUCTION_WORKER_SUBMISSION_ID_INVALID");
   const readJob = async () => {
@@ -163,6 +163,42 @@ export async function queueProductionWorkerCanary(db: DrizzleDB, input: Scope & 
   });
   const stored = checkpoint as { job?: unknown; grantRequest?: Record<string, unknown>; planDigest?: string };
   if (!stored.grantRequest || stored.planDigest !== input.planDigest) throw new Error("PRODUCTION_WORKER_SUBMISSION_CHECKPOINT_INVALID");
+  if (input.mandateRef) {
+    const operationGrant = await (await import("./cloudflareProductionMigrationMandate")).issueCloudflareMigrationOperationGrant({
+      mandateRef: input.mandateRef, tenantId: input.tenantId, projectId: input.projectId, jobId: input.submissionId,
+      operation: "worker_canary", planDigest: input.planDigest,
+    });
+    const grantRequest = stored.grantRequest as Record<string, any>;
+    const mandateJob = { ...(stored.job as Record<string, unknown>), grantRef: operationGrant.grantRef,
+      mandateGrantRef: operationGrant.grantRef, mandateOperation: "worker_canary", mandatePlanDigest: input.planDigest,
+      mandateRollback: { deploymentId: grantRequest.rollbackDeploymentId, artifactRef: grantRequest.rollbackArtifactRef,
+        sourceSha: grantRequest.rollbackSourceSha, buildDigest: grantRequest.rollbackBuildDigest,
+        configurationRef: grantRequest.rollbackConfigurationRef, configurationDigest: grantRequest.rollbackConfigurationDigest } };
+    const parsedMandateJob = cloudflareProductionDeploymentJobSchema.safeParse(mandateJob);
+    if (!parsedMandateJob.success) throw new Error("PRODUCTION_WORKER_MANDATE_JOB_CONTRACT_INVALID");
+    try {
+      await createControlPlaneJob({
+        context: { tenantId: input.tenantId, actorType: "user", actorId: input.actorUserId,
+          authorizationScope: "infrastructure.cloudflare_production_worker_deployment", correlationId: input.correlationId,
+          idempotencyKey: `cf-production-worker-canary:${input.submissionId}` },
+        definition: { contractVersion: CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT,
+          jobType: CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB, executionClass: "long", priority: 50,
+          input: parsedMandateJob.data, idempotencyKey: `cf-production-worker-canary:${input.submissionId}`,
+          activeDedupeKey: `cf-production-worker-canary:${input.tenantId}:${input.projectId}`,
+          retryPolicy: { maxAttempts: 1, baseDelayMs: 0, maxDelayMs: 0, jitter: "none", deadlineMs: 900_000,
+            deadlineMode: "fixed", allowedErrorClasses: [] },
+          timeoutPolicy: { softTimeoutMs: 30_000, hardTimeoutMs: 900_000 } },
+        createOptions: { canonicalJobId: input.submissionId, runtimeType: "node_job_worker", admissionMode: "durable_queue" },
+      });
+    } catch {
+      const reconciled = await readJob();
+      if (reconciled) return reconciled;
+      throw new Error("PRODUCTION_WORKER_ADMISSION_UNKNOWN");
+    }
+    const accepted = await readJob();
+    if (!accepted) throw new Error("PRODUCTION_WORKER_ADMISSION_UNKNOWN");
+    return accepted;
+  }
   const config = await getAppRuntimeConfig();
   const response = await fetch(`${config.pythonBackendUrl}/api/v1/approvals/cloudflare-production-grants`, {
     method: "POST", headers: { Authorization: `Bearer ${input.userToken}`, Accept: "application/json", "Content-Type": "application/json" },

@@ -15,6 +15,7 @@ import {
 import type { CloudflareStagingArtifact } from "./cloudflareStagingDeploymentExecutor";
 import type { CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import type { CloudflareProductionVersion } from "./cloudflareProductionCanary";
+import { assertCloudflareMigrationOperationGrant } from "./cloudflareProductionMigrationMandate";
 
 export { CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB };
 
@@ -61,6 +62,37 @@ function matchesExpectedGrant(grant: CloudflareProductionDeploymentGrant | null,
   return Boolean(grant && cloudflareProductionGrantAllowsJob(grant, job, binding));
 }
 
+function mandateGrantAsProductionGrant(input: {
+  mandateGrant: Record<string, any>; job: CloudflareProductionDeploymentJob; executorId: string; jobId: string; tenantId: string;
+}): CloudflareProductionDeploymentGrant | null {
+  const { mandateGrant: mandate, job, executorId, jobId, tenantId } = input;
+  if (!job.mandateGrantRef || !job.mandateOperation || !job.mandatePlanDigest || !job.mandateRollback ||
+      mandate.grantRef !== job.mandateGrantRef || mandate.jobId !== jobId ||
+      mandate.planDigest !== job.mandatePlanDigest || mandate.projectId !== job.projectId ||
+      mandate.tenantId !== tenantId || mandate.targetId !== job.targetId || mandate.environment !== job.environment ||
+      mandate.zoneId !== job.zoneId || mandate.routePattern !== job.routePattern) return null;
+  const rollback = job.mandateRollback;
+  const rollbackTarget = rollback;
+  const value = {
+    schemaVersion: "cloudflare.production-deployment-grant.v2" as const,
+    grantRef: mandate.grantRef, tenantId: mandate.tenantId, requesterUserId: mandate.ownerUserId,
+    projectId: mandate.projectId, executorId, targetId: job.targetId, environment: job.environment,
+    accountRef: mandate.accountRef, zoneId: job.zoneId, routePattern: job.routePattern,
+    expectedRouteId: job.expectedRouteId, expectedRouteScript: job.expectedRouteScript,
+    rolloutStage: job.rolloutStage, canaryGrantRef: job.canaryGrantRef, canaryDeploymentId: job.canaryDeploymentId,
+    canaryVerifiedAt: job.canaryVerifiedAt, candidateVersionId: job.candidateVersionId, jobId: mandate.jobId,
+    artifactRef: job.artifactRef, sourceSha: job.sourceSha, buildDigest: job.buildDigest,
+    configurationRef: job.configurationRef, configurationDigest: job.configurationDigest,
+    actions: [job.action], rollbackDeploymentId: rollbackTarget.deploymentId,
+    rollbackArtifactRef: rollbackTarget.artifactRef, rollbackSourceSha: rollbackTarget.sourceSha,
+    rollbackBuildDigest: rollbackTarget.buildDigest, rollbackConfigurationRef: rollbackTarget.configurationRef,
+    rollbackConfigurationDigest: rollbackTarget.configurationDigest, canaryRequired: true as const,
+    maxDurationSeconds: 900, expiresAt: mandate.expiresAt, revokedAt: null,
+  };
+  const parsed = cloudflareProductionDeploymentGrantSchema.safeParse(value);
+  return parsed.success ? { ...parsed.data, revoked: false } : null;
+}
+
 /** Production deployment consumes only canonical worker_jobs plus an independently approved, stage-specific grant. */
 export function createCloudflareProductionDeploymentExecutor(
   runtime?: CloudflareProductionDeploymentRuntime | (() => CloudflareProductionDeploymentRuntime | undefined),
@@ -83,18 +115,24 @@ export function createCloudflareProductionDeploymentExecutor(
       throw new CloudflareProductionDeploymentError("CLOUDFLARE_PRODUCTION_JOB_DEADLINE_EXPIRED");
     }
 
+    const target = await activeRuntime.resolveTarget({ tenantId: context.tenantId, projectId: job.projectId });
+    let grant: CloudflareProductionDeploymentGrant | null = null;
+    if (job.mandateGrantRef && job.mandateOperation && job.mandatePlanDigest) {
+      const mandateGrant = await assertCloudflareMigrationOperationGrant({ grantRef: job.mandateGrantRef,
+        tenantId: context.tenantId, projectId: job.projectId, jobId: context.jobId, operation: job.mandateOperation,
+        planDigest: job.mandatePlanDigest, expectedAccountRef: target?.accountRef, expectedZoneId: job.zoneId });
+      grant = mandateGrantAsProductionGrant({ mandateGrant, job, executorId, jobId: context.jobId, tenantId: context.tenantId });
+    } else {
+      grant = await activeRuntime.resolveGrant(job.grantRef);
+    }
     const binding = { tenantId: context.tenantId, jobId: context.jobId, executorId,
-      accountRef: "", now: activeRuntime.now() };
-    const [grant, artifact] = await Promise.all([
-      activeRuntime.resolveGrant(job.grantRef),
-      job.rolloutStage === "rollback" ? Promise.resolve(null) : activeRuntime.resolveArtifact(job.artifactRef, job.sourceSha),
-    ]);
+      accountRef: target?.accountRef ?? "", now: activeRuntime.now() };
+    const artifact = job.rolloutStage === "rollback" ? null : await activeRuntime.resolveArtifact(job.artifactRef, job.sourceSha);
     if (!grant || grant.grantRef !== job.grantRef || grant.requesterUserId !== context.requestedByUserId ||
         (job.rolloutStage !== "rollback" && (!artifact || artifact.artifactRef !== job.artifactRef ||
           artifact.sourceSha.toLowerCase() !== job.sourceSha.toLowerCase() || artifact.buildDigest.toLowerCase() !== job.buildDigest.toLowerCase()))) {
       throw new CloudflareProductionDeploymentError("CLOUDFLARE_PRODUCTION_GRANT_OR_ARTIFACT_MISSING");
     }
-    const target = await activeRuntime.resolveTarget({ tenantId: context.tenantId, projectId: grant.projectId });
     if (!target || !target.enabled || target.targetId !== job.targetId || target.environment !== "production" ||
         target.tenantId !== context.tenantId || target.projectId !== job.projectId || target.accountRef !== grant.accountRef ||
         target.workerRef !== job.targetId || !target.credentialRef || target.runtimePolicy !== grant.configurationRef) {
@@ -112,12 +150,20 @@ export function createCloudflareProductionDeploymentExecutor(
         throw new CloudflareProductionDeploymentError("CLOUDFLARE_PRODUCTION_JOB_DEADLINE_EXPIRED");
       }
       await reporter.assertActive(lease);
-      const [currentGrant, currentTarget] = await Promise.all([
-        activeRuntime.resolveGrant(job.grantRef),
+      const [currentTarget, currentGrant] = await Promise.all([
         activeRuntime.resolveTarget({ tenantId: context.tenantId, projectId: job.projectId }),
+        job.mandateGrantRef && job.mandateOperation && job.mandatePlanDigest
+          ? assertCloudflareMigrationOperationGrant({ grantRef: job.mandateGrantRef, tenantId: context.tenantId,
+              projectId: job.projectId, jobId: context.jobId, operation: job.mandateOperation,
+              planDigest: job.mandatePlanDigest, expectedAccountRef: target.accountRef, expectedZoneId: job.zoneId, renew: true })
+          : activeRuntime.resolveGrant(job.grantRef),
       ]);
       const currentExecutorId = activeRuntime.resolveExecutorId();
-      if (currentExecutorId !== executorId || !matchesExpectedGrant(currentGrant, job, {
+      const effectiveGrant = job.mandateGrantRef && currentGrant
+        ? mandateGrantAsProductionGrant({ mandateGrant: currentGrant as unknown as Record<string, any>, job, executorId,
+            jobId: context.jobId, tenantId: context.tenantId })
+        : currentGrant as CloudflareProductionDeploymentGrant | null;
+      if (currentExecutorId !== executorId || !matchesExpectedGrant(effectiveGrant, job, {
         tenantId: context.tenantId, jobId: context.jobId, executorId, accountRef: target.accountRef, now,
       }) || !currentTarget ||
           (["targetId", "environment", "tenantId", "projectId", "accountRef", "workerRef", "credentialRef", "enabled", "runtimePolicy"] as const)

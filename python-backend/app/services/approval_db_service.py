@@ -61,6 +61,14 @@ _CF_PRODUCTION_TARGET = "smartspec-cloudflare-runtime"
 _CF_PRODUCTION_SINGLE_ADMIN_ISSUER = "single_admin_owner_approval_v1"
 _CF_FIRST_MIGRATION_MANDATE_ISSUER = "first_migration_mandate_owner_v1"
 _CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER = "first_migration_mandate_operation_v1"
+# Keep this service-side admission guard aligned with the Web readiness gate.
+# A direct authenticated call to the Approval API must not bypass missing
+# executor integrations in the calling service.
+_CF_FIRST_MIGRATION_ENFORCED_ACTIONS = {"synthetic_credit_billing", "synthetic_queue_recovery"}
+_CF_FIRST_MIGRATION_REQUIRED_ACTIONS = {
+    "rotate_origin_configuration", "deploy_worker", "worker_canary", "synthetic_credit_billing",
+    "synthetic_queue_recovery", "native_runtime_activation", "rollback",
+}
 
 
 def _normalize_cloudflare_migration_mandate(value: dict) -> dict:
@@ -1034,6 +1042,9 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
                 tenant is None or tenant[0] != owner_id or tenant_status != "active"):
             raise PermissionError("CLOUDFLARE_MIGRATION_MANDATE_TENANT_OWNER_REQUIRED")
         bound = _normalize_cloudflare_migration_mandate(payload)
+        if (not _CF_FIRST_MIGRATION_REQUIRED_ACTIONS.issubset(set(bound["actions"])) or
+                not set(bound["actions"]).issubset(_CF_FIRST_MIGRATION_ENFORCED_ACTIONS)):
+            raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_ENFORCEMENT_INCOMPLETE")
         if bound["tenantId"] != tenant_id or bound["ownerUserId"] != owner_id:
             raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_OWNER_BINDING_INVALID")
         correlation = "cf-first-migration-mandate:" + hashlib.sha256(
@@ -1253,20 +1264,37 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
                 usage["syntheticFinancialMinorUnits"] != 0):
             raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_USAGE_INVALID")
         required_action = {
+            "rotate_origin_configuration": "rotate_origin_configuration",
+            "deploy_worker": "deploy_worker",
+            "worker_canary": "worker_canary",
             "credit_billing_acceptance": "synthetic_credit_billing",
             "queue_recovery_acceptance": "synthetic_queue_recovery",
+            "native_runtime_activation": "native_runtime_activation",
+            "rollback": "rollback",
         }.get(operation)
         if required_action is None:
             raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_NOT_SUPPORTED")
-        expected_usage = (
-            {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
-             "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 30,
-             "syntheticFinancialMinorUnits": 0}
-            if operation == "credit_billing_acceptance"
-            else {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
-                  "containerReservedSeconds": 0, "queueMessages": 4, "syntheticCredits": 0,
-                  "syntheticFinancialMinorUnits": 0}
-        )
+        if required_action not in _CF_FIRST_MIGRATION_ENFORCED_ACTIONS:
+            raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_ENFORCEMENT_INCOMPLETE")
+        # The backend owns operation costs. Callers cannot understate a quota
+        # reservation while still receiving a grant. These are bounded maxima
+        # for one operation, not a claim about Cloudflare invoice spend.
+        expected_usage = {
+            "rotate_origin_configuration": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+            "deploy_worker": {"providerWrites": 2, "workerDeployments": 1, "containerStarts": 0,
+                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+            "worker_canary": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 0,
+                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+            "credit_billing_acceptance": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 30, "syntheticFinancialMinorUnits": 0},
+            "queue_recovery_acceptance": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+                "containerReservedSeconds": 0, "queueMessages": 4, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+            "native_runtime_activation": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 2,
+                "containerReservedSeconds": 600, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+            "rollback": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 0,
+                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+        }[operation]
         if usage != expected_usage:
             raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_USAGE_INVALID")
         correlation = "cf-first-migration-operation:" + hashlib.sha256(
@@ -1333,7 +1361,9 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         payload = {"schemaVersion": "cloudflare.first-migration-operation-grant.v1", "grantRef": grant_id,
                    "mandateRef": mandate_ref, "tenantId": tenant_id, "projectId": project_id,
                    "ownerUserId": parent.requester_id, "jobId": job_id, "operation": operation,
-                   "action": required_action, "planDigest": plan_digest, "resourceIds": active["resourceIds"], "usage": usage,
+                   "action": required_action, "planDigest": plan_digest, "targetId": active["targetId"],
+                   "environment": active["environment"], "accountRef": active["accountRef"], "zoneId": active["zoneId"],
+                   "routePattern": active["routePattern"], "resourceIds": active["resourceIds"], "usage": usage,
                    "issuedAt": issued_at.isoformat().replace("+00:00", "Z"),
                    "expiresAt": expires_at.isoformat().replace("+00:00", "Z"), "renewalCount": 0}
         request = ApprovalRequest(
@@ -1376,7 +1406,9 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         parent = await self.resolve_cloudflare_migration_mandate(payload.get("mandateRef", ""), tenant_id=request.tenant_id)
         if (parent is None or parent.get("projectId") != request.project_id or
                 parent.get("ownerUserId") != payload.get("ownerUserId") or payload.get("action") not in parent["actions"] or
-                payload.get("resourceIds") != parent.get("resourceIds")):
+                payload.get("resourceIds") != parent.get("resourceIds") or
+                any(payload.get(field) != parent.get(field) for field in
+                    ("targetId", "environment", "accountRef", "zoneId", "routePattern"))):
             return None
         issued = datetime.fromisoformat(payload["issuedAt"].replace("Z", "+00:00"))
         expires = datetime.fromisoformat(payload["expiresAt"].replace("Z", "+00:00"))
@@ -1407,7 +1439,9 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         now = datetime.now(timezone.utc)
         if (mandate is None or mandate.get("projectId") != request.project_id or
                 mandate.get("ownerUserId") != grant.get("ownerUserId") or
-                grant.get("resourceIds") != mandate.get("resourceIds")):
+                grant.get("resourceIds") != mandate.get("resourceIds") or
+                any(grant.get(field) != mandate.get(field) for field in
+                    ("targetId", "environment", "accountRef", "zoneId", "routePattern"))):
             return None
         if grant.get("renewalCount", 0) >= 1:
             expires_at = datetime.fromisoformat(grant["expiresAt"].replace("Z", "+00:00"))

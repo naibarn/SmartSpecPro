@@ -7,6 +7,9 @@ import {
   CLOUDFLARE_PRODUCTION_TARGET_ID,
 } from "./cloudflareProductionDeploymentContract";
 
+const migrationMocks = vi.hoisted(() => ({ assertGrant: vi.fn() }));
+vi.mock("./cloudflareProductionMigrationMandate", () => ({ assertCloudflareMigrationOperationGrant: migrationMocks.assertGrant }));
+
 const digest = "a".repeat(64);
 const sourceSha = "b".repeat(40);
 const jobId = "11111111-1111-4111-8111-111111111111";
@@ -109,5 +112,28 @@ describe("Cloudflare production worker_jobs executor", () => {
     await expect(executor(executionInput({ ...job, routePattern: "*.smartaihub.app/*" }) as never))
       .rejects.toThrow("CLOUDFLARE_PRODUCTION_JOB_INVALID");
     expect(withCredential).not.toHaveBeenCalled();
+  });
+
+  it("revalidates a mandate grant and projects its exact canary scope into the existing provider executor", async () => {
+    const mandateGrantRef = "88888888-8888-4888-8888-888888888888";
+    const planDigest = "9".repeat(64);
+    migrationMocks.assertGrant.mockResolvedValue({ grantRef: mandateGrantRef, mandateRef: "99999999-9999-4999-8999-999999999999",
+      tenantId: "tenant-a", projectId: "project-a", ownerUserId: 17, jobId, operation: "worker_canary", action: "worker_canary",
+      planDigest, targetId: CLOUDFLARE_PRODUCTION_TARGET_ID, environment: "production", accountRef: grant.accountRef,
+      zoneId: grant.zoneId, routePattern: grant.routePattern, expiresAt: new Date(Date.now() + 60_000).toISOString() });
+    const mandateJob = { ...job, grantRef: mandateGrantRef, mandateGrantRef, mandateOperation: "worker_canary" as const,
+      mandatePlanDigest: planDigest, mandateRollback: { deploymentId: grant.rollbackDeploymentId,
+        artifactRef: grant.rollbackArtifactRef, sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
+        configurationRef: grant.rollbackConfigurationRef, configurationDigest: grant.rollbackConfigurationDigest } };
+    const prepareVersion = vi.fn(async () => prepared);
+    const executor = createCloudflareProductionDeploymentExecutor(() => runtime({ resolveGrant: async () => null, prepareVersion }));
+    const input = executionInput(mandateJob);
+    input.context.requestedByUserId = 17;
+    const result = await executor(input as never);
+    expect(migrationMocks.assertGrant).toHaveBeenCalledWith(expect.objectContaining({ grantRef: mandateGrantRef,
+      tenantId: "tenant-a", projectId: "project-a", jobId, operation: "worker_canary", planDigest,
+      expectedAccountRef: grant.accountRef, expectedZoneId: grant.zoneId }));
+    expect(prepareVersion).toHaveBeenCalledOnce();
+    expect(result.output).toMatchObject({ rolloutStage: "canary", action: "deploy" });
   });
 });

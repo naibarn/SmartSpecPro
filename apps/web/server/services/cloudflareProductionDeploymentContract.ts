@@ -84,6 +84,13 @@ export const cloudflareProductionDeploymentJobSchema = z.object({
   canaryVerifiedAt: z.string().datetime({ offset: true }).nullable(),
   candidateVersionId: z.string().uuid().nullable(),
   grantRef: z.string().uuid(),
+  mandateGrantRef: z.string().uuid().optional(),
+  mandateOperation: z.enum(["deploy_worker", "worker_canary", "rollback"]).optional(),
+  mandatePlanDigest: digest.optional(),
+  mandateRollback: z.object({
+    deploymentId: z.string().uuid(), artifactRef, sourceSha: sha, buildDigest: digest,
+    configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), configurationDigest: digest,
+  }).strict().optional(),
   projectId: z.string().min(1).max(36),
   artifactRef,
   sourceSha: sha,
@@ -102,6 +109,14 @@ export const cloudflareProductionDeploymentJobSchema = z.object({
       (job.rolloutStage === "promote") !== (job.canaryVerifiedAt !== null) ||
       (job.rolloutStage === "promote") !== (job.candidateVersionId !== null)) {
     ctx.addIssue({ code: "custom", message: "Production job route or rollout stage binding invalid" });
+  }
+  const mandateFields = [job.mandateGrantRef, job.mandateOperation, job.mandatePlanDigest, job.mandateRollback];
+  if (mandateFields.some(value => value !== undefined) && mandateFields.some(value => value === undefined)) {
+    ctx.addIssue({ code: "custom", message: "Production mandate binding must be complete" });
+  }
+  if (job.mandateOperation && ((job.mandateOperation === "rollback") !== (job.action === "rollback") ||
+      (job.mandateOperation === "worker_canary" || job.mandateOperation === "deploy_worker") !== (job.action === "deploy"))) {
+    ctx.addIssue({ code: "custom", message: "Production mandate operation does not match deployment action" });
   }
 });
 

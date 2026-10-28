@@ -49,7 +49,10 @@ def test_mandate_contract_rejects_foreign_scope_expanded_budget_and_charge_autho
 
 @pytest.mark.unit
 @pytest.mark.asyncio
-async def test_owner_mandate_persists_idempotently_as_approval_evidence():
+async def test_owner_mandate_persists_idempotently_as_approval_evidence(monkeypatch):
+    from app.services import approval_db_service
+    monkeypatch.setattr(approval_db_service, "_CF_FIRST_MIGRATION_ENFORCED_ACTIONS",
+        set(approval_db_service._CF_FIRST_MIGRATION_REQUIRED_ACTIONS))
     db = AsyncMock()
     db.add = Mock()
     db.execute.side_effect = [
@@ -61,7 +64,8 @@ async def test_owner_mandate_persists_idempotently_as_approval_evidence():
     service = ApprovalDBService(db)
     service.get_request_by_correlation = AsyncMock(return_value=None)
     request = await service.create_cloudflare_migration_mandate(
-        tenant_id="tenant-a", owner_id=17, idempotency_key="mission-approval-v1", payload=_mandate(),
+        tenant_id="tenant-a", owner_id=17, idempotency_key="mission-approval-v1",
+        payload=_mandate(),
     )
     assert request.request_type == ApprovalType.DEPLOYMENT
     assert request.status == ApprovalStatus.APPROVED
@@ -70,6 +74,22 @@ async def test_owner_mandate_persists_idempotently_as_approval_evidence():
     assert request.extra_data["cloudflareFirstMigrationMandateV1"] == "first_migration_mandate_owner_v1"
     assert db.add.call_count == 3  # mandate, approval response, audit evidence
     db.commit.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_owner_api_cannot_bypass_incomplete_web_executor_enforcement():
+    db = AsyncMock()
+    db.execute.side_effect = [
+        SimpleNamespace(one_or_none=Mock(return_value=("admin", False))),
+        SimpleNamespace(one_or_none=Mock(return_value=(17, "active"))),
+    ] * 2
+    service = ApprovalDBService(db)
+    for payload in (_mandate(), _mandate(actions=["synthetic_credit_billing", "synthetic_queue_recovery"])):
+        with pytest.raises(ValueError, match="CLOUDFLARE_MIGRATION_OPERATION_ENFORCEMENT_INCOMPLETE"):
+            await service.create_cloudflare_migration_mandate(
+                tenant_id="tenant-a", owner_id=17, idempotency_key="full-mission-mandate-v1", payload=payload,
+            )
 
 
 @pytest.mark.unit
@@ -226,7 +246,9 @@ async def test_operation_grant_rechecks_parent_mandate_and_allows_only_one_renew
     payload = {"schemaVersion": "cloudflare.first-migration-operation-grant.v1", "grantRef": "grant-1",
         "mandateRef": "mandate-1", "tenantId": "tenant-a", "projectId": "project-a", "ownerUserId": 17,
         "jobId": "11111111-1111-4111-8111-111111111111", "operation": "queue_recovery_acceptance",
-        "action": "synthetic_queue_recovery", "planDigest": "a" * 64, "resourceIds": _mandate()["resourceIds"],
+        "action": "synthetic_queue_recovery", "planDigest": "a" * 64, "targetId": _mandate()["targetId"],
+        "environment": "production", "accountRef": _mandate()["accountRef"], "zoneId": _mandate()["zoneId"],
+        "routePattern": _mandate()["routePattern"], "resourceIds": _mandate()["resourceIds"],
         "usage": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
             "containerReservedSeconds": 0, "queueMessages": 4, "syntheticCredits": 0,
             "syntheticFinancialMinorUnits": 0}, "issuedAt": now.isoformat().replace("+00:00", "Z"),
@@ -253,6 +275,39 @@ async def test_operation_grant_rechecks_parent_mandate_and_allows_only_one_renew
     db.execute.side_effect = None
     db.execute.return_value = SimpleNamespace(scalar_one_or_none=Mock(return_value=row))
     assert await service.resolve_cloudflare_migration_operation_grant("grant-1", tenant_id="tenant-a") is None
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("operation", [
+    "rotate_origin_configuration", "deploy_worker", "worker_canary", "native_runtime_activation", "rollback",
+])
+@pytest.mark.asyncio
+async def test_unenforced_production_operation_grants_are_rejected(operation):
+    service = ApprovalDBService(AsyncMock())
+    usage = {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+             "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0,
+             "syntheticFinancialMinorUnits": 0}
+    with pytest.raises(ValueError, match="CLOUDFLARE_MIGRATION_OPERATION_ENFORCEMENT_INCOMPLETE"):
+        await service.create_cloudflare_migration_operation_grant(
+            mandate_ref="mandate-1", tenant_id="tenant-a", project_id="project-a",
+            job_id="11111111-1111-4111-8111-111111111111", operation=operation,
+            plan_digest="a" * 64, idempotency_key=f"stable-{operation}", usage=usage,
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+async def test_unenforced_operation_grant_is_rejected_before_any_reservation():
+    service = ApprovalDBService(AsyncMock())
+    underreported = {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+                     "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0,
+                     "syntheticFinancialMinorUnits": 0}
+    with pytest.raises(ValueError, match="CLOUDFLARE_MIGRATION_OPERATION_ENFORCEMENT_INCOMPLETE"):
+        await service.create_cloudflare_migration_operation_grant(
+            mandate_ref="mandate-1", tenant_id="tenant-a", project_id="project-a",
+            job_id="11111111-1111-4111-8111-111111111111", operation="deploy_worker",
+            plan_digest="a" * 64, idempotency_key="stable-deploy", usage=underreported,
+        )
 
 
 @pytest.mark.unit

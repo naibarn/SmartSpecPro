@@ -935,8 +935,18 @@ export const infrastructureRouter = router({
       if(!ctx.user?.id||!ctx.userToken)throw new TRPCError({code:"UNAUTHORIZED",message:"PRODUCTION_WORKER_OWNER_SESSION_REQUIRED"});
       const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
       if(!(await isProductionTenantOwner(db,tenantId,ctx.user.id)))throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_TENANT_OWNER_REQUIRED"});
+      let mandateRef: string | undefined;
+      try {
+        const state = await readCloudflareMigrationMandate({ tenantId, projectId: input.projectId, userToken: ctx.userToken }) as {
+          mandate?: { status?: string; mandateRef?: string } | null;
+        };
+        if (state.mandate?.status === "ACTIVE" && typeof state.mandate.mandateRef === "string") mandateRef = state.mandate.mandateRef;
+      } catch {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "MIGRATION_MANDATE_READBACK_UNAVAILABLE" });
+      }
       try{return await queueProductionWorkerCanary(db,{tenantId,projectId:input.projectId,actorUserId:ctx.user.id,
-        userToken:ctx.userToken,submissionId:input.submissionId,planDigest:input.planDigest,correlationId:ctx.req.requestId??input.submissionId});}
+        userToken:ctx.userToken,submissionId:input.submissionId,planDigest:input.planDigest,correlationId:ctx.req.requestId??input.submissionId,
+        ...(mandateRef ? { mandateRef } : {})});}
       catch(error){const code=error instanceof Error&&/^[A-Z][A-Z0-9_:.-]{2,180}$/.test(error.message)?error.message:"PRODUCTION_WORKER_ADMISSION_UNKNOWN";
         throw new TRPCError({code:code==="PRODUCTION_WORKER_ADMISSION_UNKNOWN"?"INTERNAL_SERVER_ERROR":"PRECONDITION_FAILED",message:code});}
     }),

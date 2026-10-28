@@ -109,13 +109,19 @@ async function callInternalApprovalApi(path: string, method: "GET" | "POST", bod
 
 export async function issueCloudflareMigrationOperationGrant(input: {
   mandateRef: string; tenantId: string; projectId: string; jobId: string;
-  operation: "credit_billing_acceptance" | "queue_recovery_acceptance"; planDigest: string;
+  operation: "rotate_origin_configuration" | "deploy_worker" | "worker_canary" | "credit_billing_acceptance" |
+    "queue_recovery_acceptance" | "native_runtime_activation" | "rollback"; planDigest: string;
 }) {
-  const usage = input.operation === "credit_billing_acceptance"
-    ? { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0,
-        queueMessages: 0, syntheticCredits: 30, syntheticFinancialMinorUnits: 0 }
-    : { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0,
-        queueMessages: 4, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 };
+  const usageByOperation = {
+    rotate_origin_configuration: { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
+    deploy_worker: { providerWrites: 2, workerDeployments: 1, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
+    worker_canary: { providerWrites: 1, workerDeployments: 1, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
+    credit_billing_acceptance: { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 30, syntheticFinancialMinorUnits: 0 },
+    queue_recovery_acceptance: { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 4, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
+    native_runtime_activation: { providerWrites: 1, workerDeployments: 1, containerStarts: 2, containerReservedSeconds: 600, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
+    rollback: { providerWrites: 1, workerDeployments: 1, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
+  } as const;
+  const usage = usageByOperation[input.operation];
   const result = await callInternalApprovalApi(`/api/v1/approvals/internal/cloudflare-migration-mandates/${encodeURIComponent(input.mandateRef)}/operation-grants`, "POST", {
     ...input, idempotencyKey: `first-migration:${input.operation}:${input.jobId}`, usage,
   });
@@ -144,15 +150,23 @@ export async function resolveCloudflareMigrationOperationGrant(input: { grantRef
 }
 
 export async function assertCloudflareMigrationOperationGrant(input: {
-  grantRef: string; tenantId: string; projectId: string; jobId: string; operation: "credit_billing_acceptance" | "queue_recovery_acceptance";
-  planDigest: string; expectedQueueId?: string; expectedDeadLetterQueueId?: string; renew?: boolean;
+  grantRef: string; tenantId: string; projectId: string; jobId: string;
+  operation: "rotate_origin_configuration" | "deploy_worker" | "worker_canary" | "credit_billing_acceptance" |
+    "queue_recovery_acceptance" | "native_runtime_activation" | "rollback";
+  planDigest: string; expectedAccountRef?: string; expectedZoneId?: string; expectedQueueId?: string;
+  expectedDeadLetterQueueId?: string; renew?: boolean;
 }) {
   const grant = input.renew
     ? await renewCloudflareMigrationOperationGrant({ grantRef: input.grantRef, tenantId: input.tenantId, jobId: input.jobId })
     : await resolveCloudflareMigrationOperationGrant({ grantRef: input.grantRef, tenantId: input.tenantId });
-  const action = input.operation === "credit_billing_acceptance" ? "synthetic_credit_billing" : "synthetic_queue_recovery";
+  const action = input.operation === "credit_billing_acceptance" ? "synthetic_credit_billing"
+    : input.operation === "queue_recovery_acceptance" ? "synthetic_queue_recovery" : input.operation;
   if (grant.projectId !== input.projectId || grant.jobId !== input.jobId || grant.operation !== input.operation ||
       grant.action !== action || grant.planDigest !== input.planDigest || grant.mandateRef === "" ||
+      grant.targetId !== "smartspec-cloudflare-runtime" || grant.environment !== "production" ||
+      grant.routePattern !== "smartaihub.app/*" ||
+      input.expectedAccountRef !== undefined && grant.accountRef !== input.expectedAccountRef ||
+      input.expectedZoneId !== undefined && grant.zoneId !== input.expectedZoneId ||
       input.expectedQueueId !== undefined && grant.resourceIds?.queueId !== input.expectedQueueId ||
       input.expectedDeadLetterQueueId !== undefined && grant.resourceIds?.deadLetterQueueId !== input.expectedDeadLetterQueueId ||
       Date.parse(grant.expiresAt) <= Date.now()) throw new Error("MIGRATION_MANDATE_OPERATION_GRANT_SCOPE_DENIED");
