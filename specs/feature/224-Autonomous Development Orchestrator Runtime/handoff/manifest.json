@@ -1004,14 +1004,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4",
+    "expected_canonical_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Extend scripts/development-lifecycle/workspace_authority.py to issue a run/attempt-bound, path-scoped lease for registered Project Workspaces. Connect claim, renewal, validation/fencing and idempotent release through the existing workspace.authority.safe_action and canonical worker_jobs/outbox lifecycle; bind the lease receipt at SPEC-224 authorization, outbox release, Runner candidate apply, and terminal/recovery. Add connected contention, disjoint-path, stale-fence, crash/replay and duplicate-release tests. Then use the structured rejection code and authorized release/runtime evidence to establish the configured endpoint's actual serving revision and resolve the live Runner ACK.",
+    "next_action": "Extend scripts/development-lifecycle/workspace_authority.py to issue a run/attempt-bound, path-scoped lease for registered Project Workspaces. Connect claim, renewal, validation/fencing and idempotent release through the existing workspace.authority.safe_action and canonical worker_jobs/outbox lifecycle; bind the lease receipt at SPEC-224 authorization, outbox release, Runner candidate apply, and terminal/recovery. Add connected contention, disjoint-path, stale-fence, crash/replay and duplicate-release tests. Then use the structured rejection code and authorized release/runtime evidence to establish the configured endpoint's actual serving revision and resolve the live Runner ACK. Then complete the Session C Task Control picker/refresh integration, run connected PostgreSQL integration, verify a bounded real Codex task on the Debian Runner, and prove current configured-endpoint Runner snapshot ACK; keep acceptance PARTIAL until those pass.",
     "next_ready_workunit": "SPEC224_RUN_SCOPED_WRITER_LEASE_AND_RUNNER_EVENT_ACK",
     "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
-    "resume_point": "Canonical main is 1fb72918c587d4b44875ccc733bf2540af063cf4. The SPEC-224 Runner route regression passes 26/26 and preserves RUNNER_CONTRACT_INVALID for invalid capability snapshots; a local Codex 0.165.0 task probe passed. The installed Debian Runner still logs RUNNER_EVENT_REJECTED against aimarkethubs.com. Public and local /healthz responses do not prove serving source or database identity, and no authenticated server log/release identity was available. P0-B remains: workspace_authority.py only claims local TASK_WORKTREE and Runner Candidate.apply only has a Project Workspace lock plus per-path baseline CAS; neither is a run/attempt-bound path-scoped lease consumed at dispatch and apply. Continue with that lease bridge before Goal/source admission; do not start a Goal until a current snapshot is ACKed and admission is SAFE_CLEAN or SAFE_DISJOINT_DIRTY.",
+    "resume_point": "Canonical main is 988909d0583462bcc5e8289b7fbc4a5eb70a70d2. SPEC-224 backend model selection is integrated: Auto resolves from the trusted Runner catalog, the resolved model/account/reasoning selection is persisted in DevelopmentRun and Goal approval, and the canonical Runner revalidates it before passing pinned Codex CLI arguments. Focused Web and Rust checks plus read-only live app-server model/list passed; there is no PostgreSQL integration, model inference, Task Control UI, or configured-endpoint ACK evidence. Continue P0 with the run/attempt-bound SPEC-293 Project Workspace lease and resolve the live Runner event ACK before any Goal/source admission.",
     "waiting_predicate": "Resume live Goal preparation only after (1) the existing Debian device Control Plane accepts its current Runner session and acknowledges the capability/workspace snapshot with complete dirtyPaths, (2) a run/attempt-bound SPEC-293 path-scoped writer lease is integrated and revalidated at outbox release and Runner apply with terminal/recovery cleanup, and (3) server-authoritative source admission confirms the bounded scope is SAFE_CLEAN or SAFE_DISJOINT_DIRTY. Codex task probe is currently locally passed; actual approval and Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
@@ -1159,7 +1159,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 232,
+  "generation": 235,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1177,7 +1177,8 @@
   },
   "implementation": {
     "checkpoint_shas": [
-      "0dbde80ae8935ef42ddae7c76144dda20ae524a8"
+      "0dbde80ae8935ef42ddae7c76144dda20ae524a8",
+      "988909d0583462bcc5e8289b7fbc4a5eb70a70d2"
     ],
     "mapping": [
       {
@@ -1331,41 +1332,59 @@
           "apps/web/server/services/__tests__/spec224DevelopmentRunPersistence.test.ts"
         ],
         "source_sha": "4a5a2317004d79f4a5c3cce15fc616dc1564fb25"
+      },
+      {
+        "coverage": "PARTIAL; account-scoped discovery and model pinning reach the canonical Runner command; catalog visibility is not entitlement and Task Control UI/live acceptance remain open",
+        "scope": "SPEC-224 Codex model selection persisted through DevelopmentRun and Goal grant, bound through Agent/Runner contracts, revalidated against the current Runner account catalog, and passed as fixed model/reasoning CLI arguments",
+        "source_paths": [
+          "apps/runner-app/src/adapters.rs",
+          "apps/runner-app/src/external_agent.rs",
+          "apps/web/server/services/spec224ModelSelection.ts",
+          "apps/web/server/routers/spec226DevelopmentControl.ts",
+          "apps/web/server/services/agentControlPlaneContracts.ts",
+          "apps/web/server/services/externalAgentRunnerDispatcher.ts"
+        ],
+        "source_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2"
       }
     ],
     "source_paths": [
-      "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
-      "apps/web/server/services/spec224PhaseController.ts",
-      "apps/web/server/services/spec224RequirementClosurePersistence.ts",
-      "apps/web/server/services/spec224FinalVerify.ts",
+      "apps/runner-app/src/adapters.rs",
+      "apps/runner-app/src/external_agent.rs",
+      "apps/runner-app/src/run_input.rs",
       "apps/runner-app/src/spec224_candidate.rs",
-      "apps/web/server/services/developmentRunEligibility.ts",
+      "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx",
+      "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts",
       "apps/web/server/jobs/workspaceAuthorityAuditJob.ts",
       "apps/web/server/jobs/workspaceAuthorityGithub.ts",
       "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
-      "apps/web/server/jobs/workspaceAuthorityAuditJob.test.ts",
-      "apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx",
       "apps/web/server/routers/spec226DevelopmentControl.ts",
-      "apps/web/server/services/spec224VisualReferenceIntake.ts",
-      "apps/web/server/services/spec224RunnerInputStaging.ts",
-      "apps/runner-app/src/run_input.rs",
-      "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json",
-      "apps/web/server/services/spec224WorkspaceLifecycleReceiptReader.ts",
       "apps/web/server/services/__tests__/spec224WorkspaceLifecycleReceiptReader.test.ts",
+      "apps/web/server/services/agentControlPlaneContracts.ts",
+      "apps/web/server/services/developmentRunEligibility.ts",
+      "apps/web/server/services/externalAgentRunnerDispatcher.ts",
+      "apps/web/server/services/spec224DevelopmentRunPersistence.ts",
+      "apps/web/server/services/spec224FinalVerify.ts",
+      "apps/web/server/services/spec224ModelSelection.ts",
+      "apps/web/server/services/spec224PhaseController.ts",
+      "apps/web/server/services/spec224RequirementClosurePersistence.ts",
+      "apps/web/server/services/spec224RunnerInputStaging.ts",
+      "apps/web/server/services/spec224VisualReferenceIntake.ts",
+      "apps/web/server/services/spec224WorkspaceLifecycleReceiptReader.ts",
       "orchestra/tasks/smartaihub-marathon-r11-20261011/policy-proposal.md",
-      "scripts/development-lifecycle/workspace_authority.py",
-      "scripts/development-lifecycle/test_workspace_authority.py"
+      "orchestra/tasks/smartaihub-visual-reference-intake-20261011/evidence/factory-create-stage-bridge-20261011.json",
+      "scripts/development-lifecycle/test_workspace_authority.py",
+      "scripts/development-lifecycle/workspace_authority.py"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4",
+    "canonical_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
     "integrated": true,
-    "integrated_at": "2026-10-28T12:47:24Z",
+    "integrated_at": "2026-10-28T12:56:59Z",
     "pull_request": null,
-    "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
+    "source_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3855,7 +3874,7 @@
     "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T12:51:16.117539Z",
+  "updated_at": "2026-10-28T12:57:27.107337Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4315,13 +4334,20 @@
         "status": "PASS"
       },
       "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-model-catalog-20261028.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-model-catalog-20261028.md",
+      {
+        "kind": "SPEC224_DYNAMIC_HARNESS_MODEL_SELECTION_PARTIAL",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-dynamic-harness-model-selection-20261028.md",
+        "scope": "Focused Web 6 files/59 tests; Runner external_agent 3 tests; Codex app-server catalog 2 tests; installed authenticated CLI read-only model/list 1 test. No PostgreSQL integration, model inference, Task Control UI, or configured-endpoint ACK evidence.",
+        "source_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
+        "status": "PARTIAL"
+      }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
+    "sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
     "status": "PARTIAL",
     "task_regressions": []
   }
