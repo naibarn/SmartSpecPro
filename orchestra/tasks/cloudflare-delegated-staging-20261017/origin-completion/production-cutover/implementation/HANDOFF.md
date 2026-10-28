@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `163`
-- Updated (UTC): `2026-10-28T03:32:31.296844+00:00`
+- State generation: `164`
+- Updated (UTC): `2026-10-28T05:06:54.138095+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `3da6f7b71569772f224dd1fe57205ff1c0d14013`
+- Latest recorded merged Main SHA: `96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: g195 is DEPLOYED_VERIFIED on main 3da6f7b7; the new Owner-scoped Worker deployment action is live at AdminSettings asset SHA256 372c6f62…. Next, Owner-authenticated read-only preflight; if READY, submit one exact 1% canary authorization and reconcile the same canonical job/provider receipts. Do not repeat accepted M1/M2/app tests. Queue runtime profile and 12 lifecycle probes remain open.
+- Next action: g196 DEPLOYED_VERIFIED from origin/main SHA 96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457. Canary job read model now returns null for empty registry and stable sanitized errors for DB init/query failures; null legacy probe maps render safely. Cloudflare deployments readback now requests per_page=100 and reconciles all result.deployments pages with exact schema/pagination diagnostics; canary transport reads the documented active deployment page. Public Admin and assets verified against g196. Next: from the Owner normal authenticated Admin session, recheck read-only Worker canary preflight and latest Job query; if READY review the exact 1% plan and use existing Owner operation, otherwise report the returned exact reason. No canary Job or traffic mutation was performed. Keep M1/M2/application receipt and Linux fallback; continue Credit/Billing and Queue/Recovery gates separately.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-g195-worker-deployment-admission | /mnt/SmartSpecDev/projects/SmartSpecPro | 861ac2ad612b7bc84982d12fe16b0cfa994dd540 | 3da6f7b71569772f224dd1fe57205ff1c0d14013 | g195 is DEPLOYED_VERIFIED on main 3da6f7b7; the new Owner-scoped Worker deployment action is live at AdminSettings asset SHA256 372c6f62…. Next, Owner-authenticated read-only preflight; if READY, submit one exact 1% canary authorization and reconcile the same canonical job/provider receipts. Do not repeat accepted M1/M2/app tests. Queue runtime profile and 12 lifecycle probes remain open. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-g196-production-canary-readback | /mnt/SmartSpecDev/projects/SmartSpecPro | 96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457 | 96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457 | g196 DEPLOYED_VERIFIED from origin/main SHA 96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457. Canary job read model now returns null for empty registry and stable sanitized errors for DB init/query failures; null legacy probe maps render safely. Cloudflare deployments readback now requests per_page=100 and reconciles all result.deployments pages with exact schema/pagination diagnostics; canary transport reads the documented active deployment page. Public Admin and assets verified against g196. Next: from the Owner normal authenticated Admin session, recheck read-only Worker canary preflight and latest Job query; if READY review the exact 1% plan and use existing Owner operation, otherwise report the returned exact reason. No canary Job or traffic mutation was performed. Keep M1/M2/application receipt and Linux fallback; continue Credit/Billing and Queue/Recovery gates separately. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -43,6 +43,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - No Production Worker canary Job or Cloudflare deployment receipt was created in this session; the only next Owner action after read-only preflight READY is the existing scoped 1% Worker version canary approval. Synthetic Queue credentials/profile and all 12 lifecycle probes remain separate M3 blockers.
 - g195 public health is HTTP 200 and public AdminSettings asset contains the new canary admission UI; authenticated preflight remains unverified because this CLI session has no Owner browser identity.
 - The release produced the immutable Cloudflare bundle but did not create a Worker version/deployment or alter Cloudflare traffic; no production Worker job/receipt exists yet.
+- Authenticated Owner preflight and production Cloudflare inventory remain unverified from this CLI session; public unauthenticated endpoint returns expected 403.
+- No production Worker canary canonical job, deployment receipt, route mutation, or traffic change was performed.
 
 ## Resume
 
