@@ -1,12 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
-import {
-  HStack,
-  Layout,
-  LayoutContent,
-  LayoutFooter,
-} from "@astryxdesign/core/Layout";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Section } from "@astryxdesign/core/Section";
 import { Heading } from "@astryxdesign/core/Heading";
@@ -44,11 +37,15 @@ function ParityOperation({
   projectId,
   candidateJobId,
   operation,
+  mandateActive,
+  directOwnerActionAllowed,
 }: {
   tenantId: string;
   projectId: string;
   candidateJobId: string;
   operation: Operation;
+  mandateActive: boolean;
+  directOwnerActionAllowed: boolean;
 }) {
   const { i18n } = useTranslation(),
     th = i18n.language?.startsWith("th");
@@ -57,7 +54,6 @@ function ParityOperation({
   const [submissionId, setSubmissionId] = useState<string | undefined>(
     () => storedId(key) ?? undefined
   );
-  const [dialogOpen, setDialogOpen] = useState(false);
   const [phase, setPhase] = useState<
     "idle" | "submitting" | "unknown" | "rejected"
   >("idle");
@@ -78,6 +74,8 @@ function ParityOperation({
   );
   const mutation =
     trpc.infrastructure.prepareCloudflareM3ParityOperation.useMutation();
+  const automaticSubmissionStarted = useRef(false);
+  const submitRef = useRef<() => Promise<void>>(async () => {});
   const preflight = query.data?.preflight;
   const job = query.data?.job;
   const title =
@@ -94,6 +92,7 @@ function ParityOperation({
     if (
       !preflight?.ready ||
       !preflight.planDigest ||
+      (!mandateActive && !directOwnerActionAllowed) ||
       mutation.isPending ||
       (job && active.has(job.status))
     )
@@ -131,10 +130,15 @@ function ParityOperation({
           : "unknown"
       );
     } finally {
-      setDialogOpen(false);
       await query.refetch();
     }
   };
+  submitRef.current = submit;
+  useEffect(() => {
+    if (!mandateActive || !preflight?.ready || job || mutation.isPending || automaticSubmissionStarted.current) return;
+    automaticSubmissionStarted.current = true;
+    void submitRef.current();
+  }, [mandateActive, preflight?.ready, job?.jobId, mutation.isPending]);
   useEffect(() => {
     if (!submissionId || !job || job.jobId !== submissionId) return;
     if (["succeeded", "failed", "cancelled", "expired"].includes(job.status))
@@ -142,7 +146,6 @@ function ParityOperation({
   }, [submissionId, job?.jobId, job?.status]);
 
   const accepted = job?.acceptance?.accepted === true;
-  const blocked = !preflight?.ready;
   return (
     <Section variant="muted" aria-label={title}>
       <VStack gap={2}>
@@ -226,26 +229,24 @@ function ParityOperation({
             )}
           </Button>
         ) : null}
-        {preflight?.ready && !job && phase === "idle" ? (
-          <Button type="button" onClick={() => setDialogOpen(true)}>
-            {text(
-              "Review and authorize this bounded test",
-              "ตรวจแผนและอนุมัติการทดสอบแบบจำกัด"
-            )}
-          </Button>
-        ) : null}
-        {preflight?.ready && !job && phase === "unknown" ? (
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => setDialogOpen(true)}
-          >
-            {text(
-              "Reconcile the same submission",
-              "ตรวจ submission เดิมอีกครั้ง"
-            )}
-          </Button>
-        ) : null}
+        {directOwnerActionAllowed && !mandateActive && preflight?.ready && !job && phase === "idle" ? <Button type="button" disabled={mutation.isPending}
+          onClick={() => {
+            if (window.confirm(text(
+              `Start this bounded synthetic ${operation.replaceAll("_", " ")} operation once? It will not change production traffic or charge customers.`,
+              `เริ่มงานสังเคราะห์ ${operation} แบบจำกัดหนึ่งครั้งหรือไม่ งานนี้ไม่เปลี่ยน Production traffic และไม่เรียกเก็บเงินจริง`
+            ))) void submit();
+          }}>{text("Authorize and start this bounded test", "อนุมัติและเริ่มการทดสอบแบบจำกัด")}</Button> : null}
+        {directOwnerActionAllowed && !mandateActive && !preflight?.ready ? <Text role="status">{text(
+          "No operation was submitted. Resolve the preflight blocker first. After full mandate readiness, covered operations can run without another prompt.",
+          "ยังไม่มีการส่งงาน ให้แก้ blocker ใน preflight ก่อน เมื่อ mandate พร้อมครบ งานที่อยู่ในขอบเขตจะเริ่มได้โดยไม่ต้องยืนยันซ้ำ"
+        )}</Text> : null}
+        {!mandateActive && !directOwnerActionAllowed ? <Text role="status">{text(
+          "No submission is available while mandate status is suspended, revoked or unreadable.",
+          "ยังส่งงานไม่ได้เมื่อ mandate ถูกระงับ เพิกถอน หรืออ่านสถานะไม่ได้"
+        )}</Text> : null}
+        {mandateActive && preflight?.ready && !job && phase === "idle" ? <Text role="status">
+          {text("Starting the authorized bounded test…", "กำลังเริ่มการทดสอบแบบจำกัดที่ได้รับอนุญาต…")}
+        </Text> : null}
         {phase === "submitting" ? (
           <Text role="status">
             {text("Submitting once…", "กำลังส่งคำขอครั้งเดียว…")}
@@ -274,81 +275,6 @@ function ParityOperation({
           </Text>
         ) : null}
       </VStack>
-      <Dialog
-        isOpen={dialogOpen}
-        onOpenChange={open => {
-          if (!mutation.isPending) setDialogOpen(open);
-        }}
-        purpose="required"
-        width={560}
-      >
-        <Layout
-          header={
-            <DialogHeader
-              title={text(
-                "Confirm bounded synthetic operation",
-                "ยืนยันการทดสอบสังเคราะห์แบบจำกัด"
-              )}
-              subtitle={title}
-              onOpenChange={mutation.isPending ? undefined : setDialogOpen}
-            />
-          }
-          content={
-            <LayoutContent>
-              <VStack gap={2}>
-                <Text>
-                  {text(
-                    "This submits one canonical Job under your authenticated Owner scope. It uses synthetic data, makes no real charges and does not change production traffic.",
-                    "คำสั่งนี้ส่ง canonical Job หนึ่งรายการภายใต้สิทธิ์ Owner ที่เข้าสู่ระบบ ใช้ข้อมูลสังเคราะห์ ไม่เรียกเก็บเงินจริง และไม่เปลี่ยน production traffic"
-                  )}
-                </Text>
-                <Text>
-                  {text("Reviewed plan digest", "digest ของแผนที่ตรวจแล้ว")}:{" "}
-                  {preflight?.planDigest ?? "—"}
-                </Text>
-                {submissionId ? (
-                  <Text>
-                    {text(
-                      "Existing submission ID will be reconciled",
-                      "จะตรวจ submission ID เดิม"
-                    )}
-                    : {submissionId}
-                  </Text>
-                ) : null}
-                {mutation.isPending ? (
-                  <Text role="status">
-                    {text(
-                      "Submitting. Keep this window open; duplicate submission is locked.",
-                      "กำลังส่งคำขอ โปรดเปิดหน้าต่างนี้ไว้ ระบบล็อกการส่งซ้ำ"
-                    )}
-                  </Text>
-                ) : null}
-              </VStack>
-            </LayoutContent>
-          }
-          footer={
-            <LayoutFooter>
-              <HStack gap={2} hAlign="end">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={mutation.isPending}
-                  onClick={() => setDialogOpen(false)}
-                >
-                  {text("Cancel", "ยกเลิก")}
-                </Button>
-                <Button
-                  type="button"
-                  disabled={mutation.isPending || !preflight?.ready}
-                  onClick={() => void submit()}
-                >
-                  {text("Authorize and submit once", "อนุมัติและส่งครั้งเดียว")}
-                </Button>
-              </HStack>
-            </LayoutFooter>
-          }
-        />
-      </Dialog>
     </Section>
   );
 }
@@ -357,10 +283,14 @@ export function CloudflareM3ParityOperations({
   tenantId,
   projectId,
   candidateJobId,
+  mandateActive,
+  directOwnerActionAllowed,
 }: {
   tenantId: string;
   projectId: string;
   candidateJobId: string;
+  mandateActive: boolean;
+  directOwnerActionAllowed: boolean;
 }) {
   const { i18n } = useTranslation(),
     th = i18n.language?.startsWith("th");
@@ -380,7 +310,7 @@ export function CloudflareM3ParityOperations({
       {operations.map(operation => (
         <ParityOperation
           key={operation}
-          {...{ tenantId, projectId, candidateJobId, operation }}
+          {...{ tenantId, projectId, candidateJobId, operation, mandateActive, directOwnerActionAllowed }}
         />
       ))}
     </VStack>

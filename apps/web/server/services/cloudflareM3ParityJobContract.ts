@@ -12,6 +12,7 @@ export const m3ParityJobInputSchema = z
     candidateJobId: z.string().uuid(),
     operation: m3ParityOperationSchema,
     submissionId: z.string().uuid(),
+    mandateGrantRef: z.string().uuid().optional(),
     planDigest: z.string().regex(/^[a-f0-9]{64}$/),
   })
   .strict();

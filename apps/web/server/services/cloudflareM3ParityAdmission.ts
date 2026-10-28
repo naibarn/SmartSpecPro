@@ -16,6 +16,7 @@ import {
   CLOUDFLARE_PRODUCTION_QUEUE_NAME,
 } from "./cloudflareProductionQueueProvision";
 import { verifyM3ParityEvidence } from "./cloudflareM3AcceptanceEvidence";
+import { issueCloudflareMigrationOperationGrant } from "./cloudflareProductionMigrationMandate";
 import { probeCloudflareProductionProviderInventory } from "./cloudflareProductionProviderInventory";
 import { resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuthority";
 import { verifyM3QueueWorkerReadiness } from "./cloudflareM3QueueWorkerReadiness";
@@ -359,8 +360,9 @@ export async function getM3ParityPreflight(
 export async function admitM3ParityOperation(
   db: DrizzleDB,
   input: Scope & {
-    operation: "credit_billing_acceptance" | "queue_recovery_acceptance";
+  operation: "credit_billing_acceptance" | "queue_recovery_acceptance";
     submissionId: string;
+    mandateRef?: string;
     planDigest: string;
     correlationId: string;
   }
@@ -418,7 +420,8 @@ export async function admitM3ParityOperation(
         v.operation !== input.operation ||
         v.planDigest !== input.planDigest ||
         digestM3ParityPlan(v.plan).digest !== input.planDigest ||
-        v.revokedAt !== null ||
+      v.revokedAt !== null ||
+        (v.mandateRef ?? null) !== (input.mandateRef ?? null) ||
         Date.parse(v.expiresAt) <= Date.now()
       )
         throw Error("M3_PARITY_SUBMISSION_SCOPE_DENIED");
@@ -447,6 +450,7 @@ export async function admitM3ParityOperation(
       candidateJobId: input.candidateJobId,
       submissionId: input.submissionId,
       operation: input.operation,
+      mandateRef: input.mandateRef ?? null,
       plan: reviewed.plan,
       planDigest: reviewed.digest,
       issuedAt: new Date().toISOString(),
@@ -485,6 +489,18 @@ export async function admitM3ParityOperation(
   }
   if (intent.revokedAt !== null || Date.parse(intent.expiresAt) <= Date.now())
     throw Error("M3_PARITY_AUTHORIZATION_EXPIRED");
+  const operationGrant = input.mandateRef
+    ? await issueCloudflareMigrationOperationGrant({ mandateRef: input.mandateRef,
+        tenantId: input.tenantId, projectId: input.projectId, jobId: input.submissionId,
+        operation: input.operation, planDigest: input.planDigest })
+    : null;
+  if (operationGrant) {
+    intent.mandateGrantRef = operationGrant.grantRef;
+    await db.update(systemSettings).set({ valueJson: intent }).where(and(
+      eq(systemSettings.category, M3_PARITY_CATEGORY), eq(systemSettings.key, input.submissionId),
+      eq(systemSettings.updatedBy, input.actorUserId),
+    ));
+  }
   return createControlPlaneJob({
     context: {
       tenantId: input.tenantId,
@@ -505,6 +521,7 @@ export async function admitM3ParityOperation(
         projectId: input.projectId,
         operation: input.operation,
         submissionId: input.submissionId,
+        ...(operationGrant ? { mandateGrantRef: operationGrant.grantRef } : {}),
         planDigest: input.planDigest,
         candidateJobId: input.candidateJobId,
       },

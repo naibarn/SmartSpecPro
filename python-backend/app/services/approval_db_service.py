@@ -59,6 +59,77 @@ _CF_STAGING_DIGEST = re.compile(r"^[0-9a-f]{64}$")
 _CF_PRODUCTION_GRANT_SCHEMA = "cloudflare.production-deployment-grant.v2"
 _CF_PRODUCTION_TARGET = "smartspec-cloudflare-runtime"
 _CF_PRODUCTION_SINGLE_ADMIN_ISSUER = "single_admin_owner_approval_v1"
+_CF_FIRST_MIGRATION_MANDATE_ISSUER = "first_migration_mandate_owner_v1"
+_CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER = "first_migration_mandate_operation_v1"
+
+
+def _normalize_cloudflare_migration_mandate(value: dict) -> dict:
+    """Fail-closed validator for the durable, resource-bounded FIRST_MIGRATION mandate."""
+    def invalid():
+        raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_INVALID")
+    if not isinstance(value, dict) or set(value) != {
+        "schemaVersion", "missionId", "tenantId", "ownerUserId", "projectId", "environment", "targetId",
+        "accountRef", "zoneId", "routePattern", "resourceIds", "actions", "resourceBudget", "rollbackPolicy",
+        "revokedAt",
+    }:
+        invalid()
+    resources = value["resourceIds"]
+    budget = value["resourceBudget"]
+    rollback = value["rollbackPolicy"]
+    actions = value["actions"]
+    if not isinstance(resources, dict) or set(resources) != {
+        "queueId", "deadLetterQueueId", "vpcServiceId", "hyperdriveId", "nodeApplicationId", "pythonApplicationId",
+    }:
+        invalid()
+    if not isinstance(budget, dict) or set(budget) != {
+        "maxProviderWrites", "maxWorkerDeployments", "maxContainerStarts", "maxContainerReservedSeconds",
+        "maxQueueMessages", "maxSyntheticCredits", "syntheticFinancialMinorUnits",
+    }:
+        invalid()
+    if not isinstance(rollback, dict) or set(rollback) != {
+        "preserveM2Ingress", "preserveLinuxFallback", "containersOnDemand", "rollbackOnFailedAcceptance",
+        "requireOwnerForOutOfScopeAction",
+    }:
+        invalid()
+    allowed_actions = {
+        "rotate_origin_configuration", "deploy_worker", "worker_canary", "synthetic_credit_billing",
+        "synthetic_queue_recovery", "native_runtime_activation", "rollback",
+    }
+    if (value["schemaVersion"] != "cloudflare.first-migration-mandate.v1" or
+        not isinstance(value["missionId"], str) or not re.fullmatch(r"cf-migration:[a-f0-9]{32}", value["missionId"]) or
+        not isinstance(value["tenantId"], str) or not 1 <= len(value["tenantId"]) <= 36 or
+        type(value["ownerUserId"]) is not int or value["ownerUserId"] <= 0 or
+        not isinstance(value["projectId"], str) or not 1 <= len(value["projectId"]) <= 36 or
+        value["environment"] != "production" or value["targetId"] != _CF_PRODUCTION_TARGET or
+        not isinstance(value["accountRef"], str) or not re.fullmatch(r"[a-f0-9]{32}", value["accountRef"]) or
+        not isinstance(value["zoneId"], str) or not re.fullmatch(r"[a-f0-9]{32}", value["zoneId"]) or
+        value["routePattern"] != "smartaihub.app/*" or
+        any(not isinstance(resources.get(k), str) or not resources[k].strip() or len(resources[k]) > 128 for k in resources) or
+        not re.fullmatch(r"[a-f0-9]{32}", resources["queueId"]) or
+        not re.fullmatch(r"[a-f0-9]{32}", resources["deadLetterQueueId"]) or
+        not re.fullmatch(r"[a-f0-9-]{36}", resources["vpcServiceId"]) or
+        not re.fullmatch(r"[a-f0-9]{32}", resources["hyperdriveId"]) or
+        not re.fullmatch(r"[a-f0-9]{32}", resources["nodeApplicationId"]) or
+        not re.fullmatch(r"[a-f0-9]{32}", resources["pythonApplicationId"]) or
+        not isinstance(actions, list) or not actions or len(actions) != len(set(actions)) or not set(actions) <= allowed_actions or
+        type(budget["maxProviderWrites"]) is not int or not 1 <= budget["maxProviderWrites"] <= 40 or
+        type(budget["maxWorkerDeployments"]) is not int or not 1 <= budget["maxWorkerDeployments"] <= 4 or
+        type(budget["maxContainerStarts"]) is not int or not 0 <= budget["maxContainerStarts"] <= 8 or
+        type(budget["maxContainerReservedSeconds"]) is not int or not 0 <= budget["maxContainerReservedSeconds"] <= 3600 or
+        type(budget["maxQueueMessages"]) is not int or not 0 <= budget["maxQueueMessages"] <= 500 or
+        type(budget["maxSyntheticCredits"]) is not int or not 0 <= budget["maxSyntheticCredits"] <= 300 or
+        type(budget["syntheticFinancialMinorUnits"]) is not int or budget["syntheticFinancialMinorUnits"] != 0 or
+        rollback != {"preserveM2Ingress": True, "preserveLinuxFallback": True, "containersOnDemand": True,
+                     "rollbackOnFailedAcceptance": True, "requireOwnerForOutOfScopeAction": True} or
+        value["revokedAt"] is not None):
+        invalid()
+    expected_mission = "cf-migration:" + hashlib.sha256(
+        f"{value['tenantId']}|{value['projectId']}|production|{_CF_PRODUCTION_TARGET}".encode("utf-8")
+    ).hexdigest()[:32]
+    if value["missionId"] != expected_mission:
+        invalid()
+    return {**value, "resourceIds": dict(resources), "actions": list(actions),
+            "resourceBudget": dict(budget), "rollbackPolicy": dict(rollback)}
 
 
 def normalize_cloudflare_production_ingress_grant(value: dict) -> dict:
@@ -947,6 +1018,421 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         await self.db.commit()
         await self.db.refresh(request)
         return request
+
+    async def create_cloudflare_migration_mandate(
+        self, *, tenant_id: str, owner_id: int, idempotency_key: str, payload: dict,
+    ) -> ApprovalRequest:
+        """Persist the Owner's single bounded FIRST_MIGRATION authorization in Approval Service."""
+        if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 160:
+            raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_IDEMPOTENCY_INVALID")
+        role_result = await self.db.execute(select(User.role, User.isDisabled).where(User.id == owner_id))
+        owner = role_result.one_or_none()
+        tenant_result = await self.db.execute(select(Tenant.owner_id, Tenant.status).where(Tenant.id == tenant_id))
+        tenant = tenant_result.one_or_none()
+        tenant_status = getattr(tenant[1], "value", tenant[1]) if tenant else None
+        if (owner is None or owner[0] not in (Role.admin, Role.domain_admin) or owner[1] is not False or
+                tenant is None or tenant[0] != owner_id or tenant_status != "active"):
+            raise PermissionError("CLOUDFLARE_MIGRATION_MANDATE_TENANT_OWNER_REQUIRED")
+        bound = _normalize_cloudflare_migration_mandate(payload)
+        if bound["tenantId"] != tenant_id or bound["ownerUserId"] != owner_id:
+            raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_OWNER_BINDING_INVALID")
+        correlation = "cf-first-migration-mandate:" + hashlib.sha256(
+            f"{tenant_id}:{bound['missionId']}:{idempotency_key}".encode("utf-8")
+        ).hexdigest()
+        mandate_id = str(uuid5(NAMESPACE_URL, correlation))
+        bound["mandateRef"] = mandate_id
+        # mandateRef is a storage binding, not part of the schema checked above.
+        action_digest = hashlib.sha256(json.dumps(bound, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        await self.db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+                              {"lock_key": f"cf-first-migration-mandate:{tenant_id}:{bound['missionId']}"})
+        existing = await self.get_request_by_correlation(correlation, tenant_id)
+        if existing:
+            existing_payload = existing.payload if isinstance(existing.payload, dict) else {}
+            if (existing.requester_id != owner_id or existing.request_type != ApprovalType.DEPLOYMENT or
+                    existing_payload != bound or (existing.extra_data or {}).get("cloudflareFirstMigrationMandateV1") != _CF_FIRST_MIGRATION_MANDATE_ISSUER):
+                raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_IDEMPOTENCY_CONFLICT")
+            return existing
+        # One durable mandate per exact mission, even if a browser reloads and
+        # accidentally changes its idempotency key. Never create a second
+        # authorization envelope to recover an uncertain response.
+        mission_rows = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.tenant_id == tenant_id, ApprovalRequest.project_id == bound["projectId"],
+            ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ).order_by(ApprovalRequest.created_at.desc()))
+        for prior in mission_rows.scalars().all():
+            if (prior.extra_data or {}).get("cloudflareFirstMigrationMandateV1") != _CF_FIRST_MIGRATION_MANDATE_ISSUER:
+                continue
+            if (prior.payload or {}).get("missionId") == bound["missionId"]:
+                previous_envelope = {key: value for key, value in (prior.payload or {}).items() if key != "mandateRef"}
+                requested_envelope = {key: value for key, value in bound.items() if key != "mandateRef"}
+                if (prior.requester_id == owner_id and previous_envelope == requested_envelope and
+                        prior.status == ApprovalStatus.APPROVED and prior.revoked_at is None):
+                    return prior
+                raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_ALREADY_EXISTS_OR_INACTIVE")
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        request = ApprovalRequest(
+            id=mandate_id, request_type=ApprovalType.DEPLOYMENT,
+            title="Authorize Complete First Cloudflare Migration",
+            description="Authenticated tenant Owner authorized the exact bounded FIRST_MIGRATION envelope. Revocable; excludes real charges and out-of-scope resources.",
+            tenant_id=tenant_id, project_id=bound["projectId"], requester_id=owner_id,
+            requester_type="user", status=ApprovalStatus.APPROVED, payload=bound,
+            extra_data={"approvers": [owner_id], "cloudflareFirstMigrationMandateV1": _CF_FIRST_MIGRATION_MANDATE_ISSUER},
+            action_digest=action_digest, correlation_key=correlation, risk_level="critical",
+            required_approvers=1, current_approvals=1, expires_at=None, resolved_at=now,
+        )
+        self.db.add(request)
+        self.db.add(ApprovalResponse(id=str(uuid4()), request_id=mandate_id, approver_id=owner_id,
+            decision="approved", comment="Authenticated tenant Owner approved the bounded migration mandate.", created_at=now))
+        self.db.add(AuditLog(user_id=str(owner_id), user_role="admin", action="cloudflare.first_migration_mandate.owner_approved",
+            resource_type="cloudflare_first_migration_mandate", resource_id=mandate_id,
+            details={"tenantId": tenant_id, "projectId": bound["projectId"], "missionId": bound["missionId"],
+                     "actionDigest": action_digest, "resourceBudget": bound["resourceBudget"]}))
+        await self.db.commit()
+        await self.db.refresh(request)
+        return request
+
+    async def resolve_cloudflare_migration_mandate(self, mandate_ref: str, *, tenant_id: str | None = None) -> Optional[dict]:
+        result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == mandate_ref, ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ))
+        request = result.scalar_one_or_none()
+        if (request is None or request.status != ApprovalStatus.APPROVED or request.revoked_at is not None or
+                request.resolved_at is None or request.current_approvals < max(1, request.required_approvers) or
+                (tenant_id is not None and request.tenant_id != tenant_id)):
+            return None
+        if (request.extra_data or {}).get("cloudflareFirstMigrationMandateV1") != _CF_FIRST_MIGRATION_MANDATE_ISSUER:
+            return None
+        payload = request.payload if isinstance(request.payload, dict) else {}
+        mandate_ref_in_payload = payload.get("mandateRef")
+        payload = {k: v for k, v in payload.items() if k != "mandateRef"}
+        try:
+            mandate = _normalize_cloudflare_migration_mandate(payload)
+        except ValueError:
+            return None
+        if (mandate_ref_in_payload != request.id or mandate["tenantId"] != request.tenant_id or
+                mandate["projectId"] != request.project_id or mandate["ownerUserId"] != request.requester_id or
+                request.action_digest != hashlib.sha256(json.dumps(request.payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()):
+            return None
+        return {**mandate, "mandateRef": request.id, "status": "ACTIVE", "createdAt": request.created_at.isoformat() if request.created_at else None}
+
+    async def get_cloudflare_migration_mandate(self, *, tenant_id: str, project_id: str, owner_id: int) -> Optional[dict]:
+        result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.tenant_id == tenant_id, ApprovalRequest.project_id == project_id,
+            ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ).order_by(ApprovalRequest.created_at.desc()))
+        for request in result.scalars().all():
+            if (request.extra_data or {}).get("cloudflareFirstMigrationMandateV1") != _CF_FIRST_MIGRATION_MANDATE_ISSUER:
+                continue
+            payload = dict(request.payload or {})
+            mandate_ref = payload.pop("mandateRef", None)
+            try:
+                mandate = _normalize_cloudflare_migration_mandate(payload)
+            except ValueError:
+                continue
+            if mandate["ownerUserId"] != owner_id or mandate_ref != request.id:
+                continue
+            lifecycle = (request.extra_data or {}).get("cloudflareFirstMigrationMandateState")
+            active = await self.resolve_cloudflare_migration_mandate(request.id, tenant_id=tenant_id)
+            status_value = (lifecycle if lifecycle in ("SUSPENDED", "REVOKED") else
+                            "ACTIVE" if active is not None else "INVALID")
+            budget = mandate["resourceBudget"]
+            usage_totals = {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+                            "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0,
+                            "syntheticFinancialMinorUnits": 0}
+            grant_rows = await self.db.execute(select(ApprovalRequest).where(
+                ApprovalRequest.tenant_id == tenant_id, ApprovalRequest.project_id == project_id,
+                ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+            ))
+            for grant_row in grant_rows.scalars().all():
+                metadata = grant_row.extra_data if isinstance(grant_row.extra_data, dict) else {}
+                grant_usage = (grant_row.payload or {}).get("usage", {})
+                if (metadata.get("cloudflareFirstMigrationOperationGrantV1") != _CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER or
+                        metadata.get("mandateRef") != request.id or not isinstance(grant_usage, dict)):
+                    continue
+                for key in usage_totals:
+                    value = grant_usage.get(key, 0)
+                    if type(value) is int and value >= 0:
+                        usage_totals[key] += value
+            limits = {"providerWrites": budget["maxProviderWrites"], "workerDeployments": budget["maxWorkerDeployments"],
+                      "containerStarts": budget["maxContainerStarts"], "containerReservedSeconds": budget["maxContainerReservedSeconds"],
+                      "queueMessages": budget["maxQueueMessages"], "syntheticCredits": budget["maxSyntheticCredits"],
+                      "syntheticFinancialMinorUnits": 0}
+            remaining = {key: max(0, limits[key] - usage_totals[key]) for key in usage_totals}
+            return {**mandate, "mandateRef": request.id, "status": status_value,
+                    "createdAt": request.created_at.isoformat() if request.created_at else None,
+                    "revokedAt": request.revoked_at.isoformat() + "Z" if request.revoked_at else None,
+                    "resourceUsage": usage_totals, "remainingResourceBudget": remaining}
+        return None
+
+    async def change_cloudflare_migration_mandate_state(
+        self, *, mandate_ref: str, tenant_id: str, actor_id: int, reason: str, state: str,
+    ) -> ApprovalRequest:
+        if state not in ("SUSPENDED", "REVOKED") or not reason or len(reason.strip()) < 4 or len(reason) > 500:
+            raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_STATE_CHANGE_INVALID")
+        result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == mandate_ref, ApprovalRequest.tenant_id == tenant_id,
+            ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ).with_for_update())
+        request = result.scalar_one_or_none()
+        if request is None or (request.extra_data or {}).get("cloudflareFirstMigrationMandateV1") != _CF_FIRST_MIGRATION_MANDATE_ISSUER:
+            raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_NOT_FOUND")
+        owner_result = await self.db.execute(select(Tenant.owner_id, User.role, User.isDisabled)
+            .select_from(Tenant).join(User, User.id == actor_id).where(Tenant.id == tenant_id))
+        owner = owner_result.one_or_none()
+        if owner is None or owner[0] != actor_id or owner[1] not in (Role.admin, Role.domain_admin) or owner[2] is not False:
+            raise PermissionError("CLOUDFLARE_MIGRATION_MANDATE_TENANT_OWNER_REQUIRED")
+        lifecycle = (request.extra_data or {}).get("cloudflareFirstMigrationMandateState")
+        if lifecycle == "SUSPENDED" and state == "REVOKED":
+            extra = dict(request.extra_data or {})
+            extra["cloudflareFirstMigrationMandateState"] = "REVOKED"
+            request.extra_data = extra
+            self.db.add(AuditLog(user_id=str(actor_id), user_role="admin", action="cloudflare.first_migration_mandate.revoked",
+                resource_type="cloudflare_first_migration_mandate", resource_id=mandate_ref,
+                details={"tenantId": tenant_id, "reason": reason.strip()}))
+            await self.db.commit()
+            await self.db.refresh(request)
+            return request
+        if request.status != ApprovalStatus.APPROVED or request.revoked_at is not None:
+            # Stable idempotent readback for a repeated suspension/revocation.
+            if lifecycle == state:
+                return request
+            raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_NOT_ACTIVE")
+        now = datetime.now(timezone.utc)
+        extra = dict(request.extra_data or {})
+        extra["cloudflareFirstMigrationMandateState"] = state
+        request.extra_data = extra
+        request.revoked_at = now.replace(tzinfo=None)
+        request.status = ApprovalStatus.CANCELLED
+        self.db.add(AuditLog(user_id=str(actor_id), user_role="admin",
+            action=f"cloudflare.first_migration_mandate.{state.lower()}",
+            resource_type="cloudflare_first_migration_mandate", resource_id=mandate_ref,
+            details={"tenantId": tenant_id, "reason": reason.strip()}))
+        await self.db.commit()
+        await self.db.refresh(request)
+        return request
+
+    async def get_cloudflare_migration_mandate_history(self, *, mandate_ref: str, tenant_id: str, owner_id: int) -> dict:
+        request_result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == mandate_ref, ApprovalRequest.tenant_id == tenant_id,
+            ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ))
+        request = request_result.scalar_one_or_none()
+        if (request is None or request.requester_id != owner_id or
+                (request.extra_data or {}).get("cloudflareFirstMigrationMandateV1") != _CF_FIRST_MIGRATION_MANDATE_ISSUER):
+            raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_NOT_FOUND")
+        responses = await self.db.execute(select(ApprovalResponse).where(ApprovalResponse.request_id == mandate_ref)
+                                          .order_by(ApprovalResponse.created_at.asc()))
+        audits = await self.db.execute(select(AuditLog).where(or_(
+            and_(AuditLog.resource_type == "cloudflare_first_migration_mandate", AuditLog.resource_id == mandate_ref),
+            AuditLog.resource_type == "cloudflare_first_migration_operation_grant",
+        )).order_by(AuditLog.timestamp.asc()))
+        execution_rows = [row for row in audits.scalars().all()
+                          if row.resource_type == "cloudflare_first_migration_mandate" and row.resource_id == mandate_ref
+                          or isinstance(row.details, dict) and row.details.get("mandateRef") == mandate_ref]
+        return {"mandateRef": mandate_ref,
+                "authorizations": [{"decision": row.decision, "createdAt": row.created_at.isoformat() if row.created_at else None}
+                                   for row in responses.scalars().all()],
+                "execution": [{"action": row.action, "createdAt": row.timestamp.isoformat() if row.timestamp else None,
+                               "details": row.details if isinstance(row.details, dict) else {}}
+                              for row in execution_rows]}
+
+    async def create_cloudflare_migration_operation_grant(
+        self, *, mandate_ref: str, tenant_id: str, project_id: str, job_id: str,
+        operation: str, plan_digest: str, idempotency_key: str, usage: dict,
+    ) -> ApprovalRequest:
+        """Reserve enforceable operation quotas and issue one short-lived job grant."""
+        if (not re.fullmatch(r"[0-9a-f-]{36}", job_id, re.IGNORECASE) or
+                not re.fullmatch(r"[0-9a-f]{64}", plan_digest) or
+                not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 160):
+            raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_BINDING_INVALID")
+        expected_usage_keys = {"providerWrites", "workerDeployments", "containerStarts",
+                               "containerReservedSeconds", "queueMessages", "syntheticCredits",
+                               "syntheticFinancialMinorUnits"}
+        if (not isinstance(usage, dict) or set(usage) != expected_usage_keys or
+                any(type(value) is not int or value < 0 for value in usage.values()) or
+                usage["syntheticFinancialMinorUnits"] != 0):
+            raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_USAGE_INVALID")
+        required_action = {
+            "credit_billing_acceptance": "synthetic_credit_billing",
+            "queue_recovery_acceptance": "synthetic_queue_recovery",
+        }.get(operation)
+        if required_action is None:
+            raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_NOT_SUPPORTED")
+        expected_usage = (
+            {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+             "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 30,
+             "syntheticFinancialMinorUnits": 0}
+            if operation == "credit_billing_acceptance"
+            else {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+                  "containerReservedSeconds": 0, "queueMessages": 4, "syntheticCredits": 0,
+                  "syntheticFinancialMinorUnits": 0}
+        )
+        if usage != expected_usage:
+            raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_USAGE_INVALID")
+        correlation = "cf-first-migration-operation:" + hashlib.sha256(
+            f"{mandate_ref}:{job_id}:{operation}".encode("utf-8")
+        ).hexdigest()
+        await self.db.execute(text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+                              {"lock_key": f"cf-first-migration-budget:{mandate_ref}"})
+        parent_result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == mandate_ref, ApprovalRequest.tenant_id == tenant_id,
+            ApprovalRequest.project_id == project_id, ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ).with_for_update())
+        parent = parent_result.scalar_one_or_none()
+        active = await self.resolve_cloudflare_migration_mandate(mandate_ref, tenant_id=tenant_id)
+        if (parent is None or active is None or active.get("projectId") != project_id or
+                active.get("ownerUserId") != parent.requester_id or required_action not in active["actions"]):
+            raise PermissionError("CLOUDFLARE_MIGRATION_MANDATE_INACTIVE_OR_OUT_OF_SCOPE")
+        if (parent.extra_data or {}).get("cloudflareFirstMigrationMandateState") in ("SUSPENDED", "REVOKED"):
+            raise PermissionError("CLOUDFLARE_MIGRATION_MANDATE_INACTIVE_OR_OUT_OF_SCOPE")
+        existing = await self.get_request_by_correlation(correlation, tenant_id)
+        if existing:
+            record = existing.extra_data if isinstance(existing.extra_data, dict) else {}
+            if (record.get("cloudflareFirstMigrationOperationGrantV1") != _CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER or
+                    record.get("mandateRef") != mandate_ref or existing.status != ApprovalStatus.APPROVED or existing.revoked_at is not None or
+                    existing.requester_id != parent.requester_id or (existing.payload or {}).get("usage") != usage or
+                    (existing.payload or {}).get("planDigest") != plan_digest):
+                raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_IDEMPOTENCY_CONFLICT")
+            if await self.resolve_cloudflare_migration_operation_grant(existing.id, tenant_id=tenant_id) is None:
+                renewed = await self.renew_cloudflare_migration_operation_grant(existing.id, tenant_id=tenant_id, job_id=job_id)
+                if renewed is None:
+                    raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_EXPIRED_OR_INACTIVE")
+            return existing
+
+        rows = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.tenant_id == tenant_id, ApprovalRequest.project_id == project_id,
+            ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ))
+        totals = {key: 0 for key in expected_usage_keys}
+        for row in rows.scalars().all():
+            meta = row.extra_data if isinstance(row.extra_data, dict) else {}
+            if (meta.get("cloudflareFirstMigrationOperationGrantV1") != _CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER or
+                    meta.get("mandateRef") != mandate_ref):
+                continue
+            prior_usage = (row.payload or {}).get("usage", {})
+            if isinstance(prior_usage, dict):
+                for key in totals:
+                    value = prior_usage.get(key, 0)
+                    if type(value) is int and value >= 0:
+                        totals[key] += value
+        limits = {
+            "providerWrites": active["resourceBudget"]["maxProviderWrites"],
+            "workerDeployments": active["resourceBudget"]["maxWorkerDeployments"],
+            "containerStarts": active["resourceBudget"]["maxContainerStarts"],
+            "containerReservedSeconds": active["resourceBudget"]["maxContainerReservedSeconds"],
+            "queueMessages": active["resourceBudget"]["maxQueueMessages"],
+            "syntheticCredits": active["resourceBudget"]["maxSyntheticCredits"],
+            "syntheticFinancialMinorUnits": 0,
+        }
+        if any(totals[key] + usage[key] > limits[key] for key in totals):
+            raise ValueError("CLOUDFLARE_MIGRATION_RESOURCE_BUDGET_EXHAUSTED")
+
+        grant_id = str(uuid5(NAMESPACE_URL, correlation))
+        issued_at = datetime.now(timezone.utc)
+        expires_at = issued_at + timedelta(minutes=15)
+        payload = {"schemaVersion": "cloudflare.first-migration-operation-grant.v1", "grantRef": grant_id,
+                   "mandateRef": mandate_ref, "tenantId": tenant_id, "projectId": project_id,
+                   "ownerUserId": parent.requester_id, "jobId": job_id, "operation": operation,
+                   "action": required_action, "planDigest": plan_digest, "resourceIds": active["resourceIds"], "usage": usage,
+                   "issuedAt": issued_at.isoformat().replace("+00:00", "Z"),
+                   "expiresAt": expires_at.isoformat().replace("+00:00", "Z"), "renewalCount": 0}
+        request = ApprovalRequest(
+            id=grant_id, request_type=ApprovalType.DEPLOYMENT, title="FIRST_MIGRATION scoped operation grant",
+            description="Short-lived, job-scoped grant issued under the active Owner mandate; quotas reserved before canonical admission.",
+            tenant_id=tenant_id, project_id=project_id, requester_id=parent.requester_id, requester_type="system",
+            status=ApprovalStatus.APPROVED, payload=payload,
+            extra_data={"cloudflareFirstMigrationOperationGrantV1": _CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER,
+                        "mandateRef": mandate_ref},
+            action_digest=hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest(),
+            correlation_key=correlation, risk_level="critical", required_approvers=1, current_approvals=1,
+            expires_at=expires_at.replace(tzinfo=None), resolved_at=issued_at.replace(tzinfo=None),
+        )
+        self.db.add(request)
+        self.db.add(AuditLog(user_id=str(parent.requester_id), user_role="first_migration_mandate",
+            action="cloudflare.first_migration_operation_grant.issued", resource_type="cloudflare_first_migration_operation_grant",
+            resource_id=grant_id, details={"tenantId": tenant_id, "projectId": project_id, "mandateRef": mandate_ref,
+                "jobId": job_id, "operation": operation, "planDigest": plan_digest, "usage": usage}))
+        await self.db.commit()
+        await self.db.refresh(request)
+        return request
+
+    async def resolve_cloudflare_migration_operation_grant(self, grant_ref: str, *, tenant_id: str | None = None,
+                                                          now: Optional[datetime] = None) -> Optional[dict]:
+        result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == grant_ref, ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ))
+        request = result.scalar_one_or_none()
+        meta = request.extra_data if request and isinstance(request.extra_data, dict) else {}
+        if (request is None or request.status != ApprovalStatus.APPROVED or request.revoked_at is not None or
+                meta.get("cloudflareFirstMigrationOperationGrantV1") != _CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER):
+            return None
+        payload = request.payload if isinstance(request.payload, dict) else {}
+        digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        if (request.action_digest != digest or payload.get("grantRef") != request.id or
+                payload.get("tenantId") != request.tenant_id or payload.get("projectId") != request.project_id or
+                (tenant_id is not None and request.tenant_id != tenant_id) or
+                meta.get("mandateRef") != payload.get("mandateRef")):
+            return None
+        parent = await self.resolve_cloudflare_migration_mandate(payload.get("mandateRef", ""), tenant_id=request.tenant_id)
+        if (parent is None or parent.get("projectId") != request.project_id or
+                parent.get("ownerUserId") != payload.get("ownerUserId") or payload.get("action") not in parent["actions"] or
+                payload.get("resourceIds") != parent.get("resourceIds")):
+            return None
+        issued = datetime.fromisoformat(payload["issuedAt"].replace("Z", "+00:00"))
+        expires = datetime.fromisoformat(payload["expiresAt"].replace("Z", "+00:00"))
+        current = now or datetime.now(timezone.utc)
+        if current.tzinfo is None:
+            current = current.replace(tzinfo=timezone.utc)
+        if issued > current or expires <= current or expires > issued + timedelta(minutes=30):
+            return None
+        return payload
+
+    async def renew_cloudflare_migration_operation_grant(self, grant_ref: str, *, tenant_id: str,
+                                                         job_id: str) -> Optional[dict]:
+        result = await self.db.execute(select(ApprovalRequest).where(
+            ApprovalRequest.id == grant_ref, ApprovalRequest.tenant_id == tenant_id,
+            ApprovalRequest.request_type == ApprovalType.DEPLOYMENT,
+        ).with_for_update())
+        request = result.scalar_one_or_none()
+        if request is None or request.status != ApprovalStatus.APPROVED or request.revoked_at is not None:
+            return None
+        meta = request.extra_data if isinstance(request.extra_data, dict) else {}
+        grant = request.payload if isinstance(request.payload, dict) else {}
+        if (meta.get("cloudflareFirstMigrationOperationGrantV1") != _CF_FIRST_MIGRATION_OPERATION_GRANT_ISSUER or
+                grant.get("tenantId") != tenant_id or grant.get("jobId") != job_id or grant.get("grantRef") != request.id or
+                request.action_digest != hashlib.sha256(json.dumps(grant, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()):
+            return None
+        mandate = await self.resolve_cloudflare_migration_mandate(grant.get("mandateRef", ""), tenant_id=tenant_id)
+        issued_at = datetime.fromisoformat(grant["issuedAt"].replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        if (mandate is None or mandate.get("projectId") != request.project_id or
+                mandate.get("ownerUserId") != grant.get("ownerUserId") or
+                grant.get("resourceIds") != mandate.get("resourceIds")):
+            return None
+        if grant.get("renewalCount", 0) >= 1:
+            expires_at = datetime.fromisoformat(grant["expiresAt"].replace("Z", "+00:00"))
+            return grant if expires_at > now else None
+        if now >= issued_at + timedelta(minutes=15):
+            return None
+        grant["expiresAt"] = (now + timedelta(minutes=15)).isoformat().replace("+00:00", "Z")
+        grant["renewalCount"] = int(grant.get("renewalCount", 0)) + 1
+        request.payload = grant
+        request.expires_at = (now + timedelta(minutes=15)).replace(tzinfo=None)
+        request.action_digest = hashlib.sha256(json.dumps(grant, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        self.db.add(AuditLog(user_id=str(grant["ownerUserId"]), user_role="first_migration_mandate",
+            action="cloudflare.first_migration_operation_grant.renewed", resource_type="cloudflare_first_migration_operation_grant",
+            resource_id=grant_ref, details={"tenantId": tenant_id, "jobId": job_id, "renewalCount": grant["renewalCount"]}))
+        await self.db.commit()
+        await self.db.refresh(request)
+        return grant
+
+    async def revoke_cloudflare_migration_mandate(
+        self, *, mandate_ref: str, tenant_id: str, actor_id: int, reason: str,
+    ) -> ApprovalRequest:
+        if not reason or len(reason.strip()) < 4 or len(reason) > 500:
+            raise ValueError("CLOUDFLARE_MIGRATION_MANDATE_REVOCATION_REASON_INVALID")
+        return await self.change_cloudflare_migration_mandate_state(mandate_ref=mandate_ref, tenant_id=tenant_id,
+            actor_id=actor_id, reason=reason, state="REVOKED")
 
     async def resolve_cloudflare_production_grant(self, grant_ref: str, *, now: Optional[datetime] = None) -> Optional[dict]:
         """Resolve only a directly Admin-approved, unrevoked exact production grant."""

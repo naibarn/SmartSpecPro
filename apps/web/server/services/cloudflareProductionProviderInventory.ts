@@ -304,6 +304,10 @@ export async function probeCloudflareProductionProviderInventory(input: {
       },
       originConfiguration,
       queueInventoryComplete: queues.complete,
+      queueResourceInventory: queues.complete ? queueRows.flatMap(row =>
+        typeof row.queue_id === "string" && /^[a-f0-9]{32}$/i.test(row.queue_id) &&
+        typeof row.queue_name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(row.queue_name)
+          ? [{ id: row.queue_id, name: row.queue_name }] : []) : [],
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
       productionQueueConsumerInventory: {
         complete: Boolean(productionQueueConsumers?.complete),

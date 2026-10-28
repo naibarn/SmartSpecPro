@@ -6,6 +6,9 @@ import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT, CLOUDFLARE_PRODUCTION_DEPLOY
 import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../services/cloudflareProductionIngressAcceptance";
 import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMiddleware";
 import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLifecycle";
+import { changeCloudflareMigrationMandate, enrollCloudflareMigrationMandate, getCloudflareMigrationMandatePlan,
+  readCloudflareMigrationMandate, readCloudflareMigrationMandateHistory } from "../services/cloudflareProductionMigrationMandate";
+import { cloudflareMigrationMandateEnvelopeSchema } from "../services/cloudflareMigrationMandateContract";
 import { readHttpImagePublication } from "../services/cloudflareHttpPublishedPair";
 import { getHttpImagePairPreflight, queueHttpImagePair } from "../services/cloudflareHttpImageAdmission";
 import { getProductionTenantIsolationPreflight, prepareProductionTenantIsolation } from "../services/cloudflareProductionTenantIsolation";
@@ -717,7 +720,90 @@ export const infrastructureRouter = router({
     .query(async ({ input, ctx }) => {
       const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
       if (tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "MIGRATION_TENANT_MISMATCH" });
-      return getCloudflareMigrationMission(await getDb(), input);
+      const mission = await getCloudflareMigrationMission(await getDb(), input);
+      if (!ctx.user?.id || !ctx.userToken || !(await isProductionTenantOwner(await getDb(), tenantId, ctx.user.id)))
+        return { ...mission, campaignAuthority: "NOT_AUTHORIZED" as const, mandateStatus: "OWNER_ACTION_REQUIRED" as const };
+      try {
+        const { mandate } = await readCloudflareMigrationMandate({ tenantId, projectId: input.projectId, userToken: ctx.userToken }) as { mandate?: { status?: string; mandateRef?: string } | null };
+        const active = mandate?.status === "ACTIVE" && typeof mandate.mandateRef === "string";
+        return { ...mission, campaignAuthority: active ? "LIMITED" as const : "NOT_AUTHORIZED" as const,
+          mandateStatus: mandate?.status ?? "NOT_ENROLLED", mandateRef: mandate?.mandateRef ?? null,
+          mandateExecutionCoverage: active ? "INCOMPLETE" as const : "NOT_ACTIVE" as const,
+          authorizedOperations: active ? ["credit_billing_acceptance", "queue_recovery_acceptance"] as const : [] as const };
+      } catch {
+        return { ...mission, campaignAuthority: "UNAVAILABLE" as const, mandateStatus: "READBACK_UNAVAILABLE" as const };
+      }
+    }),
+
+  getCloudflareMigrationMandatePlan: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production") }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (tenantId !== input.tenantId || !ctx.user?.id || !(await isProductionTenantOwner(await getDb(), tenantId, ctx.user.id)))
+        return { ready: false as const, reason: "MIGRATION_MANDATE_TENANT_OWNER_REQUIRED", plan: null };
+      const mission = await getCloudflareMigrationMission(await getDb(), input);
+      if (mission.migrationMode !== "FIRST_MIGRATION" || !mission.completedCheckpoints.includes("M1_ACCEPTED") ||
+          !mission.completedCheckpoints.includes("M2_ACCEPTED"))
+        return { ready: false as const, reason: "MIGRATION_MANDATE_FIRST_MIGRATION_M1_M2_REQUIRED", plan: null };
+      return getCloudflareMigrationMandatePlan(await getDb(), { tenantId, projectId: input.projectId, ownerUserId: ctx.user.id });
+    }),
+
+  getCloudflareMigrationMandate: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production") }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id ||
+          !(await isProductionTenantOwner(await getDb(), input.tenantId, ctx.user.id)))
+        throw new TRPCError({ code: "FORBIDDEN", message: "MIGRATION_MANDATE_TENANT_OWNER_REQUIRED" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "MIGRATION_MANDATE_OWNER_SESSION_REQUIRED" });
+      return readCloudflareMigrationMandate({ tenantId: input.tenantId, projectId: input.projectId, userToken: ctx.userToken });
+    }),
+
+  enrollCloudflareMigrationMandate: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production"),
+      idempotencyKey: z.string().min(8).max(160), expectedPlanDigest: z.string().regex(/^[a-f0-9]{64}$/),
+      plan: cloudflareMigrationMandateEnvelopeSchema }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (tenantId !== input.tenantId || !ctx.user?.id || !(await isProductionTenantOwner(await getDb(), tenantId, ctx.user.id)))
+        throw new TRPCError({ code: "FORBIDDEN", message: "MIGRATION_MANDATE_TENANT_OWNER_REQUIRED" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "MIGRATION_MANDATE_OWNER_SESSION_REQUIRED" });
+      const mission = await getCloudflareMigrationMission(await getDb(), input);
+      if (mission.migrationMode !== "FIRST_MIGRATION" || !mission.completedCheckpoints.includes("M1_ACCEPTED") ||
+          !mission.completedCheckpoints.includes("M2_ACCEPTED"))
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "MIGRATION_MANDATE_FIRST_MIGRATION_M1_M2_REQUIRED" });
+      try {
+        return await enrollCloudflareMigrationMandate({ db: await getDb(), tenantId, projectId: input.projectId,
+          ownerUserId: ctx.user.id, userToken: ctx.userToken, idempotencyKey: input.idempotencyKey,
+          expectedPlanDigest: input.expectedPlanDigest, plan: input.plan });
+      } catch (error) {
+        const reason = error instanceof Error && /^[A-Z0-9_:-]{5,120}$/.test(error.message) ? error.message : "MIGRATION_MANDATE_ENROLLMENT_FAILED";
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: reason });
+      }
+    }),
+
+  changeCloudflareMigrationMandate: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production"),
+      mandateRef: z.string().uuid(), state: z.enum(["suspend", "revoke"]), reason: z.string().trim().min(4).max(500) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id ||
+          !(await isProductionTenantOwner(await getDb(), input.tenantId, ctx.user.id)))
+        throw new TRPCError({ code: "FORBIDDEN", message: "MIGRATION_MANDATE_TENANT_OWNER_REQUIRED" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "MIGRATION_MANDATE_OWNER_SESSION_REQUIRED" });
+      try { return await changeCloudflareMigrationMandate({ mandateRef: input.mandateRef, userToken: ctx.userToken,
+        reason: input.reason, state: input.state }); }
+      catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_:-]{5,120}$/.test(error.message)
+        ? error.message : "MIGRATION_MANDATE_STATE_CHANGE_FAILED" }); }
+    }),
+
+  getCloudflareMigrationMandateHistory: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), environment: z.literal("production"),
+      mandateRef: z.string().uuid() }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id ||
+          !(await isProductionTenantOwner(await getDb(), input.tenantId, ctx.user.id)))
+        throw new TRPCError({ code: "FORBIDDEN", message: "MIGRATION_MANDATE_TENANT_OWNER_REQUIRED" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "MIGRATION_MANDATE_OWNER_SESSION_REQUIRED" });
+      return readCloudflareMigrationMandateHistory({ mandateRef: input.mandateRef, userToken: ctx.userToken });
     }),
 
   getCloudflareHttpImagePairPreflight: exactAdminProcedure
@@ -992,7 +1078,13 @@ export const infrastructureRouter = router({
       console.info("cloudflare_m3_parity_admission", { stage: "AUTHENTICATED_OWNER_SUBMISSION", operation: input.operation,
         submissionId: input.submissionId, tenantId: input.tenantId, projectId: input.projectId, actorUserId: ctx.user.id, correlationId });
       try {
-        const result = await admitM3ParityOperation(getDb(), { ...input, actorUserId: ctx.user.id, correlationId });
+        const { mandate } = await readCloudflareMigrationMandate({ tenantId: input.tenantId, projectId: input.projectId, userToken: ctx.userToken }) as {
+          mandate?: { status?: string; mandateRef?: string } | null;
+        };
+        if (mandate && (mandate.status !== "ACTIVE" || !mandate.mandateRef))
+          throw new Error("MIGRATION_MANDATE_OWNER_ENROLLMENT_REQUIRED");
+        const result = await admitM3ParityOperation(getDb(), { ...input, ...(mandate?.mandateRef ? { mandateRef: mandate.mandateRef } : {}),
+          actorUserId: ctx.user.id, correlationId });
         console.info("cloudflare_m3_parity_admission", { stage: "CANONICAL_JOB_ACCEPTED", operation: input.operation,
           submissionId: input.submissionId, jobId: result.jobId, tenantId: input.tenantId, projectId: input.projectId, correlationId });
         return { jobId: result.jobId, status: result.status };

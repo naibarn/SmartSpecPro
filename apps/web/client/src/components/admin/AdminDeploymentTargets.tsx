@@ -12,6 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Divider } from "@astryxdesign/core/Divider";
 import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
@@ -69,6 +70,17 @@ type ProductionDatabaseAdmission = {
 
 function productionDatabaseAdmissionStorageKey(scopeKey: string) {
   return `smartspec:cloudflare-production-database:${scopeKey}`;
+}
+
+function migrationMandateIdempotencyKey(tenantId: string, projectId: string) {
+  const key = `smartspec:cloudflare-first-migration-mandate:${tenantId}:${projectId}`;
+  try {
+    const prior = sessionStorage.getItem(key);
+    if (prior && /^[a-f0-9-]{36}$/i.test(prior)) return prior;
+    const next = crypto.randomUUID();
+    sessionStorage.setItem(key, next);
+    return next;
+  } catch { return `cf-migration:${crypto.randomUUID()}`; }
 }
 
 function readStoredProductionDatabaseAdmission(scopeKey: string): ProductionDatabaseAdmission | null {
@@ -453,6 +465,7 @@ export default function AdminDeploymentTargets() {
   const [productionTunnelSelections, setProductionTunnelSelections] = useState<Record<string, string>>({});
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
+  const [mandateDialogOpen, setMandateDialogOpen] = useState(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery();
   const tenantInventory = tenantsQuery.data ?? [];
@@ -550,6 +563,25 @@ export default function AdminDeploymentTargets() {
   const migrationMission = trpc.infrastructure.getCloudflareMigrationMission.useQuery(
     { tenantId, projectId, environment: "production" },
     { enabled: validScope && environment === "production", refetchInterval: 10000 });
+  const migrationMandatePlan = trpc.infrastructure.getCloudflareMigrationMandatePlan.useQuery(
+    { tenantId, projectId, environment: "production" }, { enabled: validScope && environment === "production", retry: false });
+  const migrationMandate = trpc.infrastructure.getCloudflareMigrationMandate.useQuery(
+    { tenantId, projectId, environment: "production" }, { enabled: validScope && environment === "production", refetchInterval: 10000, retry: false });
+  const enrollMigrationMandate = trpc.infrastructure.enrollCloudflareMigrationMandate.useMutation({
+    onSuccess: async () => {
+      setMandateDialogOpen(false);
+      await Promise.all([migrationMission.refetch(), migrationMandate.refetch()]);
+    },
+    onError: () => { void migrationMandate.refetch(); },
+  });
+  const changeMigrationMandate = trpc.infrastructure.changeCloudflareMigrationMandate.useMutation({
+    onSuccess: async () => { await Promise.all([migrationMission.refetch(), migrationMandate.refetch()]); },
+  });
+  const migrationMandateValue = migrationMandate.data?.mandate as { status?: string; mandateRef?: string;
+    resourceBudget?: Record<string, number>; resourceUsage?: Record<string, number>; remainingResourceBudget?: Record<string, number> } | null | undefined;
+  const migrationMandateHistory = trpc.infrastructure.getCloudflareMigrationMandateHistory.useQuery(
+    { tenantId, projectId, environment: "production", mandateRef: migrationMandateValue?.mandateRef ?? "00000000-0000-0000-0000-000000000000" },
+    { enabled: validScope && environment === "production" && Boolean(migrationMandateValue?.mandateRef), retry: false });
   const latestProductionIngressJob = trpc.infrastructure.getLatestCloudflareProductionIngressJob.useQuery(
     {tenantId,projectId,environment:"production"}, {enabled:validScope&&environment==="production",refetchInterval:query=>
       query.state.data&&! ["succeeded","failed","expired","cancelled"].includes(query.state.data.status)?2000:10000});
@@ -888,10 +920,73 @@ export default function AdminDeploymentTargets() {
           <h2>{text("Cloudflare Migration Control Center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}</h2>
           <p role="status">{text("Current milestone", "ขั้นปัจจุบัน")}: {migrationMission.data?.currentMilestone ?? text("Checking the saved migration checkpoint…", "กำลังตรวจ checkpoint การย้ายระบบ")}</p>
           <p role="status">{text("Next action", "ขั้นตอนถัดไป")}: {migrationActionLabel(migrationMission.data?.nextOperation)}</p>
-          {migrationMission.data?.campaignAuthority === "NOT_AUTHORIZED" ? <p role="status">
-            {text("Mission-level production authority has not been enrolled. Existing accepted milestones remain read-only; production changes still require their current scoped authorization.",
-              "ยังไม่มีการลงทะเบียนอำนาจระดับภารกิจ Milestone ที่ผ่านแล้วอ่านได้อย่างเดียว และการเปลี่ยน Production ยังต้องใช้อำนาจเฉพาะงานตามเดิม")}
-          </p> : null}
+          <VStack as="section" gap={1} role="group" aria-label={text("First migration mandate", "อำนาจภารกิจย้ายระบบครั้งแรก")}>
+            <strong>{text("Implementation readiness", "ความพร้อมของระบบ")}: {migrationMandatePlan.isLoading
+              ? text("Checking exact resources…", "กำลังตรวจทรัพยากรจริง…")
+              : migrationMandatePlan.data?.ready ? text("READY · exact resources verified", "พร้อม · ตรวจทรัพยากรจริงครบแล้ว") : text("BLOCKED", "ติดเงื่อนไข")}</strong>
+            {!migrationMandatePlan.data?.ready && migrationMandatePlan.data?.reason ?
+              <p role="status">{text("No authorization action is available until this check passes:", "ยังไม่เปิดให้อนุมัติจนกว่าจะผ่านรายการนี้:")} <code>{migrationMandatePlan.data.reason}</code></p> : null}
+            <strong>{text("Owner authorization", "การอนุมัติของ Owner")}: {migrationMandate.isError ? text("READBACK UNAVAILABLE", "อ่านสถานะไม่ได้")
+              : migrationMandateValue?.status ?? text("NOT ENROLLED", "ยังไม่ได้อนุมัติ")}</strong>
+            {migrationMandateValue?.status === "ACTIVE" ? <>
+              <p>{text("Mandate", "อำนาจภารกิจ")}: <code>{migrationMandateValue.mandateRef}</code> · {text("Current step", "ขั้นปัจจุบัน")}: {migrationMission.data?.currentMilestone}
+                · {text("Next operation", "งานถัดไป")}: {migrationActionLabel(migrationMission.data?.nextOperation)}
+                · {text("Running job", "งานที่กำลังทำ")}: <code>{migrationMission.data?.activeJobId ?? text("none", "ไม่มี")}</code></p>
+              <p role="status">{text("Mandate status is read back from Approval Service. Only operation grants explicitly wired to aggregate quota reservation may execute; other migration actions remain blocked until their admission and executor checks are integrated.",
+                "สถานะ mandate อ่านจาก Approval Service งานจะทำงานได้เฉพาะ operation grant ที่ผูกกับการจองโควตารวมแล้ว ส่วนงานย้ายระบบอื่นยังถูกบล็อกจนกว่าจะเชื่อม admission และ executor ให้ครบ")}</p>
+              <p>{text("Currently enforced operations", "งานที่บังคับใช้สิทธิ์ครบแล้ว")}: <code>credit_billing_acceptance, queue_recovery_acceptance</code></p>
+              <p role="alert">{text("Worker deployment/canary, origin configuration, native runtime activation and rollback are not covered yet. The mandate cannot be enrolled as a complete-migration authorization until those paths enforce the same scoped grants and quotas.",
+                "ยังไม่ครอบคลุม Worker deployment/canary, origin configuration, native runtime activation และ rollback จึงยังลงทะเบียนอำนาจสำหรับการย้ายให้ครบไม่ได้ จนกว่าเส้นทางเหล่านี้จะตรวจ scoped grant และโควตาเดียวกัน")}</p>
+              <p>{text("Reserved / remaining enforceable quotas", "โควตาที่จองแล้ว / คงเหลือ")}: <code>{Object.entries(migrationMandateValue.resourceUsage ?? {}).map(([key, value]) =>
+                `${key}=${value}/${migrationMandateValue.remainingResourceBudget?.[key] ?? "—"}`).join(" · ")}</code></p>
+              <HStack gap={1}>
+                <Button type="button" variant="outline" disabled={changeMigrationMandate.isPending} onClick={() => {
+                  if (window.confirm(text("Suspend this migration mandate? New operations will be denied.", "ระงับอำนาจภารกิจนี้หรือไม่ งานใหม่จะถูกปฏิเสธ")))
+                    changeMigrationMandate.mutate({ tenantId, projectId, environment: "production", mandateRef: migrationMandateValue.mandateRef!,
+                      state: "suspend", reason: "Owner requested mandate suspension" });
+                }}>{text("Suspend mandate", "ระงับอำนาจ")}</Button>
+                <Button type="button" variant="destructive" disabled={changeMigrationMandate.isPending} onClick={() => {
+                  if (window.confirm(text("Revoke this mandate permanently? It cannot be reactivated.", "เพิกถอนอำนาจภารกิจถาวรหรือไม่ ไม่สามารถเปิดกลับได้")))
+                    changeMigrationMandate.mutate({ tenantId, projectId, environment: "production", mandateRef: migrationMandateValue.mandateRef!,
+                      state: "revoke", reason: "Owner requested mandate revocation" });
+                }}>{text("Revoke permanently", "เพิกถอนถาวร")}</Button>
+              </HStack>
+              <details><summary>{text("Authorization history", "ประวัติการอนุมัติ")}</summary>
+                <pre>{JSON.stringify(migrationMandateHistory.data ?? { state: migrationMandateHistory.isLoading ? "LOADING" : "UNAVAILABLE" }, null, 2)}</pre>
+              </details>
+            </> : null}
+            {migrationMandate.data && migrationMandateValue?.status == null && migrationMandatePlan.data?.ready ? <>
+              <p>{text("One Owner enrollment covers only the exact resources and operations shown below. It preserves M2 ingress, Linux fallback, on-demand Containers and rollback limits. Native runtime activation is included and changes production traffic.",
+                "การอนุมัติครั้งเดียวครอบคลุมเฉพาะทรัพยากรและงานที่แสดง คง M2, Linux fallback, Container แบบ on-demand และขอบเขต rollback โดยรวมการเปิด native runtime ซึ่งเปลี่ยน Production traffic")}</p>
+              <p>{text("Allowed operations", "งานที่อนุญาต")}: <code>{migrationMandatePlan.data.plan.actions.join(", ")}</code></p>
+              <p>{text("Exact resource IDs", "ID ทรัพยากรที่ระบุ")}: <code>{Object.entries(migrationMandatePlan.data.plan.resourceIds).map(([key, value]) => `${key}=${value}`).join(" · ")}</code></p>
+              <p>{text("Enforceable resource budget", "เพดานทรัพยากรที่บังคับใช้ได้")}: <code>{Object.entries(migrationMandatePlan.data.resourceBudget).map(([key, value]) => `${key}=${value}`).join(" · ")}</code></p>
+              <p role="note">{text("This is not a hard monetary cap. Check Cloudflare billing alerts separately.", "นี่ไม่ใช่เพดานค่าใช้จ่ายเงินจริง โปรดตรวจ Cloudflare billing alerts แยกต่างหาก")}</p>
+              <Button type="button" disabled={enrollMigrationMandate.isPending || migrationMandatePlan.isFetching}
+                onClick={() => setMandateDialogOpen(true)}>{text("Authorize Complete First Cloudflare Migration", "อนุมัติการย้าย Cloudflare ให้เสร็จสมบูรณ์")}</Button>
+              {enrollMigrationMandate.error ? <p role="alert">{text("Enrollment failed:", "ลงทะเบียนไม่สำเร็จ:")} <code>{enrollMigrationMandate.error.message}</code></p> : null}
+              <Dialog open={mandateDialogOpen} onOpenChange={setMandateDialogOpen}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{text("Authorize Complete First Cloudflare Migration", "อนุมัติการย้าย Cloudflare ให้เสร็จสมบูรณ์")}</DialogTitle>
+                    <DialogDescription>{text("Review the exact resource scope and operational limits. This creates one durable, revocable Owner mandate; it does not immediately change production traffic.",
+                      "ตรวจขอบเขตทรัพยากรและเพดานงานก่อนยืนยัน การกดนี้สร้างอำนาจ Owner หนึ่งรายการที่เพิกถอนได้ และยังไม่เปลี่ยน production traffic ทันที")}</DialogDescription>
+                  </DialogHeader>
+                  <p>{text("Mission", "ภารกิจ")}: <code>{migrationMandatePlan.data.plan.missionId}</code></p>
+                  <p>{text("Traffic action included", "รวมการเปลี่ยน traffic")}: <code>native_runtime_activation</code></p>
+                  <p>{text("Rollback", "Rollback")}: {text("Preserve M2 and Linux; restore accepted Worker baseline after failed acceptance; Containers stay on-demand.",
+                    "คง M2 และ Linux; คืน Worker baseline ที่ยอมรับแล้วเมื่อการตรวจรับไม่ผ่าน; Container เริ่มเมื่อเรียกใช้")}</p>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setMandateDialogOpen(false)}>{text("Review again", "กลับไปตรวจ")}</Button>
+                    <Button type="button" disabled={enrollMigrationMandate.isPending} onClick={() => enrollMigrationMandate.mutate({
+                      tenantId, projectId, environment: "production", idempotencyKey: migrationMandateIdempotencyKey(tenantId, projectId),
+                      expectedPlanDigest: migrationMandatePlan.data.planDigest, plan: migrationMandatePlan.data.plan,
+                    })}>{enrollMigrationMandate.isPending ? text("Enrolling…", "กำลังลงทะเบียน…") : text("Confirm one-time mandate", "ยืนยันอำนาจครั้งเดียว")}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </> : null}
+          </VStack>
           {(() => {
             const milestones = migrationMission.data?.milestones;
             const accepted = (value?: string) => value === "ACCEPTED" || value === "VERIFIED";

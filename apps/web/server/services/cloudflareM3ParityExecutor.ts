@@ -17,6 +17,7 @@ import { assertHttpCandidateOwner } from "./cloudflareHttpCandidatePreparation";
 import { readCompensatedHttpApplicationAcceptance } from "./cloudflareHttpRuntimeContinuation";
 import { readHttpRuntimeIntent } from "./cloudflareHttpRuntimeAdmission";
 import { digestM3ParityPlan } from "./cloudflareM3ParityContract";
+import { assertCloudflareMigrationOperationGrant } from "./cloudflareProductionMigrationMandate";
 import {
   M3_PARITY_CATEGORY,
   M3_PARITY_CONTRACT,
@@ -190,6 +191,9 @@ export function createM3CreditBillingExecutor(
       intent.providerCalls !== false ||
       intent.trafficMutation !== false ||
       intent.authority !== "owner-bounded-synthetic-m3-parity-v1" ||
+      (input.mandateGrantRef
+        ? typeof intent.mandateRef !== "string" || !intent.mandateRef || intent.mandateGrantRef !== input.mandateGrantRef
+        : intent.mandateRef != null || intent.mandateGrantRef != null) ||
       intent.plan?.queueName !== delivery.queueName ||
       !intent.plan?.workerVersions?.some((version: any) => version.versionId === delivery.workerVersionId) ||
       !reviewed ||
@@ -205,6 +209,16 @@ export function createM3CreditBillingExecutor(
       appIntent.valueJson?.actorUserId !== actorUserId
     )
       fail("M3_PARITY_AUTHORIZATION_OR_PLAN_INVALID");
+
+    if (input.mandateGrantRef) {
+      try {
+        await assertCloudflareMigrationOperationGrant({ grantRef: input.mandateGrantRef, tenantId: input.tenantId,
+          projectId: input.projectId, jobId: context.jobId, operation: input.operation, planDigest,
+          expectedQueueId: intent.plan?.queueId, expectedDeadLetterQueueId: intent.plan?.deadLetterQueueId, renew: true });
+      } catch {
+        fail("MIGRATION_MANDATE_OPERATION_GRANT_SCOPE_DENIED");
+      }
+    }
 
     const assertActive = async () => {
       await reporter.assertActive(lease);
@@ -226,6 +240,15 @@ export function createM3CreditBillingExecutor(
         Date.parse(intent.expiresAt) <= (deps.now?.() ?? new Date()).getTime()
       )
         fail("M3_PARITY_AUTHORIZATION_EXPIRED_OR_CHANGED");
+      if (input.mandateGrantRef) {
+        try {
+          await assertCloudflareMigrationOperationGrant({ grantRef: input.mandateGrantRef, tenantId: input.tenantId,
+            projectId: input.projectId, jobId: context.jobId, operation: input.operation, planDigest,
+            expectedQueueId: intent.plan?.queueId, expectedDeadLetterQueueId: intent.plan?.deadLetterQueueId });
+        } catch {
+          fail("MIGRATION_MANDATE_REVOKED_OR_EXPIRED");
+        }
+      }
     };
     const prefix = `m3-parity:${context.jobId}`,
       fixture = await createSyntheticUser(db, context.jobId, input.tenantId);

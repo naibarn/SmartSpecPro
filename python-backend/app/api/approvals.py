@@ -364,6 +364,84 @@ class CloudflareProductionIngressGrantIssue(BaseModel):
     expires_at: datetime = Field(..., alias="expiresAt")
 
 
+class CloudflareMigrationMandateResources(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    queue_id: StrictStr = Field(..., alias="queueId", pattern=r"^[a-f0-9]{32}$")
+    dead_letter_queue_id: StrictStr = Field(..., alias="deadLetterQueueId", pattern=r"^[a-f0-9]{32}$")
+    vpc_service_id: StrictStr = Field(..., alias="vpcServiceId", pattern=r"^[a-f0-9-]{36}$")
+    hyperdrive_id: StrictStr = Field(..., alias="hyperdriveId", pattern=r"^[a-f0-9]{32}$")
+    node_application_id: StrictStr = Field(..., alias="nodeApplicationId", pattern=r"^[a-f0-9]{32}$")
+    python_application_id: StrictStr = Field(..., alias="pythonApplicationId", pattern=r"^[a-f0-9]{32}$")
+
+
+class CloudflareMigrationMandateBudget(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    max_provider_writes: StrictInt = Field(..., alias="maxProviderWrites", ge=1, le=40)
+    max_worker_deployments: StrictInt = Field(..., alias="maxWorkerDeployments", ge=1, le=4)
+    max_container_starts: StrictInt = Field(..., alias="maxContainerStarts", ge=0, le=8)
+    max_container_reserved_seconds: StrictInt = Field(..., alias="maxContainerReservedSeconds", ge=0, le=3600)
+    max_queue_messages: StrictInt = Field(..., alias="maxQueueMessages", ge=0, le=500)
+    max_synthetic_credits: StrictInt = Field(..., alias="maxSyntheticCredits", ge=0, le=300)
+    synthetic_financial_minor_units: Literal[0] = Field(..., alias="syntheticFinancialMinorUnits")
+
+
+class CloudflareMigrationRollbackPolicy(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    preserve_m2_ingress: Literal[True] = Field(..., alias="preserveM2Ingress")
+    preserve_linux_fallback: Literal[True] = Field(..., alias="preserveLinuxFallback")
+    containers_on_demand: Literal[True] = Field(..., alias="containersOnDemand")
+    rollback_on_failed_acceptance: Literal[True] = Field(..., alias="rollbackOnFailedAcceptance")
+    require_owner_for_out_of_scope_action: Literal[True] = Field(..., alias="requireOwnerForOutOfScopeAction")
+
+
+class CloudflareMigrationMandateIssue(BaseModel):
+    """One authenticated Owner approval for the bounded FIRST_MIGRATION envelope."""
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    schema_version: Literal["cloudflare.first-migration-mandate.v1"] = Field(..., alias="schemaVersion")
+    mission_id: StrictStr = Field(..., alias="missionId", pattern=r"^cf-migration:[a-f0-9]{32}$")
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
+    target_id: Literal["smartspec-cloudflare-runtime"] = Field(..., alias="targetId")
+    environment: Literal["production"]
+    account_ref: StrictStr = Field(..., alias="accountRef", pattern=r"^[a-f0-9]{32}$")
+    zone_id: StrictStr = Field(..., alias="zoneId", pattern=r"^[a-f0-9]{32}$")
+    route_pattern: Literal["smartaihub.app/*"] = Field(..., alias="routePattern")
+    resource_ids: CloudflareMigrationMandateResources = Field(..., alias="resourceIds")
+    actions: list[Literal["rotate_origin_configuration", "deploy_worker", "worker_canary", "synthetic_credit_billing",
+                          "synthetic_queue_recovery", "native_runtime_activation", "rollback"]] = Field(..., min_length=1, max_length=7)
+    resource_budget: CloudflareMigrationMandateBudget = Field(..., alias="resourceBudget")
+    rollback_policy: CloudflareMigrationRollbackPolicy = Field(..., alias="rollbackPolicy")
+
+
+class CloudflareMigrationOperationUsage(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    provider_writes: StrictInt = Field(..., alias="providerWrites", ge=0, le=40)
+    worker_deployments: StrictInt = Field(..., alias="workerDeployments", ge=0, le=4)
+    container_starts: StrictInt = Field(..., alias="containerStarts", ge=0, le=8)
+    container_reserved_seconds: StrictInt = Field(..., alias="containerReservedSeconds", ge=0, le=3600)
+    queue_messages: StrictInt = Field(..., alias="queueMessages", ge=0, le=500)
+    synthetic_credits: StrictInt = Field(..., alias="syntheticCredits", ge=0, le=300)
+    synthetic_financial_minor_units: Literal[0] = Field(..., alias="syntheticFinancialMinorUnits")
+
+
+class CloudflareMigrationOperationGrantIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    mandate_ref: StrictStr = Field(..., alias="mandateRef", min_length=1, max_length=64)
+    tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=36)
+    project_id: StrictStr = Field(..., alias="projectId", min_length=1, max_length=36)
+    job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[0-9a-fA-F-]{36}$")
+    operation: Literal["credit_billing_acceptance", "queue_recovery_acceptance"]
+    plan_digest: StrictStr = Field(..., alias="planDigest", pattern=r"^[a-f0-9]{64}$")
+    idempotency_key: StrictStr = Field(..., alias="idempotencyKey", min_length=8, max_length=160)
+    usage: CloudflareMigrationOperationUsage
+
+
+class CloudflareMigrationOperationGrantRenew(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    tenant_id: StrictStr = Field(..., alias="tenantId", min_length=1, max_length=36)
+    job_id: StrictStr = Field(..., alias="jobId", pattern=r"^[0-9a-fA-F-]{36}$")
+
+
 def _cloudflare_authenticated_tenant(current_user: User, context_tenant: str | None) -> str:
     """Use the tenant validated by get_current_user, including internal delegation."""
     verified = getattr(current_user, "_media_auth_tenant_id", None) or getattr(current_user, "currentTenantId", None)
@@ -700,6 +778,59 @@ async def resolve_cloudflare_production_grant(
     grant = await ApprovalDBService(db).resolve_cloudflare_production_grant(grant_ref)
     if grant is None:
         raise HTTPException(status_code=404, detail="CLOUDFLARE_PRODUCTION_GRANT_NOT_FOUND_OR_INACTIVE")
+    response.headers["Cache-Control"] = "no-store"
+    return {"grant": grant}
+
+
+@router.post("/internal/cloudflare-migration-mandates/{mandate_ref}/operation-grants")
+async def issue_cloudflare_migration_operation_grant(
+    mandate_ref: str, data: CloudflareMigrationOperationGrantIssue,
+    response: Response, x_internal_token: Optional[str] = Header(None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Reserve mandate quotas for one exact canonical job before admission."""
+    _assert_cloudflare_staging_gateway_token(x_internal_token)
+    if data.mandate_ref != mandate_ref:
+        raise HTTPException(status_code=422, detail="CLOUDFLARE_MIGRATION_OPERATION_GRANT_BINDING_INVALID")
+    try:
+        row = await ApprovalDBService(db).create_cloudflare_migration_operation_grant(
+            mandate_ref=mandate_ref, tenant_id=data.tenant_id, project_id=data.project_id, job_id=data.job_id,
+            operation=data.operation, plan_digest=data.plan_digest, idempotency_key=data.idempotency_key,
+            usage=data.usage.model_dump(by_alias=True),
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    response.headers["Cache-Control"] = "no-store"
+    return {"grantRef": row.id, "status": row.status, "expiresAt": row.expires_at.isoformat() + "Z" if row.expires_at else None,
+            "payload": row.payload}
+
+
+@router.get("/internal/cloudflare-migration-operation-grants/{grant_ref}")
+async def resolve_cloudflare_migration_operation_grant(
+    grant_ref: str, response: Response, tenant_id: str = Query(..., alias="tenantId", min_length=1, max_length=36),
+    x_internal_token: Optional[str] = Header(None, alias="x-internal-token"), db: AsyncSession = Depends(get_db_session),
+):
+    _assert_cloudflare_staging_gateway_token(x_internal_token)
+    grant = await ApprovalDBService(db).resolve_cloudflare_migration_operation_grant(grant_ref, tenant_id=tenant_id)
+    if grant is None:
+        raise HTTPException(status_code=404, detail="CLOUDFLARE_MIGRATION_OPERATION_GRANT_NOT_FOUND_OR_INACTIVE")
+    response.headers["Cache-Control"] = "no-store"
+    return {"grant": grant}
+
+
+@router.post("/internal/cloudflare-migration-operation-grants/{grant_ref}/renew")
+async def renew_cloudflare_migration_operation_grant(
+    grant_ref: str, data: CloudflareMigrationOperationGrantRenew, response: Response,
+    x_internal_token: Optional[str] = Header(None, alias="x-internal-token"), db: AsyncSession = Depends(get_db_session),
+):
+    _assert_cloudflare_staging_gateway_token(x_internal_token)
+    grant = await ApprovalDBService(db).renew_cloudflare_migration_operation_grant(
+        grant_ref, tenant_id=data.tenant_id, job_id=data.job_id,
+    )
+    if grant is None:
+        raise HTTPException(status_code=409, detail="CLOUDFLARE_MIGRATION_OPERATION_GRANT_RENEWAL_DENIED")
     response.headers["Cache-Control"] = "no-store"
     return {"grant": grant}
 
@@ -1646,6 +1777,130 @@ async def create_cloudflare_production_grant_request(
         raise HTTPException(status_code=403, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@router.post("/cloudflare-migration-mandates", response_model=ApprovalRequestResponse, status_code=status.HTTP_201_CREATED)
+async def create_cloudflare_migration_mandate(
+    data: CloudflareMigrationMandateIssue,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Enroll exactly one bounded mandate after an authenticated tenant Owner action."""
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_MIGRATION_MANDATE_ADMIN_REQUIRED")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    payload = data.model_dump(by_alias=True, mode="json", exclude={"idempotency_key"})
+    payload.update({"tenantId": tenant_id, "ownerUserId": int(current_user.id), "revokedAt": None})
+    try:
+        return await ApprovalDBService(db).create_cloudflare_migration_mandate(
+            tenant_id=tenant_id, owner_id=int(current_user.id), idempotency_key=data.idempotency_key, payload=payload,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409 if "IDEMPOTENCY" in str(exc) else 422, detail=str(exc)) from exc
+
+
+@router.get("/cloudflare-migration-mandates/current")
+async def get_current_cloudflare_migration_mandate(
+    response: Response,
+    project_id: str = Query(..., alias="projectId", min_length=1, max_length=36),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_MIGRATION_MANDATE_ADMIN_REQUIRED")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    tenant = await db.execute(text("SELECT owner_id, status FROM tenants WHERE id=:tenant"), {"tenant": tenant_id})
+    owner = tenant.one_or_none()
+    if owner is None or owner[0] != int(current_user.id) or str(getattr(owner[1], "value", owner[1])).lower() != "active":
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_MIGRATION_MANDATE_TENANT_OWNER_REQUIRED")
+    result = await ApprovalDBService(db).get_cloudflare_migration_mandate(
+        tenant_id=tenant_id, project_id=project_id, owner_id=int(current_user.id),
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return {"mandate": result}
+
+
+@router.post("/cloudflare-migration-mandates/{mandate_ref}/revoke", response_model=ApprovalRequestResponse)
+async def revoke_cloudflare_migration_mandate(
+    mandate_ref: str,
+    data: CloudflareStagingGrantRevoke,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_MIGRATION_MANDATE_ADMIN_REQUIRED")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    try:
+        return await ApprovalDBService(db).revoke_cloudflare_migration_mandate(
+            mandate_ref=mandate_ref, tenant_id=tenant_id, actor_id=int(current_user.id), reason=data.reason,
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc).endswith("NOT_FOUND") else 422, detail=str(exc)) from exc
+
+
+@router.post("/cloudflare-migration-mandates/{mandate_ref}/suspend", response_model=ApprovalRequestResponse)
+async def suspend_cloudflare_migration_mandate(
+    mandate_ref: str,
+    data: CloudflareStagingGrantRevoke,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_MIGRATION_MANDATE_ADMIN_REQUIRED")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    try:
+        return await ApprovalDBService(db).change_cloudflare_migration_mandate_state(
+            mandate_ref=mandate_ref, tenant_id=tenant_id, actor_id=int(current_user.id), reason=data.reason, state="SUSPENDED",
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc).endswith("NOT_FOUND") else 422, detail=str(exc)) from exc
+
+
+@router.get("/cloudflare-migration-mandates/{mandate_ref}/history")
+async def get_cloudflare_migration_mandate_history(
+    mandate_ref: str,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id),
+    db: AsyncSession = Depends(get_db_session),
+):
+    if not hasattr(current_user, "role") or current_user.role not in ("admin", "domain_admin"):
+        raise HTTPException(status_code=403, detail="CLOUDFLARE_MIGRATION_MANDATE_ADMIN_REQUIRED")
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    try:
+        history = await ApprovalDBService(db).get_cloudflare_migration_mandate_history(
+            mandate_ref=mandate_ref, tenant_id=tenant_id, owner_id=int(current_user.id),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    response.headers["Cache-Control"] = "no-store"
+    return history
+
+
+@router.get("/internal/cloudflare-migration-mandates/{mandate_ref}")
+async def resolve_cloudflare_migration_mandate(
+    mandate_ref: str,
+    response: Response,
+    tenant_id: str = Query(..., alias="tenantId", min_length=1, max_length=36),
+    x_internal_token: Optional[str] = Header(None, alias="x-internal-token"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    _assert_cloudflare_staging_gateway_token(x_internal_token)
+    mandate = await ApprovalDBService(db).resolve_cloudflare_migration_mandate(mandate_ref, tenant_id=tenant_id)
+    if mandate is None:
+        raise HTTPException(status_code=404, detail="CLOUDFLARE_MIGRATION_MANDATE_NOT_FOUND_OR_INACTIVE")
+    response.headers["Cache-Control"] = "no-store"
+    return {"mandate": mandate}
 
 
 @router.post("/cloudflare-production-grants/{grant_ref}/revoke", response_model=ApprovalRequestResponse)

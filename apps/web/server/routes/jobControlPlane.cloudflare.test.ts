@@ -157,7 +157,7 @@ describe("Cloudflare canonical job boundary", () => {
       dispatch_id: "dispatch-m3", dedupe_key: `job:${jobId}:attempt:1` };
     const parityInput = { contractVersion: "cloudflare-m3-parity-acceptance-v1", tenantId: "tenant-a", projectId: "project-a",
       candidateJobId: "22222222-2222-4222-8222-222222222222", operation: "queue_recovery_acceptance",
-      submissionId: jobId, planDigest: "a".repeat(64) };
+      submissionId: jobId, mandateGrantRef: "33333333-3333-4333-8333-333333333333", planDigest: "a".repeat(64) };
     const parityContext = { ...context, jobId, contractVersion: "cloudflare-m3-parity-acceptance-v1",
       jobType: "cloudflare.production.m3.parity.acceptance.queue_recovery_acceptance", requestedByUserId: 7, input: parityInput };
     Object.assign(row, { ...parityContext, dispatchId: "dispatch-m3", dispatchDedupeKey: parityEnvelope.dedupe_key,

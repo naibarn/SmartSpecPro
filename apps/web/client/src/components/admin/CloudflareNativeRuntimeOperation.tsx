@@ -42,6 +42,8 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     { refetchInterval: query => ["queued", "running", "retry_wait"].includes(query.state.data?.job?.status ?? "") ? 5000 : 30_000, retry: false });
   const applicationState = trpc.infrastructure.getCloudflareHttpRuntimeOperation.useQuery({ tenantId, projectId, candidateJobId, operation: "application" },
     { refetchInterval: query => ["queued", "running", "retry_wait"].includes(query.state.data?.job?.status ?? "") ? 5000 : 30_000, retry: false });
+  const migrationMandate = trpc.infrastructure.getCloudflareMigrationMandate.useQuery(
+    { tenantId, projectId, environment: "production" }, { retry: false, refetchInterval: 10_000 });
   const mutation = trpc.infrastructure.prepareCloudflareHttpRuntime.useMutation();
   const preflight = state.data?.preflight, job = state.data?.job, pending = state.data?.pending;
   const continuation = job?.status === "failed" && preflight?.ready && preflight.plan.previousRuntime?.jobId === job.jobId;
@@ -306,7 +308,9 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
       />
     </Dialog>
     {appJob?.status === "succeeded" && appJob.receipt?.authenticatedApplicationAcceptance === true
-      ? <CloudflareM3ParityOperations tenantId={tenantId} projectId={projectId} candidateJobId={candidateJobId} />
+      ? <CloudflareM3ParityOperations tenantId={tenantId} projectId={projectId} candidateJobId={candidateJobId}
+          mandateActive={migrationMandate.data?.mandate?.status === "ACTIVE"}
+          directOwnerActionAllowed={migrationMandate.isSuccess && migrationMandate.data?.mandate == null} />
       : null}
     {job?.imageRepair ? <>
       <Text role="alert">{job.imageRepair.code} · Node {job.imageRepair.observedVersion} · {text("Required", "ต้องใช้")} {job.imageRepair.requiredVersion}</Text>

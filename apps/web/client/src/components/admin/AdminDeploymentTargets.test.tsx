@@ -26,6 +26,10 @@ const mocks = vi.hoisted(() => ({
       nativeActivation: "NOT_VERIFIED", finalProductionCutover: "NOT_VERIFIED" } } as any,
   queueProductionIngress: vi.fn(),
   queueProductionWorkerCanary: vi.fn(),
+  migrationMandatePlan: { ready: false, reason: "MIGRATION_MANDATE_TEST_BLOCKED", plan: null } as any,
+  migrationMandate: { mandate: null } as any,
+  enrollMigrationMandate: vi.fn(),
+  changeMigrationMandate: vi.fn(),
   productionWorkerCanaryPreflight: null as any,
   productionWorkerCanaryJob: null as any,
   productionWorkerCanaryJobError: false,
@@ -157,6 +161,12 @@ vi.mock("@/lib/trpc", () => ({
       }) },
       getCloudflareProductionIngressPreflight: {useQuery:()=>({data:mocks.ingressPreflight,isLoading:false,refetch:vi.fn()})},
       getCloudflareMigrationMission: {useQuery:()=>({data:mocks.migrationMission,refetch:vi.fn()})},
+      getCloudflareMigrationMandatePlan: {useQuery:()=>({data:mocks.migrationMandatePlan,isLoading:false,isFetching:false,isError:false,refetch:vi.fn()})},
+      getCloudflareMigrationMandate: {useQuery:()=>({data:mocks.migrationMandate,isLoading:false,isFetching:false,isError:false,refetch:vi.fn()})},
+      getCloudflareMigrationMandateHistory: {useQuery:()=>({data:{authorizations:[],execution:[]},isLoading:false,isError:false})},
+      enrollCloudflareMigrationMandate: {useMutation:(options:{onSuccess?:()=>unknown;onError?:()=>unknown})=>({
+        mutate:(input:unknown)=>{mocks.enrollMigrationMandate(input);},isPending:false,error:null})},
+      changeCloudflareMigrationMandate: {useMutation:()=>({mutate:mocks.changeMigrationMandate,isPending:false,error:null})},
       getLatestCloudflareProductionIngressJob: {useQuery:()=>({data:mocks.ingressJob,refetch:vi.fn()})},
       getCloudflareProductionWorkerCanaryPreflight: {useQuery:()=>({data:mocks.productionWorkerCanaryPreflight,isLoading:false,isFetching:false,isError:false,refetch:vi.fn()})},
       getLatestCloudflareProductionWorkerCanaryJob: {useQuery:()=>({data:mocks.productionWorkerCanaryJob,isLoading:false,isError:mocks.productionWorkerCanaryJobError,
@@ -266,6 +276,8 @@ describe("AdminDeploymentTargets", () => {
       milestones: { m1: "ACCEPTED", m2: "ACCEPTED", application: "ACCEPTED", workerDeployment: "VERIFIED",
         boundedRuntime: "ACCEPTED", creditBilling: "ACCEPTED", queueRecovery: "INCOMPLETE", m3: "INCOMPLETE",
         nativeActivation: "NOT_VERIFIED", finalProductionCutover: "NOT_VERIFIED" } };
+    mocks.migrationMandatePlan = { ready: false, reason: "MIGRATION_MANDATE_TEST_BLOCKED", plan: null };
+    mocks.migrationMandate = { mandate: null };
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
     mocks.productionTunnels = [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }];
@@ -1212,5 +1224,43 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText("Cloudflare-only controls unavailable")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Disable target" })).not.toBeInTheDocument();
     expect(mocks.disable).not.toHaveBeenCalled();
+  });
+
+  it("shows exactly one mandate authorization after server plan readiness and confirms the reviewed scope", async () => {
+    const user = userEvent.setup();
+    const plan = { schemaVersion: "cloudflare.first-migration-mandate.v1", missionId: `cf-migration:${"a".repeat(32)}`,
+      tenantId, ownerUserId: 17, projectId, environment: "production", targetId: "smartspec-cloudflare-runtime",
+      accountRef: "f".repeat(32), zoneId: "e".repeat(32), routePattern: "smartaihub.app/*",
+      resourceIds: { queueId: "a".repeat(32), deadLetterQueueId: "b".repeat(32), vpcServiceId: "87654321-4321-4321-8321-cba987654321",
+        hyperdriveId: "c".repeat(32), nodeApplicationId: "d".repeat(32), pythonApplicationId: "e".repeat(32) },
+      actions: ["deploy_worker", "native_runtime_activation"],
+      resourceBudget: { maxProviderWrites: 20, maxWorkerDeployments: 2, maxContainerStarts: 4,
+        maxContainerReservedSeconds: 1800, maxQueueMessages: 100, maxSyntheticCredits: 60, syntheticFinancialMinorUnits: 0 },
+      rollbackPolicy: { preserveM2Ingress: true, preserveLinuxFallback: true, containersOnDemand: true,
+        rollbackOnFailedAcceptance: true, requireOwnerForOutOfScopeAction: true }, revokedAt: null };
+    mocks.migrationMandatePlan = { ready: true, plan, planDigest: "f".repeat(64), resourceBudget: plan.resourceBudget };
+    mocks.migrationMandate = { mandate: null };
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+    const authorize = await screen.findByRole("button", { name: "Authorize Complete First Cloudflare Migration" });
+    expect(screen.getAllByRole("button", { name: "Authorize Complete First Cloudflare Migration" })).toHaveLength(1);
+    await user.click(authorize);
+    expect(await screen.findByText(/does not immediately change production traffic/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Confirm one-time mandate" }));
+    await waitFor(() => expect(mocks.enrollMigrationMandate).toHaveBeenCalledTimes(1));
+    expect(mocks.enrollMigrationMandate).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId, projectId, environment: "production", expectedPlanDigest: "f".repeat(64), plan,
+    }));
+  });
+
+  it("does not offer mandate enrollment when the reviewed plan is blocked", async () => {
+    const user = userEvent.setup();
+    mocks.migrationMandatePlan = { ready: false, reason: "MIGRATION_MANDATE_RESOURCE_INVENTORY_INCOMPLETE", plan: null };
+    mocks.migrationMandate = { mandate: null };
+    render(<AdminDeploymentTargets />);
+    await chooseProductionScope(user);
+    expect(await screen.findByText("MIGRATION_MANDATE_RESOURCE_INVENTORY_INCOMPLETE")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Authorize Complete First Cloudflare Migration" })).not.toBeInTheDocument();
+    expect(mocks.enrollMigrationMandate).not.toHaveBeenCalled();
   });
 });
