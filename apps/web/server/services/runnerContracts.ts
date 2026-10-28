@@ -596,6 +596,7 @@ const RUNNER_ENVELOPE_SECRET_KEYS = new Set([
   "token",
 ]);
 const MAX_RUNNER_PAYLOAD_DEPTH = 8;
+const MAX_RUNNER_ENVELOPE_PAYLOAD_BYTES = 224 * 1024;
 
 function assertSafeRunnerPayload(
   value: unknown,
@@ -609,7 +610,8 @@ function assertSafeRunnerPayload(
     return;
   }
   if (Array.isArray(value)) {
-    if (value.length > 64) invalid(`${path} has too many items`);
+    const maxItems = path.endsWith(".dirtyPaths") ? 4_096 : 64;
+    if (value.length > maxItems) invalid(`${path} has too many items`);
     value.forEach((item, index) =>
       assertSafeRunnerPayload(item, `${path}[${index}]`, depth + 1)
     );
@@ -663,6 +665,9 @@ export function validateRunnerProtocolEnvelope(
   if (!payload || typeof payload !== "object" || Array.isArray(payload))
     invalid("envelope.payload is invalid");
   assertSafeRunnerPayload(payload);
+  const encodedPayload = JSON.stringify(payload);
+  if (typeof encodedPayload !== "string" || Buffer.byteLength(encodedPayload, "utf8") > MAX_RUNNER_ENVELOPE_PAYLOAD_BYTES)
+    invalid("envelope.payload is too large");
   const protocolVersion = requiredText(
     raw.protocolVersion,
     "envelope.protocolVersion",

@@ -556,6 +556,31 @@ describe("Feature 197 Runner contracts", () => {
     );
   });
 
+  it("accepts bounded dirtyPaths snapshots above the generic list limit", () => {
+    const envelope = (dirtyPaths: string[]) => ({
+      protocolVersion: "sah-runner-v1",
+      profile: "local_device",
+      nodeKind: "local_device",
+      runnerId: "runner-1",
+      nodeId: "device-1",
+      jobId: null,
+      attemptId: null,
+      leaseId: null,
+      fencingVersion: null,
+      correlationId: "corr-dirty-paths",
+      sequence: 1,
+      idempotencyKey: "dirty-paths-1",
+      payload: { type: "runner.capabilities.update", snapshot: { workspaces: [{ dirtyPaths }] } },
+    });
+    const paths = Array.from({ length: 800 }, (_, index) => `apps/web/${index}-${"x".repeat(160)}`);
+
+    expect(() => validateRunnerProtocolEnvelope(envelope(paths))).not.toThrow();
+    expect(() => validateRunnerProtocolEnvelope(envelope([
+      ...paths,
+      ...Array.from({ length: 800 }, (_, index) => `apps/web/extra-${index}-${"y".repeat(160)}`),
+    ]))).toThrowError(expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" }));
+  });
+
   it("accepts bounded semantic observation receipts at the canonical wire depth", () => {
     expect(() =>
       validateRunnerProtocolEnvelope({

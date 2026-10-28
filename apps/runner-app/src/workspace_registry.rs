@@ -692,7 +692,7 @@ mod tests {
             ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
         };
         workspace_registry::register(&config, &project).unwrap();
-        for index in 0..300 {
+        for index in 0..2_000 {
             let name = format!("{index:04}-{}.txt", "x".repeat(100));
             fs::write(project.join(name), "untracked").unwrap();
         }
@@ -889,7 +889,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
-const MAX_SNAPSHOT_DIRTY_PATH_BYTES: usize = 24 * 1024;
+const MAX_SNAPSHOT_DIRTY_PATH_BYTES: usize = 192 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegisteredWorkspace {
@@ -1034,7 +1034,12 @@ pub fn snapshot_facts(config: &RunnerConfig) -> Result<Vec<WorkspaceSnapshotFact
     {
         let inspection = inspect_git_workspace(&record.local_path);
         let dirty_paths = git_dirty_paths(&record.local_path).and_then(|paths| {
-            let bytes = paths.iter().map(|path| path.len() + 1).sum::<usize>();
+            let bytes = paths
+                .iter()
+                .map(|path| {
+                    serde_json::to_vec(path).map_or(usize::MAX, |encoded| encoded.len() + 1)
+                })
+                .sum::<usize>();
             if total_dirty_path_bytes.saturating_add(bytes) > MAX_SNAPSHOT_DIRTY_PATH_BYTES {
                 None
             } else {
@@ -1100,9 +1105,11 @@ fn git_dirty_paths(workspace: &Path) -> Option<Vec<String>> {
         }
         paths.insert(path);
     }
-    if paths.len() > 4_096
-        || paths.iter().map(|path| path.len() + 1).sum::<usize>() > MAX_SNAPSHOT_DIRTY_PATH_BYTES
-    {
+    let encoded_path_bytes = paths
+        .iter()
+        .map(|path| serde_json::to_vec(path).map_or(usize::MAX, |encoded| encoded.len() + 1))
+        .sum::<usize>();
+    if paths.len() > 4_096 || encoded_path_bytes > MAX_SNAPSHOT_DIRTY_PATH_BYTES {
         return None;
     }
     Some(paths.into_iter().collect())

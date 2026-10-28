@@ -3,6 +3,7 @@ use serde_json::Value;
 
 pub const PROTOCOL_VERSION: &str = "sah-runner-v1";
 pub const RUNNER_JOB_COMMAND_CONTRACT_VERSION: &str = "runner-job-v1";
+pub const MAX_RUNNER_ENVELOPE_PAYLOAD_BYTES: usize = 224 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -449,7 +450,7 @@ impl Envelope {
         }
         let encoded =
             serde_json::to_vec(&self.payload).map_err(|_| "payload is not serializable")?;
-        if encoded.len() > 64 * 1024 {
+        if encoded.len() > MAX_RUNNER_ENVELOPE_PAYLOAD_BYTES {
             return Err("payload is too large".into());
         }
         if contains_secret_key(&self.payload) {
@@ -545,6 +546,22 @@ mod tests {
         envelope.payload = serde_json::json!({"event": "ready"});
         envelope.profile = Profile::LocalDevice;
         assert!(envelope.validate().is_err());
+    }
+
+    #[test]
+    fn accepts_complete_dirty_path_snapshot_within_bounded_envelope_budget() {
+        let dirty_paths = (0..400)
+            .map(|index| format!("apps/module/{index:04}-{}.ts", "x".repeat(300)))
+            .collect::<Vec<_>>();
+        let payload = serde_json::json!({
+            "type": "runner.capabilities.update",
+            "snapshot": { "workspaces": [{ "dirtyPaths": dirty_paths }] }
+        });
+        let encoded_len = serde_json::to_vec(&payload).unwrap().len();
+        assert!(encoded_len > 64 * 1024);
+        assert!(encoded_len < MAX_RUNNER_ENVELOPE_PAYLOAD_BYTES);
+        let envelope = Envelope::new(NodeKind::LocalDevice, "runner", None, None, None, payload);
+        assert!(envelope.validate().is_ok());
     }
 
     #[test]
