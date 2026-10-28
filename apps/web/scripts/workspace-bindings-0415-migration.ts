@@ -321,7 +321,7 @@ function writeExternalReceipt(receipt: MigrationReceipt, receiptPath: string) {
 }
 
 async function writeDbReceipt(client: PgClient, receipt: MigrationReceipt) {
-  await client.query(`INSERT INTO public.api_audit_events ("traceId", "eventType", provider, endpoint, statusCode, metadata)
+  await client.query(`INSERT INTO public.api_audit_events ("traceId", "eventType", provider, endpoint, "statusCode", metadata)
     VALUES ($1, 'migration_execution_receipt', 'drizzle', 'core-0415-workspace-bindings', $2, $3::json)
     ON CONFLICT DO NOTHING`, [randomUUID().replaceAll("-", "").slice(0, 32), receipt.result === "FAILED" ? 500 : 200, JSON.stringify(receipt)]);
 }
