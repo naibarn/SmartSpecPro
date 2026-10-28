@@ -116,6 +116,15 @@ export function assertBindingSubset(env: CloudflareEnvironment, names: readonly 
   }
 }
 
+/** Verifies concrete bindings without enabling general application activation.
+ * Only callers with a separate, narrowly scoped transport gate may use this. */
+export function assertBindingPresence(env: CloudflareEnvironment, names: readonly RequiredBindingName[]): string[] {
+  const readiness = inspectBindingReadiness(env);
+  const missing = names.filter(name => !readiness.required[name]);
+  if (missing.length > 0) throw new Error(`CLOUDFLARE_BINDINGS_NOT_READY:${missing.join(",")}`);
+  return missing;
+}
+
 export function assertBindingReadiness(env: CloudflareEnvironment): BindingReadiness {
   const readiness = inspectBindingReadiness(env);
   if (!readiness.ready) {

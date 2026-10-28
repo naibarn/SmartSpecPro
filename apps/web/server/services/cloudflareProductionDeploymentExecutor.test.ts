@@ -52,7 +52,9 @@ function runtime(overrides: Partial<CloudflareProductionDeploymentRuntime> = {})
     withCredential: async ({ operation }) => ({ status: "CONFIGURED", value: await operation("provider-token") }),
     prepareVersion: async () => prepared,
     canary: async () => ({ deploymentId: "55555555-5555-4555-8555-555555555555",
-      versions: [{ version_id: prepared.versionId, percentage: 1 }] }),
+      versions: [{ version_id: prepared.versionId, percentage: 1 }],
+      queueConsumer: { queueId: "a".repeat(32), consumerId: "b".repeat(32), queueName: "smartspec-canonical-job-queue-production",
+        scriptName: "smartspec-cloudflare-runtime", deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq" } }),
     promote: async () => ({ deploymentId: "66666666-6666-4666-8666-666666666666", versions: [] }),
     rollback: async () => ({ deploymentId: "77777777-7777-4777-8777-777777777777", versions: [] }),
     now: () => new Date(),
@@ -77,7 +79,9 @@ function executionInput(input: unknown = job) {
 
 describe("Cloudflare production worker_jobs executor", () => {
   it("prepares an immutable version then opens only the approved canary", async () => {
-    const canary = vi.fn(async () => ({ deploymentId: "55555555-5555-4555-8555-555555555555", versions: [] }));
+    const canary = vi.fn(async () => ({ deploymentId: "55555555-5555-4555-8555-555555555555", versions: [],
+      queueConsumer: { queueId: "a".repeat(32), consumerId: "b".repeat(32), queueName: "smartspec-canonical-job-queue-production",
+        scriptName: "smartspec-cloudflare-runtime", deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq" } }));
     const prepareVersion = vi.fn(async () => prepared);
     const withCredential = vi.fn(async ({ operation }: Parameters<CloudflareProductionDeploymentRuntime["withCredential"]>[0]) =>
       ({ status: "CONFIGURED" as const, value: await operation("provider-token") }));

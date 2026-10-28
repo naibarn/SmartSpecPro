@@ -37,17 +37,33 @@ const candidate = {
 const canaryDeploymentId = "66666666-6666-4666-8666-666666666666";
 
 function response(result: unknown) {
+  if (result && typeof result === "object" && !Array.isArray(result)) {
+    const value = result as { annotations?: Record<string, string>; resources?: unknown };
+    if (value.annotations?.["workers/message"]?.includes(` ${grant.sourceSha} ${grant.buildDigest} origin `) && !value.resources) {
+      value.resources = { bindings: [
+        { name: "JOB_QUEUE", type: "queue", queue_name: "smartspec-canonical-job-queue-production" },
+        { name: "CF_VERSION_METADATA", type: "version_metadata" },
+      ] };
+    }
+  }
   return new Response(JSON.stringify({ success: true, result }), { status: 200, headers: { "content-type": "application/json" } });
 }
+
+const productionQueue = [{ id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", queue_name: "smartspec-canonical-job-queue-production" }];
+const productionQueueConsumer = [{ consumer_id: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  queue_name: "smartspec-canonical-job-queue-production", script_name: "smartspec-cloudflare-runtime",
+  dead_letter_queue: "smartspec-canonical-job-queue-production-dlq", type: "worker" }];
 
 describe("Cloudflare production canary transport", () => {
   it("rechecks the exact route and known 100% baseline before creating a 1% deployment", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
-      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId,
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId, created_on: "2026-10-20T00:00:00Z",
         versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
       .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
       .mockResolvedValueOnce(response({ id: candidate.versionId, annotations: { "workers/message": `SmartAIHub production ${candidate.sourceSha} ${candidate.buildDigest} origin ${candidate.configurationDigest}` } }))
+      .mockResolvedValueOnce(response(productionQueue))
+      .mockResolvedValueOnce(response(productionQueueConsumer))
       .mockResolvedValueOnce(response({ id: canaryDeploymentId, versions: [
         { version_id: baseline.versionId, percentage: 99 }, { version_id: candidate.versionId, percentage: 1 },
       ], annotations: { "workers/message": `SmartAIHub production canary grant ${grant.grantRef}` } }))
@@ -57,19 +73,22 @@ describe("Cloudflare production canary transport", () => {
     const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
     const assertMutationAuthorized = vi.fn(async () => undefined);
     await expect(transport.canary({ token: "test-token", target, grant, candidate, assertMutationAuthorized }))
-      .resolves.toMatchObject({ deploymentId: canaryDeploymentId });
+      .resolves.toMatchObject({ deploymentId: canaryDeploymentId, queueConsumer: { consumerId: productionQueueConsumer[0]!.consumer_id } });
     expect(fetchImpl.mock.calls.filter(([request, init]) => new URL(String(request)).pathname.endsWith("/deployments") && init?.method === "POST")).toHaveLength(1);
     expect(assertMutationAuthorized).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(8);
   });
 
   it("attaches only the grant-bound first route after verifying the 100% baseline", async () => {
     const firstRouteGrant = { ...grant, expectedRouteId: null, expectedRouteScript: null } as CloudflareProductionDeploymentGrant;
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response([]))
-      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId,
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId, created_on: "2026-10-20T00:00:00Z",
         versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
       .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
       .mockResolvedValueOnce(response({ id: candidate.versionId, annotations: { "workers/message": `SmartAIHub production ${candidate.sourceSha} ${candidate.buildDigest} origin ${candidate.configurationDigest}` } }))
+      .mockResolvedValueOnce(response(productionQueue))
+      .mockResolvedValueOnce(response(productionQueueConsumer))
       .mockResolvedValueOnce(response({ id: "route-new", pattern: grant.routePattern, script: grant.targetId }))
       .mockResolvedValueOnce(response([{ id: "route-new", pattern: grant.routePattern, script: grant.targetId }]))
       .mockResolvedValueOnce(response({ id: canaryDeploymentId, versions: [
@@ -96,7 +115,7 @@ describe("Cloudflare production canary transport", () => {
     const firstRouteGrant = { ...grant, expectedRouteId: null, expectedRouteScript: null } as CloudflareProductionDeploymentGrant;
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response([]))
-      .mockResolvedValueOnce(response({ deployments: [{ id: "77777777-7777-4777-8777-777777777777",
+      .mockResolvedValueOnce(response({ deployments: [{ id: "77777777-7777-4777-8777-777777777777", created_on: "2026-10-20T00:00:00Z",
         versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }));
     const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
     await expect(transport.canary({ token: "test-token", target, grant: firstRouteGrant, candidate,
@@ -115,10 +134,41 @@ describe("Cloudflare production canary transport", () => {
     expect(fetchImpl.mock.calls[0]?.[1]?.method).toBe("GET");
   });
 
+  it("does not deploy a candidate with missing Queue/version metadata bindings", async () => {
+    const brokenCandidate = { ...candidate, versionId: candidate.versionId };
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId, created_on: "2026-10-20T00:00:00Z",
+        versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
+      .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
+      .mockResolvedValueOnce(response({ id: brokenCandidate.versionId,
+        annotations: { "workers/message": `SmartAIHub production ${brokenCandidate.sourceSha} ${brokenCandidate.buildDigest} origin ${brokenCandidate.configurationDigest}` },
+        resources: { bindings: [] } }));
+    const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
+    await expect(transport.canary({ token: "test-token", target, grant, candidate: brokenCandidate,
+      assertMutationAuthorized: async () => undefined })).rejects.toThrow("CLOUDFLARE_PRODUCTION_VERSION_REQUIRED_BINDINGS_MISMATCH");
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
+  });
+
+  it("requires the already-authorized production Queue consumer and DLQ before canary traffic changes", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId, created_on: "2026-10-20T00:00:00Z",
+        versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
+      .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
+      .mockResolvedValueOnce(response({ id: candidate.versionId, annotations: { "workers/message": `SmartAIHub production ${candidate.sourceSha} ${candidate.buildDigest} origin ${candidate.configurationDigest}` } }))
+      .mockResolvedValueOnce(response(productionQueue))
+      .mockResolvedValueOnce(response([{ ...productionQueueConsumer[0], script_name: "other-worker" }]));
+    const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
+    await expect(transport.canary({ token: "test-token", target, grant, candidate,
+      assertMutationAuthorized: async () => undefined })).rejects.toThrow("CLOUDFLARE_PRODUCTION_QUEUE_CONSUMER_MISMATCH");
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
+  });
+
   it("refuses to proceed when the Worker baseline does not match the rollback grant", async () => {
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
-      .mockResolvedValueOnce(response({ deployments: [{ id: "77777777-7777-4777-8777-777777777777",
+      .mockResolvedValueOnce(response({ deployments: [{ id: "77777777-7777-4777-8777-777777777777", created_on: "2026-10-20T00:00:00Z",
         versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }));
     const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
     await expect(transport.canary({ token: "test-token", target, grant, candidate,
@@ -134,7 +184,7 @@ describe("Cloudflare production canary transport", () => {
     const rollbackDeploymentId = "88888888-8888-4888-8888-888888888888";
     const fetchImpl = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
-      .mockResolvedValueOnce(response({ deployments: [{ id: "99999999-9999-4999-8999-999999999999",
+      .mockResolvedValueOnce(response({ deployments: [{ id: "99999999-9999-4999-8999-999999999999", created_on: "2026-10-20T00:00:00Z",
         versions: [{ version_id: candidate.versionId, percentage: 100 }] }] }))
       .mockResolvedValueOnce(response({ id: grant.rollbackDeploymentId,
         versions: [{ version_id: baseline.versionId, percentage: 100 }] }))

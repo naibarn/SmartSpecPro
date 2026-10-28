@@ -543,6 +543,26 @@ export default function AdminDeploymentTargets() {
   const latestProductionIngressJob = trpc.infrastructure.getLatestCloudflareProductionIngressJob.useQuery(
     {tenantId,projectId,environment:"production"}, {enabled:validScope&&environment==="production",refetchInterval:query=>
       query.state.data&&! ["succeeded","failed","expired","cancelled"].includes(query.state.data.status)?2000:10000});
+  const productionWorkerCanaryPreflight = trpc.infrastructure.getCloudflareProductionWorkerCanaryPreflight.useQuery(
+    {tenantId,projectId,environment:"production"},{enabled:validScope&&environment==="production",refetchOnWindowFocus:false});
+  const latestProductionWorkerCanaryJob = trpc.infrastructure.getLatestCloudflareProductionWorkerCanaryJob.useQuery(
+    {tenantId,projectId,environment:"production"},{enabled:validScope&&environment==="production",refetchInterval:query=>
+      !query.state.data||!["succeeded","failed","expired","cancelled"].includes(query.state.data.status)?2000:10000});
+  const productionWorkerCanarySubmissions=useRef(new Map<string,{submissionId:string;planDigest:string}>());
+  const productionWorkerCanaryMutation=trpc.infrastructure.queueCloudflareProductionWorkerCanary.useMutation({
+    onSuccess:async()=>{await latestProductionWorkerCanaryJob.refetch();await productionProviderInventory.refetch();},
+    onError:()=>{void latestProductionWorkerCanaryJob.refetch();},
+  });
+  const workerCanarySubmission=(key:string,planDigest:string)=>{
+    let value=productionWorkerCanarySubmissions.current.get(key);
+    if(!value)try{const saved=JSON.parse(sessionStorage.getItem(key)??"null");
+      if(saved&&/^[a-f0-9-]{36}$/i.test(saved.submissionId)&&/^[a-f0-9]{64}$/.test(saved.planDigest))value=saved;
+    }catch{/* Continue with in-memory idempotency if storage is disabled. */}
+    if(!value)value={submissionId:crypto.randomUUID(),planDigest};
+    productionWorkerCanarySubmissions.current.set(key,value);
+    try{sessionStorage.setItem(key,JSON.stringify(value));}catch{/* Canonical job admission is authoritative. */}
+    return value;
+  };
   const previousIngressJob = latestProductionIngressJob.data;
   const acceptedIngress = previousIngressJob?.status === "succeeded" &&
     previousIngressJob.output?.productionTrafficShifted === true;
@@ -980,6 +1000,27 @@ export default function AdminDeploymentTargets() {
               {latestProductionIngressJob.data.errorCode ? <p role="alert"><code>{latestProductionIngressJob.data.errorCode}</code></p> : null}
               {latestProductionIngressJob.data.output?.productionTrafficShifted===true ? <p>{text("Worker ingress receipt", "หลักฐานทางเข้าผ่าน Worker")}: <code>{String(latestProductionIngressJob.data.output.routeId)}</code> · {text("Application runtime: Linux", "แอปยังประมวลผลบน Linux")}</p> : null}
             </VStack> : null}
+          </VStack>
+          <VStack as="section" gap={2} role="group" aria-label={text("Production Worker version deployment", "เผยแพร่ Worker version สำหรับ Production")}>
+            <h3>{text("Deploy the reviewed Worker version", "นำ Worker version ที่ตรวจสอบแล้วขึ้นระบบ")}</h3>
+            <p>{text("This uses the encrypted Production target credential through the canonical job worker. It preserves the existing M2 route and Linux fallback. The approved version includes the production JOB_QUEUE and CF_VERSION_METADATA bindings; the executor verifies the queue consumer and DLQ before shifting exactly 1% of Worker requests. It does not change DNS or detach the route.",
+              "ระบบใช้ credential Production ที่เข้ารหัสผ่าน canonical job worker โดยคง M2 route และ Linux fallback เดิม version ที่อนุมัติจะผูก JOB_QUEUE และ CF_VERSION_METADATA ของ Production และตรวจ queue consumer/DLQ ก่อนส่งคำขอ Worker 1% ไป version ใหม่ โดยไม่เปลี่ยน DNS หรือถอด route")}</p>
+            {productionWorkerCanaryPreflight.isLoading?<p role="status">{text("Checking the active Worker, exact route, queue consumer, artifact and rollback baseline…","กำลังตรวจ Worker, route, Queue consumer, artifact และ baseline สำหรับย้อนกลับ…")}</p>:null}
+            {productionWorkerCanaryPreflight.isError?<p role="alert">{text("Read-only Worker deployment preflight failed. Retry the check; no Cloudflare changes were made.","ตรวจ preflight แบบอ่านอย่างเดียวไม่สำเร็จ ให้ตรวจซ้ำ โดยยังไม่มีการเปลี่ยน Cloudflare")}</p>:null}
+            {productionWorkerCanaryPreflight.data?.ready?<VStack gap={1} role="status">
+              <p>{text("Reviewed artifact", "Artifact ที่ตรวจสอบแล้ว")}: <code>{productionWorkerCanaryPreflight.data.artifact.artifactRef}</code> · SHA <code>{productionWorkerCanaryPreflight.data.artifact.sourceSha}</code></p>
+              <p>{text("Current rollback baseline", "Baseline ปัจจุบันสำหรับย้อนกลับ")}: <code>{productionWorkerCanaryPreflight.data.rollback.deploymentId}</code> / version <code>{productionWorkerCanaryPreflight.data.rollback.versionId}</code></p>
+              <p>{text("Current route remains", "คง route ปัจจุบัน")}: <code>{productionWorkerCanaryPreflight.data.routePattern}</code> → <code>{productionWorkerCanaryPreflight.data.expectedRouteScript}</code> · {text("candidate receives 1% traffic", "version ใหม่รับ traffic 1%")}</p>
+              {latestProductionWorkerCanaryJob.data?<p>{text("Canonical deployment job", "งาน deploy ในระบบหลัก")}: <code>{latestProductionWorkerCanaryJob.data.jobId}</code> · <strong>{latestProductionWorkerCanaryJob.data.status}</strong> · {text("attempt", "ครั้งที่")} {latestProductionWorkerCanaryJob.data.attempt}/{latestProductionWorkerCanaryJob.data.maxAttempts}{latestProductionWorkerCanaryJob.data.errorCode?<> · <code>{latestProductionWorkerCanaryJob.data.errorCode}</code></>:null}</p>:null}
+              {latestProductionWorkerCanaryJob.data?.progress?.stage?<p>{text("Current stage", "ขั้นตอนปัจจุบัน")}: <code>{String(latestProductionWorkerCanaryJob.data.progress.stage)}</code> · {text("heartbeat", "heartbeat")}: {latestProductionWorkerCanaryJob.data.heartbeatAt?new Date(latestProductionWorkerCanaryJob.data.heartbeatAt).toLocaleString():"—"} · {text("lease until", "lease ถึง")}: {latestProductionWorkerCanaryJob.data.leaseExpiresAt?new Date(latestProductionWorkerCanaryJob.data.leaseExpiresAt).toLocaleString():"—"}</p>:null}
+              {latestProductionWorkerCanaryJob.data?.status==="succeeded"?<p>{text("Verified Worker deployment", "ยืนยัน Worker deployment แล้ว")}: <code>{String(latestProductionWorkerCanaryJob.data.output?.deploymentId??"—")}</code> · {text("version", "version")}: <code>{String(latestProductionWorkerCanaryJob.data.output?.candidateVersionId??"—")}</code> · {text("Queue consumer", "Queue consumer")}: <code>{String(latestProductionWorkerCanaryJob.data.output?.queueConsumer?.consumerId??"—")}</code></p>:null}
+              {latestProductionWorkerCanaryJob.data?.status==="succeeded"?<p role="status">{text("The 1% canary is active. Promotion or rollback is a separate authorized operation.","canary 1% ทำงานแล้ว การเพิ่ม traffic หรือ rollback เป็น operation ที่ต้องอนุมัติแยก")}</p>:latestProductionWorkerCanaryJob.data&&!["failed","expired","cancelled"].includes(latestProductionWorkerCanaryJob.data.status)?<p role="status">{text("A deployment job is active. Do not submit another operation.","มีงาน deploy กำลังทำงาน ห้ามส่งงานซ้ำ")}</p>:<Button type="button" disabled={productionWorkerCanaryMutation.isPending||latestProductionWorkerCanaryJob.isLoading||latestProductionWorkerCanaryJob.isError} onClick={()=>{
+                const key=`smartaihub-production-worker-canary:${productionScopeKey}${latestProductionWorkerCanaryJob.data?`:after:${latestProductionWorkerCanaryJob.data.jobId}`:""}`;
+                const submission=workerCanarySubmission(key,productionWorkerCanaryPreflight.data!.planDigest);
+                productionWorkerCanaryMutation.mutate({tenantId,projectId,environment:"production",...submission});
+              }}>{productionWorkerCanaryMutation.isPending?text("Submitting the same bounded operation…","กำลังส่งคำขอเดิมที่จำกัดขอบเขต…"):text("Approve 1% Worker version canary","อนุมัติ canary Worker version ที่ 1%")}</Button>}
+            </VStack>:productionWorkerCanaryPreflight.data?<VStack gap={1} role="status"><p>{text("Worker deployment is blocked:","การ deploy Worker ยังติดเงื่อนไข:")} <code>{productionWorkerCanaryPreflight.data.reason}</code></p></VStack>:null}
+            {productionWorkerCanaryMutation.error?<p role="alert"><code>{productionWorkerCanaryMutation.error.message}</code> · {text("Recheck reconciles the same Submission ID.","ตรวจซ้ำจะ reconcile ด้วย Submission ID เดิม")}</p>:null}
           </VStack>
           {productionProviderInventory.isLoading ? <p role="status">{text("Reading Production queues, Hyperdrive, VPC services, Worker versions, and domain route…", "กำลังตรวจ Queue, Hyperdrive, VPC service, Worker version และ route ของ Production…")}</p> : null}
           {productionProviderInventory.isError ? <p role="alert">{text("Cloudflare resource inventory could not be read. No provider changes were made.", "อ่าน inventory ของ Cloudflare ไม่สำเร็จ และไม่มีการเปลี่ยนแปลง resource")}</p> : null}

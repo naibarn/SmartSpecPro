@@ -57,7 +57,7 @@ function json(result: unknown, status = 200) {
 }
 
 describe("Cloudflare staging API transport", () => {
-  it.each([undefined, "production-origin-bridge-v1" as const])("uploads a production version (%s) without attaching a route or shifting traffic", async ingressMode => {
+  it.each([undefined, "production-origin-bridge-v1" as const])("prepares a production Worker version (%s) without attaching a route or shifting traffic", async ingressMode => {
     const productionTarget: CloudflareStagingTarget = { ...target, targetId: "smartspec-cloudflare-runtime",
       environment: "production", workerRef: "smartspec-cloudflare-runtime", runtimePolicy: "pending" };
     const descriptor: CloudflareOriginDescriptor = {
@@ -83,25 +83,26 @@ describe("Cloudflare staging API transport", () => {
         expect(uploadedMetadata.bindings).toEqual(expect.arrayContaining([
           { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "production" },
           { name: "AUTH_ORIGIN", type: "plain_text", text: descriptor.origin },
-          ...(!ingressMode ? [{ name: "JOB_QUEUE", type: "queue", queue_name: "smartspec-canonical-job-queue-production" }] : []),
+          { name: "JOB_QUEUE", type: "queue", queue_name: "smartspec-canonical-job-queue-production" },
+          { name: "CF_VERSION_METADATA", type: "version_metadata" },
         ]));
         if (ingressMode) {
           expect(uploadedMetadata.assets.config.run_worker_first).toBe(true);
           expect(uploadedMetadata.bindings).toContainEqual({ name: "CLOUDFLARE_INGRESS_MODE", type: "plain_text", text: ingressMode });
-          expect(uploadedMetadata.bindings.some((binding: any) => ["HYPERDRIVE", "JOB_QUEUE", "JOB_CONTAINERS"].includes(binding.name))).toBe(false);
+          expect(uploadedMetadata.bindings.some((binding: any) => ["HYPERDRIVE", "JOB_CONTAINERS"].includes(binding.name))).toBe(false);
         }
         expect(uploadedMetadata.annotations["workers/message"]).toBe(`SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}`);
         return json({ id: versionId });
       }
       if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId,
-        resources: { bindings: uploadedMetadata?.bindings },
+      resources: { bindings: uploadedMetadata?.bindings },
         annotations: { "workers/message": `SmartAIHub production ${sourceSha} ${buildDigest} origin ${configurationDigest}` } });
       throw new Error(`Unexpected provider request ${url}`);
     }) as typeof fetch;
     const transport = createCloudflareStagingApiTransport({ fetchImpl, resolveBundle: async () => bundle });
     const assertMutationAuthorized = vi.fn(async () => undefined);
     await expect(transport.prepareVersion({ token: "provider-token", target: scopedTarget, artifact,
-      originConfiguration, assertMutationAuthorized })).resolves.toMatchObject({
+      originConfiguration, purpose: "worker-deployment", assertMutationAuthorized })).resolves.toMatchObject({
       versionId, sourceSha, buildDigest, configurationDigest, trafficShifted: false,
     });
     expect(requests.some(({ url, init }) => url.endsWith("/deployments") || url.includes("/zones/"))).toBe(false);

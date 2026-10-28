@@ -1,5 +1,5 @@
 import { handleProductionOriginCanary, PRODUCTION_ORIGIN_CANARY_PREFIX } from "./productionOriginCanary";
-import { assertBindingReadiness, assertBindingSubset, inspectBindingReadiness } from "./bindings";
+import { assertBindingPresence, assertBindingReadiness, assertBindingSubset, inspectBindingReadiness } from "./bindings";
 import { createFailClosedConsumer, CloudflareQueueConsumer, parseCanonicalEnvelope } from "./queueConsumer";
 import { publishCanonicalQueueMessage } from "./nativeAdapters";
 import type {
@@ -24,7 +24,7 @@ import { proxyAuthToOrigin, proxyWebSocketToOrigin } from "./authOriginProxy";
 import { dispatchManifestRoute } from "./nativeApi";
 import { handleCanonicalWorkflowRequest, isCanonicalWorkflowEnabled } from "./workflowRuntime";
 import { assertCanonicalControlPlaneConfiguration } from "./canonicalControlPlaneProxy";
-import { isCanonicalIntakeTransportEnabled } from "./canonicalIntakeTransport";
+import { isCanonicalIntakeTransportEnabled, isM3SyntheticQueueAcceptanceEnabled } from "./canonicalIntakeTransport";
 import { dispatchApplicationHttpIngress } from "./applicationHttpIngress";
 import { retiredApplicationHttpPath } from "./applicationHttpBridge";
 
@@ -43,6 +43,42 @@ function isAuthorizedDispatch(request: Request, env: CloudflareEnvironment): boo
   const expected = env.CLOUDFLARE_RUNTIME_TOKEN?.trim();
   const provided = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
   return Boolean(expected && provided && expected === provided);
+}
+
+async function publishCanonicalQueueRequest(
+  request: Request,
+  env: CloudflareEnvironment,
+  publicationRegistry?: CanonicalPublicationRegistry,
+): Promise<Response> {
+  const syntheticOnly = isM3SyntheticQueueAcceptanceEnabled(env);
+  if ((!syntheticOnly && env.CLOUDFLARE_JOB_TRANSPORT !== undefined && env.CLOUDFLARE_JOB_TRANSPORT !== "queues") ||
+      (!syntheticOnly && env.CLOUDFLARE_JOB_TRANSPORT === "queues" && !isCanonicalIntakeTransportEnabled(env, "queues"))) {
+    return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 503);
+  }
+  if (!syntheticOnly && env.CLOUDFLARE_ACTIVATION !== "enabled") return json({ error: "CLOUDFLARE_RUNTIME_DISABLED" }, 503);
+  if (!isAuthorizedDispatch(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
+  try {
+    if (syntheticOnly) assertBindingPresence(env, ["HYPERDRIVE", "JOB_QUEUE"]);
+    else assertBindingSubset(env, ["HYPERDRIVE", "JOB_QUEUE"]);
+    const body = await request.arrayBuffer();
+    if (body.byteLength > MAX_PUBLISH_BODY_BYTES) return json({ error: "CANONICAL_ENVELOPE_TOO_LARGE" }, 413);
+    const envelope = parseCanonicalEnvelope(JSON.parse(new TextDecoder().decode(body)));
+    if (syntheticOnly && envelope.contract_version !== "cloudflare-m3-parity-acceptance-v1") {
+      return json({ error: "M3_QUEUE_ACCEPTANCE_CONTRACT_REQUIRED" }, 403);
+    }
+    if (publicationRegistry && await publicationRegistry.has(envelope.dedupe_key)) {
+      return json({ accepted: true, duplicate: true, dispatchId: envelope.dedupe_key }, 200);
+    }
+    await publishCanonicalQueueMessage(env, envelope, { allowDisabledActivation: syntheticOnly });
+    await publicationRegistry?.record(envelope.dedupe_key);
+    return json({ accepted: true, dispatchId: envelope.dedupe_key }, 202);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message.slice(0, 160) : "CANONICAL_PUBLISH_REJECTED";
+    const status = reason === "CANONICAL_ENVELOPE_INVALID" || reason === "CANONICAL_ENVELOPE_TOO_LARGE"
+      ? 400
+      : reason.startsWith("CLOUDFLARE_BINDINGS_NOT_READY") ? 503 : 502;
+    return json({ error: reason }, status);
+  }
 }
 
 function isAuthorizedSearchCache(request: Request, env: CloudflareEnvironment): boolean {
@@ -95,6 +131,11 @@ export function createCloudflareWorker(
       } catch {
         return json({ error: "APPLICATION_HTTP_PATH_INVALID" }, 400);
       }
+      // Only the exact synthetic Queue mode bypasses the public origin bridge;
+      // its runtime-token check and contract allowlist remain mandatory.
+      if (url.pathname === "/internal/jobs/publish" && request.method === "POST" && isM3SyntheticQueueAcceptanceEnabled(env)) {
+        return publishCanonicalQueueRequest(request, env, publicationRegistry);
+      }
       if (env.CLOUDFLARE_INGRESS_MODE) {
         if (env.CLOUDFLARE_ENVIRONMENT !== "production" || env.CLOUDFLARE_INGRESS_MODE !== "production-origin-bridge-v1") {
           return json({ error: "PRODUCTION_INGRESS_MODE_INVALID" }, 503);
@@ -124,6 +165,9 @@ export function createCloudflareWorker(
           ok: ready,
           readiness: { ...readiness, required: readiness.required, jobHandlerConfigured: selectedHandlerConfigured, controlPlaneConfigured, spec260EvidenceRetentionReady },
         }, ready ? 200 : 503);
+      }
+      if (url.pathname === "/internal/jobs/publish" && request.method === "POST") {
+        return publishCanonicalQueueRequest(request, env, publicationRegistry);
       }
       if (url.pathname.startsWith("/internal/jobs/workflows/")) return handleCanonicalWorkflowRequest(request, env);
       if (url.pathname === "/internal/cache/search" && request.method === "POST") {
@@ -189,31 +233,6 @@ export function createCloudflareWorker(
           return json({ error: "SEARCH_CACHE_UNAVAILABLE" }, 503);
         }
       }
-      if (url.pathname === "/internal/jobs/publish" && request.method === "POST") {
-        if ((!env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined) ||
-            (env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_JOB_TRANSPORT !== "queues")) return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 409);
-        if (env.CLOUDFLARE_JOB_TRANSPORT === "queues" && !isCanonicalIntakeTransportEnabled(env, "queues")) return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 503);
-        if (env.CLOUDFLARE_ACTIVATION !== "enabled") return json({ error: "CLOUDFLARE_RUNTIME_DISABLED" }, 503);
-        if (!isAuthorizedDispatch(request, env)) return json({ error: "UNAUTHORIZED" }, 401);
-        try {
-          assertBindingSubset(env, ["HYPERDRIVE", "JOB_QUEUE"]);
-          const body = await request.arrayBuffer();
-          if (body.byteLength > MAX_PUBLISH_BODY_BYTES) return json({ error: "CANONICAL_ENVELOPE_TOO_LARGE" }, 413);
-          const envelope = parseCanonicalEnvelope(JSON.parse(new TextDecoder().decode(body)));
-          if (publicationRegistry && await publicationRegistry.has(envelope.dedupe_key)) {
-            return json({ accepted: true, duplicate: true, dispatchId: envelope.dedupe_key }, 200);
-          }
-          await publishCanonicalQueueMessage(env, envelope);
-          await publicationRegistry?.record(envelope.dedupe_key);
-          return json({ accepted: true, dispatchId: envelope.dedupe_key }, 202);
-        } catch (error) {
-          const reason = error instanceof Error ? error.message.slice(0, 160) : "CANONICAL_PUBLISH_REJECTED";
-          const status = reason === "CANONICAL_ENVELOPE_INVALID" || reason === "CANONICAL_ENVELOPE_TOO_LARGE"
-            ? 400
-            : reason.startsWith("CLOUDFLARE_BINDINGS_NOT_READY") ? 503 : 502;
-          return json({ error: reason }, status);
-        }
-      }
       if (matchSpec260ApiRoute(request.method, url.pathname)) {
         const registry = spec260Routes ?? createSpec260PlatformRouteRegistry(env);
         return (await registry.dispatch(request)) ?? json({ error: "EMERGENCY_ROUTE_NOT_REGISTERED" }, 503);
@@ -239,6 +258,10 @@ export function createCloudflareWorker(
     },
 
     async queue(batch: QueueBatch, env: CloudflareEnvironment): Promise<void> {
+      if (isM3SyntheticQueueAcceptanceEnabled(env)) {
+        await consumer.handleBatch(batch, env);
+        return;
+      }
       if ((!env.CLOUDFLARE_JOB_TRANSPORT && env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined) ||
           (env.CLOUDFLARE_JOB_TRANSPORT && (env.CLOUDFLARE_JOB_TRANSPORT !== "queues" || !isCanonicalIntakeTransportEnabled(env, "queues")))) {
         for (const message of batch.messages) message.retry({ delaySeconds: 60 });

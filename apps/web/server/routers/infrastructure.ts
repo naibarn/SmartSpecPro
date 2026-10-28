@@ -1,5 +1,7 @@
 import { getProductionIngressPreflight, getProductionIngressRollbackPreflight, queueProductionIngress } from "../services/cloudflareProductionIngressAdmission";
+import { getProductionWorkerCanaryPreflight, queueProductionWorkerCanary } from "../services/cloudflareProductionWorkerDeploymentAdmission";
 import { PRODUCTION_INGRESS_CONTRACT } from "../services/cloudflareProductionIngressContract";
+import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT, CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB } from "../services/cloudflareProductionDeploymentContract";
 import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../services/cloudflareProductionIngressAcceptance";
 import { getVerifiedCloudflarePublicOrigin } from "../_core/cloudflareOriginMiddleware";
 import { getCloudflareMigrationMission } from "../services/cloudflareMigrationLifecycle";
@@ -111,6 +113,12 @@ const exactAdminProcedure = adminProcedure.use(async ({ ctx, next }) => {
   }
   return next({ ctx });
 });
+
+async function isProductionTenantOwner(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, tenantId: string, userId: number) {
+  const [owner] = await db.select({ ownerId: tenants.ownerId, active: tenants.isActive, role: users.role, disabled: users.isDisabled })
+    .from(tenants).innerJoin(users, eq(users.id, userId)).where(eq(tenants.id, tenantId)).limit(1);
+  return Boolean(owner && owner.ownerId === userId && owner.active && owner.role === "admin" && !owner.disabled);
+}
 
 function logCloudflareProductionDatabaseAdmission(input: {
   stage: string;
@@ -818,6 +826,46 @@ export const infrastructureRouter = router({
         requesterUserId:workerJobs.requestedByUserId}).from(workerJobs).where(and(eq(workerJobs.tenantId,input.tenantId),
         eq(workerJobs.jobType,"cloudflare.production.deploy"),eq(workerJobs.contractVersion,PRODUCTION_INGRESS_CONTRACT),
         sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`)).orderBy(desc(workerJobs.createdAt)).limit(1);
+      return job??null;
+    }),
+
+  getCloudflareProductionWorkerCanaryPreflight: exactAdminProcedure
+    .input(z.object({tenantId:deploymentTenantIdSchema,projectId:z.string().min(1).max(36),environment:z.literal("production")}).strict())
+    .query(async({input,ctx})=>{
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_WORKER_TENANT_MISMATCH"});
+      const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
+      if(!ctx.user?.id||!(await isProductionTenantOwner(db,tenantId,ctx.user.id)))return {ready:false as const,reason:"PRODUCTION_TENANT_OWNER_REQUIRED"};
+      return getProductionWorkerCanaryPreflight(db,input);
+    }),
+
+  queueCloudflareProductionWorkerCanary: exactAdminProcedure
+    .input(z.object({tenantId:deploymentTenantIdSchema,projectId:z.string().min(1).max(36),environment:z.literal("production"),
+      submissionId:z.string().uuid(),planDigest:z.string().regex(/^[a-f0-9]{64}$/)}).strict())
+    .mutation(async({input,ctx})=>{
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_WORKER_TENANT_MISMATCH"});
+      if(!ctx.user?.id||!ctx.userToken)throw new TRPCError({code:"UNAUTHORIZED",message:"PRODUCTION_WORKER_OWNER_SESSION_REQUIRED"});
+      const db=await getDb();if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
+      if(!(await isProductionTenantOwner(db,tenantId,ctx.user.id)))throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_TENANT_OWNER_REQUIRED"});
+      try{return await queueProductionWorkerCanary(db,{tenantId,projectId:input.projectId,actorUserId:ctx.user.id,
+        userToken:ctx.userToken,submissionId:input.submissionId,planDigest:input.planDigest,correlationId:ctx.req.requestId??input.submissionId});}
+      catch(error){const code=error instanceof Error&&/^[A-Z][A-Z0-9_:.-]{2,180}$/.test(error.message)?error.message:"PRODUCTION_WORKER_ADMISSION_UNKNOWN";
+        throw new TRPCError({code:code==="PRODUCTION_WORKER_ADMISSION_UNKNOWN"?"INTERNAL_SERVER_ERROR":"PRECONDITION_FAILED",message:code});}
+    }),
+
+  getLatestCloudflareProductionWorkerCanaryJob: exactAdminProcedure
+    .input(z.object({tenantId:deploymentTenantIdSchema,projectId:z.string().min(1).max(36),environment:z.literal("production")}).strict())
+    .query(async({input,ctx})=>{
+      const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
+      if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_WORKER_TENANT_MISMATCH"});
+      const [job]=await getDb().select({jobId:workerJobs.id,status:workerJobs.status,errorCode:workerJobs.errorCode,
+        output:workerJobs.outputJson,input:workerJobs.inputJson,progress:workerJobs.progressJson,attempt:workerJobs.attempt,
+        maxAttempts:workerJobs.maxAttempts,requesterUserId:workerJobs.requestedByUserId,createdAt:workerJobs.createdAt,
+        updatedAt:workerJobs.updatedAt,heartbeatAt:workerJobs.heartbeatAt,leaseExpiresAt:workerJobs.leaseExpiresAt})
+        .from(workerJobs).where(and(eq(workerJobs.tenantId,input.tenantId),eq(workerJobs.jobType,CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB),
+          eq(workerJobs.contractVersion,CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT),sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`))
+        .orderBy(desc(workerJobs.createdAt)).limit(1);
       return job??null;
     }),
 

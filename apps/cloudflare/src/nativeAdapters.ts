@@ -1,4 +1,4 @@
-import { assertBindingSubset } from "./bindings";
+import { assertBindingPresence, assertBindingSubset } from "./bindings";
 import { upsertTenantVectors, validateArtifactManifest, type ArtifactManifest } from "./artifacts";
 import type { CanonicalJobEnvelope, CloudflareEnvironment, CloudflareWorkflowInstance, VectorRecord } from "./contracts";
 
@@ -7,7 +7,12 @@ export function assertNativeBindings(env: CloudflareEnvironment, name: "JOB_QUEU
   return env;
 }
 
-export async function publishCanonicalQueueMessage(env: CloudflareEnvironment, envelope: CanonicalJobEnvelope): Promise<void> {
+export async function publishCanonicalQueueMessage(env: CloudflareEnvironment, envelope: CanonicalJobEnvelope,
+  options: { allowDisabledActivation?: boolean } = {}): Promise<void> {
+  if (options.allowDisabledActivation) {
+    assertBindingPresence(env, ["HYPERDRIVE", "JOB_QUEUE"]);
+    return env.JOB_QUEUE!.send(envelope);
+  }
   return assertNativeBindings(env, "JOB_QUEUE").JOB_QUEUE!.send(envelope);
 }
 

@@ -61,13 +61,14 @@ export async function verifyM3QueueWorkerReadiness(
       reason: "M3_PARITY_CLOUDFLARE_WORKER_VERSION_NOT_VERIFIED" as const,
     };
   }
-  if (active.some(version => !version.bindingNames.includes("JOB_QUEUE"))) {
+  const queueVersions = active.filter(version => version.bindingNames.includes("JOB_QUEUE"));
+  if (queueVersions.length === 0) {
     return {
       ready: false as const,
       reason: "M3_PARITY_PRODUCTION_QUEUE_BINDING_NOT_ACTIVE" as const,
     };
   }
-  if (active.some(version => !version.bindingNames.includes("CF_VERSION_METADATA"))) {
+  if (queueVersions.some(version => !version.bindingNames.includes("CF_VERSION_METADATA"))) {
     return {
       ready: false as const,
       reason: "M3_PARITY_WORKER_VERSION_METADATA_BINDING_REQUIRED" as const,
@@ -88,7 +89,7 @@ export async function verifyM3QueueWorkerReadiness(
     };
   }
   const verifiedVersions = [];
-  for (const version of active) {
+  for (const version of queueVersions) {
     const artifactRef = `sha256:${version.buildDigest}`;
     const bundle = await resolveBundle(artifactRef, version.sourceSha!).catch(() => null);
     if (!bundle || bundle.sourceSha.toLowerCase() !== version.sourceSha!.toLowerCase() ||

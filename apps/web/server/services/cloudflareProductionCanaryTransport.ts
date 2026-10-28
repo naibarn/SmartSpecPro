@@ -13,10 +13,11 @@ const VERSION_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12
 
 type Deployment = {
   id?: string;
+  created_on?: string;
   versions?: Array<{ version_id?: string; percentage?: number }>;
   annotations?: Record<string, string>;
 };
-type Version = { id?: string; annotations?: Record<string, string> };
+type Version = { id?: string; annotations?: Record<string, string>; resources?: { bindings?: unknown } };
 type Envelope<T> = { success?: boolean; result?: T; errors?: Array<{ code?: number }> };
 
 export class CloudflareProductionCanaryTransportError extends Error {
@@ -127,18 +128,54 @@ export function createCloudflareProductionCanaryTransport(input: {
   }
 
   async function checkedVersion(token: string, target: CloudflareProductionDeploymentTarget,
-    version: CloudflareProductionVersion) {
+    version: CloudflareProductionVersion, requireQueueBindings = true) {
     const details = await api<Version>(token, versionPath(target, version.versionId), "GET");
     if (details.id !== version.versionId || details.annotations?.["workers/message"] !== expectedMessage(version)) {
       throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_VERSION_DIGEST_MISMATCH");
     }
+    const bindings = Array.isArray(details.resources?.bindings) ? details.resources.bindings as Array<Record<string, unknown>> : [];
+    if (requireQueueBindings && (bindings.filter(binding => binding.name === "JOB_QUEUE" && binding.type === "queue" &&
+      binding.queue_name === "smartspec-canonical-job-queue-production").length !== 1 ||
+        bindings.filter(binding => binding.name === "CF_VERSION_METADATA" && binding.type === "version_metadata").length !== 1)) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_VERSION_REQUIRED_BINDINGS_MISMATCH");
+    }
+  }
+
+  async function verifyProductionQueueConsumer(token: string, target: CloudflareProductionDeploymentTarget) {
+    const queues = await api<Array<{ id?: unknown; queue_name?: unknown }>>(token,
+      `/accounts/${encodeURIComponent(target.accountRef)}/queues?per_page=100`, "GET");
+    const matches = queues.filter(queue => queue.queue_name === "smartspec-canonical-job-queue-production");
+    const queue = matches[0];
+    if (matches.length !== 1 || typeof queue?.id !== "string" || !/^[a-f0-9]{32}$/i.test(queue.id)) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_QUEUE_INVENTORY_MISMATCH");
+    }
+    const consumers = await api<Array<{ consumer_id?: unknown; queue_name?: unknown; script_name?: unknown;
+      dead_letter_queue?: unknown; type?: unknown }>>(token,
+      `/accounts/${encodeURIComponent(target.accountRef)}/queues/${encodeURIComponent(queue.id)}/consumers`, "GET");
+    const consumer = consumers[0];
+    if (consumers.length !== 1 || typeof consumer?.consumer_id !== "string" || !/^[a-f0-9]{32}$/i.test(consumer.consumer_id) ||
+        consumer.queue_name !== queue.queue_name || consumer.script_name !== target.workerRef || consumer.type !== "worker" ||
+        typeof consumer.dead_letter_queue !== "string" || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(consumer.dead_letter_queue)) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_QUEUE_CONSUMER_MISMATCH");
+    }
+    return { queueId: queue.id, consumerId: consumer.consumer_id, queueName: consumer.queue_name,
+      scriptName: consumer.script_name, deadLetterQueueName: consumer.dead_letter_queue };
   }
 
   async function activeDeployments(token: string, target: CloudflareProductionDeploymentTarget) {
     const result = await api<{ deployments?: Deployment[] }>(token,
       `/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/deployments`, "GET");
     if (!Array.isArray(result.deployments)) throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_DEPLOYMENTS_RESPONSE_INVALID");
-    return result.deployments;
+    const dated = result.deployments.map(deployment => ({ deployment,
+      createdAt: typeof deployment.created_on === "string" ? Date.parse(deployment.created_on) : Number.NaN }));
+    if (dated.length === 0 || dated.some(item => !VERSION_ID.test(item.deployment.id ?? "") || !Number.isFinite(item.createdAt))) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ACTIVE_DEPLOYMENT_IDENTITY_UNVERIFIED");
+    }
+    dated.sort((left, right) => right.createdAt - left.createdAt);
+    if (dated.length > 1 && dated[0]!.createdAt === dated[1]!.createdAt) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ACTIVE_DEPLOYMENT_AMBIGUOUS");
+    }
+    return dated.map(item => item.deployment);
   }
 
   async function createDeployment(token: string, target: CloudflareProductionDeploymentTarget,
@@ -178,8 +215,11 @@ export function createCloudflareProductionCanaryTransport(input: {
       const baseline: CloudflareProductionBaseline = { versionId: active.versions[0].version_id,
         sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
         configurationDigest: grant.rollbackConfigurationDigest, deploymentId: grant.rollbackDeploymentId };
-      await checkedVersion(token, target, baseline);
+      // The accepted M2 rollback version predates Queue and version-metadata
+      // bindings. Only the newly uploaded candidate must contain them.
+      await checkedVersion(token, target, baseline, false);
       await checkedVersion(token, target, candidate);
+      const queueConsumer = await verifyProductionQueueConsumer(token, target);
       if (!route.routeId) {
         if (grant.expectedRouteId !== null || grant.expectedRouteScript !== null) {
           throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ROUTE_STATE_MISMATCH");
@@ -192,8 +232,8 @@ export function createCloudflareProductionCanaryTransport(input: {
         sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
         configurationDigest: grant.rollbackConfigurationDigest }, candidate, expectedCandidate: {
         sourceSha: grant.sourceSha, buildDigest: grant.buildDigest, configurationDigest: grant.configurationDigest } });
-      return createDeployment(token, target, [...weights], `SmartAIHub production canary grant ${grant.grantRef}`,
-        input.assertMutationAuthorized);
+      return { ...await createDeployment(token, target, [...weights], `SmartAIHub production canary grant ${grant.grantRef}`,
+        input.assertMutationAuthorized), queueConsumer };
     },
 
     /** Promotion is a new grant/job and requires the exact current canary to have been observed. */
@@ -225,7 +265,7 @@ export function createCloudflareProductionCanaryTransport(input: {
           baselineDeployment.versions?.length !== 1 || baselineVersion.percentage !== 100 || !baselineCanaryVersion ||
           !grant.canaryVerifiedAt) throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_CANARY_SCOPE_INVALID");
       await checkedVersion(token, target, { versionId: baselineVersion.version_id, sourceSha: grant.rollbackSourceSha,
-        buildDigest: grant.rollbackBuildDigest, configurationDigest: grant.rollbackConfigurationDigest });
+        buildDigest: grant.rollbackBuildDigest, configurationDigest: grant.rollbackConfigurationDigest }, false);
       const evidence = { deploymentId: input.canaryDeploymentId, candidateVersionId: candidate.versionId,
         candidatePercent: 1, verifiedAt: grant.canaryVerifiedAt };
       const weights = buildProductionPromotionWeights({ candidate, canaryEvidence: evidence, now: now() });
@@ -258,7 +298,7 @@ export function createCloudflareProductionCanaryTransport(input: {
       const baseline: CloudflareProductionVersion = { versionId: baselineVersion.version_id,
         sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
         configurationDigest: grant.rollbackConfigurationDigest };
-      await checkedVersion(token, target, baseline);
+      await checkedVersion(token, target, baseline, false);
       return createDeployment(token, target, [{ version_id: baseline.versionId, percentage: 100 }],
         `SmartAIHub production rollback grant ${grant.grantRef}`, input.assertMutationAuthorized);
     },

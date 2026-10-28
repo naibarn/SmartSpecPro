@@ -92,8 +92,16 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const matchingRoutes = routeRows.filter(row => row.pattern === "smartaihub.app/*");
     const deploymentRows = deployments.result && typeof deployments.result === "object" && !Array.isArray(deployments.result)
       ? (deployments.result as { deployments?: unknown }).deployments : null;
-    const records = Array.isArray(deploymentRows) ? deploymentRows as Array<{ id?: unknown; versions?: unknown }> : [];
-    const first = records[0];
+    const records = Array.isArray(deploymentRows) ? deploymentRows as Array<{ id?: unknown; created_on?: unknown; versions?: unknown }> : [];
+    const datedRecords = records.flatMap(record => {
+      const createdAt = typeof record.created_on === "string" ? Date.parse(record.created_on) : Number.NaN;
+      return typeof record.id === "string" && VERSION_ID.test(record.id) && Number.isFinite(createdAt)
+        ? [{ record, createdAt }] : [];
+    }).sort((left, right) => right.createdAt - left.createdAt);
+    const newestTime = datedRecords[0]?.createdAt;
+    const newestRecords = datedRecords.filter(record => record.createdAt === newestTime);
+    const activeDeploymentIsUnambiguous = records.length > 0 && datedRecords.length === records.length && newestRecords.length === 1;
+    const first = activeDeploymentIsUnambiguous ? newestRecords[0]?.record : undefined;
     const versions = Array.isArray(first?.versions) ? first.versions as Array<{ version_id?: unknown; percentage?: unknown }> : [];
     const validWeights = versions.length > 0 && versions.length <= 2 && versions.every(version =>
       typeof version.version_id === "string" && VERSION_ID.test(version.version_id) &&
@@ -112,6 +120,10 @@ export async function probeCloudflareProductionProviderInventory(input: {
         : null;
       return { versionId: version.version_id as string, deploymentId: String(first?.id ?? ""), percentage: version.percentage as number,
         bindingNames: bindings.map((binding: any) => binding?.name).filter((name: unknown): name is string => typeof name === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(name)),
+        hasProductionQueueBinding: bindings.filter((binding: any) => binding?.name === "JOB_QUEUE" && binding?.type === "queue" &&
+          binding?.queue_name === "smartspec-canonical-job-queue-production").length === 1,
+        hasVersionMetadataBinding: bindings.filter((binding: any) => binding?.name === "CF_VERSION_METADATA" &&
+          binding?.type === "version_metadata").length === 1,
         containerNames: containers.map((container: any) => container?.name).filter((name: unknown): name is string => typeof name === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(name)),
         hasVerifiedReleaseIdentity: releaseIdentity !== null,
         ...(releaseIdentity ? { sourceSha: releaseIdentity[1], buildDigest: releaseIdentity[2], configurationDigest: releaseIdentity[3] } : {}),
@@ -122,7 +134,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
       ? productionQueueConsumers.result as Array<{ consumer_id?: unknown; queue_name?: unknown; script_name?: unknown; dead_letter_queue?: unknown; type?: unknown; settings?: { max_retries?: unknown } }>
       : [];
     const inventoryComplete = queues.complete && hyperdrive.complete && zones.complete && Boolean(routes?.complete) &&
-      deployments.complete && Array.isArray(deploymentRows) && validWeights && versionDetails.every(version => version.checked) &&
+      deployments.complete && Array.isArray(deploymentRows) && activeDeploymentIsUnambiguous && validWeights && versionDetails.every(version => version.checked) &&
       Boolean(productionQueueConsumers?.complete) &&
       vpcServices.complete && tunnels.complete && containers.complete;
     const vpcServiceRows = Array.isArray(vpcServices.result) ? vpcServices.result as Array<{
@@ -227,7 +239,8 @@ export async function probeCloudflareProductionProviderInventory(input: {
         script: matchingRoutes.length === 1 && typeof matchingRoutes[0].script === "string" ? matchingRoutes[0].script : null,
         zoneId: zoneId ?? null,
         conflicting: matchingRoutes.length > 1 || (matchingRoutes.length === 1 && matchingRoutes[0].script !== target.targetId) },
-      worker: { activeDeploymentId: typeof first?.id === "string" ? first.id : null, deploymentInventoryComplete: deployments.complete && Array.isArray(deploymentRows), deploymentCount: records.length,
+      worker: { activeDeploymentId: activeDeploymentIsUnambiguous && typeof first?.id === "string" ? first.id : null,
+        deploymentInventoryComplete: deployments.complete && Array.isArray(deploymentRows) && activeDeploymentIsUnambiguous, deploymentCount: records.length,
         activeVersionCount: active.length, versions: versionDetails },
     };
   });

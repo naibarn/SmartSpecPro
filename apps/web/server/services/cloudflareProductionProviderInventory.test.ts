@@ -38,7 +38,8 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/connectivity/directory/services")) return response([{ service_id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", app_protocol: "postgresql", host: { resolver_network: { tunnel_id: "87654321-4321-4321-8321-cba987654321" } } }]);
       if (url.pathname.endsWith("/mtls_certificates")) return response([]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
-      if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "33333333-3333-4333-8333-333333333333", versions: [{ version_id: versionId, percentage: 100 }] }] });
+      if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "33333333-3333-4333-8333-333333333333",
+        created_on: "2026-10-20T00:00:00Z", versions: [{ version_id: versionId, percentage: 100 }] }] });
       if (url.pathname.endsWith(`/versions/${versionId}`)) return response({ annotations: { "workers/message": `SmartAIHub production ${"a".repeat(40)} ${"b".repeat(64)} origin ${"c".repeat(64)}` }, resources: { bindings: [{ name: "CLOUDFLARE_ACTIVATION" }, { name: "JOB_QUEUE" }, { name: "CF_VERSION_METADATA" }], script_runtime: { containers: [] } } });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
     });
@@ -53,7 +54,8 @@ describe("Cloudflare production provider inventory", () => {
       tunnels: [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartaihub-main", status: "healthy" }],
       vpcServices: [{ id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "production" }],
       domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
-      worker: { deploymentCount: 1, activeVersionCount: 1, versions: [{ bindingNames: ["CLOUDFLARE_ACTIVATION", "JOB_QUEUE", "CF_VERSION_METADATA"], hasVerifiedReleaseIdentity: true,
+      worker: { deploymentCount: 1, activeVersionCount: 1, versions: [{ bindingNames: ["CLOUDFLARE_ACTIVATION", "JOB_QUEUE", "CF_VERSION_METADATA"],
+        hasProductionQueueBinding: false, hasVersionMetadataBinding: false, hasVerifiedReleaseIdentity: true,
         sourceSha: "a".repeat(40), buildDigest: "b".repeat(64), configurationDigest: "c".repeat(64) }] },
     });
     expect(fetchImpl.mock.calls.every(([request, init]) => (init?.method ?? "GET") === "GET")).toBe(true);
@@ -142,14 +144,18 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") || url.pathname.endsWith("/cfd_tunnel") ||
           url.pathname.endsWith("/containers/applications") || url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) return response([]);
       if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
-      if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "33333333-3333-4333-8333-333333333333", versions: [
+      if (url.pathname.endsWith("/deployments")) return response({ deployments: [
+        { id: "22222222-2222-4222-8222-222222222222", created_on: "2026-10-19T00:00:00Z",
+          versions: [{ version_id: "81e64be8-af01-4efb-ad82-94e78da2510c", percentage: 100 }] },
+        { id: "33333333-3333-4333-8333-333333333333", created_on: "2026-10-20T00:00:00Z", versions: [
         { version_id: versionId, percentage: 99 }, { version_id: candidateVersion, percentage: 1 },
       ] }] });
       if (url.pathname.endsWith(`/versions/${versionId}`) || url.pathname.endsWith(`/versions/${candidateVersion}`)) {
         const sourceSha = url.pathname.endsWith(candidateVersion) ? "c".repeat(40) : "a".repeat(40);
         const digest = url.pathname.endsWith(candidateVersion) ? "d".repeat(64) : "b".repeat(64);
         return response({ annotations: { "workers/message": `SmartAIHub production ${sourceSha} ${digest} origin ${"c".repeat(64)}` },
-          resources: { bindings: [{ name: "JOB_QUEUE" }, { name: "CF_VERSION_METADATA" }] } });
+          resources: { bindings: [{ name: "JOB_QUEUE", type: "queue", queue_name: "smartspec-canonical-job-queue-production" },
+            { name: "CF_VERSION_METADATA", type: "version_metadata" }] } });
       }
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
     });
@@ -158,7 +164,8 @@ describe("Cloudflare production provider inventory", () => {
       consumers: [{ consumerId: "e".repeat(32), queueName: "smartspec-canonical-job-queue-production", scriptName: workerRef,
         deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq", maxRetries: 8 }] },
       worker: { activeDeploymentId: "33333333-3333-4333-8333-333333333333", activeVersionCount: 2,
-        versions: [{ versionId, percentage: 99 }, { versionId: candidateVersion, percentage: 1 }] } });
+        versions: [{ versionId, percentage: 99, hasProductionQueueBinding: true, hasVersionMetadataBinding: true },
+          { versionId: candidateVersion, percentage: 1, hasProductionQueueBinding: true, hasVersionMetadataBinding: true }] } });
     expect(fetchImpl.mock.calls.some(([request]) => new URL(String(request)).pathname.endsWith(`/queues/${queueId}/consumers`))).toBe(true);
   });
 

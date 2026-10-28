@@ -32,6 +32,15 @@ function assertProductionQueueBinding(actual: unknown, target: CloudflareStaging
     throw new CloudflareStagingTransportError("CLOUDFLARE_PRODUCTION_QUEUE_BINDING_MISMATCH");
   }
 }
+
+function assertProductionWorkerBindings(actual: unknown, target: CloudflareStagingTarget) {
+  assertProductionQueueBinding(actual, target);
+  if (target.environment !== "production") return;
+  const bindings = Array.isArray(actual) ? actual : [];
+  if (bindings.filter((binding: any) => binding?.name === "CF_VERSION_METADATA" && binding?.type === "version_metadata").length !== 1) {
+    throw new CloudflareStagingTransportError("CLOUDFLARE_PRODUCTION_VERSION_METADATA_BINDING_MISMATCH");
+  }
+}
 const TARGET_ID = "smartspec-cloudflare-staging";
 const SOURCE_SHA = /^[a-f0-9]{40}$/i;
 const SHA256 = /^[a-f0-9]{64}$/i;
@@ -323,7 +332,8 @@ export function createCloudflareStagingApiTransport(input: {
     return `SmartAIHub ${environment} ${sourceSha} ${buildDigest}${configurationDigest ? ` origin ${configurationDigest}` : ""}`;
   }
 
-  async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact, bootstrapKey?: string, origin?: CloudflareOriginVersionBindings) {
+  async function uploadVersion(token: string, target: CloudflareStagingTarget, bundle: CloudflareStagingBundle, artifact: CloudflareStagingArtifact,
+    bootstrapKey?: string, origin?: CloudflareOriginVersionBindings, workerDeployment = false) {
     const completionJwt = await uploadAssets(token, target, bundle);
     const http = origin?.descriptor.applicationHttp ? httpApplicationWorkerMetadata(origin.descriptor.applicationHttp, origin.descriptor, origin.descriptor.applicationHttpPhase === "namespace-only") : undefined;
     const metadata = {
@@ -340,13 +350,17 @@ export function createCloudflareStagingApiTransport(input: {
       } : {}),
       bindings: [
         { name: "ASSETS", type: "assets" },
-        { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: (origin?.descriptor.workflowExecution || origin?.descriptor.retentionSchedule) ? "enabled" : "disabled" },
+        { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: workerDeployment ? "disabled" : (origin?.descriptor.workflowExecution || origin?.descriptor.retentionSchedule) ? "enabled" : "disabled" },
         { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: target.environment },
         ...(!origin?.descriptor.workflowExecution && !origin?.descriptor.retentionSchedule
           ? [{ name: "CLOUDFLARE_JOB_TRANSPORT", type: "plain_text", text: "queues" }]
           : []),
         ...(origin?.descriptor.nativeResources ? nativeWorkerBindings(origin.descriptor.nativeResources) : []),
-        ...(!origin?.descriptor.ingressMode ? productionQueueBinding(target) : []),
+        ...(workerDeployment ? productionQueueBinding(target) : !origin?.descriptor.ingressMode ? productionQueueBinding(target) : []),
+        ...(workerDeployment && target.environment === "production" ? [{ name: "CF_VERSION_METADATA", type: "version_metadata" }] : []),
+        ...(workerDeployment && target.environment === "production" && origin?.descriptor.workflowExecution && origin.descriptor.jobTransport === "queues"
+          ? [{ name: "CLOUDFLARE_QUEUE_ACCEPTANCE_MODE", type: "plain_text", text: "m3-synthetic-v1" }]
+          : []),
         ...(http && !origin?.descriptor.applicationHttpPhase ? http.bindings : []),
         ...(origin ? cloudflareWorkflowVersionBindings(origin) : []),
         ...(origin ? [
@@ -543,9 +557,10 @@ export function createCloudflareStagingApiTransport(input: {
 
   return {
     /** Upload a production candidate version without creating a deployment or shifting traffic. */
-    prepareVersion: async ({ token, target, artifact, originConfiguration, assertMutationAuthorized }: {
+    prepareVersion: async ({ token, target, artifact, originConfiguration, assertMutationAuthorized, purpose }: {
       token: string; target: CloudflareStagingTarget; artifact: CloudflareStagingArtifact;
       originConfiguration: CloudflareOriginVersionBindings;
+      purpose?: "worker-deployment";
       assertMutationAuthorized: () => Promise<void>;
     }) => {
       assertVersionTarget(target);
@@ -565,12 +580,14 @@ export function createCloudflareStagingApiTransport(input: {
           await input.prepareHttpApplications(origin, target, assertMutationAuthorized);
         }
         await assertMutationAuthorized();
-        const versionId = await uploadVersion(token, target, bundle, artifact, undefined, origin);
+        const workerDeployment = purpose === "worker-deployment";
+        const versionId = await uploadVersion(token, target, bundle, artifact, undefined, origin, workerDeployment);
         const uploaded = await readUploadedVersion(token, target, versionId);
         if (uploaded.id !== versionId || uploaded.annotations?.["workers/message"] !==
             versionMessage(artifact.sourceSha, artifact.buildDigest, origin.configurationDigest, "production")) {
           throw new CloudflareStagingTransportError("CLOUDFLARE_PRODUCTION_VERSION_RECEIPT_MISMATCH");
         }
+        if (workerDeployment) assertProductionWorkerBindings(uploaded.resources?.bindings, target);
         if (origin.descriptor.applicationHttp && !origin.descriptor.applicationHttpPhase) {
           if (!input.ensureHttpApplications) throw new CloudflareStagingTransportError("CLOUDFLARE_HTTP_APPLICATION_PROVISIONER_REQUIRED");
           assertHttpApplicationVersionMetadata(origin.descriptor.applicationHttp, origin.descriptor, uploaded);

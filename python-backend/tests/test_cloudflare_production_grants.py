@@ -112,6 +112,7 @@ async def test_production_grant_request_records_single_admin_approval():
     db.add = Mock()
     db.execute.side_effect = [
         SimpleNamespace(scalar_one_or_none=Mock(return_value="admin")),
+        SimpleNamespace(one_or_none=Mock(return_value=(17, "active", False))),
         SimpleNamespace(),
     ]
     service = ApprovalDBService(db)
@@ -127,6 +128,33 @@ async def test_production_grant_request_records_single_admin_approval():
     assert request.payload["grantRef"] == request.id
     assert db.add.call_count == 3  # approval, decision receipt, audit receipt
     db.commit.assert_awaited_once()
+
+
+@pytest.mark.unit
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "owner_row",
+    [
+        (29, "active", False),
+        (17, "suspended", False),
+        (17, "active", True),
+        None,
+    ],
+)
+async def test_production_grant_request_requires_active_tenant_owner(owner_row):
+    db = AsyncMock()
+    db.execute.side_effect = [
+        SimpleNamespace(scalar_one_or_none=Mock(return_value="admin")),
+        SimpleNamespace(one_or_none=Mock(return_value=owner_row)),
+    ]
+    service = ApprovalDBService(db)
+    with pytest.raises(PermissionError, match="CLOUDFLARE_PRODUCTION_GRANT_TENANT_OWNER_REQUIRED"):
+        await service.create_cloudflare_production_grant_request(
+            tenant_id="tenant-1", requester_id=17, idempotency_key="production-grant-001",
+            payload=_grant_payload(grantRef="pending-idempotency-binding"),
+        )
+    db.add.assert_not_called()
+    db.commit.assert_not_awaited()
 
 
 @pytest.mark.unit
@@ -243,7 +271,11 @@ def test_origin_ingress_grant_preserves_exact_route_release_scope():
 async def test_ingress_uses_existing_admin_approval_and_idempotent_grant_binding():
     db = AsyncMock()
     db.add = Mock()
-    db.execute.side_effect = [SimpleNamespace(scalar_one_or_none=Mock(return_value="admin")), SimpleNamespace()]
+    db.execute.side_effect = [
+        SimpleNamespace(scalar_one_or_none=Mock(return_value="admin")),
+        SimpleNamespace(one_or_none=Mock(return_value=(17, "active", False))),
+        SimpleNamespace(),
+    ]
     service = ApprovalDBService(db)
     service.get_request_by_correlation = AsyncMock(return_value=None)
     request = await service.create_cloudflare_production_grant_request(

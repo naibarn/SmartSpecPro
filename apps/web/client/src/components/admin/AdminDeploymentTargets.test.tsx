@@ -21,6 +21,9 @@ const mocks = vi.hoisted(() => ({
   ingressJob: null as any,
   migrationMission: { migrationMode: "FIRST_MIGRATION", state: "IN_PROGRESS", currentMilestone: "M3_APPLICATION_ACCEPTANCE" } as any,
   queueProductionIngress: vi.fn(),
+  queueProductionWorkerCanary: vi.fn(),
+  productionWorkerCanaryPreflight: null as any,
+  productionWorkerCanaryJob: null as any,
   verifyIngressBrowser:vi.fn(async()=>({passed:true})),
   databaseAdmissionUnknownOnce: false,
   activateStagingProfile: vi.fn(),
@@ -75,6 +78,10 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionQueueJobStatus: { invalidate: mocks.invalidate },
       getLatestCloudflareProductionQueueJob: { invalidate: mocks.invalidate },
       getLatestCloudflareProductionDatabaseJob: { invalidate: mocks.invalidate },
+      getCloudflareProductionWorkerCanaryPreflight: { invalidate: mocks.invalidate },
+      getLatestCloudflareProductionWorkerCanaryJob: { invalidate: mocks.invalidate },
+      getCloudflareHttpCandidatePreparation: { invalidate: mocks.invalidate },
+      getCloudflareHttpRuntimeOperation: { invalidate: mocks.invalidate },
     } }),
     systemSettings: { listTenants: { useQuery: () => ({ data: [
       { id: "tenant-system", name: "System", selectorKind: "system" },
@@ -146,6 +153,11 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionIngressPreflight: {useQuery:()=>({data:mocks.ingressPreflight,isLoading:false,refetch:vi.fn()})},
       getCloudflareMigrationMission: {useQuery:()=>({data:mocks.migrationMission,refetch:vi.fn()})},
       getLatestCloudflareProductionIngressJob: {useQuery:()=>({data:mocks.ingressJob,refetch:vi.fn()})},
+      getCloudflareProductionWorkerCanaryPreflight: {useQuery:()=>({data:mocks.productionWorkerCanaryPreflight,isLoading:false,isError:false,refetch:vi.fn()})},
+      getLatestCloudflareProductionWorkerCanaryJob: {useQuery:()=>({data:mocks.productionWorkerCanaryJob,isLoading:false,isError:false,refetch:vi.fn()})},
+      getCloudflareHttpCandidatePreparation: {useQuery:()=>({data:{preflight:{ready:false},job:null},isLoading:false,isError:false,refetch:vi.fn()})},
+      getCloudflareHttpRuntimeOperation: {useQuery:()=>({data:{job:null},isLoading:false,isError:false,refetch:vi.fn()})},
+      queueCloudflareProductionWorkerCanary: {useMutation:()=>({isPending:false,mutate:mocks.queueProductionWorkerCanary,error:null})},
       getCloudflareProductionIngressRollbackPreflight: {useQuery:()=>({data:null,refetch:vi.fn()})},
       queueCloudflareProductionIngress: {useMutation:()=>({isPending:false,mutate:mocks.queueProductionIngress,error:null})},
       resumeExpiredCloudflareProductionDatabaseJob: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
@@ -240,6 +252,8 @@ describe("AdminDeploymentTargets", () => {
     mocks.latestProductionDatabaseJob = null;
     mocks.ingressPreflight = null;
     mocks.ingressJob = null;
+    mocks.productionWorkerCanaryPreflight = null;
+    mocks.productionWorkerCanaryJob = null;
     mocks.migrationMission = { migrationMode: "FIRST_MIGRATION", state: "IN_PROGRESS", currentMilestone: "M3_APPLICATION_ACCEPTANCE" };
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
@@ -874,6 +888,52 @@ describe("AdminDeploymentTargets", () => {
     const first=mocks.queueProductionIngress.mock.calls[0][0];
     expect(first).toMatchObject({tenantId,projectId,environment:"production",exposure:"100-percent-http-origin-bridge",planDigest:"b".repeat(64)});
     expect(mocks.queueProductionIngress.mock.calls[1][0]).toEqual(first);
+  });
+
+  it("shows exact immutable Worker canary scope and reuses one submission ID on repeated clicks", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
+    mocks.productionWorkerCanaryPreflight={ready:true,artifact:{artifactRef:`sha256:${"a".repeat(64)}`,sourceSha:"b".repeat(40)},
+      rollback:{deploymentId:"11111111-1111-4111-8111-111111111111",versionId:"22222222-2222-4222-8222-222222222222"},
+      routePattern:"smartaihub.app/*",expectedRouteScript:"smartspec-cloudflare-runtime",planDigest:"c".repeat(64)};
+    mocks.productionWorkerCanaryJob=null;
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.getByText(/candidate receives 1% traffic/i)).toBeInTheDocument();
+    expect(screen.getByText(`sha256:${"a".repeat(64)}`)).toBeInTheDocument();
+    const button=screen.getByRole("button",{name:"Approve 1% Worker version canary"});
+    await user.click(button);await user.click(button);
+    expect(mocks.queueProductionWorkerCanary).toHaveBeenCalledTimes(2);
+    expect(mocks.queueProductionWorkerCanary.mock.calls[0][0]).toMatchObject({tenantId,projectId,environment:"production",planDigest:"c".repeat(64)});
+    expect(mocks.queueProductionWorkerCanary.mock.calls[1][0]).toEqual(mocks.queueProductionWorkerCanary.mock.calls[0][0]);
+  });
+
+  it("prevents another Worker deployment while the canonical canary job is active", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
+    mocks.productionWorkerCanaryPreflight={ready:true,artifact:{artifactRef:`sha256:${"a".repeat(64)}`,sourceSha:"b".repeat(40)},
+      rollback:{deploymentId:"11111111-1111-4111-8111-111111111111",versionId:"22222222-2222-4222-8222-222222222222"},
+      routePattern:"smartaihub.app/*",expectedRouteScript:"smartspec-cloudflare-runtime",planDigest:"c".repeat(64)};
+    mocks.productionWorkerCanaryJob={jobId:"33333333-3333-4333-8333-333333333333",status:"running"};
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.queryByRole("button",{name:"Approve 1% Worker version canary"})).not.toBeInTheDocument();
+    expect(screen.getByText(/A deployment job is active/i)).toBeInTheDocument();
+    expect(mocks.queueProductionWorkerCanary).not.toHaveBeenCalled();
+  });
+
+  it("does not offer another deployment after a successful 1% canary", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
+    mocks.productionWorkerCanaryPreflight={ready:true,artifact:{artifactRef:`sha256:${"a".repeat(64)}`,sourceSha:"b".repeat(40)},
+      rollback:{deploymentId:"11111111-1111-4111-8111-111111111111",versionId:"22222222-2222-4222-8222-222222222222"},
+      routePattern:"smartaihub.app/*",expectedRouteScript:"smartspec-cloudflare-runtime",planDigest:"c".repeat(64)};
+    mocks.productionWorkerCanaryJob={jobId:"33333333-3333-4333-8333-333333333333",status:"succeeded",
+      output:{deploymentId:"44444444-4444-4444-8444-444444444444",candidateVersionId:"55555555-5555-4555-8555-555555555555",
+        queueConsumer:{consumerId:"b".repeat(32)}}};
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.getByText(/The 1% canary is active/i)).toBeInTheDocument();
+    expect(screen.getByText("b".repeat(32))).toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:"Approve 1% Worker version canary"})).not.toBeInTheDocument();
+    expect(mocks.queueProductionWorkerCanary).not.toHaveBeenCalled();
   });
 
   it.each(["failed", "expired", "cancelled"])("allows a fresh explicit Owner operation after %s while reconciling repeated clicks", async status => {

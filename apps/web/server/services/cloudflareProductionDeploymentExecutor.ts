@@ -42,11 +42,13 @@ export type CloudflareProductionDeploymentRuntime = Readonly<{
   }) => Promise<T>;
   withCredential: <T>(input: { target: CloudflareProductionDeploymentTarget; operation: (token: string) => Promise<T> }) => Promise<{ status: CredentialStatus; value?: T }>;
   prepareVersion: (input: { token: string; target: CloudflareProductionDeploymentTarget; artifact: CloudflareStagingArtifact;
-    originConfiguration: CloudflareOriginVersionBindings; assertMutationAuthorized: () => Promise<void> }) => Promise<{
+    originConfiguration: CloudflareOriginVersionBindings; purpose?: "worker-deployment";
+    assertMutationAuthorized: () => Promise<void> }) => Promise<{
       versionId: string; sourceSha: string; buildDigest: string; configurationDigest: string; trafficShifted: false;
     }>;
   canary: (input: { token: string; target: CloudflareProductionDeploymentTarget; grant: CloudflareProductionDeploymentGrant;
-    candidate: CloudflareProductionVersion; assertMutationAuthorized: () => Promise<void> }) => Promise<{ deploymentId: string; versions: unknown[] }>;
+    candidate: CloudflareProductionVersion; assertMutationAuthorized: () => Promise<void> }) => Promise<{ deploymentId: string; versions: unknown[];
+      queueConsumer: { queueId: string; consumerId: string; queueName: string; scriptName: string; deadLetterQueueName: string } }>;
   promote: (input: { token: string; target: CloudflareProductionDeploymentTarget; grant: CloudflareProductionDeploymentGrant;
     candidate: CloudflareProductionVersion; canaryDeploymentId: string; assertMutationAuthorized: () => Promise<void> }) => Promise<{ deploymentId: string; versions: unknown[] }>;
   rollback: (input: { token: string; target: CloudflareProductionDeploymentTarget; grant: CloudflareProductionDeploymentGrant;
@@ -135,7 +137,7 @@ export function createCloudflareProductionDeploymentExecutor(
           }
           const prepared = await activeRuntime.withOriginConfiguration({ target, configurationRef: grant.configurationRef,
             configurationDigest: grant.configurationDigest, operation: origin => activeRuntime.prepareVersion({
-              token, target, artifact, originConfiguration: origin, assertMutationAuthorized,
+              token, target, artifact, originConfiguration: origin, purpose: "worker-deployment", assertMutationAuthorized,
             }) });
           if (prepared.sourceSha !== job.sourceSha || prepared.buildDigest !== job.buildDigest ||
               prepared.configurationDigest !== job.configurationDigest || prepared.trafficShifted !== false) {

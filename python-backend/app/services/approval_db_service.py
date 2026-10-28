@@ -873,6 +873,26 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         if requester_role not in (Role.admin, Role.domain_admin):
             raise PermissionError("CLOUDFLARE_PRODUCTION_GRANT_ADMIN_REQUIRED")
 
+        # The Web admission router also checks tenant ownership, but this
+        # service is the durable grant boundary and must remain safe when the
+        # authenticated endpoint is called directly. A global admin role alone
+        # is not authority to mutate another tenant's production Worker.
+        tenant_result = await self.db.execute(
+            select(Tenant.owner_id, Tenant.status, User.isDisabled)
+            .select_from(Tenant)
+            .join(User, User.id == requester_id)
+            .where(Tenant.id == tenant_id)
+        )
+        tenant_owner = tenant_result.one_or_none()
+        tenant_status = getattr(tenant_owner[1], "value", tenant_owner[1]) if tenant_owner else None
+        if (
+            tenant_owner is None
+            or tenant_owner[0] != requester_id
+            or tenant_status != "active"
+            or tenant_owner[2] is not False
+        ):
+            raise PermissionError("CLOUDFLARE_PRODUCTION_GRANT_TENANT_OWNER_REQUIRED")
+
         correlation_key = "cf-production-grant:" + hashlib.sha256(
             f"{tenant_id}:{idempotency_key}".encode("utf-8")
         ).hexdigest()

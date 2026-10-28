@@ -1,4 +1,5 @@
-import { assertBindingSubset } from "./bindings";
+import { assertBindingPresence, assertBindingSubset } from "./bindings";
+import { isM3SyntheticQueueAcceptanceEnabled } from "./canonicalIntakeTransport";
 import type {
   CanonicalJobEnvelope,
   CanonicalJobHandler,
@@ -114,12 +115,20 @@ export class CloudflareQueueConsumer {
   ) {}
 
   async handleBatch(batch: QueueBatch, env: CloudflareEnvironment): Promise<void> {
-    if (env.CLOUDFLARE_ACTIVATION !== "enabled") {
+    const m3SyntheticOnly = isM3SyntheticQueueAcceptanceEnabled(env);
+    if (env.CLOUDFLARE_ACTIVATION !== "enabled" && !m3SyntheticOnly) {
       for (const message of batch.messages) message.retry({ delaySeconds: 60 });
       return;
     }
-    assertBindingSubset(env, ["HYPERDRIVE", "JOB_QUEUE"]);
+    if (m3SyntheticOnly) assertBindingPresence(env, ["HYPERDRIVE", "JOB_QUEUE"]);
+    else assertBindingSubset(env, ["HYPERDRIVE", "JOB_QUEUE"]);
     for (const message of batch.messages) {
+      if (m3SyntheticOnly &&
+          (message.body as { contract_version?: unknown } | null)?.contract_version !== "cloudflare-m3-parity-acceptance-v1") {
+        const quarantined = await this.quarantine({ envelope: null, reason: "M3_QUEUE_ACCEPTANCE_CONTRACT_REQUIRED" }, env);
+        if (quarantined) message.ack(); else message.retry({ delaySeconds: 30 });
+        continue;
+      }
       const m3Parity = (message.body as { contract_version?: unknown } | null)?.contract_version === "cloudflare-m3-parity-acceptance-v1";
       const workerVersionId = env.CF_VERSION_METADATA?.id;
       if (m3Parity && (!batch.queue || !message.id || batch.queue !== "smartspec-canonical-job-queue-production" ||

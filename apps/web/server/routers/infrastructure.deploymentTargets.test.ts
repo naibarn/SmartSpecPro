@@ -79,6 +79,22 @@ describe("infrastructure deployment target project selector", () => {
     expect(getDbMock).not.toHaveBeenCalled();
   });
 
+  it("keeps Production Worker deployment unavailable to an Admin who does not own the selected tenant", async () => {
+    const limit = vi.fn().mockResolvedValue([]);
+    const where = vi.fn(() => ({ limit }));
+    const innerJoin = vi.fn(() => ({ where }));
+    const from = vi.fn(() => ({ innerJoin }));
+    getDbMock.mockResolvedValue({ select: vi.fn(() => ({ from })) });
+    const caller = infrastructureRouter.createCaller({ user: { id: 7, role: "admin", currentTenantId: tenantId },
+      tenantId, userToken: "owner-scoped-session" } as any);
+    await expect(caller.getCloudflareProductionWorkerCanaryPreflight({ tenantId, projectId, environment: "production" }))
+      .resolves.toEqual({ ready: false, reason: "PRODUCTION_TENANT_OWNER_REQUIRED" });
+    await expect(caller.queueCloudflareProductionWorkerCanary({ tenantId, projectId, environment: "production",
+      submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "a".repeat(64) }))
+      .rejects.toMatchObject({ code: "FORBIDDEN", message: "PRODUCTION_TENANT_OWNER_REQUIRED" });
+    expect(from).toHaveBeenCalledTimes(2);
+  });
+
   it("keeps origin versions and secret writes behind the exact-admin guard", async () => {
     const identity = { tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging" as const, provider: "cloudflare" as const };
     const reference = { ...identity, configurationRef: `cf-origin:${"a".repeat(64)}` };

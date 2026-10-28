@@ -57,18 +57,18 @@ describe("M3 active Cloudflare Queue Worker readiness", () => {
       versions: [{ sourceSha, buildDigest }] });
   });
 
-  it("accepts a verified two-version active deployment only when both versions and the real consumer match", async () => {
+  it("accepts a Queue-capable canary alongside the accepted non-Queue rollback baseline", async () => {
     const second = { ...base.versions[0]!, versionId: "92f40f82-179d-4b94-8a2f-30c6fa0ce63a", percentage: 1,
       sourceSha: "c".repeat(40), buildDigest: "d".repeat(64) };
-    const first = { ...base.versions[0]!, percentage: 99 };
+    const first = { ...base.versions[0]!, percentage: 99, bindingNames: [] as string[] };
     const resolve = vi.fn(async (artifactRef: string, sha: string) => ({
       ...bundle("cloudflare.production.m3.parity.acceptance.credit_billing_acceptance cloudflare.production.m3.parity.acceptance.queue_recovery_acceptance cloudflare-m3-parity-acceptance-v1 smartspec-canonical-job-queue-production"),
       sourceSha: sha,
       buildDigest: artifactRef.slice("sha256:".length),
     }));
     await expect(verifyM3QueueWorkerReadiness({ ...base, versions: [first, second] }, resolve))
-      .resolves.toMatchObject({ ready: true, versions: [{ percentage: 99 }, { percentage: 1 }] });
-    expect(resolve).toHaveBeenCalledTimes(2);
+      .resolves.toMatchObject({ ready: true, versions: [{ percentage: 1, versionId: second.versionId }] });
+    expect(resolve).toHaveBeenCalledOnce();
   });
 
   it("fails closed when active version metadata or Queue binding is absent", async () => {
