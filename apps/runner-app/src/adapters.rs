@@ -2465,6 +2465,27 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "requires an installed, authenticated Codex CLI; performs read-only model/list only"]
+    fn live_codex_app_server_catalog_is_account_scoped_and_unverified() {
+        let candidate =
+            crate::discovery::scan_environment(crate::config::RunnerProfile::LocalDevice)
+                .into_iter()
+                .find(|tool| tool.adapter_id.as_deref() == Some("codex.v1"))
+                .expect("Codex CLI must be installed for this opt-in check");
+        let catalog = list_available_models(&candidate, Duration::from_secs(12)).unwrap();
+        assert!(!catalog.models.is_empty());
+        assert_eq!(catalog.source, "codex_app_server_model_list");
+        assert_eq!(catalog.verification_state, "unverified_catalog_only");
+        assert!(catalog.account_provider_fingerprint.is_some());
+        eprintln!(
+            "read-only Codex model catalog: cli={:?}, model_count={}, revision={}",
+            catalog.cli_version,
+            catalog.models.len(),
+            catalog.revision
+        );
+    }
+
+    #[test]
     fn codex_version_and_authentication_probes_do_not_prove_task_readiness() {
         let mut codex = crate::discovery::scan_known_tools(
             crate::config::RunnerProfile::LocalDevice,
