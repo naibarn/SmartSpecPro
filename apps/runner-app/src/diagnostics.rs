@@ -679,10 +679,11 @@ fn apply_task_probe_evidence(
     }
 }
 
-fn task_probe_renewal_due(expires_at_ms: Option<u64>, now_ms: u64) -> bool {
-    expires_at_ms.is_none_or(|expires_at| {
-        expires_at <= now_ms.saturating_add(TASK_PROBE_RENEW_BEFORE.as_millis() as u64)
-    })
+fn task_probe_renewal_due(state: ProbeState, expires_at_ms: Option<u64>, now_ms: u64) -> bool {
+    state != ProbeState::Passed
+        || expires_at_ms.is_none_or(|expires_at| {
+            expires_at <= now_ms.saturating_add(TASK_PROBE_RENEW_BEFORE.as_millis() as u64)
+        })
 }
 
 fn task_probe_renewal_key(
@@ -708,7 +709,11 @@ fn renew_task_probe_if_due(
     tenant_id: Option<&str>,
 ) {
     if !matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1"))
-        || !task_probe_renewal_due(tool.task_probe_expires_at_ms, current_time_ms())
+        || !task_probe_renewal_due(
+            tool.task_probe_state,
+            tool.task_probe_expires_at_ms,
+            current_time_ms(),
+        )
     {
         return;
     }
@@ -766,17 +771,34 @@ fn renew_task_probe_if_due(
 
 #[cfg(test)]
 mod task_probe_renewal_tests {
-    use super::{task_probe_renewal_due, TASK_PROBE_RENEW_BEFORE};
+    use super::{task_probe_renewal_due, ProbeState, TASK_PROBE_RENEW_BEFORE};
     use std::time::Duration;
 
     #[test]
     fn renewal_starts_before_expiry_and_missing_evidence_is_probed() {
         let now = 1_000_000;
         let renew_before = TASK_PROBE_RENEW_BEFORE.as_millis() as u64;
-        assert!(task_probe_renewal_due(None, now));
-        assert!(task_probe_renewal_due(Some(now + renew_before), now));
-        assert!(!task_probe_renewal_due(Some(now + renew_before + 1), now));
-        assert!(task_probe_renewal_due(Some(now - 1), now));
+        assert!(task_probe_renewal_due(ProbeState::Passed, None, now));
+        assert!(task_probe_renewal_due(
+            ProbeState::Passed,
+            Some(now + renew_before),
+            now
+        ));
+        assert!(!task_probe_renewal_due(
+            ProbeState::Passed,
+            Some(now + renew_before + 1),
+            now
+        ));
+        assert!(task_probe_renewal_due(
+            ProbeState::Passed,
+            Some(now - 1),
+            now
+        ));
+        assert!(task_probe_renewal_due(
+            ProbeState::Failed,
+            Some(now + 30 * 60_000),
+            now
+        ));
         assert_eq!(TASK_PROBE_RENEW_BEFORE, Duration::from_secs(600));
     }
 }
