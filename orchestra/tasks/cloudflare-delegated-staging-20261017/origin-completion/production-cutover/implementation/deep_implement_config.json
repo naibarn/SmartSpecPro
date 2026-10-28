@@ -35,10 +35,10 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "g198 DEPLOYED_VERIFIED from integrated SHA 04ee86bf02228eb17d8c68529128219b03f94133; Linux/web and Node worker health HTTP 200, Node v22.23.4, release smartspec-web-04ee86bf02228eb17d8c68529128219b03f94133-e049cb33dd6d generation 198, artifact sha256:62f017e608a82dd8595c5a5770445b387f045607007d6493e40245429ac60e17. Public AdminSettings-diWIBIn0.js HTTP 200 byte-identical to release asset (SHA256 d0aee4be4f20ca351314a570850a6b271064c894a6642408138e9f03a82b4765); HTTP_CANDIDATE_DEPLOYMENT_CHANGED no longer polls continuously and offers explicit read-only recheck. Canary Queue blocker now differentiates Queue inventory/read HTTP status, missing/multiple consumer, invalid consumer, worker mismatch and DLQ mismatch. Focused tests 22/22 pass. Next exact action: Owner reloads Admin and runs read-only Canary preflight once; report the surfaced exact PRODUCTION_QUEUE_* reason. Do not mutate production route/weights; M1/M2 and Linux fallback remain unchanged. Authenticated provider result remains unverified from this session.",
-      "checkpoint_sha": "04ee86bf02228eb17d8c68529128219b03f94133",
-      "merged_main_sha": "04ee86bf02228eb17d8c68529128219b03f94133",
-      "session_id": "codex-g198-queue-readback"
+      "next_action": "g200 DEPLOYED_VERIFIED from integrated SHA 59c0ce2d698f52c95810d3e42aa4370563768f16; release smartspec-web-59c0ce2d698f52c95810d3e42aa4370563768f16-3669ce918853 generation 200, artifact sha256:41087f3cc8c280fa519c728628c31a05bd55afbd30b886299fcbd70d0f5baf26. Web and Node worker HEALTHY, health HTTP 200, runtime revision 59c0ce2d698f52c95810d3e42aa4370563768f16, Node v22.23.4. Public Admin bundle AdminSettings-CApkQsZD.js matched byte-for-byte, SHA256 daafc644c4282b56b6a25ddd4f5b1926b9409b8970a75273b461440d7de5ae33, includes STALE-state copy and manual recheck. Fixed getCloudflareHttpRuntimeReadiness to return explicit non-ready STALE data only for exact HTTP_CANDIDATE_DEPLOYMENT_CHANGED while preserving all other provider validation errors; candidate readiness is never accepted from this state. Focused tests 20/20 pass. The reported 412 is consistent with stale Candidate readback and no longer should be emitted for this mismatch. Remaining: authenticated Owner reload Admin and run one read-only status refresh to verify live response is STALE/no 412; then inspect precise Canary Queue blocker and continue non-traffic readiness. No Cloudflare route/weight changes; preserve M1/M2, production traffic and Linux fallback. Authenticated preflight remains unverified in this session.",
+      "checkpoint_sha": "59c0ce2d698f52c95810d3e42aa4370563768f16",
+      "merged_main_sha": "59c0ce2d698f52c95810d3e42aa4370563768f16",
+      "session_id": "codex-g200-stale-readback"
     }
   },
   "pre_commit": {
@@ -50,11 +50,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 166,
-  "updated_at": "2026-10-28T06:45:52.021768+00:00",
+  "generation": 167,
+  "updated_at": "2026-10-28T07:04:02.386146+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "g198 DEPLOYED_VERIFIED from integrated SHA 04ee86bf02228eb17d8c68529128219b03f94133; Linux/web and Node worker health HTTP 200, Node v22.23.4, release smartspec-web-04ee86bf02228eb17d8c68529128219b03f94133-e049cb33dd6d generation 198, artifact sha256:62f017e608a82dd8595c5a5770445b387f045607007d6493e40245429ac60e17. Public AdminSettings-diWIBIn0.js HTTP 200 byte-identical to release asset (SHA256 d0aee4be4f20ca351314a570850a6b271064c894a6642408138e9f03a82b4765); HTTP_CANDIDATE_DEPLOYMENT_CHANGED no longer polls continuously and offers explicit read-only recheck. Canary Queue blocker now differentiates Queue inventory/read HTTP status, missing/multiple consumer, invalid consumer, worker mismatch and DLQ mismatch. Focused tests 22/22 pass. Next exact action: Owner reloads Admin and runs read-only Canary preflight once; report the surfaced exact PRODUCTION_QUEUE_* reason. Do not mutate production route/weights; M1/M2 and Linux fallback remain unchanged. Authenticated provider result remains unverified from this session.",
+    "next_action": "g200 DEPLOYED_VERIFIED from integrated SHA 59c0ce2d698f52c95810d3e42aa4370563768f16; release smartspec-web-59c0ce2d698f52c95810d3e42aa4370563768f16-3669ce918853 generation 200, artifact sha256:41087f3cc8c280fa519c728628c31a05bd55afbd30b886299fcbd70d0f5baf26. Web and Node worker HEALTHY, health HTTP 200, runtime revision 59c0ce2d698f52c95810d3e42aa4370563768f16, Node v22.23.4. Public Admin bundle AdminSettings-CApkQsZD.js matched byte-for-byte, SHA256 daafc644c4282b56b6a25ddd4f5b1926b9409b8970a75273b461440d7de5ae33, includes STALE-state copy and manual recheck. Fixed getCloudflareHttpRuntimeReadiness to return explicit non-ready STALE data only for exact HTTP_CANDIDATE_DEPLOYMENT_CHANGED while preserving all other provider validation errors; candidate readiness is never accepted from this state. Focused tests 20/20 pass. The reported 412 is consistent with stale Candidate readback and no longer should be emitted for this mismatch. Remaining: authenticated Owner reload Admin and run one read-only status refresh to verify live response is STALE/no 412; then inspect precise Canary Queue blocker and continue non-traffic readiness. No Cloudflare route/weight changes; preserve M1/M2, production traffic and Linux fallback. Authenticated preflight remains unverified in this session.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
@@ -78,7 +78,7 @@
       "Authenticated Owner preflight and production Cloudflare inventory remain unverified from this CLI session; public unauthenticated endpoint returns expected 403.",
       "No production Worker canary canonical job, deployment receipt, route mutation, or traffic change was performed."
     ],
-    "merged_main_sha": "04ee86bf02228eb17d8c68529128219b03f94133",
+    "merged_main_sha": "59c0ce2d698f52c95810d3e42aa4370563768f16",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
