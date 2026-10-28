@@ -84,7 +84,17 @@ struct DesktopSettings {
     default_workspace_id: Option<String>,
     auto_start_enabled: bool,
     #[serde(default)]
+    auto_start_runner_loop: Option<bool>,
+    #[serde(default)]
     first_launch_at_ms: Option<u64>,
+}
+
+impl DesktopSettings {
+    fn auto_start_runner_loop(&self) -> bool {
+        // Preserve the previous login-start behavior for existing settings.
+        self.auto_start_runner_loop
+            .unwrap_or(self.auto_start_enabled)
+    }
 }
 
 struct RunnerState {
@@ -119,6 +129,7 @@ struct RunnerStatus {
     runner_id: String,
     default_workspace_id: Option<String>,
     auto_start_enabled: bool,
+    auto_start_runner_loop: bool,
     last_error: Option<String>,
     app_version: String,
     build_date: String,
@@ -458,6 +469,7 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         runner_id: state.config.runner_id.clone(),
         default_workspace_id: settings.default_workspace_id.clone(),
         auto_start_enabled: settings.auto_start_enabled,
+        auto_start_runner_loop: settings.auto_start_runner_loop(),
         last_error,
         app_version: state.app_version.clone(),
         build_date: state.build_date.clone(),
@@ -1209,14 +1221,34 @@ fn set_auto_start(
     }
     let mut settings = setting_lock(&state)?;
     let previous = settings.auto_start_enabled;
+    let previous_loop_setting = settings.auto_start_runner_loop;
+    if settings.auto_start_runner_loop.is_none() {
+        settings.auto_start_runner_loop = Some(settings.auto_start_runner_loop());
+    }
     settings.auto_start_enabled = enabled;
     if let Err(error) = write_settings(&state.settings_path, &settings) {
         settings.auto_start_enabled = previous;
+        settings.auto_start_runner_loop = previous_loop_setting;
         if enabled {
             let _ = manager.disable();
         } else {
             let _ = manager.enable();
         }
+        return Err(error);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_auto_start_runner_loop(enabled: bool, state: State<'_, RunnerState>) -> Result<(), String> {
+    if enabled && load_connection(&state.config.data_root)?.is_none() {
+        return Err("RUNNER_AUTO_START_REQUIRES_CONNECTION".into());
+    }
+    let mut settings = setting_lock(&state)?;
+    let previous = settings.auto_start_runner_loop;
+    settings.auto_start_runner_loop = Some(enabled);
+    if let Err(error) = write_settings(&state.settings_path, &settings) {
+        settings.auto_start_runner_loop = previous;
         return Err(error);
     }
     Ok(())
@@ -1332,26 +1364,35 @@ fn main() {
                 if let Some(window) = app.get_webview_window("main") {
                     let _ = window.hide();
                 }
-                if settings.auto_start_enabled {
-                    if let Some(state) = app.try_state::<RunnerState>() {
-                        if let Err(error) = start_runner_inner(&state) {
+            }
+            if settings.auto_start_runner_loop() {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn_blocking(move || {
+                    if let Some(state) = app_handle.try_state::<RunnerState>() {
+                        let result =
+                            load_connection(&state.config.data_root).and_then(|connection| {
+                                connection
+                                    .ok_or_else(|| "RUNNER_CONNECTION_REQUIRED".to_string())?;
+                                start_runner_inner(&state)
+                            });
+                        if let Err(error) = result {
                             if let Ok(mut last_error) = state.lifecycle.last_error.lock() {
-                                *last_error = Some(
-                                    if error.starts_with("RUNNER_TRUSTED_WORKSPACE")
-                                        || error.starts_with("RUNNER_WORKSPACE")
-                                    {
-                                        "RUNNER_WORKSPACE_NEEDS_RESELECT".into()
-                                    } else {
-                                        "RUNNER_AUTOSTART_FAILED".into()
-                                    },
-                                );
+                                *last_error = Some(if error == "RUNNER_CONNECTION_REQUIRED" {
+                                    error
+                                } else if error.starts_with("RUNNER_TRUSTED_WORKSPACE")
+                                    || error.starts_with("RUNNER_WORKSPACE")
+                                {
+                                    "RUNNER_WORKSPACE_NEEDS_RESELECT".into()
+                                } else {
+                                    "RUNNER_AUTOSTART_FAILED".into()
+                                });
                             }
-                            if let Some(window) = app.get_webview_window("main") {
+                            if let Some(window) = app_handle.get_webview_window("main") {
                                 let _ = window.show();
                             }
                         }
                     }
-                }
+                });
             }
             Ok(())
         })
@@ -1380,6 +1421,7 @@ fn main() {
             remove_workspace,
             set_default_workspace,
             set_auto_start,
+            set_auto_start_runner_loop,
             quit_runner
         ])
         .run(tauri::generate_context!())
@@ -1466,6 +1508,39 @@ mod credential_retry_tests {
         ));
         assert!(access_token_needs_refresh(Some(now + 1), now));
         assert!(!access_token_needs_refresh(None, now));
+    }
+}
+
+#[cfg(test)]
+mod startup_settings_tests {
+    use super::DesktopSettings;
+
+    #[test]
+    fn existing_settings_keep_their_login_loop_behavior() {
+        let enabled: DesktopSettings =
+            serde_json::from_str(r#"{"defaultWorkspaceId":"workspace-1","autoStartEnabled":true}"#)
+                .unwrap();
+        let disabled: DesktopSettings =
+            serde_json::from_str(r#"{"defaultWorkspaceId":null,"autoStartEnabled":false}"#)
+                .unwrap();
+        assert!(enabled.auto_start_runner_loop());
+        assert!(!disabled.auto_start_runner_loop());
+        assert_eq!(enabled.default_workspace_id.as_deref(), Some("workspace-1"));
+    }
+
+    #[test]
+    fn explicit_loop_preference_is_independent_and_persists() {
+        for (login, loop_enabled) in [(true, false), (false, true)] {
+            let settings = DesktopSettings {
+                auto_start_enabled: login,
+                auto_start_runner_loop: Some(loop_enabled),
+                ..DesktopSettings::default()
+            };
+            let restored: DesktopSettings =
+                serde_json::from_str(&serde_json::to_string(&settings).unwrap()).unwrap();
+            assert_eq!(restored.auto_start_enabled, login);
+            assert_eq!(restored.auto_start_runner_loop(), loop_enabled);
+        }
     }
 }
 

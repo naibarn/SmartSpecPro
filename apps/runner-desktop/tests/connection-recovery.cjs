@@ -123,3 +123,35 @@ test('a confirmed reconnect clears the error and restores the running UI without
     await browser.close();
   }
 });
+
+test('the automatic Runner loop setting can be saved independently of login startup', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.addInitScript(() => {
+      window.startupPreferences = { login: false, loop: false, starts: 0 };
+      window.__TAURI__ = { core: { invoke: async (name, args) => {
+        if (name === 'runner_status') return {
+          credentialsReady: true, controlPlaneConnected: false, running: false, stopping: false,
+          runnerId: 'local-runner', credentialState: 'valid', readiness: {},
+          autoStartEnabled: window.startupPreferences.login,
+          autoStartRunnerLoop: window.startupPreferences.loop,
+        };
+        if (name === 'set_auto_start_runner_loop') window.startupPreferences.loop = args.enabled;
+        if (name === 'set_auto_start') window.startupPreferences.login = args.enabled;
+        if (name === 'start_runner') window.startupPreferences.starts += 1;
+        if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
+        return null;
+      } } };
+    });
+    await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
+    await page.locator('#auto-start-loop').check();
+    await page.waitForFunction(() => window.startupPreferences.loop);
+    assert.equal(await page.locator('#auto-start').isChecked(), false);
+    assert.equal(await page.evaluate(() => window.startupPreferences.starts), 0);
+    await page.locator('#auto-start-loop').uncheck();
+    await page.waitForFunction(() => !window.startupPreferences.loop);
+  } finally {
+    await browser.close();
+  }
+});

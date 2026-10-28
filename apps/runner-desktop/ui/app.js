@@ -5,7 +5,7 @@ const elements = Object.fromEntries(
     "connection-state", "connection-detail", "connection-notice", "connect-button",
     "refresh-button", "runtime-state", "runtime-notice", "readiness-detail", "start-button", "stop-button",
     "rescan-button", "workspace-list", "default-workspace", "tool-list", "tool-count",
-    "add-workspace-button", "auto-start", "global-notice", "quit-button",
+    "add-workspace-button", "auto-start", "auto-start-loop", "global-notice", "quit-button",
     "app-version", "app-build-date", "first-launch-date", "access-token-expiry", "reauth-deadline",
     "credential-detail", "export-debug-button", "open-debug-folder-button", "debug-file-path",
     "workspace-simple-mode", "workspace-developer-mode",
@@ -20,6 +20,7 @@ let connectPending = false;
 let refreshPending = false;
 let scanPending = false;
 let startPending = false;
+let autoStartLoopPending = false;
 let stopPending = false;
 let quitPending = false;
 let activeStatusRequest = null;
@@ -313,6 +314,7 @@ function applyRunnerStatus(status) {
   });
 
   elements["auto-start"].checked = status.autoStartEnabled;
+  if (!autoStartLoopPending) elements["auto-start-loop"].checked = status.autoStartRunnerLoop;
   if (document.activeElement !== elements["default-workspace"]) {
     elements["default-workspace"].value = status.defaultWorkspaceId ?? "";
   }
@@ -830,6 +832,23 @@ elements["auto-start"].addEventListener("change", async event => {
   } catch (error) {
     event.target.checked = !event.target.checked;
     setNotice(elements["global-notice"], safeError(error));
+  }
+});
+elements["auto-start-loop"].addEventListener("change", async event => {
+  invalidatePendingStatus();
+  const enabled = event.target.checked;
+  autoStartLoopPending = true;
+  event.target.disabled = true;
+  try {
+    await invoke("set_auto_start_runner_loop", { enabled });
+    setNotice(elements["global-notice"], enabled ? "Runner จะเริ่มอัตโนมัติเมื่อเปิดโปรแกรมครั้งถัดไป" : "ปิดการเริ่ม Runner เมื่อเปิดโปรแกรมแล้ว");
+  } catch (error) {
+    event.target.checked = !enabled;
+    setNotice(elements["global-notice"], safeError(error));
+  } finally {
+    autoStartLoopPending = false;
+    event.target.disabled = false;
+    await refreshStatus();
   }
 });
 elements["quit-button"].addEventListener("click", async () => {

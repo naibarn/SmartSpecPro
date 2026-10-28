@@ -115,13 +115,19 @@
       <footer class="settings panel">
         <section>
           <p class="eyebrow">การตั้งค่าเริ่มต้น</p>
-          <h2>เปิด Runner เมื่อเข้าสู่ระบบ</h2>
-          <p class="body-copy">เมื่อเปิดใช้งาน โปรแกรมจะเริ่มทำงานเบื้องหลังและเปิดได้จากไอคอนบริเวณ tray หรือ menu bar</p>
+          <h2>การเริ่มโปรแกรมและ Runner</h2>
+          <p class="body-copy">เลือกเปิดโปรแกรมเมื่อเข้าสู่ระบบ และเลือกให้ Runner เริ่มรับงานเมื่อเปิดโปรแกรมได้แยกกัน</p>
         </section>
-        <label class="toggle-row" for="auto-start">
-          <input id="auto-start" type="checkbox" />
-          <strong>เริ่ม Runner เมื่อเข้าสู่ระบบ</strong>
-        </label>
+        <section class="settings-toggles" aria-label="ตัวเลือกการเริ่มอัตโนมัติ">
+          <label class="toggle-row" for="auto-start">
+            <input id="auto-start" type="checkbox" />
+            <strong>เปิดโปรแกรมเมื่อเข้าสู่ระบบ</strong>
+          </label>
+          <label class="toggle-row" for="auto-start-loop">
+            <input id="auto-start-loop" type="checkbox" />
+            <strong>เริ่ม Runner เมื่อเปิดโปรแกรม</strong>
+          </label>
+        </section>
       </footer>
 
       <output class="global-notice" id="global-notice" aria-live="polite"></output>
