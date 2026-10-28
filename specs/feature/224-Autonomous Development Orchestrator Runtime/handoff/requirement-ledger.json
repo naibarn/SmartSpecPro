@@ -1,5 +1,5 @@
 {
-  "generation": 31,
+  "generation": 32,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -582,15 +582,15 @@
       "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L531",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "FRESH",
+      "evidence_freshness": "STALE",
       "evidence_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
-      "final_state": "PASS",
+      "final_state": "STALE_EVIDENCE",
       "implementation_evidence": [
         "apps/web/server/services/spec224RunnerContinuationReconciler.ts",
         "apps/web/server/services/__tests__/spec224GoalAdmissionIngressPostgres.integration.test.ts"
       ],
       "implementation_status": "IMPLEMENTED",
-      "next_action": "Retain live Windows Child 1 receipt and automatic Child 2 evidence; synthetic PostgreSQL receipts are not live execution evidence.",
+      "next_action": "Revalidate automatic receipt-driven continuation on the current integrated canonical SHA before restoring PASS; retain the previous connected PostgreSQL evidence as historical evidence and keep live Debian/Windows acceptance separate.",
       "requirement_digest": "ff5bd5c173adf19c3249011c76feaf791c19804ccfa98465f6e218d00c7a8063",
       "requirement_id": "REQ-759DCE45F6BA",
       "requirement_text": "No continuation SHALL depend on a browser tab, chat turn, or user copy/paste.",

@@ -1,0 +1,33 @@
+# SPEC-224 Debian Platform Engineering workspace readiness
+
+Observed 2026-10-28 09:48–09:56 UTC on integrated `origin/main` SHA `fc4a61722c6745c22989c308399fa8a2a2da8cca`.
+
+## Checkout and ownership boundary
+
+- Canonical checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`; `main` and `origin/main` both resolve to `fc4a61722c6745c22989c308399fa8a2a2da8cca`.
+- The checkout is not clean. The live Runner workspace snapshot has the same Git HEAD and `dirty=true`, a content fingerprint, `convergenceState=NOT_REPORTED`, and no convergence canonical SHA. The Task Control Platform workspace gate therefore remains closed; no dirty files were reset, cleaned, stashed, or overwritten.
+- Dirty Cloudflare M3 work includes `apps/web/client/src/components/admin/{AdminDeploymentTargets,CloudflareM3ParityOperations,CloudflareNativeRuntimeOperation}.tsx` and the matching AdminDeploymentTargets/CloudflareM3ParityOperations tests; `apps/web/server/routers/infrastructure.ts`; `apps/web/server/services/{cloudflareM3ParityAdmission,cloudflareM3ParityExecutor,cloudflareM3ParityJobContract,cloudflareM3QueueRecoveryExecutor,cloudflareProductionProviderInventory}.ts`; and the active delegated-staging task's `HANDOFF.md`, `deep_implement_config.json`, `handoff_history.jsonl`, and lock metadata. These belong to the separate Cloudflare release lane and remain untouched.
+- `python-backend/app/api/approvals.py`, `python-backend/app/services/approval_db_service.py`, and `python-backend/tests/test_cloudflare_migration_mandates.py` are retained as a separate Python/backend delta; no ownership transfer or synchronization was inferred.
+- `apps/web/server/routers/__tests__/verticalDramaCharacters.manualVariantTwinCrud.test.ts` is unrelated. Untracked `apps/web/.local/`, `apps/web/.skillpack/`, `apps/web/test-results/smarthub-uat/`, `test-results/`, Cloudflare/SPEC-224 implementation lock files, and Cloudflare migration-mandate source/tests are preserved; no generated or unknown artifact was deleted.
+
+## Runner, Codex, and trusted workspace
+
+- The existing Debian Runner service is active under the same registered Runner ID and session. The dev Control Plane read model at `2026-10-28T09:55:48.892Z` reports tenant match, owner identity present, `status=online`, heartbeat at `09:55:19.358Z`, current snapshot revision `snapshot:runner-f1328901deec1b147d200a818e12e4be:2026-10-28T09:54:48.597Z`, expiry `09:59:48.597Z`, and an applied capability ACK for that revision at `09:54:48.597Z`.
+- The active `PLATFORM_ENGINEERING` Project/Runner binding resolves to the registered Debian workspace (`ws-smartspecpro-82e2bf8ca9c2`) and active canonical project “SmartAIHub Platform Engineering”. The source head is current, but the published workspace is dirty and has no accepted convergence receipt.
+- Runner-published Codex is authenticated and available (`codex-cli 0.144.1`), with a passed task probe observed at `2026-10-28T06:53:46.724Z` and expiry `07:53:46.724Z`. The task-probe evidence is expired even though auth and the latest capability snapshot are current. Task Control must continue to report `CODEX_TASK_PROBE_EXPIRED` and must not authorize Start from the stale probe.
+- A separate actual Codex CLI probe ran at `09:56:10Z` with `--ephemeral --sandbox read-only` and returned `CODEX_TASK_PROBE_OK`. It did not refresh or replace the Runner-bound evidence or applied ACK, so it is diagnostic only and does not satisfy Task Control readiness.
+
+## Task Control and development runtime
+
+- The exact workspace read model consumed by `Spec224WorkspacePanel.tsx` carries `dirty=true`, `convergenceState=NOT_REPORTED`, and a null convergence SHA. The existing UI gate requires a clean workspace and `USER_WORKSPACE_CONVERGED` with convergence SHA equal to the current Git head. This check was not weakened.
+- `evaluateSpec224RunnerReadiness()` previously suggested a Windows-only probe action for a Linux Runner. The focused fix is integrated at `fc4a61722c6745c22989c308399fa8a2a2da8cca`; it now derives the owner action from the registered platform. Focused tests passed: `pnpm exec vitest run server/services/__tests__/spec224AuthorizationBinding.test.ts server/routers/__tests__/spec226DevelopmentControl.test.ts --reporter=dot` (2 files, 56 tests).
+- The active development web service and `aimarkethubs.com` tunnel are healthy (local and public `/health` return HTTP 200). The service startup receipt identifies source `838523a86ec6c76c95d542334801cdd49ebb134b-dirty`, which includes the Platform Development UI implementation. The process predates `fc4a617…`; its backend therefore has not loaded the platform-specific probe-action fix. It was not restarted because doing so from the primary checkout would also load another session's unintegrated Cloudflare/Python changes. No production deployment was made.
+- No authenticated owner `startWorkspaceRun`, Goal approval, or write-capable DevelopmentRun was issued. Existing Goal Admission is not used until the trusted source and Runner readiness predicates pass.
+
+## Required resume actions
+
+1. Preserve the active Cloudflare/Python and unrelated changes until their owners integrate them or the existing SPEC-293 workspace authority safely isolates them. Then refresh this registered workspace snapshot and obtain `dirty=false`, `convergenceState=USER_WORKSPACE_CONVERGED`, and a convergence SHA equal to the current head.
+2. On the existing Debian Runner's Codex row, use its supported **ทดสอบสั่งงานจริง** action and wait for a fresh Runner-bound task-probe expiry and an applied ACK on the same registered Runner session. A direct Codex CLI reply does not update this authority.
+3. Re-read `availableWorkspaces`, `runnerNodes.list`, and `runnerNodes.workspaceReadiness` through an authenticated Task Control session. Only after both source convergence and probe freshness are confirmed should the owner start the bounded Goal through existing Task Control and approve it through the normal Approval Authority.
+
+This is readiness evidence only. No Goal, child job, dispatch, settlement, or live two-phase acceptance is claimed.

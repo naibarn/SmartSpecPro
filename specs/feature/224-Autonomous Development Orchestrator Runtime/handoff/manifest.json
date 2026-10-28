@@ -91,6 +91,13 @@
         "scope": "Linux runtime alignment is verified. Windows Runner freshness, authenticated owner Goal approval, actual Child 1/2 receipts and settlement remain unverified; this is not LIVE_VERIFIED.",
         "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_DEBIAN_PLATFORM_WORKSPACE_READINESS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-platform-readiness-20261028.md",
+        "scope": "Current origin/main fc4a61722c6745c22989c308399fa8a2a2da8cca is integrated and tested. Registered Debian Runner is online with a fresh snapshot and applied capability ACK, but Runner-bound Codex task probe is expired; the trusted Platform Engineering workspace is dirty with convergenceState=NOT_REPORTED. aimarkethubs.com is the development tunnel and its web process started from 838523a86ec6c76c95d542334801cdd49ebb134b-dirty, so the platform-specific readiness fix is not yet loaded. No Goal or write-capable run was started.",
+        "source_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -990,14 +997,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
+    "expected_canonical_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Linux Web/API/Node Worker and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Continue live acceptance when the owner refreshes authenticated Windows Runner/Codex readiness, confirms the isolated Project Workspace and source scope, and starts/approves the bounded Goal through Task Control; then capture real Child 1 and automatic Child 2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.",
-    "next_ready_workunit": "SPEC224_WINDOWS_RUNNER_OWNER_PREREQUISITE",
-    "reactivation_predicate": "Resume the live two-phase pilot when authenticated Task Control evidence shows a fresh online Windows Runner with applied capability ACK, deployed backend source SHA at or beyond the integrated ingress source, an owner-approved Goal Grant bound to the isolated workspace/source, and an active shared Goal Budget.",
-    "resume_point": "Production Linux runtime verified: Web/API/Node Worker generation 194 and Python Goal Grant Approval route run immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md. Runtime release alignment is complete; live Windows acceptance is not. Next exact operation: authenticated owner refreshes Runner/Codex evidence and starts/approves the real Goal in Task Control. Do not infer live execution or active Cloudflare Worker SHA.",
+    "next_action": "Preserve active Cloudflare/Python and unrelated checkout deltas until their owners integrate them or existing SPEC-293 authority isolates them; then refresh the registered Debian workspace until clean with USER_WORKSPACE_CONVERGED at current Git HEAD. Refresh Runner-bound Codex task-probe through the supported Runner action and wait for applied ACK. Re-read the authenticated Task Control workspace read models; only then start/approve the bounded Goal.",
+    "next_ready_workunit": "SPEC224_DEBIAN_PLATFORM_WORKSPACE_READINESS_RECONCILIATION",
+    "reactivation_predicate": "Resume Goal preparation only when the existing Platform Engineering binding resolves to the registered Debian Runner/workspace, workspace dirty=false with USER_WORKSPACE_CONVERGED and convergence SHA equal to gitHead, and a fresh Runner-bound Codex task probe plus applied ACK are visible in the authenticated Task Control read model.",
+    "resume_point": "At fc4a61722c6745c22989c308399fa8a2a2da8cca: canonical main is integrated; Platform Development UI at 838523a is present in aimarkethubs.com dev runtime, whose process source is still 838523a-dirty. Registered Debian Runner is online with fresh capability ACK; Codex auth is good but its Runner-bound task probe expired. Platform workspace binding is active but source dirty=true and convergenceState=NOT_REPORTED. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-platform-readiness-20261028.md. Do not start Goal until source convergence and fresh Runner-bound probe are proven.",
     "waiting_predicate": "Resume live pilot after fresh authenticated Task Control evidence confirms an online Windows Runner, applied capability ACK, Codex task readiness, isolated workspace/source scope, actual owner-approved Goal Grant and active shared Goal Budget. Obtain provider-owner readback for active Cloudflare Worker revision separately; do not change Worker routing as part of this handoff."
   },
   "continuation_assessment": {
@@ -1133,7 +1140,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 222,
+  "generation": 224,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1335,11 +1342,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
+    "canonical_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca",
     "integrated": true,
-    "integrated_at": "2026-10-28T01:58:05Z",
+    "integrated_at": "2026-10-28T09:48:27Z",
     "pull_request": null,
-    "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
+    "source_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2799,15 +2806,15 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L531",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
-        "final_state": "PASS",
+        "final_state": "STALE_EVIDENCE",
         "implementation_evidence": [
           "apps/web/server/services/spec224RunnerContinuationReconciler.ts",
           "apps/web/server/services/__tests__/spec224GoalAdmissionIngressPostgres.integration.test.ts"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Retain live Windows Child 1 receipt and automatic Child 2 evidence; synthetic PostgreSQL receipts are not live execution evidence.",
+        "next_action": "Revalidate automatic receipt-driven continuation on the current integrated canonical SHA before restoring PASS; retain the previous connected PostgreSQL evidence as historical evidence and keep live Debian/Windows acceptance separate.",
         "requirement_digest": "ff5bd5c173adf19c3249011c76feaf791c19804ccfa98465f6e218d00c7a8063",
         "requirement_id": "REQ-759DCE45F6BA",
         "requirement_text": "No continuation SHALL depend on a browser tab, chat turn, or user copy/paste.",
@@ -3812,12 +3819,12 @@
     "blocked_true_external": 1,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 1,
+    "pass": 0,
     "total": 1284,
-    "unresolved": 1282
+    "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T02:42:15.971389Z",
+  "updated_at": "2026-10-28T09:57:58.367843Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

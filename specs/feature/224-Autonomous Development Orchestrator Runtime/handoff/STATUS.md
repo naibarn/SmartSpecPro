@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 1 pass / 1282 unresolved of 1284
+- Requirements: 0 pass / 1283 unresolved of 1284
 - Next action: Linux Web/API/Node Worker generation 194 and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Live acceptance remains open until authenticated owner refreshes Windows Runner/Codex readiness, confirms isolated Project Workspace/source scope, and starts/approves the Goal through Task Control; then retain actual Child 1/2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.
-- Manifest generation: 222
+- Manifest generation: 224
 
 ## Source-declared status and relationship claims
 
