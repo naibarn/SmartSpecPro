@@ -73,6 +73,26 @@ describe("environment-bound full HTTP application ingress", () => {
     expect(f.namespace.idFromName).toHaveBeenCalledWith("smartspec-cloudflare-runtime:node-http:smartspec-production-abcdef012345");
   });
 
+  it("lets the explicit production Container switch take API ownership inside the accepted M2 origin bridge", async () => {
+    const f = fixture();
+    const productionProfile = (profile: Record<string, unknown>) => ({ ...profile,
+      targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345", instance: "basic" });
+    const env = { ...f.env, CLOUDFLARE_ENVIRONMENT: "production",
+      CLOUDFLARE_INGRESS_MODE: "production-origin-bridge-v1",
+      CLOUDFLARE_APPLICATION_HTTP_TRAFFIC: "production-full-http-v1",
+      AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(["https://smartaihub.app"]),
+      CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(productionProfile(JSON.parse(f.env.CLOUDFLARE_NODE_HTTP_PROFILE))),
+      CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(productionProfile(JSON.parse(f.env.CLOUDFLARE_PYTHON_HTTP_PROFILE))),
+    };
+
+    const response = await createCloudflareWorker().fetch(new Request("https://smartaihub.app/trpc/auth.me"), env as never);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-smartaihub-ingress")).toBe("cloudflare-worker");
+    expect(response.headers.get("x-smartaihub-application-runtime")).toBe("cloudflare-container");
+    expect(f.namespace.idFromName).toHaveBeenCalledWith("smartspec-cloudflare-runtime:node-http:smartspec-production-abcdef012345");
+  });
+
   it("does not use a production profile under the staging switch", async () => {
     const f = fixture();
     const env = { ...f.env, CLOUDFLARE_ENVIRONMENT: "production" };

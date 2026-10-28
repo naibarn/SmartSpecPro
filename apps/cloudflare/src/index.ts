@@ -142,6 +142,26 @@ export function createCloudflareWorker(
         }
         if (url.pathname.startsWith(PRODUCTION_ORIGIN_CANARY_PREFIX)) return handleProductionOriginCanary(request, env);
         if (request.headers.get("upgrade")?.toLowerCase() === "websocket") return proxyWebSocketToOrigin(request, env);
+        // Keep the accepted M2 origin bridge as the default. The already
+        // reviewed, on-demand Container switch may take ownership of only
+        // origin-classified application routes; static assets and other
+        // requests continue through the existing production path. A Container
+        // failure is returned as-is by dispatchApplicationHttpIngress and is
+        // never replayed against Linux.
+        const applicationRoute = classifyApiRoute(request.method, url.pathname);
+        if (applicationRoute.classification === "ORIGIN_PROXY") {
+          const applicationResponse = await dispatchApplicationHttpIngress(request, applicationRoute, env);
+          if (applicationResponse) {
+            const headers = new Headers(applicationResponse.headers);
+            headers.set("x-smartaihub-ingress", "cloudflare-worker");
+            headers.set("x-smartaihub-application-runtime", "cloudflare-container");
+            return new Response(applicationResponse.body, {
+              status: applicationResponse.status,
+              statusText: applicationResponse.statusText,
+              headers,
+            });
+          }
+        }
         const upstream = await proxyAuthToOrigin(request, env);
         const headers = new Headers(upstream.headers);
         headers.set("x-smartaihub-ingress", "cloudflare-worker");
