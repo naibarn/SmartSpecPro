@@ -71,6 +71,10 @@ export async function getProductionWorkerCanaryPreflight(db: DrizzleDB, scope: S
       queue.consumers[0]?.queueName !== "smartspec-canonical-job-queue-production" || !queue.consumers[0]?.deadLetterQueueName) {
     return blocked(queue.reason ?? "PRODUCTION_QUEUE_CONSUMER_NOT_VERIFIED");
   }
+  const queueResources = "queueResourceInventory" in inventory ? inventory.queueResourceInventory : [];
+  const deadLetterQueue = queueResources.find(item => item.name === "smartspec-canonical-job-queue-production-dlq");
+  if (!deadLetterQueue || !queue.queueId || queueResources.find(item => item.name === queue.consumers[0]?.queueName)?.id !== queue.queueId)
+    return blocked("PRODUCTION_QUEUE_RESOURCE_IDENTITY_MISMATCH");
   if (!target.runtimePolicy) return blocked("PRODUCTION_ORIGIN_CONFIGURATION_NOT_BOUND");
   const origin = await getCloudflareOriginConfiguration(db, { identity: { tenantId: scope.tenantId,
     projectId: scope.projectId, environment: "production", provider: "cloudflare" }, configurationRef: target.runtimePolicy }).catch(() => null);
@@ -94,7 +98,8 @@ export async function getProductionWorkerCanaryPreflight(db: DrizzleDB, scope: S
       configurationRef: target.runtimePolicy, configurationDigest: baseline.configurationDigest },
     routePreserved: true as const, candidateTrafficPercent: 1 as const,
     queue: { id: queue.queueId, name: queue.consumers[0]!.queueName, consumerId: queue.consumers[0]!.consumerId,
-      scriptName: queue.consumers[0]!.scriptName, deadLetterQueueName: queue.consumers[0]!.deadLetterQueueName },
+      scriptName: queue.consumers[0]!.scriptName, deadLetterQueueId: deadLetterQueue.id,
+      deadLetterQueueName: queue.consumers[0]!.deadLetterQueueName },
   };
   return { ready: true as const, reason: null, ...plan,
     planDigest: cloudflarePlanDigest(plan) };
@@ -154,15 +159,16 @@ export async function queueProductionWorkerCanary(db: DrizzleDB, input: Scope & 
       rollbackBuildDigest: plan.rollback.buildDigest, rollbackConfigurationRef: plan.rollback.configurationRef,
       rollbackConfigurationDigest: plan.rollback.configurationDigest, canaryRequired: true,
       maxDurationSeconds: 900, expiresAt: new Date(Date.now() + 15 * 60_000).toISOString() };
-    const request = { job, grantRequest, planDigest: plan.planDigest };
+    const { ready: _ready, reason: _reason, planDigest: _reviewedPlanDigest, ...operationPlan } = plan;
+    const request = { job, grantRequest, planDigest: plan.planDigest, operationPlan };
     await tx.insert(systemSettings).values({ category: SUBMISSIONS, key: input.submissionId,
       valueJson: { tenantId: input.tenantId, projectId: input.projectId, actorUserId: input.actorUserId,
         planDigest: input.planDigest, request }, isSensitive: false, updatedBy: input.actorUserId,
       description: "Exact production Worker canary submission checkpoint; approval payload contains immutable scope only" });
     return request;
   });
-  const stored = checkpoint as { job?: unknown; grantRequest?: Record<string, unknown>; planDigest?: string };
-  if (!stored.grantRequest || stored.planDigest !== input.planDigest) throw new Error("PRODUCTION_WORKER_SUBMISSION_CHECKPOINT_INVALID");
+  const stored = checkpoint as { job?: unknown; grantRequest?: Record<string, unknown>; planDigest?: string; operationPlan?: Record<string, unknown> };
+  if (!stored.grantRequest || !stored.operationPlan || stored.planDigest !== input.planDigest) throw new Error("PRODUCTION_WORKER_SUBMISSION_CHECKPOINT_INVALID");
   if (input.mandateRef) {
     const operationGrant = await (await import("./cloudflareProductionMigrationMandate")).issueCloudflareMigrationOperationGrant({
       mandateRef: input.mandateRef, tenantId: input.tenantId, projectId: input.projectId, jobId: input.submissionId,
@@ -171,6 +177,7 @@ export async function queueProductionWorkerCanary(db: DrizzleDB, input: Scope & 
     const grantRequest = stored.grantRequest as Record<string, any>;
     const mandateJob = { ...(stored.job as Record<string, unknown>), grantRef: operationGrant.grantRef,
       mandateGrantRef: operationGrant.grantRef, mandateOperation: "worker_canary", mandatePlanDigest: input.planDigest,
+      mandatePlan: stored.operationPlan,
       mandateRollback: { deploymentId: grantRequest.rollbackDeploymentId, artifactRef: grantRequest.rollbackArtifactRef,
         sourceSha: grantRequest.rollbackSourceSha, buildDigest: grantRequest.rollbackBuildDigest,
         configurationRef: grantRequest.rollbackConfigurationRef, configurationDigest: grantRequest.rollbackConfigurationDigest } };

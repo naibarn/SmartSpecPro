@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { cloudflarePlanDigest } from "./cloudflareMigrationMandateContract";
 
 const mocks = vi.hoisted(() => ({
   createJob: vi.fn(),
@@ -30,7 +31,9 @@ vi.mock("./cloudflareProductionProviderInventory", () => ({ probeCloudflareProdu
     hasVerifiedReleaseIdentity: true, bindingNames: [],
     hasProductionQueueBinding: false, hasVersionMetadataBinding: false, checked: true,
   }] },
-  productionQueueConsumerInventory: { complete: !mocks.queueReadbackReason, reason: mocks.queueReadbackReason, consumers: mocks.queueReadbackReason ? [] : [{ consumerId: "33333333333333333333333333333333",
+  queueResourceInventory: [{ id: "a".repeat(32), name: "smartspec-canonical-job-queue-production" },
+    { id: "d".repeat(32), name: "smartspec-canonical-job-queue-production-dlq" }],
+  productionQueueConsumerInventory: { complete: !mocks.queueReadbackReason, reason: mocks.queueReadbackReason, queueId: "a".repeat(32), consumers: mocks.queueReadbackReason ? [] : [{ consumerId: "33333333333333333333333333333333",
     queueName: "smartspec-canonical-job-queue-production", scriptName: "smartspec-cloudflare-runtime",
     deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq" }] },
 }) }));
@@ -152,5 +155,28 @@ describe("Production Worker canary admission", () => {
         mandatePlanDigest: plan.planDigest }) }),
     }));
     expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+  });
+
+  it("persists the exact digest-bound canary plan in the mandate job input", async () => {
+    vi.stubEnv("CLOUDFLARE_PRODUCTION_EXECUTOR_ID", "production-executor-fixture");
+    const jobId = "55555555-5555-4555-8555-555555555555";
+    mocks.storedJob = { id: jobId, tenantId: "tenant-a", requestedByUserId: 17,
+      jobType: "cloudflare.production.deploy", contractVersion: "cloudflare-production-deploy-v1",
+      inputJson: { projectId: "project-a" }, status: "queued" };
+    mocks.createJob.mockResolvedValue({ created: true, jobId });
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ grantSchemas: ["cloudflare.production-deployment-grant.v2"] })));
+    const { getProductionWorkerCanaryPreflight, queueProductionWorkerCanary } = await import("./cloudflareProductionWorkerDeploymentAdmission");
+    const preflight = await getProductionWorkerCanaryPreflight(database() as never, { tenantId: "tenant-a", projectId: "project-a" });
+    if (!preflight.ready) throw new Error(preflight.reason);
+    await queueProductionWorkerCanary(database() as never, { tenantId: "tenant-a", projectId: "project-a", actorUserId: 17,
+      userToken: "owner-session-token", submissionId: jobId, planDigest: preflight.planDigest,
+      correlationId: "mandate-canary-trace", mandateRef: "66666666-6666-4666-8666-666666666666" });
+    const input = mocks.createJob.mock.calls[0]?.[0]?.definition.input as Record<string, any>;
+    expect(input).toMatchObject({ mandateOperation: "worker_canary", mandatePlanDigest: preflight.planDigest,
+      mandatePlan: { tenantId: "tenant-a", projectId: "project-a", candidateTrafficPercent: 1,
+        queue: { id: "a".repeat(32), deadLetterQueueId: "d".repeat(32) } } });
+    expect(input.mandatePlan).not.toHaveProperty("ready");
+    expect(input.mandatePlan).not.toHaveProperty("reason");
+    expect(cloudflarePlanDigest(input.mandatePlan)).toBe(preflight.planDigest);
   });
 });

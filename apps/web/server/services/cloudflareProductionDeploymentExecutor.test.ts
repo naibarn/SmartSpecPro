@@ -6,6 +6,7 @@ import {
   CLOUDFLARE_PRODUCTION_DEPLOYMENT_GRANT,
   CLOUDFLARE_PRODUCTION_TARGET_ID,
 } from "./cloudflareProductionDeploymentContract";
+import { cloudflarePlanDigest } from "./cloudflareMigrationMandateContract";
 
 const migrationMocks = vi.hoisted(() => ({ assertGrant: vi.fn() }));
 vi.mock("./cloudflareProductionMigrationMandate", () => ({ assertCloudflareMigrationOperationGrant: migrationMocks.assertGrant }));
@@ -116,13 +117,30 @@ describe("Cloudflare production worker_jobs executor", () => {
 
   it("revalidates a mandate grant and projects its exact canary scope into the existing provider executor", async () => {
     const mandateGrantRef = "88888888-8888-4888-8888-888888888888";
-    const planDigest = "9".repeat(64);
+    const operationPlan = {
+      tenantId: "tenant-a", projectId: "project-a", targetId: CLOUDFLARE_PRODUCTION_TARGET_ID, environment: "production",
+      accountRef: grant.accountRef, executorId: "prod-executor-a", zoneId: grant.zoneId, routePattern: grant.routePattern,
+      expectedRouteId: grant.expectedRouteId, expectedRouteScript: grant.expectedRouteScript, rolloutStage: "canary",
+      canaryGrantRef: null, canaryDeploymentId: null, canaryVerifiedAt: null, candidateVersionId: null,
+      artifact: { artifactRef: job.artifactRef, sourceSha, buildDigest: digest },
+      configurationRef, configurationDigest: digest,
+      rollback: { deploymentId: grant.rollbackDeploymentId, versionId: "33333333-3333-4333-8333-333333333333",
+        artifactRef: grant.rollbackArtifactRef, sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
+        configurationRef: grant.rollbackConfigurationRef, configurationDigest: grant.rollbackConfigurationDigest },
+      routePreserved: true, candidateTrafficPercent: 1,
+      queue: { id: "a".repeat(32), name: "smartspec-canonical-job-queue-production", consumerId: "b".repeat(32),
+        scriptName: CLOUDFLARE_PRODUCTION_TARGET_ID, deadLetterQueueId: "c".repeat(32),
+        deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq" },
+    };
+    const planDigest = cloudflarePlanDigest(operationPlan);
     migrationMocks.assertGrant.mockResolvedValue({ grantRef: mandateGrantRef, mandateRef: "99999999-9999-4999-8999-999999999999",
       tenantId: "tenant-a", projectId: "project-a", ownerUserId: 17, jobId, operation: "worker_canary", action: "worker_canary",
       planDigest, targetId: CLOUDFLARE_PRODUCTION_TARGET_ID, environment: "production", accountRef: grant.accountRef,
-      zoneId: grant.zoneId, routePattern: grant.routePattern, expiresAt: new Date(Date.now() + 60_000).toISOString() });
+      zoneId: grant.zoneId, routePattern: grant.routePattern,
+      resourceIds: { queueId: "a".repeat(32), deadLetterQueueId: "c".repeat(32) },
+      expiresAt: new Date(Date.now() + 60_000).toISOString() });
     const mandateJob = { ...job, grantRef: mandateGrantRef, mandateGrantRef, mandateOperation: "worker_canary" as const,
-      mandatePlanDigest: planDigest, mandateRollback: { deploymentId: grant.rollbackDeploymentId,
+      mandatePlanDigest: planDigest, mandatePlan: operationPlan, mandateRollback: { deploymentId: grant.rollbackDeploymentId,
         artifactRef: grant.rollbackArtifactRef, sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
         configurationRef: grant.rollbackConfigurationRef, configurationDigest: grant.rollbackConfigurationDigest } };
     const prepareVersion = vi.fn(async () => prepared);
@@ -132,8 +150,21 @@ describe("Cloudflare production worker_jobs executor", () => {
     const result = await executor(input as never);
     expect(migrationMocks.assertGrant).toHaveBeenCalledWith(expect.objectContaining({ grantRef: mandateGrantRef,
       tenantId: "tenant-a", projectId: "project-a", jobId, operation: "worker_canary", planDigest,
-      expectedAccountRef: grant.accountRef, expectedZoneId: grant.zoneId }));
+      expectedAccountRef: grant.accountRef, expectedZoneId: grant.zoneId, expectedQueueId: "a".repeat(32),
+      expectedDeadLetterQueueId: "c".repeat(32) }));
     expect(prepareVersion).toHaveBeenCalledOnce();
     expect(result.output).toMatchObject({ rolloutStage: "canary", action: "deploy" });
+  });
+
+  it("rejects a mandate job whose immutable plan digest no longer matches before provider credentials", async () => {
+    const mandateJob = { ...job, mandateGrantRef: grantRef, mandateOperation: "worker_canary" as const,
+      mandatePlanDigest: "9".repeat(64), mandatePlan: { tenantId: "tenant-a" },
+      mandateRollback: { deploymentId: grant.rollbackDeploymentId, artifactRef: grant.rollbackArtifactRef,
+        sourceSha: grant.rollbackSourceSha, buildDigest: grant.rollbackBuildDigest,
+        configurationRef: grant.rollbackConfigurationRef, configurationDigest: grant.rollbackConfigurationDigest } };
+    const withCredential = vi.fn();
+    const executor = createCloudflareProductionDeploymentExecutor(() => runtime({ withCredential: withCredential as never }));
+    await expect(executor(executionInput(mandateJob) as never)).rejects.toThrow("CLOUDFLARE_PRODUCTION_MANDATE_PLAN_MISMATCH");
+    expect(withCredential).not.toHaveBeenCalled();
   });
 });

@@ -16,6 +16,7 @@ import type { CloudflareStagingArtifact } from "./cloudflareStagingDeploymentExe
 import type { CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import type { CloudflareProductionVersion } from "./cloudflareProductionCanary";
 import { assertCloudflareMigrationOperationGrant } from "./cloudflareProductionMigrationMandate";
+import { cloudflarePlanDigest } from "./cloudflareMigrationMandateContract";
 
 export { CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB };
 
@@ -93,6 +94,34 @@ function mandateGrantAsProductionGrant(input: {
   return parsed.success ? { ...parsed.data, revoked: false } : null;
 }
 
+function mandateDeploymentPlanMatchesJob(job: CloudflareProductionDeploymentJob, context: {
+  tenantId: string; executorId: string; accountRef: string;
+}) {
+  const plan = job.mandatePlan;
+  if (!plan || !job.mandatePlanDigest) return false;
+  try {
+    if (cloudflarePlanDigest(plan) !== job.mandatePlanDigest) return false;
+  } catch { return false; }
+  const artifact = plan.artifact as Record<string, unknown> | undefined;
+  const rollback = plan.rollback as Record<string, unknown> | undefined;
+  if (plan.tenantId !== context.tenantId || plan.projectId !== job.projectId || plan.targetId !== job.targetId ||
+      plan.environment !== job.environment || plan.accountRef !== context.accountRef || plan.executorId !== context.executorId ||
+      plan.zoneId !== job.zoneId || plan.routePattern !== job.routePattern || plan.expectedRouteId !== job.expectedRouteId ||
+      plan.expectedRouteScript !== job.expectedRouteScript || plan.rolloutStage !== job.rolloutStage ||
+      artifact?.artifactRef !== job.artifactRef || artifact.sourceSha !== job.sourceSha || artifact.buildDigest !== job.buildDigest ||
+      plan.configurationRef !== job.configurationRef || plan.configurationDigest !== job.configurationDigest ||
+      rollback?.deploymentId !== job.mandateRollback?.deploymentId || rollback.artifactRef !== job.mandateRollback?.artifactRef ||
+      rollback.sourceSha !== job.mandateRollback?.sourceSha || rollback.buildDigest !== job.mandateRollback?.buildDigest ||
+      rollback.configurationRef !== job.mandateRollback?.configurationRef ||
+      rollback.configurationDigest !== job.mandateRollback?.configurationDigest) return false;
+  if (job.mandateOperation === "worker_canary") {
+    const queue = plan.queue as Record<string, unknown> | undefined;
+    return job.rolloutStage === "canary" && plan.routePreserved === true && plan.candidateTrafficPercent === 1 &&
+      typeof queue?.id === "string" && typeof queue.deadLetterQueueId === "string";
+  }
+  return job.mandateOperation === "deploy_worker" || job.mandateOperation === "rollback";
+}
+
 /** Production deployment consumes only canonical worker_jobs plus an independently approved, stage-specific grant. */
 export function createCloudflareProductionDeploymentExecutor(
   runtime?: CloudflareProductionDeploymentRuntime | (() => CloudflareProductionDeploymentRuntime | undefined),
@@ -118,9 +147,20 @@ export function createCloudflareProductionDeploymentExecutor(
     const target = await activeRuntime.resolveTarget({ tenantId: context.tenantId, projectId: job.projectId });
     let grant: CloudflareProductionDeploymentGrant | null = null;
     if (job.mandateGrantRef && job.mandateOperation && job.mandatePlanDigest) {
+      if (!target || !mandateDeploymentPlanMatchesJob(job, { tenantId: context.tenantId,
+          executorId, accountRef: target.accountRef })) {
+        throw new CloudflareProductionDeploymentError("CLOUDFLARE_PRODUCTION_MANDATE_PLAN_MISMATCH");
+      }
       const mandateGrant = await assertCloudflareMigrationOperationGrant({ grantRef: job.mandateGrantRef,
         tenantId: context.tenantId, projectId: job.projectId, jobId: context.jobId, operation: job.mandateOperation,
-        planDigest: job.mandatePlanDigest, expectedAccountRef: target?.accountRef, expectedZoneId: job.zoneId });
+        planDigest: job.mandatePlanDigest, expectedAccountRef: target.accountRef, expectedZoneId: job.zoneId,
+        ...(job.mandateOperation === "worker_canary" ? { expectedQueueId: String((job.mandatePlan.queue as Record<string, unknown>).id),
+          expectedDeadLetterQueueId: String((job.mandatePlan.queue as Record<string, unknown>).deadLetterQueueId) } : {}) });
+      if (job.mandateOperation === "worker_canary" &&
+          ((mandateGrant.resourceIds as Record<string, unknown>)?.queueId !== (job.mandatePlan.queue as Record<string, unknown>).id ||
+           (mandateGrant.resourceIds as Record<string, unknown>)?.deadLetterQueueId !== (job.mandatePlan.queue as Record<string, unknown>).deadLetterQueueId)) {
+        throw new CloudflareProductionDeploymentError("CLOUDFLARE_PRODUCTION_MANDATE_RESOURCE_MISMATCH");
+      }
       grant = mandateGrantAsProductionGrant({ mandateGrant, job, executorId, jobId: context.jobId, tenantId: context.tenantId });
     } else {
       grant = await activeRuntime.resolveGrant(job.grantRef);
