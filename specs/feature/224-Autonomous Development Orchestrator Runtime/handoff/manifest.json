@@ -98,6 +98,13 @@
         "scope": "Current origin/main fc4a61722c6745c22989c308399fa8a2a2da8cca is integrated and tested. Registered Debian Runner is online with a fresh snapshot and applied capability ACK, but Runner-bound Codex task probe is expired; the trusted Platform Engineering workspace is dirty with convergenceState=NOT_REPORTED. aimarkethubs.com is the development tunnel and its web process started from 838523a86ec6c76c95d542334801cdd49ebb134b-dirty, so the platform-specific readiness fix is not yet loaded. No Goal or write-capable run was started.",
         "source_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_RUNNER_MODEL_CATALOG_IMPLEMENTATION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-model-catalog-20261028.md",
+        "scope": "On canonical main source 5af4ab6496f87f74a09b39bb007134c9d6022e5a: server rejection diagnostics include event/session/contract/sequence/capability revision and preserve a safe reason; Debian Codex app-server model/list catalog is projected as unverified and account-scoped. Focused server/Rust tests pass. No updated Runner package, remote ACK, Task Control selection, pinned execution or Live Acceptance was established.",
+        "source_sha": "5af4ab6496f87f74a09b39bb007134c9d6022e5a",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -997,14 +1004,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "574c028a573d73730b542e7683331f766cdf0280",
+    "expected_canonical_sha": "5af4ab6496f87f74a09b39bb007134c9d6022e5a",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through the supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
-    "next_ready_workunit": "SPEC224_DEBIAN_PLATFORM_WORKSPACE_READINESS_RECONCILIATION",
+    "next_action": "Implement model-selection persistence and pinned dispatch through the existing SPEC-224 DevelopmentRun/Goal authority, coordinating Task Control UI with Session C. Separately, once the server change is available on the configured Control Plane, read the new rejection ACK/log fields and establish a server-acknowledged capability snapshot. Do not infer live readiness from the local Codex catalog.",
+    "next_ready_workunit": "SPEC224_MODEL_SELECTION_PERSISTENCE_AND_PINNED_DISPATCH",
     "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
-    "resume_point": "Fresh runtime recheck at origin/main 07c17a85feeb931483c608bb4643338fa97de21c: signed Runner 0.2.51 remains installed and service active. Codex CLI was upgraded through its owning Node 24 global npm installation to registry latest 0.165.0. The real read-only Runner Codex probe passes (evidence ref runner-task-probe:sha256:653059b9d57dcd331f82d836729db054f3f1bea633a6885e3b3a342c2b5b883a). Runner startup events are still rejected by its configured Control Plane, so no server ACK, complete dirtyPaths source facts, safe admission, Goal or live execution is established. SPEC-293 run-scoped lease gap remains documented in handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md.",
+    "resume_point": "Canonical main includes 2a90bc48b Runner rejection evidence repair and 5af4ab6496f87f74a09b39bb007134c9d6022e5a Codex model catalog projection. Focused server, contract and Runner adapter checks passed; Debian Codex app-server returned a real catalog, explicitly unverified for entitlement. Existing live Runner event rejection has not been re-observed against the configured remote Control Plane. Next implement persisted model selection and pinned dispatch under the existing Goal/Attempt authority, then use a fresh authorized Runner ACK to diagnose remote readiness.",
     "waiting_predicate": "Resume live Goal preparation only after (1) the existing Debian device Control Plane accepts its current Runner session and acknowledges the capability/workspace snapshot with complete dirtyPaths, (2) a run/attempt-bound SPEC-293 path-scoped writer lease is integrated and revalidated at outbox release and Runner apply with terminal/recovery cleanup, and (3) server-authoritative source admission confirms the bounded scope is SAFE_CLEAN or SAFE_DISJOINT_DIRTY. Codex task probe is currently locally passed; actual approval and Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
@@ -1146,7 +1153,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 229,
+  "generation": 230,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1348,11 +1355,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "574c028a573d73730b542e7683331f766cdf0280",
+    "canonical_sha": "5af4ab6496f87f74a09b39bb007134c9d6022e5a",
     "integrated": true,
-    "integrated_at": "2026-10-28T12:08:45Z",
+    "integrated_at": "2026-10-28T12:40:00Z",
     "pull_request": null,
-    "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
+    "source_sha": "5af4ab6496f87f74a09b39bb007134c9d6022e5a"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3836,7 +3843,7 @@
     "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T12:26:18.846161Z",
+  "updated_at": "2026-10-28T12:42:29.395194Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4295,7 +4302,8 @@
         "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
         "status": "PASS"
       },
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-model-catalog-20261028.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
