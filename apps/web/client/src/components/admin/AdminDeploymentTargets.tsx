@@ -733,6 +733,32 @@ export default function AdminDeploymentTargets() {
     },
   });
   const text = useText();
+  const migrationStatusLabel = (status?: string) => {
+    const labels: Record<string, [string, string]> = {
+      ACCEPTED: ["Accepted", "ผ่านแล้ว"], VERIFIED: ["Verified", "ตรวจยืนยันแล้ว"],
+      INCOMPLETE: ["Not yet verified", "ยังไม่ได้ตรวจยืนยัน"], ROLLED_BACK: ["Rolled back", "ย้อนกลับแล้ว"],
+      NOT_VERIFIED: ["Not verified", "ยังไม่ได้ตรวจยืนยัน"],
+    };
+    const pair = status ? labels[status] : undefined;
+    return pair ? text(pair[0], pair[1]) : text("Status unavailable", "ไม่มีสถานะ");
+  };
+  const migrationActionLabel = (action?: string) => {
+    const labels: Record<string, [string, string]> = {
+      MONITOR_EXISTING_CANONICAL_JOB: ["Track the current canonical job", "ติดตามงานปัจจุบันจากระบบกลาง"],
+      RECONCILE_CANONICAL_LEASE: ["Reconcile the worker lease before continuing", "ตรวจสอบ lease ของ worker ก่อนทำต่อ"],
+      APPLICATION_ACCEPTANCE: ["Run authenticated application acceptance", "ตรวจรับการทำงานแอปหลังเข้าสู่ระบบ"],
+      BOUNDED_RUNTIME_ACCEPTANCE: ["Verify bounded Node/Python runtime", "ตรวจ runtime Node/Python แบบจำกัดขอบเขต"],
+      WORKER_DEPLOYMENT_READINESS: ["Verify Worker deployment readiness", "ตรวจความพร้อมก่อน deploy Worker"],
+      CREDIT_BILLING_ACCEPTANCE: ["Run synthetic Credit/Billing acceptance", "ทดสอบ Credit/Billing ด้วยข้อมูลสังเคราะห์"],
+      QUEUE_RECOVERY_ACCEPTANCE: ["Run Queue/Recovery acceptance", "ทดสอบ Queue และการกู้คืนงาน"],
+      PREPARE_NATIVE_ACTIVATION_PLAN: ["Prepare native activation and rollback plan", "เตรียมแผนเปิด native runtime และแผนย้อนกลับ"],
+      M3_REMAINING_PARITY_ACCEPTANCE: ["Complete the remaining M3 parity checks", "ทำการตรวจ parity ของ M3 ที่เหลือให้ครบ"],
+      PRESERVE_INGRESS_REPAIR_DATABASE_AND_RUNTIME: ["Preserve ingress and complete database/runtime readiness", "คงทางเข้าเดิมและเตรียมฐานข้อมูล/runtime ให้พร้อม"],
+      REPAIR_PREFLIGHT_THEN_AUTHORIZE_EXACT_OPERATION: ["Repair the preflight blocker, then authorize the exact operation", "แก้ blocker ของ preflight แล้วจึงยืนยันเฉพาะงานที่ระบุ"],
+    };
+    const pair = action ? labels[action] : undefined;
+    return pair ? text(pair[0], pair[1]) : text("Waiting for canonical mission status", "กำลังรอสถานะภารกิจจากระบบกลาง");
+  };
   const ingressBlockerText=(reason:string)=>{
     const messages:Record<string,[string,string]>={
       PRODUCTION_APPROVAL_INGRESS_CONTRACT_NOT_SERVING:["The approval backend needs the ingress release before confirmation is available.","ต้องเผยแพร่ backend ที่รองรับการย้ายทางเข้าเว็บก่อน จึงจะแสดงปุ่มยืนยัน"],
@@ -860,14 +886,31 @@ export default function AdminDeploymentTargets() {
       {validScope && environment === "production" ? <Section variant="muted" role="region" aria-label={text("Cloudflare migration control center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}>
         <VStack gap={2}>
           <h2>{text("Cloudflare Migration Control Center", "ศูนย์ควบคุมการย้ายระบบ Cloudflare")}</h2>
-          <p role="status">{text("Next step", "ขั้นถัดไป")}: {migrationMission.data?.currentMilestone ?? text("Checking the saved migration checkpoint…", "กำลังตรวจ checkpoint การย้ายระบบ")}</p>
-          <progress aria-label={text("Migration milestones completed", "ขั้นการย้ายระบบที่ผ่านแล้ว")} max={4}
-            value={Number(Boolean(productionDatabaseObservation?.tenantIsolationVerified)) + Number(acceptedIngress)} />
+          <p role="status">{text("Current milestone", "ขั้นปัจจุบัน")}: {migrationMission.data?.currentMilestone ?? text("Checking the saved migration checkpoint…", "กำลังตรวจ checkpoint การย้ายระบบ")}</p>
+          <p role="status">{text("Next action", "ขั้นตอนถัดไป")}: {migrationActionLabel(migrationMission.data?.nextOperation)}</p>
+          {migrationMission.data?.campaignAuthority === "NOT_AUTHORIZED" ? <p role="status">
+            {text("Mission-level production authority has not been enrolled. Existing accepted milestones remain read-only; production changes still require their current scoped authorization.",
+              "ยังไม่มีการลงทะเบียนอำนาจระดับภารกิจ Milestone ที่ผ่านแล้วอ่านได้อย่างเดียว และการเปลี่ยน Production ยังต้องใช้อำนาจเฉพาะงานตามเดิม")}
+          </p> : null}
+          {(() => {
+            const milestones = migrationMission.data?.milestones;
+            const accepted = (value?: string) => value === "ACCEPTED" || value === "VERIFIED";
+            const completed = [milestones?.m1, milestones?.m2, milestones?.application, milestones?.workerDeployment,
+              milestones?.boundedRuntime, milestones?.creditBilling, milestones?.queueRecovery, milestones?.m3,
+              milestones?.nativeActivation, milestones?.finalProductionCutover].filter(accepted).length;
+            return <p role="status">{text("Verified gates", "ด่านที่ตรวจรับแล้ว")}: {completed} / 10</p>;
+          })()}
           <VStack as="ol" gap={1} aria-label={text("Migration progress", "ความคืบหน้าการย้ายระบบ")}>
-            <li>M1 · {productionDatabaseObservation?.tenantIsolationVerified ? text("Database and tenant isolation accepted", "ฐานข้อมูลและการแยก tenant ผ่านแล้ว") : text("Database acceptance not verified", "ยังไม่ยืนยันการตรวจรับฐานข้อมูล")}</li>
-            <li>M2 · {acceptedIngress ? text("Production ingress accepted", "ทางเข้า Production ผ่านแล้ว") : text("Production ingress not accepted", "ทางเข้า Production ยังไม่ผ่าน")}</li>
-            <li>M3 · {text("Authenticated application and service parity", "ตรวจแอปที่เข้าสู่ระบบและ parity ของบริการ")}</li>
-            <li>{text("Final native runtime activation", "เปิดใช้งาน native runtime ขั้นสุดท้าย")}: {text("separate authorization after M3 acceptance", "ต้องอนุมัติแยกหลัง M3 ผ่าน")}</li>
+            <li>M1 · {migrationStatusLabel(migrationMission.data?.milestones?.m1 ?? (productionDatabaseObservation?.tenantIsolationVerified ? "ACCEPTED" : "INCOMPLETE"))}</li>
+            <li>M2 · {migrationStatusLabel(migrationMission.data?.milestones?.m2 ?? (acceptedIngress ? "ACCEPTED" : "INCOMPLETE"))}</li>
+            <li>{text("Authenticated application", "การตรวจรับแอปที่ยืนยันตัวตน")}: {migrationStatusLabel(migrationMission.data?.milestones?.application)}</li>
+            <li>{text("Worker deployment", "การ deploy Worker")}: {migrationStatusLabel(migrationMission.data?.milestones?.workerDeployment)}</li>
+            <li>{text("Bounded Node/Python runtime", "การทดสอบ runtime Node/Python แบบจำกัด")}: {migrationStatusLabel(migrationMission.data?.milestones?.boundedRuntime)}</li>
+            <li>{text("Credit and billing", "เครดิตและการเรียกเก็บเงิน")}: {migrationStatusLabel(migrationMission.data?.milestones?.creditBilling)}</li>
+            <li>{text("Queue and recovery", "Queue และการกู้คืนงาน")}: {migrationStatusLabel(migrationMission.data?.milestones?.queueRecovery)}</li>
+            <li>M3 · {migrationStatusLabel(migrationMission.data?.milestones?.m3)}</li>
+            <li>{text("Native activation", "เปิดใช้งาน native runtime")}: {migrationStatusLabel(migrationMission.data?.milestones?.nativeActivation)}</li>
+            <li>{text("Final production cutover", "ตัดระบบ Production ขั้นสุดท้าย")}: {migrationStatusLabel(migrationMission.data?.milestones?.finalProductionCutover)}</li>
           </VStack>
           <p>{text("Linux remains the application fallback. The accepted Cloudflare ingress and on-demand Container policy stay unchanged during M3 tests.",
             "Linux ยังคงพร้อมเป็นระบบสำรอง และทางเข้า Cloudflare ที่ผ่านการตรวจรับแล้วจะไม่เปลี่ยนระหว่างทดสอบ M3")}</p>

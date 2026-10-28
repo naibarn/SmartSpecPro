@@ -19,7 +19,11 @@ const mocks = vi.hoisted(() => ({
   resumeProductionDatabase: vi.fn(),
   ingressPreflight: null as any,
   ingressJob: null as any,
-  migrationMission: { migrationMode: "FIRST_MIGRATION", state: "IN_PROGRESS", currentMilestone: "M3_APPLICATION_ACCEPTANCE" } as any,
+  migrationMission: { migrationMode: "FIRST_MIGRATION", state: "M3_IN_PROGRESS", currentMilestone: "M3",
+    nextOperation: "QUEUE_RECOVERY_ACCEPTANCE", campaignAuthority: "NOT_AUTHORIZED",
+    milestones: { m1: "ACCEPTED", m2: "ACCEPTED", application: "ACCEPTED", workerDeployment: "VERIFIED",
+      boundedRuntime: "ACCEPTED", creditBilling: "ACCEPTED", queueRecovery: "INCOMPLETE", m3: "INCOMPLETE",
+      nativeActivation: "NOT_VERIFIED", finalProductionCutover: "NOT_VERIFIED" } } as any,
   queueProductionIngress: vi.fn(),
   queueProductionWorkerCanary: vi.fn(),
   productionWorkerCanaryPreflight: null as any,
@@ -257,7 +261,11 @@ describe("AdminDeploymentTargets", () => {
     mocks.productionWorkerCanaryPreflight = null;
     mocks.productionWorkerCanaryJob = null;
     mocks.productionWorkerCanaryJobError = false;
-    mocks.migrationMission = { migrationMode: "FIRST_MIGRATION", state: "IN_PROGRESS", currentMilestone: "M3_APPLICATION_ACCEPTANCE" };
+    mocks.migrationMission = { migrationMode: "FIRST_MIGRATION", state: "M3_IN_PROGRESS", currentMilestone: "M3",
+      nextOperation: "QUEUE_RECOVERY_ACCEPTANCE", campaignAuthority: "NOT_AUTHORIZED",
+      milestones: { m1: "ACCEPTED", m2: "ACCEPTED", application: "ACCEPTED", workerDeployment: "VERIFIED",
+        boundedRuntime: "ACCEPTED", creditBilling: "ACCEPTED", queueRecovery: "INCOMPLETE", m3: "INCOMPLETE",
+        nativeActivation: "NOT_VERIFIED", finalProductionCutover: "NOT_VERIFIED" } };
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
     mocks.productionTunnels = [{ id: "87654321-4321-4321-8321-cba987654321", name: "smartaihub-postgres", status: "healthy" }];
@@ -282,10 +290,12 @@ describe("AdminDeploymentTargets", () => {
     const user = userEvent.setup();
     render(<AdminDeploymentTargets />);
     await chooseProductionScope(user);
-    expect(screen.getByRole("region", { name: "Cloudflare migration control center" })).toHaveTextContent("M3_APPLICATION_ACCEPTANCE");
+    expect(screen.getByRole("region", { name: "Cloudflare migration control center" })).toHaveTextContent("Current milestone: M3");
+    expect(screen.getByRole("region", { name: "Cloudflare migration control center" })).toHaveTextContent("Next action: Run Queue/Recovery acceptance");
     expect(screen.getByRole("link", { name: "Continue the current M3 step" })).toHaveAttribute("href", "#cloudflare-m3-runtime-operation");
-    expect(screen.getByRole("progressbar", { name: "Migration milestones completed" })).toHaveAttribute("max", "4");
-    expect(screen.getByRole("list", { name: "Migration progress" })).toHaveTextContent("Final native runtime activation");
+    expect(screen.getByText("Verified gates: 6 / 10")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Migration progress" })).toHaveTextContent("Queue and recovery: Not yet verified");
+    expect(screen.getByRole("list", { name: "Migration progress" })).toHaveTextContent("Final production cutover: Not verified");
     expect(screen.getByText("History and advanced diagnostics").closest("details")).not.toHaveAttribute("open");
   });
 

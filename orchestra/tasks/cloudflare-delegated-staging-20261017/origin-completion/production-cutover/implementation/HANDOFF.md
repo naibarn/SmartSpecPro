@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `169`
-- Updated (UTC): `2026-10-28T07:44:21.646111+00:00`
+- State generation: `170`
+- Updated (UTC): `2026-10-28T08:30:56.758975+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `c3b429551fcf15e619ba34d45eaa3862dfba6acf`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: g202 release smartspec-web-079a18c5f83263d159715d9c9b3e74cf2c597a7b-5c4861be0cde is DEPLOYED_VERIFIED; generation 202; artifact sha256:c477d490ca8d78e03338efd99da0ff08248e2aac93b107d739bb019b3c5be5d8; web and Node worker healthy HTTP 200 on Node v22.23.4. Public AdminSettings-CQ3zNgGA.js returns 200 and SHA256 94ece638d56d36d5f96b75770cf2d919384612685c1c846a42606cd4a76b96ea matches release. Current origin/main c3b429551fcf15e619ba34d45eaa3862dfba6acf advanced after release via separate SPEC-293 workspace authority commit; do not redeploy unrelated work as part of this task. Next: Owner reload Admin and press read-only Recheck read-only preflight (no approval) to verify live queue_id/consumer/DLQ/baseline readback; no authenticated Owner session exists in this CLI. When Queue gates pass, preflight still requires non-expired STORED origin configuration with digest equal to active Worker baseline and >20 minutes remaining. Existing EXPIRED immutable version cannot be edited in place; establish a new baseline-compatible config/version through its scoped authorization before canary. Keep route/traffic, M1/M2 and Linux fallback unchanged.
+- Next action: Extend the canonical Mission projection and Admin Control Center to derive M1/M2/application/Worker/runtime/Credit/Queue/M3/native-cutover milestones only from verified scoped receipts. Then resolve mandate enrollment readiness and the exact live preflight through authenticated Owner session; do not mutate traffic.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-g202-canary-queue-ux | /mnt/SmartSpecDev/projects/SmartSpecPro | 079a18c5f83263d159715d9c9b3e74cf2c597a7b | c3b429551fcf15e619ba34d45eaa3862dfba6acf | g202 release smartspec-web-079a18c5f83263d159715d9c9b3e74cf2c597a7b-5c4861be0cde is DEPLOYED_VERIFIED; generation 202; artifact sha256:c477d490ca8d78e03338efd99da0ff08248e2aac93b107d739bb019b3c5be5d8; web and Node worker healthy HTTP 200 on Node v22.23.4. Public AdminSettings-CQ3zNgGA.js returns 200 and SHA256 94ece638d56d36d5f96b75770cf2d919384612685c1c846a42606cd4a76b96ea matches release. Current origin/main c3b429551fcf15e619ba34d45eaa3862dfba6acf advanced after release via separate SPEC-293 workspace authority commit; do not redeploy unrelated work as part of this task. Next: Owner reload Admin and press read-only Recheck read-only preflight (no approval) to verify live queue_id/consumer/DLQ/baseline readback; no authenticated Owner session exists in this CLI. When Queue gates pass, preflight still requires non-expired STORED origin configuration with digest equal to active Worker baseline and >20 minutes remaining. Existing EXPIRED immutable version cannot be edited in place; establish a new baseline-compatible config/version through its scoped authorization before canary. Keep route/traffic, M1/M2 and Linux fallback unchanged. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-mission-reset-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | 079a18c5f83263d159715d9c9b3e74cf2c597a7b | c3b429551fcf15e619ba34d45eaa3862dfba6acf | Extend the canonical Mission projection and Admin Control Center to derive M1/M2/application/Worker/runtime/Credit/Queue/M3/native-cutover milestones only from verified scoped receipts. Then resolve mandate enrollment readiness and the exact live preflight through authenticated Owner session; do not mutate traffic. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 

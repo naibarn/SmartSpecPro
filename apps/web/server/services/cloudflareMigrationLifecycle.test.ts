@@ -15,7 +15,7 @@ describe("First migration continuation over the existing canonical job authoriti
     const db = { select: () => ({ from: () => ({ where: () => ({ orderBy: async () => ++reads === 1 ? [] : [accepted, database] }) }) }) } as any;
     const result = await getCloudflareMigrationMission(db, { ...scope, environment: "production" } as typeof scope);
     expect(evidence).toHaveBeenCalledWith(db, { ...scope, jobId: "database", planDigest: "a".repeat(64) });
-    expect(result.completedCheckpoints).toEqual(["M2_ACCEPTED", "M1_ACCEPTED"]);
+    expect(result.completedCheckpoints).toEqual(["M1_ACCEPTED", "M2_ACCEPTED"]);
   });
   it.each(["JOB_DEADLINE_EXPIRED", "GRANT_EXPIRED", "ATTEMPTS_EXHAUSTED", "APPLICATION_PROBE_FAILED"])("keeps the same durable mission after %s", errorCode => {
     const value = projectCloudflareMigration(scope, continuation, [{ ...base, errorCode }]);
@@ -63,8 +63,8 @@ describe("First migration continuation over the existing canonical job authoriti
     const database = { ...base, id: "original-db", jobType: "cloudflare.production.database.provision",
       contractVersion: "cloudflare-prod-db-provision-v1", errorCode: "CLOUDFLARE_PRODUCTION_HYPERDRIVE_READBACK_MISMATCH" };
     const value = projectCloudflareMigration(scope, continuation, [accepted, database], new Date(), [database.id]);
-    expect(value).toMatchObject({ state: "M1_ACCEPTED", currentMilestone: "M3", nextOperation: "M3_RUNTIME_ACCEPTANCE", blocker: null });
-    expect(value.completedCheckpoints).toEqual(["M2_ACCEPTED", "M1_ACCEPTED"]);
+    expect(value).toMatchObject({ state: "M3_IN_PROGRESS", currentMilestone: "M3", nextOperation: "APPLICATION_ACCEPTANCE", blocker: null });
+    expect(value.completedCheckpoints).toEqual(["M1_ACCEPTED", "M2_ACCEPTED"]);
     expect(value.jobHistory.find(job => job.jobId === database.id)).toMatchObject({ status: "failed", errorCode: database.errorCode });
     expect(projectCloudflareMigration(scope, continuation, [accepted, database], new Date(), ["another-job"]).currentMilestone).toBe("M1");
     expect(projectCloudflareMigration(scope, continuation, [accepted, { ...database, tenantId: "foreign" }], new Date(), [database.id]).completedCheckpoints).toEqual(["M2_ACCEPTED"]);
@@ -78,6 +78,67 @@ describe("First migration continuation over the existing canonical job authoriti
   it("keeps historical acceptance but recognizes a later authorized rollback", () => {
     const rollback = { ...base, id: "rollback", status: "succeeded", inputJson: { ...base.inputJson, action: "ingress-rollback" }, outputJson: { productionTrafficShifted: false } };
     expect(projectCloudflareMigration(scope, continuation, [accepted, rollback])).toMatchObject({ currentMilestone: "M2", ingressReceipt: null, completedCheckpoints: ["M2_ACCEPTED"] });
+  });
+  it("projects application, worker, runtime and parity milestones independently and keeps historical failures from overriding a later accepted receipt", () => {
+    const candidateJobId = "11111111-1111-4111-8111-111111111111";
+    const application = { ...base, id: "application", jobType: "cloudflare.production.native.runtime.verify",
+      contractVersion: "cloudflare-native-runtime-verify-v1", status: "succeeded", errorCode: null,
+      inputJson: { contractVersion: "cloudflare-native-runtime-verify-v1", projectId: scope.projectId, candidateJobId,
+        submissionId: "22222222-2222-4222-8222-222222222222", planDigest: "a".repeat(64), operation: "application" } };
+    const runtime = { ...application, id: "runtime", inputJson: { ...application.inputJson,
+      submissionId: "33333333-3333-4333-8333-333333333333", operation: "runtime" } };
+    const worker = { ...base, id: "worker", jobType: "cloudflare.production.deploy",
+      contractVersion: "cloudflare-production-deploy-v1", status: "succeeded", errorCode: null,
+      inputJson: { ...base.inputJson, action: "deploy", rolloutStage: "canary" },
+      outputJson: { deploymentId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", candidateVersionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+        versions: [{ versionId: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }], queueConsumer: { consumerId: "consumer", queueId: "a".repeat(32),
+          queueName: "smartspec-canonical-job-queue-production", scriptName: "smartspec-cloudflare-runtime",
+          deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq" } } };
+    const credit = { ...base, id: "credit", jobType: "cloudflare.production.m3.parity.acceptance.credit_billing_acceptance",
+      contractVersion: "cloudflare-m3-parity-acceptance-v1", status: "succeeded", errorCode: null,
+      inputJson: { contractVersion: "cloudflare-m3-parity-acceptance-v1", projectId: scope.projectId, candidateJobId,
+        operation: "credit_billing_acceptance", planDigest: "a".repeat(64) } };
+    const queueFailed = { ...credit, id: "queue-failed", status: "failed", errorCode: "M3_PARITY_TEST_FAILURE",
+      jobType: "cloudflare.production.m3.parity.acceptance.queue_recovery_acceptance",
+      inputJson: { ...credit.inputJson, operation: "queue_recovery_acceptance" } };
+    const oldDatabase = { ...base, id: "old-db-failure", jobType: "cloudflare.production.database.provision" };
+    const value = projectCloudflareMigration(scope, continuation,
+      [accepted, oldDatabase, application, runtime, worker, queueFailed, credit], new Date(), ["old-db-failure"], {
+        applicationJobIds: [application.id], runtimeJobIds: [runtime.id],
+        parityJobIds: { credit_billing_acceptance: [credit.id] },
+      });
+    expect(value.completedCheckpoints).toEqual([
+      "M1_ACCEPTED", "M2_ACCEPTED", "APPLICATION_ACCEPTED", "WORKER_DEPLOYMENT_VERIFIED",
+      "CREDIT_BILLING_ACCEPTED", "BOUNDED_RUNTIME_ACCEPTED",
+    ]);
+    expect(value.milestones).toMatchObject({ m1: "ACCEPTED", m2: "ACCEPTED", application: "ACCEPTED",
+      workerDeployment: "VERIFIED", creditBilling: "ACCEPTED", queueRecovery: "INCOMPLETE", m3: "INCOMPLETE",
+      nativeActivation: "NOT_VERIFIED", finalProductionCutover: "NOT_VERIFIED" });
+    expect(value.nextOperation).toBe("QUEUE_RECOVERY_ACCEPTANCE");
+    expect(value.state).toBe("M3_IN_PROGRESS");
+    expect(value.campaignAuthority).toBe("NOT_AUTHORIZED");
+    const queueAccepted = { ...queueFailed, id: "queue-accepted", status: "succeeded", errorCode: null };
+    const completed = projectCloudflareMigration(scope, continuation,
+      [accepted, oldDatabase, application, runtime, worker, queueFailed, credit, queueAccepted], new Date(), ["old-db-failure"], {
+        applicationJobIds: [application.id], runtimeJobIds: [runtime.id],
+        parityJobIds: { credit_billing_acceptance: [credit.id], queue_recovery_acceptance: [queueAccepted.id] },
+      });
+    expect(completed.state).toBe("M3_ACCEPTED");
+    expect(completed.milestones.m3).toBe("ACCEPTED");
+    expect(completed.completedCheckpoints).toContain("M3_ACCEPTED");
+    expect(completed.milestones.nativeActivation).toBe("NOT_VERIFIED");
+  });
+  it("does not accept parity or application milestones from succeeded status alone", () => {
+    const runtime = { ...base, id: "app-unverified", jobType: "cloudflare.production.native.runtime.verify",
+      contractVersion: "cloudflare-native-runtime-verify-v1", status: "succeeded", inputJson: { projectId: scope.projectId,
+        candidateJobId: "11111111-1111-4111-8111-111111111111", contractVersion: "cloudflare-native-runtime-verify-v1",
+        submissionId: "22222222-2222-4222-8222-222222222222", planDigest: "a".repeat(64), operation: "application" } };
+    const parity = { ...base, id: "parity-unverified", jobType: "cloudflare.production.m3.parity.acceptance.credit_billing_acceptance",
+      contractVersion: "cloudflare-m3-parity-acceptance-v1", status: "succeeded", inputJson: { projectId: scope.projectId,
+        candidateJobId: "11111111-1111-4111-8111-111111111111", contractVersion: "cloudflare-m3-parity-acceptance-v1" } };
+    const value = projectCloudflareMigration(scope, continuation, [accepted, runtime, parity]);
+    expect(value.milestones).toMatchObject({ application: "INCOMPLETE", creditBilling: "INCOMPLETE", m3: "INCOMPLETE" });
+    expect(value.completedCheckpoints).toEqual(["M2_ACCEPTED"]);
   });
   it("does not turn scope or artifact changes into renewed operation authority", () => {
     expect(migrationMissionId({ ...scope, projectId: "other" })).not.toBe(migrationMissionId(scope));
