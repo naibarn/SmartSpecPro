@@ -3,12 +3,12 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `177`
-- Updated (UTC): `2026-10-28T10:15:42.000000+00:00`
+- State generation: `178`
+- Updated (UTC): `2026-10-28T11:35:16.000000+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `cfcdad2173215e439181a27c7f3dc71ade0f9fcb`
+- Latest recorded merged Main SHA: `23e8163966dfd2789ee420193587f08c255ca569`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
 - Next action: Partial implementation checkpoint integrated in canonical main at `cfcdad2173215e439181a27c7f3dc71ade0f9fcb` . Authenticated Owner tRPC read/plan/enroll/suspend/revoke/history routes and Admin enrollment dialog are present. Existing ApprovalDBService persists the immutable mandate and short-lived job-scoped grants with atomic budget reservation; exact synthetic usage, Owner scope, idempotency, parent revocation, expiry and renewal are tested. M3 Credit/Billing and Queue/Recovery admissions and executors consume those grants. Existing explicit per-operation Owner confirmation remains available only when no mandate exists; suspended/revoked/unreadable mandate state denies new parity submissions. Enrollment sends only the reviewed envelope; tenant/Owner identity come from authenticated backend context. Focused checks: Python 10 passed + `py_compile`; Web 7 files / 169 passed; `git diff --check` passed. Full mandate readiness remains intentionally blocked: Worker deployment/canary, origin configuration, native runtime activation and rollback do not use these grants/quotas; the exact artifact/traffic/rollback envelope is incomplete. Do not enroll or deploy production until those paths are integrated and tested. No authenticated Owner session or production provider readback was available.
@@ -22,13 +22,21 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
 | section-04-production-readiness-and-cutover | checkpointed | codex-mandate-implementation-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | cfcdad2173215e439181a27c7f3dc71ade0f9fcb | cfcdad2173215e439181a27c7f3dc71ade0f9fcb | Partial and integrated, not deployable: authenticated tRPC/ApprovalDBService mandate lifecycle, Admin enrollment/revoke UI, and scoped grants for synthetic Credit/Billing + Queue/Recovery are implemented. Focused verification: Python 10 passed + py_compile; Web 7 files / 169 passed. Remaining: grant/usage-budget enforcement and exact immutable plan bindings for origin configuration, Worker deploy/canary, native activation and rollback; end-to-end live API/UI and production release verification. No Owner enrollment or production mutation occurred. |
 
+## Current production tRPC error diagnosis
+
+- The live Linux web PID is serving release g204 from source `56616b3763b6269c1515abadf7cfbf2650f7e75f`, artifact `sha256:9e8b86c70d1a8c8be88d4aa0b48ff46c886d5195073f97599b0b9a75aa8c9072`.
+- Sanitized logs from the last 30 minutes show 93 errors: `runnerNodes.list` (38), `spec226DevelopmentControl.availableWorkspaces` (28), and `spec226DevelopmentControl.getConversationWorkspace` (27). PostgreSQL returned `42P01`, because `canonical_project_workspace_bindings` is missing.
+- Read-only query to the active service DB confirmed the table is absent, `runner_nodes` and `canonical_projects` exist, migration 0415 is not in the ledger, and latest ledger timestamp is 0414 (`1792909880001`). The g204 artifact contains `0415_spec293_canonical_project_workspace_bindings` (`1793145600000`). There are zero duplicate `(tenantId, runnerId)` groups, so the migration’s unique-index prerequisite is satisfied. No DDL was run.
+- Exact database target fingerprint: `sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83`. Repair requires the existing scoped production migration command restricted to expected pending tag `0415_spec293_canonical_project_workspace_bindings`, this fingerprint, and a valid migration authorization reference. Do not run a blanket journal migration.
+- This error is from SPEC-293 workspace queries, not the Cloudflare mandate API. After the authorized migration, verify the migration receipt/catalog and retry those three tRPC reads. Then resume the incomplete mandate paths described below.
+
 ## Current FIRST_MIGRATION_MANDATE checkpoint
 
 - Code is integrated at `cfcdad2173215e439181a27c7f3dc71ade0f9fcb`; this is a partial vertical slice, not completion. Implemented: authenticated Owner tRPC read/plan/enroll/suspend/revoke/history; ApprovalDBService durable mandate and scoped expiring grant persistence; atomic operation-budget reservation; Admin enrollment/revoke UI; mandate-backed M3 Credit/Billing and Queue/Recovery admission/executors.
 - Focused verification: Python mandate suite 10 passed; `py_compile` passed; Web focused suite 7 files / 169 passed; `git diff --check` passed. Full repository typecheck was not run, per repo resource policy.
 - Enrollment remains fail-closed. Grant/usage-budget enforcement is still missing for `rotate_origin_configuration`, `deploy_worker`, `worker_canary`, `native_runtime_activation`, and `rollback`; exact reviewed artifact, traffic rollout, rollback baseline, and enforceable resource envelope must be bound before readiness can pass. Monetary spend is not a hard cap.
 - No Owner mandate has been enrolled. This session had no authenticated Owner session or production provider/API readback. No production release, Cloudflare mutation, or traffic change occurred. Current production serving release remains the previously recorded g203; serving SHA is not reverified in this session. No authenticated background scheduler/executor continuity is established.
-- Next engineering action: complete grant issuance, lease-fenced enforcement, idempotency/revocation/quota tests for the five missing production operations and validate end-to-end API/UI contracts; only then present one Owner enrollment action and use the authorized release workflow. Preserve M1/M2 and Linux fallback.
+- Next: resolve the current production 42P01 errors by applying only migration 0415 through scoped production migration authority, then verify the schema receipt and affected tRPC reads. Resume grant issuance, lease-fenced enforcement, idempotency/revocation/quota tests for the five missing mandate operations, then validate end-to-end API/UI contracts before one Owner enrollment action or production release. Preserve M1/M2 and Linux fallback.
 
 ## Open gaps / blockers (not automatic merge blockers)
 
