@@ -79,3 +79,4 @@
 {"changes": ["continuation.next_action", "continuation.resume_point", "implementation.checkpoint_shas", "integration.canonical_sha"], "event_type": "CURRENT_TRANSITION", "generation": 79, "observed_at": "2026-10-27T12:59:54.840566Z", "provenance": "OBSERVED"}
 {"confidence": "LOW", "event_type": "RECONCILIATION_SNAPSHOT", "evidence_count": 1, "fingerprint": "e7bfa62bc5e29e2054c4dc6f50ca87aff201dbef33217b30a85ae86dc68a6506", "observed_at": "2026-10-27T13:01:56.640905Z", "provenance": "INFERRED", "spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27"}
 {"changes": ["continuation.next_action"], "event_type": "CURRENT_TRANSITION", "generation": 81, "observed_at": "2026-10-28T03:32:26.245487Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.next_action"], "event_type": "CURRENT_TRANSITION", "generation": 82, "observed_at": "2026-10-28T03:39:58.735298Z", "provenance": "OBSERVED"}
