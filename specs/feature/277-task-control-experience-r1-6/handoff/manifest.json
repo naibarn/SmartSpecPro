@@ -25,7 +25,7 @@
     "expected_spec_digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27"
   },
   "continuation": {
-    "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
+    "next_action": "Inspect actual callback producers and attempt metadata; preserve the endpoint as evidence-only if no producer exists. Do not close UI or end-to-end requirements from these SPEC-224 service-level synthetic tests. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-277, WP33). Reuse existing source/section state and valid evidence; do not restart the old plan. Preserve the current callback producer review and completed pilot evidence. Add only missing Simple/Developer/contextual no-Git navigation on the existing projection; obtain trusted Goal/WU sources and missing authenticated parity acceptance without rebuilding the monitor. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance. | Debian topology check (2026-10-28): specs/feature/277-task-control-experience-r1-6/handoff/evidence/debian-platform-runner-topology-20261028.md. Local Runner inactive/disabled, no registered readiness proof; Python dev API provenance unknown. Preserve current callback review; next UI source operation depends on trusted SPEC-293 Platform Project/Runner projection and SPEC-224 provider-specific readiness/pinning. Enroll a fresh dev-scoped Linux Runner via the existing owner-authenticated flow; do not restart the expired production-bound enrollment.",
     "next_ready_workunit": "SPEC277_CALLBACK_PRODUCER_ATTEMPT_CORRELATION_REVIEW",
     "reactivation_predicate": "After active worktree owners reconcile shared runEngine/recovery/media paths, continue callback/outbox/cancellation acceptance. Run-scoped schema changes remain gated on an identified accountable schema owner and explicit migration authorization. Independent test-only work remains runnable meanwhile.",
     "resume_point": "Integrated Task Control Simple/Developer mode at b311594b0ddf5c933ad8fe0df8ee6b2aaa4b29a5; focused TaskObservabilityMonitor suite passed 10/10. Both views use the existing canonical task read model. Goal summary and final deliverables are absent from this projection and remain unknown; Developer mode explicitly reports that live terminal, file diff and harness identity telemetry are unavailable. This does not close callback producer review, authenticated parity, or live execution acceptance. Continue the existing callback producer/attempt-correlation review and add only trusted Goal/WorkUnit inputs and parity evidence when available. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
@@ -186,7 +186,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 80,
+  "generation": 81,
   "identity": {
     "canonical_path": "specs/feature/277-task-control-experience-r1-6/spec.md",
     "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
@@ -1497,7 +1497,7 @@
     "unresolved": 445
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T13:01:56.640905Z",
+  "updated_at": "2026-10-28T03:32:26.245487Z",
   "verification": {
     "baseline_issues": [
       "The integrated PostgreSQL acceptance proves only scheduled occurrence persistence/coalescing. It does not include team_rooms/team_runs, runEngine, worker interruption or Task Control parent projection; the shared smartspec_test database remains out of scope."
