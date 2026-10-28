@@ -305,7 +305,8 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
 mod tests {
     use super::{
         connect_http_rejection_code, load_connection, load_or_refresh, map_connect_request_error,
-        request_json_with_agent, safe_connect_error_code, safe_refresh_error_code, save_connection,
+        request_json_with_agent, safe_connect_error_code, safe_http_rejection_code,
+        safe_refresh_error_code, save_connection,
         validate_start_pairing_response, StartPairingResponse, StoredRunnerConnection,
     };
     use crate::{config::RunnerConfig, device_proof::generate_device_proof_material};
@@ -505,7 +506,7 @@ mod tests {
     }
 
     #[test]
-    fn maps_http_statuses_without_reading_or_exposing_response_bodies() {
+    fn maps_http_statuses_without_exposing_response_bodies() {
         for status in [401, 403, 404, 429, 503] {
             let secret_body = r#"{"message":"response-body-secret","token":"body-token-secret"}"#;
             let (endpoint, server) =
@@ -521,6 +522,47 @@ mod tests {
             );
             server.join().unwrap();
         }
+    }
+
+    #[test]
+    fn refresh_rejections_expose_only_allowlisted_server_codes() {
+        let path = "/api/runners/runner-123/access/refresh";
+        for (server_code, expected) in [
+            ("runner_auth_invalid", "RUNNER_REFRESH_CREDENTIAL_REJECTED"),
+            ("runner_refresh_expired", "RUNNER_REFRESH_CREDENTIAL_EXPIRED"),
+            ("runner_refresh_revoked", "RUNNER_REFRESH_CREDENTIAL_REVOKED"),
+            (
+                "runner_refresh_signature_invalid",
+                "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID",
+            ),
+            (
+                "runner_device_mismatch",
+                "RUNNER_REFRESH_DEVICE_BINDING_MISMATCH",
+            ),
+            (
+                "runner_scope_mismatch",
+                "RUNNER_REFRESH_TENANT_OR_RUNNER_MISMATCH",
+            ),
+            ("runner_session_mismatch", "RUNNER_REFRESH_SESSION_MISMATCH"),
+            ("runner_revoked", "RUNNER_REFRESH_RUNNER_REVOKED"),
+            ("RUNNER_NOT_ENROLLED", "RUNNER_REFRESH_RUNNER_OR_TENANT_NOT_ENROLLED"),
+            ("RUNNER_SESSION_STALE", "RUNNER_REFRESH_SESSION_STALE"),
+        ] {
+            let body = format!(
+                r#"{{"error":"{server_code}","message":"response-body-secret","token":"refresh-secret"}}"#
+            );
+            let actual = safe_http_rejection_code(path, 401, body.as_bytes());
+            assert_eq!(actual, expected);
+            assert!(!actual.contains("secret"));
+        }
+        assert_eq!(
+            safe_http_rejection_code(path, 404, br#"{"error":"not found"}"#),
+            "RUNNER_REFRESH_ENDPOINT_OR_RUNNER_NOT_FOUND"
+        );
+        assert_eq!(
+            safe_http_rejection_code(path, 401, br#"{"error":"attacker-controlled secret"}"#),
+            "RUNNER_CONNECT_REQUEST_REJECTED_401"
+        );
     }
 
     #[test]
@@ -746,6 +788,20 @@ pub fn safe_refresh_error_code(error: &str) -> String {
         "RUNNER_DEVICE_PUBLIC_KEY_INVALID",
         "RUNNER_DEVICE_KEY_PAIR_MISMATCH",
         "RUNNER_REFRESH_CONTROL_TOKEN_MISSING",
+        "RUNNER_REFRESH_CREDENTIAL_REJECTED",
+        "RUNNER_REFRESH_CREDENTIAL_EXPIRED",
+        "RUNNER_REFRESH_CREDENTIAL_REVOKED",
+        "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID",
+        "RUNNER_REFRESH_DEVICE_BINDING_MISSING",
+        "RUNNER_REFRESH_DEVICE_PROOF_REQUIRED",
+        "RUNNER_REFRESH_DEVICE_BINDING_MISMATCH",
+        "RUNNER_REFRESH_TENANT_OR_RUNNER_MISMATCH",
+        "RUNNER_REFRESH_SESSION_MISMATCH",
+        "RUNNER_REFRESH_RUNNER_REVOKED",
+        "RUNNER_REFRESH_RUNNER_OR_TENANT_NOT_ENROLLED",
+        "RUNNER_REFRESH_SESSION_STALE",
+        "RUNNER_REFRESH_SERVER_STATE_UNAVAILABLE",
+        "RUNNER_REFRESH_ENDPOINT_OR_RUNNER_NOT_FOUND",
     ];
     let is_http_rejection = code
         .strip_prefix("RUNNER_CONNECT_REQUEST_REJECTED_")
@@ -930,10 +986,14 @@ fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
         .run()
         .map_err(map_connect_request_error)?;
     if !response.status().is_success() {
-        return Err(connect_http_rejection_code(
-            &path,
-            response.status().as_u16(),
-        ));
+        let status = response.status().as_u16();
+        let body = response
+            .into_body()
+            .with_config()
+            .limit(MAX_RESPONSE_BYTES as u64)
+            .read_to_vec()
+            .unwrap_or_default();
+        return Err(safe_http_rejection_code(&path, status, &body));
     }
     let bytes = response
         .into_body()
@@ -942,6 +1002,45 @@ fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
         .read_to_vec()
         .map_err(map_connect_response_read_error)?;
     serde_json::from_slice(&bytes).map_err(|_| "RUNNER_CONNECT_RESPONSE_INVALID".into())
+}
+
+fn safe_http_rejection_code(path: &str, status: u16, body: &[u8]) -> String {
+    let is_refresh_route = path.starts_with("/api/runners/") && path.ends_with("/access/refresh");
+    if is_refresh_route {
+        let server_code = serde_json::from_slice::<serde_json::Value>(body)
+            .ok()
+            .and_then(|value| value.get("error")?.as_str().map(ToString::to_string));
+        let safe_code = match server_code.as_deref() {
+            Some("runner_auth_invalid") => Some("RUNNER_REFRESH_CREDENTIAL_REJECTED"),
+            Some("runner_refresh_expired") => Some("RUNNER_REFRESH_CREDENTIAL_EXPIRED"),
+            Some("runner_refresh_revoked") => Some("RUNNER_REFRESH_CREDENTIAL_REVOKED"),
+            Some("runner_refresh_signature_invalid") => {
+                Some("RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID")
+            }
+            Some("runner_device_binding_missing") => Some("RUNNER_REFRESH_DEVICE_BINDING_MISSING"),
+            Some("runner_device_proof_required") => Some("RUNNER_REFRESH_DEVICE_PROOF_REQUIRED"),
+            Some("runner_device_mismatch") => Some("RUNNER_REFRESH_DEVICE_BINDING_MISMATCH"),
+            Some("runner_scope_mismatch") => Some("RUNNER_REFRESH_TENANT_OR_RUNNER_MISMATCH"),
+            Some("runner_session_mismatch") => Some("RUNNER_REFRESH_SESSION_MISMATCH"),
+            Some("runner_revoked") => Some("RUNNER_REFRESH_RUNNER_REVOKED"),
+            Some("RUNNER_REVOKED") => Some("RUNNER_REFRESH_RUNNER_REVOKED"),
+            Some("RUNNER_NOT_ENROLLED") => {
+                Some("RUNNER_REFRESH_RUNNER_OR_TENANT_NOT_ENROLLED")
+            }
+            Some("RUNNER_SESSION_STALE") => Some("RUNNER_REFRESH_SESSION_STALE"),
+            Some("runner_refresh_state_unavailable") => {
+                Some("RUNNER_REFRESH_SERVER_STATE_UNAVAILABLE")
+            }
+            _ => None,
+        };
+        if let Some(code) = safe_code {
+            return code.into();
+        }
+        if status == 404 || status == 405 {
+            return "RUNNER_REFRESH_ENDPOINT_OR_RUNNER_NOT_FOUND".into();
+        }
+    }
+    connect_http_rejection_code(path, status)
 }
 
 fn connect_http_rejection_code(path: &str, status: u16) -> String {

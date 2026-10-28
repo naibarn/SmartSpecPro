@@ -87,6 +87,7 @@ import {
   requestControlPlaneOrigin,
 } from "../runnerControl";
 import { authorizeRequest } from "../../_core/authz";
+import { signBearerToken, verifyBearerToken } from "../../_core/tokens";
 
 const validPublicKey = crypto.generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -1322,6 +1323,43 @@ describe("Runner control transport routes", () => {
       .expect(500, { error: "RUNNER_REFRESH_FAILED" });
 
     expect(JSON.stringify(response.body)).not.toContain("storage detail");
+  });
+
+  it("distinguishes expired and revoked Runner refresh credentials", async () => {
+    const app = express();
+    app.use(express.json());
+    const gateway = new RunnerGateway(new InMemoryRunnerRepository());
+    registerRunnerControlRoutes(app, gateway);
+    const runnerId = "runner-refresh-rejection-codes";
+    const claims = {
+      sub: runnerId,
+      tenantId: "tenant-http",
+      runnerId,
+      runnerProfile: "shared_container" as const,
+      runnerNodeKind: "managed_container" as const,
+      aud: "smartspec-runner-control-plane",
+      tokenUse: "runner_refresh",
+      jti: "runner-refresh-expired-test",
+    };
+
+    const expiredToken = signBearerToken(claims, "-1s");
+    await request(app)
+      .post(`/api/runners/${runnerId}/access/refresh`)
+      .set("Authorization", `Bearer ${expiredToken}`)
+      .expect(401, { error: "runner_refresh_expired" });
+
+    const refresh = issueRunnerAccessTokens({
+      runnerId,
+      tenantId: "tenant-http",
+      profile: "shared_container",
+      nodeKind: "managed_container",
+    });
+    const refreshClaims = await verifyBearerToken(refresh.refreshToken);
+    revokedJtis.add(String(refreshClaims.jti));
+    await request(app)
+      .post(`/api/runners/${runnerId}/access/refresh`)
+      .set("Authorization", `Bearer ${refresh.refreshToken}`)
+      .expect(401, { error: "runner_refresh_revoked" });
   });
 
   it("revokes a local Runner only for its authenticated owner", async () => {

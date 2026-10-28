@@ -2,7 +2,12 @@ import crypto from "crypto";
 import type { Request } from "express";
 
 import type { TokenClaims } from "../_core/tokens";
-import { hasScope, signBearerToken, verifyBearerToken } from "../_core/tokens";
+import {
+  hasScope,
+  signBearerToken,
+  verifyBearerToken,
+  verifyBearerTokenIgnoringExpiration,
+} from "../_core/tokens";
 import { isJtiRevoked, revokeJti } from "../_core/revocation";
 import { claimTtlDedupeKey } from "./postgresRateLimitStore";
 import { putEphemeralValueIfAbsent, readEphemeralValue } from "./postgresEphemeralStore";
@@ -131,6 +136,14 @@ type RunnerTokenExpectation = {
   runnerSessionId?: string;
   requiredScopes?: string[];
   requestProof?: RunnerDeviceRequestProof | null;
+};
+
+type RunnerTokenVerificationOptions = {
+  audience: string;
+  tokenUses: RunnerTokenUse[];
+  expected?: RunnerTokenExpectation;
+  allowRevokedJti?: (jti: string) => boolean | Promise<boolean>;
+  revokedJtiErrorCode?: string;
 };
 
 export type RunnerDeviceBindingInput = {
@@ -586,7 +599,21 @@ export async function verifyRunnerRefreshToken(
   try {
     presentedJti = String((await verifyBearerToken(token)).jti || "");
   } catch {
-    // verifyRunnerToken below owns the canonical invalid-token error.
+    try {
+      await verifyBearerTokenIgnoringExpiration(token);
+      throw new RunnerAuthError(
+        "runner_refresh_expired",
+        401,
+        "Runner refresh credential has expired"
+      );
+    } catch (error) {
+      if (error instanceof RunnerAuthError) throw error;
+      throw new RunnerAuthError(
+        "runner_refresh_signature_invalid",
+        401,
+        "Runner refresh credential signature is invalid"
+      );
+    }
   }
   const now = Date.now();
   const localGrace = presentedJti
@@ -597,6 +624,7 @@ export async function verifyRunnerRefreshToken(
     audience: RUNNER_CONTROL_PLANE_AUDIENCE,
     tokenUses: ["runner_refresh"],
     expected,
+    revokedJtiErrorCode: "runner_refresh_revoked",
     // A refresh token may be replayed briefly when the server rotated it but
     // the response was lost. Keep the route's device-proof check, but allow
     // revocation bypass only while the matching bounded grace record exists.
@@ -629,6 +657,7 @@ export async function refreshRunnerAccessTokens(
     audience: RUNNER_CONTROL_PLANE_AUDIENCE,
     tokenUses: ["runner_refresh"],
     expected,
+    revokedJtiErrorCode: "runner_refresh_revoked",
     allowRevokedJti: async () =>
       Boolean((localGrace && localGrace.expiresAtMs > now) || distributedGrace),
   });
@@ -674,12 +703,7 @@ export async function refreshRunnerAccessTokens(
 
 async function verifyRunnerToken(
   token: string,
-  input: {
-    audience: string;
-    tokenUses: RunnerTokenUse[];
-    expected?: RunnerTokenExpectation;
-    allowRevokedJti?: (jti: string) => boolean | Promise<boolean>;
-  }
+  input: RunnerTokenVerificationOptions
 ): Promise<RunnerTokenContext> {
   let claims: TokenClaims;
   try {
@@ -694,7 +718,7 @@ async function verifyRunnerToken(
   const jti = String(claims.jti || "");
   if (jti && (await isJtiRevoked(jti)) && !(await input.allowRevokedJti?.(jti)))
     throw new RunnerAuthError(
-      "runner_auth_invalid",
+      input.revokedJtiErrorCode ?? "runner_auth_invalid",
       401,
       "Runner token has been revoked"
     );
