@@ -111,7 +111,26 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Test Runner crate
-        run: cargo test --manifest-path apps/runner-app/Cargo.toml
+        shell: bash
+        run: |
+          set -euo pipefail
+          apparmor_userns_sysctl=/proc/sys/kernel/apparmor_restrict_unprivileged_userns
+          original_userns_setting=""
+          changed_userns_setting=false
+          if [ -r "$apparmor_userns_sysctl" ]; then
+            original_userns_setting="$(cat "$apparmor_userns_sysctl")"
+            if [ "$original_userns_setting" = "1" ]; then
+              restore_userns_setting() {
+                if [ "$changed_userns_setting" = true ]; then
+                  sudo -n sysctl -w kernel.apparmor_restrict_unprivileged_userns="$original_userns_setting" >/dev/null
+                fi
+              }
+              trap restore_userns_setting EXIT
+              sudo -n sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+              changed_userns_setting=true
+            fi
+          fi
+          cargo test --manifest-path apps/runner-app/Cargo.toml
 
       - name: Check signing gate
         if: inputs.signing_mode == 'required-secret'
