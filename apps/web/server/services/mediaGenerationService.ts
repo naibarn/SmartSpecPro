@@ -3225,199 +3225,54 @@ export class MediaGenerationService {
   }
 
   /**
-   * Generate image synchronously (with rate limiting)
+   * Submit image work to the async media queue, then wait for its result.
+   * Call this only from a background worker; request handlers should use
+   * generateImageAsync directly and return the task ID to the client.
    */
   async generateImage(
     request: ImageGenerationRequest,
     userToken: string
   ): Promise<MediaGenerationResponse> {
-    requireTenantScopedMediaRequest(request);
-    request = await prepareImageRequestForSafety(request);
-    const {
-      modelId,
-      provider,
-      apiConfig: effectiveApiConfig,
-      defaultInputParams,
-    } = await resolveEffectiveMediaRequestModel({
-      mediaType: "image",
-      requestedModel: request.model,
-      promptText: request.prompt,
-      requestedApiConfig: request.apiConfig,
-      fallbackModel: DEFAULT_MODELS.image,
-    });
-    const normalizedPrompt =
-      normalizeMediaPrompt(request.prompt) || request.prompt.trim();
-    const omitCharacterNegativePrompt =
-      shouldOmitCharacterNegativePrompt(request);
-    const payload: Record<string, unknown> = {
-      prompt: normalizedPrompt,
-      model: modelId,
-      ...(request.controlPlaneOperationKey
-        ? { control_plane_operation_key: request.controlPlaneOperationKey }
-        : {}),
-      size: request.size,
-      aspect_ratio: request.aspectRatio,
-      n: request.numImages || 1,
-      ...(omitCharacterNegativePrompt
-        ? {}
-        : { negative_prompt: request.negativePrompt }),
+    const submitted = await this.generateImageAsync(request, userToken);
+    const taskId = submitted.taskId ?? submitted.id;
+    const deadline = Date.now() + 30 * 60_000;
+    let task = submitted;
+    let consecutivePollFailures = 0;
+
+    while (task.status === "pending" || task.status === "processing") {
+      if (Date.now() >= deadline) {
+        throw new Error(`Image generation task ${taskId} exceeded its 30 minute worker deadline`);
+      }
+      await new Promise(resolve => setTimeout(resolve, 3_000));
+      try {
+        task = await this.getTask(taskId, userToken, request.auditContext);
+        consecutivePollFailures = 0;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const retryable = /\b(?:408|429|5\d\d)\b|timeout|timed out|failed to fetch|upstream|connection reset|networkerror/i.test(message);
+        if (!retryable || ++consecutivePollFailures >= 10) throw error;
+        const backoffMs = /\b429\b|rate.?limit/i.test(message)
+          ? 15_000
+          : Math.min(15_000, 1_000 * 2 ** consecutivePollFailures);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+      }
+    }
+
+    if (task.status !== "completed") {
+      throw new Error(task.errorMessage || `Image generation task ${taskId} ${task.status}`);
+    }
+
+    const resultUrl = task.resultUrl ?? task.artifacts?.[0]?.playbackUrl;
+    if (!resultUrl) {
+      throw new Error(`Image generation task ${taskId} completed without an output URL`);
+    }
+    return {
+      success: true,
+      data: [{ id: task.id, url: resultUrl, data: task.resultData }],
+      creditsUsed: task.creditsUsed ?? 0,
+      creditsBalance: task.creditsBalance ?? 0,
+      model: task.model,
     };
-    if (request.auditContext?.skillRunId) {
-      payload.skill_billing_run_id = request.auditContext.skillRunId;
-      if (request.auditContext.skillSlug) {
-        payload.skill_billing_skill_slug = request.auditContext.skillSlug;
-      }
-    }
-
-    // Add resolution if provided (e.g., "1K", "2K", "4K")
-    if ((request as any).resolution) {
-      payload.resolution = (request as any).resolution;
-    }
-
-    // Add output format if provided
-    if ((request as any).outputFormat) {
-      payload.output_format = (request as any).outputFormat;
-    }
-
-    // Get publicUrl from request for resolving relative URLs to tenant domain
-    const publicUrl = (request as any).publicUrl as string | undefined;
-
-    // Add extra params from dynamic input fields, layered over the model's own
-    // `defaultInputParams` (opt-in — see `readModelDefaultInputParams`; the
-    // caller's values always win). Resolve any relative URLs (e.g. image_input
-    // with /uploads/... paths).
-    const effectiveExtraParams = applyModelDefaultInputParams(
-      (request as any).extraParams,
-      defaultInputParams
-    );
-    if (effectiveExtraParams) {
-      payload.extra_params = await resolveProviderExtraParamsUrls(
-        buildPythonBackendExtraParams(effectiveExtraParams, publicUrl, request.aspectRatio),
-        request,
-        userToken,
-        publicUrl,
-      );
-    }
-
-    // Add reference images if provided (1-5 images)
-    // Convert relative URLs to full URLs for Python backend
-    const resolvedReferenceImageUrls = await resolveProviderReferenceUrls(
-      resolveReferenceImageUrlsForModel(
-      modelId,
-      request.referenceImageUrls,
-      publicUrl,
-      ),
-      request,
-      userToken,
-      publicUrl,
-    );
-    if (resolvedReferenceImageUrls) {
-      payload.reference_image_urls = resolvedReferenceImageUrls;
-    }
-
-    const apiConfig = buildApiConfigWithReferenceImageConfig(
-      modelId,
-      effectiveApiConfig,
-      request.referenceImageUrls
-    );
-    if (apiConfig) {
-      payload.api_config = apiConfig;
-    }
-
-    // Add reference style if provided
-    if (request.referenceStyleUrl) {
-      const [resolvedStyleUrl] = await resolveProviderReferenceUrls(
-        [request.referenceStyleUrl], request, userToken, publicUrl,
-      ) ?? [];
-      payload.reference_style_url = resolvedStyleUrl;
-    }
-
-    this.logMediaRequest({
-      request,
-      requestType: "generateImage",
-      mediaType: "image",
-      provider,
-      model: modelId,
-      endpoint: "/api/v1/media/image",
-      payload,
-    });
-
-    // Use rate limiter to prevent overwhelming the API
-    try {
-      const result = await scheduleMediaWithLimiter(
-        provider,
-        "image" as RateLimiterMediaType,
-        async () => {
-          await request.onSubmissionReady?.();
-          request.onSubmissionStarted?.();
-          const { data, status } = await this.postJson(
-            getPythonMediaToken(request, userToken),
-            "/api/v1/media/image",
-            payload
-          );
-          this.logMediaResponse({
-            request,
-            requestType: "generateImage",
-            mediaType: "image",
-            provider,
-            model: modelId,
-            statusCode: status,
-            success: true,
-            responsePayload: data,
-          });
-          return this.mapResponse(data);
-        },
-        {
-          userKey: typeof request.auditContext?.userId === "number"
-            ? `user:${request.auditContext.userId}`
-            : undefined,
-        },
-      );
-
-      // Record successful usage
-      recordMediaUsage(
-        provider,
-        modelId,
-        "image" as RateLimiterMediaType,
-        true,
-        result.creditsUsed
-      );
-      return result;
-    } catch (error) {
-      if (error instanceof MediaRequestError) {
-        this.logMediaResponse({
-          request,
-          requestType: "generateImage",
-          mediaType: "image",
-          provider,
-          model: modelId,
-          statusCode: error.statusCode,
-          success: false,
-          responsePayload: error.responsePayload,
-          errorMessage: sanitizeAuditError(error),
-        });
-      } else {
-        this.logMediaResponse({
-          request,
-          requestType: "generateImage",
-          mediaType: "image",
-          provider,
-          model: modelId,
-          statusCode: 0,
-          success: false,
-          errorMessage: sanitizeAuditError(error),
-        });
-      }
-      // Record failed usage
-      recordMediaUsage(
-        provider,
-        modelId,
-        "image" as RateLimiterMediaType,
-        false,
-        0
-      );
-      throw error;
-    }
   }
 
   /**

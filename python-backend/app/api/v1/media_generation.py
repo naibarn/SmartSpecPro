@@ -18,7 +18,6 @@ from app.llm_proxy.models import (
     AudioGenerationRequest,
     AudioGenerationResponse,
     ImageGenerationRequest,
-    ImageGenerationResponse,
     VideoGenerationRequest,
     VideoGenerationResponse,
 )
@@ -616,120 +615,14 @@ async def _submit_veo_4k_upgrade_for_task(
     return updated_task or task
 
 
-@router.post("/image", response_model=ImageGenerationResponse)
+@router.post("/image", response_model=TaskResponse)
 async def generate_image_endpoint(
     request: ImageGenerationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Endpoint to generate an image using Kie.ai and handle credit deduction.
-    Also saves task to media_tasks table for history tracking.
-    """
-    gateway = LLMGateway(db)
-    task = None
-    external_task_id = None
-    _require_media_tenant_scope(request, current_user)
-    try:
-        validate_image_prompt_safety(request.extra_params)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    try:
-        # A control-plane retry may arrive after the first request created a
-        # media task or provider operation but before the HTTP response was
-        # observed. Reuse a completed result; fail closed for an in-flight
-        # operation so this request cannot create a second provider task.
-        operation_key = (request.control_plane_operation_key or "").strip()
-        if operation_key:
-            existing_result = await db.execute(
-                select(MediaTask)
-                .where(
-                    MediaTask.user_id == current_user.id,
-                    MediaTask.tenant_id == current_user.currentTenantId,
-                    MediaTask.media_type == MediaType.IMAGE.value,
-                    MediaTask.parameters["control_plane_operation_key"].as_string() == operation_key,
-                )
-                .order_by(MediaTask.created_at.desc())
-                .limit(1)
-            )
-            existing_task = existing_result.scalar_one_or_none()
-            if existing_task:
-                if existing_task.status == TaskStatus.COMPLETED.value:
-                    stored = existing_task.result_data if isinstance(existing_task.result_data, dict) else {}
-                    stored_response = stored.get("response") if isinstance(stored.get("response"), dict) else None
-                    if stored_response:
-                        response = ImageGenerationResponse(**stored_response)
-                        response.task_id = existing_task.id
-                        return response
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="MEDIA_OPERATION_ALREADY_IN_PROGRESS",
-                )
-        # Create task record before generation
-        task = await MediaTaskService.create_task(
-            db,
-            current_user,
-            MediaType.IMAGE,
-            request.model,
-            request.prompt,
-            request.dict(exclude={'model', 'prompt'})
-        )
-
-        # Update task to processing
-        await MediaTaskService.update_task_status(db, task.id, TaskStatus.PROCESSING)
-
-        response = await gateway.generate_image(request, current_user)
-
-        # Store external task ID for reference (available after Kie.ai responds)
-        external_task_id = response.id
-        logger.info("image_generation_got_external_id", task_id=task.id, external_task_id=external_task_id)
-
-        # Update task with result
-        result_url = response.data[0].get("url") if response.data else None
-        await MediaTaskService.update_task_status(
-            db,
-            task.id,
-            TaskStatus.COMPLETED,
-            result_url=result_url,
-            result_data={"response": response.dict(), "data": response.data},
-            credits_used=int(response.credits_used) if response.credits_used else None,
-            credits_balance=int(response.credits_balance) if response.credits_balance else None,
-            external_task_id=external_task_id  # Store Kie.ai task ID for reference
-        )
-
-        # Store task_id in response for reference
-        if task:
-            response.task_id = task.id
-
-        return response
-    except HTTPException as e:
-        # Update task as failed, but preserve external_task_id if available
-        if task:
-            await MediaTaskService.update_task_status(
-                db, task.id, TaskStatus.FAILED,
-                error_message=str(e.detail),
-                external_task_id=external_task_id
-            )
-        raise e
-    except Exception as e:
-        logger.error("image_generation_endpoint_error", user_id=current_user.id, error=str(e))
-        # Try to extract external task ID from exception message
-        error_str = str(e)
-        if not external_task_id:
-            import re
-            match = re.search(r'[a-f0-9]{32}', error_str)
-            if match:
-                external_task_id = match.group(0)
-                logger.info("extracted_task_id_from_error", external_task_id=external_task_id)
-
-        # Update task as failed, preserving external_task_id if available
-        if task:
-            await MediaTaskService.update_task_status(
-                db, task.id, TaskStatus.FAILED,
-                error_message=error_str,
-                external_task_id=external_task_id
-            )
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error: {str(e)}")
+    """Compatibility endpoint that admits image work to the canonical queue."""
+    return await generate_image_async(request, db, current_user)
 
 @router.post("/video", response_model=VideoGenerationResponse)
 async def generate_video_endpoint(

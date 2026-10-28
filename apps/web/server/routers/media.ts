@@ -2573,7 +2573,7 @@ export const mediaRouter = router({
       return toMediaModelResponse(model);
     }),
 
-  // Generate image (synchronous)
+  // Compatibility alias. Image generation is submitted to the background queue.
   generateImage: protectedProcedure
     .input(
       z.object({
@@ -2602,158 +2602,12 @@ export const mediaRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      requireMediaTenantId(ctx);
-      if (input.transport === "mcp") {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "MCP transport is only supported for async image/video generation" });
-      }
-      if (input.mcpConnectionId) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "MCP transport is only supported for async image/video generation" });
-      }
-      // Rate limiting
-      const rateLimitKey = `user:${ctx.user.id}`;
-      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Rate limit exceeded for media generation. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
-        });
-      }
-
-      await enforceMediaAgeSafety({ ctx, kind: "image", prompt: input.prompt });
-
-      // Abuse guard: detect duplicate/burst/loop patterns
-      const abuseResult = await checkAbuseGuard({
-        userId: ctx.user.id,
-        namespace: "media:image",
-        promptHash: hashPrompt(input.prompt, input.model),
-      });
-      if (!abuseResult.allowed) {
-        throw new TRPCError({
-          code: "TOO_MANY_REQUESTS",
-          message: `Request blocked: ${abuseResult.reason}. Retry after ${abuseResult.retryAfter}s.`,
-        });
-      }
-
-      const model = input.model || await getDefaultModelId("image", input.prompt);
-      const modelMeta = await resolveModelMeta(model, "image");
-
-      // Calculate credit cost from DB pricingTiers
-      const dbModel = await getModelWithPricing(model);
-      const resolvedGrokRequest = await resolveGrokImagineImage2Request({
-        model,
-        extraParams: input.extraParams,
-        referenceImageUrls: input.referenceImageUrls,
-        ctx,
-        source: "trpc.media.generateImage",
-      });
-      if (input.prompt.trim().length === 0 && resolvedGrokRequest?.operation !== "segment-map") {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "A prompt is required for this image operation.",
-        });
-      }
-      const effectiveImageExtraParams = resolvedGrokRequest?.extraParams ?? input.extraParams;
-      const effectiveReferenceImageUrls = resolvedGrokRequest?.referenceImageUrls ?? input.referenceImageUrls;
-      assertMediaPromptWithinModelLimit({
-        value: input.prompt,
-        modelId: model,
-        configJson: dbModel.configJson,
-        fieldLabel: "Prompt",
-      });
-      assertModelAwareImageRequest({
-        modelId: model,
-        configJson: dbModel.configJson,
-        provider: modelMeta.provider,
-        prompt: input.prompt,
-        aspectRatio: input.aspectRatio,
-        resolution: input.resolution,
-        extraParams: effectiveImageExtraParams,
-      });
-      const effectiveOutputFormat = resolveImageOutputFormatForRequest({
-        configJson: dbModel.configJson,
-        extraParams: effectiveImageExtraParams,
-        outputFormat: input.outputFormat,
-      });
-
-      const creditCost = calculateCreditCost(dbModel, {
-        ...(effectiveImageExtraParams ?? {}),
-        numImages: input.numImages,
-        resolution: input.resolution,
-      });
-
-      // Check credits
-      const hasCredits = await hasEnoughCredits(ctx.user.id, creditCost);
-      if (!hasCredits) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: `Insufficient credits. Required: ${creditCost}`,
-        });
-      }
-
-      try {
-        const userToken = getUserToken(ctx);
-        const debugTraceId = crypto.randomUUID();
-        const apiConfigWithProvider = {
-          ...(input.apiConfig ?? {}),
-          provider: modelMeta.provider,
-          trace_id: debugTraceId,
-        };
-
-        const result = await mediaGenerationService.generateImage(
-          {
-            prompt: input.prompt,
-            model,
-            size: input.size,
-            aspectRatio: input.aspectRatio,
-            negativePrompt: input.negativePrompt,
-            numImages: input.numImages,
-            resolution: input.resolution,
-            outputFormat: effectiveOutputFormat,
-            referenceImageUrls: effectiveReferenceImageUrls,
-            apiConfig: apiConfigWithProvider,
-            extraParams: effectiveImageExtraParams,
-            publicUrl: ctx.publicUrl ?? undefined,
-            auditContext: {
-              userId: ctx.user.id,
-              tenantId: resolveTenantIdVarchar(ctx.tenantId, ctx.user.currentTenantId) ?? undefined,
-              traceId: debugTraceId,
-              source: "trpc.media.generateImage",
-              stage: "submission",
-            },
-          },
-          userToken
-        );
-
-        const durableResult = await durabilizeMediaGenerationResponse(result, {
-          tenantId: requireMediaTenantId(ctx),
-          userId: ctx.user.id,
-          mediaType: "image",
-          sourceType: "media_sync_generated",
-        });
-
-        // Deduct credits on success — use backend-reported cost if available
-        const chargedAmount = durableResult.creditsUsed || creditCost;
-        if (chargedAmount > 0) {
-          await deductCredits({
-            userId: ctx.user.id,
-            amount: chargedAmount,
-            description: `Image generation: ${modelMeta.name}`,
-            sourceType: "media_image",
-            metadata: {
-              model,
-              modelDisplayName: modelMeta.name,
-              provider: modelMeta.provider,
-              prompt: input.prompt.slice(0, 100),
-              endpoint: "generateImage",
-              creditCost,
-              ...(input.originSurface ? { originSurface: input.originSurface } : {}),
-            },
-          });
-        }
-
-        return durableResult;
-      } catch (error) {
-        throw mapImageGenerationError(error, "Image generation failed");
-      }
+      // Compatibility endpoint: preserve the route name but use the same
+      // background task contract as all current image-generation surfaces.
+      return (mediaRouter as any).createCaller(ctx).generateImageAsync({
+        ...input,
+        transport: input.transport ?? "gateway_api",
+      }) as Promise<MediaTask>;
     }),
 
   // Generate video (synchronous)
