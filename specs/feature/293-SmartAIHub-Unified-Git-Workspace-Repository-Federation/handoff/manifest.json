@@ -34,15 +34,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
+    "expected_canonical_sha": "c3b429551fcf15e619ba34d45eaa3862dfba6acf",
     "expected_spec_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688"
   },
   "continuation": {
-    "next_action": "On the existing enrolled Windows Desktop Runner, install a Desktop build produced by the approved release workflow (which embeds the checked-out source SHA), click “ตรวจรับ Workspace Isolation”, and return the sanitized JSON through the existing authorized transport. Then verify actual Task Control projection and the SPEC-224 consumer flow; keep Windows acceptance NOT VERIFIED until that evidence is recorded.",
-    "next_ready_workunit": "SPEC293_WINDOWS_RUNNER_AND_WORKSPACE_AUTHORITY_ACCEPTANCE",
-    "reactivation_predicate": "When the existing authenticated owner-browser session or its authorized telemetry export is available, resume real-device acceptance without re-enrollment.",
-    "resume_point": "Local scratch acceptance instrumentation and capability readiness detail are integrated at 1d4ab37795bd299eeafb52e406d0c9b9f14f84bb. Runner crate full suite at dd7727ff passed 218 tests, 0 failed, 2 ignored; final report sanitization at 1d4ab377 passed its focused acceptance test. Owner reports Desktop Runner 0.2.45 ONLINE, but no authenticated session or actual installed source/executable digest is available here. The Desktop acceptance button must be run on the enrolled Windows device; the resulting sanitized report must confirm installed identity/build and junction behavior. Do not access or transfer browser credentials and do not install the CLI prerelease over Desktop Runner.",
-    "waiting_predicate": "Owner runs “ตรวจรับ Workspace Isolation” on the existing Windows Desktop Runner and provides its sanitized JSON report through authorized transport, then provides/observes authenticated Task Control and SPEC-224 consumer evidence."
+    "next_action": "Coordinate the Task Control UX-owned explicit “พัฒนาระบบ SmartAIHub” entry and authenticated browser selection acceptance with Session C; then verify the existing dirty Debian workspace is safely converged or isolated before any write-capable Goal.",
+    "next_ready_workunit": "SPEC293_TASK_CONTROL_PLATFORM_ENGINEERING_SELECTION_UI",
+    "reactivation_predicate": "Resume UI acceptance when Session C ownership is available; resume live execution only after the registered workspace is safely non-dirty/current and current Runner/Codex readiness is revalidated.",
+    "resume_point": "Trusted Platform Engineering binding is integrated at c3b429551fcf15e619ba34d45eaa3862dfba6acf. Connected disposable PostgreSQL path passed 122 tests and focused projection tests passed 25 tests. Local dev web serves this SHA. Explicit SmartAIHub CTA/authenticated browser selection and safe workspace convergence remain open; no Goal or DevelopmentRun was started.",
+    "waiting_predicate": "Session C coordinates the explicit Task Control entry/browser check; the existing Debian workspace must report a safe current source revision with no conflicting dirty changes before write-capable execution."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -152,7 +152,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 82,
+  "generation": 83,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
@@ -228,7 +228,8 @@
       "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
       "fb9012f80ef413f34180ccf294588155b0454ae7",
       "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
-      "7d37b44fe0e7aa93b48c50958771b4aa7f29298e"
+      "7d37b44fe0e7aa93b48c50958771b4aa7f29298e",
+      "c3b429551fcf15e619ba34d45eaa3862dfba6acf"
     ],
     "mapping": [],
     "source_paths": [
@@ -273,9 +274,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
+    "canonical_sha": "c3b429551fcf15e619ba34d45eaa3862dfba6acf",
     "integrated": true,
-    "integrated_at": "2026-10-27T07:23:56Z"
+    "integrated_at": "2026-10-28T07:44:41Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -673,7 +674,7 @@
     "unresolved": 253
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T07:24:11.745180Z",
+  "updated_at": "2026-10-28T07:45:15.005077Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1067,6 +1068,13 @@
         "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/spec293-local-workspace-acceptance-workflow-20261027.md",
         "scope": "Runner Desktop scratch-root acceptance harness and capability readiness reason projection; full crate suite at prior implementation SHA dd7727ff, final path-sanitization fix focused-tested at this exact SHA, Linux only, no actual Windows device run.",
         "source_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
+        "status": "PASS"
+      },
+      {
+        "kind": "P0_TRUSTED_PLATFORM_ENGINEERING_BINDING",
+        "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/handoff/evidence/p0-platform-engineering-binding-c3b4295-20261028.md",
+        "scope": "Persisted SPEC-293 canonical project/repository/Runner/workspace binding, authorized scope projection and connected disposable PostgreSQL selection-path tests; UI CTA/browser acceptance and dirty workspace execution safety remain open.",
+        "source_sha": "c3b429551fcf15e619ba34d45eaa3862dfba6acf",
         "status": "PASS"
       }
     ],
