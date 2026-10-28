@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 import { createHash } from "node:crypto";
 import { readdir, readFile, realpath, writeFile, mkdir, copyFile, lstat, stat } from "node:fs/promises";
-import { basename, join, relative, resolve, sep } from "node:path";
+import { basename, extname, join, relative, resolve, sep } from "node:path";
 import { execFileSync } from "node:child_process";
 
-import { isRuntimePackFilePaused } from "../../web/shared/runtimePackAvailability.mjs";
+const MAX_WORKER_ASSET_BYTES = 25 * 1024 * 1024;
+const DOWNLOADABLE_EXTENSIONS = new Set([".zip", ".exe", ".msi", ".dmg", ".pkg", ".appimage", ".7z", ".tar", ".gz"]);
 
 const repoRoot = resolve(process.cwd());
 const outRoot = resolve(repoRoot, "apps/cloudflare/.staging-artifact");
@@ -124,12 +125,23 @@ const assets = [];
 for (const sourceFile of publicFiles) {
   const name = sourceFile.name.split(sep).join("/");
   if (!safeRelative(name)) throw new Error("STAGING_ARTIFACT_ASSET_PATH_INVALID");
-  if (name.startsWith("releases/runtime/") && isRuntimePackFilePaused(name)) continue;
+  if (name.endsWith(".map")) continue;
+  if (name.startsWith("releases/runtime/")) continue;
+  if (name.startsWith("releases/") && DOWNLOADABLE_EXTENSIONS.has(extname(name).toLowerCase())) continue;
   const bytes = await readFile(sourceFile.path);
+  if (bytes.byteLength > MAX_WORKER_ASSET_BYTES) {
+    throw new Error(`STAGING_ARTIFACT_ASSET_TOO_LARGE:${name}:${bytes.byteLength}`);
+  }
   // Empty public placeholders such as .gitkeep are not deployable HTTP assets;
   // omitting them keeps the content-addressed publisher's non-empty blob rule.
   if (bytes.byteLength === 0) continue;
   assets.push({ name, file: `apps/web/dist/public/${name}`, contentType: contentType(name), size: bytes.byteLength, sha256: digest(bytes) });
+}
+const assetNames = new Set(assets.map(file => file.name));
+if (!assetNames.has("index.html") || !assetNames.has("favicon.ico") || !assetNames.has("favicon.svg") ||
+    ![...assetNames].some(name => /^assets\/.+\.js$/i.test(name)) ||
+    ![...assetNames].some(name => /^assets\/.+\.css$/i.test(name))) {
+  throw new Error("STAGING_ARTIFACT_WEBSITE_ASSETS_MISSING");
 }
 const entries = [
   ...moduleFiles.map(file => [`modules/${file.name}`, file.sha256, file.size]),

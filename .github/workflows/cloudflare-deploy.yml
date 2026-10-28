@@ -112,6 +112,9 @@ jobs:
         run: pnpm --filter @smartspec/web exec vite build --configLoader runner
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+          SSP_SKIP_PUBLIC_COPY: "1"
+      - name: Copy and validate website assets, excluding downloadable release artifacts
+        run: node apps/cloudflare/scripts/prepare-worker-assets.mjs apps/web/client/public apps/web/dist/public "$RUNNER_TEMP/cloudflare-private-source-maps"
       - name: Fail before credentials if either Wrangler target cannot package the exact assets
         run: |
           pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.staging.jsonc --dry-run --outdir "$RUNNER_TEMP/staging-worker-check"
@@ -121,6 +124,12 @@ jobs:
           name: cloudflare-assets-${{ github.sha }}
           path: apps/web/dist/public
           if-no-files-found: error
+          retention-days: 2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-private-sourcemaps-${{ github.sha }}
+          path: ${{ runner.temp }}/cloudflare-private-source-maps
+          if-no-files-found: ignore
           retention-days: 2
 
   staging:

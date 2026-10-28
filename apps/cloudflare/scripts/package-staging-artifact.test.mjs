@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, truncate, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -22,9 +22,14 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     await writeFile(join(root, "apps/cloudflare/.staging-artifact/wrangler/entrypoint.js"), "export class CanonicalJobWorkflow {}\nexport default {};\n");
     await writeFile(join(root, "apps/web/dist/public/index.html"), "<html></html>\n");
     await writeFile(join(root, "apps/web/dist/public/assets/app.js"), "console.log('ready');\n");
+    await writeFile(join(root, "apps/web/dist/public/assets/app.css"), "body { color: black }\n");
+    await writeFile(join(root, "apps/web/dist/public/favicon.ico"), "icon");
+    await writeFile(join(root, "apps/web/dist/public/favicon.svg"), "<svg/>\n");
+    await writeFile(join(root, "apps/web/dist/public/assets/app.js.map"), "private source map\n");
     await writeFile(join(root, "apps/web/dist/public/.gitkeep"), "");
     await writeFile(join(root, "apps/web/dist/public/ä-user-guide.md"), "localized guide\n");
     await writeFile(join(root, "apps/web/client/public/releases/current.json"), "{\"release\":1}\n");
+    await writeFile(join(root, "apps/web/client/public/releases/worker-app-1.exe"), "installer");
     await symlink("../../client/public/releases", join(root, "apps/web/dist/public/releases"));
     await mkdir(join(root, "apps/cloudflare"), { recursive: true });
     await writeFile(join(root, "apps/cloudflare/wrangler.staging.jsonc"), await readFile(sourceConfig));
@@ -52,12 +57,13 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
     assert.equal(manifest.sourceSha, sourceSha);
     assert.equal(manifest.mainModule, "entrypoint.js", "a stale index.js must not replace the configured Workflow entrypoint");
     assert.equal(manifest.moduleFiles.length, 2);
-    assert.deepEqual(manifest.assets.map(file => file.name), ["assets/app.js", "index.html", "releases/current.json", ...runtimeNames.slice(3).map(name => `releases/runtime/${name}`), "ä-user-guide.md"]);
+    assert.deepEqual(manifest.assets.map(file => file.name), ["assets/app.css", "assets/app.js", "favicon.ico", "favicon.svg", "index.html", "releases/current.json", "ä-user-guide.md"]);
+    assert.ok(!manifest.assets.some(file => file.name.endsWith(".map") || file.name.startsWith("releases/runtime/") || file.name.endsWith(".exe")));
     assert.ok(!manifest.assets.some(file => file.name === ".gitkeep"));
     assert.match(manifest.buildDigest, /^[a-f0-9]{64}$/);
     for (const name of runtimeNames) assert.equal(await readFile(join(root, "apps/web/client/public/releases/runtime", name), "utf8"), "retained");
-    // Linux distribution materialization uses the identical pause policy and
-    // retains the source archives instead of deleting them.
+    // Linux distribution materialization keeps its independent download
+    // behavior and retains source archives instead of deleting them.
     await mkdir(join(root, "apps/web/scripts"), { recursive: true });
     const materializer = join(root, "apps/web/scripts/materialize-public-releases.sh");
     await writeFile(materializer, await readFile(new URL("../../web/scripts/materialize-public-releases.sh", import.meta.url)));
@@ -75,6 +81,15 @@ test("packages only the staging Wrangler bundle and Vite public assets with sour
       .update(digestRows.map(([name, sha, size]) => `${name}\0${sha}\0${size}`).join("\n"))
       .digest("hex");
     assert.equal(manifest.buildDigest, expectedDigest);
+
+    const oversizedWebsiteAsset = join(root, "apps/web/dist/public/assets/oversized.png");
+    await writeFile(oversizedWebsiteAsset, "x");
+    await truncate(oversizedWebsiteAsset, 25 * 1024 * 1024 + 1);
+    assert.throws(
+      () => execFileSync(process.execPath, [script], { cwd: root, encoding: "utf8", stdio: "pipe" }),
+      error => error.stderr.toString().includes("STAGING_ARTIFACT_ASSET_TOO_LARGE:assets/oversized.png:"),
+    );
+    await unlink(oversizedWebsiteAsset);
 
     await mkdir(join(root, "apps/web/private"), { recursive: true });
     await writeFile(join(root, "apps/web/private/secret.txt"), "must not be packaged");
