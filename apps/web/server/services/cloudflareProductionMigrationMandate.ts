@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 import { workerJobs } from "../../drizzle/schema";
@@ -9,7 +8,7 @@ import { assertHttpCandidateOwner } from "./cloudflareHttpCandidatePreparation";
 import { HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB } from "./cloudflareHttpCandidateContract";
 import { httpCandidateReceiptSchema } from "./cloudflareHttpCandidateReadback";
 import { cloudflareMigrationMandateEnvelopeSchema, cloudflareMigrationMissionId,
-  cloudflareMigrationMandateEnrollmentPayload } from "./cloudflareMigrationMandateContract";
+  cloudflareMigrationMandateEnrollmentPayload, cloudflareCanonicalJson, cloudflarePlanDigest } from "./cloudflareMigrationMandateContract";
 
 const API_BASE = "/api/v1/approvals/cloudflare-migration-mandates";
 const RESOURCE_BUDGET = Object.freeze({ maxProviderWrites: 20, maxWorkerDeployments: 2, maxContainerStarts: 4,
@@ -72,7 +71,7 @@ export async function getCloudflareMigrationMandatePlan(db: DrizzleDB, input: {
       hyperdriveId: productionHyperdrive[0]!.id, nodeApplicationId: node.applicationId, pythonApplicationId: python.applicationId },
     actions: [...ACTIONS], resourceBudget: RESOURCE_BUDGET, rollbackPolicy: ROLLBACK_POLICY,
   });
-  return { ready: true as const, reason: null, plan, planDigest: createHash("sha256").update(JSON.stringify(plan)).digest("hex"),
+  return { ready: true as const, reason: null, plan, planDigest: cloudflarePlanDigest(plan),
     resourceBudget: RESOURCE_BUDGET, monetaryCap: "NONE; syntheticFinancialMinorUnits is fixed to zero", trafficPolicy: "Worker canary is bounded; native production activation is a separately listed, explicit mandate action.",
     rollbackPolicy: ROLLBACK_POLICY };
 }
@@ -181,7 +180,7 @@ export async function readCloudflareMigrationMandate(input: { tenantId: string; 
 export async function enrollCloudflareMigrationMandate(input: { db: DrizzleDB; tenantId: string; projectId: string; ownerUserId: number;
   userToken: string; idempotencyKey: string; expectedPlanDigest: string; plan: Record<string, unknown> }) {
   const current = await getCloudflareMigrationMandatePlan(input.db, input);
-  if (!current.ready || current.planDigest !== input.expectedPlanDigest || JSON.stringify(current.plan) !== JSON.stringify(input.plan))
+  if (!current.ready || current.planDigest !== input.expectedPlanDigest || cloudflareCanonicalJson(current.plan) !== cloudflareCanonicalJson(input.plan))
     throw new Error(current.ready ? "MIGRATION_MANDATE_REVIEWED_PLAN_CHANGED" : current.reason);
   return callApprovalApi(API_BASE, { userToken: input.userToken, method: "POST",
     body: cloudflareMigrationMandateEnrollmentPayload(current.plan, input.idempotencyKey) });

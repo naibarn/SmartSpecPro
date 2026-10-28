@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cloudflareMigrationMandateEnrollmentPayload, cloudflareMigrationMissionId, verifyCloudflareMigrationMandateEnvelope } from "./cloudflareMigrationMandateContract";
+import { cloudflareCanonicalJson, cloudflareMigrationMandateEnrollmentPayload, cloudflareMigrationMissionId,
+  cloudflarePlanDigest, verifyCloudflareMigrationMandateEnvelope } from "./cloudflareMigrationMandateContract";
 
 const scope = { tenantId: "tenant-a", projectId: "project-a", ownerUserId: 17 };
 const envelope = {
@@ -40,5 +41,14 @@ describe("FIRST_MIGRATION mandate contract", () => {
     const payload = cloudflareMigrationMandateEnrollmentPayload(envelope as never, "owner-mandate-v1");
     expect(payload).toMatchObject({ idempotencyKey: "owner-mandate-v1", missionId: envelope.missionId });
     expect(payload).not.toHaveProperty("revokedAt");
+  });
+
+  it("computes the same immutable digest regardless of object property order", () => {
+    const reviewed = { artifact: { digest: "a".repeat(64), sourceSha: "b".repeat(40) },
+      rollout: { canaryPercent: 1, route: "smartaihub.app/*" } };
+    const reordered = { rollout: { route: "smartaihub.app/*", canaryPercent: 1 },
+      artifact: { sourceSha: "b".repeat(40), digest: "a".repeat(64) } };
+    expect(cloudflareCanonicalJson(reviewed)).toBe(cloudflareCanonicalJson(reordered));
+    expect(cloudflarePlanDigest(reviewed)).toBe(cloudflarePlanDigest(reordered));
   });
 });

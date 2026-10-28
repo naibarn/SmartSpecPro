@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import type { DrizzleDB } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
@@ -10,6 +9,7 @@ import { resolveLatestPublishedCloudflareStagingArtifact } from "./cloudflareSta
 import { getCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
 import { probeCloudflareProductionProviderInventory } from "./cloudflareProductionProviderInventory";
 import { createControlPlaneJob } from "./jobControlPlaneGateway";
+import { cloudflarePlanDigest } from "./cloudflareMigrationMandateContract";
 
 const SUBMISSIONS = "cloudflare_production_worker_deployment_submissions";
 const ROUTE_PATTERN = "smartaihub.app/*" as const;
@@ -97,7 +97,7 @@ export async function getProductionWorkerCanaryPreflight(db: DrizzleDB, scope: S
       scriptName: queue.consumers[0]!.scriptName, deadLetterQueueName: queue.consumers[0]!.deadLetterQueueName },
   };
   return { ready: true as const, reason: null, ...plan,
-    planDigest: createHash("sha256").update(JSON.stringify(plan)).digest("hex") };
+    planDigest: cloudflarePlanDigest(plan) };
 }
 
 function sameScope(job: typeof workerJobs.$inferSelect, scope: Scope, actorUserId: number) {
