@@ -9,6 +9,12 @@ import {
   type JobTransportAdapter,
 } from "./jobTransportAdapters";
 import { CloudflareWorkflowHttpJobTransportAdapter } from "./cloudflareWorkflowHttpAdapter";
+import { M3_PARITY_CONTRACT } from "./cloudflareM3ParityJobContract";
+
+const M3_PARITY_JOB_TYPES = new Set([
+  "cloudflare.production.m3.parity.acceptance.credit_billing_acceptance",
+  "cloudflare.production.m3.parity.acceptance.queue_recovery_acceptance",
+]);
 
 /**
  * Select the transport for the canonical envelope in one place. Both the
@@ -16,6 +22,18 @@ import { CloudflareWorkflowHttpJobTransportAdapter } from "./cloudflareWorkflowH
  * and the later Cloudflare migration cannot drift into different contracts.
  */
 export function createFeature186RuntimeAdapter(job?: { runtimeType: string; jobType: string; executionClass: string; tenantId?: string; inputJson?: unknown; requiredCapabilities?: unknown }): JobTransportAdapter {
+  if (job && M3_PARITY_JOB_TYPES.has(job.jobType) && (job.inputJson as Record<string, unknown> | null)?.contractVersion === M3_PARITY_CONTRACT) {
+    if (job.runtimeType !== "node_job_worker" || job.executionClass !== "short" ||
+        process.env.CLOUDFLARE_WORKFLOW_TRANSPORT?.trim() !== "queues" ||
+        job.tenantId !== process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() ||
+        !(Date.parse(process.env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now())) {
+      throw new Error("M3_PARITY_CLOUDFLARE_QUEUE_TRANSPORT_NOT_ACTIVE");
+    }
+    const url = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_URL?.trim();
+    const token = process.env.CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN?.trim();
+    if (!url || !token) throw new Error("M3_PARITY_CLOUDFLARE_QUEUE_TRANSPORT_NOT_CONFIGURED");
+    return new CloudflareQueueHttpJobTransportAdapter(url, token);
+  }
   // This bounded opt-in never enables the global Queue cutover. Unrelated
   // Node/Python jobs retain their existing transport and rollback behavior.
   const mediaProbe = process.env.CLOUDFLARE_CONTAINER_POLICY === CLOUDFLARE_CONTAINER_ON_DEMAND && process.env.FEATURE_186_CLOUDFLARE_MEDIA_PROBE === "true" && process.env.CLOUDFLARE_MEDIA_PROBE === CLOUDFLARE_MEDIA_PROBE &&

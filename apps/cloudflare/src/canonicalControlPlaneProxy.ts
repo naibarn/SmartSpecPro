@@ -11,6 +11,11 @@ import { parseCloudflarePublicOrigins } from "../../../packages/shared/src/cloud
 import { proxyAuthToOrigin } from "./authOriginProxy";
 
 const PUBLIC_APPLICATION_HOSTS = new Set(["smartaihub.app", "smartspec.pro"]);
+const M3_PARITY_CONTRACT = "cloudflare-m3-parity-acceptance-v1";
+const M3_PARITY_JOBS = new Set([
+  "cloudflare.production.m3.parity.acceptance.credit_billing_acceptance",
+  "cloudflare.production.m3.parity.acceptance.queue_recovery_acceptance",
+]);
 
 export function resolvePrivatePlatformOrigin(env: CloudflareEnvironment): { origin: URL; publicOrigin?: string } {
   const configuredOrigin = env.PLATFORM_EDGE_ORIGIN?.trim();
@@ -109,11 +114,16 @@ export const executeCanonicalPlatformJob: CanonicalWorkerExecution = async ({ en
   if (["workflows", "queues"].includes(env.CLOUDFLARE_JOB_TRANSPORT ?? "") && (!env.CLOUDFLARE_WORKFLOW_TENANT_ID || env.CLOUDFLARE_WORKFLOW_TENANT_ID !== job.tenantId)) {
     throw new Error("CLOUDFLARE_JOB_TENANT_NOT_ADMITTED");
   }
-  if (job.jobType !== "emergency.report.intake" || job.contractVersion !== "feature-186-v1" || job.executionClass !== "short") {
+  const m3Parity = M3_PARITY_JOBS.has(job.jobType) && job.contractVersion === M3_PARITY_CONTRACT &&
+    job.executionClass === "short" && env.CLOUDFLARE_JOB_TRANSPORT === "queues" &&
+    env.__m3QueueDelivery?.queueName === "smartspec-canonical-job-queue-production" && Boolean(env.__m3QueueDelivery.messageId);
+  const emergency = job.jobType === "emergency.report.intake" && job.contractVersion === "feature-186-v1" && job.executionClass === "short";
+  if (!emergency && !m3Parity) {
     throw new Error("CLOUDFLARE_JOB_EXECUTION_NOT_ADMITTED");
   }
   const response = await callPlatform<{ result?: unknown }>(env, "execute", {
     jobId: job.jobId, envelope, claim: { ...claim, jobId: job.jobId },
+    ...(m3Parity ? { delivery: { ...env.__m3QueueDelivery, dispatchId: envelope.dispatch_id, dedupeKey: envelope.dedupe_key } } : {}),
   });
   const result = response.result;
   if (!result || typeof result !== "object" || Array.isArray(result)) throw new Error("CLOUDFLARE_JOB_RESULT_INVALID");

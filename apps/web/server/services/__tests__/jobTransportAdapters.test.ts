@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "../cloudflareHttpImageProvisionContract";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB } from "../cloudflareProductionQueueProvision";
 import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE_JOB } from "../cloudflareProductionDatabaseExecutor";
+import { M3_PARITY_CONTRACT, M3_PARITY_JOB } from "../cloudflareM3ParityJobContract";
 import { validateJobDefinition } from "../jobCanonicalization";
 
 import {
@@ -12,6 +13,14 @@ import {
 } from "../jobTransportAdapters";
 
 describe("job transport adapters", () => {
+  it.each(["credit_billing_acceptance", "queue_recovery_acceptance"])("routes exact M3 %s jobs only through Cloudflare Queues", operation => {
+    const input = { jobType: `${M3_PARITY_JOB}.${operation}`, executionClass: "short", contractVersion: M3_PARITY_CONTRACT };
+    const queues = new CloudflareQueueHttpJobTransportAdapter("https://runtime.example", "runtime-token");
+    expect(new PostgresPullJobTransportAdapter().supports(input)).toBe(false);
+    expect(queues.supports(input)).toBe(true);
+    expect(queues.supports({ ...input, jobType: `${input.jobType}.other` })).toBe(false);
+    expect(queues.supports({ ...input, contractVersion: "feature-186-v1" })).toBe(false);
+  });
   it("admits the registered native Candidate contract only on PostgreSQL transport", () => {
     const input = { jobType: HTTP_CANDIDATE_JOB, executionClass: "long", contractVersion: HTTP_CANDIDATE_CONTRACT };
     expect(new PostgresPullJobTransportAdapter().supports(input)).toBe(true);

@@ -91,7 +91,8 @@ export async function processCanonicalQueueMessage(
   let envelope: CanonicalJobEnvelope | null = null;
   try {
     envelope = parseCanonicalEnvelope(message.body);
-    if (envelope.contract_version !== "feature-186-v1") throw new Error("UNSUPPORTED_CONTRACT_VERSION");
+    if (envelope.contract_version !== "feature-186-v1" && envelope.contract_version !== "cloudflare-m3-parity-acceptance-v1")
+      throw new Error("UNSUPPORTED_CONTRACT_VERSION");
     const result = await handler(envelope, env);
     if (result === "completed" || result === "quarantined") return "ack";
     return "retry";
@@ -119,7 +120,16 @@ export class CloudflareQueueConsumer {
     }
     assertBindingSubset(env, ["HYPERDRIVE", "JOB_QUEUE"]);
     for (const message of batch.messages) {
-      const disposition = await processCanonicalQueueMessage(message, env, this.handler, this.quarantine);
+      const m3Parity = (message.body as { contract_version?: unknown } | null)?.contract_version === "cloudflare-m3-parity-acceptance-v1";
+      if (m3Parity && (!batch.queue || !message.id || batch.queue !== "smartspec-canonical-job-queue-production")) {
+        const quarantined = await this.quarantine({ envelope: null, reason: "M3_QUEUE_DELIVERY_METADATA_MISSING" }, env);
+        if (quarantined) message.ack(); else message.retry({ delaySeconds: 30 });
+        continue;
+      }
+      const scopedEnv = m3Parity
+        ? { ...env, __m3QueueDelivery: { queueName: batch.queue!, messageId: message.id! } }
+        : env;
+      const disposition = await processCanonicalQueueMessage(message, scopedEnv, this.handler, this.quarantine);
       if (disposition === "ack") message.ack();
       else message.retry({ delaySeconds: 30 });
     }

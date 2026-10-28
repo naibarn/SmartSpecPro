@@ -18,6 +18,7 @@ import { HTTP_IMAGE_PROVISION_CONTRACT } from "./cloudflareHttpImageProvisionCon
 import { PRIVATE_DATABASE_CONTRACT } from "./cloudflarePrivateDatabaseContract";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT } from "./cloudflareProductionQueueProvision";
 import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT } from "./cloudflareProductionDatabaseExecutor";
+import { M3_PARITY_CONTRACT } from "./cloudflareM3ParityJobContract";
 
 /**
  * Canonical transports carry the envelope unchanged. Keep every contract
@@ -28,6 +29,11 @@ export const CANONICAL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   "feature-186-v1",
   CONTENT_PROTECTION_CONTRACT_VERSION,
   CONTENT_PROTECTION_VERIFY_CONTRACT_VERSION,
+  M3_PARITY_CONTRACT,
+]);
+const M3_PARITY_JOB_TYPES = new Set([
+  "cloudflare.production.m3.parity.acceptance.credit_billing_acceptance",
+  "cloudflare.production.m3.parity.acceptance.queue_recovery_acceptance",
 ]);
 
 const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
@@ -73,6 +79,7 @@ export class PostgresPullJobTransportAdapter implements JobTransportAdapter {
   constructor(private readonly supportedContractVersions: ReadonlySet<string> = POSTGRES_PULL_JOB_CONTRACT_VERSIONS) {}
 
   supports(input: { jobType: string; executionClass: string; contractVersion: string }): boolean {
+    if (M3_PARITY_JOB_TYPES.has(input.jobType) || input.jobType.startsWith("cloudflare.production.m3.parity.acceptance.") || input.contractVersion === M3_PARITY_CONTRACT) return false;
     return Boolean(input.jobType && input.executionClass && this.supportedContractVersions.has(input.contractVersion));
   }
 
@@ -132,6 +139,8 @@ export class CloudflareQueueHttpJobTransportAdapter implements JobTransportAdapt
   }
 
   supports(input: { jobType: string; executionClass: string; contractVersion: string }): boolean {
+    if (M3_PARITY_JOB_TYPES.has(input.jobType) || input.jobType.startsWith("cloudflare.production.m3.parity.acceptance.") || input.contractVersion === M3_PARITY_CONTRACT) return input.executionClass === "short" &&
+      M3_PARITY_JOB_TYPES.has(input.jobType) && input.contractVersion === M3_PARITY_CONTRACT;
     return Boolean(input.jobType && input.executionClass && this.supportedContractVersions.has(input.contractVersion));
   }
 

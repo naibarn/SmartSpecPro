@@ -151,6 +151,37 @@ describe("Cloudflare canonical job boundary", () => {
     expect(mocks.plane.complete).not.toHaveBeenCalled();
   });
 
+  it("admits the exact M3 parity executor only with matching live Queue delivery metadata", async () => {
+    const jobId = "11111111-1111-4111-8111-111111111111";
+    const parityEnvelope = { ...envelope, job_id: jobId, contract_version: "cloudflare-m3-parity-acceptance-v1",
+      dispatch_id: "dispatch-m3", dedupe_key: `job:${jobId}:attempt:1` };
+    const parityInput = { contractVersion: "cloudflare-m3-parity-acceptance-v1", tenantId: "tenant-a", projectId: "project-a",
+      candidateJobId: "22222222-2222-4222-8222-222222222222", operation: "queue_recovery_acceptance",
+      submissionId: jobId, planDigest: "a".repeat(64) };
+    const parityContext = { ...context, jobId, contractVersion: "cloudflare-m3-parity-acceptance-v1",
+      jobType: "cloudflare.production.m3.parity.acceptance.queue_recovery_acceptance", requestedByUserId: 7, input: parityInput };
+    Object.assign(row, { ...parityContext, dispatchId: "dispatch-m3", dispatchDedupeKey: parityEnvelope.dedupe_key,
+      dispatchAdapter: "cloudflare-queues", publicationStatus: "published", publishedAt: new Date() });
+    mocks.plane.getContext.mockResolvedValue(parityContext);
+    vi.stubEnv("CLOUDFLARE_WORKFLOW_TRANSPORT", "queues");
+    const delivery = { queueName: "smartspec-canonical-job-queue-production", messageId: "cf-message-1",
+      dispatchId: "dispatch-m3", dedupeKey: parityEnvelope.dedupe_key };
+    const sendParity = (value: Record<string, unknown>) => request(app)
+      .post("/api/internal/cloudflare-job-control/execute")
+      .set("x-cloudflare-control-plane-token", "test-control-plane-token")
+      .send({ jobId, envelope: parityEnvelope, claim: { ...claim, jobId }, ...value });
+
+    await sendParity({ delivery }).expect(200);
+    expect(mocks.execute).toHaveBeenCalledWith(expect.objectContaining({
+      context: expect.objectContaining({ cloudflareQueueDelivery: delivery }),
+    }));
+
+    mocks.execute.mockClear();
+    await sendParity({ delivery: { ...delivery, messageId: "" } }).expect(400);
+    await sendParity({ delivery: { ...delivery, dedupeKey: "foreign" } }).expect(409);
+    expect(mocks.execute).not.toHaveBeenCalled();
+  });
+
   it.each([
     { jobType: "database.backup" }, { runtimeType: "python_job_worker" }, { attempt: 2 },
     { executionClass: "long" }, { operatorReviewRequired: true }, { status: "succeeded" },

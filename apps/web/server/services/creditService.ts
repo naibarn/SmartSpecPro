@@ -225,12 +225,15 @@ export async function addCreditsWithinTransaction(
   // concurrent grants from both incrementing the balance before one of their
   // ledger inserts discovers the unique idempotency key.
   const [lockedUser] = await tx
-    .select({ id: users.id })
+    .select({ id: users.id, currentTenantId: users.currentTenantId })
     .from(users)
     .where(eq(users.id, userId))
     .for("update");
   if (!lockedUser) {
     throw new Error("User not found");
+  }
+  if (params.tenantId && lockedUser.currentTenantId !== params.tenantId) {
+    throw new Error("Credit tenant scope mismatch");
   }
 
   if (idempotencyKey) {
@@ -879,7 +882,8 @@ export async function deductCredits(params: DeductCreditsParams) {
           and(
           eq(users.id, userId),
           eq(users.isDisabled, false),
-            gte(users.credits, amount)
+          ...(tenantId ? [eq(users.currentTenantId, tenantId)] : []),
+          gte(users.credits, amount)
           )
         )
         .returning({ newBalance: users.credits });
@@ -887,11 +891,12 @@ export async function deductCredits(params: DeductCreditsParams) {
       if (!result) {
         // Either user not found or insufficient credits
         const [user] = await tx
-          .select({ id: users.id })
+          .select({ id: users.id, currentTenantId: users.currentTenantId })
           .from(users)
           .where(eq(users.id, userId))
           .limit(1);
         if (!user) throw new Error("User not found");
+        if (tenantId && user.currentTenantId !== tenantId) throw new Error("Credit tenant scope mismatch");
         // Preserve the authoritative requested amount so the central
         // feedback policy can distinguish an ordinary user shortfall from an
         // anomalously large deduction after router wrappers normalize errors.

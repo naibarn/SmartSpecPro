@@ -101,6 +101,7 @@ import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFai
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
 import { findVerifiedStagingRollbackBaseline } from "../services/cloudflareStagingRollbackBaseline";
+import { admitM3ParityOperation, getM3ParityOperation, getM3ParityPreflight } from "../services/cloudflareM3ParityAdmission";
 import { cloudflareOriginIdentitySchema as originIdentitySchema, cloudflareOriginReferenceSchema as originReferenceSchema,
   cloudflareStagingActivationInputSchema } from "../../shared/cloudflareOriginIdentity";
 
@@ -902,6 +903,50 @@ export const infrastructureRouter = router({
         const reason = error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message) ? error.message : "HTTP_RUNTIME_ADMISSION_UNKNOWN";
         console.info("cloudflare_http_runtime_admission", { stage: "ERROR", submissionId: input.submissionId, correlationId, reason });
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: reason }); }
+    }),
+
+  getCloudflareM3ParityOperation: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), candidateJobId: z.string().uuid(),
+      operation: z.enum(["credit_billing_acceptance", "queue_recovery_acceptance"]), submissionId: z.string().uuid().optional() }).strict())
+    .query(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "M3_PARITY_TENANT_REQUIRED" });
+      const db = getDb(), scope = { tenantId: input.tenantId, projectId: input.projectId,
+        actorUserId: ctx.user.id, candidateJobId: input.candidateJobId };
+      try {
+        const [job, preflight] = await Promise.all([
+          getM3ParityOperation(db, scope, input.operation, input.submissionId),
+          getM3ParityPreflight(db, scope, input.operation),
+        ]);
+        return { job, preflight };
+      } catch (error) {
+        return { job: null, preflight: { ready: false as const, missingLifecycleChecks: [], reason: error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message)
+          ? error.message : "M3_PARITY_READBACK_UNAVAILABLE" } };
+      }
+    }),
+
+  prepareCloudflareM3ParityOperation: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().min(1).max(36), candidateJobId: z.string().uuid(),
+      operation: z.enum(["credit_billing_acceptance", "queue_recovery_acceptance"]), submissionId: z.string().uuid(),
+      planDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      if (resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId) !== input.tenantId || !ctx.user?.id)
+        throw new TRPCError({ code: "FORBIDDEN", message: "M3_PARITY_TENANT_REQUIRED" });
+      if (!ctx.userToken) throw new TRPCError({ code: "UNAUTHORIZED", message: "M3_PARITY_OWNER_SESSION_REQUIRED" });
+      const correlationId = (ctx.req as typeof ctx.req & { requestId?: string }).requestId ?? input.submissionId;
+      console.info("cloudflare_m3_parity_admission", { stage: "AUTHENTICATED_OWNER_SUBMISSION", operation: input.operation,
+        submissionId: input.submissionId, tenantId: input.tenantId, projectId: input.projectId, actorUserId: ctx.user.id, correlationId });
+      try {
+        const result = await admitM3ParityOperation(getDb(), { ...input, actorUserId: ctx.user.id, correlationId });
+        console.info("cloudflare_m3_parity_admission", { stage: "CANONICAL_JOB_ACCEPTED", operation: input.operation,
+          submissionId: input.submissionId, jobId: result.jobId, tenantId: input.tenantId, projectId: input.projectId, correlationId });
+        return { jobId: result.jobId, status: result.status };
+      } catch (error) {
+        const reason = error instanceof Error && /^[A-Z0-9_]{5,120}$/.test(error.message) ? error.message : "M3_PARITY_ADMISSION_UNKNOWN";
+        console.info("cloudflare_m3_parity_admission", { stage: "ADMISSION_REJECTED_OR_UNKNOWN", operation: input.operation,
+          submissionId: input.submissionId, tenantId: input.tenantId, projectId: input.projectId, correlationId, reason });
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: reason });
+      }
     }),
 
   prepareCloudflareHttpCandidate: exactAdminProcedure

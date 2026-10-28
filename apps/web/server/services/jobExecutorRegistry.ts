@@ -47,6 +47,9 @@ import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB, createCloudflareProductionDeploym
 import { createCloudflareProductionDeploymentRuntime } from "./cloudflareProductionDeploymentRuntime";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT, CLOUDFLARE_PRODUCTION_QUEUE_JOB, createCloudflareProductionQueueExecutor } from "./cloudflareProductionQueueProvision";
 import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE_JOB, createCloudflareProductionDatabaseExecutor } from "./cloudflareProductionDatabaseExecutor";
+import { M3_PARITY_CONTRACT, M3_PARITY_JOB } from "./cloudflareM3ParityJobContract";
+import { createM3CreditBillingExecutor } from "./cloudflareM3ParityExecutor";
+import { createM3QueueRecoveryExecutor } from "./cloudflareM3QueueRecoveryExecutor";
 import { MINI_APP_FACTORY_RUN_ANCHOR_CONTRACT, MINI_APP_FACTORY_RUN_ANCHOR_JOB_TYPE, executeMiniAppFactoryRunAnchor } from "./miniAppFactoryRunAnchor";
 
 export type JobExecutorRegistration = {
@@ -428,6 +431,20 @@ defaultJobExecutorRegistry.register({
   executionClass: "long",
   contractVersions: new Set([CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT]),
   executor: createCloudflareProductionDatabaseExecutor(),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: `${M3_PARITY_JOB}.credit_billing_acceptance`,
+  executionClass: "short",
+  contractVersions: new Set([M3_PARITY_CONTRACT]),
+  executor: createM3CreditBillingExecutor(),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: `${M3_PARITY_JOB}.queue_recovery_acceptance`,
+  executionClass: "short",
+  contractVersions: new Set([M3_PARITY_CONTRACT]),
+  executor: createM3QueueRecoveryExecutor(),
 });
 
 defaultJobExecutorRegistry.register({

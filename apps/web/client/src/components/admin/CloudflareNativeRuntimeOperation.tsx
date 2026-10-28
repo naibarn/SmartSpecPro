@@ -9,6 +9,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { StatusDot } from "@astryxdesign/core/StatusDot";
 import { Button } from "@/components/ui/button";
 import { CloudflareImagePublication } from "./CloudflareImagePublication";
+import { CloudflareM3ParityOperations } from "./CloudflareM3ParityOperations";
 import { trpc } from "@/lib/trpc";
 
 type ReviewedSubmission = { submissionId: string; planDigest: string; candidateJobId: string; artifactRef: string; workerSourceSha: string };
@@ -304,6 +305,9 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
         </HStack></LayoutFooter>}
       />
     </Dialog>
+    {appJob?.status === "succeeded" && appJob.receipt?.authenticatedApplicationAcceptance === true
+      ? <CloudflareM3ParityOperations tenantId={tenantId} projectId={projectId} candidateJobId={candidateJobId} />
+      : null}
     {job?.imageRepair ? <>
       <Text role="alert">{job.imageRepair.code} · Node {job.imageRepair.observedVersion} · {text("Required", "ต้องใช้")} {job.imageRepair.requiredVersion}</Text>
       <CloudflareImagePublication tenantId={tenantId} projectId={projectId} replacementForSourceSha={job.imageRepair.sourceSha} />

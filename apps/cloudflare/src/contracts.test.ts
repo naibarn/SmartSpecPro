@@ -137,6 +137,25 @@ describe("Cloudflare local runtime contracts", () => {
     expect(quarantine).toHaveBeenCalledWith({ envelope: { ...envelope, contract_version: "unsupported" }, reason: "UNSUPPORTED_CONTRACT_VERSION" }, {});
   });
 
+  it("passes actual Queue batch identity for the exact M3 parity contract and rejects missing delivery identity", async () => {
+    const parity = { ...envelope, contract_version: "cloudflare-m3-parity-acceptance-v1" };
+    const delivered = { ...message(parity), id: "cf-message-981" };
+    const handler = vi.fn().mockResolvedValue("completed" as const);
+    const consumer = new CloudflareQueueConsumer(handler, vi.fn().mockResolvedValue(false));
+    const bindings = { CLOUDFLARE_ACTIVATION: "enabled", HYPERDRIVE: { connectionString: "postgres://test" }, JOB_QUEUE: { send: vi.fn() } };
+    await consumer.handleBatch({ queue: "smartspec-canonical-job-queue-production", messages: [delivered] }, bindings);
+    expect(handler).toHaveBeenCalledWith(parity, expect.objectContaining({
+      __m3QueueDelivery: { queueName: "smartspec-canonical-job-queue-production", messageId: "cf-message-981" },
+    }));
+    expect(delivered.ack).toHaveBeenCalledOnce();
+
+    const missing = { ...message(parity) };
+    const quarantine = vi.fn().mockResolvedValue(false);
+    await new CloudflareQueueConsumer(handler, quarantine).handleBatch({ messages: [missing] }, bindings);
+    expect(quarantine).toHaveBeenCalledWith({ envelope: null, reason: "M3_QUEUE_DELIVERY_METADATA_MISSING" }, bindings);
+    expect(missing.retry).toHaveBeenCalledWith({ delaySeconds: 30 });
+  });
+
   it("does not ack a disabled or incompletely bound batch", async () => {
     const disabledMessage = message(envelope);
     await new CloudflareQueueConsumer(vi.fn()).handleBatch({ messages: [disabledMessage] }, { CLOUDFLARE_ACTIVATION: "disabled" });

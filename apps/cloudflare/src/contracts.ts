@@ -28,12 +28,15 @@ export type HyperdriveBinding = {
 
 export type QueueMessage = {
   body: unknown;
+  id?: string;
   ack(): void;
   retry(options?: { delaySeconds?: number }): void;
 };
 
 export type QueueBatch = {
   messages: readonly QueueMessage[];
+  /** Set by the Cloudflare Queue runtime, not supplied in the message body. */
+  queue?: string;
 };
 
 export type ScheduledController = {
@@ -128,6 +131,8 @@ export type CloudflareEnvironment = import("./applicationHttpBridge").Applicatio
   /** Required cost policy: absent never admits Container compute. */
   CLOUDFLARE_CONTAINER_POLICY?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
+  /** Ephemeral runtime metadata added by the queue() entry point for one delivery. */
+  __m3QueueDelivery?: { queueName: string; messageId: string };
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED?: string;

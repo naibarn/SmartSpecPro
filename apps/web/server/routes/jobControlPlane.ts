@@ -16,6 +16,12 @@ import { workerJobAttempts, workerJobDispatches, workerJobs } from "../../drizzl
 import { prepareCloudflareMediaProbe } from "../services/cloudflareMediaProbe";
 import { parseMediaProbeCandidate } from "../services/cloudflareMediaProbeContracts";
 import { createJobReporter } from "../services/jobReporter";
+import { M3_PARITY_CONTRACT, M3_PARITY_JOB, m3ParityJobInputSchema } from "../services/cloudflareM3ParityJobContract";
+
+const M3_PARITY_JOB_TYPES = new Set([
+  `${M3_PARITY_JOB}.credit_billing_acceptance`,
+  `${M3_PARITY_JOB}.queue_recovery_acceptance`,
+]);
 
 const leaseSchema = z.object({
   jobId: z.string().min(1).max(36),
@@ -163,6 +169,12 @@ const cloudflareDeliverySchema = z.object({
   jobId: z.string().trim().min(1).max(36),
   envelope: canonicalCloudflareEnvelopeSchema,
   claim: leaseSchema,
+  delivery: z.object({
+    queueName: z.literal("smartspec-canonical-job-queue-production"),
+    messageId: z.string().trim().min(1).max(200),
+    dispatchId: z.string().trim().min(1).max(128),
+    dedupeKey: z.string().trim().min(1).max(200),
+  }).strict().optional(),
 }).strict();
 const CLOUDFLARE_DELIVERY_ADAPTERS = new Set(["cloudflare-queues", "cloudflare-workflows"]);
 const CLOUDFLARE_CANONICAL_RUNTIMES = new Set(["node_job_worker", "python_job_worker", "external_runtime"]);
@@ -281,6 +293,57 @@ export function registerJobControlPlaneRoutes(app: Express): void {
     if (!parsed.success || parsed.data.jobId !== parsed.data.envelope.job_id || parsed.data.claim.jobId !== parsed.data.jobId) return res.status(400).json({ error: "CLOUDFLARE_JOB_EXECUTION_INVALID" });
     try {
       const authorized = await getAuthorizedCloudflareJob(parsed.data.envelope);
+      const m3Parity = authorized.state === "authorized" &&
+        M3_PARITY_JOB_TYPES.has(authorized.row.jobType) &&
+        authorized.row.contractVersion === M3_PARITY_CONTRACT;
+      if (m3Parity) {
+        const delivery = parsed.data.delivery;
+        const transport = process.env.CLOUDFLARE_WORKFLOW_TRANSPORT?.trim();
+        if (!delivery || transport !== "queues" ||
+            authorized.row.dispatchAdapter !== "cloudflare-queues" ||
+            authorized.row.tenantId !== process.env.CLOUDFLARE_WORKFLOW_TENANT_ID?.trim() ||
+            !(Date.parse(process.env.CLOUDFLARE_WORKFLOW_EXPIRES_AT ?? "") > Date.now()) ||
+            authorized.row.executionClass !== "short" || authorized.row.runtimeType !== "node_job_worker" ||
+            authorized.row.status !== "running" || authorized.row.operatorReviewRequired ||
+            authorized.row.attempt !== parsed.data.envelope.business_attempt ||
+            !authorized.row.leaseExpiresAt || authorized.row.leaseExpiresAt.getTime() <= Date.now() ||
+            delivery.dispatchId !== parsed.data.envelope.dispatch_id ||
+            delivery.dedupeKey !== parsed.data.envelope.dedupe_key ||
+            delivery.dedupeKey !== `job:${parsed.data.jobId}:attempt:${parsed.data.envelope.business_attempt}`) {
+          return res.status(409).json({ error: "M3_PARITY_QUEUE_DELIVERY_NOT_ADMITTED" });
+        }
+        const controlPlane = createJobControlPlane();
+        const context = await controlPlane.getContext(parsed.data.jobId, {
+          tenantId: authorized.row.tenantId,
+          requestedByUserId: authorized.row.requestedByUserId ?? undefined,
+        });
+        const input = context && m3ParityJobInputSchema.safeParse(context.input);
+        if (!context || !input?.success || context.jobId !== parsed.data.jobId ||
+            context.tenantId !== authorized.row.tenantId ||
+            context.attempt !== parsed.data.envelope.business_attempt ||
+            context.jobType !== authorized.row.jobType ||
+            context.contractVersion !== M3_PARITY_CONTRACT || context.executionClass !== "short" ||
+            context.requestedByUserId !== authorized.row.requestedByUserId ||
+            input.data.submissionId !== context.jobId || input.data.tenantId !== context.tenantId ||
+            input.data.operation !== context.jobType.slice(`${M3_PARITY_JOB}.`.length) ||
+            input.data.contractVersion !== context.contractVersion) {
+          return res.status(409).json({ error: "M3_PARITY_JOB_SCOPE_MISMATCH" });
+        }
+        await controlPlane.assertActive(parsed.data.claim);
+        await controlPlane.heartbeat(parsed.data.claim);
+        const { defaultJobExecutorRegistry } = await import("../services/jobExecutorRegistry");
+        const registration = defaultJobExecutorRegistry.resolve(context.jobType, context.contractVersion);
+        if (!registration || registration.executionClass !== "short")
+          return res.status(503).json({ error: "M3_PARITY_EXECUTOR_UNAVAILABLE" });
+        const result = await registration.executor({
+          context: { ...context, cloudflareQueueDelivery: delivery },
+          lease: parsed.data.claim,
+          reporter: createJobReporter(controlPlane),
+          controlPlane,
+        });
+        await controlPlane.assertActive(parsed.data.claim);
+        return res.json({ result: cloudflareResultSchema.parse(result) });
+      }
       if (authorized.state === "authorized" && authorized.row.attempt === parsed.data.envelope.business_attempt &&
           !authorized.row.operatorReviewRequired && parseMediaProbeCandidate(authorized.row)) {
         // This branch prepares owned R2 input only. CPU work happens inside

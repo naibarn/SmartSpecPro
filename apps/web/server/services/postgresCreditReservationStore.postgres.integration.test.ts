@@ -99,4 +99,15 @@ suite("isolated PostgreSQL reservation settlement invariants", () => {
     const rows = await client`SELECT id,credits FROM users WHERE id IN (704,705) ORDER BY id`;
     expect(rows.map((row: any) => row.credits)).toEqual([15,20]);
   });
+  it("binds a tenant-scoped debit to the user's current tenant", async () => {
+    await client`INSERT INTO users(id,"openId",credits,"isDisabled","currentTenantId") VALUES
+      (706,'synthetic-credit-706',20,false,'tenant-synthetic-a')`;
+    const credit = await import("./creditService");
+    await expect(credit.deductCredits({ userId: 706, amount: 4, description: "synthetic", tenantId: "tenant-synthetic-b", skipBudgetCheck: true }))
+      .rejects.toThrow("Credit tenant scope mismatch");
+    const result = await credit.deductCredits({ userId: 706, amount: 4, description: "synthetic", tenantId: "tenant-synthetic-a", skipBudgetCheck: true });
+    expect(result.creditsUsed).toBe(4);
+    const [row] = await client`SELECT credits FROM users WHERE id=706`;
+    expect(row.credits).toBe(16);
+  });
 });
