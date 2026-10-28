@@ -16,6 +16,20 @@ type WorkspaceOption = {
   snapshotRevision: string;
 };
 
+type RunnerOption = {
+  runnerId: string;
+  displayName: string;
+  status: string;
+  trustState: string;
+  displayState: string;
+  lastSeenAt: string | null;
+  capabilitySnapshotPersisted: boolean;
+  capabilitySnapshotCurrent: boolean;
+  capabilityAckState: "applied" | "stale" | "missing";
+  readinessStatus: string;
+  snapshotRevision: string | null;
+};
+
 type ImageReferenceDraft = {
   id: string;
   file: File;
@@ -93,12 +107,18 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { conversationId: number | null; simpleMode?: boolean }) {
+export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCreateConversation }: {
+  conversationId: number | null;
+  simpleMode?: boolean;
+  onCreateConversation?: (title: string) => Promise<number>;
+}) {
   const { user } = useAuth();
+  const trpcUtils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
   const fileInput = useRef<HTMLInputElement>(null);
   const mockupInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState("");
+  const [selectedRunnerId, setSelectedRunnerId] = useState("");
   const [prompt, setPrompt] = useState("");
   const [visualReferences, setVisualReferences] = useState<ImageReferenceDraft[]>([]);
   const [similarityMode, setSimilarityMode] = useState<"inspired" | "close" | "high_fidelity">("close");
@@ -115,6 +135,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
   const [uploading, setUploading] = useState(false);
   const [preparing, setPreparing] = useState(false);
+  const [creatingTask, setCreatingTask] = useState(false);
   const [startKeys, setStartKeys] = useState<Record<string, string>>({});
 
   function addVisualReferences(files: FileList | null) {
@@ -141,6 +162,10 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
   }
 
   const workspacesQuery = trpc.spec226DevelopmentControl.availableWorkspaces.useQuery({});
+  const runnersQuery = trpc.runnerNodes.list.useQuery({ viewMode: "simple" }, {
+    refetchInterval: 15_000,
+    refetchIntervalInBackground: false,
+  });
   const workspaceQuery = trpc.spec226DevelopmentControl.getConversationWorkspace.useQuery(
     { conversationId: conversationId ?? 0 },
     { enabled: conversationId !== null, refetchInterval: 15_000 }
@@ -159,12 +184,26 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
     { conversationId: conversationId ?? 0 },
     { enabled: conversationId !== null && preparation !== null, refetchInterval: 5_000 }
   );
-  const runnerReadiness = readinessQuery.data ?? preparation?.runnerReadiness;
+  const runners: RunnerOption[] = runnersQuery.data?.runners ?? [];
+  const runnerWorkspaces = (workspacesQuery.data?.workspaces ?? []).filter(item => item.runnerId === selectedRunnerId);
+  const boundWorkspace = workspaceQuery.data?.workspace;
+  const readinessTarget = runnerWorkspaces.find(item => item.workspaceId === boundWorkspace?.workspaceId && item.runnerId === boundWorkspace?.runnerId)
+    ?? runnerWorkspaces.find(item => selectionKey(item) === selected)
+    ?? (boundWorkspace ? { runnerId: boundWorkspace.runnerId, workspaceId: boundWorkspace.workspaceId } : null);
+  const workspaceReadinessQuery = trpc.runnerNodes.workspaceReadiness.useQuery({
+    runnerId: readinessTarget?.runnerId ?? "",
+    workspaceId: readinessTarget?.workspaceId ?? "",
+  }, {
+    enabled: Boolean(readinessTarget),
+    refetchInterval: 5_000,
+    refetchIntervalInBackground: false,
+  });
+  const runnerReadiness = workspaceReadinessQuery.data ?? readinessQuery.data ?? preparation?.runnerReadiness;
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const workspaces = workspacesQuery.data?.workspaces ?? [];
-  const boundWorkspace = workspaceQuery.data?.workspace;
-  const selectedWorkspace = workspaces.find(item => selectionKey(item) === selected);
+  const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
+  const selectedRunner = runners.find(runner => runner.runnerId === selectedRunnerId);
   const specSet = workspaceQuery.data?.specSet;
   const boundKey = boundWorkspace
     ? JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId])
@@ -182,7 +221,10 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
   });
   useEffect(() => {
     const bound = workspaceQuery.data?.workspace;
-    if (bound) setSelected(JSON.stringify([bound.runnerId, bound.workspaceId]));
+    if (bound) {
+      setSelectedRunnerId(bound.runnerId);
+      setSelected(JSON.stringify([bound.runnerId, bound.workspaceId]));
+    }
   }, [workspaceQuery.data?.workspace?.runnerId, workspaceQuery.data?.workspace?.workspaceId]);
   useEffect(() => {
     if (preparation && runnerReadiness?.ready && !preparation.runnerReadiness.ready && !prepareMutation.isPending) {
@@ -208,6 +250,27 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
     } catch (error) {
       setSelected("");
       toast.error(error instanceof Error ? sanitizePlatformDiagnostic(error.message) : "ผูก workspace ไม่สำเร็จ");
+    }
+  }
+
+  async function createTaskConversation() {
+    if (!onCreateConversation || !selectedWorkspace || !effectivePrompt || creatingTask) return;
+    setCreatingTask(true);
+    try {
+      const title = effectivePrompt.replace(/\s+/g, " ").slice(0, 80);
+      const nextConversationId = await onCreateConversation(title || "งานพัฒนาใหม่");
+      await bindMutation.mutateAsync({
+        conversationId: nextConversationId,
+        runnerId: selectedWorkspace.runnerId,
+        workspaceId: selectedWorkspace.workspaceId,
+      });
+      await trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId: nextConversationId });
+      setPreparation(null);
+      toast.success("สร้างงานใหม่และผูก Runner workspace แล้ว ตรวจแผนต่อได้เลย");
+    } catch (error) {
+      toast.error(presentCustomerError(error, "สร้างงานใหม่ไม่สำเร็จ"));
+    } finally {
+      setCreatingTask(false);
     }
   }
 
@@ -417,45 +480,68 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
     <section id="task-control-workspace" className="mb-4 rounded-lg border border-[var(--color-border)] p-3" aria-labelledby="spec224-workspace-heading">
       <h3 id="spec224-workspace-heading" className="text-sm font-semibold">{simpleMode ? "พื้นที่งานพัฒนา" : "Spec 224 workspace"}</h3>
       <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-        Workspace คือ project folder ที่ Runner รายงานจากเครื่องของคุณ การเลือกจะผูก Runner และ folder นั้นกับ conversation ปัจจุบัน; การแนบ Spec จะบันทึก revision แต่ยังไม่เริ่มแก้โค้ดหรือ build/run
+        เลือก Runner ที่ลงทะเบียน แล้วเลือก Project Workspace จาก registry ที่ได้รับอนุญาต การเลือกก่อนสร้างงานเป็นเพียง draft; ระบบจะ bind กับ conversation เมื่อกดสร้างงานใหม่
       </p>
       <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
         ต้องการเริ่มจาก prompt อย่างเดียว? <a className="underline" href="/factory#personal-mini-app">Create a Personal Mini-App</a>
       </p>
-      {!conversationId ? (
-        <p className="mt-3 text-xs text-amber-700">สร้างหรือเลือก conversation ก่อนจึงจะผูก workspace ได้</p>
-      ) : (
-        <>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <label className="block text-xs font-medium" htmlFor="spec224-workspace-select">1. เลือก Runner และ project workspace</label>
+            <label className="block text-xs font-medium" htmlFor="spec224-runner-select">1. เลือก Runner</label>
             <Button
               type="button"
               size="sm"
               variant="outline"
-              disabled={workspacesQuery.isFetching || bindMutation.isPending}
-              onClick={() => void Promise.all([workspacesQuery.refetch(), workspaceQuery.refetch()])}
+              disabled={workspacesQuery.isFetching || runnersQuery.isFetching || bindMutation.isPending}
+              onClick={() => void Promise.all([workspacesQuery.refetch(), runnersQuery.refetch(), workspaceQuery.refetch()])}
               aria-label="โหลด Runner workspace ใหม่"
             >
-              {workspacesQuery.isFetching ? "กำลังโหลด…" : "โหลดรายการใหม่"}
+              {workspacesQuery.isFetching || runnersQuery.isFetching ? "กำลังโหลด…" : "โหลดรายการใหม่"}
             </Button>
           </div>
           <p className="mt-1 text-xs text-[var(--color-text-secondary)]">
-            เลือก workspace ที่ต้องการให้ทำงานต่อ รายการนี้มาจาก Runner ที่ออนไลน์และเชื่อถือได้ เมื่อเลือกแล้ว Spec และคำสั่ง Start ของ conversation นี้จะใช้ Runner/workspace เดียวกัน
+            รายการ Runner มาจาก registry ของ tenant และผู้ใช้ปัจจุบัน
           </p>
+          <select
+            id="spec224-runner-select"
+            aria-label="1. เลือก Runner"
+            className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-white px-2 py-2 text-sm"
+            value={selectedRunnerId}
+            onChange={event => { setSelectedRunnerId(event.target.value); setSelected(""); setPreparation(null); }}
+            disabled={runnersQuery.isLoading || creatingTask}
+          >
+            <option value="">เลือก Runner</option>
+            {runners.map(runner => <option key={runner.runnerId} value={runner.runnerId}>{runner.displayName}</option>)}
+          </select>
+          {runnersQuery.error ? <p className="mt-2 text-xs text-rose-700" role="alert">โหลด Runner ไม่สำเร็จ โปรดลองใหม่หรือตรวจสอบสิทธิ์</p> : null}
+          {selectedRunner ? (() => {
+            const heartbeatAt = selectedRunner.lastSeenAt ? Date.parse(selectedRunner.lastSeenAt) : Number.NaN;
+            const heartbeatFresh = Number.isFinite(heartbeatAt) && heartbeatAt <= Date.now() && Date.now() - heartbeatAt < 5 * 60_000;
+            const online = selectedRunner.readinessStatus === "online" && selectedRunner.trustState === "trusted" && heartbeatFresh;
+            return (
+              <section className="mt-2 rounded-md bg-[var(--color-background-subtle)] px-3 py-2 text-xs" aria-label="สถานะ Runner ที่เลือก">
+                <p className="font-medium">{selectedRunner.displayName} · {online ? "ออนไลน์" : selectedRunner.trustState !== "trusted" ? "ยังไม่ trust" : "ออฟไลน์หรือ heartbeat เก่า"}</p>
+                <p className="mt-1 text-[var(--color-text-secondary)]">Heartbeat: {heartbeatFresh ? `สด · ${new Date(heartbeatAt).toLocaleString()}` : selectedRunner.lastSeenAt ? `เก่า · ${new Date(heartbeatAt).toLocaleString()}` : "ไม่มีข้อมูล"}</p>
+                <p className="mt-1 text-[var(--color-text-secondary)]">Capability ACK: {selectedRunner.capabilityAckState === "applied" && selectedRunner.capabilitySnapshotPersisted && selectedRunner.capabilitySnapshotCurrent ? "applied · snapshot ปัจจุบัน" : selectedRunner.capabilityAckState === "stale" ? "snapshot เก่า ต้องรอ Runner เผยแพร่ใหม่" : "ยังไม่มี ACK/snapshot ที่ยืนยันได้"}</p>
+                {!online ? <p className="mt-1 text-amber-800" role="status">เหตุผลที่รอ: {selectedRunner.trustState !== "trusted" ? "RUNNER_NOT_TRUSTED" : selectedRunner.readinessStatus !== "online" ? selectedRunner.readinessStatus : "RUNNER_HEARTBEAT_STALE"}</p> : null}
+              </section>
+            );
+          })() : null}
+          <label className="mt-3 block text-xs font-medium" htmlFor="spec224-workspace-select">2. เลือก Project Workspace</label>
+          <p className="mt-1 text-xs text-[var(--color-text-secondary)]">แสดงเฉพาะ workspace ของ Runner ที่เลือกและคืนมาจาก authorized registry</p>
           <select
             id="spec224-workspace-select"
             className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-white px-2 py-2 text-sm"
             value={selected}
             onChange={event => void bindWorkspace(event.target.value)}
-            disabled={workspacesQuery.isLoading || bindMutation.isPending}
+            disabled={!selectedRunnerId || workspacesQuery.isLoading || bindMutation.isPending || creatingTask}
           >
             <option value="">เลือก Runner workspace</option>
-            {boundWorkspace && !boundIsListed ? (
+            {conversationId && boundWorkspace?.runnerId === selectedRunnerId && boundWorkspace && !boundIsListed ? (
               <option value={boundKey} key={boundKey}>
                 Workspace ที่บันทึกไว้ก่อนหน้า (Runner ยังไม่อยู่ในรายการปัจจุบัน)
               </option>
             ) : null}
-            {workspaces.map(workspace => (
+            {runnerWorkspaces.map(workspace => (
               <option key={selectionKey(workspace)} value={selectionKey(workspace)}>
                 {workspace.displayName}
               </option>
@@ -486,10 +572,25 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
               </p>
             </section>
           ) : null}
-          {workspaces.length === 0 && !workspacesQuery.isLoading ? (
+          {!conversationId ? (
+            <p className="mt-2 text-xs text-[var(--color-text-secondary)]">
+              เลือก workspace ที่ลงทะเบียนแล้ว จากนั้นร่างงานและกด “สร้างงานใหม่” เพื่อสร้าง conversation และผูก workspace
+            </p>
+          ) : null}
+          {selectedRunnerId && runnerWorkspaces.length === 0 && !workspacesQuery.isLoading ? (
             <section className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900" role="status">
               <p className="font-medium">ยังไม่มี project workspace ที่เว็บใช้ได้</p>
               <p className="mt-1">รายการจะแสดงเมื่อ Runner ที่ได้รับอนุญาตรายงาน workspace แล้ว ตรวจสอบการเชื่อมต่อและสิทธิ์ Runner จากนั้นกด “โหลดรายการใหม่”</p>
+            </section>
+          ) : null}
+          {selectedWorkspace ? (
+            <section className="mt-2 rounded-md border border-[var(--color-border)] p-2 text-xs" aria-label="Codex execution readiness">
+              <p className="font-medium">Codex readiness</p>
+              {workspaceReadinessQuery.isLoading ? <p role="status">กำลังตรวจสอบ readiness จาก Runner registry…</p> : null}
+              {workspaceReadinessQuery.error ? <p role="alert">ตรวจสอบ readiness ไม่สำเร็จ โปรดลองโหลดรายการใหม่</p> : null}
+              {!workspaceReadinessQuery.isLoading && !workspaceReadinessQuery.error && runnerReadiness ? (
+                <p role="status">{runnerReadiness.ready ? "พร้อม" : `รอ · ${runnerReadiness.code}`}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</p>
+              ) : null}
             </section>
           ) : null}
 
@@ -680,6 +781,16 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
               </ul>
             </section>
           ) : null}
+          {!conversationId && requestKind === "development" ? (
+            <Button
+              type="button"
+              className="mt-3 w-full"
+              disabled={!onCreateConversation || !selectedWorkspace || !effectivePrompt || creatingTask || bindMutation.isPending}
+              onClick={() => void createTaskConversation()}
+            >
+              {creatingTask ? "กำลังสร้างงานใหม่…" : "สร้างงานใหม่"}
+            </Button>
+          ) : null}
           {requestKind === "mini_app" ? (
             <Button type="button" className="mt-3 w-full" disabled={!conversationId || uploading || startMutation.isPending || !prompt.trim()} onClick={() => void startPersonalMiniApp()}>
               {startMutation.isPending ? "กำลังส่ง Mini App ไปสร้าง…" : "สร้าง Mini App จาก prompt"}
@@ -720,8 +831,6 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false }: { 
               <p className="mt-2 text-xs text-[var(--color-text-secondary)]">Start จะบันทึกขอบเขต Goal และขออนุมัติผ่าน Approval Authority ก่อนส่ง Child แรก จากนั้นระยะถัดไปจะทำงานอัตโนมัติภายใน provider, workspace, source, write scope, budget และเวลาที่อนุมัติไว้</p>
             </section>
           ) : null}
-        </>
-      )}
     </section>
   );
 }

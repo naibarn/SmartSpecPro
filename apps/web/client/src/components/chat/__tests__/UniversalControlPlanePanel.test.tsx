@@ -44,6 +44,7 @@ vi.mock("@/lib/trpc", () => ({
         get: {
           fetch: (...args: unknown[]) => mocks.fetchDevelopmentRun(...args),
         },
+        getConversationWorkspace: { invalidate: vi.fn() },
       },
     }),
     workerJobs: {
@@ -117,6 +118,7 @@ vi.mock("@/lib/trpc", () => ({
     },
     runnerNodes: {
       list: { useQuery: (...args: unknown[]) => mocks.runnersQuery(...args) },
+      workspaceReadiness: { useQuery: (...args: unknown[]) => mocks.workspaceRunnerReadinessQuery(...args) },
     },
     mcpConnections: {
       listConnections: {
@@ -241,6 +243,7 @@ beforeEach(() => {
 
 describe("UniversalControlPlanePanel", () => {
   it("binds the active Chat section to a selected Runner workspace without starting a run", async () => {
+    mocks.runnersQuery.mockReturnValue({ ...emptyQuery, data: { runners: [{ runnerId: "runner-1", displayName: "Windows Runner", profile: "local_device", nodeKind: "local_device", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1", toolCount: 1, capabilityCount: 1, workspaceCount: 1, workspaces: [] }] } });
     mocks.availableWorkspacesQuery.mockReturnValue({
       ...emptyQuery,
       data: { workspaces: [{ runnerId: "runner-1", workspaceId: "workspace-1", displayName: "Dev machine", status: "online", snapshotRevision: "r1" }] },
@@ -252,10 +255,10 @@ describe("UniversalControlPlanePanel", () => {
     );
     expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ })).toHaveAttribute("href", "/agent-monitor?conversationId=42");
-    fireEvent.change(screen.getByLabelText("1. เลือก Runner และ project workspace"), { target: { value: '["runner-1","workspace-1"]' } });
+    fireEvent.change(screen.getByLabelText("1. เลือก Runner"), { target: { value: "runner-1" } });
+    fireEvent.change(screen.getByLabelText("2. เลือก Project Workspace"), { target: { value: '["runner-1","workspace-1"]' } });
     await waitFor(() => expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1" }));
     expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
-    expect(screen.getByText(/ยังไม่เริ่มแก้โค้ดหรือ build\/run/)).toBeTruthy();
   });
 
   it("carries the same signed projection snapshot into the Task evidence view", () => {
@@ -352,6 +355,27 @@ describe("UniversalControlPlanePanel", () => {
       { jobId: "work-1", projectionToken: "scope-token" }, expect.objectContaining({ enabled: true }),
     );
     expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it("keeps standalone full-page Task Control on the development path and forwards explicit conversation creation", async () => {
+    const createConversation = vi.fn().mockResolvedValue(84);
+    mocks.runnersQuery.mockReturnValue({ ...emptyQuery, data: { runners: [{ runnerId: "runner-1", displayName: "Windows Runner", profile: "local_device", nodeKind: "local_device", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1", toolCount: 1, capabilityCount: 1, workspaceCount: 1, workspaces: [] }] } });
+    mocks.availableWorkspacesQuery.mockReturnValue({ ...emptyQuery, data: {
+      workspaces: [{ runnerId: "runner-1", workspaceId: "workspace-1", displayName: "spec224-live-pilot", status: "online", snapshotRevision: "r1" }],
+    } });
+    mocks.conversationWorkspaceQuery.mockReturnValue({ ...emptyQuery, data: null });
+    render(<UniversalControlPlanePanel conversationId={null} fullPage onClose={vi.fn()} onOpenPrompt={vi.fn()} onCreateConversation={createConversation} />);
+
+    expect(screen.getByRole("heading", { name: "taskControl.overviewAllTitle" })).toBeVisible();
+    fireEvent.change(screen.getByLabelText("1. เลือก Runner"), { target: { value: "runner-1" } });
+    expect(screen.getByRole("option", { name: "spec224-live-pilot" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("2. เลือก Project Workspace"), { target: { value: '["runner-1","workspace-1"]' } });
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Build the pilot utility" } });
+    fireEvent.click(screen.getByRole("button", { name: "สร้างงานใหม่" }));
+
+    await waitFor(() => expect(createConversation).toHaveBeenCalledWith("Build the pilot utility"));
+    expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 84, runnerId: "runner-1", workspaceId: "workspace-1" });
+    expect(screen.getByLabelText("Spec 224 prompt")).toHaveValue("Build the pilot utility");
   });
 
   it("does not turn an observation error into an empty work or activity claim", () => {
@@ -826,7 +850,7 @@ describe("UniversalControlPlanePanel", () => {
     );
 
     expect(screen.getByText("video.render")).toBeInTheDocument();
-    expect(screen.getByText("Mac Runner")).toBeInTheDocument();
+    expect(screen.getAllByText("Mac Runner").length).toBeGreaterThan(0);
     expect(screen.getByText(/Studio Worker/)).toBeInTheDocument();
     expect(screen.getByText("Media MCP")).toBeInTheDocument();
     fireEvent.click(

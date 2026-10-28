@@ -13,6 +13,8 @@ import {
 } from "../services/cloudflareStagingExecutorIdentityService";
 import { getRunnerCompanionState } from "../services/runnerCompanionViewState";
 import { projectRunnerDisplayName, projectRunnerWorkspacePresentation } from "../../shared/projectIdentityPresentation";
+import { runnerReadinessForDisplay } from "../services/runnerGateway";
+import { defaultSpec224AuthorizationService } from "../services/spec224AuthorizationService";
 
 function tenantRequired(ctx: {
   tenantId?: unknown;
@@ -240,6 +242,16 @@ export const runnerNodesRouter = router({
         const snapshotExpired = Boolean(
           row.snapshotExpiresAt && row.snapshotExpiresAt.getTime() <= Date.now()
         );
+        const snapshotReadiness = runnerReadinessForDisplay({
+          status: row.status,
+          profile: row.profile,
+          revokedAt: row.revokedAt,
+          lastSeenAt: row.lastSeenAt,
+          snapshotObservedAt: row.snapshotObservedAt,
+          snapshotExpiresAt: row.snapshotExpiresAt,
+          activeSessionId: row.activeSessionId,
+          currentSnapshotJson: row.currentSnapshotJson,
+        });
         const displayState =
           row.trustState !== "trusted"
             ? "verification_pending"
@@ -267,6 +279,14 @@ export const runnerNodesRouter = router({
           trustState: row.trustState,
           snapshotRevision: row.currentSnapshotRevision,
           snapshotExpiresAt: row.snapshotExpiresAt?.toISOString() ?? null,
+          capabilitySnapshotPersisted: Boolean(row.currentSnapshotRevision && row.currentSnapshotJson),
+          capabilitySnapshotCurrent: snapshotReadiness.snapshotCurrent,
+          capabilityAckState: !row.currentSnapshotRevision
+            ? "missing"
+            : snapshotReadiness.snapshotCurrent
+              ? "applied"
+              : "stale",
+          readinessStatus: snapshotReadiness.status,
           lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
           platform: snapshot?.platform ?? null,
           displayState,
@@ -281,6 +301,17 @@ export const runnerNodesRouter = router({
       }),
     };
   }),
+
+  workspaceReadiness: protectedProcedure
+    .input(z.object({
+      runnerId: z.string().trim().min(1).max(160),
+      workspaceId: z.string().trim().min(1).max(200),
+    }))
+    .query(async ({ ctx, input }) => defaultSpec224AuthorizationService.runnerReadiness({
+      context: { tenantId: tenantRequired(ctx), actorId: ctx.user.id },
+      runnerId: input.runnerId,
+      workspaceId: input.workspaceId,
+    })),
 
   registerCloudflareStagingExecutor: adminProcedure
     .input(z.object({

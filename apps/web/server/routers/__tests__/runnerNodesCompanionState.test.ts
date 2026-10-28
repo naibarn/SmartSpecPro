@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetRunnerCompanionState = vi.hoisted(() => vi.fn());
 const mockGetDb = vi.hoisted(() => vi.fn());
+const mockRunnerReadiness = vi.hoisted(() => vi.fn());
 
 vi.mock("../../_core/trpc", () => {
   const createProcedure = () => {
@@ -24,6 +25,9 @@ vi.mock("../../services/runnerCompanionViewState", () => ({
   getRunnerCompanionState: (...args: unknown[]) =>
     mockGetRunnerCompanionState(...args),
 }));
+vi.mock("../../services/spec224AuthorizationService", () => ({
+  defaultSpec224AuthorizationService: { runnerReadiness: (...args: unknown[]) => mockRunnerReadiness(...args) },
+}));
 vi.mock("../../services/cloudflareStagingExecutorIdentityService", () => ({
   CLOUDFLARE_STAGING_EXECUTOR_CAPABILITY: "cloudflare.staging.executor",
   CLOUDFLARE_STAGING_EXECUTOR_PROFILE: "cloudflare_staging_executor",
@@ -40,6 +44,7 @@ describe("runnerNodesRouter.companionState", () => {
     mockGetRunnerCompanionState.mockResolvedValue({
       schemaVersion: "runner-companion.v1",
     });
+    mockRunnerReadiness.mockResolvedValue({ ready: true, code: "RUNNER_READY", ownerAction: null });
   });
 
   it("binds the projection to the authenticated tenant and user", async () => {
@@ -67,6 +72,21 @@ describe("runnerNodesRouter.companionState", () => {
       tenantId: "tenant-c",
       userId: 11,
     });
+  });
+
+  it("evaluates workspace execution readiness through the authenticated Runner scope", async () => {
+    const handler = runnerNodesRouter.workspaceReadiness as unknown as Function;
+    const result = await handler({
+      ctx: { tenantId: "tenant-a", user: { id: 7, currentTenantId: "tenant-b" } },
+      input: { runnerId: "runner-a", workspaceId: "workspace-a" },
+    });
+
+    expect(mockRunnerReadiness).toHaveBeenCalledWith({
+      context: { tenantId: "tenant-a", actorId: 7 },
+      runnerId: "runner-a",
+      workspaceId: "workspace-a",
+    });
+    expect(result).toMatchObject({ ready: true, code: "RUNNER_READY" });
   });
 
   it("scopes Runner workspace presentation to the authenticated tenant and owner", async () => {
@@ -122,5 +142,11 @@ describe("runnerNodesRouter.companionState", () => {
     ]);
     expect(result.runners[0]).not.toHaveProperty("workspaceIds");
     expect(result.runners[0].displayName).toBe("SmartSpecPro");
+    expect(result.runners[0]).toMatchObject({
+      capabilitySnapshotPersisted: true,
+      capabilitySnapshotCurrent: false,
+      capabilityAckState: "stale",
+      readinessStatus: "degraded",
+    });
   });
 });

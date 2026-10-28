@@ -32,6 +32,7 @@ export interface UniversalControlPlanePanelProps {
   conversationId: number | null;
   onClose: () => void;
   onOpenPrompt: (prompt: string) => void;
+  onCreateConversation?: (title: string) => Promise<number>;
   onOpenSkill?: () => void;
   fullPage?: boolean;
 }
@@ -304,6 +305,7 @@ export function UniversalControlPlanePanel({
   conversationId,
   onClose,
   onOpenPrompt,
+  onCreateConversation,
   onOpenSkill,
   fullPage = false,
 }: UniversalControlPlanePanelProps) {
@@ -891,12 +893,11 @@ export function UniversalControlPlanePanel({
       </section>
 
       <section className="px-4 pb-24 pt-4">
-        {fullPage ? (
-          <details>
-            <summary>{t("taskControl.newDevelopmentTask")}</summary>
-            <Spec224WorkspacePanel conversationId={conversationId} simpleMode={runnerViewMode === "simple"} />
-          </details>
-        ) : <Spec224WorkspacePanel conversationId={conversationId} />}
+        <Spec224WorkspacePanel
+          conversationId={conversationId}
+          simpleMode={fullPage && runnerViewMode === "simple"}
+          onCreateConversation={onCreateConversation}
+        />
         <section hidden={fullPage && runnerViewMode === "simple"}>
         {queryErrors.length > 0 ? (
           <section

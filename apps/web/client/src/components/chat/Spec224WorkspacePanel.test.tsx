@@ -2,16 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
-vi.mock("@/lib/trpc", () => ({ trpc: { spec226DevelopmentControl: {
+vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } } }), runnerNodes: {
+  list: { useQuery: () => ({ data: { runners: [{ runnerId: "runner-test", displayName: "Test Runner", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1" }] } }) },
+  workspaceReadiness: { useQuery: () => ({ data: mocks.readiness, isLoading: false, error: null }) },
+}, spec226DevelopmentControl: {
   availableWorkspaces: { useQuery: () => ({ data: { workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }] } }) },
   getConversationWorkspace: { useQuery: () => ({ data: mocks.workspace, refetch: vi.fn() }) },
   listFeatureSpecs: { useQuery: () => ({ data: { specs: mocks.featureSpecs }, isLoading: false, error: null }) },
   ingestFeatureSpec: { useMutation: () => ({ mutateAsync: mocks.ingestFeatureSpec, isPending: false }) },
   workspaceRunnerReadiness: { useQuery: () => ({ data: mocks.readiness }) },
-  bindConversationWorkspace: { useMutation: () => ({ mutateAsync: vi.fn() }) },
+  bindConversationWorkspace: { useMutation: () => ({ mutateAsync: mocks.bindWorkspace, isPending: false }) },
   ingestSpecSet: { useMutation: () => ({ mutateAsync: mocks.ingestSpecSet }) },
   prepareWorkspaceRun: { useMutation: () => ({ mutateAsync: mocks.prepare, isPending: false }) },
   startWorkspaceRun: { useMutation: () => ({ mutateAsync: mocks.start, isPending: false }) },
@@ -29,6 +32,7 @@ beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
   mocks.readiness = undefined;
+  mocks.bindWorkspace.mockResolvedValue({ conversationId: 47 });
   mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null };
   mocks.role = "admin";
   mocks.featureSpecs = [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }];
@@ -68,8 +72,8 @@ describe("Core goal readiness feedback", () => {
   it("shows the real-task probe action and disables Start without treating pending policy as denial", async () => {
     mocks.prepare.mockResolvedValue(preparation(false));
     await preparePanel();
-    expect(screen.getByText(/CODEX_TASK_PROBE_NOT_RUN/).textContent).toContain("ทดสอบสั่งงานจริง");
-    expect(screen.getByText(/CODEX_TASK_PROBE_NOT_RUN/).textContent).toContain("รอประเมินตามขอบเขตของ Start");
+    expect(screen.getAllByText(/CODEX_TASK_PROBE_NOT_RUN/).map(node => node.textContent).join(" ")).toContain("ทดสอบสั่งงานจริง");
+    expect(screen.getAllByText(/CODEX_TASK_PROBE_NOT_RUN/).map(node => node.textContent).join(" ")).toContain("รอประเมินตามขอบเขตของ Start");
     expect(screen.getByRole("button", { name: "สั่งพัฒนา" })).toBeDisabled();
     expect(mocks.start).not.toHaveBeenCalled();
   });
@@ -105,9 +109,39 @@ describe("Core goal readiness feedback", () => {
   it("explains that selecting a workspace binds this conversation to that Runner", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
 
-    expect(screen.getByLabelText("1. เลือก Runner และ project workspace")).toBeInTheDocument();
+    expect(screen.getByLabelText("1. เลือก Runner")).toBeInTheDocument();
+    expect(screen.getByLabelText("2. เลือก Project Workspace")).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "Test" })).toBeInTheDocument();
-    expect(screen.getByText(/conversation นี้จะใช้ Runner\/workspace เดียวกัน/i)).toBeInTheDocument();
+    expect(screen.getByText(/Conversation นี้ผูกแล้ว: Test · สถานะ current/i)).toBeInTheDocument();
+  });
+
+  it("shows authorized workspace selection before conversation creation and keeps the draft in full-page Task Control", async () => {
+    mocks.workspace = { workspace: null, availability: null, specSet: null };
+    const createConversation = vi.fn().mockResolvedValue(47);
+    const { rerender } = render(
+      <Spec224WorkspacePanel conversationId={null} onCreateConversation={createConversation} />,
+    );
+
+    fireEvent.change(screen.getByLabelText("1. เลือก Runner"), { target: { value: "runner-test" } });
+    expect(screen.getByRole("option", { name: "Test" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("2. เลือก Project Workspace"), {
+      target: { value: '["runner-test","workspace-test"]' },
+    });
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), {
+      target: { value: "Create a tiny utility and tests" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "สร้างงานใหม่" }));
+
+    await waitFor(() => expect(createConversation).toHaveBeenCalledWith("Create a tiny utility and tests"));
+    expect(mocks.bindWorkspace).toHaveBeenCalledWith({
+      conversationId: 47,
+      runnerId: "runner-test",
+      workspaceId: "workspace-test",
+    });
+    expect(screen.getByLabelText("Spec 224 prompt")).toHaveValue("Create a tiny utility and tests");
+
+    rerender(<Spec224WorkspacePanel conversationId={47} onCreateConversation={createConversation} />);
+    expect(screen.getByLabelText("Spec 224 prompt")).toHaveValue("Create a tiny utility and tests");
   });
 
   it("shows Goal approval, Runner readiness, cumulative budget and evidence in the shared workspace read model", () => {

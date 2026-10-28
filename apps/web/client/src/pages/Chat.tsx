@@ -242,7 +242,7 @@ export default function Chat() {
     if (panel === "control-plane" && view === "full") {
       setFullControlPlane(true);
       setRightPanel("control-plane");
-      if (conversationId) setSelectedConversationId(Number(conversationId));
+      setSelectedConversationId(conversationId ? Number(conversationId) : null);
       return;
     }
 
@@ -409,6 +409,15 @@ export default function Chat() {
     return createConversationMutation.mutateAsync({
       title,
     });
+  };
+
+  const createControlPlaneTaskConversation = async (title: string) => {
+    const result = await createConversationWithDefaultModel(title);
+    setSelectedConversationId(result.id);
+    setFullControlPlane(true);
+    setRightPanel("control-plane");
+    setLocation(`/chat?panel=control-plane&view=full&c=${result.id}`);
+    return result.id;
   };
 
   const activateConversation = (
@@ -1212,6 +1221,7 @@ export default function Chat() {
             <UniversalControlPlanePanel
               conversationId={selectedConversationId}
               fullPage={fullControlPlane}
+              onCreateConversation={createControlPlaneTaskConversation}
               onClose={() => {
                 if (fullControlPlane) {
                   setFullControlPlane(false);
