@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { open, lstat, readFile, readdir, realpath } from "node:fs/promises";
 import { dirname, isAbsolute, join, resolve, sep } from "node:path";
 
@@ -10,6 +11,55 @@ export type RepositoryFeatureSpec = {
   path: string;
   summary: string;
 };
+
+export type RepositoryFeatureSpecHandoff = {
+  status: "CURRENT" | "STALE" | "UNAVAILABLE";
+  nextReadyWorkunit: string | null;
+  nextAction: string | null;
+  resumePoint: string | null;
+  openRequirements: Array<{ id: string; text: string; nextAction: string }>;
+  integratedSha: string | null;
+};
+
+async function readCanonicalHandoff(input: { featureRoot: string; directoryPath: string; specDigest: string }): Promise<RepositoryFeatureSpecHandoff> {
+  const unavailable: RepositoryFeatureSpecHandoff = {
+    status: "UNAVAILABLE", nextReadyWorkunit: null,
+    nextAction: "Use the canonical SPEC handoff writer to initialize or reconcile this SPEC handoff.",
+    resumePoint: null, openRequirements: [], integratedSha: null,
+  };
+  try {
+    const handoffPath = join(input.directoryPath, "handoff");
+    const handoffStats = await lstat(handoffPath);
+    if (!handoffStats.isDirectory() || handoffStats.isSymbolicLink()) return unavailable;
+    const [resolvedRoot, resolvedDirectory, resolvedHandoff] = await Promise.all([
+      realpath(input.featureRoot), realpath(input.directoryPath), realpath(handoffPath),
+    ]);
+    if (!resolvedDirectory.startsWith(`${resolvedRoot}${sep}`) || !resolvedHandoff.startsWith(`${resolvedDirectory}${sep}`)) return unavailable;
+    const manifestPath = join(resolvedHandoff, "manifest.json");
+    const ledgerPath = join(resolvedHandoff, "requirement-ledger.json");
+    const [manifestStats, ledgerStats] = await Promise.all([lstat(manifestPath), lstat(ledgerPath)]);
+    if (!manifestStats.isFile() || manifestStats.isSymbolicLink() || !ledgerStats.isFile() || ledgerStats.isSymbolicLink()) return unavailable;
+    const [manifestText, ledgerText] = await Promise.all([readFile(manifestPath, "utf8"), readFile(ledgerPath, "utf8")]);
+    const manifest = JSON.parse(manifestText) as { identity?: { digest?: unknown }; continuation?: { next_ready_workunit?: unknown; next_action?: unknown; resume_point?: unknown }; integration?: { canonical_sha?: unknown } };
+    const ledger = JSON.parse(ledgerText) as { spec_digest?: unknown; requirements?: Array<Record<string, unknown>> };
+    if (manifest.identity?.digest !== input.specDigest || ledger.spec_digest !== input.specDigest) {
+      return { ...unavailable, status: "STALE", nextAction: "Reconcile the SPEC handoff against the current canonical spec.md, then reload." };
+    }
+    const safeText = (value: unknown) => typeof value === "string" && value.trim() ? value.trim().slice(0, 4_000) : null;
+    const openRequirements = (Array.isArray(ledger.requirements) ? ledger.requirements : [])
+      .filter(requirement => requirement.final_state !== "PASS" && requirement.final_state !== "NOT_APPLICABLE")
+      .slice(0, 40)
+      .map(requirement => ({ id: typeof requirement.requirement_id === "string" ? requirement.requirement_id.slice(0, 80) : "", text: safeText(requirement.requirement_text) ?? "", nextAction: safeText(requirement.next_action) ?? "" }))
+      .filter(requirement => requirement.id && requirement.text);
+    return {
+      status: "CURRENT", nextReadyWorkunit: safeText(manifest.continuation?.next_ready_workunit),
+      nextAction: safeText(manifest.continuation?.next_action), resumePoint: safeText(manifest.continuation?.resume_point), openRequirements,
+      integratedSha: typeof manifest.integration?.canonical_sha === "string" && /^[a-f0-9]{40,64}$/i.test(manifest.integration.canonical_sha) ? manifest.integration.canonical_sha.toLowerCase() : null,
+    };
+  } catch {
+    return unavailable;
+  }
+}
 
 async function resolveFeatureRoot(repositoryRoot?: string): Promise<string> {
   const rootsToCheck = repositoryRoot
@@ -144,13 +194,27 @@ export async function listRepositoryFeatureSpecs(input: {
 export async function loadRepositoryFeatureSpec(input: {
   specId: string;
   repositoryRoot?: string;
-}): Promise<{ id: string; title: string; path: string; content: string }> {
+}): Promise<{ id: string; title: string; path: string; content: string; handoff: RepositoryFeatureSpecHandoff }> {
   const featureRoot = await resolveFeatureRoot(input.repositoryRoot);
   const spec = await readSpecFile(featureRoot, input.specId);
+  const directoryPath = join(featureRoot, input.specId);
+  const specDigest = createHash("sha256").update(spec.content, "utf8").digest("hex");
   return {
     id: input.specId,
     title: spec.title,
     path: `specs/feature/${input.specId}/spec.md`,
     content: spec.content,
+    handoff: await readCanonicalHandoff({ featureRoot, directoryPath, specDigest }),
+  };
+}
+
+export async function loadRepositoryFeatureSpecContext(input: { specId: string; repositoryRoot?: string }) {
+  const loaded = await loadRepositoryFeatureSpec(input);
+  const lines = loaded.content.split(/\r?\n/);
+  const titleIndex = lines.findIndex(line => /^#\s+\S/.test(line));
+  return {
+    id: loaded.id, title: loaded.title, path: loaded.path,
+    summary: lines.slice(titleIndex + 1).find(line => line.trim() && !line.startsWith("#"))?.trim().slice(0, 240) ?? "",
+    digest: createHash("sha256").update(loaded.content, "utf8").digest("hex"), handoff: loaded.handoff,
   };
 }

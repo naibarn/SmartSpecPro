@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   listRepositoryFeatureSpecs,
   loadRepositoryFeatureSpec,
+  loadRepositoryFeatureSpecContext,
 } from "../spec224FeatureSpecCatalog";
 
 const temporaryRoots: string[] = [];
@@ -80,5 +82,18 @@ describe("repository feature spec catalog", () => {
     await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "225-Interop & UI — Recovery" })).resolves.toMatchObject({
       title: "Unicode Feature Spec",
     });
+  });
+
+  it("returns only a digest-matching canonical handoff and fails closed when stale", async () => {
+    const { root, featureRoot } = await createFeatureRoot();
+    const specPath = join(featureRoot, "101-example feature", "spec.md");
+    const digest = createHash("sha256").update(await (await import("node:fs/promises")).readFile(specPath, "utf8")).digest("hex");
+    const handoff = join(featureRoot, "101-example feature", "handoff");
+    await mkdir(handoff);
+    await writeFile(join(handoff, "manifest.json"), JSON.stringify({ identity: { digest }, continuation: { next_ready_workunit: "WU-2", next_action: "Continue WU-2" }, integration: { canonical_sha: "a".repeat(40) } }));
+    await writeFile(join(handoff, "requirement-ledger.json"), JSON.stringify({ spec_digest: digest, requirements: [{ requirement_id: "REQ-1", requirement_text: "Keep source integrity", next_action: "Test it", final_state: "OPEN" }] }));
+    await expect(loadRepositoryFeatureSpecContext({ repositoryRoot: root, specId: "101-example feature" })).resolves.toMatchObject({ handoff: { status: "CURRENT", nextReadyWorkunit: "WU-2", openRequirements: [{ id: "REQ-1" }] } });
+    await writeFile(join(handoff, "manifest.json"), JSON.stringify({ identity: { digest: "0".repeat(64) } }));
+    await expect(loadRepositoryFeatureSpec({ repositoryRoot: root, specId: "101-example feature" })).resolves.toMatchObject({ handoff: { status: "STALE", nextReadyWorkunit: null } });
   });
 });

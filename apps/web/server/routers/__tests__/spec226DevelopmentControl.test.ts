@@ -24,7 +24,7 @@ const mocks = vi.hoisted(() => ({
     prepareWorkspaceRun: vi.fn(),
     resolveWorkspaceRunInput: vi.fn(),
   },
-  featureSpecCatalog: { list: vi.fn(), load: vi.fn() },
+  featureSpecCatalog: { list: vi.fn(), load: vi.fn(), loadContext: vi.fn() },
   runnerInputStaging: { preStageRunnerInput: vi.fn(), bindSourceToWorkerJob: vi.fn() },
   analyzeVisualReferences: vi.fn(),
   createMiniAppIdentity: vi.fn(async (input: any) => ({ appId: input.preferredAppId })),
@@ -115,6 +115,7 @@ vi.mock("../../services/spec224WorkspaceSpecSet", () => ({
 vi.mock("../../services/spec224FeatureSpecCatalog", () => ({
   listRepositoryFeatureSpecs: (...args: unknown[]) => mocks.featureSpecCatalog.list(...args),
   loadRepositoryFeatureSpec: (...args: unknown[]) => mocks.featureSpecCatalog.load(...args),
+  loadRepositoryFeatureSpecContext: (...args: unknown[]) => mocks.featureSpecCatalog.loadContext(...args),
 }));
 
 vi.mock("../../services/spec224RunnerInputStaging", () => ({
@@ -162,8 +163,10 @@ beforeEach(() => {
   mocks.authorizeDelegatedChild.mockReset().mockResolvedValue({ status: "READY_FOR_LIVE", reasons: [] });
   mocks.requestGoalGrantApproval.mockReset().mockResolvedValue({ approvalRef: "goal-approval-1", status: "pending", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
   mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({ workspace: { workspaceId: "workspace-a", runnerId: "runner-a" } });
+  mocks.workspaceSpecSets.availableWorkspaces.mockReset();
   mocks.featureSpecCatalog.list.mockReset().mockResolvedValue({ specs: [{ id: "224-example", title: "Example", path: "specs/feature/224-example/spec.md", summary: "Example spec" }] });
-  mocks.featureSpecCatalog.load.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", content: "# Example\n" });
+  mocks.featureSpecCatalog.load.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", content: "# Example\n", handoff: { status: "CURRENT" } });
+  mocks.featureSpecCatalog.loadContext.mockReset().mockResolvedValue({ id: "224 Example Spec", title: "Example", path: "specs/feature/224 Example Spec/spec.md", summary: "Example", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1" } });
   mocks.developmentRunService.get.mockReset().mockRejectedValue(new Error("RUN_NOT_FOUND"));
   mocks.enqueueMiniAppStage.mockReset().mockResolvedValue({ stageId: "ui_implementation", jobId: "hosted-factory-job", created: true, state: "ENQUEUED" });
 });
@@ -423,6 +426,14 @@ describe("spec226DevelopmentControlRouter", () => {
       artifacts: [{ path: expect.stringMatching(/^feature-specs\/224-example-spec-[a-f0-9]{10}\.md$/), contentBase64: Buffer.from("# Example\n").toString("base64") }],
       idempotencyKey: expect.stringMatching(/^feature-spec:[a-f0-9]{10}:admin-spec-import-1$/),
     }));
+  });
+
+  it("limits canonical SPEC catalog access to an authorized Platform workspace", async () => {
+    const userContext = { tenantId: "tenant-acme", user: { id: 42, role: "user" } };
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([{ runnerId: "runner-a", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING" }]);
+    await expect((spec226DevelopmentControlRouter.listFeatureSpecs as unknown as Function)({ ctx: userContext, input: {} })).resolves.toMatchObject({ specs: [{ id: "224-example" }] });
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValueOnce([]);
+    await expect((spec226DevelopmentControlRouter.listFeatureSpecs as unknown as Function)({ ctx: userContext, input: {} })).rejects.toMatchObject({ message: "PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED" });
   });
 
   it("starts a personal Mini-App on hosted worker_jobs without resolving a Runner workspace", async () => {

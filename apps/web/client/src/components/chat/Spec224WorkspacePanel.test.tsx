@@ -2,16 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } } }), runnerNodes: {
   list: { useQuery: () => ({ data: { runners: [{ runnerId: "runner-test", displayName: "Test Runner", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1" }] } }) },
   workspaceReadiness: { useQuery: () => ({ data: mocks.readiness, isLoading: false, error: null }) },
 }, spec226DevelopmentControl: {
-  availableWorkspaces: { useQuery: () => ({ data: { workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }] } }) },
+  availableWorkspaces: { useQuery: () => ({ data: { workspaces: mocks.workspaces }, isLoading: false, error: null, refetch: vi.fn() }) },
   getConversationWorkspace: { useQuery: () => ({ data: mocks.workspace, refetch: vi.fn() }) },
   listFeatureSpecs: { useQuery: () => ({ data: { specs: mocks.featureSpecs }, isLoading: false, error: null }) },
+  getFeatureSpecContext: { useQuery: () => ({ data: mocks.featureSpecContext, isLoading: false, error: null }) },
   ingestFeatureSpec: { useMutation: () => ({ mutateAsync: mocks.ingestFeatureSpec, isPending: false }) },
   workspaceRunnerReadiness: { useQuery: () => ({ data: mocks.readiness }) },
   bindConversationWorkspace: { useMutation: () => ({ mutateAsync: mocks.bindWorkspace, isPending: false }) },
@@ -35,7 +36,9 @@ beforeEach(() => {
   mocks.bindWorkspace.mockResolvedValue({ conversationId: 47 });
   mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null };
   mocks.role = "admin";
+  mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }];
   mocks.featureSpecs = [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }];
+  mocks.featureSpecContext = { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }] }, integratedSha: "b".repeat(40) };
   mocks.prepare.mockResolvedValue(preparation(true));
   mocks.ingestSpecSet.mockResolvedValue({ revision: 2, files: [], requirementCount: 1 });
   mocks.start.mockResolvedValue({ runId: "unit-run", jobId: "unit-job", dispatchStatus: "PENDING_AUTHORIZATION",
@@ -61,7 +64,7 @@ describe("Core goal readiness feedback", () => {
 
   it("keeps the selected development source when switching presentation modes", () => {
     const { rerender } = render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
     rerender(<Spec224WorkspacePanel conversationId={8} simpleMode />);
     expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
@@ -82,8 +85,8 @@ describe("Core goal readiness feedback", () => {
     mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
     render(<Spec224WorkspacePanel conversationId={8} />);
 
-    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
-    expect(screen.getByRole("radio", { name: "เลือก Feature Spec จากระบบ (specs/feature)" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    expect(screen.getByRole("radio", { name: "เลือก Canonical SPEC จากระบบ" })).toBeInTheDocument();
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), { target: { value: "224-example-feature" } });
     fireEvent.click(screen.getByRole("button", { name: "เพิ่ม Spec ที่เลือกใน workspace" }));
@@ -100,9 +103,9 @@ describe("Core goal readiness feedback", () => {
     mocks.role = "user";
     render(<Spec224WorkspacePanel conversationId={8} />);
 
-    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
 
-    expect(screen.queryByRole("radio", { name: "เลือก Feature Spec จากระบบ (specs/feature)" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "เลือก Canonical SPEC จากระบบ" })).not.toBeInTheDocument();
     expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
   });
 
@@ -162,7 +165,7 @@ describe("Core goal readiness feedback", () => {
 
   it("shows a clear multi-image mock-up attachment control while developing from a Spec Set", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
 
     const mockupInput = screen.getByLabelText("แนบภาพ Mock-up หลายภาพ");
     expect(screen.getByRole("button", { name: "เลือกภาพ Mock-up" })).toBeInTheDocument();
@@ -178,7 +181,7 @@ describe("Core goal readiness feedback", () => {
 
   it("makes the multi-file Spec upload action visible and explains accepted files", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
     fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
 
     expect(screen.getByRole("button", { name: "เลือกไฟล์ Spec / JSON" })).toBeInTheDocument();
@@ -188,7 +191,7 @@ describe("Core goal readiness feedback", () => {
   it("keeps selected files queued and visible when the conversation has no bound workspace", async () => {
     mocks.workspace = { workspace: null, availability: null, specSet: null };
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
     fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
     fireEvent.change(screen.getByLabelText("แนบไฟล์ Spec 224"), { target: { files: [new File(["# Feature"], "feature.md", { type: "text/markdown" })] } });
 
@@ -200,7 +203,7 @@ describe("Core goal readiness feedback", () => {
 
   it("saves multiple selected Markdown and JSON files into the bound Spec Set on explicit action", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
-    fireEvent.click(screen.getByRole("radio", { name: "พัฒนาตาม Spec file" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
     fireEvent.click(screen.getByRole("radio", { name: "อัปโหลด Spec files" }));
     fireEvent.change(screen.getByLabelText("แนบไฟล์ Spec 224"), { target: { files: [
       new File(["# Feature"], "feature.md", { type: "text/markdown" }),
@@ -220,7 +223,7 @@ describe("Core goal readiness feedback", () => {
   it("switches from Mini-App mode to Spec development instead of disabling Spec work", async () => {
     render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "สร้าง Mini App" }));
-    const specMode = screen.getByRole("radio", { name: "พัฒนาตาม Spec file" });
+    const specMode = screen.getByRole("radio", { name: "Canonical SPEC" });
     expect(specMode).toBeEnabled();
     fireEvent.click(specMode);
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
@@ -258,5 +261,44 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ conversationId: 233, runId: "run-existing", budgetCapMinorUnits: 100 }));
     expect(mocks.start).not.toHaveBeenCalled();
     await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_REQUIRED")));
+  });
+
+  it("preselects the authorized Platform workspace and fails closed when it is dirty", async () => {
+    mocks.role = "user";
+    mocks.workspace = { workspace: null, availability: null, specSet: null };
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: true, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }];
+    render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={vi.fn()} />);
+    await waitFor(() => expect(screen.getByLabelText("1. เลือก Runner")).toHaveValue("runner-test"));
+    expect(screen.getByLabelText("2. เลือก Project Workspace")).toHaveValue('["runner-test","workspace-test"]');
+    expect(screen.getByRole("heading", { name: "พัฒนาระบบ SmartAIHub" })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(/dirty changes/);
+    expect(screen.queryByText(/runner-test|workspace-test/)).not.toBeInTheDocument();
+  });
+
+  it("creates and binds SPEC plus prompt through the existing preparation path", async () => {
+    mocks.role = "user";
+    mocks.workspace = { workspace: null, availability: null, specSet: null };
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40) }];
+    const createConversation = vi.fn().mockResolvedValue(47);
+    mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
+    render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={createConversation} />);
+    fireEvent.click(screen.getByRole("radio", { name: "SPEC + Prompt" }));
+    fireEvent.change(screen.getByLabelText("คำสั่งเพิ่มเติมสำหรับ SPEC"), { target: { value: "Keep the public API backward compatible." } });
+    fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), { target: { value: "224-example-feature" } });
+    fireEvent.click(screen.getByRole("button", { name: "เริ่มพัฒนา" }));
+    await waitFor(() => expect(mocks.ingestFeatureSpec).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 47, specId: "224-example-feature" })));
+    expect(createConversation).toHaveBeenCalledWith("Example Feature");
+    expect(mocks.bindWorkspace).toHaveBeenCalledWith({ conversationId: 47, runnerId: "runner-test", workspaceId: "workspace-test" });
+    expect(mocks.prepare).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 47, mode: "spec_set", additionalInstructions: "Keep the public API backward compatible." }));
+    expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it("blocks a canonical SPEC package that is not the next handoff WorkUnit", async () => {
+    render(<Spec224WorkspacePanel conversationId={8} />);
+    fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), { target: { value: "224-example-feature" } });
+    fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/ไม่มี runnable package ที่ตรงกัน/));
+    expect(mocks.start).not.toHaveBeenCalled();
   });
 });

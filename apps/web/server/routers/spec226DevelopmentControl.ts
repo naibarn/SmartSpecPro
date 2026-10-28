@@ -43,7 +43,7 @@ import {
   type WorkspaceAuthorityAction,
 } from "../services/workspaceAuthoritySafeActions";
 import { getSpec224BackendRuntimeIdentity } from "../services/spec224BackendRuntimeIdentity";
-import { loadRepositoryFeatureSpec, listRepositoryFeatureSpecs } from "../services/spec224FeatureSpecCatalog";
+import { loadRepositoryFeatureSpec, loadRepositoryFeatureSpecContext, listRepositoryFeatureSpecs } from "../services/spec224FeatureSpecCatalog";
 import { buildSpec224GoalGrantApprovalPayload, requestSpec224GoalGrantApproval } from "../services/spec224GoalDelegationGrant";
 import { db, getDb } from "../db";
 import { readSpec224GoalBudgetStatus } from "../services/economicProvisioningService";
@@ -82,6 +82,22 @@ function requireScope(ctx: {
     });
   }
   return { tenantId, actorId: ctx.user.id };
+}
+
+async function authorizeFeatureSpecCatalog(ctx: { tenantId: string | null; user?: { id?: number | null; role?: string | null; currentTenantId?: string | number | null } | null }, conversationId?: number) {
+  const scope = requireScope(ctx);
+  if (ctx.user?.role === "admin") return scope;
+  const authorizedWorkspaces = await defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope);
+  const platformWorkspaces = authorizedWorkspaces.filter(workspace => workspace.scope === "PLATFORM_ENGINEERING");
+  if (!platformWorkspaces.length) throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED" });
+  if (conversationId !== undefined) {
+    const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId });
+    const workspace = binding?.workspace;
+    if (!workspace || !platformWorkspaces.some(candidate => candidate.runnerId === workspace.runnerId && candidate.workspaceId === workspace.workspaceId)) {
+      throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED" });
+    }
+  }
+  return scope;
 }
 
 function errorCode(error: unknown): string {
@@ -203,6 +219,8 @@ function asTrpcError(error: unknown): never {
       "SPEC_SET_REVISION_NOT_FOUND",
       "PREPARE_PROMPT_INVALID",
       "SPEC_SET_WORK_PACKAGE_NOT_READY",
+      "SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC",
+      "SPEC_SET_ADDITIONAL_INSTRUCTIONS_CONFLICT",
     ].includes(code)
   ) {
     throw new TRPCError({ code: "BAD_REQUEST", message: code });
@@ -467,11 +485,23 @@ export const spec226DevelopmentControlRouter = router({
       }
     }),
 
-  listFeatureSpecs: adminProcedure
+  listFeatureSpecs: protectedProcedure
     .input(z.object({ search: z.string().trim().max(120).optional() }).optional())
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
+        await authorizeFeatureSpecCatalog(ctx);
         return await listRepositoryFeatureSpecs({ search: input?.search });
+      } catch (error) {
+        return asTrpcError(error);
+      }
+    }),
+
+  getFeatureSpecContext: protectedProcedure
+    .input(z.object({ specId: z.string().trim().min(1).max(160) }))
+    .query(async ({ ctx, input }) => {
+      try {
+        await authorizeFeatureSpecCatalog(ctx);
+        return await loadRepositoryFeatureSpecContext({ specId: input.specId });
       } catch (error) {
         return asTrpcError(error);
       }
@@ -578,7 +608,7 @@ export const spec226DevelopmentControlRouter = router({
       }
     }),
 
-  ingestFeatureSpec: adminProcedure
+  ingestFeatureSpec: protectedProcedure
     .input(z.object({
       conversationId: z.number().int().positive(),
       specId: z.string().trim().min(1).max(160),
@@ -586,8 +616,13 @@ export const spec226DevelopmentControlRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        await requireDevelopmentBearerScope(ctx.req);
-        const scope = requireScope(ctx);
+        let scope: ReturnType<typeof requireScope>;
+        if (ctx.user?.role === "admin") {
+          await requireDevelopmentBearerScope(ctx.req);
+          scope = requireScope(ctx);
+        } else {
+          scope = await authorizeFeatureSpecCatalog(ctx, input.conversationId);
+        }
         const spec = await loadRepositoryFeatureSpec({ specId: input.specId });
         const safeName = spec.id
           .toLowerCase()
@@ -604,7 +639,7 @@ export const spec226DevelopmentControlRouter = router({
           }],
           idempotencyKey: `feature-spec:${digestSuffix}:${input.idempotencyKey}`,
         });
-        return { ...result, sourceSpec: { id: spec.id, title: spec.title, path: spec.path } };
+        return { ...result, sourceSpec: { id: spec.id, title: spec.title, path: spec.path, handoff: spec.handoff } };
       } catch (error) {
         return asTrpcError(error);
       }
@@ -625,10 +660,11 @@ export const spec226DevelopmentControlRouter = router({
       conversationId: z.number().int().positive(),
       mode: z.enum(["prompt", "spec_set"]),
       prompt: z.string().max(4_000).optional(),
+      additionalInstructions: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
     }).superRefine((input, refinement) => {
       if (input.mode === "prompt" && !input.prompt?.trim()) refinement.addIssue({ code: z.ZodIssueCode.custom, message: "prompt required" });
-      if (input.mode === "spec_set" && input.prompt) refinement.addIssue({ code: z.ZodIssueCode.custom, message: "prompt not allowed for spec set" });
+      if (input.mode === "prompt" && input.additionalInstructions) refinement.addIssue({ code: z.ZodIssueCode.custom, message: "additional instructions require a canonical Spec" });
     }))
     .mutation(async ({ ctx, input }) => {
       try {
@@ -848,6 +884,7 @@ export const spec226DevelopmentControlRouter = router({
       factoryMode: z.boolean().default(false),
       appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/).optional(),
       prompt: z.string().max(4_000).optional(),
+      additionalInstructions: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
       idempotencyKey: z.string().trim().min(16).max(160),
@@ -866,6 +903,8 @@ export const spec226DevelopmentControlRouter = router({
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "valid prompt required" });
       if (input.mode === "spec_set" && (input.prompt || !input.workPackageId))
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "work package required" });
+      if (input.mode === "prompt" && input.additionalInstructions)
+        refinement.addIssue({ code: z.ZodIssueCode.custom, message: "additional instructions require a canonical Spec" });
       if (input.appId && !input.factoryMode)
         refinement.addIssue({ code: z.ZodIssueCode.custom, message: "app continuation requires factory mode" });
       if (input.visualReferences.length !== input.visualFiles.length)
@@ -1031,6 +1070,7 @@ export const spec226DevelopmentControlRouter = router({
         if ((input.provider ?? "codex") !== "codex") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "SPEC224_DELEGATED_PROVIDER_UNSUPPORTED" });
         const requestDigest = createHash("sha256").update(JSON.stringify({
           conversationId: input.conversationId, mode: input.mode, prompt: input.prompt ?? null,
+          ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
           provider: input.provider ?? "codex", visualReferences: input.visualReferences ?? [],
           visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
@@ -1064,6 +1104,7 @@ export const spec226DevelopmentControlRouter = router({
           conversationId: input.conversationId,
           mode: input.mode,
           ...(input.prompt === undefined ? {} : { prompt: input.prompt }),
+          ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           ...(input.specSetRevision === undefined ? {} : { specSetRevision: input.specSetRevision }),
           ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
         });

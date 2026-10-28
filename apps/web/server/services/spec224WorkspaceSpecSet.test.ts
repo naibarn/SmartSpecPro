@@ -225,6 +225,7 @@ describe("spec224 workspace Spec Set", () => {
     });
     const input = await service.resolveWorkspaceRunInput({
       tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set",
+      additionalInstructions: "Preserve the public API.\nKeep the complete note.",
       workPackageId: preparation.runnableWorkPackageIds[0],
     });
     expect(input).toMatchObject({
@@ -234,7 +235,9 @@ describe("spec224 workspace Spec Set", () => {
       inputFiles: [
         { path: "specs/auth.md", contentBase64: Buffer.from("# Auth\n\n- [ ] MUST authenticate users", "utf8").toString("base64") },
         { path: "specs/packages.json", contentBase64: artifacts[1].contentBase64 },
+        { path: "spec224-additional-instructions.md", contentBase64: Buffer.from("Preserve the public API.\nKeep the complete note.", "utf8").toString("base64") },
       ],
+      allowedWriteSet: ["apps/web/server/auth.ts"],
     });
   });
 

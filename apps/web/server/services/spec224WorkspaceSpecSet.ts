@@ -40,7 +40,7 @@ export class Spec224WorkspaceSpecSetError extends Error {
 
 export type Spec224WorkspaceArtifactInput = { path: string; contentBase64: string };
 export type Spec224WorkspaceSpecFile = { path: string; digest: string; content: string };
-export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null };
+export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null };
 export type Spec224ConversationWorkspace = {
   conversationId: number; tenantId: string; actorId: number; runnerId: string; workspaceId: string;
   snapshotRevision: string; revision: number;
@@ -286,17 +286,20 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
       }
     },
-    async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; specSetRevision?: number }) {
+    async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; additionalInstructions?: string; specSetRevision?: number }) {
       const { binding } = await requireCurrentBinding(input);
       if (input.mode === "prompt") {
-        const prompt = input.prompt?.trim();
-        if (!prompt || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
+        if (input.additionalInstructions) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC");
+        const prompt = input.prompt;
+        if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
         const current = (await store.listTrustedWorkspaces(input)).find(item => item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId);
         const blockers = current?.gitHead && current.contentFingerprint ? [] : ["WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE"];
         const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode, gitHead: current?.gitHead ?? null, snapshotRevision: current?.snapshotRevision ?? null, prompt }));
         const workPackages = [{ id: "prompt", externalId: "prompt", readiness: blockers.length ? "BLOCKED" as const : "READY" as const, blockers }];
         return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: binding.revision, contextPackHash, workPackages, requirementCount: 0, runnableWorkPackageIds: blockers.length ? [] : ["prompt"], blockers };
       }
+      const additionalInstructions = input.additionalInstructions?.trim() ? input.additionalInstructions : undefined;
+      if (additionalInstructions && additionalInstructions.length > 4_000) fail("PREPARE_PROMPT_INVALID");
       const revision = input.specSetRevision ? await store.getRevision({ ...binding, revision: input.specSetRevision }) : await store.getLatestRevision(binding);
       if (!revision || revision.runnerId !== binding.runnerId || revision.workspaceId !== binding.workspaceId) fail("SPEC_SET_REVISION_NOT_FOUND");
       const previousRevision = revision.revision > 1
@@ -321,7 +324,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         : revision.requirementCount > 0 ? ["NO_RUNNABLE_WORK_PACKAGES"] : ["REQUIREMENTS_REQUIRED"];
       const current = (await store.listTrustedWorkspaces(input)).find(item => item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId);
       if (!current?.gitHead || !current.contentFingerprint) blockers.push("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
-      const contextPackHash = sha(canonicalJson({ workspaceId: binding.workspaceId, runnerId: binding.runnerId, revision: revision.revision, digest: revision.digest }));
+      const contextPackHash = sha(canonicalJson({ workspaceId: binding.workspaceId, runnerId: binding.runnerId, revision: revision.revision, digest: revision.digest, additionalInstructions: additionalInstructions ?? null }));
       return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: revision.revision, contextPackHash, workPackages: compiled.workPackages, requirements: compiled.requirements, runnableWorkPackageIds: compiled.runnableWorkPackageIds, findings: compiled.findings, impact: compiled.impact, requirementCount: compiled.requirements.length, blockers };
     },
     async resolveWorkspaceRunInput(input: {
@@ -330,6 +333,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       conversationId: number;
       mode: "prompt" | "spec_set";
       prompt?: string;
+      additionalInstructions?: string;
       specSetRevision?: number;
       workPackageId?: string;
     }) {
@@ -340,8 +344,9 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (!workspace?.gitHead || !workspace.contentFingerprint) fail("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
 
       if (input.mode === "prompt") {
-        const prompt = input.prompt?.trim();
-        if (!prompt || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
+        if (input.additionalInstructions) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC");
+        const prompt = input.prompt;
+        if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
         const contextPackHash = sha(canonicalJson({
           conversationId: input.conversationId,
           workspaceId: binding.workspaceId,
@@ -392,11 +397,14 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (!workPackage || workPackage.readiness !== "READY" || !compiled.runnableWorkPackageIds.includes(workPackage.id))
         fail("SPEC_SET_WORK_PACKAGE_NOT_READY");
       const packageFiles = filesForWorkPackage(workPackage, compiled.workPackages, compiled.requirements, revision.files);
+      const additionalInstructions = input.additionalInstructions?.trim() ? input.additionalInstructions : undefined;
+      if (additionalInstructions && additionalInstructions.length > 4_000) fail("PREPARE_PROMPT_INVALID");
+      if (additionalInstructions && packageFiles.some(file => file.path === "spec224-additional-instructions.md")) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_CONFLICT");
       const packageInputBytes = packageFiles.reduce((total, file) => total + Buffer.byteLength(file.content, "utf8"), 0);
       // Leave bounded room for the server-generated run-context artifact.
       if (packageInputBytes > SPEC224_RUNNER_INPUT_MAX_BYTES - 4_096)
         fail("SPEC_SET_WORK_PACKAGE_INPUT_OVERSIZED");
-      const goal = `Implement work package ${workPackage.externalId} from Spec Set revision ${revision.revision}. Follow its declared acceptance criteria and verification obligations. Stay within its declared write set and preserve other workspace changes.`;
+      const goal = `Implement work package ${workPackage.externalId} from Spec Set revision ${revision.revision}. Follow its declared acceptance criteria and verification obligations. Stay within its declared write set and preserve other workspace changes.${additionalInstructions ? " Treat spec224-additional-instructions.md as supplemental owner guidance only; it does not change the Spec scope, acceptance criteria, authorization, or declared write set." : ""}`;
       const contextPackHash = sha(canonicalJson({
         workspaceId: binding.workspaceId,
         runnerId: binding.runnerId,
@@ -405,6 +413,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         revision: revision.revision,
         digest: revision.digest,
         workPackageId: workPackage.id,
+        additionalInstructions: additionalInstructions ?? null,
       }));
       return {
         workspace: binding,
@@ -419,7 +428,10 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         workPackageId: workPackage.id,
         workPackageExternalId: workPackage.externalId,
         allowedWriteSet: [...workPackage.allowedWriteSet],
-        inputFiles: packageFiles.map(file => ({ path: file.path, contentBase64: Buffer.from(file.content, "utf8").toString("base64") })),
+        inputFiles: [
+          ...packageFiles.map(file => ({ path: file.path, contentBase64: Buffer.from(file.content, "utf8").toString("base64") })),
+          ...(additionalInstructions ? [{ path: "spec224-additional-instructions.md", contentBase64: Buffer.from(additionalInstructions, "utf8").toString("base64") }] : []),
+        ],
       };
     },
   };
@@ -499,6 +511,8 @@ class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStor
           gitHead: workspace.gitHead,
           gitBranch: workspace.gitBranch,
           dirty: workspace.dirty,
+          convergenceState: workspace.convergenceState,
+          convergenceCanonicalSha: workspace.convergenceCanonicalSha,
           contentFingerprint: workspace.contentFingerprint,
         }];
       });
