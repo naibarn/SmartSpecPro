@@ -70,6 +70,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 ## Migration 0415 direct execution-path update — 2026-10-28
 
 The user redirected this incident away from GitHub Actions as the required Production migration runner. The focused infrastructure/code recheck is in `evidence/migration-0415-direct-path-recheck-20261028.md`.
+This handoff/evidence update is integrated in commit `bfe43161319cd1cdfecbae38197622fdf339f779`.
 
 ### Migration 0415 outcome
 
