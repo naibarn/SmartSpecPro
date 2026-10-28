@@ -48,6 +48,42 @@ fn main() {
         "status" | "doctor" | "capabilities" => {
             println!("{}", redacted_status(&config, command));
         }
+        "verify" if args.get(1).map(String::as_str) == Some("codex") => {
+            if config.profile != RunnerProfile::LocalDevice {
+                eprintln!("Codex verification requires the local device profile");
+                std::process::exit(2);
+            }
+            match smartaihub_runner::diagnostics::verify_local_tool(&config, "codex") {
+                Ok(result) => {
+                    let check = result.task_check.as_ref();
+                    let passed = check.is_some_and(|value| value.state == "passed");
+                    let summary = serde_json::json!({
+                        "toolId": result.tool.tool_id,
+                        "adapterId": result.tool.adapter_id,
+                        "version": result.tool.version,
+                        "authentication": result.tool.auth_state,
+                        "versionProbeState": result.tool.version_probe_state,
+                        "taskProbeState": check.map(|value| value.state.as_str()).unwrap_or("not_run"),
+                        "taskProbeEvidenceRef": result.tool.task_probe_evidence_ref,
+                        "taskProbeObservedAtMs": result.tool.task_probe_observed_at_ms,
+                        "taskProbeExpiresAtMs": result.tool.task_probe_expires_at_ms,
+                        "reasonCode": check.and_then(|value| value.reason_code.as_deref()),
+                    });
+                    println!("{}", summary);
+                    if !passed {
+                        std::process::exit(3);
+                    }
+                }
+                Err(error) => {
+                    eprintln!("Codex verification failed: {error}");
+                    std::process::exit(3);
+                }
+            }
+        }
+        "verify" => {
+            eprintln!("usage: smartaihub-runner verify codex");
+            std::process::exit(2);
+        }
         "workspace" => match args.get(1).map(String::as_str) {
             Some("list") => match smartaihub_runner::workspace_registry::list(&config) {
                 Ok(workspaces) => println!(

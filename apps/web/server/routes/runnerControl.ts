@@ -1735,6 +1735,22 @@ function sendRunnerRefreshError(res: Response, error: unknown): void {
     sendError(res, error);
     return;
   }
+  const errorName = error instanceof Error ? error.name : typeof error;
+  const rawCode =
+    error && typeof error === "object" && "code" in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+  const errorCode =
+    typeof rawCode === "string" && /^[A-Z0-9_:-]{1,80}$/i.test(rawCode)
+      ? rawCode
+      : undefined;
+  console.error("[RunnerControl] credential refresh failed", {
+    stage: "refresh_credentials",
+    errorName: /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(errorName)
+      ? errorName
+      : "UnknownError",
+    ...(errorCode ? { errorCode } : {}),
+  });
   // The refresh route has no user-supplied payload to validate. An unexpected
   // exception is a server failure and must not be mislabeled as HTTP 400, which
   // makes the Runner treat a server-side problem as an invalid client request.
