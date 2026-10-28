@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `173`
-- Updated (UTC): `2026-10-28T08:39:21.262477+00:00`
+- State generation: `177`
+- Updated (UTC): `2026-10-28T10:15:42.000000+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `c617f65d6cdf0e19cee494fddddb45f609e095c7`
+- Latest recorded merged Main SHA: `cfcdad2173215e439181a27c7f3dc71ade0f9fcb`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: Linux Admin/backend release g203 is deployed and verified from source a509b116824274acf36ce358bffc9dcb5be944f7 (health 200, Node 22.23.4, public JS asset byte-match). Continue M3 only after resolving the actual authority boundary: there is no enrolled FIRST_MIGRATION_MANDATE in the existing approval store, and this CLI has no authenticated Owner session. Inspect existing approval contracts and implement only a bounded, revocable enrollment via the authenticated Admin path; never infer enrollment from chat. Then use Owner authenticated Admin reads to verify Production Queue queue_id, Consumer, DLQ, active Worker baseline and origin revision. Keep route and traffic unchanged until separate native-activation authority.
+- Next action: Partial implementation checkpoint integrated in canonical main at `cfcdad2173215e439181a27c7f3dc71ade0f9fcb` . Authenticated Owner tRPC read/plan/enroll/suspend/revoke/history routes and Admin enrollment dialog are present. Existing ApprovalDBService persists the immutable mandate and short-lived job-scoped grants with atomic budget reservation; exact synthetic usage, Owner scope, idempotency, parent revocation, expiry and renewal are tested. M3 Credit/Billing and Queue/Recovery admissions and executors consume those grants. Existing explicit per-operation Owner confirmation remains available only when no mandate exists; suspended/revoked/unreadable mandate state denies new parity submissions. Enrollment sends only the reviewed envelope; tenant/Owner identity come from authenticated backend context. Focused checks: Python 10 passed + `py_compile`; Web 7 files / 169 passed; `git diff --check` passed. Full mandate readiness remains intentionally blocked: Worker deployment/canary, origin configuration, native runtime activation and rollback do not use these grants/quotas; the exact artifact/traffic/rollback envelope is incomplete. Do not enroll or deploy production until those paths are integrated and tested. No authenticated Owner session or production provider readback was available.
 
 ## Sections
 
@@ -20,7 +20,15 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-mission-reset-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | c617f65d6cdf0e19cee494fddddb45f609e095c7 | c617f65d6cdf0e19cee494fddddb45f609e095c7 | Linux Admin/backend release g203 is deployed and verified from source a509b116824274acf36ce358bffc9dcb5be944f7 (health 200, Node 22.23.4, public JS asset byte-match). Continue M3 only after resolving the actual authority boundary: there is no enrolled FIRST_MIGRATION_MANDATE in the existing approval store, and this CLI has no authenticated Owner session. Inspect existing approval contracts and implement only a bounded, revocable enrollment via the authenticated Admin path; never infer enrollment from chat. Then use Owner authenticated Admin reads to verify Production Queue queue_id, Consumer, DLQ, active Worker baseline and origin revision. Keep route and traffic unchanged until separate native-activation authority. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-mandate-implementation-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | cfcdad2173215e439181a27c7f3dc71ade0f9fcb | cfcdad2173215e439181a27c7f3dc71ade0f9fcb | Partial and integrated, not deployable: authenticated tRPC/ApprovalDBService mandate lifecycle, Admin enrollment/revoke UI, and scoped grants for synthetic Credit/Billing + Queue/Recovery are implemented. Focused verification: Python 10 passed + py_compile; Web 7 files / 169 passed. Remaining: grant/usage-budget enforcement and exact immutable plan bindings for origin configuration, Worker deploy/canary, native activation and rollback; end-to-end live API/UI and production release verification. No Owner enrollment or production mutation occurred. |
+
+## Current FIRST_MIGRATION_MANDATE checkpoint
+
+- Code is integrated at `cfcdad2173215e439181a27c7f3dc71ade0f9fcb`; this is a partial vertical slice, not completion. Implemented: authenticated Owner tRPC read/plan/enroll/suspend/revoke/history; ApprovalDBService durable mandate and scoped expiring grant persistence; atomic operation-budget reservation; Admin enrollment/revoke UI; mandate-backed M3 Credit/Billing and Queue/Recovery admission/executors.
+- Focused verification: Python mandate suite 10 passed; `py_compile` passed; Web focused suite 7 files / 169 passed; `git diff --check` passed. Full repository typecheck was not run, per repo resource policy.
+- Enrollment remains fail-closed. Grant/usage-budget enforcement is still missing for `rotate_origin_configuration`, `deploy_worker`, `worker_canary`, `native_runtime_activation`, and `rollback`; exact reviewed artifact, traffic rollout, rollback baseline, and enforceable resource envelope must be bound before readiness can pass. Monetary spend is not a hard cap.
+- No Owner mandate has been enrolled. This session had no authenticated Owner session or production provider/API readback. No production release, Cloudflare mutation, or traffic change occurred. Current production serving release remains the previously recorded g203; serving SHA is not reverified in this session. No authenticated background scheduler/executor continuity is established.
+- Next engineering action: complete grant issuance, lease-fenced enforcement, idempotency/revocation/quota tests for the five missing production operations and validate end-to-end API/UI contracts; only then present one Owner enrollment action and use the authorized release workflow. Preserve M1/M2 and Linux fallback.
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -49,10 +57,9 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - The origin configuration shown EXPIRED is a Canary blocker: getProductionWorkerCanaryPreflight requires STORED status, a digest matching the active baseline annotation, and >20 minutes remaining. Origin versions are immutable and digest includes expiresAt; renewal must be a new scoped configuration plus baseline-compatible authorized deployment/reconciliation, not an in-place expiry edit.
 - No authenticated production Cloudflare provider readback was available in this session. Actual Queue ID, Consumer, DLQ, Worker identity and active baseline remain unverified until normal Owner Admin read-only preflight.
 - Production origin configuration is reported EXPIRED. Canary preflight requires STORED status, baseline-matching digest and >20 minutes validity; renewal changes immutable configuration digest, so baseline-compatible configuration and Worker version/deployment reconciliation must precede a Canary grant.
-- No FIRST_MIGRATION_MANDATE record or admission enforcement exists; current campaignAuthority remains NOT_AUTHORIZED.
 - Production Worker/Queue/Consumer/DLQ live preflight is not verified in this CLI session; no Cloudflare provider write or traffic change was made.
-- The requested durable FIRST_MIGRATION_MANDATE has not been enrolled; chat instructions do not create a canonical grant. No Owner browser identity is available here.
 - Origin configuration currently reported EXPIRED and digest-bound to its previous active baseline; renewal must use a new immutable revision and reconcile deployment baseline before any Worker deployment.
+- Resource budget currently bounds authorized provider writes, deployments, Container starts/runtime and Queue messages but does not enforce Cloudflare account invoice USD spend; do not label it a monetary spend cap.
 
 ## Resume
 

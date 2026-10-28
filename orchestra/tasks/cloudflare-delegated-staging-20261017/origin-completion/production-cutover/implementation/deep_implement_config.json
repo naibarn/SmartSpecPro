@@ -35,10 +35,10 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "Linux Admin/backend release g203 is deployed and verified from source a509b116824274acf36ce358bffc9dcb5be944f7 (health 200, Node 22.23.4, public JS asset byte-match). Continue M3 only after resolving the actual authority boundary: there is no enrolled FIRST_MIGRATION_MANDATE in the existing approval store, and this CLI has no authenticated Owner session. Inspect existing approval contracts and implement only a bounded, revocable enrollment via the authenticated Admin path; never infer enrollment from chat. Then use Owner authenticated Admin reads to verify Production Queue queue_id, Consumer, DLQ, active Worker baseline and origin revision. Keep route and traffic unchanged until separate native-activation authority.",
-      "checkpoint_sha": "c617f65d6cdf0e19cee494fddddb45f609e095c7",
-      "merged_main_sha": "c617f65d6cdf0e19cee494fddddb45f609e095c7",
-      "session_id": "codex-mission-reset-20261028"
+      "next_action": "Partial mandate vertical slice integrated at cfcdad2173215e439181a27c7f3dc71ade0f9fcb. Implemented authenticated Owner tRPC read/plan/enroll/suspend/revoke/history, ApprovalDBService persistence and scoped expiring grants with atomic operation budgets, Admin enrollment/revoke UI, and mandate-backed M3 Credit/Billing + Queue/Recovery admissions/executors. Focused evidence: Python 10 passed, py_compile passed; Web 7 files / 169 passed; git diff --check passed. Not complete or production-deployable: mandate readiness is fail-closed because rotate_origin_configuration, deploy_worker, worker_canary, native_runtime_activation and rollback are not yet grant/usage-budget enforced; artifact/traffic/rollback envelope is incomplete. No authenticated production Owner/provider session or production release verification in this session. Next implement and test those exact mandate integrations and bounded traffic/rollback envelope; then run API/UI verification and release only through existing production controls. Do not present enrollment action while readiness is blocked.",
+      "checkpoint_sha": "cfcdad2173215e439181a27c7f3dc71ade0f9fcb",
+      "merged_main_sha": "cfcdad2173215e439181a27c7f3dc71ade0f9fcb",
+      "session_id": "codex-mandate-implementation-20261028"
     }
   },
   "pre_commit": {
@@ -50,11 +50,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 173,
-  "updated_at": "2026-10-28T08:39:21.262477+00:00",
+  "generation": 177,
+  "updated_at": "2026-10-28T10:15:42.000000+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "Linux Admin/backend release g203 is deployed and verified from source a509b116824274acf36ce358bffc9dcb5be944f7 (health 200, Node 22.23.4, public JS asset byte-match). Continue M3 only after resolving the actual authority boundary: there is no enrolled FIRST_MIGRATION_MANDATE in the existing approval store, and this CLI has no authenticated Owner session. Inspect existing approval contracts and implement only a bounded, revocable enrollment via the authenticated Admin path; never infer enrollment from chat. Then use Owner authenticated Admin reads to verify Production Queue queue_id, Consumer, DLQ, active Worker baseline and origin revision. Keep route and traffic unchanged until separate native-activation authority.",
+    "next_action": "Partial mandate vertical slice integrated at cfcdad2173215e439181a27c7f3dc71ade0f9fcb. Implemented authenticated Owner tRPC read/plan/enroll/suspend/revoke/history, ApprovalDBService persistence and scoped expiring grants with atomic operation budgets, Admin enrollment/revoke UI, and mandate-backed M3 Credit/Billing + Queue/Recovery admissions/executors. Focused evidence: Python 10 passed, py_compile passed; Web 7 files / 169 passed; git diff --check passed. Not complete or production-deployable: mandate readiness is fail-closed because rotate_origin_configuration, deploy_worker, worker_canary, native_runtime_activation and rollback are not yet grant/usage-budget enforced; artifact/traffic/rollback envelope is incomplete. No authenticated production Owner/provider session or production release verification in this session. Next implement and test those exact mandate integrations and bounded traffic/rollback envelope; then run API/UI verification and release only through existing production controls. Do not present enrollment action while readiness is blocked.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
@@ -81,12 +81,13 @@
       "The origin configuration shown EXPIRED is a Canary blocker: getProductionWorkerCanaryPreflight requires STORED status, a digest matching the active baseline annotation, and >20 minutes remaining. Origin versions are immutable and digest includes expiresAt; renewal must be a new scoped configuration plus baseline-compatible authorized deployment/reconciliation, not an in-place expiry edit.",
       "No authenticated production Cloudflare provider readback was available in this session. Actual Queue ID, Consumer, DLQ, Worker identity and active baseline remain unverified until normal Owner Admin read-only preflight.",
       "Production origin configuration is reported EXPIRED. Canary preflight requires STORED status, baseline-matching digest and >20 minutes validity; renewal changes immutable configuration digest, so baseline-compatible configuration and Worker version/deployment reconciliation must precede a Canary grant.",
-      "No FIRST_MIGRATION_MANDATE record or admission enforcement exists; current campaignAuthority remains NOT_AUTHORIZED.",
       "Production Worker/Queue/Consumer/DLQ live preflight is not verified in this CLI session; no Cloudflare provider write or traffic change was made.",
-      "The requested durable FIRST_MIGRATION_MANDATE has not been enrolled; chat instructions do not create a canonical grant. No Owner browser identity is available here.",
-      "Origin configuration currently reported EXPIRED and digest-bound to its previous active baseline; renewal must use a new immutable revision and reconcile deployment baseline before any Worker deployment."
+      "Origin configuration currently reported EXPIRED and digest-bound to its previous active baseline; renewal must use a new immutable revision and reconcile deployment baseline before any Worker deployment.",
+      "Resource budget currently bounds authorized provider writes, deployments, Container starts/runtime and Queue messages but does not enforce Cloudflare account invoice USD spend; do not label it a monetary spend cap.",
+      "Current mandate vertical slice at cfcdad2173215e439181a27c7f3dc71ade0f9fcb is integrated but deliberately not deployable/enrollable: five production operations (origin config, Worker deploy, canary, native activation, rollback) lack mandate grant and enforceable quota integration; exact artifact/traffic/rollback resource envelope is incomplete. No production deployment or enrollment occurred.",
+      "This Codex session has no authenticated Owner session or production provider readback, and no verified background scheduler/executor continuity; do not claim unattended continuation or live production readiness."
     ],
-    "merged_main_sha": "c617f65d6cdf0e19cee494fddddb45f609e095c7",
+    "merged_main_sha": "cfcdad2173215e439181a27c7f3dc71ade0f9fcb",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
