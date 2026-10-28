@@ -109,7 +109,9 @@ jobs:
           node --test apps/cloudflare/wrangler.staging.config.test.mjs apps/cloudflare/wrangler.production.config.test.mjs apps/cloudflare/scripts/cloudflare-deploy-control.test.mjs
           npm --workspace @smartspec/cloudflare-runtime run check
       - name: Build web assets for the immutable Worker source revision
-        run: pnpm --filter @smartspec/web exec vite build --configLoader runner
+        run: |
+          pnpm --filter @smartspec/remotion-render run build
+          pnpm --filter @smartspec/web exec vite build --configLoader runner
         env:
           NODE_OPTIONS: --max-old-space-size=8192
           SSP_SKIP_PUBLIC_COPY: "1"

@@ -20,6 +20,7 @@ test("staging and production use separate GitHub environments and secrets", () =
 
 test("Cloudflare build copies only validated website assets and excludes downloadable runtime archives", () => {
   assert.match(workflow, /SSP_SKIP_PUBLIC_COPY:\s*"1"/);
+  assert.match(workflow, /pnpm --filter @smartspec\/remotion-render run build\s+pnpm --filter @smartspec\/web exec vite build/);
   assert.match(workflow, /prepare-worker-assets\.mjs apps\/web\/client\/public apps\/web\/dist\/public "\$RUNNER_TEMP\/cloudflare-private-source-maps"/);
   assert.match(workflow, /cloudflare-private-sourcemaps-\$\{\{ github\.sha \}\}/);
   assert.match(workflow, /prepare-worker-assets\.mjs[\s\S]*?wrangler@[\s\S]*?--dry-run/);
