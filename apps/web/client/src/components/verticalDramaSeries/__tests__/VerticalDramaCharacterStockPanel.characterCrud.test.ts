@@ -213,6 +213,27 @@ describe("buildPreviewCharacterPromptInput", () => {
     });
   });
 
+  it("preserves reference intent for queued look prompt generation", () => {
+    expect(
+      buildPreviewCharacterPromptInput({
+        seriesId: "10",
+        characterId: "5",
+        selectedImageModelId: "gpt-image-2",
+        referencePolicy: "auto",
+        referenceAssetLinkId: " ref-portrait ",
+        customInstruction: "look refresh",
+      })
+    ).toEqual({
+      seriesId: "10",
+      characterId: "5",
+      selectedImageModelId: "gpt-image-2",
+      referencePolicy: "auto",
+      referenceAssetLinkId: "ref-portrait",
+      customInstruction: "look refresh",
+      castingCameraFraming: "half_body",
+    });
+  });
+
   it("includes the optional first-portrait candidate count", () => {
     expect(
       buildPreviewCharacterPromptInput({

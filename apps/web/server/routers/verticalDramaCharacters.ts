@@ -4635,6 +4635,8 @@ export const verticalDramaCharactersRouter = router({
       seriesScope.extend({
         characterId: z.string().min(1),
         selectedImageModelId: z.string().trim().min(1).max(128).optional(),
+        referencePolicy: z.enum(["none", "auto"]).optional(),
+        referenceAssetLinkId: z.string().trim().min(1).optional(),
         portraitCandidateCount: z.number().int().min(1).max(5).optional(),
         replacePortraitCandidateAssetLinkId: z
           .string()
@@ -4727,6 +4729,12 @@ export const verticalDramaCharactersRouter = router({
           ...(input.selectedImageModelId
             ? { selectedImageModelId: input.selectedImageModelId }
             : {}),
+          ...(input.referencePolicy
+            ? { referencePolicy: input.referencePolicy }
+            : {}),
+          ...(input.referenceAssetLinkId
+            ? { referenceAssetLinkId: input.referenceAssetLinkId }
+            : {}),
           ...(input.portraitCandidateCount
             ? { portraitCandidateCount: input.portraitCandidateCount }
             : {}),
@@ -4794,6 +4802,14 @@ export const verticalDramaCharactersRouter = router({
         character,
         customInstruction: input.customInstruction,
       });
+      const { source: promptReferencePortraitSource } =
+        await resolveReferencePortraitSource(
+          { tenantId, userId, seriesId },
+          characterId,
+          input.referenceAssetLinkId,
+          character.parentCharacterId ?? character.sharesFaceWithCharacterId,
+          input.referencePolicy ?? "none"
+        );
       let previewPromptCapability:
         | VerticalDramaCharacterPromptCapability
         | undefined;
@@ -5331,6 +5347,9 @@ export const verticalDramaCharactersRouter = router({
           castingPreferences: characterCastingPreferences,
           presetVisualIdentity,
           faceSourceReference,
+          hasOwnReferenceImage: referenceSourceIsOwnLikeness(
+            promptReferencePortraitSource
+          ),
           customInstruction: input.customInstruction,
           characterDesignContext,
           cameraFraming: input.castingCameraFraming,

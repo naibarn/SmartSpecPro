@@ -332,9 +332,20 @@ export const VD_CHARACTER_IMAGE_POLL_MAX_ATTEMPTS = Math.ceil(
 const MCP_CONNECTION_ID_STORAGE_KEY = "smartspec_mcp_connection_id";
 const CHARACTER_PROMPT_JOB_STORAGE_PREFIX = "vd_character_prompt_job:";
 
+type CharacterPromptAutoRenderIntent = {
+  selectedImageModelId: string;
+  selectedEditImageModelId?: string;
+  customInstruction?: string;
+  referenceAssetLinkId?: string;
+  mcpConnectionId?: string;
+  sharedGroupId?: number;
+  hermesConnectionId?: string;
+};
+
 type StoredCharacterPromptJob = {
   jobId: string;
   characterId: string;
+  autoRender?: CharacterPromptAutoRenderIntent;
 };
 
 function characterPromptJobStorageKey(seriesId: string): string {
@@ -349,7 +360,14 @@ function readStoredCharacterPromptJob(
   try {
     const parsed = JSON.parse(raw) as Partial<StoredCharacterPromptJob>;
     return parsed.jobId && parsed.characterId
-      ? { jobId: parsed.jobId, characterId: parsed.characterId }
+      ? {
+          jobId: parsed.jobId,
+          characterId: parsed.characterId,
+          ...(parsed.autoRender &&
+          typeof parsed.autoRender.selectedImageModelId === "string"
+            ? { autoRender: parsed.autoRender as CharacterPromptAutoRenderIntent }
+            : {}),
+        }
       : null;
   } catch {
     return null;
@@ -1326,6 +1344,8 @@ export interface VdPreviewCharacterPromptInput {
   seriesId: string;
   characterId: string;
   selectedImageModelId?: string;
+  referencePolicy?: "none" | "auto";
+  referenceAssetLinkId?: string;
   customInstruction?: string;
   portraitCandidateCount?: number;
   replacePortraitCandidateAssetLinkId?: string;
@@ -1366,6 +1386,8 @@ export function buildPreviewCharacterPromptInput(params: {
   seriesId: string;
   characterId: string;
   selectedImageModelId?: string;
+  referencePolicy?: "none" | "auto";
+  referenceAssetLinkId?: string;
   customInstruction: string;
   portraitCandidateCount?: number;
   replacePortraitCandidateAssetLinkId?: string;
@@ -1387,6 +1409,10 @@ export function buildPreviewCharacterPromptInput(params: {
     characterId: params.characterId,
     ...(params.selectedImageModelId?.trim()
       ? { selectedImageModelId: params.selectedImageModelId.trim() }
+      : {}),
+    ...(params.referencePolicy ? { referencePolicy: params.referencePolicy } : {}),
+    ...(params.referenceAssetLinkId?.trim()
+      ? { referenceAssetLinkId: params.referenceAssetLinkId.trim() }
       : {}),
     ...(customInstruction ? { customInstruction } : {}),
     ...(params.portraitCandidateCount
@@ -4246,17 +4272,21 @@ export function VerticalDramaCharacterStockPanel({
         }
       },
     });
+  const startLookPromptPreviewRef = useRef<
+    ((params: {
+      characterId: string;
+      customInstruction: string;
+      referenceAssetLinkId?: string;
+    }) => void) | null
+  >(null);
 
   /**
-   * `planning/vd-character-look-one-step-flow/plan.md` (2026-07-17) — fires
-   * the SAME direct (no-preview) `generateImageMutation` call the roster
-   * card's "auto" shortcuts already use (see `generateSheetMutation.mutate`'s
-   * call site below for the identical `selectedImageModelId`/MCP/Hermes
-   * field convention), for an arbitrary `characterId` — used both by
-   * `createVariantMutation`'s auto-fire-on-submit and the per-look chip's
-   * own "สร้างภาพลุค" button. No `approvedPrompt` is passed, so the server
-   * runs its own prompt-generation step (the fallback path), exactly like
-   * every other "auto" generate affordance in this panel. Callers are
+   * `planning/vd-character-look-one-step-flow/plan.md` (2026-07-17) — used
+   * both by `createVariantMutation`'s auto-fire-on-submit and the per-look
+   * chip's own "สร้างภาพลุค" button. Prompt generation is queued first and
+   * the image render starts automatically after that job completes, keeping
+   * the one-click UX without holding a Cloudflare request open for the LLM.
+   * Callers are
    * responsible for their own guard checks first (`decideVariantAutoGenerateImage`
    * for the silent auto-fire path, `requireModelSelected`/
    * `requireMcpConnectionOrToast`/`requireHermesConnectionOrToast` for the
@@ -4280,26 +4310,16 @@ export function VerticalDramaCharacterStockPanel({
       instructionByCharacter: customInstructionByCharacter,
       override: instructionOverride,
     });
-    generateImageMutation.mutate({
-      seriesId,
+    if (!startLookPromptPreviewRef.current) {
+      toast.error(
+        t(lang, "ยังเริ่มงานสร้างภาพไม่ได้", "Image generation is not ready yet.")
+      );
+      return;
+    }
+    startLookPromptPreviewRef.current({
       characterId,
-      selectedImageModelId,
-      referencePolicy: "auto",
-      // A look/regeneration is exactly the case that renders image-to-image;
-      // the server applies it only when a reference is genuinely attached.
-      ...(selectedEditImageModelId ? { selectedEditImageModelId } : {}),
-      ...(customInstruction ? { customInstruction } : {}),
-      // Explicit reference pick from the per-look re-render dialog
-      // (`buildLookRenderRequestFields`). `auto` preserves the look contract;
-      // an explicit asset id still wins server-side.
+      customInstruction,
       ...(referenceAssetLinkId ? { referenceAssetLinkId } : {}),
-      ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
-      ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
-        ? { sharedGroupId: mcpSharedGroupId }
-        : {}),
-      ...(imageModelUsesHermes && hermesConnectionId
-        ? { hermesConnectionId }
-        : {}),
     });
   };
 
@@ -4761,11 +4781,11 @@ export function VerticalDramaCharacterStockPanel({
   const [pendingPreviewTarget, setPendingPreviewTarget] = useState<{
     characterId: string;
   } | null>(null);
-  /** Durable BullMQ character-prompt preview currently being polled. */
-  const [characterPromptJob, setCharacterPromptJob] = useState<{
-    jobId: string;
-    characterId: string;
-  } | null>(() => readStoredCharacterPromptJob(seriesId));
+  /** Durable worker_jobs character-prompt preview currently being polled. */
+  const [characterPromptJob, setCharacterPromptJob] =
+    useState<StoredCharacterPromptJob | null>(() =>
+      readStoredCharacterPromptJob(seriesId)
+    );
   /** Prevent stale cached active-job data from rehydrating a terminal job. */
   const handledCharacterPromptJobIdsRef = useRef<Set<string>>(new Set());
 
@@ -4814,6 +4834,101 @@ export function VerticalDramaCharacterStockPanel({
         warnings?: string[];
         approvedDesignSnapshot: VerticalDramaApprovedCharacterDesignSnapshot;
       };
+
+  const submitAutoRenderedLookPrompt = (
+    characterId: string,
+    result: CharacterPromptPreviewResult,
+    intent: CharacterPromptAutoRenderIntent
+  ) => {
+    if (result.mode !== "single") {
+      toast.error(
+        t(
+          lang,
+          "สร้าง prompt สำหรับลุคไม่สำเร็จ กรุณาลองใหม่",
+          "Could not create a look prompt. Please try again."
+        )
+      );
+      return;
+    }
+    const confirmation = buildCharacterPromptConfirmPayload({
+      seriesId,
+      characterId,
+      originalPrompt: result.portraitPrompt,
+      editedPrompt: result.portraitPrompt,
+      negativePrompt: result.negativePrompt,
+      approvedDesignSnapshot: result.approvedDesignSnapshot,
+      selectedImageModelId: intent.selectedImageModelId,
+      selectedEditImageModelId: intent.selectedEditImageModelId,
+      imageModelUsesMcp: Boolean(intent.mcpConnectionId),
+      mcpConnectionId: intent.mcpConnectionId,
+      sharedGroupId: intent.sharedGroupId,
+      imageModelUsesHermes: Boolean(intent.hermesConnectionId),
+      hermesConnectionId: intent.hermesConnectionId,
+      referencePolicy: "auto",
+      referenceAssetLinkId: intent.referenceAssetLinkId,
+    });
+    generateImageMutation.mutate({
+      ...confirmation.payload,
+      ...(intent.customInstruction
+        ? { customInstruction: intent.customInstruction }
+        : {}),
+    });
+  };
+
+  startLookPromptPreviewRef.current = ({
+    characterId,
+    customInstruction,
+    referenceAssetLinkId,
+  }) => {
+    if (!requireModelSelected()) return;
+    if (!requireMcpConnectionOrToast()) return;
+    if (!requireHermesConnectionOrToast()) return;
+    if (
+      characterPromptJob?.characterId === characterId &&
+      characterPromptJob.autoRender
+    ) {
+      return;
+    }
+    const autoRender: CharacterPromptAutoRenderIntent = {
+      selectedImageModelId,
+      ...(selectedEditImageModelId ? { selectedEditImageModelId } : {}),
+      ...(customInstruction ? { customInstruction } : {}),
+      ...(referenceAssetLinkId ? { referenceAssetLinkId } : {}),
+      ...(imageModelUsesMcp && mcpConnectionId ? { mcpConnectionId } : {}),
+      ...(imageModelUsesMcp && mcpConnectionId && mcpSharedGroupId != null
+        ? { sharedGroupId: mcpSharedGroupId }
+        : {}),
+      ...(imageModelUsesHermes && hermesConnectionId
+        ? { hermesConnectionId }
+        : {}),
+    };
+    toast.info(
+      t(lang, "กำลังจัดคิว prompt สำหรับลุค…", "Queuing the look prompt…")
+    );
+    previewCharacterPromptMutation.mutate(
+      buildPreviewCharacterPromptInput({
+        seriesId,
+        characterId,
+        selectedImageModelId,
+        customInstruction,
+        referencePolicy: "auto",
+        referenceAssetLinkId,
+      }),
+      {
+        onSuccess: result => {
+          if (result.mode === "job") {
+            setCharacterPromptJob({
+              jobId: result.jobId,
+              characterId,
+              autoRender,
+            });
+            return;
+          }
+          submitAutoRenderedLookPrompt(characterId, result, autoRender);
+        },
+      }
+    );
+  };
 
   const applyCharacterPromptPreviewResult = (
     res: CharacterPromptPreviewResult
@@ -4921,7 +5036,19 @@ export function VerticalDramaCharacterStockPanel({
       return;
     }
     if (!job || !characterPromptJob) return;
+    if (handledCharacterPromptJobIdsRef.current.has(job.jobId)) return;
     if (job.status === "succeeded" && job.result) {
+      if (characterPromptJob.autoRender) {
+        handledCharacterPromptJobIdsRef.current.add(characterPromptJob.jobId);
+        setCharacterPromptJob(null);
+        setPendingPreviewTarget(null);
+        submitAutoRenderedLookPrompt(
+          characterPromptJob.characterId,
+          job.result as CharacterPromptPreviewResult,
+          characterPromptJob.autoRender
+        );
+        return;
+      }
       applyCharacterPromptPreviewResult(
         job.result as CharacterPromptPreviewResult
       );
