@@ -18,6 +18,25 @@ function response(result: unknown, status = 200, complete = true) {
     headers: { "content-type": "application/json" } });
 }
 
+function queueInventoryFetch(queueRows: unknown, consumerRows: unknown = [], complete = true) {
+  const queueId = Array.isArray(queueRows) && queueRows.length === 1 && typeof queueRows[0]?.queue_id === "string"
+    ? queueRows[0].queue_id as string : null;
+  return vi.fn(async (request: RequestInfo | URL) => {
+    const url = new URL(String(request));
+    if (url.pathname.endsWith("/queues")) return response(queueRows, 200, complete);
+    if (queueId && url.pathname.endsWith(`/queues/${queueId}/consumers`)) return response(consumerRows);
+    if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+    if (url.pathname.endsWith("/deployments")) return response({ deployments: [] });
+    if (/\/hyperdrive\/configs$|\/workers\/routes$|\/cfd_tunnel$|\/containers\/applications$|\/connectivity\/directory\/services$|\/mtls_certificates$/.test(url.pathname)) return response([]);
+    throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
+  });
+}
+
+const productionQueueName = "smartspec-canonical-job-queue-production";
+const productionDlqName = `${productionQueueName}-dlq`;
+const validQueueConsumer = { consumer_id: "e".repeat(32), queue_name: productionQueueName,
+  script_name: workerRef, dead_letter_queue: productionDlqName, type: "worker", settings: { max_retries: 8 } };
+
 describe("Cloudflare production provider inventory", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,7 +65,7 @@ describe("Cloudflare production provider inventory", () => {
 
     const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
     expect(result).toMatchObject({
-      status: "CHECKED",
+      status: "PARTIAL",
       accountRef,
       originConfiguration: { status: "NOT_CONFIGURED", applicationHttpConfigured: false, applicationHttpReadyForRequests: false },
       queues: [{ name: "smartspec-staging-abc-jobs", environment: "staging" }],
@@ -54,6 +73,7 @@ describe("Cloudflare production provider inventory", () => {
       tunnels: [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartaihub-main", status: "healthy" }],
       vpcServices: [{ id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "production" }],
       domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
+      productionQueueConsumerInventory: { complete: false, reason: "PRODUCTION_QUEUE_NOT_FOUND", queueId: null },
       worker: { deploymentCount: 1, activeVersionCount: 1, versions: [{ bindingNames: ["CLOUDFLARE_ACTIVATION", "JOB_QUEUE", "CF_VERSION_METADATA"],
         hasProductionQueueBinding: false, hasVersionMetadataBinding: false, hasVerifiedReleaseIdentity: true,
         sourceSha: "a".repeat(40), buildDigest: "b".repeat(64), configurationDigest: "c".repeat(64) }] },
@@ -146,7 +166,9 @@ describe("Cloudflare production provider inventory", () => {
         return new Response(JSON.stringify({ success: true, result: { deployments }, result_info: { page, per_page: 100, total_pages: 2 } }),
           { status: 200, headers: { "content-type": "application/json" } });
       }
-      if (url.pathname.endsWith("/queues") || url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") ||
+      if (url.pathname.endsWith("/queues")) return response([{ queue_id: "d".repeat(32), queue_name: productionQueueName }]);
+      if (url.pathname.endsWith(`/queues/${"d".repeat(32)}/consumers`)) return response([validQueueConsumer]);
+      if (url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") ||
           url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications") ||
           url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) {
         return response(url.pathname === "/client/v4/zones" ? [{ id: "z".repeat(32), name: "smartaihub.app" }] : []);
@@ -189,7 +211,7 @@ describe("Cloudflare production provider inventory", () => {
     const queueId = "d".repeat(32);
     const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
       const url = new URL(String(request));
-      if (url.pathname.endsWith("/queues")) return response([{ id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
+      if (url.pathname.endsWith("/queues")) return response([{ queue_id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
       if (url.pathname.endsWith(`/queues/${queueId}/consumers`)) return response([{ consumer_id: "e".repeat(32),
         queue_name: "smartspec-canonical-job-queue-production", script_name: workerRef,
         dead_letter_queue: "smartspec-canonical-job-queue-production-dlq", type: "worker", settings: { max_retries: 8 } }]);
@@ -219,6 +241,62 @@ describe("Cloudflare production provider inventory", () => {
         versions: [{ versionId, percentage: 99, hasProductionQueueBinding: true, hasVersionMetadataBinding: true },
           { versionId: candidateVersion, percentage: 1, hasProductionQueueBinding: true, hasVersionMetadataBinding: true }] } });
     expect(fetchImpl.mock.calls.some(([request]) => new URL(String(request)).pathname.endsWith(`/queues/${queueId}/consumers`))).toBe(true);
+  });
+
+  it("uses the provider queue_id for a unique existing Production Queue and consumer lookup", async () => {
+    const queueId = "d".repeat(32);
+    const fetchImpl = queueInventoryFetch([{ queue_id: queueId, queue_name: productionQueueName }], [validQueueConsumer]);
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result.productionQueueConsumerInventory).toMatchObject({ complete: true, queueId,
+      consumers: [{ consumerId: "e".repeat(32), scriptName: workerRef, deadLetterQueueName: productionDlqName }] });
+    expect(fetchImpl.mock.calls.map(([request]) => new URL(String(request)).pathname))
+      .toContain(`/client/v4/accounts/${accountRef}/queues/${queueId}/consumers`);
+  });
+
+  it.each([
+    ["missing queue_id", [{ queue_name: productionQueueName }], "PRODUCTION_QUEUE_ID_INVALID"],
+    ["malformed queue_id", [{ queue_id: "not-a-cloudflare-id", queue_name: productionQueueName }], "PRODUCTION_QUEUE_ID_INVALID"],
+  ])("rejects a Production Queue with %s without attempting consumer lookup", async (_label, rows, reason) => {
+    const fetchImpl = queueInventoryFetch(rows);
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result.productionQueueConsumerInventory).toMatchObject({ complete: false, reason, queueId: null, consumers: [] });
+    expect(fetchImpl.mock.calls.some(([request]) => new URL(String(request)).pathname.includes("/consumers"))).toBe(false);
+  });
+
+  it("reports a missing Production Queue as an inventory blocker, not an invalid id", async () => {
+    const fetchImpl = queueInventoryFetch([]);
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result.productionQueueConsumerInventory).toMatchObject({ complete: false, reason: "PRODUCTION_QUEUE_NOT_FOUND", queueId: null });
+  });
+
+  it("rejects ambiguous duplicate Production Queue names", async () => {
+    const fetchImpl = queueInventoryFetch([
+      { queue_id: "d".repeat(32), queue_name: productionQueueName },
+      { queue_id: "f".repeat(32), queue_name: productionQueueName },
+    ]);
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result.productionQueueConsumerInventory).toMatchObject({ complete: false, reason: "PRODUCTION_QUEUE_NAME_AMBIGUOUS", queueId: null });
+  });
+
+  it("distinguishes consumer Worker mismatch, missing DLQ and incomplete Queue inventory", async () => {
+    const queueId = "d".repeat(32);
+    const wrongWorker = queueInventoryFetch([{ queue_id: queueId, queue_name: productionQueueName }],
+      [{ ...validQueueConsumer, script_name: "other-worker" }]);
+    const wrongWorkerResult = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB,
+      tenantId: "tenant-a", projectId: "project-a", fetchImpl: wrongWorker });
+    expect(wrongWorkerResult.productionQueueConsumerInventory.reason).toBe("PRODUCTION_QUEUE_CONSUMER_WORKER_MISMATCH");
+
+    const missingDlq = queueInventoryFetch([{ queue_id: queueId, queue_name: productionQueueName }],
+      [{ ...validQueueConsumer, dead_letter_queue: "" }]);
+    const missingDlqResult = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB,
+      tenantId: "tenant-a", projectId: "project-a", fetchImpl: missingDlq });
+    expect(missingDlqResult.productionQueueConsumerInventory.reason).toBe("PRODUCTION_QUEUE_DEAD_LETTER_QUEUE_MISMATCH");
+
+    const partial = queueInventoryFetch([{ queue_id: queueId, queue_name: productionQueueName }], [validQueueConsumer], false);
+    const partialResult = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB,
+      tenantId: "tenant-a", projectId: "project-a", fetchImpl: partial });
+    expect(partialResult.productionQueueConsumerInventory).toMatchObject({ complete: false, reason: "PRODUCTION_QUEUE_INVENTORY_HTTP_200" });
+    expect(partial.mock.calls.some(([request]) => new URL(String(request)).pathname.includes("/consumers"))).toBe(false);
   });
 
   it("reports denied reads separately from an empty Production inventory", async () => {
@@ -262,7 +340,7 @@ describe("Cloudflare production provider inventory", () => {
     const queueId = "d".repeat(32);
     const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
       const url = new URL(String(request));
-      if (url.pathname.endsWith("/queues")) return response([{ id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
+      if (url.pathname.endsWith("/queues")) return response([{ queue_id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
       if (url.pathname.endsWith(`/queues/${queueId}/consumers`)) return response(null, 403);
       if (url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") || url.pathname.endsWith("/cfd_tunnel") ||
           url.pathname.endsWith("/containers/applications") || url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) return response([]);
@@ -279,7 +357,7 @@ describe("Cloudflare production provider inventory", () => {
     const queueId = "d".repeat(32);
     const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
       const url = new URL(String(request));
-      if (url.pathname.endsWith("/queues")) return response([{ id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
+      if (url.pathname.endsWith("/queues")) return response([{ queue_id: queueId, queue_name: "smartspec-canonical-job-queue-production" }]);
       if (url.pathname.endsWith(`/queues/${queueId}/consumers`)) return response([]);
       if (url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") || url.pathname.endsWith("/cfd_tunnel") ||
           url.pathname.endsWith("/containers/applications") || url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) return response([]);

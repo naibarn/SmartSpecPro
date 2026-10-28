@@ -134,13 +134,18 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
     const zoneId = typeof zone?.id === "string" ? zone.id : undefined;
-    const queueRows = Array.isArray(queues.result) ? queues.result as Array<{ id?: unknown; queue_name?: unknown }> : [];
-    const productionQueue = queueRows.find(row => row.queue_name === "smartspec-canonical-job-queue-production");
+    const queueRows = Array.isArray(queues.result) ? queues.result as Array<{ queue_id?: unknown; queue_name?: unknown }> : [];
+    const productionQueueRows = queueRows.filter(row => row.queue_name === "smartspec-canonical-job-queue-production");
+    const productionQueue = productionQueueRows.length === 1 ? productionQueueRows[0] : undefined;
+    const productionQueueId = queues.complete && typeof productionQueue?.queue_id === "string" && /^[a-f0-9]{32}$/i.test(productionQueue.queue_id)
+      ? productionQueue.queue_id : null;
     const [routes, productionQueueConsumers, hyperdriveDetails, tunnels, containers, vpcServices, mtlsCertificates] = await Promise.all([
       zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
-      typeof productionQueue?.id === "string" && /^[a-f0-9]{32}$/i.test(productionQueue.id)
-        ? get(token, `/accounts/${encodeURIComponent(target.accountRef)}/queues/${encodeURIComponent(productionQueue.id)}/consumers`, fetchImpl)
-        : Promise.resolve(queues.complete ? { status: 200, result: [], complete: true } : null),
+      productionQueueId
+        ? get(token, `/accounts/${encodeURIComponent(target.accountRef)}/queues/${encodeURIComponent(productionQueueId)}/consumers`, fetchImpl)
+        : Promise.resolve({ status: queues.status, result: null, complete: false,
+          diagnosticCode: productionQueueRows.length === 0 ? "PRODUCTION_QUEUE_NOT_FOUND"
+            : productionQueueRows.length > 1 ? "PRODUCTION_QUEUE_NAME_AMBIGUOUS" : "PRODUCTION_QUEUE_ID_INVALID" }),
       Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{
         id?: unknown; name?: unknown; origin?: { service_id?: unknown; database?: unknown; user?: unknown; scheme?: unknown };
         caching?: { disabled?: unknown }; origin_connection_limit?: unknown;
@@ -216,12 +221,13 @@ export async function probeCloudflareProductionProviderInventory(input: {
       : [];
     const validQueueConsumerRows = consumerRows.filter(row => typeof row.consumer_id === "string" && /^[a-f0-9]{32}$/i.test(row.consumer_id) &&
       row.queue_name === "smartspec-canonical-job-queue-production" && typeof row.script_name === "string" &&
-      /^[a-z0-9-]{1,63}$/.test(row.script_name) && typeof row.dead_letter_queue === "string" &&
-      /^[a-z0-9-]{0,63}$/.test(row.dead_letter_queue) && row.type === "worker");
+      /^[a-z0-9-]{1,63}$/.test(row.script_name) &&
+      (row.dead_letter_queue === undefined || typeof row.dead_letter_queue === "string" && /^[a-z0-9-]{0,63}$/.test(row.dead_letter_queue)) && row.type === "worker");
     const productionQueueConsumerReason = !queues.complete
       ? queues.status ? `PRODUCTION_QUEUE_INVENTORY_HTTP_${queues.status}` : "PRODUCTION_QUEUE_INVENTORY_UNAVAILABLE"
-      : !productionQueue ? "PRODUCTION_QUEUE_NOT_FOUND"
-        : typeof productionQueue.id !== "string" || !/^[a-f0-9]{32}$/i.test(productionQueue.id)
+      : productionQueueRows.length === 0 ? "PRODUCTION_QUEUE_NOT_FOUND"
+        : productionQueueRows.length > 1 ? "PRODUCTION_QUEUE_NAME_AMBIGUOUS"
+          : !productionQueueId
           ? "PRODUCTION_QUEUE_ID_INVALID"
           : !productionQueueConsumers?.complete
             ? productionQueueConsumers?.status ? `PRODUCTION_QUEUE_CONSUMER_READ_HTTP_${productionQueueConsumers.status}`
@@ -302,9 +308,9 @@ export async function probeCloudflareProductionProviderInventory(input: {
       productionQueueConsumerInventory: {
         complete: Boolean(productionQueueConsumers?.complete),
         reason: productionQueueConsumerReason,
-        queueId: typeof productionQueue?.id === "string" && /^[a-f0-9]{32}$/i.test(productionQueue.id) ? productionQueue.id : null,
+        queueId: productionQueueId,
         consumers: validQueueConsumerRows.map(row => ({ consumerId: row.consumer_id as string, queueName: row.queue_name as string,
-          scriptName: row.script_name as string, deadLetterQueueName: row.dead_letter_queue as string,
+          scriptName: row.script_name as string, ...(typeof row.dead_letter_queue === "string" ? { deadLetterQueueName: row.dead_letter_queue } : {}),
           ...(typeof row.settings?.max_retries === "number" ? { maxRetries: row.settings.max_retries } : {}) })),
       },
       hyperdriveInventoryComplete: hyperdrive.complete,

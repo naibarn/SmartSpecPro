@@ -142,23 +142,31 @@ export function createCloudflareProductionCanaryTransport(input: {
   }
 
   async function verifyProductionQueueConsumer(token: string, target: CloudflareProductionDeploymentTarget) {
-    const queues = await api<Array<{ id?: unknown; queue_name?: unknown }>>(token,
+    const queues = await api<Array<{ queue_id?: unknown; queue_name?: unknown }>>(token,
       `/accounts/${encodeURIComponent(target.accountRef)}/queues?per_page=100`, "GET");
     const matches = queues.filter(queue => queue.queue_name === "smartspec-canonical-job-queue-production");
     const queue = matches[0];
-    if (matches.length !== 1 || typeof queue?.id !== "string" || !/^[a-f0-9]{32}$/i.test(queue.id)) {
+    if (matches.length !== 1) {
       throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_QUEUE_INVENTORY_MISMATCH");
+    }
+    if (typeof queue?.queue_id !== "string" || !/^[a-f0-9]{32}$/i.test(queue.queue_id)) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_QUEUE_ID_INVALID");
     }
     const consumers = await api<Array<{ consumer_id?: unknown; queue_name?: unknown; script_name?: unknown;
       dead_letter_queue?: unknown; type?: unknown }>>(token,
-      `/accounts/${encodeURIComponent(target.accountRef)}/queues/${encodeURIComponent(queue.id)}/consumers`, "GET");
+      `/accounts/${encodeURIComponent(target.accountRef)}/queues/${encodeURIComponent(queue.queue_id)}/consumers`, "GET");
     const consumer = consumers[0];
     if (consumers.length !== 1 || typeof consumer?.consumer_id !== "string" || !/^[a-f0-9]{32}$/i.test(consumer.consumer_id) ||
-        consumer.queue_name !== queue.queue_name || consumer.script_name !== target.workerRef || consumer.type !== "worker" ||
-        typeof consumer.dead_letter_queue !== "string" || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(consumer.dead_letter_queue)) {
+        consumer.queue_name !== queue.queue_name || consumer.type !== "worker") {
       throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_QUEUE_CONSUMER_MISMATCH");
     }
-    return { queueId: queue.id, consumerId: consumer.consumer_id, queueName: consumer.queue_name,
+    if (consumer.script_name !== target.workerRef) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_QUEUE_CONSUMER_WORKER_MISMATCH");
+    }
+    if (typeof consumer.dead_letter_queue !== "string" || !/^[a-z0-9][a-z0-9-]{0,62}$/.test(consumer.dead_letter_queue)) {
+      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_QUEUE_DLQ_MISSING_OR_INVALID");
+    }
+    return { queueId: queue.queue_id, consumerId: consumer.consumer_id, queueName: consumer.queue_name,
       scriptName: consumer.script_name, deadLetterQueueName: consumer.dead_letter_queue };
   }
 

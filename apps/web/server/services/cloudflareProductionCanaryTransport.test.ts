@@ -49,7 +49,7 @@ function response(result: unknown) {
   return new Response(JSON.stringify({ success: true, result }), { status: 200, headers: { "content-type": "application/json" } });
 }
 
-const productionQueue = [{ id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", queue_name: "smartspec-canonical-job-queue-production" }];
+const productionQueue = [{ queue_id: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", queue_name: "smartspec-canonical-job-queue-production" }];
 const productionQueueConsumer = [{ consumer_id: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   queue_name: "smartspec-canonical-job-queue-production", script_name: "smartspec-cloudflare-runtime",
   dead_letter_queue: "smartspec-canonical-job-queue-production-dlq", type: "worker" }];
@@ -164,7 +164,63 @@ describe("Cloudflare production canary transport", () => {
       .mockResolvedValueOnce(response([{ ...productionQueueConsumer[0], script_name: "other-worker" }]));
     const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
     await expect(transport.canary({ token: "test-token", target, grant, candidate,
-      assertMutationAuthorized: async () => undefined })).rejects.toThrow("CLOUDFLARE_PRODUCTION_QUEUE_CONSUMER_MISMATCH");
+      assertMutationAuthorized: async () => undefined })).rejects.toThrow("CLOUDFLARE_PRODUCTION_QUEUE_CONSUMER_WORKER_MISMATCH");
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
+  });
+
+  it("builds the consumer readback URL from Cloudflare queue_id", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId, created_on: "2026-10-20T00:00:00Z",
+        versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
+      .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
+      .mockResolvedValueOnce(response({ id: candidate.versionId, annotations: { "workers/message": `SmartAIHub production ${candidate.sourceSha} ${candidate.buildDigest} origin ${candidate.configurationDigest}` } }))
+      .mockResolvedValueOnce(response(productionQueue))
+      .mockResolvedValueOnce(response(productionQueueConsumer))
+      .mockResolvedValueOnce(response({ id: canaryDeploymentId, versions: [
+        { version_id: baseline.versionId, percentage: 99 }, { version_id: candidate.versionId, percentage: 1 },
+      ], annotations: { "workers/message": `SmartAIHub production canary grant ${grant.grantRef}` } }))
+      .mockResolvedValueOnce(response({ id: canaryDeploymentId, versions: [
+        { version_id: baseline.versionId, percentage: 99 }, { version_id: candidate.versionId, percentage: 1 },
+      ], annotations: { "workers/message": `SmartAIHub production canary grant ${grant.grantRef}` } }));
+    const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
+    await expect(transport.canary({ token: "test-token", target, grant, candidate,
+      assertMutationAuthorized: async () => undefined })).resolves.toMatchObject({ deploymentId: canaryDeploymentId });
+    expect(new URL(String(fetchImpl.mock.calls[5]?.[0])).pathname)
+      .toBe(`/client/v4/accounts/${grant.accountRef}/queues/${productionQueue[0]!.queue_id}/consumers`);
+    expect(fetchImpl.mock.calls.filter(([, init]) => init?.method === "POST")).toHaveLength(1);
+  });
+
+  it.each([
+    [{ queue_name: "smartspec-canonical-job-queue-production" }],
+    [{ queue_id: "invalid", queue_name: "smartspec-canonical-job-queue-production" }],
+  ])("rejects a missing or invalid queue_id before consumer lookup", async queueRow => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId, created_on: "2026-10-20T00:00:00Z",
+        versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
+      .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
+      .mockResolvedValueOnce(response({ id: candidate.versionId, annotations: { "workers/message": `SmartAIHub production ${candidate.sourceSha} ${candidate.buildDigest} origin ${candidate.configurationDigest}` } }))
+      .mockResolvedValueOnce(response([queueRow]));
+    const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
+    await expect(transport.canary({ token: "test-token", target, grant, candidate,
+      assertMutationAuthorized: async () => undefined })).rejects.toThrow("CLOUDFLARE_PRODUCTION_QUEUE_ID_INVALID");
+    expect(fetchImpl).toHaveBeenCalledTimes(5);
+    expect(fetchImpl.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
+  });
+
+  it("reports a missing DLQ distinctly from a consumer Worker mismatch", async () => {
+    const fetchImpl = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response([{ id: "route-1", pattern: grant.routePattern, script: grant.targetId }]))
+      .mockResolvedValueOnce(response({ deployments: [{ id: grant.rollbackDeploymentId, created_on: "2026-10-20T00:00:00Z",
+        versions: [{ version_id: baseline.versionId, percentage: 100 }] }] }))
+      .mockResolvedValueOnce(response({ id: baseline.versionId, annotations: { "workers/message": `SmartAIHub production ${baseline.sourceSha} ${baseline.buildDigest} origin ${baseline.configurationDigest}` } }))
+      .mockResolvedValueOnce(response({ id: candidate.versionId, annotations: { "workers/message": `SmartAIHub production ${candidate.sourceSha} ${candidate.buildDigest} origin ${candidate.configurationDigest}` } }))
+      .mockResolvedValueOnce(response(productionQueue))
+      .mockResolvedValueOnce(response([{ ...productionQueueConsumer[0], dead_letter_queue: "" }]));
+    const transport = createCloudflareProductionCanaryTransport({ fetchImpl });
+    await expect(transport.canary({ token: "test-token", target, grant, candidate,
+      assertMutationAuthorized: async () => undefined })).rejects.toThrow("CLOUDFLARE_PRODUCTION_QUEUE_DLQ_MISSING_OR_INVALID");
     expect(fetchImpl.mock.calls.every(([, init]) => init?.method !== "POST")).toBe(true);
   });
 
