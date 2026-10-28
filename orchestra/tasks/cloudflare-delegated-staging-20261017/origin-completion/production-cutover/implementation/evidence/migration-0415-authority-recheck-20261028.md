@@ -9,7 +9,7 @@ Repository: `naibarn/SmartSpecPro` (public personal-account repository).
 - The authenticated GitHub identity is `naibarn` (numeric user ID `214854693`) and has repository `admin` permission.
 - `production` environment currently has no protection rules and no deployment branch policy. The branch-policy endpoint returns 404 because custom branch policies are not configured.
 - Repository Actions variables are empty; `SPEC224_DATABASE_OWNER_TEAM_ID` is absent. The repository has no Teams and one direct collaborator, `naibarn`.
-- The repository has no separate GitHub App/automation dispatch credential among the configured Actions secret names. No credential values were read.
+- The `production` environment has no Actions secrets or variables, including the workflow's required `NEON_PROD_DB_URL`. Repository secret names also contain no separate GitHub App/automation dispatch credential. No credential values were read.
 - `main` does not have branch protection configured (GitHub branch-protection endpoint returns 404).
 - Prior 0415 workflow run `40684866061` was initiated by `naibarn` as `workflow_dispatch` from `main`. It stopped at the environment gate before Production database access.
 - None of these checks accessed the Production database or its secret.
@@ -28,7 +28,8 @@ For an individual owner reviewer, the repository owner can configure:
 1. Repository variable `SPEC224_DATABASE_OWNER_USER_ID=214854693`.
 2. The existing `production` environment with exactly one required reviewer: GitHub User ID `214854693`, `prevent_self_review=true`.
 3. A custom deployment branch policy allowing only `main`.
-4. A distinct already-authorized workflow dispatch identity, separate from reviewer `naibarn`, so the owner can approve the run without self-review. No such identity is presently configured. Provisioning a new GitHub App/bot credential is outside the currently available credential set and has not been done.
+4. A production-only environment secret named `NEON_PROD_DB_URL`, containing the authorized Production database connection. It is absent at both environment and repository secret scopes; no credential value is available to this session.
+5. A distinct already-authorized workflow dispatch identity, separate from reviewer `naibarn`, so the owner can approve the run without self-review. No such identity is presently configured. Provisioning a new GitHub App/bot credential is outside the currently available credential set and has not been done.
 
 The safe gate correction is integrated and unit-tested, but no Production environment/variable setting was changed and no 0415 run was retried. Production migration remains blocked until the owner provides or configures the distinct authorized dispatcher. Do not set `prevent_self_review=false`, substitute a fabricated Team ID, or treat a workflow input/reference as a substitute for the environment review.
 

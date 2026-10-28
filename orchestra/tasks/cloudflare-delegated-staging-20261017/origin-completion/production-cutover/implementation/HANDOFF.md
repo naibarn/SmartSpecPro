@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `182`
-- Updated (UTC): `2026-10-28T12:26:53.581948+00:00`
+- State generation: `183`
+- Updated (UTC): `2026-10-28T12:28:47.725110+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Latest recorded merged Main SHA: `07c17a85feeb931483c608bb4643338fa97de21c`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: Do not dispatch or apply Production 0415 until an authorized workflow dispatcher distinct from naibarn is available. To use the new individual-owner path, configure SPEC224_DATABASE_OWNER_USER_ID=214854693, set the production environment to exactly one required reviewer User 214854693 with prevent_self_review=true, and allow only main. Then verify the live gate and rerun only 0415. No separate authorized dispatcher is currently configured. DEV 0415 remains ALREADY_APPLIED; authenticated RPC/UI acceptance remains open.
+- Next action: Do not dispatch or apply Production 0415 until a complete safe authority exists. Required owner-side setup: set repo variable SPEC224_DATABASE_OWNER_USER_ID=214854693; configure the production environment with exactly one required reviewer User 214854693, prevent_self_review=true, main-only branch allowlist, and production-only NEON_PROD_DB_URL secret. A separate authorized dispatcher identity is also required because naibarn initiated the previous run and cannot self-approve; none is configured. After those conditions are independently verified, rerun only 0415. DEV 0415 is ALREADY_APPLIED; authenticated RPC/UI acceptance remains open.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-single-owner-0415-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | 07c17a85feeb931483c608bb4643338fa97de21c | 07c17a85feeb931483c608bb4643338fa97de21c | Do not dispatch or apply Production 0415 until an authorized workflow dispatcher distinct from naibarn is available. To use the new individual-owner path, configure SPEC224_DATABASE_OWNER_USER_ID=214854693, set the production environment to exactly one required reviewer User 214854693 with prevent_self_review=true, and allow only main. Then verify the live gate and rerun only 0415. No separate authorized dispatcher is currently configured. DEV 0415 remains ALREADY_APPLIED; authenticated RPC/UI acceptance remains open. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-single-owner-0415-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | 07c17a85feeb931483c608bb4643338fa97de21c | 07c17a85feeb931483c608bb4643338fa97de21c | Do not dispatch or apply Production 0415 until a complete safe authority exists. Required owner-side setup: set repo variable SPEC224_DATABASE_OWNER_USER_ID=214854693; configure the production environment with exactly one required reviewer User 214854693, prevent_self_review=true, main-only branch allowlist, and production-only NEON_PROD_DB_URL secret. A separate authorized dispatcher identity is also required because naibarn initiated the previous run and cannot self-approve; none is configured. After those conditions are independently verified, rerun only 0415. DEV 0415 is ALREADY_APPLIED; authenticated RPC/UI acceptance remains open. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -58,6 +58,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Authenticated 0415 E2E is incomplete in both environments: all three RPCs return 401 without a session; Runner/Debian Runner, Workspace/Project Binding UI, and authenticated 42P01 behavior remain unverified.
 - GitHub Production authority remains BLOCKED: production environment has zero reviewers and no branch policy; SPEC224_DATABASE_OWNER_TEAM_ID and SPEC224_DATABASE_OWNER_USER_ID are both absent. Only collaborator naibarn (ID 214854693) exists and initiated run 40684866061; self-review prevention prohibits that user from approving a run they initiate. No separate authorized dispatcher credential exists.
 - SmartAIHub admin role code exists, but no authenticated Production session or live DB proof maps the GitHub owner identity to the active SmartAIHub admin principal. All three RPCs return 401 without an authenticated owner session in both environments; Workspace/Project Binding UI E2E remains unverified.
+- Production environment contains no secrets or variables; the required NEON_PROD_DB_URL Production credential is absent. The workflow must not receive the Development DATABASE_URL as a substitute.
 
 ## Resume
 
