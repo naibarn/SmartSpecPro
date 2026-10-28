@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), refetchWorkspaces: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } } }), runnerNodes: {
   list: { useQuery: () => ({ data: { runners: [{ runnerId: "runner-test", displayName: "Test Runner", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1" }] } }) },
   workspaceReadiness: { useQuery: () => ({ data: mocks.readiness, isLoading: false, error: null }) },
 }, spec226DevelopmentControl: {
-  availableWorkspaces: { useQuery: () => ({ data: { workspaces: mocks.workspaces }, isLoading: false, error: null, refetch: vi.fn() }) },
+  availableWorkspaces: { useQuery: () => ({ data: { workspaces: mocks.workspaces }, isLoading: false, isFetching: false, error: null, refetch: mocks.refetchWorkspaces }) },
   getConversationWorkspace: { useQuery: () => ({ data: mocks.workspace, refetch: vi.fn() }) },
   listFeatureSpecs: { useQuery: () => ({ data: { specs: mocks.featureSpecs }, isLoading: false, error: null }) },
   getFeatureSpecContext: { useQuery: () => ({ data: mocks.featureSpecContext, isLoading: false, error: null }) },
@@ -29,6 +29,14 @@ function preparation(ready: boolean) {
       ownerAction: ready ? null : "Runner → Tools → Codex → ทดสอบสั่งงานจริง" } };
 }
 
+function discoveredModelCatalog() {
+  return {
+    state: "discovered", adapterId: "codex.v1", cliVersion: "1.2.3", observedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 60_000).toISOString(), accountProviderFingerprint: "account-fingerprint",
+    revision: "catalog-rev-1", models: [{ id: "test-model", displayName: "Test Model", isDefault: true, reasoningEfforts: ["low", "medium", "high"], defaultReasoningEffort: "medium" }],
+  };
+}
+
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -36,9 +44,10 @@ beforeEach(() => {
   mocks.bindWorkspace.mockResolvedValue({ conversationId: 47 });
   mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null };
   mocks.role = "admin";
-  mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1" }];
+  mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: discoveredModelCatalog() }];
   mocks.featureSpecs = [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }];
   mocks.featureSpecContext = { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }] }, integratedSha: "b".repeat(40) };
+  mocks.refetchWorkspaces.mockResolvedValue({});
   mocks.prepare.mockResolvedValue(preparation(true));
   mocks.ingestSpecSet.mockResolvedValue({ revision: 2, files: [], requirementCount: 1 });
   mocks.start.mockResolvedValue({ runId: "unit-run", jobId: "unit-job", dispatchStatus: "PENDING_AUTHORIZATION",
@@ -55,6 +64,49 @@ async function preparePanel() {
 }
 
 describe("Core goal readiness feedback", () => {
+  it("renders only Runner-discovered models and sends the chosen model and supported effort with Start", async () => {
+    mocks.workspaces[0].modelCatalog = {
+      state: "discovered", adapterId: "codex.v1", cliVersion: "1.2.3", observedAt: new Date().toISOString(),
+      expiresAt: new Date(Date.now() + 60_000).toISOString(), accountProviderFingerprint: "account-fingerprint",
+      revision: "catalog-rev-1", models: [
+        { id: "dynamic-model-a", displayName: "Dynamic Model A", isDefault: true, reasoningEfforts: ["low", "medium"] },
+        { id: "dynamic-model-b", displayName: "Dynamic Model B", isDefault: false, reasoningEfforts: ["high"] },
+      ],
+    };
+    mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
+    await preparePanel();
+
+    fireEvent.click(screen.getByRole("button", { name: "ตรวจสอบ Model ล่าสุด" }));
+    expect(mocks.refetchWorkspaces).toHaveBeenCalled();
+    const modelSelector = screen.getByRole("combobox", { name: "AI Model" });
+    expect(modelSelector).toHaveTextContent(/Auto/);
+    fireEvent.click(modelSelector);
+    expect(screen.getByRole("option", { name: "Dynamic Model A · Default" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Dynamic Model B" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /gpt-|claude|o[0-9]/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Dynamic Model B" }));
+    expect(await screen.findByRole("radio", { name: "High" })).toBeChecked();
+    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
+      modelSelection: { policy: "explicit", modelId: "dynamic-model-b", reasoningEffort: "high" },
+    })));
+  });
+
+  it("keeps Start disabled when the selected Runner has no current discovered model catalog", async () => {
+    mocks.workspaces[0].modelCatalog = null;
+    await preparePanel();
+    expect(screen.getByRole("button", { name: "สั่งพัฒนา" })).toBeDisabled();
+    expect(screen.getByText(/ยังไม่มี Model catalog/)).toBeInTheDocument();
+  });
+
+  it("keeps Simple Mode on Auto and shows the Runner-resolved default without exposing model overrides", () => {
+    render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
+    expect(screen.getByText("Auto · Test Model")).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "AI Model" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Reasoning Effort" })).not.toBeInTheDocument();
+  });
+
   it("keeps continuation available without displaying internal run or package identifiers in simple mode", () => {
     mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "private-run-123", state: "BLOCKED_RECOVERABLE", workPackageId: "pkg", workPackageExternalId: "SPEC-internal-123", specSetRevision: 1, revision: 2 }] };
     render(<Spec224WorkspacePanel conversationId={8} simpleMode />);

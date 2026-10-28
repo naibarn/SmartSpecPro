@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { HStack } from "@astryxdesign/core/HStack";
+import { Heading } from "@astryxdesign/core/Heading";
+import { RadioList, RadioListItem } from "@astryxdesign/core/RadioList";
+import { Section } from "@astryxdesign/core/Section";
+import { Selector } from "@astryxdesign/core/Selector";
+import { VStack } from "@astryxdesign/core/VStack";
+import { Text as AstryxText } from "@astryxdesign/core/Text";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +28,23 @@ type WorkspaceOption = {
   dirtyPaths?: string[] | null;
   convergenceState?: string;
   convergenceCanonicalSha?: string | null;
+  modelCatalog?: {
+    state: "discovered" | "error" | "not_ready";
+    adapterId: string;
+    cliVersion: string | null;
+    observedAt: string;
+    expiresAt: string;
+    accountProviderFingerprint?: string | null;
+    verificationState?: string;
+    revision?: string;
+    models?: Array<{
+      id: string;
+      displayName: string;
+      reasoningEfforts: string[];
+      defaultReasoningEffort?: string | null;
+      isDefault: boolean;
+    }>;
+  } | null;
 };
 
 type RunnerOption = {
@@ -83,6 +107,11 @@ function selectionKey(workspace: WorkspaceOption): string {
   return JSON.stringify([workspace.runnerId, workspace.workspaceId]);
 }
 
+function harnessLabel(adapterId: string): string {
+  const name = adapterId.split(".")[0]?.replace(/[-_]/g, " ") ?? adapterId;
+  return name.replace(/\b\w/g, character => character.toUpperCase());
+}
+
 function imageMimeType(file: File): "image/png" | "image/jpeg" | "image/webp" | null {
   if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/webp") return file.type;
   const extension = file.name.split(".").pop()?.toLowerCase();
@@ -142,6 +171,10 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const [pendingSpecFiles, setPendingSpecFiles] = useState<File[]>([]);
   const [requestKind, setRequestKind] = useState<"development" | "mini_app">("development");
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
+  const [modelPolicy, setModelPolicy] = useState<"auto" | "explicit">("auto");
+  const [selectedModelId, setSelectedModelId] = useState("");
+  const [reasoningEffort, setReasoningEffort] = useState("");
+  const effectiveModelPolicy = simpleMode ? "auto" : modelPolicy;
   const [uploading, setUploading] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -219,6 +252,22 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
+  const modelCatalog = selectedWorkspace?.modelCatalog;
+  const catalogModels = modelCatalog?.models ?? [];
+  const catalogFresh = Boolean(modelCatalog?.state === "discovered"
+    && modelCatalog.accountProviderFingerprint
+    && modelCatalog.revision
+    && Date.parse(modelCatalog.expiresAt) > Date.now()
+    && Date.parse(modelCatalog.observedAt) <= Date.now());
+  const activeModel = effectiveModelPolicy === "explicit"
+    ? catalogModels.find(model => model.id === selectedModelId)
+    : catalogModels.find(model => model.isDefault);
+  const availableEfforts = activeModel?.reasoningEfforts ?? [];
+  const supportedEffort = availableEfforts.includes(reasoningEffort)
+    ? reasoningEffort
+    : activeModel?.defaultReasoningEffort && availableEfforts.includes(activeModel.defaultReasoningEffort)
+      ? activeModel.defaultReasoningEffort
+      : availableEfforts.includes("medium") ? "medium" : availableEfforts[0] ?? "";
   const selectedRunner = runners.find(runner => runner.runnerId === selectedRunnerId);
   const isPlatformWorkspace = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" || selectionKey(selectedWorkspace ?? { runnerId: "", workspaceId: "" }) === lastPlatformWorkspaceKey.current;
   const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && selectionKey(selectedWorkspace) === selectionKey(platformWorkspace ?? selectedWorkspace);
@@ -254,6 +303,19 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       setSelected(JSON.stringify([bound.runnerId, bound.workspaceId]));
     }
   }, [workspaceQuery.data?.workspace?.runnerId, workspaceQuery.data?.workspace?.workspaceId]);
+  useEffect(() => {
+    setModelPolicy("auto");
+    setSelectedModelId("");
+    setReasoningEffort("");
+  }, [selected]);
+  useEffect(() => {
+    if (!activeModel) return;
+    setReasoningEffort(current => current && activeModel.reasoningEfforts.includes(current)
+      ? current
+      : activeModel.defaultReasoningEffort && activeModel.reasoningEfforts.includes(activeModel.defaultReasoningEffort)
+        ? activeModel.defaultReasoningEffort
+        : activeModel.reasoningEfforts.includes("medium") ? "medium" : activeModel.reasoningEfforts[0] ?? "");
+  }, [activeModel?.id, modelCatalog?.revision]);
   useEffect(() => {
     if (conversationId !== null || selected || selectedRunnerId || !platformWorkspace) return;
     lastPlatformWorkspaceKey.current = selectionKey(platformWorkspace);
@@ -420,7 +482,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       toast.error("เลือก responsive target อย่างน้อยหนึ่งอุปกรณ์");
       return;
     }
-    const key = `${conversationId}:${mode}:${preparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}`;
+    const modelSelection = { policy: effectiveModelPolicy, ...(effectiveModelPolicy === "explicit" ? { modelId: selectedModelId } : {}), reasoningEffort: supportedEffort };
+    const key = `${conversationId}:${mode}:${preparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     try {
@@ -436,6 +499,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
           ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
         }),
         budgetCapMinorUnits,
+        modelSelection,
         ...(visualReferences.length ? {
           visualReferences: visualReferences.map(reference => ({
             id: reference.id,
@@ -653,6 +717,95 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                 <p role="status">{runnerReadiness.ready ? "พร้อม" : `รอ · ${runnerReadiness.code}`}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</p>
               ) : null}
             </section>
+          ) : null}
+
+          {selectedWorkspace && requestKind === "development" ? (
+            <Section variant="transparent" padding={3} aria-labelledby="spec224-model-selection-heading">
+              <VStack gap={3}>
+                <HStack gap={3} justify="between" align="center" wrap="wrap">
+                  <VStack gap={1}>
+                    <Heading id="spec224-model-selection-heading" level={4}>ตัวเลือก AI สำหรับงานพัฒนา</Heading>
+                    <AstryxText type="supporting">รายการรุ่นและระดับ reasoning โหลดจาก catalog ของ Runner ที่เลือก</AstryxText>
+                  </VStack>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={workspacesQuery.isFetching}
+                  onClick={() => void workspacesQuery.refetch()}
+                  aria-label="ตรวจสอบ Model ล่าสุด"
+                >
+                  {workspacesQuery.isFetching ? "กำลังตรวจสอบ…" : "↻ รายละเอียด"}
+                </Button>
+                </HStack>
+                <Selector
+                  label="Harness"
+                  value={modelCatalog?.adapterId ?? ""}
+                  options={modelCatalog?.adapterId
+                    ? [{ value: modelCatalog.adapterId, label: harnessLabel(modelCatalog.adapterId) }]
+                    : []}
+                  placeholder="ยังไม่มี catalog จาก Runner"
+                  isDisabled={!catalogFresh || workspacesQuery.isFetching}
+                  disabledMessage="รอ catalog ล่าสุดจาก Runner ก่อนเลือก Harness"
+                  emptyText="ยังไม่มี Harness ที่รายงานจาก Runner"
+                  width="100%"
+                />
+                {!simpleMode ? (
+                  <Selector
+                    label="AI Model"
+                    value={modelPolicy === "auto" ? "auto" : selectedModelId}
+                    options={[
+                      { value: "auto", label: "Auto — ใช้รุ่นเริ่มต้นจาก Runner" },
+                      ...catalogModels.map(model => ({ value: model.id, label: `${model.displayName}${model.isDefault ? " · Default" : ""}` })),
+                    ]}
+                    onChange={value => {
+                        if (value === "auto") {
+                          setModelPolicy("auto");
+                          setSelectedModelId("");
+                        } else {
+                          setModelPolicy("explicit");
+                          setSelectedModelId(value);
+                        }
+                    }}
+                    disabledMessage="รอ Model catalog ล่าสุดจาก Runner ก่อนเลือกรุ่น"
+                    emptyText="Runner ยังไม่รายงานรุ่น AI"
+                    isDisabled={!catalogFresh || catalogModels.length === 0 || workspacesQuery.isFetching}
+                    width="100%"
+                  />
+                ) : (
+                  <VStack gap={1}>
+                    <AstryxText type="label">AI Model</AstryxText>
+                    <AstryxText type="body">{activeModel ? `Auto · ${activeModel.displayName}` : "Auto · ยังไม่มีรุ่นที่พร้อมจาก Runner"}</AstryxText>
+                  </VStack>
+                )}
+              {!simpleMode ? (
+                <RadioList
+                  label="Reasoning Effort"
+                  value={supportedEffort}
+                  onChange={setReasoningEffort}
+                  orientation="horizontal"
+                  isDisabled={!catalogFresh || availableEfforts.length === 0}
+                  description={availableEfforts.length ? "ระบบจะแสดงระดับที่รุ่นนี้รองรับเท่านั้น" : "รุ่นที่เลือกไม่ได้ประกาศระดับ reasoning"}
+                  htmlName="spec224-reasoning-effort"
+                >
+                  {availableEfforts.map(effort => (
+                    <RadioListItem key={effort} value={effort} label={effort.replace(/[-_]/g, " ").replace(/\b\w/g, character => character.toUpperCase())} />
+                  ))}
+                </RadioList>
+              ) : null}
+              {!catalogFresh ? (
+                <AstryxText type="supporting" as="p" role="status">
+                  {workspacesQuery.isFetching ? "กำลังโหลด Model catalog จาก Runner…" : modelCatalog?.state === "error" ? "Runner รายงานข้อผิดพลาดระหว่างค้นหา Model โปรดลองตรวจสอบใหม่" : "ยังไม่มี Model catalog ที่ยืนยันขอบเขตบัญชีและความใหม่จาก Runner โปรดตรวจสอบอีกครั้ง"}
+                </AstryxText>
+              ) : (
+                <AstryxText type="supporting" as="p" role="status">
+                  {modelCatalog?.cliVersion ? `CLI ${modelCatalog.cliVersion} · ` : ""}อัปเดต {new Date(modelCatalog!.observedAt).toLocaleString()} · สถานะตรวจสอบ {modelCatalog?.verificationState ?? "discovery เท่านั้น ยังไม่ยืนยัน entitlement"}
+                </AstryxText>
+              )}
+              {modelPolicy === "explicit" && !activeModel ? <AstryxText type="supporting" as="p" role="alert">รุ่นที่เลือกไม่อยู่ใน catalog ปัจจุบัน จึงยังเริ่มงานด้วยรุ่นนี้ไม่ได้ โปรดเลือก Auto หรือรุ่นที่ Runner รายงาน</AstryxText> : null}
+              {workspacesQuery.error ? <AstryxText type="supporting" as="p" role="alert">โหลด Model catalog ไม่สำเร็จ โปรดลองตรวจสอบใหม่</AstryxText> : null}
+              </VStack>
+            </Section>
           ) : null}
 
           <fieldset className="mt-3 space-y-2" disabled={uploading}>
@@ -892,7 +1045,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                   {workPackage.sourceAdmission?.status === "BLOCKED" ? <p className="mt-1 text-xs text-amber-800" role="status">{simpleMode ? "ขอบเขตงานยังทับกับไฟล์ที่เปลี่ยนอยู่ หรือข้อมูล source ยังไม่ครบ" : `Source preflight: ${workPackage.sourceAdmission.code}${workPackage.sourceAdmission.conflictingPaths?.length ? ` · ชนกับ ${workPackage.sourceAdmission.conflictingPaths.join(", ")}` : ""}`}</p> : null}
                   {workPackage.sourceAdmission?.status === "SAFE_DISJOINT_DIRTY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "ไฟล์ที่เปลี่ยนอยู่แยกจากขอบเขตงานนี้" : `Source preflight: ขอบเขตไม่ชนไฟล์ที่เปลี่ยนอยู่ · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isNextReadyPackage(workPackage)) ? (
-                    <Button type="button" className="mt-2" disabled={startMutation.isPending || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
+                    <Button type="button" className="mt-2" disabled={startMutation.isPending || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
                       {startMutation.isPending ? "กำลังส่งคำสั่ง…" : mode === "prompt" || simpleMode ? "สั่งพัฒนา" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}

@@ -38,6 +38,45 @@ for (const language of ["en", "th"] as const) {
   }
 }
 
+test("Developer Task Control selects only the connected Runner model catalog", async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "th");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
+  const workMutations: string[] = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && /spec226DevelopmentControl\.(?:create|startWorkspaceRun|resumeWorkspaceRun|command)/.test(request.url())) workMutations.push(request.url().split("?")[0]);
+  });
+  await page.goto("/chat?panel=control-plane&view=full");
+  const panel = page.getByTestId("control-plane-panel");
+  await expect(panel).toBeVisible({ timeout: 30_000 });
+  await panel.getByRole("button", { name: "มุมมองนักพัฒนา" }).click();
+
+  const runnerSelector = panel.getByLabel("1. เลือก Runner");
+  await expect(runnerSelector).toBeVisible();
+  if (await runnerSelector.locator("option").count() < 2) test.skip(true, "No authorized Runner is available for a live catalog browser check");
+  await runnerSelector.selectOption({ index: 1 });
+  const workspaceSelector = panel.getByLabel("2. เลือก Project Workspace");
+  await expect(workspaceSelector).toBeEnabled();
+  if (await workspaceSelector.locator("option").count() < 2) test.skip(true, "No current authorized Runner workspace is available");
+  await workspaceSelector.selectOption({ index: 1 });
+  await expect(panel.getByRole("combobox", { name: "Harness" })).toBeVisible();
+
+  const modelSelector = panel.getByRole("combobox", { name: "AI Model" });
+  await expect(modelSelector).toBeVisible();
+  if (await modelSelector.isDisabled()) test.skip(true, "The selected Runner has no current account-scoped discovered model catalog");
+  await modelSelector.click();
+  const modelOptions = panel.getByRole("option");
+  await expect(modelOptions.first()).toContainText("Auto");
+  expect(await modelOptions.count()).toBeGreaterThan(1);
+  await modelOptions.nth(1).click();
+  const reasoningOptions = panel.getByRole("radio");
+  await expect(reasoningOptions.first()).toBeVisible();
+  expect(await reasoningOptions.count()).toBeGreaterThan(0);
+  await page.screenshot({ path: testInfo.outputPath("task-control-runner-model-picker.png"), fullPage: true });
+  expect(workMutations).toEqual([]);
+});
+
 test("a general request can return to the Chat composer without creating development work", async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("smartspec_locale", "en");
