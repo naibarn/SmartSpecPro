@@ -38,8 +38,8 @@ description: "Security Review Aggregator (CMD-6 support) — Pre-merge security 
   - 0 CRITICAL + HIGH_COUNT > 0 → **CONDITIONAL**
   - CRITICAL_COUNT > 0 → **FAIL** (regardless of HIGH count)
   - MEDIUM findings are **informational only** — they are reported in the risk register but do not affect the verdict
-- **Auto-approve logging in `auto_by_default` mode:** CONDITIONAL findings (caused by HIGH severity results) that would normally require user approval are auto-approved in `auto_by_default` decision mode — but MUST be logged to `orchestra/decisions.md` with a `⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS` prefix and a timestamp. Omitting this log is a compliance violation.
-- **Missing specialist data:** if any specialist Result Report is absent from Task Packet context, verdict must be CONDITIONAL with a blocker entry: "Missing [specialist name] report — audit incomplete." Never issue PASS when specialist data is absent. A CONDITIONAL caused by a missing specialist report is **never eligible for auto-approval** in `auto_by_default` mode — it must always escalate to explicit user review regardless of decision mode.
+- **HIGH findings:** A `CONDITIONAL` verdict is a remediation/containment work state, not a request for user approval. The conductor MUST repair, reduce, substitute, or isolate in-scope HIGH findings automatically where safe, then rerun the relevant review. Human risk authority is required only when accepting a residual HIGH risk is the only viable closure. Never auto-accept that residual risk based on decision mode.
+- **Missing specialist data:** if any specialist Result Report is absent from Task Packet context, verdict must be CONDITIONAL with a blocker entry: "Missing [specialist name] report — audit incomplete." Never issue PASS when specialist data is absent. The conductor MUST dispatch/recover the missing specialist through the existing orchestration path, or continue independent safe work while preserving the incomplete evidence. Escalate only when the required evidence is genuinely unavailable or resolving it requires authority outside the mission scope; do not turn a missing report into a blanket user-approval gate.
 
 ---
 
@@ -54,7 +54,7 @@ specialist Result Reports (see `contracts/task-packet.schema.md`):
 | DOMAIN | CMD-6 Security |
 | FILES | None required — findings are passed in CONTEXT |
 | CONTEXT | Per-specialist capsule: source, status, severity counts, top findings, report path/hash, and finding IDs |
-| CONSTRAINTS | Decision mode (`auto_by_default` vs `ask_always`); which severity levels require user approval |
+| CONSTRAINTS | Mission scope, existing decision mode, and any explicit risk-acceptance boundary |
 | CONTRACT | Pre-merge security threshold policy and required specialist coverage |
 | OUTPUT | Standard Result Report plus `security_verdict` (`PASS` / `CONDITIONAL` / `FAIL`) and path to `orchestra/risk_register.md` |
 | QUALITY GATE | Aggregation checklist: all required specialist reports present, deduped, counted, and verdict logged |
@@ -68,13 +68,12 @@ Returns the standard Result Report fields from `contracts/result-report.schema.m
 **PASS**, **CONDITIONAL**, or **FAIL**.
 
 - `status`: success / partial / failed
-- `files_changed`: `orchestra/risk_register.md` and, when auto-approval logging applies,
-  `orchestra/decisions.md`
+- `files_changed`: `orchestra/risk_register.md`
 - `findings`: deduplicated top findings, CRITICAL/HIGH/MEDIUM counts, and risk register path
 - `blockers`: missing specialist reports, write failures, or incomplete aggregation evidence
 - `next_steps`: required conductor action for PASS, CONDITIONAL, or FAIL
 - `quality_gate_results`: specialist coverage, deduplication, risk register write, and
-  decision-mode logging checks
+  remediation/containment follow-up
 - `security_verdict`: PASS / CONDITIONAL / FAIL
 
 ```
@@ -85,22 +84,22 @@ findings:
   - Deduplicated security finding summary with severity counts
 blockers: []
 next_steps:
-  - Resolve CRITICAL/HIGH findings or log accepted risk according to the verdict
+  - Repair or contain in-scope HIGH findings; keep unresolved CRITICAL findings blocked
 quality_gate_results:
   - Specialist report coverage: passed
   - Risk register written: passed
 security_verdict: CONDITIONAL
 ```
 
-- `files_changed` may include `orchestra/risk_register.md` and, only when
-  `auto_by_default` logs HIGH findings, `orchestra/decisions.md`.
+- `files_changed` includes the existing `orchestra/risk_register.md`; do not create a
+  separate decision log just to represent an automatic approval.
 - `findings` must include the deduplicated top findings from all 3 specialists,
   merged by file:line + description, plus CRITICAL/HIGH/MEDIUM counts and the path to
   the complete risk register artifact.
 - `blockers` must list any missing specialist report or write failure.
 - `next_steps` must name the required conductor action for PASS, CONDITIONAL, or FAIL.
 - `quality_gate_results` must include specialist coverage, deduplication, risk register
-  write, and decision-mode logging when applicable.
+  write, and remediation/containment follow-up when applicable.
 
 **Risk register format written to `orchestra/risk_register.md`:**
 
@@ -122,9 +121,8 @@ Findings summary:
 - HIGH: N
 - MEDIUM: N
 
-[If CONDITIONAL] User approval required for HIGH findings before implementation proceeds.
-[If FAIL] Block merge until all CRITICAL findings are resolved.
-[In auto_by_default mode + CONDITIONAL] ⚠️ HIGH findings AUTO-APPROVED. Logged to orchestra/decisions.md.
+[If CONDITIONAL] Repair or contain HIGH findings in scope and rerun review; request human risk authority only to accept unavoidable residual risk.
+[If FAIL] Block the affected path while CRITICAL findings remain; continue unrelated safe work.
 ```
 
 ---
@@ -141,7 +139,7 @@ Findings summary:
    - CRITICAL_COUNT = 0 and HIGH_COUNT = 0 → PASS
 6. Write the deduplicated findings list to `orchestra/risk_register.md`; keep the inline
    Result Report to counts, top findings, and the risk register path
-7. If decision mode is `auto_by_default` and verdict is CONDITIONAL: append auto-approval log to `orchestra/decisions.md`
+7. If verdict is CONDITIONAL: record remediation/containment in existing task evidence and continue safe in-scope work. Do not create an auto-approval record or accept residual risk.
 8. Return Result Report with verdict, counts, and `orchestra/risk_register.md` path
 
 ---
@@ -152,14 +150,14 @@ Findings summary:
 - [ ] Every finding in `orchestra/risk_register.md` has a source agent, severity, and file:line reference
 - [ ] Deduplication applied: no duplicate file:line entries in the register
 - [ ] Verdict is exactly one of: PASS / CONDITIONAL / FAIL
-- [ ] CONDITIONAL in `auto_by_default` mode is logged to `orchestra/decisions.md` with `⚠️ AUTO-APPROVED HIGH SECURITY FINDINGS` prefix and timestamp
-- [ ] Missing specialist report results in CONDITIONAL (not PASS) with a blocker entry
+- [ ] CONDITIONAL findings trigger in-scope remediation/containment; residual risk is never silently accepted
+- [ ] Missing specialist report results in CONDITIONAL (not PASS) and is recovered through existing orchestration where possible
 
 ---
 
 ## 8. Error Handling
 
-- **Missing specialist report:** set verdict to CONDITIONAL and add blocker: "Missing [specialist name] report — audit incomplete." Never issue PASS when any specialist data is absent. This CONDITIONAL is NOT eligible for auto-approval in `auto_by_default` mode — always escalate to user.
+- **Missing specialist report:** set verdict to CONDITIONAL and add blocker: "Missing [specialist name] report — audit incomplete." Never issue PASS when any specialist data is absent. Recover the report through existing orchestration or continue independent safe work; escalate only if evidence is genuinely unavailable or outside mission authority.
 - **Empty findings from all specialists:** valid PASS — write an empty risk register with a note: "No findings reported by any specialist."
 - **`orchestra/risk_register.md` write failure:** add as blocker in Result Report; return findings inline in Result Report as fallback
 - **Conflicting severities for same finding across specialists:** use the higher severity rating (conservative policy)

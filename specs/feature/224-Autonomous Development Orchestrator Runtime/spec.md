@@ -17388,3 +17388,66 @@ This amendment corrects the default Mini-App product path while preserving the s
 - [ ] Cross-user, cross-tenant, and anonymous access to a private preview are denied before artifact bytes/data are returned.
 - [ ] User feedback continues the existing app/run; release and platform certification remain separately evidenced.
 - [ ] For the expense-tracker scenario, create expense, create income, monthly totals and chart work on a mobile viewport and expected data persists.
+
+## 2026-10-28 — Mission-scoped delegated execution and approval reuse
+
+This additive amendment aligns the existing DevelopmentRun, Approval, Capability,
+Secret-Broker, `worker_jobs`/outbox, and executor contracts. It does not create a
+second approval authority, job ledger, identity, or secret store.
+
+1. An authenticated mission authorization MUST bind the initiating principal and
+   tenant to the requested environment, operation set, exact resource/target,
+   migration or artifact digest where applicable, budget, expiry, and an immutable
+   authorization reference. The existing Approval/Policy service is authoritative
+   for issuing, auditing, revoking, and recovering that binding.
+2. The durable mission/run and its existing worker job MUST retain the same
+   authorization reference, scope, and audit lineage across retries, process
+   restarts, session changes, and authorized executor changes. Every attempt
+   revalidates current identity, grant status, target, resource scope, and executor
+   permissions. A retry MUST NOT broaden scope or silently substitute credentials.
+3. A user approval or start instruction covers the ordinary substeps explicitly
+   included in its recorded scope. The system MUST reuse that grant for those
+   substeps and MUST NOT request approval again because of a retry, restart,
+   internal handoff, missing optional verifier, or executor selection. Any new
+   operation or target outside that grant enters the existing decision path.
+4. Before execution, the conductor MUST run available identity, permission,
+   target-fingerprint, checksum, history/drift, dependency, idempotency, budget,
+   and credential-reference preflights. It SHOULD select the least complex
+   already-authorized executor and may recover through another executor only
+   after the replacement independently satisfies the same scope and permission
+   checks. The existing secret authority resolves credential references; secret
+   values MUST NOT enter mission payloads, logs, or user-facing errors.
+5. Technical failures within scope require diagnosis, safe repair, and a changed
+   retry or an authorized alternative, while independent safe work continues.
+   The system MUST stop only the affected path when the requested target,
+   credential, identity, permission, or required external control is absent; the
+   action exceeds mission scope; an unrecoverable data-safety/security condition
+   exists; or an actual business/security decision is required. A stop record
+   MUST identify the exact missing authority/evidence and the shortest recovery
+   action. It MUST NOT ask the user to repeat an approval already recorded for
+   the same scope.
+6. Production releases, production database writes, tenant-crossing access,
+   destructive operations, external platform protection, legal decisions, and
+   provider-owner credential grants retain their existing authorities. A mission
+   approval cannot create a missing external identity, secret, platform grant,
+   or reviewer decision. An authorized single operator may satisfy SmartAIHub
+   policy only where the actual external platform and configured authority allow
+   that identity to perform the operation.
+7. All authorization decisions, preflight facts, executor selection/fallback,
+   attempts, receipts, revocations, and stop/recovery records MUST be attached to
+   the existing approval and job audit surfaces. Never synthesize identity,
+   approval, credential, target match, or successful execution evidence.
+
+### Mission-scoped execution acceptance
+
+- [ ] One explicit mission grant is reused across in-scope substeps and retries;
+  an out-of-scope operation remains denied by the existing authority.
+- [ ] Restart/retry retains mission identity, target, scope, idempotency, audit
+  lineage, and credential isolation without duplicating side effects.
+- [ ] Preflight discovers available authorized paths and selects one only after
+  checking the same target and permission constraints.
+- [ ] Missing external credentials or grants produce a precise blocked state and
+  recovery action, with no unauthorized write or repeated approval request.
+- [ ] Production migration acceptance proves the actual database receipt/schema,
+  authenticated RPCs, Runner, Workspace Binding, and live UI separately; local
+  or synthetic checks are never presented as production E2E evidence.
