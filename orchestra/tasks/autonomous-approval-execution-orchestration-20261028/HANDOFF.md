@@ -35,7 +35,7 @@ The Production database owner/credential issuer must provide a least-privilege w
 
 ## Verification and integration
 
-- Repository baseline during this checkpoint: local `main` and `origin/main` both `ebebf4a5d74edfb00d7834bc6f964c2777e90a3f`.
+- Integrated commit: `67cf1e058092fb50bcba56ca1908a3a3b5218478` (`Align mission approval and security remediation policy`). Pushed to `origin/main`; fetched local `HEAD` equals `origin/main` at that SHA.
 - Files from other work remain dirty and are excluded from this change, including `apps/web/server/routers/__tests__/verticalDramaCharacters.manualVariantTwinCrud.test.ts`, local skillpack/test outputs, and existing task lock files.
-- Focused policy text check and `git diff --check` passed. Commit and remote SHA reconciliation remain to be recorded before reporting this checkpoint integrated.
+- Focused policy text check, staged `git diff --check`, skill mirror sync, commit, push, and remote SHA reconciliation passed. No repository-wide TypeScript check was run, per resource policy.
 - No local `npm run typecheck` was run.
