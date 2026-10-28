@@ -418,6 +418,7 @@ export async function runWorkspaceBindings0415Migration(env: NodeJS.ProcessEnv =
     const locked = await readPreflight(client, env, journal);
     if (locked.status !== "READY" || locked.fingerprint !== initial.fingerprint) throw new Error("MIGRATION_PREFLIGHT_CHANGED");
     await client.query(sql);
+    await client.query(`INSERT INTO drizzle.__drizzle_migrations (hash, created_at) VALUES ($1, $2)`, [target.hash, target.when]);
     const appliedReceipt = { ...base, phase: "SETTLED", result: "SUCCEEDED", outcome: "APPLIED_AND_VERIFIED", databaseFingerprint: initial.fingerprint, appliedHash: target.hash, appliedHead: target.tag, completedAt: new Date().toISOString() };
     await writeDbReceipt(client, appliedReceipt);
     const post = await readPreflight(client, env, journal);
