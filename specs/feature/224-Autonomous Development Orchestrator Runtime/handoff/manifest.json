@@ -1004,14 +1004,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "5af4ab6496f87f74a09b39bb007134c9d6022e5a",
+    "expected_canonical_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Implement model-selection persistence and pinned dispatch through the existing SPEC-224 DevelopmentRun/Goal authority, coordinating Task Control UI with Session C. Separately, once the server change is available on the configured Control Plane, read the new rejection ACK/log fields and establish a server-acknowledged capability snapshot. Do not infer live readiness from the local Codex catalog.",
-    "next_ready_workunit": "SPEC224_MODEL_SELECTION_PERSISTENCE_AND_PINNED_DISPATCH",
+    "next_action": "Extend scripts/development-lifecycle/workspace_authority.py to issue a run/attempt-bound, path-scoped lease for registered Project Workspaces. Connect claim, renewal, validation/fencing and idempotent release through the existing workspace.authority.safe_action and canonical worker_jobs/outbox lifecycle; bind the lease receipt at SPEC-224 authorization, outbox release, Runner candidate apply, and terminal/recovery. Add connected contention, disjoint-path, stale-fence, crash/replay and duplicate-release tests. Then use the structured rejection code and authorized release/runtime evidence to establish the configured endpoint's actual serving revision and resolve the live Runner ACK.",
+    "next_ready_workunit": "SPEC224_RUN_SCOPED_WRITER_LEASE_AND_RUNNER_EVENT_ACK",
     "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
-    "resume_point": "Canonical main includes 2a90bc48b Runner rejection evidence repair and 5af4ab6496f87f74a09b39bb007134c9d6022e5a Codex model catalog projection. Focused server, contract and Runner adapter checks passed; Debian Codex app-server returned a real catalog, explicitly unverified for entitlement. Existing live Runner event rejection has not been re-observed against the configured remote Control Plane. Next implement persisted model selection and pinned dispatch under the existing Goal/Attempt authority, then use a fresh authorized Runner ACK to diagnose remote readiness.",
+    "resume_point": "Canonical main is 1fb72918c587d4b44875ccc733bf2540af063cf4. The SPEC-224 Runner route regression passes 26/26 and preserves RUNNER_CONTRACT_INVALID for invalid capability snapshots; a local Codex 0.165.0 task probe passed. The installed Debian Runner still logs RUNNER_EVENT_REJECTED against aimarkethubs.com. Public and local /healthz responses do not prove serving source or database identity, and no authenticated server log/release identity was available. P0-B remains: workspace_authority.py only claims local TASK_WORKTREE and Runner Candidate.apply only has a Project Workspace lock plus per-path baseline CAS; neither is a run/attempt-bound path-scoped lease consumed at dispatch and apply. Continue with that lease bridge before Goal/source admission; do not start a Goal until a current snapshot is ACKed and admission is SAFE_CLEAN or SAFE_DISJOINT_DIRTY.",
     "waiting_predicate": "Resume live Goal preparation only after (1) the existing Debian device Control Plane accepts its current Runner session and acknowledges the capability/workspace snapshot with complete dirtyPaths, (2) a run/attempt-bound SPEC-293 path-scoped writer lease is integrated and revalidated at outbox release and Runner apply with terminal/recovery cleanup, and (3) server-authoritative source admission confirms the bounded scope is SAFE_CLEAN or SAFE_DISJOINT_DIRTY. Codex task probe is currently locally passed; actual approval and Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
@@ -1065,10 +1065,16 @@
         "observed_at": "2026-10-28T12:06:04Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
         "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T12:50:35Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+        "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
       }
     ],
-    "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through its supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
-    "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com endpoint rejects Runner events and the configured local development DB has no row for this device; this evidence does not identify the endpoint environment. There is no server-acknowledged snapshot. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current SAFE source admission, Goal dispatch, live Child receipt or Final Verify exists; keep LIVE_VERIFIED open.",
+    "next_action": "Implement the run/attempt-bound path-scoped lease through the existing SPEC-293 workspace_authority.py authority and canonical worker_jobs/outbox; bind and revalidate its fence at authorization, release and Runner apply, and release idempotently on terminal/recovery. Then establish the configured endpoint's immutable serving identity and use its structured rejection diagnostics to get the same current Runner session/snapshot acknowledged. Do not admit a Goal before source admission passes.",
+    "rationale": "A focused source repair is integrated at 1fb72918c587d4b44875ccc733bf2540af063cf4 and its real Runner socket handler regression passes 26/26. It preserves structured control-plane error codes and records safe rejection class/stage, but does not claim the remote endpoint serves this source. The configured Runner still reports event rejection; public health is not release/database provenance. The SPEC-293 run/attempt writer lease remains disconnected from Goal authorization, outbox release, Runner apply and terminal recovery. No current server-acknowledged snapshot, SAFE source admission, owner-approved Goal, live child receipt or Final Verify exists.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1153,7 +1159,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 230,
+  "generation": 232,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1355,11 +1361,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "5af4ab6496f87f74a09b39bb007134c9d6022e5a",
+    "canonical_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4",
     "integrated": true,
-    "integrated_at": "2026-10-28T12:40:00Z",
+    "integrated_at": "2026-10-28T12:47:24Z",
     "pull_request": null,
-    "source_sha": "5af4ab6496f87f74a09b39bb007134c9d6022e5a"
+    "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2295,10 +2301,16 @@
           "observed_at": "2026-10-28T12:06:04Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
           "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T12:50:35Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+          "source_sha": "1fb72918c587d4b44875ccc733bf2540af063cf4"
         }
       ],
-      "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through its supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
-      "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com endpoint rejects Runner events and the configured local development DB has no row for this device; this evidence does not identify the endpoint environment. There is no server-acknowledged snapshot. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current SAFE source admission, Goal dispatch, live Child receipt or Final Verify exists; keep LIVE_VERIFIED open.",
+      "next_action": "Implement the run/attempt-bound path-scoped lease through the existing SPEC-293 workspace_authority.py authority and canonical worker_jobs/outbox; bind and revalidate its fence at authorization, release and Runner apply, and release idempotently on terminal/recovery. Then establish the configured endpoint's immutable serving identity and use its structured rejection diagnostics to get the same current Runner session/snapshot acknowledged. Do not admit a Goal before source admission passes.",
+      "rationale": "A focused source repair is integrated at 1fb72918c587d4b44875ccc733bf2540af063cf4 and its real Runner socket handler regression passes 26/26. It preserves structured control-plane error codes and records safe rejection class/stage, but does not claim the remote endpoint serves this source. The configured Runner still reports event rejection; public health is not release/database provenance. The SPEC-293 run/attempt writer lease remains disconnected from Goal authorization, outbox release, Runner apply and terminal recovery. No current server-acknowledged snapshot, SAFE source admission, owner-approved Goal, live child receipt or Final Verify exists.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3843,7 +3855,7 @@
     "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T12:42:29.395194Z",
+  "updated_at": "2026-10-28T12:51:16.117539Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
