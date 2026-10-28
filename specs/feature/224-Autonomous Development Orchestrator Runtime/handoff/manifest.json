@@ -976,15 +976,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f1b400c014c692b08ae9fb6de66b832595987a4c",
+    "expected_canonical_sha": "7035b789476e2b3b96ec414674f285eb77f60988",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Complete authenticated Goal admission through the existing Approval Authority from persisted Task Control Run/Job scope; bind an owner-selected isolated Runner workspace and approved source, create/recover the shared Goal Budget, then execute real two-phase Runner acceptance. Runner Codex probe and capability acknowledgment are current, but the inspected tenant has no active Goal Grant, development policy, Goal Budget, Goal-scoped run, or isolated workspace. See handoff/evidence/spec224-live-runner-recheck-20261028.md.",
-    "next_ready_workunit": "SPEC224_TASK_CONTROL_GOAL_ADMISSION",
-    "reactivation_predicate": "Resume when authenticated Goal admission is wired to the persisted Run/Job and an approved isolated Runner workspace/source, current Goal Grant, shared budget, and live capability snapshot are observable.",
-    "resume_point": "Canonical origin/main f1b400c014c692b08ae9fb6de66b832595987a4c; buildDevelopmentRun persists the canonical Goal ID. Focused Run contract test 8/8 and connected disposable PostgreSQL delegated-child test 6/6 passed on this exact source. Live admission evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-runner-recheck-20261028.md.",
-    "waiting_predicate": "Live dispatch waits for the existing Approval Authority to issue/recover a Goal Grant from exact persisted Run/Job scope and for an approved isolated workspace/source. Do not fabricate a grant or treat Runner readiness as task execution."
+    "next_action": "Add one disposable-PostgreSQL ingress integration test that calls the real Task Control tRPC startWorkspaceRun caller with persisted conversation/workspace and Runner readiness records, creates/replays its Goal Approval through the real Approval Authority request path, then proves approved Child 1 dispatch and receipt-driven Child 2. Keep the Windows live pilot separate; do not infer execution from Codex readiness.",
+    "next_ready_workunit": "SPEC224_START_WORKSPACE_RUN_POSTGRES_INGRESS",
+    "reactivation_predicate": "Resume when the PostgreSQL ingress integration case proves the actual user Start path reaches authorized Child 1 and automatic Child 2; then begin the bounded Windows Runner pilot after a real tenant Goal Grant, workspace and budget are available.",
+    "resume_point": "Canonical origin/main 7035b789476e2b3b96ec414674f285eb77f60988. The production Goal Approval Authority endpoint and Task Control admission wiring are integrated. Connected delegated-child PostgreSQL suite passes 8/8; focused router/panel tests pass 46/46. Exact remaining operation: PostgreSQL test through startWorkspaceRun, persisted workspace/Runner and real Approval Authority HTTP call, followed by the separate live Windows two-phase pilot.",
+    "waiting_predicate": "The live pilot waits for a legitimate tenant Goal approval and isolated Runner workspace/source. Test completion waits for the real tRPC ingress case on disposable PostgreSQL."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1013,10 +1013,16 @@
         "observed_at": "2026-10-26T07:55:56Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
         "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T00:25:04Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
+        "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
       }
     ],
-    "next_action": "Complete Task Control Goal admission: startWorkspaceRun currently creates no goalId and calls job-scoped advanceStart; buildSpec224GoalGrantApprovalPayload has no production caller. Connect the existing Approval Authority and delegated authorization without widening a job approval. In parallel the Windows owner must refresh the expired Codex task probe and select an authorized isolated workspace on an approved source; then execute the bounded live two-phase pilot. See handoff/evidence/spec224-live-preflight-20261028.md. No live dispatch or Final Verify has been observed.",
-    "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
+    "next_action": "Complete the remaining ingress proof with a disposable-PostgreSQL test invoking the real Task Control tRPC startWorkspaceRun caller, persisted conversation/workspace and Runner readiness, and the real Approval Authority HTTP path. Then perform a bounded Windows Runner two-phase pilot using a real approved tenant Goal Grant, isolated workspace and budget. The integrated code now persists Goal ID/scope, requests canonical approval, and resumes through durable reconciliation; no live run or receipt has been observed.",
+    "rationale": "Goal admission is now connected in production source and focused plus service-level disposable PostgreSQL tests pass. The single connected test still starts from persisted service fixtures rather than the actual tRPC Start operation, and live tenant approval/dispatch/Final Verify remain unobserved.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1094,13 +1100,13 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 212,
+  "generation": 216,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-27T17:34:05.305147Z",
+      "last_evidence_at": "2026-10-28T00:26:38.389692Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -1296,11 +1302,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f1b400c014c692b08ae9fb6de66b832595987a4c",
+    "canonical_sha": "7035b789476e2b3b96ec414674f285eb77f60988",
     "integrated": true,
-    "integrated_at": "2026-10-28T06:45:51+07:00",
+    "integrated_at": "2026-10-28T07:25:00+07:00",
     "pull_request": null,
-    "source_sha": "f1b400c014c692b08ae9fb6de66b832595987a4c"
+    "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2212,10 +2218,16 @@
           "observed_at": "2026-10-26T07:55:56Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-playwright-auth-entry-20261026.md",
           "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T00:25:04Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
+          "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
         }
       ],
-      "next_action": "Complete Task Control Goal admission: startWorkspaceRun currently creates no goalId and calls job-scoped advanceStart; buildSpec224GoalGrantApprovalPayload has no production caller. Connect the existing Approval Authority and delegated authorization without widening a job approval. In parallel the Windows owner must refresh the expired Codex task probe and select an authorized isolated workspace on an approved source; then execute the bounded live two-phase pilot. See handoff/evidence/spec224-live-preflight-20261028.md. No live dispatch or Final Verify has been observed.",
-      "rationale": "Backend delegated authorization and receipt-driven continuation remain incomplete; live Windows acceptance depends on this executable path.",
+      "next_action": "Complete the remaining ingress proof with a disposable-PostgreSQL test invoking the real Task Control tRPC startWorkspaceRun caller, persisted conversation/workspace and Runner readiness, and the real Approval Authority HTTP path. Then perform a bounded Windows Runner two-phase pilot using a real approved tenant Goal Grant, isolated workspace and budget. The integrated code now persists Goal ID/scope, requests canonical approval, and resumes through durable reconciliation; no live run or receipt has been observed.",
+      "rationale": "Goal admission is now connected in production source and focused plus service-level disposable PostgreSQL tests pass. The single connected test still starts from persisted service fixtures rather than the actual tRPC Start operation, and live tenant approval/dispatch/Final Verify remain unobserved.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3450,7 +3462,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-27T17:34:05.305147Z",
+    "reconciled_at": "2026-10-28T00:26:38.389692Z",
     "sources": [
       {
         "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -3704,7 +3716,7 @@
     "unresolved": 1277
   },
   "schema_version": 1,
-  "updated_at": "2026-10-27T23:47:47.751554Z",
+  "updated_at": "2026-10-28T00:27:21.513865Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4147,6 +4159,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-runner-recheck-20261028.md",
         "scope": "Exact origin/main source; focused Run contract test 8/8 and connected disposable PostgreSQL delegated-child test 6/6 passed. Runner Codex probe and capability acknowledgment are current, but no active Goal Grant, development policy, Goal Budget, isolated workspace, or live DevelopmentRun/receipt exists. See evidence for exact admission gap.",
         "source_sha": "f1b400c014c692b08ae9fb6de66b832595987a4c",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_GOAL_ADMISSION_CONNECTED_POSTGRES_CHECKPOINT",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
+        "scope": "Exact origin/main SHA 7035b789476e2b3b96ec414674f285eb77f60988: disposable PostgreSQL delegated-child suite 8/8, Task Control/panel focused regressions 46/46, Python syntax check passed. Connected production services passed; the single test does not yet enter through tRPC startWorkspaceRun. Synthetic Runner receipts are not live evidence.",
+        "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988",
         "status": "PARTIAL"
       }
     ],
