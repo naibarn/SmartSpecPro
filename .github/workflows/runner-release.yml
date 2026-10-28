@@ -218,6 +218,7 @@ jobs:
             rm -f "$asset.sig"
             mv "$asset.sig.b64" "$asset.sig"
           done
+          openssl pkey -in "$key_file" -pubout -out dist/smartaihub-runner-release-public.pem
 
       - uses: actions/upload-artifact@v4
         with:

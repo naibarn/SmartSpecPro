@@ -29,4 +29,11 @@ describe("runner release workflow contract", () => {
     expect(workflow).toContain('session_host_artifact=""');
     expect(workflow).toContain('"sessionHostArtifact":"%s"');
   });
+
+  it("exports only the public verification key for signed Runner artifacts", () => {
+    const workflow = fs.readFileSync(workflowPath, "utf8");
+
+    expect(workflow).toContain('openssl pkey -in "$key_file" -pubout -out dist/smartaihub-runner-release-public.pem');
+    expect(workflow).not.toContain("RUNNER_SIGNING_KEY > dist/");
+  });
 });
