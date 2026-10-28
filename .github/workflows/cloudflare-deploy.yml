@@ -1,0 +1,261 @@
+name: Cloudflare runtime deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Deploy to isolated staging, promote after staging, or restore a recorded production deployment
+        type: choice
+        required: true
+        options:
+          - inspect-staging
+          - inspect-production
+          - staging
+          - production
+          - rollback-production
+      production_confirmation:
+        description: Type DEPLOY_SMARTAIHUB_PRODUCTION or ROLLBACK_SMARTAIHUB_PRODUCTION for the selected production operation
+        type: string
+        required: false
+      rollback_deployment_id:
+        description: Exact previous Cloudflare deployment ID from the workflow receipt (rollback only)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-runtime-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require canonical main and explicit production intent
+        env:
+          TARGET: ${{ inputs.target }}
+          REF: ${{ github.ref }}
+          CONFIRMATION: ${{ inputs.production_confirmation }}
+          ROLLBACK_ID: ${{ inputs.rollback_deployment_id }}
+        run: |
+          set -euo pipefail
+          test "$REF" = "refs/heads/main" || { echo "DEPLOYMENT_REF_MUST_BE_MAIN"; exit 1; }
+          if [ "$TARGET" = production ] && [ "$CONFIRMATION" != DEPLOY_SMARTAIHUB_PRODUCTION ]; then
+            echo "PRODUCTION_CONFIRMATION_REQUIRED"; exit 1
+          fi
+
+  inspect-staging:
+    if: ${{ inputs.target == 'inspect-staging' }}
+    needs: guard
+    runs-on: ubuntu-latest
+    environment: cloudflare-staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_WORKER_NAME: smartspec-cloudflare-staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
+      - name: Read the exact staging Worker identity and baseline
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs inspect "$GITHUB_STEP_SUMMARY"
+
+  inspect-production:
+    if: ${{ inputs.target == 'inspect-production' }}
+    needs: guard
+    runs-on: ubuntu-latest
+    environment: cloudflare-production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_WORKER_NAME: smartspec-cloudflare-runtime
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
+      - name: Read the exact Production Worker identity and baseline
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs inspect "$GITHUB_STEP_SUMMARY"
+          if [ "$TARGET" = rollback-production ]; then
+            [ "$CONFIRMATION" = ROLLBACK_SMARTAIHUB_PRODUCTION ] || { echo "ROLLBACK_CONFIRMATION_REQUIRED"; exit 1; }
+            [[ "$ROLLBACK_ID" =~ ^[0-9a-fA-F-]{36}$ ]] || { echo "ROLLBACK_DEPLOYMENT_ID_REQUIRED"; exit 1; }
+          fi
+
+  build:
+    if: ${{ inputs.target != 'rollback-production' }}
+    needs: guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate isolated targets and deployment control
+        run: |
+          node --test apps/cloudflare/wrangler.staging.config.test.mjs apps/cloudflare/wrangler.production.config.test.mjs apps/cloudflare/scripts/cloudflare-deploy-control.test.mjs
+          npm --workspace @smartspec/cloudflare-runtime run check
+      - name: Build web assets for the immutable Worker source revision
+        run: pnpm --filter @smartspec/web exec vite build --configLoader runner
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192
+      - name: Fail before credentials if either Wrangler target cannot package the exact assets
+        run: |
+          pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.staging.jsonc --dry-run --outdir "$RUNNER_TEMP/staging-worker-check"
+          pnpm dlx wrangler@4.151.1 versions upload --config apps/cloudflare/wrangler.production.jsonc --dry-run --outdir "$RUNNER_TEMP/production-worker-check"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-assets-${{ github.sha }}
+          path: apps/web/dist/public
+          if-no-files-found: error
+          retention-days: 2
+
+  staging:
+    if: ${{ inputs.target == 'staging' || inputs.target == 'production' }}
+    needs: [guard, build]
+    runs-on: ubuntu-latest
+    environment: cloudflare-staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_WORKER_NAME: smartspec-cloudflare-staging
+      CLOUDFLARE_EXPECTED_BASELINE_DEPLOYMENT_ID: ${{ vars.CLOUDFLARE_STAGING_BASELINE_DEPLOYMENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloudflare-assets-${{ github.sha }}
+          path: apps/web/dist/public
+      - name: Verify staging credential, account and existing Worker identity
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs identity
+      - name: Capture and pin the current staging traffic baseline
+        id: baseline
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs snapshot "$RUNNER_TEMP/staging-baseline.json"
+      - name: Upload immutable staging Worker version without changing traffic
+        id: upload
+        run: |
+          set -euo pipefail
+          pnpm dlx wrangler@4.151.1 versions upload --config apps/cloudflare/wrangler.staging.jsonc --keep-vars --strict --message "SmartAIHub staging $GITHUB_SHA" > "$RUNNER_TEMP/staging-upload.log" 2>&1 || { echo "STAGING_VERSION_UPLOAD_FAILED"; exit 1; }
+          node apps/cloudflare/scripts/cloudflare-deploy-control.mjs uploaded-version "$RUNNER_TEMP/staging-upload.log" "$GITHUB_OUTPUT"
+      - name: Deploy uploaded version to isolated staging Worker traffic
+        id: traffic
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs deploy "${{ steps.upload.outputs.version_id }}" "SmartAIHub staging $GITHUB_SHA"
+      - name: Resolve the authenticated account's workers.dev URL
+        id: worker-url
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs worker-url "$GITHUB_OUTPUT"
+      - name: Verify staging Worker, Container ingress and API session route
+        id: smoke
+        env:
+          WORKER_URL: ${{ steps.worker-url.outputs.worker_url }}
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs smoke "$WORKER_URL"
+      - name: Record staging receipt
+        if: success()
+        env:
+          VERSION_ID: ${{ steps.upload.outputs.version_id }}
+        run: |
+          {
+            echo "## Cloudflare staging verified"
+            echo "- Source SHA: $GITHUB_SHA"
+            echo "- Worker: smartspec-cloudflare-staging"
+            echo "- Version: $VERSION_ID"
+            echo "- Traffic target is workers.dev; staging config contains no routes or production queue consumers."
+            echo "- Smoke checks: liveness, readiness, public metadata, anonymous session route, Container runtime identity."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore exact previous staging traffic if any deployment or smoke step failed
+        if: ${{ failure() && steps.baseline.outcome == 'success' && steps.upload.outcome == 'success' && steps.traffic.outcome != 'skipped' }}
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs rollback "$RUNNER_TEMP/staging-baseline.json"
+
+  production:
+    if: ${{ inputs.target == 'production' }}
+    needs: [guard, build, staging]
+    runs-on: ubuntu-latest
+    environment: cloudflare-production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_WORKER_NAME: smartspec-cloudflare-runtime
+      CLOUDFLARE_EXPECTED_BASELINE_DEPLOYMENT_ID: ${{ vars.CLOUDFLARE_PRODUCTION_BASELINE_DEPLOYMENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloudflare-assets-${{ github.sha }}
+          path: apps/web/dist/public
+      - name: Verify Production credential, account and exact active Worker baseline
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs identity && node apps/cloudflare/scripts/cloudflare-deploy-control.mjs snapshot "$RUNNER_TEMP/production-baseline.json"
+      - name: Upload immutable Production Worker version without activating traffic
+        id: upload
+        run: |
+          set -euo pipefail
+          pnpm dlx wrangler@4.151.1 versions upload --config apps/cloudflare/wrangler.production.jsonc --keep-vars --strict --message "SmartAIHub production $GITHUB_SHA" > "$RUNNER_TEMP/production-upload.log" 2>&1 || { echo "PRODUCTION_VERSION_UPLOAD_FAILED"; exit 1; }
+          node apps/cloudflare/scripts/cloudflare-deploy-control.mjs uploaded-version "$RUNNER_TEMP/production-upload.log" "$GITHUB_OUTPUT"
+      - name: Promote only the uploaded Worker version; do not edit routes
+        id: traffic
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs deploy "${{ steps.upload.outputs.version_id }}" "SmartAIHub production $GITHUB_SHA"
+      - name: Verify live Production runtime before accepting the deployment
+        id: smoke
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs smoke https://smartaihub.app
+      - name: Record Production receipt and exact rollback deployment
+        if: success()
+        env:
+          VERSION_ID: ${{ steps.upload.outputs.version_id }}
+        run: |
+          {
+            echo "## Cloudflare Production Worker deployment verified"
+            echo "- Source SHA: $GITHUB_SHA"
+            echo "- Worker version: $VERSION_ID"
+            echo "- Rollback deployment ID: $(node -e 'const x=require(process.argv[1]); console.log(x.deploymentId)' "$RUNNER_TEMP/production-baseline.json")"
+            echo "- Traffic routes were not created or edited; only the existing Worker deployment version was promoted."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore exact previous Production traffic weights on any post-promotion failure
+        if: ${{ failure() && steps.baseline.outcome == 'success' && steps.upload.outcome == 'success' && steps.traffic.outcome != 'skipped' }}
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs rollback "$RUNNER_TEMP/production-baseline.json"
+
+  rollback-production:
+    if: ${{ inputs.target == 'rollback-production' }}
+    needs: guard
+    runs-on: ubuntu-latest
+    environment: cloudflare-production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_WORKER_NAME: smartspec-cloudflare-runtime
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.23.4"
+      - name: Verify identity and restore the selected previous deployment traffic weights
+        env:
+          DEPLOYMENT_ID: ${{ inputs.rollback_deployment_id }}
+        run: node apps/cloudflare/scripts/cloudflare-deploy-control.mjs identity && node apps/cloudflare/scripts/cloudflare-deploy-control.mjs rollback-deployment "$DEPLOYMENT_ID"
