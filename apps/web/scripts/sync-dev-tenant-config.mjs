@@ -15,7 +15,9 @@ const sourceEnv = parse(readFileSync(resolve(appRoot, '.env')));
 const devEnv = parse(readFileSync(process.env.SMARTSPEC_DEV_ENV_FILE || `${homedir()}/.config/smartspec-dev/web.env`));
 const targetUrl = new URL(devEnv.DATABASE_URL);
 const sourceUrl = new URL(sourceEnv.DATABASE_URL);
-if (devEnv.SMARTSPEC_ENVIRONMENT !== 'development' || !targetUrl.pathname.endsWith('_dev_web') ||
+const targetDatabase = decodeURIComponent(targetUrl.pathname.replace(/^\//, ''));
+const isolatedDevDatabase = targetUrl.pathname.endsWith('_dev_web') || targetDatabase === 'smartspec_dev';
+if (devEnv.SMARTSPEC_ENVIRONMENT !== 'development' || !isolatedDevDatabase ||
     targetUrl.pathname === sourceUrl.pathname || devEnv.APP_URL !== 'https://aimarkethubs.com')
   throw new Error('An isolated aimarkethubs development database is required');
 const apply = process.argv.includes('--apply');
@@ -65,7 +67,10 @@ try {
   await source.connect(); await target.connect();
   await source.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
   const src = (await source.query('SELECT * FROM tenants WHERE "primaryDomain"=$1',['smartaihub.app'])).rows;
-  const dst = (await target.query('SELECT * FROM tenants WHERE "primaryDomain"=$1',['aimarkethubs.com'])).rows;
+  const dst = (await target.query(
+    'SELECT * FROM tenants WHERE "primaryDomain"=$1 OR domains::jsonb @> $2::jsonb',
+    ['aimarkethubs.com', JSON.stringify(['aimarkethubs.com'])],
+  )).rows;
   if (src.length !== 1 || dst.length !== 1 || src[0].id === dst[0].id) throw new Error('Unique separate tenants required');
   const sourceTenant = src[0], devTenant = dst[0];
   const pages = (await source.query('SELECT * FROM tenant_pages WHERE "tenantId"=$1 ORDER BY id',[sourceTenant.id])).rows;
