@@ -123,8 +123,22 @@ describe("SPEC-293 migration 0415 scope and safety preflight", () => {
       actualFingerprint: devFingerprint,
       databaseTargetId: `smartaihub:development:${devFingerprint}`,
       databaseUrlHost: "127.0.0.1",
+      targetFacts: { database: "smartspec_dev", schema: "public", role: "smartspec_dev", sessionRoleMatches: true, writableSession: true },
       workflowRef: "local",
     }))).toMatchObject({ status: "READY", fingerprint: devFingerprint });
+  });
+
+  it("rejects a development-labeled migration pointed at the Production database and role", () => {
+    const result = evaluateWorkspaceBindings0415Preflight(input({
+      environment: "development",
+      expectedFingerprint: fingerprint,
+      actualFingerprint: fingerprint,
+      databaseTargetId: `smartaihub:development:${fingerprint}`,
+      databaseUrlHost: "localhost",
+      workflowRef: "local",
+    }));
+    expect(result.status).toBe("BLOCKED");
+    expect(result.status === "BLOCKED" ? result.reasons : []).toContain("development_database_identity_mismatch");
   });
 
   it("blocks development credentials pointed at a non-loopback database", () => {

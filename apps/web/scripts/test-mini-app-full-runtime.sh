@@ -50,7 +50,7 @@ pnpm exec drizzle-kit migrate --config=drizzle.mini-app-baseline.config.ts >/dev
 psql "$MINI_APP_BASELINE_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/research-notes-focused-runtime.seed.sql >/dev/null
 psql "$MINI_APP_BASELINE_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/project-wiki-hosted-runtime.seed.sql >/dev/null
 start_app() {
-  env -i PATH="$PATH" HOME="$HOME" USER="$USER" TMPDIR="${TMPDIR:-/tmp}" DOTENV_CONFIG_PATH=/dev/null NODE_ENV=development HOST=127.0.0.1 PORT="$WEB_PORT" DATABASE_URL="$MINI_APP_BASELINE_DATABASE_URL" JWT_SECRET=synthetic-full-app-runtime-secret-32-characters APP_ID=smartspec-local-dev CONTROL_PLANE_API_KEY=synthetic-control-plane-test-key CONTROL_PLANE_URL=http://127.0.0.1:1 API_KEY_HMAC_SECRET=synthetic-api-key-hmac-secret-at-least-32-chars node --import tsx server/_core/index.ts >"$RUNTIME_DIR/app.log" 2>&1 &
+  env -i PATH="$PATH" HOME="$HOME" USER="$USER" TMPDIR="${TMPDIR:-/tmp}" DOTENV_CONFIG_PATH=/dev/null NODE_ENV=development SMARTSPEC_ENVIRONMENT=development SMARTSPEC_DEV_DATABASE_MODE=disposable-test HOST=127.0.0.1 PORT="$WEB_PORT" DATABASE_URL="$MINI_APP_BASELINE_DATABASE_URL" JWT_SECRET=synthetic-full-app-runtime-secret-32-characters APP_ID=smartspec-local-dev CONTROL_PLANE_API_KEY=synthetic-control-plane-test-key CONTROL_PLANE_URL=http://127.0.0.1:1 API_KEY_HMAC_SECRET=synthetic-api-key-hmac-secret-at-least-32-chars node --import tsx server/_core/index.ts >"$RUNTIME_DIR/app.log" 2>&1 &
   APP_PID=$!
 }
 start_app

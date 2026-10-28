@@ -167,7 +167,7 @@ export function evaluateWorkspaceBindings0415Preflight(input: {
   if (targetIndex !== input.journal.length - 1) reasons.push("later_migration_exists");
   if (!/^[a-f0-9]{40}$/.test(input.sourceSha)) reasons.push("source_sha_invalid");
   if (input.expectedFingerprint !== input.actualFingerprint) reasons.push("database_fingerprint_mismatch");
-  if (input.targetFacts.database !== "smartspec" || input.targetFacts.schema !== "public" || input.targetFacts.role !== "smartspec") reasons.push("database_identity_mismatch");
+  if (input.targetFacts.schema !== "public") reasons.push("database_identity_mismatch");
   if (!input.targetFacts.sessionRoleMatches) reasons.push("session_role_switch_forbidden");
   if (!input.targetFacts.writableSession) reasons.push("database_session_read_only");
   if (input.activeMigrationCandidates !== 0) reasons.push("concurrent_migration_detected");
@@ -185,12 +185,16 @@ export function evaluateWorkspaceBindings0415Preflight(input: {
   if (predecessor && predecessorRows[0]?.hash !== predecessor.hash) reasons.push("predecessor_migration_checksum_mismatch");
 
   if (input.environment === "production") {
+    if (input.targetFacts.database !== "smartspec" || input.targetFacts.role !== "smartspec") reasons.push("database_identity_mismatch");
     if (input.workflowRef !== "refs/heads/main") reasons.push("production_source_not_main");
     if (!input.githubActions || !input.workflowPath.endsWith("/.github/workflows/apply-core-0412-targeted-migration.yml@refs/heads/main")) reasons.push("production_authority_workflow_invalid");
     if (input.expectedFingerprint !== WORKSPACE_BINDINGS_0415_TARGET.productionFingerprint) reasons.push("production_fingerprint_not_allowlisted");
     if (input.databaseTargetId !== `smartaihub:production:${WORKSPACE_BINDINGS_0415_TARGET.productionFingerprint}`) reasons.push("production_target_id_mismatch");
     if (!input.databaseUrlHost.toLowerCase().endsWith(".neon.tech")) reasons.push("production_database_host_not_allowlisted");
   } else if (input.environment === "development") {
+    if (!/(?:^|_)dev(?:_|$)/i.test(input.targetFacts.database) || !input.targetFacts.role.toLowerCase().endsWith("_dev")) {
+      reasons.push("development_database_identity_mismatch");
+    }
     if (input.databaseTargetId !== `smartaihub:development:${input.actualFingerprint}`) reasons.push("development_target_id_mismatch");
     if (!/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(input.databaseUrlHost)) reasons.push("development_database_not_loopback");
   } else {
