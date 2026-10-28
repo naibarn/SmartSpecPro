@@ -53,6 +53,7 @@ vi.mock("../../services/ephemeralAuthorizationSessionStore", () => {
         byUser.set(String(session.userCode).toUpperCase(), session);
       },
       getByDeviceCode: async (code: string) => byDevice.get(code) ?? null,
+      getByDeviceCodeIncludingExpired: async (code: string) => byDevice.get(code) ?? null,
       getByUserCode: async (code: string) =>
         byUser.get(code.toUpperCase()) ?? null,
     },
@@ -1033,6 +1034,31 @@ describe("Runner control transport routes", () => {
     expect(token.body.controlToken).toEqual(expect.any(String));
     expect(token.body.refreshToken).toEqual(expect.any(String));
     expect(token.body.runnerSessionId).toEqual(expect.any(String));
+  });
+
+  it("returns a distinct expired result when a Runner polls after pairing TTL", async () => {
+    const app = express();
+    app.use(express.json());
+    registerRunnerControlRoutes(app, new RunnerGateway(new InMemoryRunnerRepository()));
+    const start = await request(app)
+      .post("/api/runners/connect/start")
+      .send({
+        runnerId: "runner-expired-pairing",
+        displayName: "Local Runner",
+        deviceId: "device-expired-pairing",
+        machineFingerprint: "machine-expired-pairing",
+        publicKey: validPublicKey,
+        runnerVersion: "0.1.0",
+      })
+      .expect(201);
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.now() + (start.body.expiresIn + 1) * 1000));
+    await request(app)
+      .post("/api/runners/connect/token")
+      .send({ deviceCode: start.body.deviceCode, pairingNonce: start.body.pairingNonce })
+      .expect(410, { error: "runner_connect_expired" });
+    vi.useRealTimers();
   });
 
   it("supports authenticated browser setup without accepting a private key", async () => {

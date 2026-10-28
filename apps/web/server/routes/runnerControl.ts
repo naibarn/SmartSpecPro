@@ -1644,10 +1644,10 @@ async function saveRunnerConnectSession(
   await ephemeralAuthorizationSessionStore.save(session, ttl);
 }
 
-async function getRunnerConnectSessionByDevice(
+async function getRunnerConnectSessionByDeviceIncludingExpired(
   deviceCode: string
 ): Promise<RunnerConnectSession | null> {
-  return ephemeralAuthorizationSessionStore.getByDeviceCode<RunnerConnectSession>(
+  return ephemeralAuthorizationSessionStore.getByDeviceCodeIncludingExpired<RunnerConnectSession>(
     deviceCode
   );
 }
@@ -2276,16 +2276,16 @@ export function registerRunnerControlRoutes(
       try {
         const deviceCode = normalizeRunnerDeviceCode(req.body);
         const pairingNonce = String(req.body?.pairingNonce ?? "").trim();
-        const session = await getRunnerConnectSessionByDevice(deviceCode);
+        const session = await getRunnerConnectSessionByDeviceIncludingExpired(deviceCode);
         if (!session)
           return res.status(404).json({ error: "runner_connect_not_found" });
         if (!session.pairingNonce || pairingNonce !== session.pairingNonce)
           return res
             .status(403)
             .json({ error: "runner_pairing_challenge_invalid" });
-        if (runnerConnectExpired(session) && session.status === "pending") {
+        if (runnerConnectExpired(session)) {
           session.status = "expired";
-          await saveRunnerConnectSession(session);
+          return res.status(410).json({ error: "runner_connect_expired" });
         }
         if (
           session.status !== "approved" ||

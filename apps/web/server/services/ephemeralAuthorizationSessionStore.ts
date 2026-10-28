@@ -48,6 +48,15 @@ export function createEphemeralAuthorizationSessionStore(db: DrizzleDB) {
       return row ? decryptAuthorizationSession<T>(row.sessionJson) : null;
     },
 
+    /** Device polling needs to distinguish an expired pairing from an unknown code. */
+    async getByDeviceCodeIncludingExpired<T>(deviceCode: string): Promise<T | null> {
+      const [row] = await withStoreError(() => db.select({ sessionJson: ephemeralAuthorizationSessions.sessionJson })
+        .from(ephemeralAuthorizationSessions)
+        .where(eq(ephemeralAuthorizationSessions.deviceCodeHash, hashJti(deviceCode)))
+        .limit(1));
+      return row ? decryptAuthorizationSession<T>(row.sessionJson) : null;
+    },
+
     async getByUserCode<T>(userCode: string): Promise<T | null> {
       const [row] = await withStoreError(() => db.select({ sessionJson: ephemeralAuthorizationSessions.sessionJson })
         .from(ephemeralAuthorizationSessions)
@@ -103,6 +112,8 @@ export const ephemeralAuthorizationSessionStore = {
     createEphemeralAuthorizationSessionStore(getDb()).save(session, ttlSeconds),
   getByDeviceCode: <T>(deviceCode: string) =>
     createEphemeralAuthorizationSessionStore(getDb()).getByDeviceCode<T>(deviceCode),
+  getByDeviceCodeIncludingExpired: <T>(deviceCode: string) =>
+    createEphemeralAuthorizationSessionStore(getDb()).getByDeviceCodeIncludingExpired<T>(deviceCode),
   getByUserCode: <T>(userCode: string) =>
     createEphemeralAuthorizationSessionStore(getDb()).getByUserCode<T>(userCode),
   rotateEncryptionKeyBatch: (batchSize?: number) =>

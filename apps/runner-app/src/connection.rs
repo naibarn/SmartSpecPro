@@ -563,6 +563,22 @@ mod tests {
             safe_http_rejection_code(path, 401, br#"{"error":"attacker-controlled secret"}"#),
             "RUNNER_CONNECT_REQUEST_REJECTED_401"
         );
+        assert_eq!(
+            safe_http_rejection_code(
+                "/api/runners/connect/token",
+                410,
+                br#"{"error":"runner_connect_expired","token":"secret"}"#
+            ),
+            "RUNNER_CONNECT_TOKEN_EXPIRED"
+        );
+        assert_eq!(
+            safe_http_rejection_code(
+                "/api/runners/connect/token",
+                404,
+                br#"{"error":"runner_connect_not_found"}"#
+            ),
+            "RUNNER_CONNECT_TOKEN_SESSION_NOT_FOUND"
+        );
     }
 
     #[test]
@@ -802,6 +818,9 @@ pub fn safe_refresh_error_code(error: &str) -> String {
         "RUNNER_REFRESH_SESSION_STALE",
         "RUNNER_REFRESH_SERVER_STATE_UNAVAILABLE",
         "RUNNER_REFRESH_ENDPOINT_OR_RUNNER_NOT_FOUND",
+        "RUNNER_CONNECT_TOKEN_EXPIRED",
+        "RUNNER_CONNECT_TOKEN_SESSION_NOT_FOUND",
+        "RUNNER_CONNECT_TOKEN_CHALLENGE_INVALID",
     ];
     let is_http_rejection = code
         .strip_prefix("RUNNER_CONNECT_REQUEST_REJECTED_")
@@ -845,6 +864,9 @@ pub fn safe_connect_error_code(error: &str) -> String {
     const SAFE_CODES: &[&str] = &[
         "RUNNER_CONNECT_APPROVAL_TIMEOUT",
         "RUNNER_CONNECT_APPROVAL_FAILED",
+        "RUNNER_CONNECT_TOKEN_EXPIRED",
+        "RUNNER_CONNECT_TOKEN_SESSION_NOT_FOUND",
+        "RUNNER_CONNECT_TOKEN_CHALLENGE_INVALID",
         "RUNNER_CONNECT_BROWSER_OPEN_FAILED",
         "RUNNER_CONNECT_CONTROL_TOKEN_MISSING",
         "RUNNER_CONNECT_REFRESH_TOKEN_MISSING",
@@ -1005,6 +1027,21 @@ fn request_json_with_agent<T: for<'de> Deserialize<'de>>(
 }
 
 fn safe_http_rejection_code(path: &str, status: u16, body: &[u8]) -> String {
+    if path == "/api/runners/connect/token" {
+        let server_code = serde_json::from_slice::<serde_json::Value>(body)
+            .ok()
+            .and_then(|value| value.get("error")?.as_str().map(ToString::to_string));
+        match server_code.as_deref() {
+            Some("runner_connect_expired") => return "RUNNER_CONNECT_TOKEN_EXPIRED".into(),
+            Some("runner_connect_not_found") => {
+                return "RUNNER_CONNECT_TOKEN_SESSION_NOT_FOUND".into()
+            }
+            Some("runner_pairing_challenge_invalid") => {
+                return "RUNNER_CONNECT_TOKEN_CHALLENGE_INVALID".into()
+            }
+            _ => {}
+        }
+    }
     let is_refresh_route = path.starts_with("/api/runners/") && path.ends_with("/access/refresh");
     if is_refresh_route {
         let server_code = serde_json::from_slice::<serde_json::Value>(body)

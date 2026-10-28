@@ -56,7 +56,9 @@ describe.skipIf(!enabled)("PostgreSQL ephemeral authorization sessions", () => {
       .set({ expiresAt: new Date(Date.now() - 1) })
       .where(eq(ephemeralAuthorizationSessions.deviceCodeHash, hashJti(deviceCode)));
     await expect(first.getByDeviceCode(deviceCode)).resolves.toBeNull();
+    await expect(second.getByDeviceCodeIncludingExpired(deviceCode)).resolves.toEqual(session);
     await first.cleanupExpired();
+    await expect(second.getByDeviceCodeIncludingExpired(deviceCode)).resolves.toBeNull();
     await expect(second.getByUserCode(userCode)).resolves.toBeNull();
   });
 });
