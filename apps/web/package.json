@@ -93,6 +93,7 @@
     "repair:library-knowledge-ledger": "node --import tsx scripts/verify-library-knowledge-migrations.ts --repair-ledger",
     "astryx": "astryx",
     "db:migrate": "node --import tsx scripts/db-migrate-with-receipt.ts migrate",
+    "db:migrate:core-0415": "node --import tsx scripts/workspace-bindings-0415-migration.ts",
     "db:audit-ledger": "tsx scripts/audit-drizzle-ledger.ts",
     "db:audit-catalog": "tsx scripts/audit-drizzle-catalog.ts",
     "db:verify-runtime-migrations": "tsx scripts/verify-core-runtime-migrations.ts",

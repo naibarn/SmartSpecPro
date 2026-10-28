@@ -1,10 +1,18 @@
-name: Core Migration 0412 (Production)
+name: Core Production Migration (0412 / 0415)
 
 on:
   workflow_dispatch:
     inputs:
+      migration:
+        description: "Select exactly one allowlisted core migration."
+        required: true
+        type: choice
+        default: "0412_active_shared_schema_contract_repair"
+        options:
+          - "0412_active_shared_schema_contract_repair"
+          - "0415_spec293_canonical_project_workspace_bindings"
       confirm:
-        description: "Acknowledgement only; the configured Database Owner team must approve the production environment deployment."
+        description: "Enter the exact confirmation string for the selected migration; the configured Database Owner environment gate still applies."
         required: true
         type: string
       authorization_reference:
@@ -17,12 +25,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: core-production-migration-0412
+  group: core-production-migration
   cancel-in-progress: false
 
 jobs:
   migrate:
-    if: ${{ github.ref == 'refs/heads/main' && inputs.confirm == 'apply-core-0412-to-confirmed-production-database' }}
+    if: ${{ github.ref == 'refs/heads/main' && ((inputs.migration == '0412_active_shared_schema_contract_repair' && inputs.confirm == 'apply-core-0412-to-confirmed-production-database') || (inputs.migration == '0415_spec293_canonical_project_workspace_bindings' && inputs.confirm == 'apply-core-0415-to-confirmed-production-database')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -38,11 +46,21 @@ jobs:
           fetch-depth: 1
 
       - name: Verify canonical source and exact migration
+        if: ${{ inputs.migration == '0412_active_shared_schema_contract_repair' }}
         shell: bash
         run: |
           set -Eeuo pipefail
           test "$GITHUB_REF" = "refs/heads/main"
           test -s apps/web/drizzle/0412_active_shared_schema_contract_repair.sql
+          test -s apps/web/drizzle/meta/_journal.json
+
+      - name: Verify canonical source and exact 0415 migration
+        if: ${{ inputs.migration == '0415_spec293_canonical_project_workspace_bindings' }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test -s apps/web/drizzle/0415_spec293_canonical_project_workspace_bindings.sql
           test -s apps/web/drizzle/meta/_journal.json
 
       - name: Setup Node
@@ -77,12 +95,14 @@ jobs:
           node --import tsx scripts/verify-spec224-migration-environment.ts "$SPEC224_DATABASE_OWNER_TEAM_ID"
 
       - name: Capture read-only schema drift before migration
+        if: ${{ inputs.migration == '0412_active_shared_schema_contract_repair' }}
         working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
         run: pnpm run db:audit-catalog
 
       - name: Apply only 0412 after live target and pending-set verification
+        if: ${{ inputs.migration == '0412_active_shared_schema_contract_repair' }}
         working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
@@ -94,13 +114,62 @@ jobs:
           MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/core-0412-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
         run: pnpm --filter @smartspec/web run db:migrate
 
+      - name: Preflight only migration 0415 or verify its existing receipt
+        id: preflight_0415
+        if: ${{ inputs.migration == '0415_spec293_canonical_project_workspace_bindings' }}
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+          DEPLOY_ENVIRONMENT: production
+          DATABASE_TARGET_ID: "smartaihub:production:sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83"
+          MIGRATION_EXPECTED_DATABASE_FINGERPRINT: sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83
+          MIGRATION_AUTHORIZATION_REF: ${{ inputs.authorization_reference }}
+          MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:core-0415
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/core-0415-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
+          CORE_0415_CONFIRMATION: ${{ inputs.confirm }}
+        run: |
+          set -Eeuo pipefail
+          pnpm exec tsx scripts/workspace-bindings-0415-migration.ts --preflight | tee "$RUNNER_TEMP/core-0415-preflight.json"
+          status="$(node -e 'const r=require(process.argv[1]); process.stdout.write(r.status)' "$RUNNER_TEMP/core-0415-preflight.json")"
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+
+      - name: Apply only migration 0415 after exact live preflight
+        if: ${{ inputs.migration == '0415_spec293_canonical_project_workspace_bindings' && steps.preflight_0415.outputs.status == 'READY' }}
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+          DEPLOY_ENVIRONMENT: production
+          DATABASE_TARGET_ID: "smartaihub:production:sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83"
+          MIGRATION_EXPECTED_DATABASE_FINGERPRINT: sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83
+          MIGRATION_AUTHORIZATION_REF: ${{ inputs.authorization_reference }}
+          MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:core-0415
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/core-0415-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
+          CORE_0415_CONFIRMATION: ${{ inputs.confirm }}
+        run: pnpm exec tsx scripts/workspace-bindings-0415-migration.ts
+
+      - name: Verify 0415 execution receipt and exact schema postconditions
+        if: ${{ inputs.migration == '0415_spec293_canonical_project_workspace_bindings' }}
+        working-directory: apps/web
+        env:
+          DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
+          DEPLOY_ENVIRONMENT: production
+          DATABASE_TARGET_ID: "smartaihub:production:sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83"
+          MIGRATION_EXPECTED_DATABASE_FINGERPRINT: sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83
+          MIGRATION_AUTHORIZATION_REF: ${{ inputs.authorization_reference }}
+          MIGRATION_IDEMPOTENCY_KEY: ${{ github.run_id }}:${{ github.run_attempt }}:core-0415
+          MIGRATION_RECEIPT_FILE: ${{ runner.temp }}/smartspecpro-migration-receipts/core-0415-${{ github.run_id }}-${{ github.run_attempt }}.jsonl
+          CORE_0415_CONFIRMATION: ${{ inputs.confirm }}
+        run: pnpm exec tsx scripts/workspace-bindings-0415-migration.ts --preflight
+
       - name: Require the active schema catalog to be drift-free
+        if: ${{ inputs.migration == '0412_active_shared_schema_contract_repair' }}
         working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
         run: pnpm exec tsx scripts/audit-drizzle-catalog.ts --strict
 
       - name: Verify required runtime schema postconditions
+        if: ${{ inputs.migration == '0412_active_shared_schema_contract_repair' }}
         working-directory: apps/web
         env:
           DATABASE_URL: ${{ secrets.NEON_PROD_DB_URL }}
@@ -110,6 +179,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: core-migration-0412-${{ github.run_id }}-${{ github.run_attempt }}
+          name: core-migration-${{ inputs.migration }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/smartspecpro-migration-receipts/*.jsonl
           if-no-files-found: ignore
