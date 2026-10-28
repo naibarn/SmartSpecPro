@@ -98,10 +98,14 @@ export async function probeCloudflareProductionProviderInventory(input: {
       const bindings = Array.isArray(value.resources?.bindings) ? value.resources.bindings : [];
       const containers = Array.isArray(value.resources?.script_runtime?.containers) ? value.resources.script_runtime.containers : [];
       const message = value.annotations?.["workers/message"];
+      const releaseIdentity = typeof message === "string"
+        ? /^SmartAIHub production ([a-f0-9]{40}) ([a-f0-9]{64}) origin ([a-f0-9]{64})$/.exec(message)
+        : null;
       return { versionId: version.version_id as string, percentage: version.percentage as number,
         bindingNames: bindings.map((binding: any) => binding?.name).filter((name: unknown): name is string => typeof name === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(name)),
         containerNames: containers.map((container: any) => container?.name).filter((name: unknown): name is string => typeof name === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(name)),
-        hasVerifiedReleaseIdentity: typeof message === "string" && /^SmartAIHub production [a-f0-9]{40} [a-f0-9]{64} origin [a-f0-9]{64}$/.test(message),
+        hasVerifiedReleaseIdentity: releaseIdentity !== null,
+        ...(releaseIdentity ? { sourceSha: releaseIdentity[1], buildDigest: releaseIdentity[2], configurationDigest: releaseIdentity[3] } : {}),
         checked: detail.complete };
     }));
     const queueNames = queueDetails.map(row => row.queue_name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(name));

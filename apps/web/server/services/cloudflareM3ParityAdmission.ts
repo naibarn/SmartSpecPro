@@ -16,6 +16,9 @@ import {
   CLOUDFLARE_PRODUCTION_QUEUE_NAME,
 } from "./cloudflareProductionQueueProvision";
 import { verifyM3ParityEvidence } from "./cloudflareM3AcceptanceEvidence";
+import { probeCloudflareProductionProviderInventory } from "./cloudflareProductionProviderInventory";
+import { resolveCloudflareStagingModules } from "./cloudflareStagingArtifactAuthority";
+import { verifyM3QueueWorkerReadiness } from "./cloudflareM3QueueWorkerReadiness";
 
 type Scope = {
   tenantId: string;
@@ -264,6 +267,20 @@ export async function getM3ParityPreflight(
         process.env.CLOUDFLARE_WORKFLOW_RUNTIME_URL?.trim() &&
         process.env.CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN?.trim()
       );
+    const providerInventory = await probeCloudflareProductionProviderInventory({
+      db,
+      tenantId: scope.tenantId,
+      projectId: scope.projectId,
+    });
+    const activeVersion =
+      "worker" in providerInventory &&
+      providerInventory.worker.versions.length === 1
+        ? providerInventory.worker.versions[0]
+        : null;
+    const queueWorker = await verifyM3QueueWorkerReadiness(
+      activeVersion,
+      resolveCloudflareStagingModules
+    );
     const missingLifecycleChecks =
       operation === "queue_recovery_acceptance"
         ? (
@@ -291,9 +308,11 @@ export async function getM3ParityPreflight(
         ? "M3_PARITY_EXECUTOR_NOT_REGISTERED"
         : !queueTransportReady
           ? "M3_PARITY_CLOUDFLARE_QUEUE_TRANSPORT_NOT_ACTIVE"
-          : missingLifecycleChecks.length > 0
-            ? "M3_QUEUE_RECOVERY_LIFECYCLE_PROBES_REQUIRED"
-            : null;
+          : !queueWorker.ready
+            ? queueWorker.reason
+            : missingLifecycleChecks.length > 0
+              ? "M3_QUEUE_RECOVERY_LIFECYCLE_PROBES_REQUIRED"
+              : null;
     return {
       ready: reason === null,
       reason,
@@ -302,6 +321,7 @@ export async function getM3ParityPreflight(
       existingJobRequired: existing.length > 0,
       executorRegistered: registered,
       queueTransportReady,
+      queueWorker,
       missingLifecycleChecks,
       authorization: "authenticated-owner-bounded-synthetic-operation",
       trafficMutation: false,

@@ -39,7 +39,7 @@ describe("Cloudflare production provider inventory", () => {
       if (url.pathname.endsWith("/mtls_certificates")) return response([]);
       if (url.pathname.endsWith("/workers/routes")) return response([]);
       if (url.pathname.endsWith("/deployments")) return response({ deployments: [{ id: "deployment-a", versions: [{ version_id: versionId, percentage: 100 }] }] });
-      if (url.pathname.endsWith(`/versions/${versionId}`)) return response({ annotations: {}, resources: { bindings: [{ name: "CLOUDFLARE_ACTIVATION" }], script_runtime: { containers: [] } } });
+      if (url.pathname.endsWith(`/versions/${versionId}`)) return response({ annotations: { "workers/message": `SmartAIHub production ${"a".repeat(40)} ${"b".repeat(64)} origin ${"c".repeat(64)}` }, resources: { bindings: [{ name: "CLOUDFLARE_ACTIVATION" }, { name: "JOB_QUEUE" }], script_runtime: { containers: [] } } });
       throw new Error(`Unexpected read-only provider request: ${url.pathname}`);
     });
 
@@ -53,7 +53,8 @@ describe("Cloudflare production provider inventory", () => {
       tunnels: [{ id: "191d047e-674a-48f4-b105-b37269c2dad6", name: "smartaihub-main", status: "healthy" }],
       vpcServices: [{ id: "12345678-1234-4234-8234-123456789abc", name: "smartspec-production-postgres", type: "tcp", appProtocol: "postgresql", tunnelId: "87654321-4321-4321-8321-cba987654321", environment: "production" }],
       domainRoute: { inventoryComplete: true, attached: false, conflicting: false },
-      worker: { deploymentCount: 1, activeVersionCount: 1, versions: [{ bindingNames: ["CLOUDFLARE_ACTIVATION"], hasVerifiedReleaseIdentity: false }] },
+      worker: { deploymentCount: 1, activeVersionCount: 1, versions: [{ bindingNames: ["CLOUDFLARE_ACTIVATION", "JOB_QUEUE"], hasVerifiedReleaseIdentity: true,
+        sourceSha: "a".repeat(40), buildDigest: "b".repeat(64), configurationDigest: "c".repeat(64) }] },
     });
     expect(fetchImpl.mock.calls.every(([request, init]) => (init?.method ?? "GET") === "GET")).toBe(true);
     const paths = fetchImpl.mock.calls.map(([request]) => new URL(String(request)).pathname);
