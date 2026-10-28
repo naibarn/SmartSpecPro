@@ -658,6 +658,51 @@ mod tests {
     }
 
     #[test]
+    fn oversized_dirty_path_set_is_unknown_instead_of_breaking_snapshot_envelope() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("project");
+        let data_root = temp.path().join("runner-data");
+        fs::create_dir_all(&project).unwrap();
+        std::process::Command::new("git")
+            .args(["init", "-q"])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        fs::write(project.join("README.md"), "baseline").unwrap();
+        std::process::Command::new("git")
+            .args(["add", "README.md"])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        std::process::Command::new("git")
+            .args([
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.invalid",
+                "commit",
+                "-qm",
+                "baseline",
+            ])
+            .current_dir(&project)
+            .status()
+            .unwrap();
+        let config = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local("runner-1", "device-1", "https://example.test")
+        };
+        workspace_registry::register(&config, &project).unwrap();
+        for index in 0..300 {
+            let name = format!("{index:04}-{}.txt", "x".repeat(100));
+            fs::write(project.join(name), "untracked").unwrap();
+        }
+
+        let facts = workspace_registry::snapshot_facts(&config).unwrap();
+        assert!(facts[0].dirty);
+        assert!(facts[0].dirty_paths.is_none());
+    }
+
+    #[test]
     fn snapshot_fingerprint_tracks_source_content_but_ignores_gitignored_files() {
         let temp = tempfile::tempdir().unwrap();
         let project = temp.path().join("project");
@@ -844,6 +889,8 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
+const MAX_SNAPSHOT_DIRTY_PATH_BYTES: usize = 24 * 1024;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegisteredWorkspace {
     pub workspace_id: String,
@@ -979,29 +1026,40 @@ pub fn list_local_details(config: &RunnerConfig) -> Result<Vec<LocalWorkspaceDet
 /// their filesystem locations or remotes. A missing or non-Git workspace stays
 /// visible by ID and is reported with no Git identity and `dirty: false`.
 pub fn snapshot_facts(config: &RunnerConfig) -> Result<Vec<WorkspaceSnapshotFacts>, String> {
-    Ok(load_records(config)?
+    let mut total_dirty_path_bytes = 0usize;
+    let mut facts = Vec::new();
+    for record in load_records(config)?
         .into_iter()
         .filter(|record| record.kind != WorkspaceKind::Root && record.kind != WorkspaceKind::Run)
-        .map(|record| {
-            let inspection = inspect_git_workspace(&record.local_path);
-            WorkspaceSnapshotFacts {
-                workspace_id: record.workspace_id,
-                project_id: record.project_id,
-                repository_id: record.repository_id,
-                root_id: record.root_id,
-                kind: record.kind,
-                display_name: record.display_name,
-                git_head: inspection.git_head,
-                git_branch: inspection.git_branch,
-                dirty: inspection.dirty,
-                dirty_paths: git_dirty_paths(&record.local_path),
-                content_fingerprint: fingerprint_workspace(&record.local_path),
-                task_id: None,
-                convergence_state: "NOT_REPORTED".into(),
-                convergence_canonical_sha: None,
+    {
+        let inspection = inspect_git_workspace(&record.local_path);
+        let dirty_paths = git_dirty_paths(&record.local_path).and_then(|paths| {
+            let bytes = paths.iter().map(|path| path.len() + 1).sum::<usize>();
+            if total_dirty_path_bytes.saturating_add(bytes) > MAX_SNAPSHOT_DIRTY_PATH_BYTES {
+                None
+            } else {
+                total_dirty_path_bytes += bytes;
+                Some(paths)
             }
-        })
-        .collect())
+        });
+        facts.push(WorkspaceSnapshotFacts {
+            workspace_id: record.workspace_id,
+            project_id: record.project_id,
+            repository_id: record.repository_id,
+            root_id: record.root_id,
+            kind: record.kind,
+            display_name: record.display_name,
+            git_head: inspection.git_head,
+            git_branch: inspection.git_branch,
+            dirty: inspection.dirty,
+            dirty_paths,
+            content_fingerprint: fingerprint_workspace(&record.local_path),
+            task_id: None,
+            convergence_state: "NOT_REPORTED".into(),
+            convergence_canonical_sha: None,
+        });
+    }
+    Ok(facts)
 }
 
 /// Return a complete, bounded list of paths that differ from HEAD. An
@@ -1042,7 +1100,9 @@ fn git_dirty_paths(workspace: &Path) -> Option<Vec<String>> {
         }
         paths.insert(path);
     }
-    if paths.len() > 4_096 {
+    if paths.len() > 4_096
+        || paths.iter().map(|path| path.len() + 1).sum::<usize>() > MAX_SNAPSHOT_DIRTY_PATH_BYTES
+    {
         return None;
     }
     Some(paths.into_iter().collect())
