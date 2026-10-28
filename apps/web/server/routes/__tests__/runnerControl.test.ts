@@ -312,14 +312,20 @@ describe("Runner control transport routes", () => {
           controlPlaneOrigin: "http://localhost:3000",
           deviceProofVerified: true,
         },
-        Buffer.from("{}"),
+        Buffer.from(JSON.stringify(envelope("runner-other"))),
         {} as RunnerGateway
       )
     ).resolves.toBeUndefined();
 
-    expect(sent).toContainEqual({
+    expect(sent[0]).toMatchObject({
       ackState: "rejected",
-      reason: "RUNNER_EVENT_REJECTED",
+      reason: "RUNNER_SCOPE_MISMATCH",
+      eventType: "runner.capabilities.update",
+      protocolVersion: "sah-runner-v1",
+      runnerSessionId: "session-invalid-event",
+      capabilityRevision: "snapshot:1",
+      sequence: 0,
+      correlationId: "runner:runner-other",
     });
   });
 

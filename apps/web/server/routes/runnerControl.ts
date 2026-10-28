@@ -1460,14 +1460,29 @@ export async function handleRunnerSocketMessage(
     }
     const rejectedEnvelope = failureEnvelope;
     const rejectedType = rejectedEnvelope?.payload.type;
+    const rejectedPayload = rejectedEnvelope?.payload;
+    const rejectedSnapshot =
+      rejectedType === "runner.capabilities.update" &&
+      rejectedPayload?.snapshot &&
+      typeof rejectedPayload.snapshot === "object" &&
+      !Array.isArray(rejectedPayload.snapshot)
+        ? (rejectedPayload.snapshot as Record<string, unknown>)
+        : null;
     const safeErrorCode = safeRunnerCapabilityErrorCode(error);
     console.warn("[RunnerControl] runner event rejected", {
       stage: failureStage,
+      eventType: rejectedType ?? null,
+      protocolVersion: rejectedEnvelope?.protocolVersion ?? null,
       correlationId: rejectedEnvelope?.correlationId ?? null,
       sequence: rejectedEnvelope?.sequence ?? null,
       idempotencyKey: rejectedEnvelope?.idempotencyKey ?? null,
       runnerId: socketAuthContext.runnerId,
       tenantId: socketAuthContext.tenantId,
+      runnerSessionId: socketAuthContext.runnerSessionId ?? null,
+      capabilityRevision:
+        typeof rejectedSnapshot?.revision === "string"
+          ? rejectedSnapshot.revision
+          : null,
       httpStatus: null,
       protocolStatus: error instanceof RunnerAuthError
         ? error.statusCode
@@ -1486,6 +1501,13 @@ export async function handleRunnerSocketMessage(
     sendRunnerSocket(ws, {
       ackState: "rejected",
       reason: safeErrorCode,
+      eventType: rejectedType ?? null,
+      protocolVersion: rejectedEnvelope?.protocolVersion ?? null,
+      runnerSessionId: socketAuthContext.runnerSessionId ?? null,
+      capabilityRevision:
+        typeof rejectedSnapshot?.revision === "string"
+          ? rejectedSnapshot.revision
+          : null,
       ...(rejectedEnvelope
         ? {
             sequence: rejectedEnvelope.sequence,
@@ -1509,9 +1531,11 @@ function safeRunnerCapabilityErrorCode(error: unknown): string {
     error instanceof RunnerGatewayError ||
     error instanceof RunnerSessionError
   )
-    return error.code;
-  if (error instanceof Error && /^[A-Z][A-Z0-9_]{2,100}$/.test(error.message))
-    return error.message;
+    return /^[A-Za-z][A-Za-z0-9_]{2,100}$/.test(error.code)
+      ? error.code.toUpperCase()
+      : "RUNNER_EVENT_REJECTED";
+  if (error instanceof Error && /^[A-Za-z][A-Za-z0-9_]{2,100}$/.test(error.message))
+    return error.message.toUpperCase();
   return "RUNNER_EVENT_REJECTED";
 }
 
