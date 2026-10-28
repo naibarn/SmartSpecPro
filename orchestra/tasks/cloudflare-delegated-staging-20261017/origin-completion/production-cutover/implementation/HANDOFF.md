@@ -66,3 +66,21 @@ on resume, reconcile recorded SHA values with Git/PR state.
 2. Check current Git HEAD, actual commits, worktree ownership and PR merge status.
 3. Recover any committed-but-unrecorded or merged-but-unrecorded work before replaying.
 4. Continue the next incomplete step; do not reset dirty files or re-open merged PRs.
+
+## Migration 0415 direct execution-path update — 2026-10-28
+
+The user redirected this incident away from GitHub Actions as the required Production migration runner. The focused infrastructure/code recheck is in `evidence/migration-0415-direct-path-recheck-20261028.md`.
+
+### Migration 0415 outcome
+
+- `DEV`: `ALREADY_APPLIED`; do not replay.
+- `PRODUCTION`: `BLOCKED`; no current Production write credential or verified direct migration executor was found. No SQL was executed and no Production credentials or provider configuration were changed.
+- Debian's active app `DATABASE_URL` is Development. The available `_debug_ro` candidate is forced read-only, lacks `public CREATE`, cannot inspect the Drizzle ledger, and its live fingerprint does not match the pinned Production fingerprint. Its observed binding table is not evidence about Production.
+- Existing Cloudflare provisioning/migration mandate code targets Cloudflare resources and deployment cutover, not SmartAIHub schema migrations. The existing `worker_jobs`/outbox ledger has no registered Production schema migration executor. GitHub Production `NEON_PROD_DB_URL` remains absent; do not route around the missing credential with DEV, `_debug_ro`, or Cloudflare API credentials.
+- Required external action for this 0415 run: the authorized Production database credential issuer/owner must issue a scoped write credential and place it in an already-approved Production secret authority. Then continue with a separate runner implementation checkpoint and re-run exact 0415 preflight before any write.
+
+### Permanent Migration Runner outcome — separate from the 0415 execution
+
+- `NOT IMPLEMENTED`: no Admin/Runner migration-specific mission authorization and executor exists on the current `worker_jobs`/outbox path.
+- The implementation should extend the existing `worker_jobs`/outbox lifecycle and existing approval service, bind one authenticated active Admin to a mission scoped to exact migration/checksum/target fingerprint/environment/idempotency key, and write execution receipts to the existing audit surface. No second job ledger, approval authority, or secret store should be introduced.
+- This session recorded the extension point and acceptance constraints but did not create or deploy runner code. The Production credential source/issuer is not available here; no safe live validation of a writer path is possible yet.
