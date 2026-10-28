@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1301 unresolved of 1302
-- Next action: WAITING_FOR_GOAL_APPROVAL: the authenticated owner must start the bounded Goal in Task Control and approve its resulting Goal Grant through the existing Approval Authority. Then refresh the existing Runner snapshot and trace the actual Child 1/Child 2 execution and Final Verify records.
-- Manifest generation: 246
+- Next action: WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present; after approval refresh Runner ACK/source admission and continue real Child 1, automatic Child 2 and Independent Final Verify.
+- Manifest generation: 248
 
 ## Source-declared status and relationship claims
 

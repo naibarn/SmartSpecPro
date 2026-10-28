@@ -1049,39 +1049,41 @@
       "class": "AUTHORITY",
       "classification": "TRUE_EXTERNAL",
       "evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md"
       ],
       "evidence_freshness": "FRESH",
       "id": "R12_WAITING_FOR_GOAL_APPROVAL",
-      "next_action": "Start the bounded Goal through authenticated Task Control and approve its resulting Goal Grant in the existing Approval Authority. Do not create a Grant or approval record manually.",
+      "next_action": "On aimarkethubs.com choose the registered Debian Runner and Project Workspace, select “พัฒนาตาม prompt” (not “สร้าง Mini App”), click “เริ่มพัฒนา”, then approve the exact resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if it appears.",
       "owner": "Authenticated tenant owner using Task Control and the existing Approval Authority",
-      "reactivation_predicate": "A matching Goal Grant request exists for tenant tenant-001 and has approved status, is unrevoked and unexpired, and its corresponding DevelopmentRun and canonical Job/Attempt can be recovered from the current runtime.",
-      "root_cause": "The current shared development database contains no Approval Authority request with payload kind spec224_goal_delegation_grant, so there is no approved Goal or approval lineage to observe."
+      "reactivation_predicate": "A matching Goal Grant request exists for tenant tenant-001 and is approved, unrevoked and unexpired, with its DevelopmentRun and canonical Job/Attempt recoverable from smartspec_dev.",
+      "root_cause": "The current smartspec_dev observation contains no SPEC-224 Goal Grant request or worker job. The supplied Task Control screenshot is on smartaihub.app and shows successful Mini App creation via the factoryMode branch, not the Goal Admission Start flow. The authenticated owner has not yet started the bounded Goal on aimarkethubs.com and approved its resulting Grant."
     },
     {
       "class": "RUNTIME",
       "classification": "RECOVERABLE_RUNTIME",
       "evidence": [
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md"
       ],
       "evidence_freshness": "FRESH",
       "id": "R13_RUNNER_SNAPSHOT_REFRESH",
-      "next_action": "After a Goal is approved, recover the existing Runner control session without re-enrollment, obtain a fresh applied capability ACK, verify Codex readiness and recompute bounded SAFE_DISJOINT_DIRTY admission before authorization/release.",
+      "next_action": "After the Goal is approved, refresh the existing Debian Runner session, obtain a fresh applied capability ACK, verify Codex readiness and recompute SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission at the current source SHA before authorization/release.",
       "owner": "Existing Debian Runner service/runtime",
-      "reactivation_predicate": "The active Runner session has a newly applied, unexpired snapshot at canonical source SHA fcc3b50115a6cf6e675a04be29d5913f480c46b3, complete dirtyPaths and a passing fresh Codex probe; the selected bounded write scope has no dirty-path or active-writer conflict.",
-      "root_cause": "The existing Runner service is active, but its persisted capability snapshot expired at 2026-10-28T17:41:34Z; last heartbeat was 2026-10-28T17:38:06.401Z. A current Runner ACK and source admission are required before dispatch."
+      "reactivation_predicate": "The active Debian Runner session has a fresh, unexpired, applied snapshot at the current authorized source SHA, complete dirtyPaths and a passing Codex task probe; the bounded write set has SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission with no overlapping active writer lease.",
+      "root_cause": "The last observed Debian Runner snapshot was applied and Codex-ready but expired at 2026-10-28T23:32:34Z. Refresh its existing session and recompute bounded source admission after Goal approval and before dispatch; the screenshot’s stale Windows Runner is not the development Debian Runner."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9",
+    "expected_canonical_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963",
     "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
-    "next_action": "WAITING_FOR_GOAL_APPROVAL: start the bounded Goal through authenticated Task Control and approve the resulting Goal Grant in the existing Approval Authority. Once an approved request exists, refresh the existing Runner snapshot, re-evaluate source/writer admission, then trace Child 1, automatic Child 2 and independent Final Verify from persisted runtime records.",
-    "next_ready_workunit": "SPEC224_OBSERVE_APPROVED_GOAL_AND_TRACE_AUTONOMOUS_CHILD_EXECUTION",
+    "next_action": "WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present. After approval refresh Runner ACK/source admission and trace real Child 1, automatic Child 2 and Independent Final Verify.",
+    "next_ready_workunit": "SPEC224_ACTIVATE_BOUNDED_GOAL_AND_TRACE_AUTONOMOUS_CHILD_EXECUTION",
     "reactivation_predicate": "An approved, unrevoked, unexpired Goal Grant and corresponding DevelopmentRun/Job/Attempt are visible in tenant tenant-001; before release the same Runner session has a fresh applied snapshot/ACK at the current source SHA, Codex readiness passes, and the bounded scope has SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission with no active writer conflict.",
-    "resume_point": "Source SHA fdd490d0ebeea543edb50df46a47f3d04ba9a5f9 integrated the Task Control one-action Start repair and passed the connected disposable PostgreSQL Goal Admission/Child 1/Child 2 path. No real Goal was created in the shared runtime. Resume at authenticated owner Task Control Start and approval; capture only real Runner receipts for LIVE acceptance.",
-    "waiting_predicate": "No Goal Grant request with payload.kind=spec224_goal_delegation_grant exists in the current smartspec_dev database. Wait for the authenticated owner to start the Goal and approve its exact scope through the existing Task Control and Approval Authority path."
+    "resume_point": "The current screenshot shows successful Mini App factory creation on smartaihub.app, not SPEC-224 Goal Admission. Resume on aimarkethubs.com at Task Control: choose Debian Platform Engineering Runner/workspace, select “พัฒนาตาม prompt”, and click “เริ่มพัฒนา”. Approve only the resulting actual Goal Grant through Approval Authority. If the durable Run already appears, reuse it and its idempotency identity. Then refresh Runner ACK/source admission before dispatch.",
+    "waiting_predicate": "No authenticated SPEC-224 Goal Start and matching Goal Grant request are present in the latest smartspec_dev observation. The owner must start the bounded Goal on aimarkethubs.com using the development workflow and approve that exact Grant. The supplied smartaihub.app screenshot created a Mini App through factoryMode and does not satisfy this predicate."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1152,10 +1154,16 @@
         "observed_at": "2026-10-28T17:46:35Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
         "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
+      },
+      {
+        "kind": "OBSERVATION",
+        "observed_at": "2026-10-28T23:46:02Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
+        "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
       }
     ],
-    "next_action": "WAITING_FOR_GOAL_APPROVAL: the authenticated owner must start the bounded Goal in Task Control and approve its resulting Goal Grant through the existing Approval Authority. Then refresh the existing Runner snapshot and trace the actual Child 1/Child 2 execution and Final Verify records.",
-    "rationale": "Live observer checked the actual shared development Approval Authority and Job Control stores. No Goal Grant request or tenant worker job exists, so the current state is WAITING_FOR_GOAL_APPROVAL. The same-device Runner reconnect succeeded previously, but the latest snapshot has since expired; live child execution remains unstarted.",
+    "next_action": "WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present; after approval refresh Runner ACK/source admission and continue real Child 1, automatic Child 2 and Independent Final Verify.",
+    "rationale": "The current smartspec_dev observation has no Goal Grant or SPEC-224 worker Job. The user-provided screenshot shows successful Mini App factory creation on smartaihub.app with a stale Windows Runner, so it does not exercise the development Goal Admission path. The Development Task Control on aimarkethubs.com serves the integrated Start flow; the authenticated owner must start the bounded Goal there and approve its resulting Grant. Refresh the expired Debian snapshot before dispatch.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1240,7 +1248,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 246,
+  "generation": 248,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -1472,7 +1480,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9",
+    "canonical_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963",
     "integrated": true,
     "integrated_at": "2026-10-28T18:50:18Z",
     "pull_request": null,
@@ -2430,10 +2438,16 @@
           "observed_at": "2026-10-28T17:46:35Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
           "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
+        },
+        {
+          "kind": "OBSERVATION",
+          "observed_at": "2026-10-28T23:46:02Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
+          "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
         }
       ],
-      "next_action": "WAITING_FOR_GOAL_APPROVAL: the authenticated owner must start the bounded Goal in Task Control and approve its resulting Goal Grant through the existing Approval Authority. Then refresh the existing Runner snapshot and trace the actual Child 1/Child 2 execution and Final Verify records.",
-      "rationale": "Live observer checked the actual shared development Approval Authority and Job Control stores. No Goal Grant request or tenant worker job exists, so the current state is WAITING_FOR_GOAL_APPROVAL. The same-device Runner reconnect succeeded previously, but the latest snapshot has since expired; live child execution remains unstarted.",
+      "next_action": "WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present; after approval refresh Runner ACK/source admission and continue real Child 1, automatic Child 2 and Independent Final Verify.",
+      "rationale": "The current smartspec_dev observation has no Goal Grant or SPEC-224 worker Job. The user-provided screenshot shows successful Mini App factory creation on smartaihub.app with a stale Windows Runner, so it does not exercise the development Goal Admission path. The Development Task Control on aimarkethubs.com serves the integrated Start flow; the authenticated owner must start the bounded Goal there and approve its resulting Grant. Refresh the expired Debian snapshot before dispatch.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3978,7 +3992,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T23:29:28.564205Z",
+  "updated_at": "2026-10-28T23:47:29.219382Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
