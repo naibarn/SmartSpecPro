@@ -6,7 +6,8 @@ import pytest
 
 from app.models.approval import ApprovalStatus, ApprovalType
 from app.api.approvals import CloudflareMigrationMandateIssue, CloudflareMigrationOperationGrantIssue
-from app.services.approval_db_service import ApprovalDBService, _normalize_cloudflare_migration_mandate
+from app.services.approval_db_service import (ApprovalDBService, _cloudflare_migration_operation_expected_usage,
+    _normalize_cloudflare_migration_mandate)
 
 
 def _mandate(**overrides):
@@ -46,6 +47,15 @@ def test_mandate_contract_rejects_foreign_scope_expanded_budget_and_charge_autho
     ):
         with pytest.raises(ValueError, match="CLOUDFLARE_MIGRATION_MANDATE_INVALID"):
             _normalize_cloudflare_migration_mandate(candidate)
+
+
+@pytest.mark.unit
+def test_worker_canary_budget_reserves_both_version_upload_and_deployment_writes():
+    assert _cloudflare_migration_operation_expected_usage("worker_canary") == {
+        "providerWrites": 2, "workerDeployments": 1, "containerStarts": 0,
+        "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0,
+        "syntheticFinancialMinorUnits": 0,
+    }
 
 
 @pytest.mark.unit

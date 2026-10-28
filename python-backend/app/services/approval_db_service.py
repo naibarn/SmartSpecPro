@@ -71,6 +71,30 @@ _CF_FIRST_MIGRATION_REQUIRED_ACTIONS = {
 }
 
 
+def _cloudflare_migration_operation_expected_usage(operation: str) -> dict:
+    """Backend-owned maximum reservation for one operation (not a monetary cap)."""
+    usage = {
+        "rotate_origin_configuration": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+            "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+        "deploy_worker": {"providerWrites": 2, "workerDeployments": 1, "containerStarts": 0,
+            "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+        # Version upload and canary deployment are distinct Cloudflare writes.
+        "worker_canary": {"providerWrites": 2, "workerDeployments": 1, "containerStarts": 0,
+            "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+        "credit_billing_acceptance": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+            "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 30, "syntheticFinancialMinorUnits": 0},
+        "queue_recovery_acceptance": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
+            "containerReservedSeconds": 0, "queueMessages": 4, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+        "native_runtime_activation": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 2,
+            "containerReservedSeconds": 600, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+        "rollback": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 0,
+            "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
+    }
+    if operation not in usage:
+        raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_NOT_SUPPORTED")
+    return usage[operation]
+
+
 def _normalize_cloudflare_migration_mandate(value: dict) -> dict:
     """Fail-closed validator for the durable, resource-bounded FIRST_MIGRATION mandate."""
     def invalid():
@@ -1282,22 +1306,7 @@ class ApprovalDBService(CloudflareStagingPolicyAuthority):
         # The backend owns operation costs. Callers cannot understate a quota
         # reservation while still receiving a grant. These are bounded maxima
         # for one operation, not a claim about Cloudflare invoice spend.
-        expected_usage = {
-            "rotate_origin_configuration": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
-                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
-            "deploy_worker": {"providerWrites": 2, "workerDeployments": 1, "containerStarts": 0,
-                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
-            "worker_canary": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 0,
-                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
-            "credit_billing_acceptance": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
-                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 30, "syntheticFinancialMinorUnits": 0},
-            "queue_recovery_acceptance": {"providerWrites": 0, "workerDeployments": 0, "containerStarts": 0,
-                "containerReservedSeconds": 0, "queueMessages": 4, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
-            "native_runtime_activation": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 2,
-                "containerReservedSeconds": 600, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
-            "rollback": {"providerWrites": 1, "workerDeployments": 1, "containerStarts": 0,
-                "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0, "syntheticFinancialMinorUnits": 0},
-        }[operation]
+        expected_usage = _cloudflare_migration_operation_expected_usage(operation)
         if usage != expected_usage:
             raise ValueError("CLOUDFLARE_MIGRATION_OPERATION_GRANT_USAGE_INVALID")
         correlation = "cf-first-migration-operation:" + hashlib.sha256(

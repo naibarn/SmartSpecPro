@@ -24,6 +24,18 @@ const ACTIONS = ["rotate_origin_configuration", "deploy_worker", "worker_canary"
 // only for the two synthetic M3 acceptance operations. Never offer a broader
 // Owner mandate until the remaining provider/runtime actions use the same gate.
 const FULL_MANDATE_ADMISSION_ENFORCEMENT_READY = false;
+type ProviderInventory = Awaited<ReturnType<typeof probeCloudflareProductionProviderInventory>>;
+
+/** Enrollment requires complete, unambiguous identity reads for the resources
+ * named in the mandate. Operational readiness (for example a healthy Queue
+ * consumer) belongs to that operation's preflight, so it cannot deadlock the
+ * Owner from authorizing the bounded repair mission. */
+export function getCloudflareMigrationMandateInventoryBlocker(inventory: ProviderInventory): string | null {
+  if (!("queueResourceInventory" in inventory) || !Array.isArray(inventory.queueResourceInventory) || !inventory.queueInventoryComplete || !inventory.hyperdriveInventoryComplete ||
+      !inventory.vpcServiceInventoryComplete || !inventory.tunnelInventoryComplete || !inventory.domainRoute.inventoryComplete)
+    return "MIGRATION_MANDATE_RESOURCE_INVENTORY_INCOMPLETE";
+  return null;
+}
 
 export async function getCloudflareMigrationMandatePlan(db: DrizzleDB, input: {
   tenantId: string; projectId: string; ownerUserId: number;
@@ -34,15 +46,11 @@ export async function getCloudflareMigrationMandatePlan(db: DrizzleDB, input: {
   const target = await resolveCloudflareProductionDeploymentTarget({ db, tenantId: input.tenantId, projectId: input.projectId });
   if (!target || target.targetId !== "smartspec-cloudflare-runtime") return blocked("MIGRATION_MANDATE_PRODUCTION_TARGET_REQUIRED");
   const inventory = await probeCloudflareProductionProviderInventory({ db, tenantId: input.tenantId, projectId: input.projectId });
-  if (!("queueResourceInventory" in inventory) || !inventory.queueInventoryComplete || !inventory.hyperdriveInventoryComplete ||
-      !inventory.vpcServiceInventoryComplete || !inventory.tunnelInventoryComplete || !inventory.domainRoute.inventoryComplete)
-    return blocked("MIGRATION_MANDATE_RESOURCE_INVENTORY_INCOMPLETE");
+  const inventoryBlocker = getCloudflareMigrationMandateInventoryBlocker(inventory);
+  if (inventoryBlocker) return blocked(inventoryBlocker);
   const queue = inventory.queueResourceInventory.find(item => item.name === "smartspec-canonical-job-queue-production");
   const deadLetter = inventory.queueResourceInventory.find(item => item.name === "smartspec-canonical-job-queue-production-dlq");
-  if (!queue || !deadLetter || !inventory.productionQueueConsumerInventory.complete ||
-      inventory.productionQueueConsumerInventory.queueId !== queue.id ||
-      inventory.productionQueueConsumerInventory.consumers.length !== 1 ||
-      inventory.productionQueueConsumerInventory.consumers[0]?.deadLetterQueueName !== deadLetter.name)
+  if (!queue || !deadLetter)
     return blocked("MIGRATION_MANDATE_PRODUCTION_QUEUE_DLQ_UNVERIFIED");
   const productionVpc = inventory.vpcServices.filter(item => item.environment === "production" && item.type === "tcp" &&
     item.appProtocol === "postgresql" && item.tunnelId);
@@ -117,7 +125,9 @@ export async function issueCloudflareMigrationOperationGrant(input: {
   const usageByOperation = {
     rotate_origin_configuration: { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
     deploy_worker: { providerWrites: 2, workerDeployments: 1, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
-    worker_canary: { providerWrites: 1, workerDeployments: 1, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
+    // Uploading the immutable version and attaching it to the canary are two
+    // separate provider writes; reserve both before canonical admission.
+    worker_canary: { providerWrites: 2, workerDeployments: 1, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
     credit_billing_acceptance: { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 0, syntheticCredits: 30, syntheticFinancialMinorUnits: 0 },
     queue_recovery_acceptance: { providerWrites: 0, workerDeployments: 0, containerStarts: 0, containerReservedSeconds: 0, queueMessages: 4, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },
     native_runtime_activation: { providerWrites: 1, workerDeployments: 1, containerStarts: 2, containerReservedSeconds: 600, queueMessages: 0, syntheticCredits: 0, syntheticFinancialMinorUnits: 0 },

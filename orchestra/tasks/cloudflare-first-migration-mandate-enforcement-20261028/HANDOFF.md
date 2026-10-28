@@ -21,6 +21,24 @@ Baseline at resume: `09e8dc1de3a9011fa8ca2bf0eb71ccde34dd8426` (`origin/main`; i
 5. Run adversarial Python/Web integration tests. Do not enable the readiness gate until all seven actions pass.
 6. Deploy only through the existing production release process after complete enforcement; verify deployed SHA and authenticated Owner API/UI without enrolling or mutating Cloudflare traffic.
 
-Latest canonical main: `27a6919fb845a1add1d6e0b30eda3705536504b7` (`main == origin/main`); latest mandate code SHA: `d3d23e0d6158c11fbb9d59640361745cd9d32fdb`. The five production operations remain incomplete; the enforcement readiness gate remains false. Do not enroll the Owner mandate or claim production readiness from this quota correction.
+Latest canonical baseline at this continuation: `10b19958ef7b7bb07ef8c956b2a194cf90778601` (`main == origin/main`). Production serving SHA and the older g204 claim have not been re-verified in this work unit.
+
+## Continuation checkpoint (2026-10-28)
+
+- Split enrollment inventory completeness from Queue consumer health: enrollment still requires complete identity reads for Queue/DLQ, VPC, Hyperdrive, Tunnel and route, but an unhealthy/unavailable Queue consumer is now left to operation preflight instead of blocking Owner authorization of the repair mission.
+- Added regression coverage for complete resource identity with incomplete consumer readback, plus incomplete Queue/VPC/Hyperdrive/Tunnel/route identity cases. A missing Queue array is rejected.
+- Corrected the backend-owned `worker_canary` provider-write reservation from 1 to 2 because the existing path performs immutable version upload and canary deployment as distinct writes. The web grant issuer and Python Approval Service now agree; added a focused Python assertion.
+- Focused verification: Web Vitest 4 files / 28 tests passed; Python mandate tests 18 passed with `DEBUG=false python-backend/.venv/bin/pytest ... --no-cov`; `git diff --check` and scoped Python compile passed. No repository-wide typecheck/build was run.
+- These are partial safety corrections only. They do not implement complete operation-plan binding, budget settlement/release, operation grant enforcement, receipts, cancellation/compensation or executor integration for all five operations. `FULL_MANDATE_ADMISSION_ENFORCEMENT_READY` remains false. No deployment, Owner enrollment, Cloudflare mutation, or scheduler verification occurred.
+
+## Next execution actions
+
+1. Continue on canonical main and integrate this safe partial correction without staging unrelated dirty files.
+2. Bind exact immutable reviewed operation plans to durable grants and have each executor recompute/compare the plan digest against canonical job input before provider mutation.
+3. Complete and test the five provider/runtime admission-to-receipt paths, including quota settlement from verified canonical receipts, cancellation/retry, compensation and revocation.
+4. Derive enrollment readiness from verified enforcement coverage only after all seven actions are enforced; retain operation-specific live preflight independently.
+5. Re-run adversarial focused and integration tests, then deployment/API/UI verification. Do not enroll or mutate traffic in this work unit.
+
+The five production operations remain incomplete; the enforcement readiness gate remains false. Do not enroll the Owner mandate or claim production readiness.
 
 No Owner enrollment, production release, provider write, traffic change, or unattended scheduler verification occurred in this work unit. Continue on canonical `main`; do not stage unrelated 0415, SPEC-224, Runner, local, UAT, or test-result files.
