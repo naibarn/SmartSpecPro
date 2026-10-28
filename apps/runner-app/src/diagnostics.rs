@@ -41,6 +41,8 @@ const CAPABILITY_SNAPSHOT_TTL: Duration = Duration::from_secs(300);
 const CAPABILITY_SNAPSHOT_REFRESH_INTERVAL: Duration = Duration::from_secs(120);
 const TASK_PROBE_EVIDENCE_FILE: &str = "tool-task-probe-evidence.json";
 const TASK_PROBE_EVIDENCE_TTL: Duration = Duration::from_secs(60 * 60);
+const TASK_PROBE_RENEW_BEFORE: Duration = Duration::from_secs(10 * 60);
+const TASK_PROBE_RETRY_BACKOFF: Duration = Duration::from_secs(5 * 60);
 // Keep expired probe outcomes long enough to report EXPIRED instead of
 // silently turning historical PASS/FAIL evidence into NEVER_RUN. This is
 // diagnostic retention only; authorization still checks expires_at_ms.
@@ -49,6 +51,9 @@ const MAX_TASK_PROBE_EVIDENCE_BYTES: u64 = 256 * 1024;
 static RUNNER_CREDENTIAL_DIAGNOSTICS: OnceLock<Mutex<serde_json::Value>> = OnceLock::new();
 static LAST_CONTROL_FAILURE: OnceLock<Mutex<Option<(&'static str, String)>>> = OnceLock::new();
 static TASK_PROBE_EVIDENCE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static TASK_PROBE_RENEWAL_ATTEMPTS: OnceLock<
+    Mutex<std::collections::HashMap<String, std::time::Instant>>,
+> = OnceLock::new();
 static CAPABILITY_REFRESH_REQUESTED: AtomicBool = AtomicBool::new(false);
 static CONTROL_RETRY_REQUESTED: AtomicBool = AtomicBool::new(false);
 
@@ -674,6 +679,108 @@ fn apply_task_probe_evidence(
     }
 }
 
+fn task_probe_renewal_due(expires_at_ms: Option<u64>, now_ms: u64) -> bool {
+    expires_at_ms.is_none_or(|expires_at| {
+        expires_at <= now_ms.saturating_add(TASK_PROBE_RENEW_BEFORE.as_millis() as u64)
+    })
+}
+
+fn task_probe_renewal_key(
+    runner_id: &str,
+    runner_session_id: Option<&str>,
+    tenant_id: Option<&str>,
+    tool: &ToolCandidate,
+) -> String {
+    format!(
+        "{}\0{}\0{}\0{}\0{}",
+        runner_id,
+        runner_session_id.unwrap_or(""),
+        tenant_id.unwrap_or(""),
+        tool.tool_id,
+        tool.fingerprint
+    )
+}
+
+fn renew_task_probe_if_due(
+    config: &RunnerConfig,
+    tool: &mut ToolCandidate,
+    runner_session_id: Option<&str>,
+    tenant_id: Option<&str>,
+) {
+    if !matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1"))
+        || !task_probe_renewal_due(tool.task_probe_expires_at_ms, current_time_ms())
+    {
+        return;
+    }
+    let key = task_probe_renewal_key(&config.runner_id, runner_session_id, tenant_id, tool);
+    let attempts =
+        TASK_PROBE_RENEWAL_ATTEMPTS.get_or_init(|| Mutex::new(std::collections::HashMap::new()));
+    let Ok(mut attempts) = attempts.lock() else {
+        tool.task_probe_state = ProbeState::Failed;
+        tool.reason_codes
+            .push("task_probe_renewal_state_unavailable".into());
+        return;
+    };
+    let now = std::time::Instant::now();
+    attempts
+        .retain(|_, last_attempt| now.duration_since(*last_attempt) < Duration::from_secs(60 * 60));
+    if attempts.len() >= 64 {
+        attempts.clear();
+    }
+    if attempts
+        .get(&key)
+        .is_some_and(|last_attempt| now.duration_since(*last_attempt) < TASK_PROBE_RETRY_BACKOFF)
+    {
+        return;
+    }
+    attempts.insert(key, now);
+    drop(attempts);
+
+    // This uses the registered native adapter's harmless task smoke test. The
+    // evidence writer binds the result to this Runner's persisted session,
+    // tenant and tool fingerprint; it grants no execution authority.
+    match verify_local_tool(config, &tool.tool_id) {
+        Ok(result) => *tool = result.tool,
+        Err(_) => {
+            tool.task_probe_state = ProbeState::Failed;
+            tool.reason_codes
+                .retain(|code| !code.starts_with("task_probe_"));
+            tool.reason_codes.push("task_probe_renewal_failed".into());
+            if let Ok(evidence) = save_task_probe_evidence(
+                config,
+                tool,
+                ProbeState::Failed,
+                Some("task_probe_renewal_failed"),
+            ) {
+                apply_task_probe_evidence(
+                    tool,
+                    std::slice::from_ref(&evidence),
+                    &config.runner_id,
+                    runner_session_id,
+                    tenant_id,
+                );
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod task_probe_renewal_tests {
+    use super::{task_probe_renewal_due, TASK_PROBE_RENEW_BEFORE};
+    use std::time::Duration;
+
+    #[test]
+    fn renewal_starts_before_expiry_and_missing_evidence_is_probed() {
+        let now = 1_000_000;
+        let renew_before = TASK_PROBE_RENEW_BEFORE.as_millis() as u64;
+        assert!(task_probe_renewal_due(None, now));
+        assert!(task_probe_renewal_due(Some(now + renew_before), now));
+        assert!(!task_probe_renewal_due(Some(now + renew_before + 1), now));
+        assert!(task_probe_renewal_due(Some(now - 1), now));
+        assert_eq!(TASK_PROBE_RENEW_BEFORE, Duration::from_secs(600));
+    }
+}
+
 /// Runs the approved bounded command probe and, when a documented one-shot
 /// entrypoint exists, sends a harmless real prompt so a version string is never
 /// mistaken for task readiness.
@@ -872,6 +979,7 @@ fn scan_capability_tools(
                 tenant_id,
             );
             if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1")) {
+                renew_task_probe_if_due(config, tool, runner_session_id, tenant_id);
                 tool.authorization_evidence_ref = external_agent_readiness_ref(
                     config,
                     tool,
