@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getCloudflareMigrationMandateInventoryBlocker } from "./cloudflareProductionMigrationMandate";
+import { getCloudflareMigrationMandateInventoryBlocker, getMissingCloudflareMigrationMandateActions } from "./cloudflareProductionMigrationMandate";
 
 function inventory(overrides: Record<string, unknown> = {}) {
   return {
@@ -33,5 +33,17 @@ describe("FIRST_MIGRATION mandate enrollment inventory readiness", () => {
     expect(getCloudflareMigrationMandateInventoryBlocker(inventory(overrides))).toBe(
       "MIGRATION_MANDATE_RESOURCE_INVENTORY_INCOMPLETE",
     );
+  });
+});
+
+describe("FIRST_MIGRATION mandate enforcement coverage", () => {
+  it("keeps enrollment closed until the approval service reports every enforced action", () => {
+    expect(getMissingCloudflareMigrationMandateActions(["synthetic_credit_billing", "synthetic_queue_recovery"]))
+      .toEqual(["rotate_origin_configuration", "deploy_worker", "worker_canary", "native_runtime_activation", "rollback"]);
+    expect(getMissingCloudflareMigrationMandateActions(undefined)).toHaveLength(7);
+    expect(getMissingCloudflareMigrationMandateActions([
+      "rotate_origin_configuration", "deploy_worker", "worker_canary", "synthetic_credit_billing",
+      "synthetic_queue_recovery", "native_runtime_activation", "rollback",
+    ])).toEqual([]);
   });
 });

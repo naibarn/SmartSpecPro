@@ -71,6 +71,11 @@ _CF_FIRST_MIGRATION_REQUIRED_ACTIONS = {
 }
 
 
+def get_cloudflare_migration_mandate_enforced_actions() -> list[str]:
+    """Expose the same fail-closed backend guard used by enrollment and grant issuance."""
+    return sorted(_CF_FIRST_MIGRATION_ENFORCED_ACTIONS)
+
+
 def _cloudflare_migration_operation_expected_usage(operation: str) -> dict:
     """Backend-owned maximum reservation for one operation (not a monetary cap)."""
     usage = {

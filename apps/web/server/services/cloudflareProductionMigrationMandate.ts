@@ -20,11 +20,15 @@ const ROLLBACK_POLICY = Object.freeze({ preserveM2Ingress: true as const, preser
   containersOnDemand: true as const, rollbackOnFailedAcceptance: true as const, requireOwnerForOutOfScopeAction: true as const });
 const ACTIONS = ["rotate_origin_configuration", "deploy_worker", "worker_canary", "synthetic_credit_billing",
   "synthetic_queue_recovery", "native_runtime_activation", "rollback"] as const;
-// The durable quota reservation and executor revalidation are currently wired
-// only for the two synthetic M3 acceptance operations. Never offer a broader
-// Owner mandate until the remaining provider/runtime actions use the same gate.
-const FULL_MANDATE_ADMISSION_ENFORCEMENT_READY = false;
 type ProviderInventory = Awaited<ReturnType<typeof probeCloudflareProductionProviderInventory>>;
+const REQUIRED_ENFORCED_ACTIONS = ["rotate_origin_configuration", "deploy_worker", "worker_canary",
+  "synthetic_credit_billing", "synthetic_queue_recovery", "native_runtime_activation", "rollback"] as const;
+
+export function getMissingCloudflareMigrationMandateActions(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some(item => typeof item !== "string")) return [...REQUIRED_ENFORCED_ACTIONS];
+  const enforced = new Set(value);
+  return REQUIRED_ENFORCED_ACTIONS.filter(action => !enforced.has(action));
+}
 
 /** Enrollment requires complete, unambiguous identity reads for the resources
  * named in the mandate. Operational readiness (for example a healthy Queue
@@ -71,7 +75,13 @@ export async function getCloudflareMigrationMandatePlan(db: DrizzleDB, input: {
   const node = receipt.data.applications.find(app => app.name.endsWith("-node-http"));
   const python = receipt.data.applications.find(app => app.name.endsWith("-python-http"));
   if (!node || !python) return blocked("MIGRATION_MANDATE_CANDIDATE_APPLICATIONS_INVALID");
-  if (!FULL_MANDATE_ADMISSION_ENFORCEMENT_READY)
+  let coverage: Record<string, unknown>;
+  try {
+    coverage = await callInternalApprovalApi("/api/v1/approvals/internal/cloudflare-production-capabilities", "GET");
+  } catch {
+    return blocked("MIGRATION_MANDATE_ENFORCEMENT_STATUS_UNAVAILABLE");
+  }
+  if (getMissingCloudflareMigrationMandateActions(coverage.migrationMandateEnforcedActions).length > 0)
     return blocked("MIGRATION_MANDATE_OPERATION_ENFORCEMENT_INCOMPLETE");
   const plan = cloudflareMigrationMandateEnvelopeSchema.parse({
     schemaVersion: "cloudflare.first-migration-mandate.v1",

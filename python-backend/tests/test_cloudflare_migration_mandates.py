@@ -7,7 +7,7 @@ import pytest
 from app.models.approval import ApprovalStatus, ApprovalType
 from app.api.approvals import CloudflareMigrationMandateIssue, CloudflareMigrationOperationGrantIssue
 from app.services.approval_db_service import (ApprovalDBService, _cloudflare_migration_operation_expected_usage,
-    _normalize_cloudflare_migration_mandate)
+    _normalize_cloudflare_migration_mandate, get_cloudflare_migration_mandate_enforced_actions)
 
 
 def _mandate(**overrides):
@@ -56,6 +56,13 @@ def test_worker_canary_budget_reserves_both_version_upload_and_deployment_writes
         "containerReservedSeconds": 0, "queueMessages": 0, "syntheticCredits": 0,
         "syntheticFinancialMinorUnits": 0,
     }
+
+
+@pytest.mark.unit
+def test_enforcement_capability_reports_only_currently_guarded_backend_actions():
+    assert get_cloudflare_migration_mandate_enforced_actions() == [
+        "synthetic_credit_billing", "synthetic_queue_recovery",
+    ]
 
 
 @pytest.mark.unit

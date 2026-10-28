@@ -27,7 +27,7 @@ from app.core.database import AsyncSessionLocal
 from app.models.approval import ApprovalType
 from app.models.user import User
 from app.multitenancy.tenant_context import get_current_tenant_id
-from app.services.approval_db_service import ApprovalDBService
+from app.services.approval_db_service import ApprovalDBService, get_cloudflare_migration_mandate_enforced_actions
 
 _logger = structlog.get_logger(__name__)
 
@@ -764,7 +764,8 @@ async def cloudflare_production_capabilities(
     """Read-only serving-contract evidence; never grants deployment authority."""
     _assert_cloudflare_staging_gateway_token(x_internal_token)
     response.headers["Cache-Control"] = "no-store"
-    return {"grantSchemas": ["cloudflare.production-deployment-grant.v2", "cloudflare.production-ingress-grant.v1"]}
+    return {"grantSchemas": ["cloudflare.production-deployment-grant.v2", "cloudflare.production-ingress-grant.v1"],
+            "migrationMandateEnforcedActions": get_cloudflare_migration_mandate_enforced_actions()}
 
 
 @router.get("/internal/cloudflare-production-grants/{grant_ref}")
