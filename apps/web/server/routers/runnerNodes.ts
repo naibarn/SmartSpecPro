@@ -330,7 +330,12 @@ export const runnerNodesRouter = router({
               : "stale",
           readinessStatus: snapshotReadiness.status,
           lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
-          platform: snapshot?.platform ?? null,
+          platform: snapshot?.platform ? {
+            ...snapshot.platform,
+            machineName: row.profile === "local_device" && row.ownerUserId === ctx.user.id
+              ? snapshot.platform.machineName ?? null
+              : null,
+          } : null,
           displayState,
           toolCount: toolInventory.length,
           capabilityCount: capabilityInventory.length,
