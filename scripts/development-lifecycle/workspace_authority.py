@@ -345,6 +345,7 @@ def _db(repo: Path) -> Iterator[sqlite3.Connection]:
               project_id TEXT NOT NULL,
               repository_id TEXT NOT NULL,
               workspace_id TEXT NOT NULL,
+              runner_workspace_id TEXT NOT NULL,
               run_id TEXT NOT NULL,
               job_id TEXT NOT NULL,
               attempt_id TEXT NOT NULL,
@@ -381,6 +382,10 @@ def _db(repo: Path) -> Iterator[sqlite3.Connection]:
             connection.execute("UPDATE execution_leases SET authorization_deadline=expires_at")
         if "terminal_ref" not in lease_columns:
             connection.execute("ALTER TABLE execution_leases ADD COLUMN terminal_ref TEXT")
+        if "runner_workspace_id" not in lease_columns:
+            connection.execute("ALTER TABLE execution_leases ADD COLUMN runner_workspace_id TEXT NOT NULL DEFAULT ''")
+            connection.execute("UPDATE execution_leases SET runner_workspace_id=workspace_id WHERE runner_workspace_id=''")
+        connection.execute("CREATE INDEX IF NOT EXISTS execution_lease_runner_workspace ON execution_leases(runner_workspace_id,status,expires_at)")
         yield connection
     finally:
         connection.close()
@@ -581,9 +586,28 @@ def acquire_execution_lease(repo: Path, policy_path: Path | None, *, workspace_i
     with _db(repo) as db:
         db.execute("BEGIN IMMEDIATE")
         try:
+            runner_workspace_id = workspace_id
             row = _workspace_by_id(db, workspace_id)
-            if not row or row["project_id"] != policy["project_id"] or row["repository_id"] != policy["repository_id"] or row["lifecycle_state"] in {"RETIRED", "MISSING"}:
+            if not row:
+                # Runner IDs belong to the trusted Runner registry, while this authority
+                # stores SPEC-293 workspace IDs. Platform execution is pinned to the one
+                # active canonical workspace for this project; the caller has already
+                # validated the Runner's tenant/project/workspace binding.
+                rows = db.execute(
+                    "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? AND role='CANONICAL_USER_WORKSPACE' AND lifecycle_state='ACTIVE'",
+                    (policy["project_id"], policy["repository_id"]),
+                ).fetchall()
+                if len(rows) == 1:
+                    cursor = db.execute(
+                        "SELECT * FROM workspaces WHERE project_id=? AND repository_id=? AND role='CANONICAL_USER_WORKSPACE' AND lifecycle_state='ACTIVE'",
+                        (policy["project_id"], policy["repository_id"]),
+                    )
+                    row = dict(zip([item[0] for item in cursor.description], rows[0]))
+                else:
+                    raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+            if row["project_id"] != policy["project_id"] or row["repository_id"] != policy["repository_id"] or row["lifecycle_state"] in {"RETIRED", "MISSING"}:
                 raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+            authority_workspace_id = row["workspace_id"]
             path = Path(row["location"]).resolve()
             actual_sha, actual_fingerprint, actual_dirty = _execution_source_facts(path)
             if actual_sha != source_sha or actual_fingerprint != source_fingerprint or actual_dirty != sorted(set(dirty_paths)):
@@ -592,12 +616,12 @@ def acquire_execution_lease(repo: Path, policy_path: Path | None, *, workspace_i
             if existing:
                 cursor = db.execute("SELECT * FROM execution_leases WHERE idempotency_key=?", (idempotency_key,))
                 record = dict(zip([c[0] for c in cursor.description], existing))
-                same = all(record[key] == value for key, value in {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id, "tenant_id": tenant_id, "actor_id": actor_id, "source_sha": source_sha, "source_fingerprint": source_fingerprint, "authorization_deadline": deadline_epoch, "allowed_write_set_json": json.dumps(sorted(set(allowed_write_set)), separators=(",", ":"))}.items())
+                same = all(record[key] == value for key, value in {"workspace_id": authority_workspace_id, "runner_workspace_id": runner_workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id, "tenant_id": tenant_id, "actor_id": actor_id, "source_sha": source_sha, "source_fingerprint": source_fingerprint, "authorization_deadline": deadline_epoch, "allowed_write_set_json": json.dumps(sorted(set(allowed_write_set)), separators=(",", ":"))}.items())
                 if not same: raise WorkspaceAuthorityError("EXECUTION_LEASE_IDEMPOTENCY_CONFLICT")
                 db.commit()
                 return _execution_lease_view(record)
-            active = db.execute("SELECT * FROM execution_leases WHERE workspace_id=? AND status='ACTIVE' AND expires_at>?", (workspace_id, now)).fetchall()
-            cursor = db.execute("SELECT * FROM execution_leases WHERE workspace_id=? AND status='ACTIVE' AND expires_at>?", (workspace_id, now))
+            active = db.execute("SELECT * FROM execution_leases WHERE workspace_id=? AND status='ACTIVE' AND expires_at>?", (authority_workspace_id, now)).fetchall()
+            cursor = db.execute("SELECT * FROM execution_leases WHERE workspace_id=? AND status='ACTIVE' AND expires_at>?", (authority_workspace_id, now))
             columns = [item[0] for item in cursor.description]
             active = [dict(zip(columns, item)) for item in active]
             scope = sorted(set(allowed_write_set))
@@ -605,15 +629,15 @@ def acquire_execution_lease(repo: Path, policy_path: Path | None, *, workspace_i
                 other_scope = json.loads(other["allowed_write_set_json"])
                 if _scopes_may_overlap(scope, other_scope):
                     raise WorkspaceAuthorityError("EXECUTION_SCOPE_LEASE_CONFLICT")
-            history = db.execute("SELECT fencing_generation,allowed_write_set_json FROM execution_leases WHERE workspace_id=?", (workspace_id,)).fetchall()
+            history = db.execute("SELECT fencing_generation,allowed_write_set_json FROM execution_leases WHERE workspace_id=?", (authority_workspace_id,)).fetchall()
             generation = 1 + max((int(item[0]) for item in history if _scopes_may_overlap(scope, json.loads(item[1]))), default=0)
             lease_id = str(uuid.uuid4())
             expires = min(now + lease_seconds, deadline_epoch)
             created = _now()
-            values = (lease_id, idempotency_key, policy["project_id"], policy["repository_id"], workspace_id, run_id, job_id, attempt_id, tenant_id, actor_id, source_sha, source_fingerprint, json.dumps(scope, separators=(",", ":")), generation, "ACTIVE", expires, deadline_epoch, now, None, None, created)
-            db.execute("INSERT INTO execution_leases(lease_id,idempotency_key,project_id,repository_id,workspace_id,run_id,job_id,attempt_id,tenant_id,actor_id,source_sha,source_fingerprint,allowed_write_set_json,fencing_generation,status,expires_at,authorization_deadline,renewed_at,released_at,terminal_ref,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", values)
-            receipt = {"schema": "spec224.execution-lease.v1", "leaseId": lease_id, "projectId": policy["project_id"], "repositoryId": policy["repository_id"], "workspaceId": workspace_id, "runId": run_id, "jobId": job_id, "attemptId": attempt_id, "tenantId": tenant_id, "actorId": actor_id, "sourceSha": source_sha, "sourceFingerprint": source_fingerprint, "allowedWriteSet": scope, "fencingGeneration": generation, "expiresAt": expires, "authorizationDeadline": deadline_epoch}
-            db.execute("INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (f"execution-lease:{lease_id}", policy["project_id"], policy["repository_id"], workspace_id, "SPEC224_EXECUTION_LEASE_ACQUIRED", source_sha, source_sha, json.dumps(receipt, sort_keys=True), created))
+            values = (lease_id, idempotency_key, policy["project_id"], policy["repository_id"], authority_workspace_id, runner_workspace_id, run_id, job_id, attempt_id, tenant_id, actor_id, source_sha, source_fingerprint, json.dumps(scope, separators=(",", ":")), generation, "ACTIVE", expires, deadline_epoch, now, None, None, created)
+            db.execute("INSERT INTO execution_leases(lease_id,idempotency_key,project_id,repository_id,workspace_id,runner_workspace_id,run_id,job_id,attempt_id,tenant_id,actor_id,source_sha,source_fingerprint,allowed_write_set_json,fencing_generation,status,expires_at,authorization_deadline,renewed_at,released_at,terminal_ref,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", values)
+            receipt = {"schema": "spec224.execution-lease.v1", "leaseId": lease_id, "projectId": policy["project_id"], "repositoryId": policy["repository_id"], "workspaceId": runner_workspace_id, "authorityWorkspaceId": authority_workspace_id, "runId": run_id, "jobId": job_id, "attemptId": attempt_id, "tenantId": tenant_id, "actorId": actor_id, "sourceSha": source_sha, "sourceFingerprint": source_fingerprint, "allowedWriteSet": scope, "fencingGeneration": generation, "expiresAt": expires, "authorizationDeadline": deadline_epoch}
+            db.execute("INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (f"execution-lease:{lease_id}", policy["project_id"], policy["repository_id"], authority_workspace_id, "SPEC224_EXECUTION_LEASE_ACQUIRED", source_sha, source_sha, json.dumps(receipt, sort_keys=True), created))
             db.commit()
             return {**receipt, "status": "ACTIVE"}
         except Exception:
@@ -622,7 +646,7 @@ def acquire_execution_lease(repo: Path, policy_path: Path | None, *, workspace_i
 
 
 def _execution_lease_view(record: dict[str, Any]) -> dict[str, Any]:
-    return {"schema": "spec224.execution-lease.v1", "leaseId": record["lease_id"], "projectId": record["project_id"], "repositoryId": record["repository_id"], "workspaceId": record["workspace_id"], "runId": record["run_id"], "jobId": record["job_id"], "attemptId": record["attempt_id"], "tenantId": record["tenant_id"], "actorId": record["actor_id"], "sourceSha": record["source_sha"], "sourceFingerprint": record["source_fingerprint"], "allowedWriteSet": json.loads(record["allowed_write_set_json"]), "fencingGeneration": int(record["fencing_generation"]), "expiresAt": float(record["expires_at"]), "authorizationDeadline": float(record["authorization_deadline"]), "status": record["status"]}
+    return {"schema": "spec224.execution-lease.v1", "leaseId": record["lease_id"], "projectId": record["project_id"], "repositoryId": record["repository_id"], "workspaceId": record.get("runner_workspace_id") or record["workspace_id"], "authorityWorkspaceId": record["workspace_id"], "runId": record["run_id"], "jobId": record["job_id"], "attemptId": record["attempt_id"], "tenantId": record["tenant_id"], "actorId": record["actor_id"], "sourceSha": record["source_sha"], "sourceFingerprint": record["source_fingerprint"], "allowedWriteSet": json.loads(record["allowed_write_set_json"]), "fencingGeneration": int(record["fencing_generation"]), "expiresAt": float(record["expires_at"]), "authorizationDeadline": float(record["authorization_deadline"]), "status": record["status"]}
 
 
 def validate_execution_lease(repo: Path, policy_path: Path | None, *, lease_id: str, fencing_generation: int, workspace_id: str, run_id: str, job_id: str, attempt_id: str, tenant_id: str, actor_id: str, source_sha: str, source_fingerprint: str, changed_paths: Sequence[str] = ()) -> dict[str, Any]:
@@ -634,12 +658,14 @@ def validate_execution_lease(repo: Path, policy_path: Path | None, *, lease_id: 
         row = cursor.fetchone()
         if not row: raise WorkspaceAuthorityError("EXECUTION_LEASE_NOT_FOUND")
         record = dict(zip([item[0] for item in cursor.description], row))
-        expected = {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id, "tenant_id": tenant_id, "actor_id": actor_id, "project_id": policy["project_id"], "repository_id": policy["repository_id"], "source_sha": source_sha, "source_fingerprint": source_fingerprint}
+        expected = {"runner_workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id, "tenant_id": tenant_id, "actor_id": actor_id, "project_id": policy["project_id"], "repository_id": policy["repository_id"], "source_sha": source_sha, "source_fingerprint": source_fingerprint}
         if any(record[key] != value for key, value in expected.items()) or int(record["fencing_generation"]) != fencing_generation: raise WorkspaceAuthorityError("EXECUTION_LEASE_BINDING_MISMATCH")
         if record["status"] != "ACTIVE" or float(record["expires_at"]) <= time.time(): raise WorkspaceAuthorityError("EXECUTION_LEASE_EXPIRED_OR_RELEASED")
         scope = json.loads(record["allowed_write_set_json"])
         if any(not _valid_execution_path(path) or not _scope_matches(scope, path) for path in changed_paths): raise WorkspaceAuthorityError("EXECUTION_LEASE_WRITE_SCOPE_VIOLATION")
-        workspace = Path(_workspace_by_id(db, workspace_id)["location"]).resolve()
+        workspace_row = _workspace_by_id(db, record["workspace_id"])
+        if not workspace_row: raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+        workspace = Path(workspace_row["location"]).resolve()
         actual_sha, actual_fingerprint, _ = _execution_source_facts(workspace)
         if actual_sha != source_sha or actual_fingerprint != source_fingerprint: raise WorkspaceAuthorityError("EXECUTION_SOURCE_CHANGED")
         db.commit()
@@ -659,11 +685,11 @@ def renew_execution_lease(repo: Path, policy_path: Path | None, *, lease_id: str
         cursor = db.execute("SELECT * FROM execution_leases WHERE lease_id=?", (lease_id,))
         record = dict(zip([item[0] for item in cursor.description], row))
         if record["status"] != "ACTIVE" or int(record["fencing_generation"]) != fencing_generation or float(record["expires_at"]) <= time.time(): raise WorkspaceAuthorityError("EXECUTION_LEASE_EXPIRED_OR_STALE")
-        expected = {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id,
+        expected = {"runner_workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id,
             "tenant_id": tenant_id, "actor_id": actor_id, "project_id": policy["project_id"], "repository_id": policy["repository_id"],
             "source_sha": source_sha, "source_fingerprint": source_fingerprint}
         if any(record[key] != value for key, value in expected.items()): raise WorkspaceAuthorityError("EXECUTION_LEASE_BINDING_MISMATCH")
-        workspace = _workspace_by_id(db, workspace_id)
+        workspace = _workspace_by_id(db, record["workspace_id"])
         if not workspace: raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
         actual_sha, actual_fingerprint, _ = _execution_source_facts(Path(workspace["location"]).resolve())
         if actual_sha != source_sha or actual_fingerprint != source_fingerprint: raise WorkspaceAuthorityError("EXECUTION_SOURCE_CHANGED")
@@ -686,7 +712,7 @@ def release_execution_lease(repo: Path, *, lease_id: str, fencing_generation: in
         if not row: raise WorkspaceAuthorityError("EXECUTION_LEASE_NOT_FOUND")
         record = dict(zip([item[0] for item in cursor.description], row))
         if int(record["fencing_generation"]) != fencing_generation: raise WorkspaceAuthorityError("EXECUTION_LEASE_FENCE_MISMATCH")
-        expected = {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id,
+        expected = {"runner_workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id,
             "tenant_id": tenant_id, "actor_id": actor_id}
         if any(record[key] != value for key, value in expected.items()): raise WorkspaceAuthorityError("EXECUTION_LEASE_BINDING_MISMATCH")
         if record["status"] == "RELEASED":

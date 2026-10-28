@@ -1546,6 +1546,29 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(first["leaseId"], replay["leaseId"])
         self.assertEqual(first["fencingGeneration"], replay["fencingGeneration"])
 
+    def test_spec224_execution_lease_binds_runner_workspace_alias_to_registered_canonical_workspace(self) -> None:
+        authority_workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
+        runner_workspace_id = "ws-runner-registered-42"
+        lease = self._execution_claim(
+            workspace_id=runner_workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+            dirty_paths=dirty_paths, scope=["apps/web/client/pilot/**"], key="run-alias:attempt-1",
+        )
+        self.assertEqual(lease["workspaceId"], runner_workspace_id)
+        self.assertEqual(lease["authorityWorkspaceId"], authority_workspace_id)
+        validated = authority.validate_execution_lease(
+            self.canonical, self.policy, lease_id=lease["leaseId"],
+            fencing_generation=lease["fencingGeneration"], workspace_id=runner_workspace_id,
+            run_id="run-a", job_id="job-a", attempt_id="attempt-a", tenant_id="tenant-a",
+            actor_id="42", source_sha=source_sha, source_fingerprint=fingerprint,
+        )
+        self.assertEqual(validated["status"], "ACTIVE")
+        released = authority.release_execution_lease(
+            self.canonical, lease_id=lease["leaseId"], fencing_generation=lease["fencingGeneration"],
+            terminal_ref="receipt-alias", workspace_id=runner_workspace_id, run_id="run-a",
+            job_id="job-a", attempt_id="attempt-a", tenant_id="tenant-a", actor_id="42",
+        )
+        self.assertEqual(released["status"], "RELEASED")
+
     def test_spec224_execution_lease_serializes_overlapping_scope_and_concurrent_claims(self) -> None:
         workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
         scopes = ["apps/web/client/pilot/**", "apps/web/client/pilot/tests/**"]

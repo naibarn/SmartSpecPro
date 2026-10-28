@@ -95,7 +95,9 @@ async function setup(limit = 200, options: { approved?: boolean; withApprover?: 
   const tenantId = randomUUID(), runId = randomUUID(), goalId = randomUUID(), approvalRef = randomUUID();
   const runnerId = `runner-${randomUUID()}`, sessionId = `session-${randomUUID()}`, snapshotId = randomUUID();
   const source = await createExecutionAuthorityWorkspace();
-  const workspaceId = source.workspaceId, revision = `rev-${randomUUID()}`;
+  // The Runner registry and SPEC-293 Workspace Authority intentionally use
+  // distinct identities for the same trusted canonical source.
+  const workspaceId = `ws-runner-${randomUUID()}`, revision = `rev-${randomUUID()}`;
   const expires = new Date(Date.now() + 600_000), observed = new Date(Date.now() - 1_000);
   const [user] = await sql`INSERT INTO users ("openId", role, plan, credits, "isDisabled") VALUES (${randomUUID()}, 'user', 'free', 0, false) RETURNING id`;
   const actorId = Number(user.id);
