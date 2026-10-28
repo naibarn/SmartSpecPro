@@ -112,6 +112,14 @@
         "scope": "Run/attempt lease identity mapping fix integrated and connected acceptance passed. Development runtime is active at the tested code revision; the current Runner snapshot is expired and bound to the previous source SHA. Existing Runner refresh returned 401; reconnect is pending authenticated owner approval. No live Goal or receipt was produced.",
         "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_LIVE_GOAL_OBSERVER_WAITING_FOR_APPROVAL",
+        "observed_at": "2026-10-28T17:46:35Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
+        "scope": "Read-only check of the shared smartspec_dev runtime found 0 SPEC-224 Goal Grant requests and 0 worker_jobs for tenant tenant-001; the prior handoff candidate run has no current canonical worker job. Runner is active but its latest capability snapshot expired at 2026-10-28T17:41:34Z. No live execution or acceptance is claimed.",
+        "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -994,33 +1002,62 @@
   "blockers": [
     {
       "class": "AUTHORITY",
-      "classification": "TRUE_EXTERNAL",
+      "classification": "RESOLVED",
       "evidence": [
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
         "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json",
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
         "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-0241-readiness-received-20261026.json",
-        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md"
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md"
       ],
       "evidence_freshness": "FRESH",
       "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-      "next_action": "Approve the pending same-device Runner reconnect in the authenticated browser flow; after success restore the existing systemd Runner service and verify a fresh applied capability ACK and complete dirtyPaths snapshot at the integrated source SHA.",
+      "next_action": "No further reconnect action. Refresh the expired snapshot before any execution dispatch.",
       "owner": "Authenticated non-production tenant owner for same-device Runner reconnect; development runtime operator for post-approval service resume.",
       "reactivation_predicate": "The same existing Runner identity has a current authenticated session and server-applied capability ACK at the integrated source SHA; the authorized Project Workspace snapshot has complete current dirtyPaths; Codex probe is fresh; and a bounded write set is SAFE_CLEAN or SAFE_DISJOINT_DIRTY with no overlapping active writer lease.",
+      "resolution": "Same-device reconnect completed; existing Runner ID, tenant, device and workspace were retained and a server-persisted capability snapshot was observed. The later snapshot expiry is tracked separately by R13_RUNNER_SNAPSHOT_REFRESH.",
+      "resolved_at": "2026-10-28T17:46:35Z",
       "root_cause": "The current development Control Plane snapshot expired at 2026-10-28T14:26:36.549Z and still binds the Runner workspace to source a773f5482c64f42292d4a0dc5b986e97aaac3a1b. A controlled restart of the existing Runner process returned RUNNER_CONNECT_REQUEST_REJECTED_401 during credential refresh. The same registered Runner/device reconnect flow is pending authenticated owner approval. No fresh source admission or Goal Grant exists."
+    },
+    {
+      "class": "AUTHORITY",
+      "classification": "TRUE_EXTERNAL",
+      "evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md"
+      ],
+      "evidence_freshness": "FRESH",
+      "id": "R12_WAITING_FOR_GOAL_APPROVAL",
+      "next_action": "Start the bounded Goal through authenticated Task Control and approve its resulting Goal Grant in the existing Approval Authority. Do not create a Grant or approval record manually.",
+      "owner": "Authenticated tenant owner using Task Control and the existing Approval Authority",
+      "reactivation_predicate": "A matching Goal Grant request exists for tenant tenant-001 and has approved status, is unrevoked and unexpired, and its corresponding DevelopmentRun and canonical Job/Attempt can be recovered from the current runtime.",
+      "root_cause": "The current shared development database contains no Approval Authority request with payload kind spec224_goal_delegation_grant, so there is no approved Goal or approval lineage to observe."
+    },
+    {
+      "class": "RUNTIME",
+      "classification": "RECOVERABLE_RUNTIME",
+      "evidence": [
+        "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md"
+      ],
+      "evidence_freshness": "FRESH",
+      "id": "R13_RUNNER_SNAPSHOT_REFRESH",
+      "next_action": "After a Goal is approved, recover the existing Runner control session without re-enrollment, obtain a fresh applied capability ACK, verify Codex readiness and recompute bounded SAFE_DISJOINT_DIRTY admission before authorization/release.",
+      "owner": "Existing Debian Runner service/runtime",
+      "reactivation_predicate": "The active Runner session has a newly applied, unexpired snapshot at canonical source SHA fcc3b50115a6cf6e675a04be29d5913f480c46b3, complete dirtyPaths and a passing fresh Codex probe; the selected bounded write scope has no dirty-path or active-writer conflict.",
+      "root_cause": "The existing Runner service is active, but its persisted capability snapshot expired at 2026-10-28T17:41:34Z; last heartbeat was 2026-10-28T17:38:06.401Z. A current Runner ACK and source admission are required before dispatch."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "137634b28341a97e76c0857d32ebb7dc203b0b45",
+    "expected_canonical_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3",
     "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
-    "next_action": "Complete the pending authenticated reconnect approval for the same registered Debian Runner/device identity. Confirm the existing Runner service resumes, the dev Control Plane persists a fresh applied capability ACK and complete dirtyPaths against the integrated source, then recompute SAFE_CLEAN/SAFE_DISJOINT_DIRTY and active writer conflicts. Only then use Task Control and the existing Approval Authority to request/approve the bounded Goal; verify child authorization, outbox dispatch, real receipts, settlement, automatic Child 2 and independent Final Verify. Keep acceptance PARTIAL until live evidence passes.",
-    "next_ready_workunit": "SPEC224_REFRESH_EXISTING_RUNNER_SESSION_AND_REVALIDATE_SAFE_SOURCE",
-    "reactivation_predicate": "The integrated run/attempt-bound lease is acquired and fenced at authorization, outbox release and Runner apply, with idempotent terminal/recovery release; the existing Runner session has a fresh server-applied capability ACK and complete dirtyPaths at the integrated source; and the bounded write set is SAFE_CLEAN or SAFE_DISJOINT_DIRTY with no overlapping active writer.",
-    "resume_point": "Writer lease source is integrated at 1c3e57770260968a6666fd719bc2e30109fc8f55; evidence is recorded at 137634b28341a97e76c0857d32ebb7dc203b0b45. The authority now binds the distinct Runner workspace ID and SPEC-293 authority workspace ID, and the disposable PostgreSQL connected service test passes 8/8. Dev Web loads the authority repository and the dev PostgreSQL-pull runtime includes external_agent_task. Local Runner Codex probe passed, but the last server snapshot is expired and points to the previous SHA; credential refresh was rejected with HTTP 401. Reconnect request for the same registered Runner/device is pending owner approval. Continue with fresh server ACK/source admission, then real Task Control Goal approval and two-phase live execution. No live Goal was started.",
-    "waiting_predicate": "Wait only for the authenticated owner to approve the already-created same-device Runner reconnect. Resume when the existing Runner session is accepted and the dev Control Plane has applied a fresh capability ACK with a complete snapshot at the integrated source SHA. Then verify safe disjoint source admission and active leases before Goal Start; no manual phase continuation is allowed."
+    "next_action": "WAITING_FOR_GOAL_APPROVAL: start the bounded Goal through authenticated Task Control and approve the resulting Goal Grant in the existing Approval Authority. Once an approved request exists, refresh the existing Runner snapshot, re-evaluate source/writer admission, then trace Child 1, automatic Child 2 and independent Final Verify from persisted runtime records.",
+    "next_ready_workunit": "SPEC224_OBSERVE_APPROVED_GOAL_AND_TRACE_AUTONOMOUS_CHILD_EXECUTION",
+    "reactivation_predicate": "An approved, unrevoked, unexpired Goal Grant and corresponding DevelopmentRun/Job/Attempt are visible in tenant tenant-001; before release the same Runner session has a fresh applied snapshot/ACK at the current source SHA, Codex readiness passes, and the bounded scope has SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission with no active writer conflict.",
+    "resume_point": "At 2026-10-29T00:46:35+07:00, read-only queries against the shared smartspec_dev database found zero SPEC-224 Goal Grant approval requests, zero worker_jobs for tenant tenant-001, and no canonical worker job for the previously recorded run-547f17fa98a3bc44ccc517c84c60ffeadf3fc77. The Runner service is active but the last snapshot expired at 2026-10-29T00:41:34+07:00. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md.",
+    "waiting_predicate": "No Goal Grant request with payload.kind=spec224_goal_delegation_grant exists in the current smartspec_dev database. Wait for the authenticated owner to start the Goal and approve its exact scope through the existing Task Control and Approval Authority path."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1085,10 +1122,16 @@
         "observed_at": "2026-10-28T14:39:23Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
         "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
+      },
+      {
+        "kind": "OBSERVATION",
+        "observed_at": "2026-10-28T17:46:35Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
+        "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
       }
     ],
-    "next_action": "Approve the pending same-device reconnect for the existing Debian Runner. Restore its existing systemd service after the CLI completes; verify the server-applied snapshot ACK, current source SHA, complete dirtyPaths, Codex readiness and safe disjoint admission. Then use Task Control and the existing Approval Authority for the bounded Goal and complete real Child 1/2 dispatch, receipts, settlement and Final Verify. The integrated lease path is complete; acceptance remains PARTIAL until live execution passes.",
-    "rationale": "Run/attempt-bound SPEC-293 lease integration is complete at 1c3e57770260968a6666fd719bc2e30109fc8f55; Python authority, connected disposable PostgreSQL and focused authorization/Job Control/dispatch regressions pass. The development Web runtime loads the authority repository and canonical postgres-pull execution path. The last Runner snapshot expired and references the prior source; refresh returned HTTP 401. A reconnect for the existing device identity is waiting for authenticated owner approval. No current safe source admission, Goal Grant, live child receipt or Final Verify exists.",
+    "next_action": "WAITING_FOR_GOAL_APPROVAL: the authenticated owner must start the bounded Goal in Task Control and approve its resulting Goal Grant through the existing Approval Authority. Then refresh the existing Runner snapshot and trace the actual Child 1/Child 2 execution and Final Verify records.",
+    "rationale": "Live observer checked the actual shared development Approval Authority and Job Control stores. No Goal Grant request or tenant worker job exists, so the current state is WAITING_FOR_GOAL_APPROVAL. The same-device Runner reconnect succeeded previously, but the latest snapshot has since expired; live child execution remains unstarted.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1173,7 +1216,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 242,
+  "generation": 243,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -1405,7 +1448,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "137634b28341a97e76c0857d32ebb7dc203b0b45",
+    "canonical_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3",
     "integrated": true,
     "integrated_at": "2026-10-28T14:39:02Z",
     "pull_request": null,
@@ -2357,10 +2400,16 @@
           "observed_at": "2026-10-28T14:39:23Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
           "source_sha": "1c3e57770260968a6666fd719bc2e30109fc8f55"
+        },
+        {
+          "kind": "OBSERVATION",
+          "observed_at": "2026-10-28T17:46:35Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md",
+          "source_sha": "fcc3b50115a6cf6e675a04be29d5913f480c46b3"
         }
       ],
-      "next_action": "Approve the pending same-device reconnect for the existing Debian Runner. Restore its existing systemd service after the CLI completes; verify the server-applied snapshot ACK, current source SHA, complete dirtyPaths, Codex readiness and safe disjoint admission. Then use Task Control and the existing Approval Authority for the bounded Goal and complete real Child 1/2 dispatch, receipts, settlement and Final Verify. The integrated lease path is complete; acceptance remains PARTIAL until live execution passes.",
-      "rationale": "Run/attempt-bound SPEC-293 lease integration is complete at 1c3e57770260968a6666fd719bc2e30109fc8f55; Python authority, connected disposable PostgreSQL and focused authorization/Job Control/dispatch regressions pass. The development Web runtime loads the authority repository and canonical postgres-pull execution path. The last Runner snapshot expired and references the prior source; refresh returned HTTP 401. A reconnect for the existing device identity is waiting for authenticated owner approval. No current safe source admission, Goal Grant, live child receipt or Final Verify exists.",
+      "next_action": "WAITING_FOR_GOAL_APPROVAL: the authenticated owner must start the bounded Goal in Task Control and approve its resulting Goal Grant through the existing Approval Authority. Then refresh the existing Runner snapshot and trace the actual Child 1/Child 2 execution and Final Verify records.",
+      "rationale": "Live observer checked the actual shared development Approval Authority and Job Control stores. No Goal Grant request or tenant worker job exists, so the current state is WAITING_FOR_GOAL_APPROVAL. The same-device Runner reconnect succeeded previously, but the latest snapshot has since expired; live child execution remains unstarted.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3905,7 +3954,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T14:39:23.467296Z",
+  "updated_at": "2026-10-28T17:48:22.441906Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

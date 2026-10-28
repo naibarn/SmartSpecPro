@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1301 unresolved of 1302
-- Next action: Approve the pending same-device reconnect for the existing Debian Runner. Restore its existing systemd service after the CLI completes; verify the server-applied snapshot ACK, current source SHA, complete dirtyPaths, Codex readiness and safe disjoint admission. Then use Task Control and the existing Approval Authority for the bounded Goal and complete real Child 1/2 dispatch, receipts, settlement and Final Verify. The integrated lease path is complete; acceptance remains PARTIAL until live execution passes.
-- Manifest generation: 242
+- Next action: WAITING_FOR_GOAL_APPROVAL: the authenticated owner must start the bounded Goal in Task Control and approve its resulting Goal Grant through the existing Approval Authority. Then refresh the existing Runner snapshot and trace the actual Child 1/Child 2 execution and Final Verify records.
+- Manifest generation: 243
 
 ## Source-declared status and relationship claims
 
