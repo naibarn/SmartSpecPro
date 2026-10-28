@@ -2726,9 +2726,8 @@ export const verticalDramaCharactersRouter = router({
           retryAfterMs: transientIngest.retryAfterSeconds * 1000,
         };
       }
-      let asset;
       try {
-        asset = await verticalDramaCharacterStockService.linkAsset({
+        await verticalDramaCharacterStockService.linkAsset({
           tenantId,
           userId,
           seriesId,
@@ -2756,7 +2755,6 @@ export const verticalDramaCharactersRouter = router({
         status: "completed" as const,
         imageUrl: durable.url,
         mediaAssetId: String(durable.mediaAssetId),
-        asset,
       };
     }),
 
