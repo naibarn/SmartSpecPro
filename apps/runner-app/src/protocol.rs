@@ -151,7 +151,21 @@ impl RunnerJobCommand {
             let object = policy
                 .as_object()
                 .ok_or_else(|| "SPEC224_EXECUTION_POLICY_INVALID".to_string())?;
-            if object.len() != 3
+            const POLICY_KEYS: &[&str] = &[
+                "mode",
+                "sourceFingerprint",
+                "allowedWriteSet",
+                "platformScope",
+                "sourceSnapshotRevision",
+                "sourceSha",
+                "executionLease",
+            ];
+            if object
+                .keys()
+                .any(|key| !POLICY_KEYS.contains(&key.as_str()))
+                || !["mode", "sourceFingerprint", "allowedWriteSet"]
+                    .iter()
+                    .all(|key| object.contains_key(*key))
                 || !policy
                     .get("sourceFingerprint")
                     .and_then(Value::as_str)
@@ -192,6 +206,78 @@ impl RunnerJobCommand {
                 })
             {
                 return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+            }
+            if policy.get("platformScope") == Some(&Value::Bool(true)) {
+                let source_sha = policy.get("sourceSha").and_then(Value::as_str);
+                let source_revision = policy.get("sourceSnapshotRevision").and_then(Value::as_str);
+                let lease = policy.get("executionLease").and_then(Value::as_object);
+                let lease_keys = [
+                    "leaseId",
+                    "fencingGeneration",
+                    "attemptId",
+                    "runId",
+                    "jobId",
+                    "tenantId",
+                    "actorId",
+                    "workspaceId",
+                    "sourceSha",
+                    "sourceFingerprint",
+                    "allowedWriteSet",
+                ];
+                if source_sha.is_none_or(str::is_empty)
+                    || source_revision.is_none_or(str::is_empty)
+                    || lease.is_none()
+                {
+                    return Err("SPEC224_EXECUTION_LEASE_REQUIRED".into());
+                }
+                let lease = lease.expect("checked above");
+                if lease.keys().any(|key| !lease_keys.contains(&key.as_str()))
+                    || lease_keys.iter().any(|key| !lease.contains_key(*key))
+                    || lease
+                        .get("fencingGeneration")
+                        .and_then(Value::as_u64)
+                        .unwrap_or(0)
+                        == 0
+                    || lease.get("sourceSha").and_then(Value::as_str) != source_sha
+                    || lease.get("sourceFingerprint").and_then(Value::as_str)
+                        != policy.get("sourceFingerprint").and_then(Value::as_str)
+                    || lease.get("allowedWriteSet") != policy.get("allowedWriteSet")
+                    || self.payload.get("spec224RunId").and_then(Value::as_str)
+                        != lease.get("runId").and_then(Value::as_str)
+                    || self.payload.get("spec224AttemptId").and_then(Value::as_str)
+                        != lease.get("attemptId").and_then(Value::as_str)
+                {
+                    return Err("SPEC224_EXECUTION_LEASE_INVALID".into());
+                }
+                for field in [
+                    "leaseId",
+                    "attemptId",
+                    "runId",
+                    "jobId",
+                    "tenantId",
+                    "actorId",
+                    "workspaceId",
+                ] {
+                    if !lease
+                        .get(field)
+                        .and_then(Value::as_str)
+                        .is_some_and(|value| !value.is_empty())
+                    {
+                        return Err("SPEC224_EXECUTION_LEASE_INVALID".into());
+                    }
+                }
+                if self
+                    .payload
+                    .get("goalId")
+                    .and_then(Value::as_str)
+                    .is_none_or(str::is_empty)
+                {
+                    return Err("SPEC224_EXECUTION_GOAL_REQUIRED".into());
+                }
+            } else if policy.get("executionLease").is_some()
+                || self.payload.get("spec224RunId").is_some()
+            {
+                return Err("SPEC224_EXECUTION_LEASE_SCOPE_INVALID".into());
             }
         }
         if self.payload.get("requiresIndependentVerification") == Some(&serde_json::json!(true)) {
@@ -684,6 +770,64 @@ mod tests {
         assert_eq!(
             command.validate().unwrap_err(),
             "SPEC224_EXECUTION_POLICY_INVALID"
+        );
+    }
+
+    #[test]
+    fn platform_goal_requires_a_fully_bound_execution_lease() {
+        let mut command = RunnerJobCommand {
+            command_id: "command-platform-goal".into(),
+            command_type: "execute".into(),
+            contract_version: RUNNER_JOB_COMMAND_CONTRACT_VERSION.into(),
+            job_id: "job-1".into(),
+            attempt: 1,
+            lease_id: "lease-1".into(),
+            fencing_token: 1,
+            tenant_id: "tenant-1".into(),
+            user_id: Some(7),
+            project_ref: None,
+            workspace_ref: Some("workspace-1".into()),
+            runner_id: "runner-1".into(),
+            runner_session_id: "session-1".into(),
+            capability_snapshot_id: "capability-1".into(),
+            capability_snapshot_revision: "revision-1".into(),
+            control_plane_origin: "https://example.test".into(),
+            execution_kind: "external_agent_task".into(),
+            adapter_id: "codex.v1".into(),
+            adapter_version_constraint: None,
+            browser_engine_constraint: None,
+            idempotency_key: "goal:job-1:attempt-1".into(),
+            deadline: "2099-01-01T00:00:00.000Z".into(),
+            authorization_grant_ref: "grant-1".into(),
+            input_ref: "input-1".into(),
+            payload: serde_json::json!({
+                "goalId": "goal-1",
+                "spec224RunId": "run-1",
+                "spec224Execution": {
+                    "mode": "prompt", "platformScope": true,
+                    "sourceSnapshotRevision": "snapshot-1", "sourceSha": "a".repeat(40),
+                    "sourceFingerprint": "b".repeat(64), "allowedWriteSet": ["src/feature.js"],
+                }
+            }),
+        };
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "SPEC224_EXECUTION_LEASE_REQUIRED"
+        );
+        command.payload["spec224AttemptId"] = serde_json::json!("attempt-1");
+        command.payload["spec224Execution"]["executionLease"] = serde_json::json!({
+            "leaseId": "execution-lease-1", "fencingGeneration": 1,
+            "attemptId": "attempt-1", "runId": "run-1", "jobId": "job-1",
+            "tenantId": "tenant-1", "actorId": "7", "workspaceId": "workspace-1",
+            "sourceSha": "a".repeat(40), "sourceFingerprint": "b".repeat(64),
+            "allowedWriteSet": ["src/feature.js"],
+        });
+        assert!(command.validate().is_ok());
+        command.payload["spec224Execution"]["executionLease"]["attemptId"] =
+            serde_json::json!("attempt-old");
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "SPEC224_EXECUTION_LEASE_INVALID"
         );
     }
 

@@ -339,6 +339,33 @@ def _db(repo: Path) -> Iterator[sqlite3.Connection]:
               result_json TEXT NOT NULL,
               created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS execution_leases (
+              lease_id TEXT PRIMARY KEY,
+              idempotency_key TEXT NOT NULL UNIQUE,
+              project_id TEXT NOT NULL,
+              repository_id TEXT NOT NULL,
+              workspace_id TEXT NOT NULL,
+              run_id TEXT NOT NULL,
+              job_id TEXT NOT NULL,
+              attempt_id TEXT NOT NULL,
+              tenant_id TEXT NOT NULL,
+              actor_id TEXT NOT NULL,
+              source_sha TEXT NOT NULL,
+              source_fingerprint TEXT NOT NULL,
+              allowed_write_set_json TEXT NOT NULL,
+              fencing_generation INTEGER NOT NULL,
+              status TEXT NOT NULL,
+              expires_at REAL NOT NULL,
+              authorization_deadline REAL NOT NULL,
+              renewed_at REAL NOT NULL,
+              released_at REAL,
+              terminal_ref TEXT,
+              created_at TEXT NOT NULL,
+              FOREIGN KEY(project_id, repository_id) REFERENCES projects(project_id, repository_id),
+              FOREIGN KEY(workspace_id) REFERENCES workspaces(workspace_id)
+            );
+            CREATE INDEX IF NOT EXISTS execution_lease_scope
+              ON execution_leases(workspace_id, status, expires_at);
             """
         )
         workspace_columns = {
@@ -348,6 +375,12 @@ def _db(repo: Path) -> Iterator[sqlite3.Connection]:
             connection.execute(
                 "ALTER TABLE workspaces ADD COLUMN owner_fencing_version INTEGER NOT NULL DEFAULT 0"
             )
+        lease_columns = {row[1] for row in connection.execute("PRAGMA table_info(execution_leases)")}
+        if "authorization_deadline" not in lease_columns:
+            connection.execute("ALTER TABLE execution_leases ADD COLUMN authorization_deadline REAL NOT NULL DEFAULT 0")
+            connection.execute("UPDATE execution_leases SET authorization_deadline=expires_at")
+        if "terminal_ref" not in lease_columns:
+            connection.execute("ALTER TABLE execution_leases ADD COLUMN terminal_ref TEXT")
         yield connection
     finally:
         connection.close()
@@ -431,6 +464,241 @@ def _workspace_by_id(db: sqlite3.Connection, workspace_id: str) -> dict[str, Any
     data["dirty"] = bool(data["dirty"])
     data["session_state"] = _owner_state(data)
     return data
+
+
+def _execution_source_facts(workspace: Path) -> tuple[str, str, list[str]]:
+    """Return the same bounded Git source facts used by the Runner snapshot."""
+    head = str(_git(workspace, "rev-parse", "--verify", "HEAD^{commit}")).strip()
+    if not re.fullmatch(r"[a-f0-9]{40,64}", head):
+        raise WorkspaceAuthorityError("EXECUTION_SOURCE_SHA_INVALID")
+    # Keep the Runner's v2 fingerprint byte-for-byte compatible, including Git's
+    # NUL-delimited status encoding for renamed or non-ASCII paths.
+    status = _git(workspace, "status", "--porcelain=v1", "--untracked-files=all", "-z", binary=True)
+    tracked = _git(workspace, "diff", "--name-only", "--no-renames", "-z", "HEAD", "--", binary=True)
+    untracked = _git(workspace, "ls-files", "--others", "--exclude-standard", "-z", binary=True)
+    paths = sorted({part.decode("utf-8") for raw in (tracked, untracked) for part in raw.split(b"\0") if part})
+    if len(paths) > 4096 or any(not _valid_execution_path(path) for path in paths):
+        raise WorkspaceAuthorityError("EXECUTION_DIRTY_PATHS_UNKNOWN")
+    tree = str(_git(workspace, "rev-parse", "--verify", "HEAD^{tree}")).strip()
+    digest = hashlib.sha256()
+    digest.update(b"smarthub-runner-workspace-fingerprint:v2\0")
+    digest.update(tree.encode())
+    if status:
+        digest.update(b"\0git-status\0")
+        digest.update(status)
+        total = 0
+        for relative in paths:
+            target = workspace / relative
+            digest.update(len(relative.encode()).to_bytes(8, "big"))
+            digest.update(relative.encode())
+            try:
+                info = target.lstat()
+            except FileNotFoundError:
+                digest.update(b"\0deleted\0")
+                continue
+            if target.is_symlink():
+                digest.update(b"\0symlink\0")
+                digest.update(os.readlink(target).encode())
+                continue
+            if not target.is_file():
+                raise WorkspaceAuthorityError("EXECUTION_SOURCE_UNSUPPORTED_ENTRY")
+            total += info.st_size
+            if total > 512 * 1024 * 1024:
+                raise WorkspaceAuthorityError("EXECUTION_SOURCE_TOO_LARGE")
+            digest.update(b"\0file\0")
+            digest.update((info.st_mode & 0o111).to_bytes(4, "big"))
+            digest.update(hashlib.sha256(target.read_bytes()).digest())
+    return head, digest.hexdigest(), paths
+
+
+def _valid_execution_path(value: str) -> bool:
+    parts = value.split("/")
+    return bool(value) and len(value) <= 1024 and not value.startswith("/") and "\\" not in value and "\0" not in value and all(part not in {"", ".", ".."} for part in parts)
+
+
+def _execution_pattern_matches(pattern: str, path: str) -> bool:
+    # Git write scopes use ** for recursive matching; a single * stays within a component.
+    expression = "^"
+    index = 0
+    while index < len(pattern):
+        char = pattern[index]
+        if char == "*" and index + 1 < len(pattern) and pattern[index + 1] == "*":
+            index += 2
+            if index < len(pattern) and pattern[index] == "/":
+                index += 1
+                expression += "(?:.*/)?"
+            else:
+                expression += ".*"
+            continue
+        if char == "*": expression += "[^/]*"
+        elif char == "?": expression += "[^/]"
+        else: expression += re.escape(char)
+        index += 1
+    return re.fullmatch(expression + "$", path) is not None
+
+
+def _scope_matches(scope: Sequence[str], path: str) -> bool:
+    return any(_execution_pattern_matches(pattern, path) for pattern in scope)
+
+
+def _scopes_may_overlap(left: Sequence[str], right: Sequence[str]) -> bool:
+    # Conservative prefix analysis: uncertain glob intersections serialize safely.
+    def literal_prefix(pattern: str) -> str:
+        return re.split(r"[*?]", pattern, maxsplit=1)[0]
+    for a in left:
+        for b in right:
+            pa, pb = literal_prefix(a), literal_prefix(b)
+            if a == b or pa.startswith(pb) or pb.startswith(pa):
+                return True
+    return False
+
+
+def acquire_execution_lease(repo: Path, policy_path: Path | None, *, workspace_id: str,
+    run_id: str, job_id: str, attempt_id: str, tenant_id: str, actor_id: str,
+    idempotency_key: str, source_sha: str, source_fingerprint: str,
+    allowed_write_set: Sequence[str], dirty_paths: Sequence[str], authorization_deadline: str,
+    lease_seconds: int = 300) -> dict[str, Any]:
+    """Atomically claim a finite run/attempt write scope in the existing authority DB."""
+    repo = _repo_root(repo)
+    policy = load_workspace_policy(repo, policy_path)
+    for value in (workspace_id, run_id, job_id, attempt_id, tenant_id, actor_id, idempotency_key):
+        _safe_id(str(value), "EXECUTION_LEASE_IDENTITY_INVALID")
+    if not 30 <= lease_seconds <= 3600:
+        raise WorkspaceAuthorityError("EXECUTION_LEASE_DURATION_INVALID")
+    if not re.fullmatch(r"[a-f0-9]{40,64}", source_sha) or not re.fullmatch(r"[a-f0-9]{64}", source_fingerprint):
+        raise WorkspaceAuthorityError("EXECUTION_SOURCE_FACTS_INVALID")
+    try: deadline_epoch = datetime.fromisoformat(authorization_deadline.replace("Z", "+00:00")).timestamp()
+    except (ValueError, TypeError): raise WorkspaceAuthorityError("EXECUTION_AUTHORIZATION_DEADLINE_INVALID")
+    if deadline_epoch <= time.time(): raise WorkspaceAuthorityError("EXECUTION_AUTHORIZATION_DEADLINE_EXPIRED")
+    if not allowed_write_set or len(allowed_write_set) > 128 or any(not _valid_execution_path(p) or p in {"*", "**", "**/*"} for p in allowed_write_set):
+        raise WorkspaceAuthorityError("EXECUTION_WRITE_SCOPE_INVALID")
+    if len(dirty_paths) > 4096 or any(not _valid_execution_path(p) for p in dirty_paths):
+        raise WorkspaceAuthorityError("EXECUTION_DIRTY_PATHS_UNKNOWN")
+    conflicts = sorted(path for path in dirty_paths if _scope_matches(allowed_write_set, path))
+    if conflicts:
+        raise WorkspaceAuthorityError("EXECUTION_SOURCE_SCOPE_CONFLICT:" + ",".join(conflicts[:32]))
+    now = time.time()
+    with _db(repo) as db:
+        db.execute("BEGIN IMMEDIATE")
+        try:
+            row = _workspace_by_id(db, workspace_id)
+            if not row or row["project_id"] != policy["project_id"] or row["repository_id"] != policy["repository_id"] or row["lifecycle_state"] in {"RETIRED", "MISSING"}:
+                raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+            path = Path(row["location"]).resolve()
+            actual_sha, actual_fingerprint, actual_dirty = _execution_source_facts(path)
+            if actual_sha != source_sha or actual_fingerprint != source_fingerprint or actual_dirty != sorted(set(dirty_paths)):
+                raise WorkspaceAuthorityError("EXECUTION_SOURCE_CHANGED")
+            existing = db.execute("SELECT * FROM execution_leases WHERE idempotency_key=?", (idempotency_key,)).fetchone()
+            if existing:
+                cursor = db.execute("SELECT * FROM execution_leases WHERE idempotency_key=?", (idempotency_key,))
+                record = dict(zip([c[0] for c in cursor.description], existing))
+                same = all(record[key] == value for key, value in {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id, "tenant_id": tenant_id, "actor_id": actor_id, "source_sha": source_sha, "source_fingerprint": source_fingerprint, "authorization_deadline": deadline_epoch, "allowed_write_set_json": json.dumps(sorted(set(allowed_write_set)), separators=(",", ":"))}.items())
+                if not same: raise WorkspaceAuthorityError("EXECUTION_LEASE_IDEMPOTENCY_CONFLICT")
+                db.commit()
+                return _execution_lease_view(record)
+            active = db.execute("SELECT * FROM execution_leases WHERE workspace_id=? AND status='ACTIVE' AND expires_at>?", (workspace_id, now)).fetchall()
+            cursor = db.execute("SELECT * FROM execution_leases WHERE workspace_id=? AND status='ACTIVE' AND expires_at>?", (workspace_id, now))
+            columns = [item[0] for item in cursor.description]
+            active = [dict(zip(columns, item)) for item in active]
+            scope = sorted(set(allowed_write_set))
+            for other in active:
+                other_scope = json.loads(other["allowed_write_set_json"])
+                if _scopes_may_overlap(scope, other_scope):
+                    raise WorkspaceAuthorityError("EXECUTION_SCOPE_LEASE_CONFLICT")
+            history = db.execute("SELECT fencing_generation,allowed_write_set_json FROM execution_leases WHERE workspace_id=?", (workspace_id,)).fetchall()
+            generation = 1 + max((int(item[0]) for item in history if _scopes_may_overlap(scope, json.loads(item[1]))), default=0)
+            lease_id = str(uuid.uuid4())
+            expires = min(now + lease_seconds, deadline_epoch)
+            created = _now()
+            values = (lease_id, idempotency_key, policy["project_id"], policy["repository_id"], workspace_id, run_id, job_id, attempt_id, tenant_id, actor_id, source_sha, source_fingerprint, json.dumps(scope, separators=(",", ":")), generation, "ACTIVE", expires, deadline_epoch, now, None, None, created)
+            db.execute("INSERT INTO execution_leases(lease_id,idempotency_key,project_id,repository_id,workspace_id,run_id,job_id,attempt_id,tenant_id,actor_id,source_sha,source_fingerprint,allowed_write_set_json,fencing_generation,status,expires_at,authorization_deadline,renewed_at,released_at,terminal_ref,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", values)
+            receipt = {"schema": "spec224.execution-lease.v1", "leaseId": lease_id, "projectId": policy["project_id"], "repositoryId": policy["repository_id"], "workspaceId": workspace_id, "runId": run_id, "jobId": job_id, "attemptId": attempt_id, "tenantId": tenant_id, "actorId": actor_id, "sourceSha": source_sha, "sourceFingerprint": source_fingerprint, "allowedWriteSet": scope, "fencingGeneration": generation, "expiresAt": expires, "authorizationDeadline": deadline_epoch}
+            db.execute("INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (f"execution-lease:{lease_id}", policy["project_id"], policy["repository_id"], workspace_id, "SPEC224_EXECUTION_LEASE_ACQUIRED", source_sha, source_sha, json.dumps(receipt, sort_keys=True), created))
+            db.commit()
+            return {**receipt, "status": "ACTIVE"}
+        except Exception:
+            db.rollback()
+            raise
+
+
+def _execution_lease_view(record: dict[str, Any]) -> dict[str, Any]:
+    return {"schema": "spec224.execution-lease.v1", "leaseId": record["lease_id"], "projectId": record["project_id"], "repositoryId": record["repository_id"], "workspaceId": record["workspace_id"], "runId": record["run_id"], "jobId": record["job_id"], "attemptId": record["attempt_id"], "tenantId": record["tenant_id"], "actorId": record["actor_id"], "sourceSha": record["source_sha"], "sourceFingerprint": record["source_fingerprint"], "allowedWriteSet": json.loads(record["allowed_write_set_json"]), "fencingGeneration": int(record["fencing_generation"]), "expiresAt": float(record["expires_at"]), "authorizationDeadline": float(record["authorization_deadline"]), "status": record["status"]}
+
+
+def validate_execution_lease(repo: Path, policy_path: Path | None, *, lease_id: str, fencing_generation: int, workspace_id: str, run_id: str, job_id: str, attempt_id: str, tenant_id: str, actor_id: str, source_sha: str, source_fingerprint: str, changed_paths: Sequence[str] = ()) -> dict[str, Any]:
+    repo = _repo_root(repo)
+    policy = load_workspace_policy(repo, policy_path)
+    with _db(repo) as db:
+        db.execute("BEGIN IMMEDIATE")
+        cursor = db.execute("SELECT * FROM execution_leases WHERE lease_id=?", (lease_id,))
+        row = cursor.fetchone()
+        if not row: raise WorkspaceAuthorityError("EXECUTION_LEASE_NOT_FOUND")
+        record = dict(zip([item[0] for item in cursor.description], row))
+        expected = {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id, "tenant_id": tenant_id, "actor_id": actor_id, "project_id": policy["project_id"], "repository_id": policy["repository_id"], "source_sha": source_sha, "source_fingerprint": source_fingerprint}
+        if any(record[key] != value for key, value in expected.items()) or int(record["fencing_generation"]) != fencing_generation: raise WorkspaceAuthorityError("EXECUTION_LEASE_BINDING_MISMATCH")
+        if record["status"] != "ACTIVE" or float(record["expires_at"]) <= time.time(): raise WorkspaceAuthorityError("EXECUTION_LEASE_EXPIRED_OR_RELEASED")
+        scope = json.loads(record["allowed_write_set_json"])
+        if any(not _valid_execution_path(path) or not _scope_matches(scope, path) for path in changed_paths): raise WorkspaceAuthorityError("EXECUTION_LEASE_WRITE_SCOPE_VIOLATION")
+        workspace = Path(_workspace_by_id(db, workspace_id)["location"]).resolve()
+        actual_sha, actual_fingerprint, _ = _execution_source_facts(workspace)
+        if actual_sha != source_sha or actual_fingerprint != source_fingerprint: raise WorkspaceAuthorityError("EXECUTION_SOURCE_CHANGED")
+        db.commit()
+        return _execution_lease_view(record)
+
+
+def renew_execution_lease(repo: Path, policy_path: Path | None, *, lease_id: str, fencing_generation: int,
+    workspace_id: str, run_id: str, job_id: str, attempt_id: str, tenant_id: str, actor_id: str,
+    source_sha: str, source_fingerprint: str, lease_seconds: int = 300) -> dict[str, Any]:
+    if not 30 <= lease_seconds <= 3600: raise WorkspaceAuthorityError("EXECUTION_LEASE_DURATION_INVALID")
+    repo = _repo_root(repo)
+    policy = load_workspace_policy(repo, policy_path)
+    with _db(repo) as db:
+        db.execute("BEGIN IMMEDIATE")
+        row = db.execute("SELECT * FROM execution_leases WHERE lease_id=?", (lease_id,)).fetchone()
+        if not row: raise WorkspaceAuthorityError("EXECUTION_LEASE_NOT_FOUND")
+        cursor = db.execute("SELECT * FROM execution_leases WHERE lease_id=?", (lease_id,))
+        record = dict(zip([item[0] for item in cursor.description], row))
+        if record["status"] != "ACTIVE" or int(record["fencing_generation"]) != fencing_generation or float(record["expires_at"]) <= time.time(): raise WorkspaceAuthorityError("EXECUTION_LEASE_EXPIRED_OR_STALE")
+        expected = {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id,
+            "tenant_id": tenant_id, "actor_id": actor_id, "project_id": policy["project_id"], "repository_id": policy["repository_id"],
+            "source_sha": source_sha, "source_fingerprint": source_fingerprint}
+        if any(record[key] != value for key, value in expected.items()): raise WorkspaceAuthorityError("EXECUTION_LEASE_BINDING_MISMATCH")
+        workspace = _workspace_by_id(db, workspace_id)
+        if not workspace: raise WorkspaceAuthorityError("WORKSPACE_NOT_REGISTERED_FOR_PROJECT")
+        actual_sha, actual_fingerprint, _ = _execution_source_facts(Path(workspace["location"]).resolve())
+        if actual_sha != source_sha or actual_fingerprint != source_fingerprint: raise WorkspaceAuthorityError("EXECUTION_SOURCE_CHANGED")
+        expires = min(time.time() + lease_seconds, float(record["authorization_deadline"]))
+        if expires <= time.time(): raise WorkspaceAuthorityError("EXECUTION_AUTHORIZATION_DEADLINE_EXPIRED")
+        db.execute("UPDATE execution_leases SET expires_at=?,renewed_at=? WHERE lease_id=? AND status='ACTIVE' AND fencing_generation=?", (expires, time.time(), lease_id, fencing_generation))
+        db.commit()
+        record["expires_at"] = expires
+        return _execution_lease_view(record)
+
+
+def release_execution_lease(repo: Path, *, lease_id: str, fencing_generation: int, terminal_ref: str,
+    workspace_id: str, run_id: str, job_id: str, attempt_id: str, tenant_id: str, actor_id: str) -> dict[str, Any]:
+    _safe_id(terminal_ref, "EXECUTION_LEASE_TERMINAL_REF_INVALID")
+    repo = _repo_root(repo)
+    with _db(repo) as db:
+        db.execute("BEGIN IMMEDIATE")
+        cursor = db.execute("SELECT * FROM execution_leases WHERE lease_id=?", (lease_id,))
+        row = cursor.fetchone()
+        if not row: raise WorkspaceAuthorityError("EXECUTION_LEASE_NOT_FOUND")
+        record = dict(zip([item[0] for item in cursor.description], row))
+        if int(record["fencing_generation"]) != fencing_generation: raise WorkspaceAuthorityError("EXECUTION_LEASE_FENCE_MISMATCH")
+        expected = {"workspace_id": workspace_id, "run_id": run_id, "job_id": job_id, "attempt_id": attempt_id,
+            "tenant_id": tenant_id, "actor_id": actor_id}
+        if any(record[key] != value for key, value in expected.items()): raise WorkspaceAuthorityError("EXECUTION_LEASE_BINDING_MISMATCH")
+        if record["status"] == "RELEASED":
+            if record.get("terminal_ref") != terminal_ref:
+                raise WorkspaceAuthorityError("EXECUTION_LEASE_RELEASE_IDEMPOTENCY_CONFLICT")
+            db.commit()
+            return {**_execution_lease_view(record), "status": "RELEASED", "duplicate": True}
+        db.execute("UPDATE execution_leases SET status='RELEASED',released_at=?,terminal_ref=? WHERE lease_id=? AND status='ACTIVE'", (time.time(), terminal_ref, lease_id))
+        db.execute("INSERT INTO receipts(receipt_id,project_id,repository_id,workspace_id,kind,source_sha,target_sha,result_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)", (f"execution-lease-release:{lease_id}", record["project_id"], record["repository_id"], record["workspace_id"], "SPEC224_EXECUTION_LEASE_RELEASED", record["source_sha"], record["source_sha"], json.dumps({"leaseId": lease_id, "fencingGeneration": fencing_generation, "terminalRef": terminal_ref}, sort_keys=True), _now()))
+        db.commit()
+        record["status"] = "RELEASED"
+        return {**_execution_lease_view(record), "status": "RELEASED", "duplicate": False}
 
 
 def _upsert_workspace(
@@ -2336,7 +2604,7 @@ def collect_worktrees(
 
 def _cli() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("resolve", "inspect", "register", "create", "converge", "verify", "preserve", "retire", "collect", "mission-control"))
+    parser.add_argument("action", choices=("resolve", "inspect", "register", "create", "converge", "verify", "preserve", "retire", "collect", "mission-control", "execution-lease-acquire", "execution-lease-validate", "execution-lease-renew", "execution-lease-release"))
     parser.add_argument("--repository", type=Path, default=Path.cwd())
     parser.add_argument("--policy", type=Path)
     parser.add_argument("--workspace", type=Path)
@@ -2353,6 +2621,7 @@ def _cli() -> int:
     parser.add_argument("--include-recovery", action="store_true", help="allow explicit retirement of a verified integrated recovery worktree; never used by automatic collection")
     parser.add_argument("--mode", choices=("AUDIT_ONLY", "RETIRE_SAFE", "REPORT_ONLY"), default="AUDIT_ONLY")
     parser.add_argument("--production-evidence", type=Path, help="SPEC-295 evidence JSON for Mission Control projection")
+    parser.add_argument("--lease-input", type=Path, help="JSON request for a SPEC-224 execution lease operation")
     args = parser.parse_args()
     repo = _repo_root(args.repository)
     try:
@@ -2406,12 +2675,26 @@ def _cli() -> int:
                 for remote, observation in observations.items()
             }
             result["status"] = "MISSION_CONTROL_SNAPSHOT_READY"
+        elif args.action.startswith("execution-lease-"):
+            if not args.lease_input:
+                raise WorkspaceAuthorityError("EXECUTION_LEASE_INPUT_REQUIRED")
+            request = json.loads(args.lease_input.read_text(encoding="utf-8"))
+            if not isinstance(request, dict):
+                raise WorkspaceAuthorityError("EXECUTION_LEASE_INPUT_INVALID")
+            if args.action == "execution-lease-acquire":
+                result = acquire_execution_lease(repo, args.policy, **request)
+            elif args.action == "execution-lease-validate":
+                result = validate_execution_lease(repo, args.policy, **request)
+            elif args.action == "execution-lease-renew":
+                result = renew_execution_lease(repo, args.policy, **request)
+            else:
+                result = release_execution_lease(repo, **request)
         else:
             if not args.workspace_id:
                 raise WorkspaceAuthorityError("WORKSPACE_ID_REQUIRED")
             result = retire_completed_worktree(repo, args.policy, args.workspace_id, apply=args.apply, include_recovery=args.include_recovery)
         print(json.dumps(result, sort_keys=True))
-        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "WORKTREE_CREATED_AND_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY"} else 20
+        return 0 if result.get("status", "").endswith(("CONVERGED", "VERIFIED", "RETIRED", "DRY_RUN")) or result.get("status") in {"ALREADY_CURRENT", "OBSERVED", "AUTHORITY_RESOLVED", "WORKSPACE_REGISTERED", "WORKTREE_CREATED_AND_REGISTERED", "DIRTY_WORK_PRESERVED", "WORKTREE_AUDIT_COMPLETE", "MISSION_CONTROL_SNAPSHOT_READY", "ACTIVE", "RELEASED"} else 20
     except WorkspaceAuthorityError as exc:
         print(str(exc), file=sys.stderr)
         return 20

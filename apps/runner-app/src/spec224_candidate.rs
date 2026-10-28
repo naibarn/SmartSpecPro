@@ -23,6 +23,23 @@ pub struct Candidate {
     manifest_path: PathBuf,
     run_workspace_id: Option<String>,
     registry_config: Option<crate::config::RunnerConfig>,
+    execution_lease: Option<ExecutionLeaseBinding>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct ExecutionLeaseBinding {
+    lease_id: String,
+    fencing_generation: u64,
+    attempt_id: String,
+    run_id: String,
+    job_id: String,
+    tenant_id: String,
+    actor_id: String,
+    workspace_id: String,
+    source_sha: String,
+    source_fingerprint: String,
+    allowed_write_set: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -55,7 +72,20 @@ pub fn create_for_command(
         .get("spec224Execution")
         .and_then(serde_json::Value::as_object)
         .ok_or_else(|| "SPEC224_EXECUTION_POLICY_REQUIRED".to_string())?;
-    if policy.len() != 3
+    if policy.keys().any(|key| {
+        ![
+            "mode",
+            "sourceFingerprint",
+            "allowedWriteSet",
+            "platformScope",
+            "sourceSnapshotRevision",
+            "sourceSha",
+            "executionLease",
+        ]
+        .contains(&key.as_str())
+    }) || !["mode", "sourceFingerprint", "allowedWriteSet"]
+        .iter()
+        .all(|key| policy.contains_key(*key))
         || !matches!(
             policy.get("mode").and_then(serde_json::Value::as_str),
             Some("prompt" | "work_package")
@@ -84,6 +114,14 @@ pub fn create_for_command(
                 .ok_or_else(|| "SPEC224_EXECUTION_POLICY_INVALID".to_string())
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let execution_lease = parse_execution_lease(policy, command, &allowed)?;
+    let platform_scope = policy
+        .get("platformScope")
+        .and_then(serde_json::Value::as_bool)
+        == Some(true);
+    if platform_scope && execution_lease.is_none() {
+        return Err("SPEC224_EXECUTION_LEASE_REQUIRED".into());
+    }
     let workspace = crate::external_agent::workspace_path(
         config,
         command
@@ -98,6 +136,7 @@ pub fn create_for_command(
         fingerprint,
         allowed,
     )?;
+    candidate.execution_lease = execution_lease;
     let run_workspace = crate::workspace_registry::register_run_workspace(
         config,
         command
@@ -111,6 +150,44 @@ pub fn create_for_command(
     candidate.run_workspace_id = Some(run_workspace.workspace_id);
     candidate.registry_config = Some(config.clone());
     Ok(candidate)
+}
+
+fn parse_execution_lease(
+    policy: &serde_json::Map<String, serde_json::Value>,
+    command: &crate::protocol::RunnerJobCommand,
+    allowed: &[String],
+) -> Result<Option<ExecutionLeaseBinding>, String> {
+    let Some(value) = policy.get("executionLease") else {
+        return Ok(None);
+    };
+    let lease = serde_json::from_value::<ExecutionLeaseBinding>(value.clone())
+        .map_err(|_| "SPEC224_EXECUTION_LEASE_INVALID".to_string())?;
+    let fingerprint = policy
+        .get("sourceFingerprint")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    if lease.job_id != command.job_id
+        || lease.tenant_id != command.tenant_id
+        || lease.workspace_id != command.workspace_ref.as_deref().unwrap_or_default()
+        || lease.actor_id != command.user_id.map(|id| id.to_string()).unwrap_or_default()
+        || lease.source_fingerprint != fingerprint
+        || policy.get("sourceSha").and_then(serde_json::Value::as_str)
+            != Some(lease.source_sha.as_str())
+        || command
+            .payload
+            .get("spec224RunId")
+            .and_then(serde_json::Value::as_str)
+            != Some(lease.run_id.as_str())
+        || command
+            .payload
+            .get("spec224AttemptId")
+            .and_then(serde_json::Value::as_str)
+            != Some(lease.attempt_id.as_str())
+        || lease.allowed_write_set != allowed
+    {
+        return Err("SPEC224_EXECUTION_LEASE_BINDING_MISMATCH".into());
+    }
+    Ok(Some(lease))
 }
 
 fn safe_relative(path: &str) -> bool {
@@ -375,6 +452,7 @@ impl Candidate {
             manifest_path,
             run_workspace_id: None,
             registry_config: None,
+            execution_lease: None,
         })
     }
 
@@ -399,6 +477,15 @@ impl Candidate {
                     .ok_or("SPEC224_EXECUTION_POLICY_INVALID")
             })
             .collect::<Result<Vec<_>, _>>()?;
+        let execution_lease = parse_execution_lease(policy, command, &allowed)?;
+        if policy
+            .get("platformScope")
+            .and_then(serde_json::Value::as_bool)
+            == Some(true)
+            && execution_lease.is_none()
+        {
+            return Err("SPEC224_EXECUTION_LEASE_REQUIRED".into());
+        }
         if allowed
             .iter()
             .any(|path| path != "**" && !safe_relative(path))
@@ -493,6 +580,7 @@ impl Candidate {
             manifest_path,
             run_workspace_id: None,
             registry_config: None,
+            execution_lease,
         };
         let run_workspace = crate::workspace_registry::register_run_workspace(
             config,
@@ -571,6 +659,13 @@ impl Candidate {
                 changed.push((path, after));
             }
         }
+        let changed_paths = changed
+            .iter()
+            .map(|(path, _)| path.clone())
+            .collect::<Vec<_>>();
+        if let Some(lease) = &self.execution_lease {
+            self.revalidate_execution_lease(lease, &changed_paths)?;
+        }
         let journal_dir = self
             .root
             .parent()
@@ -646,6 +741,71 @@ impl Candidate {
         let _ = fs::remove_dir_all(backup_root);
         let _ = fs::remove_file(journal);
         let _ = fs::remove_file(&self.manifest_path);
+        Ok(())
+    }
+
+    fn revalidate_execution_lease(
+        &self,
+        lease: &ExecutionLeaseBinding,
+        changed_paths: &[String],
+    ) -> Result<(), String> {
+        if changed_paths
+            .iter()
+            .any(|path| !allowed(path, &lease.allowed_write_set))
+        {
+            return Err("SPEC224_EXECUTION_LEASE_WRITE_SCOPE_VIOLATION".into());
+        }
+        let script = self
+            .original
+            .join("scripts/development-lifecycle/workspace_authority.py");
+        if !script.is_file() {
+            return Err("SPEC224_EXECUTION_LEASE_AUTHORITY_UNAVAILABLE".into());
+        }
+        let mut request = tempfile::NamedTempFile::new()
+            .map_err(|_| "SPEC224_EXECUTION_LEASE_AUTHORITY_UNAVAILABLE")?;
+        serde_json::to_writer(
+            &mut request,
+            &serde_json::json!({
+                "lease_id": lease.lease_id,
+                "fencing_generation": lease.fencing_generation,
+                "workspace_id": lease.workspace_id,
+                "run_id": lease.run_id,
+                "job_id": lease.job_id,
+                "attempt_id": lease.attempt_id,
+                "tenant_id": lease.tenant_id,
+                "actor_id": lease.actor_id,
+                "source_sha": lease.source_sha,
+                "source_fingerprint": lease.source_fingerprint,
+                "changed_paths": changed_paths,
+            }),
+        )
+        .map_err(|_| "SPEC224_EXECUTION_LEASE_AUTHORITY_UNAVAILABLE")?;
+        request
+            .flush()
+            .map_err(|_| "SPEC224_EXECUTION_LEASE_AUTHORITY_UNAVAILABLE")?;
+        let output = Command::new("python3")
+            .arg(&script)
+            .args(["execution-lease-validate", "--repository"])
+            .arg(&self.original)
+            .arg("--lease-input")
+            .arg(request.path())
+            .output()
+            .map_err(|_| "SPEC224_EXECUTION_LEASE_AUTHORITY_UNAVAILABLE")?;
+        if !output.status.success() {
+            let message = String::from_utf8_lossy(&output.stderr);
+            let code = message
+                .lines()
+                .last()
+                .unwrap_or("")
+                .split_whitespace()
+                .next()
+                .unwrap_or("");
+            return Err(if code.starts_with("EXECUTION_") {
+                code.to_string()
+            } else {
+                "SPEC224_EXECUTION_LEASE_REJECTED".into()
+            });
+        }
         Ok(())
     }
 }
@@ -817,6 +977,48 @@ mod tests {
         assert_eq!(
             fs::read_to_string(workspace.join("src.txt")).unwrap(),
             "candidate"
+        );
+    }
+
+    #[test]
+    fn candidate_refuses_write_when_execution_lease_authority_rejects_it() {
+        let (_temp, workspace, data, _) = fixture();
+        let authority_script =
+            workspace.join("scripts/development-lifecycle/workspace_authority.py");
+        fs::create_dir_all(authority_script.parent().unwrap()).unwrap();
+        fs::write(
+            &authority_script,
+            "import sys\nprint('EXECUTION_LEASE_EXPIRED', file=sys.stderr)\nsys.exit(20)\n",
+        )
+        .unwrap();
+        let fingerprint = fingerprint(&workspace).unwrap();
+        let mut candidate = Candidate::create(
+            &workspace,
+            &data,
+            "run-invalid-lease",
+            &fingerprint,
+            vec!["src.txt".into()],
+        )
+        .unwrap();
+        candidate.execution_lease = Some(ExecutionLeaseBinding {
+            lease_id: "lease-expired".into(),
+            fencing_generation: 2,
+            attempt_id: "attempt-1".into(),
+            run_id: "run-1".into(),
+            job_id: "job-1".into(),
+            tenant_id: "tenant-1".into(),
+            actor_id: "1".into(),
+            workspace_id: "workspace-1".into(),
+            source_sha: "a".repeat(40),
+            source_fingerprint: fingerprint,
+            allowed_write_set: vec!["src.txt".into()],
+        });
+        fs::write(candidate.root.join("src.txt"), "unauthorized").unwrap();
+
+        assert_eq!(candidate.apply().unwrap_err(), "EXECUTION_LEASE_EXPIRED");
+        assert_eq!(
+            fs::read_to_string(workspace.join("src.txt")).unwrap(),
+            "base"
         );
     }
 

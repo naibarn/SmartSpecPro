@@ -43,6 +43,7 @@ import {
   type AuthenticatedJobCallback,
 } from "./jobControlPlaneTypes";
 import { CONTENT_PROTECTION_RUNTIME_TYPE } from "../../shared/contentProtectionWorker";
+import { validateSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority";
 import type { DevelopmentDependencyEvidence } from "./developmentLifecycleContracts";
 import { runJobSettlementHooks } from "./jobSettlementHooks";
 import { buildRunnerCancellationCommand } from "./runnerCancellationCommand";
@@ -2452,6 +2453,19 @@ export function createJobControlPlane(
             repositoryRef: specRun.repositoryRef as string, sourceSha, action: actions[specRun.state],
             changedPaths: [], allowedWriteSet: execution.allowedWriteSet as string[], requiredCapabilities: manifest.requestedCapabilities as string[] }
           : undefined;
+        const platformExecution = execution?.platformScope === true || specRun.metadata?.spec224Workspace?.platformScope === true;
+        if (goal && platformExecution) {
+          if (!attempt || typeof binding.executionLeaseId !== "string" || !Number.isSafeInteger(binding.executionLeaseGeneration) ||
+            binding.executionLeaseSourceSha !== goal.sourceSha || typeof binding.executionLeaseSourceFingerprint !== "string") return false;
+          try {
+            await validateSpec224ExecutionLease({
+              leaseId: binding.executionLeaseId, fencingGeneration: binding.executionLeaseGeneration as number,
+              workspaceId: goal.workspaceId, runId: String(specRun.runId), jobId: job.id, attemptId: attempt.id,
+              tenantId: input.tenantId, actorId: input.requestedByUserId, sourceSha: goal.sourceSha,
+              sourceFingerprint: binding.executionLeaseSourceFingerprint, changedPaths: [],
+            });
+          } catch { return false; }
+        }
         if (!attempt || !repo.assertSpec224ReleaseAuthority || !(await repo.assertSpec224ReleaseAuthority({
           tenantId: input.tenantId, actorId: input.requestedByUserId, jobId: job.id, attemptId: attempt.id,
           approvalRef: binding.approvalRef, holdRef: binding.budgetReservationRef,

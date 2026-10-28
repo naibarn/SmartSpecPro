@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import io
+import hashlib
 import importlib.util
 import re
 import os
@@ -1476,6 +1477,139 @@ class WorkspaceAuthorityTests(unittest.TestCase):
             {row["number"] for row in scenarios if row.get("test_name")},
             set(range(1, 69)),
         )
+
+    def _execution_workspace(self) -> tuple[str, str, str, list[str]]:
+        registered = authority.register_workspace(
+            self.canonical, self.policy, self.canonical, role="CANONICAL_USER_WORKSPACE"
+        )
+        source_sha, fingerprint, dirty_paths = authority._execution_source_facts(self.canonical)
+        self.assertEqual(dirty_paths, [])
+        self.execution_deadline = authority.datetime.fromtimestamp(time.time() + 600, authority.timezone.utc).isoformat()
+        return registered["workspace_id"], source_sha, fingerprint, dirty_paths
+
+    def test_execution_source_fingerprint_matches_runner_v2_with_dirty_paths(self) -> None:
+        (self.canonical / "tracked.txt").write_text("staged plus working edit\n", encoding="utf-8")
+        untracked = self.canonical / "nested" / "pilot.js"
+        untracked.parent.mkdir()
+        untracked.write_text("export const pilot = true;\n", encoding="utf-8")
+        source_sha, actual, dirty_paths = authority._execution_source_facts(self.canonical)
+
+        tree = git(self.canonical, "rev-parse", "--verify", "HEAD^{tree}")
+        status = subprocess.run(
+            ["git", "-C", str(self.canonical), "status", "--porcelain=v1", "--untracked-files=all", "-z"],
+            check=True, capture_output=True,
+        ).stdout
+        tracked = subprocess.run(
+            ["git", "-C", str(self.canonical), "diff", "--name-only", "--no-renames", "-z", "HEAD", "--"],
+            check=True, capture_output=True,
+        ).stdout
+        untracked_bytes = subprocess.run(
+            ["git", "-C", str(self.canonical), "ls-files", "--others", "--exclude-standard", "-z"],
+            check=True, capture_output=True,
+        ).stdout
+        paths = sorted({part.decode("utf-8") for data in (tracked, untracked_bytes) for part in data.split(b"\0") if part})
+        self.assertEqual(dirty_paths, paths)
+        digest = hashlib.sha256()
+        digest.update(b"smarthub-runner-workspace-fingerprint:v2\0")
+        digest.update(tree.encode())
+        digest.update(b"\0git-status\0")
+        digest.update(status)
+        for relative in paths:
+            path = self.canonical / relative
+            info = path.lstat()
+            digest.update(len(relative.encode()).to_bytes(8, "big"))
+            digest.update(relative.encode())
+            digest.update(b"\0file\0")
+            digest.update((info.st_mode & 0o111).to_bytes(4, "big"))
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+        self.assertRegex(source_sha, r"^[a-f0-9]{40,64}$")
+        self.assertEqual(actual, digest.hexdigest())
+
+    def _execution_claim(self, *, workspace_id: str, source_sha: str, fingerprint: str,
+                         dirty_paths: list[str], scope: list[str], key: str = "run-a:attempt-1") -> dict[str, object]:
+        return authority.acquire_execution_lease(
+            self.canonical, self.policy, workspace_id=workspace_id, run_id="run-a", job_id="job-a",
+            attempt_id="attempt-a", tenant_id="tenant-a", actor_id="42", idempotency_key=key,
+            source_sha=source_sha, source_fingerprint=fingerprint, allowed_write_set=scope,
+            dirty_paths=dirty_paths, authorization_deadline=self.execution_deadline, lease_seconds=60,
+        )
+
+    def test_spec224_execution_leases_allow_disjoint_scopes_and_replay_idempotently(self) -> None:
+        workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
+        first = self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+                                      dirty_paths=dirty_paths, scope=["apps/web/client/pilot/**"])
+        second_args = self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+                                            dirty_paths=dirty_paths, scope=["apps/web/server/pilot/**"], key="run-b:attempt-1")
+        replay = self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+                                       dirty_paths=dirty_paths, scope=["apps/web/client/pilot/**"])
+        self.assertNotEqual(first["leaseId"], second_args["leaseId"])
+        self.assertEqual(first["leaseId"], replay["leaseId"])
+        self.assertEqual(first["fencingGeneration"], replay["fencingGeneration"])
+
+    def test_spec224_execution_lease_serializes_overlapping_scope_and_concurrent_claims(self) -> None:
+        workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
+        scopes = ["apps/web/client/pilot/**", "apps/web/client/pilot/tests/**"]
+
+        def claim(index: int) -> str:
+            try:
+                self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+                                      dirty_paths=dirty_paths, scope=[scopes[index]], key=f"run-{index}:attempt-1")
+                return "ACTIVE"
+            except authority.WorkspaceAuthorityError as exc:
+                return str(exc)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            outcomes = list(pool.map(claim, (0, 1)))
+        self.assertEqual(outcomes.count("ACTIVE"), 1)
+        self.assertEqual(outcomes.count("EXECUTION_SCOPE_LEASE_CONFLICT"), 1)
+
+    def test_spec224_execution_lease_renew_expiry_fencing_and_duplicate_release(self) -> None:
+        workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
+        lease = self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+                                      dirty_paths=dirty_paths, scope=["apps/web/client/pilot/**"])
+        renewed = authority.renew_execution_lease(self.canonical, self.policy, lease_id=lease["leaseId"],
+            fencing_generation=lease["fencingGeneration"], lease_seconds=90, workspace_id=workspace_id,
+            run_id="run-a", job_id="job-a", attempt_id="attempt-a", tenant_id="tenant-a", actor_id="42",
+            source_sha=source_sha, source_fingerprint=fingerprint)
+        self.assertGreater(renewed["expiresAt"], lease["expiresAt"])
+        validated = authority.validate_execution_lease(
+            self.canonical, self.policy, lease_id=lease["leaseId"], fencing_generation=lease["fencingGeneration"],
+            workspace_id=workspace_id, run_id="run-a", job_id="job-a", attempt_id="attempt-a",
+            tenant_id="tenant-a", actor_id="42", source_sha=source_sha, source_fingerprint=fingerprint,
+            changed_paths=["apps/web/client/pilot/new.js"],
+        )
+        self.assertEqual(validated["status"], "ACTIVE")
+        released = authority.release_execution_lease(self.canonical, lease_id=lease["leaseId"],
+            fencing_generation=lease["fencingGeneration"], terminal_ref="receipt-1", workspace_id=workspace_id,
+            run_id="run-a", job_id="job-a", attempt_id="attempt-a", tenant_id="tenant-a", actor_id="42")
+        replay = authority.release_execution_lease(self.canonical, lease_id=lease["leaseId"],
+            fencing_generation=lease["fencingGeneration"], terminal_ref="receipt-1", workspace_id=workspace_id,
+            run_id="run-a", job_id="job-a", attempt_id="attempt-a", tenant_id="tenant-a", actor_id="42")
+        self.assertEqual(released["status"], "RELEASED")
+        self.assertTrue(replay["duplicate"])
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "EXECUTION_LEASE_RELEASE_IDEMPOTENCY_CONFLICT"):
+            authority.release_execution_lease(self.canonical, lease_id=lease["leaseId"],
+                fencing_generation=lease["fencingGeneration"], terminal_ref="different-receipt", workspace_id=workspace_id,
+                run_id="run-a", job_id="job-a", attempt_id="attempt-a", tenant_id="tenant-a", actor_id="42")
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "EXECUTION_LEASE_EXPIRED_OR_RELEASED"):
+            authority.validate_execution_lease(
+                self.canonical, self.policy, lease_id=lease["leaseId"], fencing_generation=lease["fencingGeneration"],
+                workspace_id=workspace_id, run_id="run-a", job_id="job-a", attempt_id="attempt-a",
+                tenant_id="tenant-a", actor_id="42", source_sha=source_sha, source_fingerprint=fingerprint,
+            )
+
+    def test_spec224_execution_lease_rejects_dirty_conflict_stale_source_and_scope_escape(self) -> None:
+        workspace_id, source_sha, fingerprint, _ = self._execution_workspace()
+        dirty = self.canonical / "apps" / "web" / "client" / "pilot" / "draft.js"
+        dirty.parent.mkdir(parents=True)
+        dirty.write_text("draft\n", encoding="utf-8")
+        actual_sha, actual_fingerprint, dirty_paths = authority._execution_source_facts(self.canonical)
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "EXECUTION_SOURCE_SCOPE_CONFLICT"):
+            self._execution_claim(workspace_id=workspace_id, source_sha=actual_sha, fingerprint=actual_fingerprint,
+                                  dirty_paths=dirty_paths, scope=["apps/web/client/pilot/**"])
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "EXECUTION_SOURCE_CHANGED"):
+            self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+                                  dirty_paths=[], scope=["apps/web/server/pilot/**"])
 
 
 if __name__ == "__main__":

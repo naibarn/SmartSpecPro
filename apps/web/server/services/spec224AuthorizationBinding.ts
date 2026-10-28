@@ -187,6 +187,10 @@ export type Spec224PolicyBinding = {
   currency: string;
   workspaceRef: string;
   deadline: string;
+  executionLeaseId?: string;
+  executionLeaseGeneration?: number;
+  sourceSha?: string;
+  sourceFingerprint?: string;
 };
 
 /** Stable identity for a persisted authorization binding across retries. */

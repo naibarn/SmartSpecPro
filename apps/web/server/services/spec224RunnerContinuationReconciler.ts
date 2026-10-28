@@ -18,6 +18,7 @@ import { createSpec224WorkspaceLifecycleReceiptReader } from "./spec224Workspace
 import { settleMiniAppFactoryRunnerStage } from "./miniAppFactoryRunnerSettlement";
 import { createAndBindNextPhase } from "./spec224PhaseController";
 import { defaultSpec224AuthorizationService } from "./spec224AuthorizationService";
+import { releaseSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority";
 import { canonicalDevelopmentRunWorkerJobId, decideNextSafeAction } from "./spec224DevelopmentRunContracts";
 
 const INTENT_EVENT = "SPEC224_CONTINUATION_PENDING";
@@ -105,6 +106,29 @@ async function markOperation(
         reason,
       },
     });
+  });
+}
+
+async function releaseTerminalExecutionLease(intent: ContinuationIntent, job: {
+  inputJson: Record<string, any>;
+  progressJson: Record<string, any> | null;
+  status: string;
+}): Promise<void> {
+  const runInput = job.inputJson.spec224Run as Record<string, any> | undefined;
+  const manifest = job.inputJson.manifest as Record<string, any> | undefined;
+  const execution = manifest?.spec224Execution as Record<string, unknown> | undefined;
+  if (!runInput?.goalId || execution?.platformScope !== true ||
+    !["RUNNER_EXECUTION_COMPLETED", "RUNNER_EXECUTION_FAILED", "RUNNER_COMMAND_REJECTED"].includes(intent.receiptEventType)) return;
+  const authorization = job.progressJson?.spec224Authorization as Record<string, unknown> | undefined;
+  const binding = authorization?.binding as Record<string, unknown> | undefined;
+  if (typeof binding?.executionLeaseId !== "string" || !Number.isSafeInteger(binding.executionLeaseGeneration) ||
+    typeof binding.executionLeaseAttemptId !== "string" || typeof binding.executionLeaseRunId !== "string" ||
+    typeof binding.executionLeaseJobId !== "string") throw new Error("SPEC224_EXECUTION_LEASE_BINDING_MISSING");
+  await releaseSpec224ExecutionLease({
+    leaseId: binding.executionLeaseId, fencingGeneration: binding.executionLeaseGeneration as number,
+    terminalRef: intent.receiptEventId, workspaceId: String(binding.workspaceRef),
+    runId: binding.executionLeaseRunId, jobId: binding.executionLeaseJobId,
+    attemptId: binding.executionLeaseAttemptId, tenantId: intent.tenantId, actorId: intent.actorId,
   });
 }
 
@@ -359,6 +383,8 @@ export async function reconcileSpec224RunnerContinuations(
       }
 
       if (alreadyContinued.length) {
+        if (["succeeded", "failed", "cancelled", "expired"].includes(job.status))
+          await releaseTerminalExecutionLease(intent, job);
         if (await advanceGoal(intent, job.inputJson)) {
           await markOperation(intent, "SPEC224_CONTINUATION_SUCCESSOR_DISPATCHED", "next_phase_authorized_and_released");
           reconciled += 1;
@@ -454,6 +480,7 @@ export async function reconcileSpec224RunnerContinuations(
         );
         reviewRequired += 1;
       } else {
+        await releaseTerminalExecutionLease(intent, job);
         if (await advanceGoal(intent, job.inputJson)) {
           await markOperation(intent, "SPEC224_CONTINUATION_SUCCESSOR_DISPATCHED", "next_phase_authorized_and_released");
           reconciled += 1;

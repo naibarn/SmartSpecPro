@@ -15,6 +15,7 @@ import { getCachedRunnerControlPlaneOrigin } from "./appRuntimeConfig";
 import { normalizeControlPlaneOrigin } from "./runnerContracts";
 import type { RunnerJobCommand } from "./runnerContracts";
 import { defaultSpec224RunnerInputStagingService } from "./spec224RunnerInputStaging";
+import { renewSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority";
 
 type DispatchResult = {
   status: "accepted" | "duplicate";
@@ -82,6 +83,24 @@ export function createExternalAgentTaskDispatcher(
     if (!binding) throw new Error("AGENT_POLICY_BINDING_REQUIRED");
     if (input.manifest.spec224Input && !input.manifest.spec224Execution)
       throw new Error("SPEC224_EXECUTION_POLICY_REQUIRED");
+    const spec224ExecutionLease = input.manifest.spec224Execution?.platformScope === true
+      ? (() => {
+          const lease = input.manifest.policyBinding;
+          if (!lease?.executionLeaseId || !Number.isSafeInteger(lease.executionLeaseGeneration) ||
+            !lease.executionLeaseAttemptId || !lease.executionLeaseRunId || !lease.executionLeaseJobId ||
+            !lease.executionLeaseSourceSha || !lease.executionLeaseSourceFingerprint)
+            throw new Error("SPEC224_EXECUTION_LEASE_REQUIRED");
+          return {
+            leaseId: lease.executionLeaseId, fencingGeneration: lease.executionLeaseGeneration,
+            attemptId: lease.executionLeaseAttemptId, runId: lease.executionLeaseRunId,
+            jobId: lease.executionLeaseJobId, tenantId: input.context.tenantId,
+            actorId: String(input.context.requestedByUserId), workspaceId: lease.workspaceRef,
+            sourceSha: lease.executionLeaseSourceSha,
+            sourceFingerprint: lease.executionLeaseSourceFingerprint,
+            allowedWriteSet: input.manifest.spec224Execution?.allowedWriteSet ?? [],
+          };
+        })()
+      : null;
     if (input.manifest.runtime !== "local_runner") {
       throw new Error("AGENT_RUNTIME_RUNNER_UNSUPPORTED");
     }
@@ -153,6 +172,10 @@ export function createExternalAgentTaskDispatcher(
       payload: {
         taskId: input.manifest.taskId,
         goalId: input.manifest.goalId,
+        ...(spec224ExecutionLease ? {
+          spec224RunId: spec224ExecutionLease.runId,
+          spec224AttemptId: spec224ExecutionLease.attemptId,
+        } : {}),
         planId: input.manifest.planId,
         planRevision: input.manifest.planRevision,
         workspaceId: input.manifest.workspaceId,
@@ -161,7 +184,8 @@ export function createExternalAgentTaskDispatcher(
         mcpGrantIds: input.manifest.mcpGrantIds,
         requestedCapabilities: input.manifest.requestedCapabilities,
         ...(input.manifest.spec224Execution
-          ? { spec224Execution: input.manifest.spec224Execution }
+          ? { spec224Execution: { ...input.manifest.spec224Execution,
+              ...(spec224ExecutionLease ? { executionLease: spec224ExecutionLease } : {}) } }
           : {}),
         ...(input.manifest.spec224ModelSelection
           ? { spec224ModelSelection: input.manifest.spec224ModelSelection }
@@ -272,6 +296,28 @@ export function createExternalAgentTaskDispatcher(
           },
         })
       : command;
+    let renewalError: Error | null = null;
+    let renewalInFlight = false;
+    const leaseRenewalTimer = spec224ExecutionLease
+      ? setInterval(() => {
+          if (renewalInFlight || renewalError) return;
+          renewalInFlight = true;
+          void renewSpec224ExecutionLease({
+            leaseId: spec224ExecutionLease.leaseId,
+            fencingGeneration: spec224ExecutionLease.fencingGeneration,
+            workspaceId: spec224ExecutionLease.workspaceId,
+            runId: spec224ExecutionLease.runId,
+            jobId: spec224ExecutionLease.jobId,
+            attemptId: spec224ExecutionLease.attemptId,
+            tenantId: spec224ExecutionLease.tenantId,
+            actorId: input.context.requestedByUserId,
+            sourceSha: spec224ExecutionLease.sourceSha,
+            sourceFingerprint: spec224ExecutionLease.sourceFingerprint,
+          }).catch(error => {
+            renewalError = error instanceof Error ? error : new Error("SPEC224_EXECUTION_LEASE_RENEWAL_FAILED");
+          }).finally(() => { renewalInFlight = false; });
+        }, 60_000)
+      : null;
     try {
       await input.reporter.waitForExternal(input.lease, {
         operationKey,
@@ -327,6 +373,7 @@ export function createExternalAgentTaskDispatcher(
           },
         },
       });
+      if (renewalError) throw renewalError;
     } catch (error) {
       if (executionSessionId) {
         try {
@@ -346,6 +393,8 @@ export function createExternalAgentTaskDispatcher(
         }
       }
       throw error;
+    } finally {
+      if (leaseRenewalTimer) clearInterval(leaseRenewalTimer);
     }
 
     let result: DispatchResult;

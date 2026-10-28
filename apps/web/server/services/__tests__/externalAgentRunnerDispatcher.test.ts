@@ -351,6 +351,42 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
     expect(state.waitForExternal).toHaveBeenCalledOnce();
   });
 
+  it("binds platform Goal dispatch to the current SPEC-224 run and execution lease", async () => {
+    const state = input();
+    const dispatch = vi.fn().mockResolvedValue({ status: "accepted", commandId: "command-platform-1", runnerId: "runner-1", runnerSessionId: "session-1" });
+    const dispatcher = createExternalAgentTaskDispatcher({ dispatch, commandId: () => "command-platform-1", controlPlaneOrigin: "http://localhost:3000" });
+    await dispatcher({
+      ...state,
+      manifest: {
+        ...manifest,
+        spec224Execution: {
+          platformScope: true, sourceSnapshotRevision: "snapshot-1", sourceSha: "a".repeat(40),
+          sourceFingerprint: "b".repeat(64), mode: "prompt", allowedWriteSet: ["src/feature.js"],
+        },
+        policyBinding: {
+          ...manifest.policyBinding,
+          executionLeaseId: "execution-lease-1", executionLeaseGeneration: 4,
+          executionLeaseAttemptId: state.lease.attemptId, executionLeaseRunId: "run-1",
+          executionLeaseJobId: state.context.jobId, executionLeaseSourceSha: "a".repeat(40),
+          executionLeaseSourceFingerprint: "b".repeat(64),
+        },
+      },
+    } as any);
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      payload: expect.objectContaining({
+        goalId: "goal-1", spec224RunId: "run-1", spec224AttemptId: "attempt-1",
+        spec224Execution: expect.objectContaining({
+          executionLease: expect.objectContaining({
+            leaseId: "execution-lease-1", fencingGeneration: 4, attemptId: "attempt-1",
+            runId: "run-1", jobId: "job-1", tenantId: "tenant-1", actorId: "7",
+            workspaceId: "workspace-1", sourceSha: "a".repeat(40),
+            sourceFingerprint: "b".repeat(64), allowedWriteSet: ["src/feature.js"],
+          }),
+        }),
+      }),
+    }));
+  });
+
   it("passes approved model selection through the canonical Runner command", async () => {
     const state = input();
     const dispatch = vi.fn().mockResolvedValue({

@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { cp, mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { provisionSpec224EconomicTestBudget } from "./helpers/spec224EconomicTestProvisioning";
@@ -15,6 +17,9 @@ process.env.DATABASE_URL = databaseUrl;
 const sql = postgres(databaseUrl, { max: 8 });
 const suite = enabled ? describe : describe.skip;
 const execFileAsync = promisify(execFile);
+const leaseWorkspaces: string[] = [];
+const priorAuthorityRepository = process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY;
+let executionAuthorityWorkspace: Promise<{ workspaceId: string; sourceSha: string; sourceFingerprint: string; dirtyPaths: string[] }> | null = null;
 const createGoalApprovalScript = `
 import asyncio, json, os, sys
 from types import SimpleNamespace
@@ -59,10 +64,38 @@ async function runApprovalAuthorityScript(script: string, args: string[]) {
   return JSON.parse(jsonLine) as Record<string, string>;
 }
 
+async function createExecutionAuthorityWorkspace() {
+  if (executionAuthorityWorkspace) return executionAuthorityWorkspace;
+  executionAuthorityWorkspace = (async () => {
+  const root = await mkdtemp(join(tmpdir(), "spec224-execution-authority-"));
+  leaseWorkspaces.push(root);
+  await execFileAsync("git", ["init", "--initial-branch=main", root]);
+  await execFileAsync("git", ["-C", root, "config", "user.name", "SPEC-224 integration"]);
+  await execFileAsync("git", ["-C", root, "config", "user.email", "spec224-test@example.invalid"]);
+  await execFileAsync("git", ["-C", root, "remote", "add", "origin", "https://example.invalid/test/repository.git"]);
+  await mkdir(join(root, "src"), { recursive: true });
+  await writeFile(join(root, "src", "seed.js"), "export const seed = true;\n");
+  await writeFile(join(root, ".development-repository.toml"), `[repository]\nproject_id = "project-test"\nrepository_id = "repo-test"\nremote = "origin"\ncanonical_ref = "refs/heads/main"\n`);
+  await execFileAsync("git", ["-C", root, "add", "src/seed.js", ".development-repository.toml"]);
+  await execFileAsync("git", ["-C", root, "commit", "-m", "seed disposable execution workspace"]);
+  const scriptRoot = resolve(process.cwd(), "../../scripts/development-lifecycle");
+  const destination = join(root, "scripts", "development-lifecycle");
+  await mkdir(destination, { recursive: true });
+  for (const file of ["workspace_authority.py", "canonical_source.py", "convergence_contract.py", "portable_file_lock.py"])
+    await cp(join(scriptRoot, file), join(destination, file));
+  const script = `import json, sys\nfrom pathlib import Path\nsys.path.insert(0, str(Path.cwd() / "scripts" / "development-lifecycle"))\nimport workspace_authority as a\nr = a.register_workspace(Path.cwd(), Path.cwd() / ".development-repository.toml", Path.cwd(), role="CANONICAL_USER_WORKSPACE")\nhead, fingerprint, dirty = a._execution_source_facts(Path.cwd())\nprint(json.dumps({"workspaceId": r["workspace_id"], "sourceSha": head, "sourceFingerprint": fingerprint, "dirtyPaths": dirty}))`;
+  const { stdout } = await execFileAsync("python3", ["-c", script], { cwd: root });
+  process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY = root;
+  return JSON.parse(stdout.trim()) as { workspaceId: string; sourceSha: string; sourceFingerprint: string; dirtyPaths: string[] };
+  })();
+  return executionAuthorityWorkspace;
+}
+
 async function setup(limit = 200, options: { approved?: boolean; withApprover?: boolean } = {}) {
   const tenantId = randomUUID(), runId = randomUUID(), goalId = randomUUID(), approvalRef = randomUUID();
   const runnerId = `runner-${randomUUID()}`, sessionId = `session-${randomUUID()}`, snapshotId = randomUUID();
-  const workspaceId = `workspace-${randomUUID()}`, revision = `rev-${randomUUID()}`;
+  const source = await createExecutionAuthorityWorkspace();
+  const workspaceId = source.workspaceId, revision = `rev-${randomUUID()}`;
   const expires = new Date(Date.now() + 600_000), observed = new Date(Date.now() - 1_000);
   const [user] = await sql`INSERT INTO users ("openId", role, plan, credits, "isDisabled") VALUES (${randomUUID()}, 'user', 'free', 0, false) RETURNING id`;
   const actorId = Number(user.id);
@@ -71,11 +104,11 @@ async function setup(limit = 200, options: { approved?: boolean; withApprover?: 
   await sql`INSERT INTO tenants (id, slug, name, "isActive", status, plan, created_at, "createdAt", "updatedAt") VALUES (${tenantId}, ${randomUUID()}, 'Disposable bridge', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW())`;
   const snapshot = { runnerId, tenantId, runnerSessionId: sessionId, capabilitySnapshotId: snapshotId, revision,
     observedAt: observed.toISOString(), expiresAt: expires.toISOString(), capabilities: ["agent.external_task"], workspaceIds: [workspaceId], resourceClass: "medium",
-    workspaces: [{ workspaceId, projectId: "project-test", repositoryId: "repo-test", displayName: "Test", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, dirtyPaths: [], contentFingerprint: "b".repeat(64) }],
+    workspaces: [{ workspaceId, projectId: "project-test", repositoryId: "repo-test", displayName: "Test", gitHead: source.sourceSha, gitBranch: "main", dirty: false, dirtyPaths: source.dirtyPaths, contentFingerprint: source.sourceFingerprint }],
     toolInventory: [{ toolId: "codex", kind: "agent_cli", displayName: "Codex", version: "test", adapterId: "codex.v1", adapterVersion: "1", discoverySource: "runner_probe", installState: "installed", configurationState: "configured", authState: "authenticated", healthState: "healthy", availabilityState: "available", trustState: "ready", fingerprint: "test", authorizationEvidenceRef: "auth-test", observedAt: observed.toISOString(), expiresAt: expires.toISOString(), reasonCodes: [], versionProbeState: "passed", taskProbeState: "passed", taskProbeObservedAtMs: observed.getTime(), taskProbeExpiresAtMs: expires.getTime(), taskProbeEvidenceRef: "test-probe" }] };
   await sql`INSERT INTO runner_nodes ("runnerId", "tenantId", "ownerUserId", "nodeKind", profile, "displayName", "trustState", status, "currentSnapshotRevision", "currentSnapshotJson", "snapshotExpiresAt", "activeSessionId") VALUES (${runnerId}, ${tenantId}, ${actorId}, 'rust_runner', 'development', 'Test runner', 'trusted', 'online', ${revision}, ${sql.json(snapshot)}, ${expires}, ${sessionId})`;
   await sql`INSERT INTO runner_capability_snapshots (id, "runnerId", "tenantId", revision, "idempotencyKey", "observedAt", "expiresAt", "snapshotJson") VALUES (${snapshotId}, ${runnerId}, ${tenantId}, ${revision}, ${randomUUID()}, ${observed}, ${expires}, ${sql.json(snapshot)})`;
-  const payload = { kind: "spec224_goal_delegation_grant", provider: "codex", grantId: randomUUID(), goalId, actorId, workspaceId, repositoryRef: "repo:test", sourceSha: "a".repeat(40), allowedActions: ["discover", "plan", "implement", "test", "repair", "verify"], writeScope: ["src/**"], capabilities: ["agent.external_task"], budgetLimitMinorUnits: limit, currency: "USD", issuedAt: observed.toISOString(), expiresAt: expires.toISOString() };
+  const payload = { kind: "spec224_goal_delegation_grant", provider: "codex", grantId: randomUUID(), goalId, actorId, workspaceId, repositoryRef: "repo:test", sourceSha: source.sourceSha, allowedActions: ["discover", "plan", "implement", "test", "repair", "verify"], writeScope: [`src/${runId}/**`], capabilities: ["agent.external_task"], budgetLimitMinorUnits: limit, currency: "USD", issuedAt: observed.toISOString(), expiresAt: expires.toISOString() };
   if (options.approved !== false) await sql`INSERT INTO approval_requests (id, request_type, title, tenant_id, execution_id, requester_id, status, payload, required_approvers, current_approvals, expires_at, created_at) VALUES (${approvalRef}, 'CUSTOM', 'Approved Goal', ${tenantId}, ${goalId}, ${actorId}, 'APPROVED', ${sql.json(payload)}, 1, 1, ${expires}, NOW())`;
   const [{ getDb }, { buildDevelopmentRun }, { createPersistedDevelopmentRun }, { provisionSpec224GoalBudget }] = await Promise.all([
     import("../../db"), import("../spec224DevelopmentRunContracts"), import("../spec224DevelopmentRunPersistence"), import("../economicProvisioningService"),
@@ -85,10 +118,10 @@ async function setup(limit = 200, options: { approved?: boolean; withApprover?: 
   process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID = accounts.sourceAccountId;
   process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID = accounts.targetAccountId;
   const budget = options.approved === false ? null : await provisionSpec224GoalBudget(db, { tenantId, actorId, goalId, approvalRef });
-  const run = buildDevelopmentRun({ runId, goalId, tenantId, actorId, goal: "Implement bounded test", repositoryRef: "repo:test", baseRevision: `git:${"a".repeat(40)}`, contextPackHash: "c".repeat(64), workspaceId,
+  const run = buildDevelopmentRun({ runId, goalId, tenantId, actorId, goal: "Implement bounded test", repositoryRef: "repo:test", baseRevision: `git:${source.sourceSha}`, contextPackHash: "c".repeat(64), workspaceId,
     metadata: { spec224BudgetCapMinorUnits: 50, spec224GoalGrantPayload: payload,
       spec224Workspace: { runnerId, platformScope: true },
-      spec224Execution: { platformScope: true, sourceSnapshotRevision: revision, sourceSha: "a".repeat(40), sourceFingerprint: "b".repeat(64), mode: "prompt", allowedWriteSet: ["src/**"] } } });
+      spec224Execution: { platformScope: true, sourceSnapshotRevision: revision, sourceSha: source.sourceSha, sourceFingerprint: source.sourceFingerprint, mode: "prompt", allowedWriteSet: [`src/${runId}/**`] } } });
   const created = await createPersistedDevelopmentRun({ run, provider: "codex", runtime: "local_runner", planId: `plan-${runId}`, planRevision: 1, skillIds: [], requestedCapabilities: ["agent.external_task"], deferredAdmission: true, authorizationScope: "spec224.development.run" });
   const { defaultSpec224AuthorizationService } = await import("../spec224AuthorizationService");
   // This production entry point is the missing bridge under test.
@@ -96,7 +129,11 @@ async function setup(limit = 200, options: { approved?: boolean; withApprover?: 
   return { tenantId, actorId, approverId, runId, goalId, approvalRef, payload, runnerId, sessionId, snapshotId, revision, budgetId: budget?.budgetId ?? null, jobId: created.jobRef.jobId, expires, authorize };
 }
 
-afterAll(async () => { await sql.end(); const { closeDb } = await import("../../db"); await closeDb(); });
+afterAll(async () => { await sql.end(); const { closeDb } = await import("../../db"); await closeDb();
+  if (priorAuthorityRepository === undefined) delete process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY;
+  else process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY = priorAuthorityRepository;
+  await Promise.all(leaseWorkspaces.map(root => rm(root, { recursive: true, force: true })));
+});
 
 async function recordCompletedReceipt(f: Awaited<ReturnType<typeof setup>>) {
   const { createJobControlPlane } = await import("../jobControlPlane");

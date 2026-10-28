@@ -29,6 +29,13 @@ export type AgentTaskPolicyBinding = {
   currency: string;
   workspaceRef: string;
   deadline: string;
+  executionLeaseId?: string;
+  executionLeaseGeneration?: number;
+  executionLeaseAttemptId?: string;
+  executionLeaseRunId?: string;
+  executionLeaseJobId?: string;
+  executionLeaseSourceSha?: string;
+  executionLeaseSourceFingerprint?: string;
 };
 
 export type AgentTaskManifest = {
@@ -134,6 +141,13 @@ function validatePolicyBinding(value: unknown): AgentTaskPolicyBinding {
     invalid("policy binding budget cap is invalid");
   const currency = requiredText(raw.currency, "policyBinding.currency", 3).toUpperCase();
   if (!/^[A-Z]{3}$/.test(currency)) invalid("policy binding currency is invalid");
+  const leaseFields = ["executionLeaseId", "executionLeaseGeneration", "executionLeaseAttemptId", "executionLeaseRunId", "executionLeaseJobId", "executionLeaseSourceSha", "executionLeaseSourceFingerprint"];
+  const hasLease = leaseFields.some(key => raw[key] !== undefined);
+  if (hasLease && (typeof raw.executionLeaseId !== "string" || !raw.executionLeaseId ||
+    !Number.isSafeInteger(raw.executionLeaseGeneration) || typeof raw.executionLeaseAttemptId !== "string" ||
+    typeof raw.executionLeaseRunId !== "string" || typeof raw.executionLeaseJobId !== "string" ||
+    typeof raw.executionLeaseSourceSha !== "string" || !/^[a-f0-9]{40,64}$/i.test(raw.executionLeaseSourceSha) ||
+    typeof raw.executionLeaseSourceFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(raw.executionLeaseSourceFingerprint))) invalid("policy binding execution lease is invalid");
   return {
     runnerId: requiredText(raw.runnerId, "policyBinding.runnerId", 160),
     runnerSessionId: requiredText(raw.runnerSessionId, "policyBinding.runnerSessionId", 160),
@@ -146,6 +160,15 @@ function validatePolicyBinding(value: unknown): AgentTaskPolicyBinding {
     currency,
     workspaceRef: requiredText(raw.workspaceRef, "policyBinding.workspaceRef", 200),
     deadline,
+    ...(hasLease ? {
+      executionLeaseId: raw.executionLeaseId as string,
+      executionLeaseGeneration: raw.executionLeaseGeneration as number,
+      executionLeaseAttemptId: raw.executionLeaseAttemptId as string,
+      executionLeaseRunId: raw.executionLeaseRunId as string,
+      executionLeaseJobId: raw.executionLeaseJobId as string,
+      executionLeaseSourceSha: raw.executionLeaseSourceSha as string,
+      executionLeaseSourceFingerprint: raw.executionLeaseSourceFingerprint as string,
+    } : {}),
   };
 }
 
