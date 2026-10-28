@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1283 unresolved of 1284
-- Next action: Linux Web/API/Node Worker generation 194 and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Live acceptance remains open until authenticated owner refreshes Windows Runner/Codex readiness, confirms isolated Project Workspace/source scope, and starts/approves the Goal through Task Control; then retain actual Child 1/2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.
-- Manifest generation: 224
+- Next action: Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through its supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.
+- Manifest generation: 226
 
 ## Source-declared status and relationship claims
 

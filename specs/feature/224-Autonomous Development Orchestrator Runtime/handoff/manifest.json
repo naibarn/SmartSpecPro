@@ -997,15 +997,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca",
+    "expected_canonical_sha": "574c028a573d73730b542e7683331f766cdf0280",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Preserve active Cloudflare/Python and unrelated checkout deltas until their owners integrate them or existing SPEC-293 authority isolates them; then refresh the registered Debian workspace until clean with USER_WORKSPACE_CONVERGED at current Git HEAD. Refresh Runner-bound Codex task-probe through the supported Runner action and wait for applied ACK. Re-read the authenticated Task Control workspace read models; only then start/approve the bounded Goal.",
+    "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through the supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
     "next_ready_workunit": "SPEC224_DEBIAN_PLATFORM_WORKSPACE_READINESS_RECONCILIATION",
-    "reactivation_predicate": "Resume Goal preparation only when the existing Platform Engineering binding resolves to the registered Debian Runner/workspace, workspace dirty=false with USER_WORKSPACE_CONVERGED and convergence SHA equal to gitHead, and a fresh Runner-bound Codex task probe plus applied ACK are visible in the authenticated Task Control read model.",
-    "resume_point": "At fc4a61722c6745c22989c308399fa8a2a2da8cca: canonical main is integrated; Platform Development UI at 838523a is present in aimarkethubs.com dev runtime, whose process source is still 838523a-dirty. Registered Debian Runner is online with fresh capability ACK; Codex auth is good but its Runner-bound task probe expired. Platform workspace binding is active but source dirty=true and convergenceState=NOT_REPORTED. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-platform-readiness-20261028.md. Do not start Goal until source convergence and fresh Runner-bound probe are proven.",
-    "waiting_predicate": "Resume live pilot after fresh authenticated Task Control evidence confirms an online Windows Runner, applied capability ACK, Codex task readiness, isolated workspace/source scope, actual owner-approved Goal Grant and active shared Goal Budget. Obtain provider-owner readback for active Cloudflare Worker revision separately; do not change Worker routing as part of this handoff."
+    "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
+    "resume_point": "Latest origin/main at handoff update: 574c028a573d73730b542e7683331f766cdf0280. Runner commits 501e0f258a601a5ddb45a822dfba4da79a34c82f and 573f9552b4115cd94eb6e8d873eb2d4cd3c677a7 are integrated. Signed Runner 0.2.51-spec224-probe-retry-20261028a is installed in place with device/workspace registry identity preserved. Runner sends complete bounded dirtyPaths without local payload-size rejection, but the configured aimarkethubs.com Control Plane rejects events; local dev DB has no row for the device. Real Codex probe is failed with task_probe_failed despite auth/version probes passing. SPEC-293 owner/fencing lease is not yet bound into SPEC-224 authorization/release/apply. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md.",
+    "waiting_predicate": "Resume Goal preparation after the existing device is authorized in the development Control Plane and its complete Runner snapshot and Codex task readiness are acknowledged; then complete the run-scoped SPEC-293 writer lease/fencing integration and verify server-authoritative source admission for the bounded write set. Actual Goal approval and live Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1052,10 +1052,16 @@
         "observed_at": "2026-10-28T02:38:00Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
         "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T12:06:04Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+        "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
       }
     ],
-    "next_action": "Linux Web/API/Node Worker generation 194 and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Live acceptance remains open until authenticated owner refreshes Windows Runner/Codex readiness, confirms isolated Project Workspace/source scope, and starts/approves the Goal through Task Control; then retain actual Child 1/2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.",
-    "rationale": "Production Linux runtime alignment is verified from immutable release receipts; the Python Goal Grant route is registered and readiness passes. No Worker revision readback, live owner Goal approval, Windows execution, receipt settlement or Final Verify was observed, so do not mark LIVE_VERIFIED.",
+    "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through its supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
+    "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com Control Plane rejects events and the local development DB has no row for this device. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current server-acknowledged dirtyPaths, SAFE source admission, Goal dispatch, or live Child receipt exists; keep LIVE_VERIFIED open.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1140,7 +1146,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 224,
+  "generation": 226,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1342,11 +1348,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca",
+    "canonical_sha": "574c028a573d73730b542e7683331f766cdf0280",
     "integrated": true,
-    "integrated_at": "2026-10-28T09:48:27Z",
+    "integrated_at": "2026-10-28T12:08:45Z",
     "pull_request": null,
-    "source_sha": "fc4a61722c6745c22989c308399fa8a2a2da8cca"
+    "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2276,10 +2282,16 @@
           "observed_at": "2026-10-28T02:38:00Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
           "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T12:06:04Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md",
+          "source_sha": "573f9552b4115cd94eb6e8d873eb2d4cd3c677a7"
         }
       ],
-      "next_action": "Linux Web/API/Node Worker generation 194 and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Live acceptance remains open until authenticated owner refreshes Windows Runner/Codex readiness, confirms isolated Project Workspace/source scope, and starts/approves the Goal through Task Control; then retain actual Child 1/2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.",
-      "rationale": "Production Linux runtime alignment is verified from immutable release receipts; the Python Goal Grant route is registered and readiness passes. No Worker revision readback, live owner Goal approval, Windows execution, receipt settlement or Final Verify was observed, so do not mark LIVE_VERIFIED.",
+      "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through its supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
+      "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com Control Plane rejects events and the local development DB has no row for this device. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current server-acknowledged dirtyPaths, SAFE source admission, Goal dispatch, or live Child receipt exists; keep LIVE_VERIFIED open.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3824,7 +3836,7 @@
     "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T09:57:58.367843Z",
+  "updated_at": "2026-10-28T12:09:13.065650Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4282,7 +4294,8 @@
         "scope": "Real HTTP tRPC startWorkspaceRun + Approval Authority HTTP, disposable PostgreSQL: 1/1. Delegated continuation PostgreSQL: 8/8. Focused regressions: 82/82. Canonical build passed for this SHA; no service deployment or live Windows receipt.",
         "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
         "status": "PASS"
-      }
+      },
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
