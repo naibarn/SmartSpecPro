@@ -142,10 +142,11 @@ describe("Cloudflare local runtime contracts", () => {
     const delivered = { ...message(parity), id: "cf-message-981" };
     const handler = vi.fn().mockResolvedValue("completed" as const);
     const consumer = new CloudflareQueueConsumer(handler, vi.fn().mockResolvedValue(false));
-    const bindings = { CLOUDFLARE_ACTIVATION: "enabled", HYPERDRIVE: { connectionString: "postgres://test" }, JOB_QUEUE: { send: vi.fn() } };
+    const bindings = { CLOUDFLARE_ACTIVATION: "enabled", HYPERDRIVE: { connectionString: "postgres://test" }, JOB_QUEUE: { send: vi.fn() },
+      CF_VERSION_METADATA: { id: "81e64be8-af01-4efb-ad82-94e78da2510b" } };
     await consumer.handleBatch({ queue: "smartspec-canonical-job-queue-production", messages: [delivered] }, bindings);
     expect(handler).toHaveBeenCalledWith(parity, expect.objectContaining({
-      __m3QueueDelivery: { queueName: "smartspec-canonical-job-queue-production", messageId: "cf-message-981" },
+      __m3QueueDelivery: { queueName: "smartspec-canonical-job-queue-production", messageId: "cf-message-981", workerVersionId: "81e64be8-af01-4efb-ad82-94e78da2510b" },
     }));
     expect(delivered.ack).toHaveBeenCalledOnce();
 
@@ -154,6 +155,16 @@ describe("Cloudflare local runtime contracts", () => {
     await new CloudflareQueueConsumer(handler, quarantine).handleBatch({ messages: [missing] }, bindings);
     expect(quarantine).toHaveBeenCalledWith({ envelope: null, reason: "M3_QUEUE_DELIVERY_METADATA_MISSING" }, bindings);
     expect(missing.retry).toHaveBeenCalledWith({ delaySeconds: 30 });
+
+    const missingVersion = { ...message(parity), id: "cf-message-no-version" };
+    const withoutVersion = { CLOUDFLARE_ACTIVATION: "enabled", HYPERDRIVE: bindings.HYPERDRIVE,
+      JOB_QUEUE: bindings.JOB_QUEUE };
+    const versionQuarantine = vi.fn().mockResolvedValue(false);
+    await new CloudflareQueueConsumer(handler, versionQuarantine).handleBatch({
+      queue: "smartspec-canonical-job-queue-production", messages: [missingVersion],
+    }, withoutVersion);
+    expect(versionQuarantine).toHaveBeenCalledWith({ envelope: null, reason: "M3_QUEUE_DELIVERY_METADATA_MISSING" }, withoutVersion);
+    expect(missingVersion.retry).toHaveBeenCalledWith({ delaySeconds: 30 });
   });
 
   it("does not ack a disabled or incompletely bound batch", async () => {

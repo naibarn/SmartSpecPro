@@ -121,13 +121,15 @@ export class CloudflareQueueConsumer {
     assertBindingSubset(env, ["HYPERDRIVE", "JOB_QUEUE"]);
     for (const message of batch.messages) {
       const m3Parity = (message.body as { contract_version?: unknown } | null)?.contract_version === "cloudflare-m3-parity-acceptance-v1";
-      if (m3Parity && (!batch.queue || !message.id || batch.queue !== "smartspec-canonical-job-queue-production")) {
+      const workerVersionId = env.CF_VERSION_METADATA?.id;
+      if (m3Parity && (!batch.queue || !message.id || batch.queue !== "smartspec-canonical-job-queue-production" ||
+          typeof workerVersionId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(workerVersionId))) {
         const quarantined = await this.quarantine({ envelope: null, reason: "M3_QUEUE_DELIVERY_METADATA_MISSING" }, env);
         if (quarantined) message.ack(); else message.retry({ delaySeconds: 30 });
         continue;
       }
       const scopedEnv = m3Parity
-        ? { ...env, __m3QueueDelivery: { queueName: batch.queue!, messageId: message.id! } }
+        ? { ...env, __m3QueueDelivery: { queueName: batch.queue!, messageId: message.id!, workerVersionId: workerVersionId! } }
         : env;
       const disposition = await processCanonicalQueueMessage(message, scopedEnv, this.handler, this.quarantine);
       if (disposition === "ack") message.ack();

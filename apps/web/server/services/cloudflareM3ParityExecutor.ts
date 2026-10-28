@@ -37,6 +37,7 @@ const fail = (code: string): never => {
 type DeliveryEvidence = {
   queueName: string;
   messageId: string;
+  workerVersionId: string;
   dispatchId: string;
   dedupeKey: string;
 };
@@ -140,6 +141,7 @@ export function createM3CreditBillingExecutor(
       !delivery ||
       delivery.queueName !== "smartspec-canonical-job-queue-production" ||
       !delivery.messageId ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(delivery.workerVersionId) ||
       delivery.dispatchId.length > 128 ||
       delivery.dedupeKey !== `job:${context.jobId}:attempt:${context.attempt}`
     )
@@ -189,6 +191,7 @@ export function createM3CreditBillingExecutor(
       intent.trafficMutation !== false ||
       intent.authority !== "owner-bounded-synthetic-m3-parity-v1" ||
       intent.plan?.queueName !== delivery.queueName ||
+      !intent.plan?.workerVersions?.some((version: any) => version.versionId === delivery.workerVersionId) ||
       !reviewed ||
       reviewed.digest !== planDigest ||
       input.planDigest !== planDigest ||
@@ -482,6 +485,10 @@ export function createM3CreditBillingExecutor(
           compensated,
           checks,
           providerReceipt: {
+            workerDeploymentId: intent.plan.workerDeploymentId,
+            workerVersionId: delivery.workerVersionId,
+            workerRelease: intent.plan.workerVersions.find((version: any) => version.versionId === delivery.workerVersionId),
+            queueConsumerId: intent.plan.queueConsumerId,
             queueName: delivery.queueName,
             queueId: intent.plan.queueId,
             deadLetterQueueName: intent.plan.deadLetterQueueName,

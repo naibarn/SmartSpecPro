@@ -104,6 +104,26 @@ async function reviewedPlan(
     !/^[a-f0-9]{32}$/.test(deadLetterQueueId)
   )
     throw Error("M3_PARITY_PRODUCTION_QUEUE_RECEIPT_REQUIRED");
+  const providerInventory = await probeCloudflareProductionProviderInventory({
+    db,
+    tenantId: scope.tenantId,
+    projectId: scope.projectId,
+  });
+  const queueWorker = await verifyM3QueueWorkerReadiness(
+    "worker" in providerInventory && "productionQueueConsumerInventory" in providerInventory
+      ? {
+          deploymentId: providerInventory.worker.activeDeploymentId,
+          versions: providerInventory.worker.versions,
+          queueId: providerInventory.productionQueueConsumerInventory.queueId,
+          expectedQueueId: queueId,
+          queueConsumersComplete: providerInventory.productionQueueConsumerInventory.complete,
+          consumers: providerInventory.productionQueueConsumerInventory.consumers,
+        }
+      : { deploymentId: null, versions: [], queueId: null, expectedQueueId: queueId,
+          queueConsumersComplete: false, consumers: [] },
+    resolveCloudflareStagingModules
+  );
+  if (!queueWorker.ready) throw Error(queueWorker.reason);
   const reviewed = digestM3ParityPlan({
     schemaVersion: "cloudflare-m3-parity-plan-v1",
     operation,
@@ -118,6 +138,16 @@ async function reviewedPlan(
     queueName: CLOUDFLARE_PRODUCTION_QUEUE_NAME,
     deadLetterQueueId,
     deadLetterQueueName: CLOUDFLARE_PRODUCTION_QUEUE_DLQ_NAME,
+    workerDeploymentId: queueWorker.deploymentId,
+    workerVersions: queueWorker.versions.map(version => ({
+      versionId: version.versionId,
+      percentage: version.percentage,
+      sourceSha: version.sourceSha,
+      buildDigest: version.buildDigest,
+      configurationDigest: version.configurationDigest,
+      artifactRef: version.artifactRef,
+    })),
+    queueConsumerId: queueWorker.consumerId,
     syntheticOnly: true,
     realCharges: false,
     providerCalls: false,
@@ -128,7 +158,7 @@ async function reviewedPlan(
     maxContainerStarts: 0,
     compensationRequired: true,
   });
-  return reviewed;
+  return { ...reviewed, queueWorker };
 }
 
 export async function getM3ParityOperation(
@@ -267,20 +297,7 @@ export async function getM3ParityPreflight(
         process.env.CLOUDFLARE_WORKFLOW_RUNTIME_URL?.trim() &&
         process.env.CLOUDFLARE_WORKFLOW_RUNTIME_TOKEN?.trim()
       );
-    const providerInventory = await probeCloudflareProductionProviderInventory({
-      db,
-      tenantId: scope.tenantId,
-      projectId: scope.projectId,
-    });
-    const activeVersion =
-      "worker" in providerInventory &&
-      providerInventory.worker.versions.length === 1
-        ? providerInventory.worker.versions[0]
-        : null;
-    const queueWorker = await verifyM3QueueWorkerReadiness(
-      activeVersion,
-      resolveCloudflareStagingModules
-    );
+    const queueWorker = reviewed.queueWorker;
     const missingLifecycleChecks =
       operation === "queue_recovery_acceptance"
         ? (

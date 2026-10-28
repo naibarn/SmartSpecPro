@@ -172,6 +172,7 @@ const cloudflareDeliverySchema = z.object({
   delivery: z.object({
     queueName: z.literal("smartspec-canonical-job-queue-production"),
     messageId: z.string().trim().min(1).max(200),
+    workerVersionId: z.string().uuid(),
     dispatchId: z.string().trim().min(1).max(128),
     dedupeKey: z.string().trim().min(1).max(200),
   }).strict().optional(),

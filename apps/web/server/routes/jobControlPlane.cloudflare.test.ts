@@ -165,6 +165,7 @@ describe("Cloudflare canonical job boundary", () => {
     mocks.plane.getContext.mockResolvedValue(parityContext);
     vi.stubEnv("CLOUDFLARE_WORKFLOW_TRANSPORT", "queues");
     const delivery = { queueName: "smartspec-canonical-job-queue-production", messageId: "cf-message-1",
+      workerVersionId: "81e64be8-af01-4efb-ad82-94e78da2510b",
       dispatchId: "dispatch-m3", dedupeKey: parityEnvelope.dedupe_key };
     const sendParity = (value: Record<string, unknown>) => request(app)
       .post("/api/internal/cloudflare-job-control/execute")

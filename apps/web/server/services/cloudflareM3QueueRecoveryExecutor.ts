@@ -29,6 +29,7 @@ const fail = (code: string): never => {
 type Delivery = {
   queueName: string;
   messageId: string;
+  workerVersionId: string;
   dispatchId: string;
   dedupeKey: string;
 };
@@ -82,6 +83,7 @@ export function createM3QueueRecoveryExecutor(
       !delivery ||
       delivery.queueName !== "smartspec-canonical-job-queue-production" ||
       !delivery.messageId ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(delivery.workerVersionId) ||
       delivery.dispatchId.length > 128 ||
       delivery.dedupeKey !== `job:${context.jobId}:attempt:${context.attempt}`
     )
@@ -133,6 +135,7 @@ export function createM3QueueRecoveryExecutor(
       intent.trafficMutation !== false ||
       intent.authority !== "owner-bounded-synthetic-m3-parity-v1" ||
       intent.plan?.queueName !== delivery.queueName ||
+      !intent.plan?.workerVersions?.some((version: any) => version.versionId === delivery.workerVersionId) ||
       intent.plan?.deadLetterQueueName !==
         "smartspec-canonical-job-queue-production-dlq" ||
       typeof intent.plan?.queueId !== "string" ||
@@ -274,6 +277,10 @@ export function createM3QueueRecoveryExecutor(
         compensated: false,
         checks,
         providerReceipt: {
+          workerDeploymentId: intent.plan.workerDeploymentId,
+          workerVersionId: delivery.workerVersionId,
+          workerRelease: intent.plan.workerVersions.find((version: any) => version.versionId === delivery.workerVersionId),
+          queueConsumerId: intent.plan.queueConsumerId,
           queueName: delivery.queueName,
           queueId: intent.plan.queueId,
           deadLetterQueueName: intent.plan.deadLetterQueueName,

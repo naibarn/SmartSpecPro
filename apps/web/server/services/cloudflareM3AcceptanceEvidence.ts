@@ -87,6 +87,17 @@ export function verifyM3ParityEvidence(input: {
       checks: z.record(z.string(), z.boolean()),
       providerReceipt: z
         .object({
+          workerDeploymentId: z.string().uuid(),
+          workerVersionId: z.string().uuid(),
+          workerRelease: z.object({
+            versionId: z.string().uuid(),
+            percentage: z.number().min(0.0001).max(100),
+            sourceSha: z.string().regex(/^[a-f0-9]{40}$/),
+            buildDigest: z.string().regex(/^[a-f0-9]{64}$/),
+            configurationDigest: z.string().regex(/^[a-f0-9]{64}$/),
+            artifactRef: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+          }).strict(),
+          queueConsumerId: z.string().regex(/^[a-f0-9]{32}$/),
           queueName: z.literal("smartspec-canonical-job-queue-production"),
           queueId: z.string().regex(/^[a-f0-9]{32}$/),
           deadLetterQueueName: z.literal(
@@ -120,6 +131,7 @@ export function verifyM3ParityEvidence(input: {
     job.data.planDigest !== receipt.data.planDigest ||
     (input.operation === "credit_billing_acceptance" &&
       !receipt.data.syntheticFixture) ||
+    receipt.data.providerReceipt.workerVersionId !== receipt.data.providerReceipt.workerRelease.versionId ||
     !M3_PARITY_REQUIRED_CHECKS[input.operation].every(
       name => receipt.data.checks[name] === true
     )

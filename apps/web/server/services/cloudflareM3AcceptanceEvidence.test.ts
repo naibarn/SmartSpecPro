@@ -73,6 +73,11 @@ const receipt = (
   compensated: true,
   checks: Object.fromEntries(names.map(name => [name, true])),
   providerReceipt: {
+    workerDeploymentId: "33333333-3333-4333-8333-333333333333",
+    workerVersionId: "44444444-4444-4444-8444-444444444444",
+    workerRelease: { versionId: "44444444-4444-4444-8444-444444444444", percentage: 100,
+      sourceSha: "e".repeat(40), buildDigest: "f".repeat(64), configurationDigest: "1".repeat(64), artifactRef: `sha256:${"f".repeat(64)}` },
+    queueConsumerId: "2".repeat(32),
     queueName: "smartspec-canonical-job-queue-production",
     queueId: "c".repeat(32),
     deadLetterQueueName: "smartspec-canonical-job-queue-production-dlq",

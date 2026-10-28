@@ -131,8 +131,10 @@ export type CloudflareEnvironment = import("./applicationHttpBridge").Applicatio
   /** Required cost policy: absent never admits Container compute. */
   CLOUDFLARE_CONTAINER_POLICY?: string;
   CLOUDFLARE_RUNTIME_TOKEN?: string;
-  /** Ephemeral runtime metadata added by the queue() entry point for one delivery. */
-  __m3QueueDelivery?: { queueName: string; messageId: string };
+  /** Cloudflare-owned immutable version identity, populated by the runtime. */
+  CF_VERSION_METADATA?: { id: string; tag?: string; timestamp?: string };
+  /** Ephemeral runtime metadata added by queue() for one real delivery. */
+  __m3QueueDelivery?: { queueName: string; messageId: string; workerVersionId: string };
   CLOUDFLARE_CONTROL_PLANE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_TOKEN?: string;
   CLOUDFLARE_SEARCH_CACHE_FAULT_TEST_ENABLED?: string;

@@ -72,9 +72,13 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
     const zoneId = typeof zone?.id === "string" ? zone.id : undefined;
-    const [routes, queueDetails, hyperdriveDetails, tunnels, containers, vpcServices, mtlsCertificates] = await Promise.all([
+    const queueRows = Array.isArray(queues.result) ? queues.result as Array<{ id?: unknown; queue_name?: unknown }> : [];
+    const productionQueue = queueRows.find(row => row.queue_name === "smartspec-canonical-job-queue-production");
+    const [routes, productionQueueConsumers, hyperdriveDetails, tunnels, containers, vpcServices, mtlsCertificates] = await Promise.all([
       zoneId ? get(token, `/zones/${encodeURIComponent(zoneId)}/workers/routes?per_page=100`, fetchImpl) : Promise.resolve(null),
-      Array.isArray(queues.result) ? queues.result as Array<{ queue_name?: unknown }> : [],
+      typeof productionQueue?.id === "string" && /^[a-f0-9]{32}$/i.test(productionQueue.id)
+        ? get(token, `/accounts/${encodeURIComponent(target.accountRef)}/queues/${encodeURIComponent(productionQueue.id)}/consumers`, fetchImpl)
+        : Promise.resolve(queues.complete ? { status: 200, result: [], complete: true } : null),
       Array.isArray(hyperdrive.result) ? hyperdrive.result as Array<{
         id?: unknown; name?: unknown; origin?: { service_id?: unknown; database?: unknown; user?: unknown; scheme?: unknown };
         caching?: { disabled?: unknown }; origin_connection_limit?: unknown;
@@ -91,8 +95,13 @@ export async function probeCloudflareProductionProviderInventory(input: {
     const records = Array.isArray(deploymentRows) ? deploymentRows as Array<{ id?: unknown; versions?: unknown }> : [];
     const first = records[0];
     const versions = Array.isArray(first?.versions) ? first.versions as Array<{ version_id?: unknown; percentage?: unknown }> : [];
-    const active = versions.filter(version => typeof version.version_id === "string" && VERSION_ID.test(version.version_id) && version.percentage === 100);
-    const versionDetails = await Promise.all(active.slice(0, 2).map(async version => {
+    const validWeights = versions.length > 0 && versions.length <= 2 && versions.every(version =>
+      typeof version.version_id === "string" && VERSION_ID.test(version.version_id) &&
+      typeof version.percentage === "number" && Number.isFinite(version.percentage) &&
+      version.percentage >= 0 && version.percentage <= 100
+    ) && Math.abs(versions.reduce((sum, version) => sum + Number(version.percentage), 0) - 100) < 0.001;
+    const active = validWeights ? versions.filter(version => Number(version.percentage) > 0) : [];
+    const versionDetails = await Promise.all(active.map(async version => {
       const detail = await get(token, `/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/versions/${encodeURIComponent(version.version_id as string)}`, fetchImpl);
       const value = detail.result && typeof detail.result === "object" && !Array.isArray(detail.result) ? detail.result as Record<string, any> : {};
       const bindings = Array.isArray(value.resources?.bindings) ? value.resources.bindings : [];
@@ -101,16 +110,20 @@ export async function probeCloudflareProductionProviderInventory(input: {
       const releaseIdentity = typeof message === "string"
         ? /^SmartAIHub production ([a-f0-9]{40}) ([a-f0-9]{64}) origin ([a-f0-9]{64})$/.exec(message)
         : null;
-      return { versionId: version.version_id as string, percentage: version.percentage as number,
+      return { versionId: version.version_id as string, deploymentId: String(first?.id ?? ""), percentage: version.percentage as number,
         bindingNames: bindings.map((binding: any) => binding?.name).filter((name: unknown): name is string => typeof name === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(name)),
         containerNames: containers.map((container: any) => container?.name).filter((name: unknown): name is string => typeof name === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(name)),
         hasVerifiedReleaseIdentity: releaseIdentity !== null,
         ...(releaseIdentity ? { sourceSha: releaseIdentity[1], buildDigest: releaseIdentity[2], configurationDigest: releaseIdentity[3] } : {}),
         checked: detail.complete };
     }));
-    const queueNames = queueDetails.map(row => row.queue_name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(name));
+    const queueNames = queueRows.map(row => row.queue_name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(name));
+    const consumerRows = Array.isArray(productionQueueConsumers?.result)
+      ? productionQueueConsumers.result as Array<{ consumer_id?: unknown; queue_name?: unknown; script_name?: unknown; dead_letter_queue?: unknown; type?: unknown; settings?: { max_retries?: unknown } }>
+      : [];
     const inventoryComplete = queues.complete && hyperdrive.complete && zones.complete && Boolean(routes?.complete) &&
-      deployments.complete && Array.isArray(deploymentRows) && versionDetails.every(version => version.checked) &&
+      deployments.complete && Array.isArray(deploymentRows) && validWeights && versionDetails.every(version => version.checked) &&
+      Boolean(productionQueueConsumers?.complete) &&
       vpcServices.complete && tunnels.complete && containers.complete;
     const vpcServiceRows = Array.isArray(vpcServices.result) ? vpcServices.result as Array<{
       service_id?: unknown; name?: unknown; type?: unknown; app_protocol?: unknown; host?: { resolver_network?: { tunnel_id?: unknown } };
@@ -129,6 +142,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
         routes: { httpStatus: routes?.status ?? null, complete: routes?.complete ?? false },
         workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows) },
         workerVersions: versionDetails.map(version => ({ httpStatus: version.checked ? 200 : null, complete: version.checked })),
+        productionQueueConsumers: { httpStatus: productionQueueConsumers?.status ?? null, complete: Boolean(productionQueueConsumers?.complete) },
         vpcServices: { httpStatus: vpcServices.status, complete: vpcServices.complete },
         tunnels: { httpStatus: tunnels.status, complete: tunnels.complete },
         containers: { httpStatus: containers.status, complete: containers.complete },
@@ -172,6 +186,21 @@ export async function probeCloudflareProductionProviderInventory(input: {
       originConfiguration,
       queueInventoryComplete: queues.complete,
       queues: queueNames.map(name => ({ name, environment: /(?:^|-)production(?:-|$)/i.test(name) ? "production" as const : /(?:^|-)staging(?:-|$)/i.test(name) ? "staging" as const : "other" as const })),
+      productionQueueConsumerInventory: {
+        complete: Boolean(productionQueueConsumers?.complete),
+        queueId: typeof productionQueue?.id === "string" && /^[a-f0-9]{32}$/i.test(productionQueue.id) ? productionQueue.id : null,
+        consumers: consumerRows.flatMap(row =>
+          typeof row.consumer_id === "string" && /^[a-f0-9]{32}$/i.test(row.consumer_id) &&
+          row.queue_name === "smartspec-canonical-job-queue-production" &&
+          typeof row.script_name === "string" && /^[a-z0-9-]{1,63}$/.test(row.script_name) &&
+          typeof row.dead_letter_queue === "string" && /^[a-z0-9-]{0,63}$/.test(row.dead_letter_queue) &&
+          row.type === "worker"
+            ? [{ consumerId: row.consumer_id, queueName: row.queue_name, scriptName: row.script_name,
+                deadLetterQueueName: row.dead_letter_queue,
+                ...(typeof row.settings?.max_retries === "number" ? { maxRetries: row.settings.max_retries } : {}) }]
+            : []
+        ),
+      },
       hyperdriveInventoryComplete: hyperdrive.complete,
       hyperdrives: hyperdriveDetails.flatMap(row => typeof row.name === "string" && /^[a-z0-9][a-z0-9-]{0,127}$/.test(row.name)
         ? [{ ...(typeof row.id === "string" && /^[a-f0-9]{32}$/i.test(row.id) ? { id: row.id } : {}), name: row.name,
