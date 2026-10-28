@@ -82,17 +82,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           SPEC224_DATABASE_OWNER_TEAM_ID: ${{ vars.SPEC224_DATABASE_OWNER_TEAM_ID }}
+          SPEC224_DATABASE_OWNER_USER_ID: ${{ vars.SPEC224_DATABASE_OWNER_USER_ID }}
         run: |
           set -Eeuo pipefail
-          if [[ ! "$SPEC224_DATABASE_OWNER_TEAM_ID" =~ ^[0-9]+$ ]]; then
-            echo "SPEC224_DATABASE_OWNER_TEAM_ID is not configured; refusing production migration."
-            exit 1
-          fi
           environment_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production")"
           branch_policies_json="$(gh api "repos/${GITHUB_REPOSITORY}/environments/production/deployment-branch-policies?per_page=100")"
           export SPEC224_GITHUB_ENVIRONMENT_JSON="$environment_json"
           export SPEC224_GITHUB_BRANCH_POLICIES_JSON="$branch_policies_json"
-          node --import tsx scripts/verify-spec224-migration-environment.ts "$SPEC224_DATABASE_OWNER_TEAM_ID"
+          node --import tsx scripts/verify-spec224-migration-environment.ts "$SPEC224_DATABASE_OWNER_TEAM_ID" "$SPEC224_DATABASE_OWNER_USER_ID"
 
       - name: Capture read-only schema drift before migration
         if: ${{ inputs.migration == '0412_active_shared_schema_contract_repair' }}

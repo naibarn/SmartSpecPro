@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { evaluateSpec224MigrationEnvironmentGate } from "../verify-spec224-migration-environment";
 
 const ownerTeamId = "567890";
+const ownerUserId = "214854693";
 const environment = {
   name: "production",
   protection_rules: [
@@ -25,21 +26,48 @@ describe("SPEC-224 production migration environment gate", () => {
         environment,
         branchPolicies,
         expectedOwnerTeamId: ownerTeamId,
+        expectedOwnerUserId: "",
       })
     ).toEqual({ status: "READY" });
   });
 
+  it("allows the configured individual Database Owner while retaining non-self review and main-only deployment", () => {
+    const userEnvironment = {
+      ...environment,
+      protection_rules: [{
+        ...environment.protection_rules[0],
+        reviewers: [{ type: "User", reviewer: { id: Number(ownerUserId) } }],
+      }],
+    };
+    expect(evaluateSpec224MigrationEnvironmentGate({
+      environment: userEnvironment,
+      branchPolicies,
+      expectedOwnerTeamId: "",
+      expectedOwnerUserId: ownerUserId,
+    })).toEqual({ status: "READY" });
+  });
+
   it.each([
     [
-      "missing Database Owner team",
+      "missing Database Owner identity",
+      "",
       "",
       environment,
       branchPolicies,
-      "database_owner_team_id_missing_or_invalid",
+      "database_owner_identity_missing_ambiguous_or_invalid",
+    ],
+    [
+      "ambiguous Database Owner identity",
+      ownerTeamId,
+      ownerUserId,
+      environment,
+      branchPolicies,
+      "database_owner_identity_missing_ambiguous_or_invalid",
     ],
     [
       "unprotected environment",
       ownerTeamId,
+      "",
       { ...environment, protection_rules: [] },
       branchPolicies,
       "production_required_reviewer_rule_missing_or_ambiguous",
@@ -47,6 +75,7 @@ describe("SPEC-224 production migration environment gate", () => {
     [
       "self-review enabled",
       ownerTeamId,
+      "",
       {
         ...environment,
         protection_rules: [
@@ -59,6 +88,7 @@ describe("SPEC-224 production migration environment gate", () => {
     [
       "wrong reviewer",
       ownerTeamId,
+      "",
       {
         ...environment,
         protection_rules: [
@@ -69,11 +99,12 @@ describe("SPEC-224 production migration environment gate", () => {
         ],
       },
       branchPolicies,
-      "production_reviewer_is_not_the_database_owner_team",
+      "production_reviewer_does_not_match_database_owner_identity",
     ],
     [
       "extra reviewer",
       ownerTeamId,
+      "",
       {
         ...environment,
         protection_rules: [
@@ -87,11 +118,26 @@ describe("SPEC-224 production migration environment gate", () => {
         ],
       },
       branchPolicies,
-      "production_reviewer_is_not_the_database_owner_team",
+      "production_reviewer_does_not_match_database_owner_identity",
+    ],
+    [
+      "individual owner configured but environment names a different user",
+      "",
+      ownerUserId,
+      {
+        ...environment,
+        protection_rules: [{
+          ...environment.protection_rules[0],
+          reviewers: [{ type: "User", reviewer: { id: 1 } }],
+        }],
+      },
+      branchPolicies,
+      "production_reviewer_does_not_match_database_owner_identity",
     ],
     [
       "additional deployment branch",
       ownerTeamId,
+      "",
       environment,
       {
         total_count: 2,
@@ -107,6 +153,7 @@ describe("SPEC-224 production migration environment gate", () => {
     (
       _name,
       expectedOwnerTeamId,
+      expectedOwnerUserId,
       environmentInput,
       branchPoliciesInput,
       reason
@@ -115,6 +162,7 @@ describe("SPEC-224 production migration environment gate", () => {
         environment: environmentInput as typeof environment,
         branchPolicies: branchPoliciesInput as typeof branchPolicies,
         expectedOwnerTeamId: String(expectedOwnerTeamId),
+        expectedOwnerUserId: String(expectedOwnerUserId),
       });
       expect(result.status).toBe("BLOCKED");
       expect(result.status === "BLOCKED" ? result.reasons : []).toContain(

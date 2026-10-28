@@ -24,11 +24,19 @@ export function evaluateSpec224MigrationEnvironmentGate(input: {
   environment: GitHubEnvironment;
   branchPolicies: BranchPolicies;
   expectedOwnerTeamId: string;
+  expectedOwnerUserId: string;
 }): Spec224MigrationEnvironmentGate {
   const reasons: string[] = [];
   const expectedTeamId = input.expectedOwnerTeamId.trim();
-  if (!/^\d+$/.test(expectedTeamId))
-    reasons.push("database_owner_team_id_missing_or_invalid");
+  const expectedUserId = input.expectedOwnerUserId.trim();
+  const teamConfigured = expectedTeamId.length > 0;
+  const userConfigured = expectedUserId.length > 0;
+  const oneIdentityConfigured = Number(teamConfigured) + Number(userConfigured) === 1;
+  const teamIdValid = teamConfigured && /^[1-9]\d*$/.test(expectedTeamId);
+  const userIdValid = userConfigured && /^[1-9]\d*$/.test(expectedUserId);
+  if (!oneIdentityConfigured || (!teamIdValid && !userIdValid)) {
+    reasons.push("database_owner_identity_missing_ambiguous_or_invalid");
+  }
   if (input.environment.name !== "production")
     reasons.push("production_environment_missing");
   if (
@@ -47,12 +55,14 @@ export function evaluateSpec224MigrationEnvironmentGate(input: {
     if (rule.prevent_self_review !== true)
       reasons.push("production_self_review_not_prevented");
     const reviewers = rule.reviewers ?? [];
+    const expectedReviewerType = teamConfigured ? "Team" : userConfigured ? "User" : "";
+    const expectedReviewerId = teamConfigured ? expectedTeamId : expectedUserId;
     if (
       reviewers.length !== 1 ||
-      reviewers[0]?.type !== "Team" ||
-      String(reviewers[0]?.reviewer?.id ?? "") !== expectedTeamId
+      reviewers[0]?.type !== expectedReviewerType ||
+      String(reviewers[0]?.reviewer?.id ?? "") !== expectedReviewerId
     ) {
-      reasons.push("production_reviewer_is_not_the_database_owner_team");
+      reasons.push("production_reviewer_does_not_match_database_owner_identity");
     }
   }
 
@@ -80,6 +90,7 @@ function parseRequiredJson<T>(name: string, value: string | undefined): T {
 
 function runFromWorkflow(): void {
   const expectedOwnerTeamId = process.argv[2] ?? "";
+  const expectedOwnerUserId = process.argv[3] ?? "";
   const environment = parseRequiredJson<GitHubEnvironment>(
     "GITHUB_ENVIRONMENT_JSON",
     process.env.SPEC224_GITHUB_ENVIRONMENT_JSON
@@ -92,6 +103,7 @@ function runFromWorkflow(): void {
     environment,
     branchPolicies,
     expectedOwnerTeamId,
+    expectedOwnerUserId,
   });
   if (result.status === "BLOCKED") {
     console.error(
