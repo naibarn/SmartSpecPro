@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 1 pass / 1282 unresolved of 1284
-- Next action: The authenticated HTTP tRPC ingress proof and canonical build are complete. Continue with a bounded live Windows two-phase Codex pilot only after an authenticated owner session confirms the deployed source SHA, fresh Runner heartbeat and applied capability ACK, isolated Project Workspace/source, actual owner-approved Goal Grant and active shared Goal Budget. No live DevelopmentRun or receipt has yet been observed.
-- Manifest generation: 220
+- Next action: Linux Web/API/Node Worker generation 194 and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Live acceptance remains open until authenticated owner refreshes Windows Runner/Codex readiness, confirms isolated Project Workspace/source scope, and starts/approves the Goal through Task Control; then retain actual Child 1/2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.
+- Manifest generation: 222
 
 ## Source-declared status and relationship claims
 

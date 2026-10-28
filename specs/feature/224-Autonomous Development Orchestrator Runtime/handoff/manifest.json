@@ -84,6 +84,13 @@
         "scope": "Public health was HTTP 200 but exposes no serving SHA. No fresh authenticated Runner heartbeat/capability ACK, owner-approved Goal Grant, isolated workspace, or live Codex receipts were available; Windows live acceptance remains unverified.",
         "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_RUNTIME_ALIGNMENT_LIVE_ACCEPTANCE_PENDING",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
+        "scope": "Linux runtime alignment is verified. Windows Runner freshness, authenticated owner Goal approval, actual Child 1/2 receipts and settlement remain unverified; this is not LIVE_VERIFIED.",
+        "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -987,11 +994,11 @@
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "After an authorized owner session can verify the deployed frontend/backend source SHA and current Windows Runner heartbeat plus applied capability ACK, use Task Control to confirm the real approved Goal Grant, isolated Project Workspace/source and shared Goal Budget, then execute and capture the bounded two-phase Codex pilot. Do not substitute the public health check or screenshot for these live prerequisites.",
+    "next_action": "Linux Web/API/Node Worker and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Continue live acceptance when the owner refreshes authenticated Windows Runner/Codex readiness, confirms the isolated Project Workspace and source scope, and starts/approves the bounded Goal through Task Control; then capture real Child 1 and automatic Child 2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.",
     "next_ready_workunit": "SPEC224_WINDOWS_RUNNER_OWNER_PREREQUISITE",
     "reactivation_predicate": "Resume the live two-phase pilot when authenticated Task Control evidence shows a fresh online Windows Runner with applied capability ACK, deployed backend source SHA at or beyond the integrated ingress source, an owner-approved Goal Grant bound to the isolated workspace/source, and an active shared Goal Budget.",
-    "resume_point": "Canonical origin/main ac26e203df068e76f3bcd2be41e177478f614f3c. Authenticated HTTP tRPC startWorkspaceRun ingress passed on disposable PostgreSQL, delegated continuation passed 8/8, focused regressions passed 82/82, and canonical build passed with artifact sha256:3e4cf78b62153f2463b5872ab7f5fd087fb0832db03875c6c63f37a8aa7e1e74. No production deployment or live Windows execution was observed. Exact next action: obtain current authenticated Task Control/Runner evidence and the real owner-approved Goal Grant, then run live Child 1 and automatic Child 2.",
-    "waiting_predicate": "The live pilot waits for authenticated access to current Task Control/Windows Runner readiness, proof of the deployed backend source revision, an isolated workspace/source, and an actual owner-approved Goal Grant with an active shared budget. No approval or deployment is inferred from this integration."
+    "resume_point": "Production Linux runtime verified: Web/API/Node Worker generation 194 and Python Goal Grant Approval route run immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Evidence: specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md. Runtime release alignment is complete; live Windows acceptance is not. Next exact operation: authenticated owner refreshes Runner/Codex evidence and starts/approves the real Goal in Task Control. Do not infer live execution or active Cloudflare Worker SHA.",
+    "waiting_predicate": "Resume live pilot after fresh authenticated Task Control evidence confirms an online Windows Runner, applied capability ACK, Codex task readiness, isolated workspace/source scope, actual owner-approved Goal Grant and active shared Goal Budget. Obtain provider-owner readback for active Cloudflare Worker revision separately; do not change Worker routing as part of this handoff."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1032,10 +1039,16 @@
         "observed_at": "2026-10-28T01:58:05Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
         "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
+      },
+      {
+        "kind": "DEPLOYMENT",
+        "observed_at": "2026-10-28T02:38:00Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
+        "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
       }
     ],
-    "next_action": "The authenticated HTTP tRPC ingress proof and canonical build are complete. Continue with a bounded live Windows two-phase Codex pilot only after an authenticated owner session confirms the deployed source SHA, fresh Runner heartbeat and applied capability ACK, isolated Project Workspace/source, actual owner-approved Goal Grant and active shared Goal Budget. No live DevelopmentRun or receipt has yet been observed.",
-    "rationale": "The real Task Control HTTP tRPC startWorkspaceRun path, real Approval Authority HTTP request, durable Goal admission, two child authorization/outbox records and automatic receipt-driven successor were verified on disposable PostgreSQL. Canonical build passed for the integrated SHA. Production source revision and live Windows execution remain unverified.",
+    "next_action": "Linux Web/API/Node Worker generation 194 and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Live acceptance remains open until authenticated owner refreshes Windows Runner/Codex readiness, confirms isolated Project Workspace/source scope, and starts/approves the Goal through Task Control; then retain actual Child 1/2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.",
+    "rationale": "Production Linux runtime alignment is verified from immutable release receipts; the Python Goal Grant route is registered and readiness passes. No Worker revision readback, live owner Goal approval, Windows execution, receipt settlement or Final Verify was observed, so do not mark LIVE_VERIFIED.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1059,7 +1072,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:d37bc62741b41ac616f780e1ea5ed193e84dc8aa8aab17167575644220d9b9f9",
+    "artifact_digest": "sha256:e3a3da178751e41a55bc340e7bf3cad839b1e5e57e7e3624fb79087b4a3520c9",
     "environment": "production_linux_systemd",
     "evidence": [
       {
@@ -1096,10 +1109,17 @@
         "scope": "Observed on 2026-10-26T23:57:29Z. Production Web generation 153 runs source 9b48e5123f1272eb0dd598b07ec8a24cbe8551f9 (artifact sha256:690368b7f9e5467e2e073658f9f28ee2e7b6999632393ab75bb1ed00c5cd57fd); Node Worker uses the same release. Python runs source 2382582a072e91c283ca2bf3513228c049ade574 (artifact sha256:36a38d256f1d7b748631b9f3b6f0e3e102286f6dbd5597609dcedb53c6fde223). Both release SHAs include ACK fix e8e8245c6ba838194f4ef503bb37cc2fe43867a8 and are ancestors of canonical main 5859261fc7eb56880920477e92176a021778d144. Web, Node Worker and Python systemd services were active; public /healthz returned 200. This verifies deployment of the ACK fix, not a fresh Runner acknowledgement.",
         "source_sha": "9b48e5123f1272eb0dd598b07ec8a24cbe8551f9",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_NODE_PYTHON_RUNTIME_RELEASE_ALIGNMENT",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
+        "scope": "Web/API/Node Job Worker generation 194 and Python Approval Authority are serving immutable release source 1dc96665bd352418169b35aba79156b140ef82e3. Web artifact sha256:e3a3da178751e41a55bc340e7bf3cad839b1e5e57e7e3624fb79087b4a3520c9; Python artifact sha256:78c509c4d854dca15c0e82c536576d4d07235f52f057fd5cbbb1e50fac565a04. Python Goal Grant route is registered; health/readiness and public Linux-origin health passed. No Cloudflare Worker promotion, live Goal approval, Windows execution or LIVE_VERIFIED claim.",
+        "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3",
+        "status": "PASS"
       }
     ],
     "required": false,
-    "source_sha": "08b508284eabe621292ab95a5b1cc6a63bca5fd1",
+    "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3",
     "status": "PASS"
   },
   "disposition": {
@@ -1113,7 +1133,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 220,
+  "generation": 222,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2243,10 +2263,16 @@
           "observed_at": "2026-10-28T01:58:05Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
           "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
+        },
+        {
+          "kind": "DEPLOYMENT",
+          "observed_at": "2026-10-28T02:38:00Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runtime-release-alignment-20261028.md",
+          "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3"
         }
       ],
-      "next_action": "The authenticated HTTP tRPC ingress proof and canonical build are complete. Continue with a bounded live Windows two-phase Codex pilot only after an authenticated owner session confirms the deployed source SHA, fresh Runner heartbeat and applied capability ACK, isolated Project Workspace/source, actual owner-approved Goal Grant and active shared Goal Budget. No live DevelopmentRun or receipt has yet been observed.",
-      "rationale": "The real Task Control HTTP tRPC startWorkspaceRun path, real Approval Authority HTTP request, durable Goal admission, two child authorization/outbox records and automatic receipt-driven successor were verified on disposable PostgreSQL. Canonical build passed for the integrated SHA. Production source revision and live Windows execution remain unverified.",
+      "next_action": "Linux Web/API/Node Worker generation 194 and Python Approval Authority are aligned on immutable source 1dc96665bd352418169b35aba79156b140ef82e3. Live acceptance remains open until authenticated owner refreshes Windows Runner/Codex readiness, confirms isolated Project Workspace/source scope, and starts/approves the Goal through Task Control; then retain actual Child 1/2 dispatch, receipts, settlement and Final Verify. Active Cloudflare Worker revision still requires provider-owner readback.",
+      "rationale": "Production Linux runtime alignment is verified from immutable release receipts; the Python Goal Grant route is registered and readiness passes. No Worker revision readback, live owner Goal approval, Windows execution, receipt settlement or Final Verify was observed, so do not mark LIVE_VERIFIED.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3791,7 +3817,7 @@
     "unresolved": 1282
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T02:00:39.177286Z",
+  "updated_at": "2026-10-28T02:42:15.971389Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
