@@ -34,7 +34,9 @@ The safe gate correction is integrated and unit-tested, but no Production enviro
 
 ### Development acceptance
 
-DEV 0415 remains applied and must not be replayed. The prior evidence in `migration-0415-environment-results.md` records the schema receipt. Authenticated DEV and Production RPC/UI acceptance remains incomplete because this session has no real owner browser session; the public RPC routes returned 401 without authentication. No claim is made that authenticated RPC queries or workspace selection pass.
+DEV 0415 remains applied and must not be replayed. A fresh read-only 0415 preflight at 12:26:19 UTC returned `ALREADY_APPLIED` with the exact existing receipt and verified schema; its external receipt is `migration-0415-development-authority-followup.jsonl`. No migration SQL was executed.
+
+At 12:26 UTC, each of the three named tRPC routes returned HTTP 401 `UNAUTHORIZED` without a session on both `aimarkethubs.com` and `smartaihub.app`; both site roots returned HTTP 200. Authenticated DEV and Production RPC/UI acceptance remains incomplete because this session has no real owner browser session. No claim is made that authenticated RPC queries or workspace selection pass.
 
 ### Focused verification for the additive gate correction
 

@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `181`
-- Updated (UTC): `2026-10-28T12:07:30.758871+00:00`
+- State generation: `182`
+- Updated (UTC): `2026-10-28T12:26:53.581948+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `cfb19bd4f78d0fc53dc5c78558eac94f098b8289`
+- Latest recorded merged Main SHA: `07c17a85feeb931483c608bb4643338fa97de21c`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: Production migration remains blocked at the existing GitHub Database Owner gate: SPEC224_DATABASE_OWNER_TEAM_ID is unset, and the production environment has no required reviewer or main-only branch policy. After the existing production authority is correctly configured, rerun the exact 0415 workflow; capture live fingerprint/history/schema and receipt before testing authenticated RPCs and UI on smartaihub.app. DEV 0415 is applied and schema-verified; authenticated RPC/UI acceptance remains open.
+- Next action: Do not dispatch or apply Production 0415 until an authorized workflow dispatcher distinct from naibarn is available. To use the new individual-owner path, configure SPEC224_DATABASE_OWNER_USER_ID=214854693, set the production environment to exactly one required reviewer User 214854693 with prevent_self_review=true, and allow only main. Then verify the live gate and rerun only 0415. No separate authorized dispatcher is currently configured. DEV 0415 remains ALREADY_APPLIED; authenticated RPC/UI acceptance remains open.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-migration-0415-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | cfb19bd4f78d0fc53dc5c78558eac94f098b8289 | cfb19bd4f78d0fc53dc5c78558eac94f098b8289 | Production migration remains blocked at the existing GitHub Database Owner gate: SPEC224_DATABASE_OWNER_TEAM_ID is unset, and the production environment has no required reviewer or main-only branch policy. After the existing production authority is correctly configured, rerun the exact 0415 workflow; capture live fingerprint/history/schema and receipt before testing authenticated RPCs and UI on smartaihub.app. DEV 0415 is applied and schema-verified; authenticated RPC/UI acceptance remains open. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-single-owner-0415-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | 07c17a85feeb931483c608bb4643338fa97de21c | 07c17a85feeb931483c608bb4643338fa97de21c | Do not dispatch or apply Production 0415 until an authorized workflow dispatcher distinct from naibarn is available. To use the new individual-owner path, configure SPEC224_DATABASE_OWNER_USER_ID=214854693, set the production environment to exactly one required reviewer User 214854693 with prevent_self_review=true, and allow only main. Then verify the live gate and rerun only 0415. No separate authorized dispatcher is currently configured. DEV 0415 remains ALREADY_APPLIED; authenticated RPC/UI acceptance remains open. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -55,8 +55,9 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Current mandate vertical slice at cfcdad2173215e439181a27c7f3dc71ade0f9fcb is integrated but deliberately not deployable/enrollable: five production operations (origin config, Worker deploy, canary, native activation, rollback) lack mandate grant and enforceable quota integration; exact artifact/traffic/rollback resource envelope is incomplete. No production deployment or enrollment occurred.
 - This Codex session has no authenticated Owner session or production provider readback, and no verified background scheduler/executor continuity; do not claim unattended continuation or live production readiness.
 - Production error diagnosis (read-only, 2026-10-28): active `smartspec-web` PID runs g204 release source `56616b3763b6269c1515abadf7cfbf2650f7e75f` (artifact `sha256:9e8b86c70d1a8c8be88d4aa0b48ff46c886d5195073f97599b0b9a75aa8c9072`). In the last 30 minutes, 93 tRPC errors were logged: `runnerNodes.list` 38, `spec226DevelopmentControl.availableWorkspaces` 28, `spec226DevelopmentControl.getConversationWorkspace` 27. PostgreSQL SQLSTATE `42P01`: relation `canonical_project_workspace_bindings` does not exist. Read-only query to the active service DB confirms that table is absent, migration ledger exists with latest timestamp matching 0414 (`1792909880001`), and migration 0415 (`0415_spec293_canonical_project_workspace_bindings`, timestamp `1793145600000`) is not recorded. The g204 artifact contains 0415 SQL; prerequisites are present and read-only preflight found zero duplicate runner identities. Target fingerprint: `sha256:67a8ab64ed2fab25355103df7e256b941bd3c2140ac62b7c797e106054ef5f83`. No DB write performed. Exact repair is the existing scoped production `db:migrate` for expected tag 0415 only, requiring the migration authority reference and target fingerprint; ordinary full replay is prohibited. This incident is separate from the incomplete Cloudflare mandate implementation.
-- Production 0415 was not preflighted or applied: GitHub Actions run 40684866061 failed before the database step because SPEC224_DATABASE_OWNER_TEAM_ID is unset; production environment protection rules and branch policies are both absent.
 - Authenticated 0415 E2E is incomplete in both environments: all three RPCs return 401 without a session; Runner/Debian Runner, Workspace/Project Binding UI, and authenticated 42P01 behavior remain unverified.
+- GitHub Production authority remains BLOCKED: production environment has zero reviewers and no branch policy; SPEC224_DATABASE_OWNER_TEAM_ID and SPEC224_DATABASE_OWNER_USER_ID are both absent. Only collaborator naibarn (ID 214854693) exists and initiated run 40684866061; self-review prevention prohibits that user from approving a run they initiate. No separate authorized dispatcher credential exists.
+- SmartAIHub admin role code exists, but no authenticated Production session or live DB proof maps the GitHub owner identity to the active SmartAIHub admin principal. All three RPCs return 401 without an authenticated owner session in both environments; Workspace/Project Binding UI E2E remains unverified.
 
 ## Resume
 
