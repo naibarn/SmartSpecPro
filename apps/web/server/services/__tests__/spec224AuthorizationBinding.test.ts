@@ -123,6 +123,18 @@ describe("session-bound Codex Start readiness", () => {
     expect(evaluateSpec224RunnerReadiness(value)).toMatchObject({ ready: false, code, ownerAction: expect.stringContaining("ทดสอบสั่งงานจริง") });
   });
 
+  it("points task-probe recovery at the platform reported by the registered Runner", () => {
+    const value = input();
+    const snapshot = value.runner!.snapshot!;
+    snapshot.platform = { os: "Linux", architecture: "x86_64", target: "debian" };
+    snapshot.toolInventory![0].taskProbeState = "not_run";
+    expect(evaluateSpec224RunnerReadiness(value).ownerAction).toContain("Debian/Linux SmartAIHub Runner");
+    expect(evaluateSpec224RunnerReadiness(value).ownerAction).not.toContain("Windows");
+
+    snapshot.platform.os = "Windows 11";
+    expect(evaluateSpec224RunnerReadiness(value).ownerAction).toContain("Windows SmartAIHub Runner");
+  });
+
   it("requires a fresh task probe even when authentication remains valid", () => {
     const value = input();
     value.runner!.snapshot!.toolInventory![0].taskProbeExpiresAtMs = value.now!.getTime();

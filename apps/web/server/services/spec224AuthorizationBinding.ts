@@ -66,6 +66,16 @@ export type Spec224RunnerReadiness = {
   capabilitySnapshotRevision: string | null;
 };
 
+function codexTaskProbeOwnerAction(snapshot: RunnerCapabilitySnapshot | null | undefined): string {
+  const os = snapshot?.platform?.os.toLowerCase() ?? "";
+  const runner = /windows/.test(os)
+    ? "Windows SmartAIHub Runner"
+    : /linux|debian|ubuntu/.test(os)
+      ? "Debian/Linux SmartAIHub Runner"
+      : "registered SmartAIHub Runner";
+  return `${runner} → Codex → ทดสอบสั่งงานจริง แล้วรอ capability ACK ล่าสุด`;
+}
+
 /** Readiness is observation, not a job grant. Only the requested adapter is
  * checked; unavailable unrelated tools cannot block a Codex goal. */
 export function evaluateSpec224RunnerReadiness(input: {
@@ -104,7 +114,7 @@ export function evaluateSpec224RunnerReadiness(input: {
   if (policyDecision === "denied") return result("CODEX_CAPABILITY_POLICY_DENIED");
   if (!tool || tool.installState !== "installed") return result("CODEX_NOT_INSTALLED");
   if (tool.authState !== "authenticated") return result("CODEX_AUTHENTICATION_REQUIRED", "เข้าสู่ระบบ Codex บน Windows Runner ด้วยบัญชีของคุณ");
-  const probeAction = "SmartAIHub Runner บน Windows → Tools → Codex → ทดสอบสั่งงานจริง แล้วรอการเผยแพร่ capability สำเร็จ";
+  const probeAction = codexTaskProbeOwnerAction(snapshot);
   if (tool.taskProbeState === "not_run" || !tool.taskProbeState) return result("CODEX_TASK_PROBE_NOT_RUN", probeAction);
   if (tool.taskProbeState === "failed") return result("CODEX_TASK_PROBE_FAILED", probeAction);
   if (tool.taskProbeState !== "passed") return result("CODEX_TASK_PROBE_UNSUPPORTED");
