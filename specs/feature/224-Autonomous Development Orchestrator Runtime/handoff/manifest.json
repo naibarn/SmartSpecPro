@@ -1061,7 +1061,7 @@
       }
     ],
     "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through its supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
-    "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com Control Plane rejects events and the local development DB has no row for this device. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current server-acknowledged dirtyPaths, SAFE source admission, Goal dispatch, or live Child receipt exists; keep LIVE_VERIFIED open.",
+    "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com endpoint rejects Runner events and the configured local development DB has no row for this device; this evidence does not identify the endpoint environment. There is no server-acknowledged snapshot. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current SAFE source admission, Goal dispatch, live Child receipt or Final Verify exists; keep LIVE_VERIFIED open.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1146,7 +1146,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 226,
+  "generation": 227,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -2291,7 +2291,7 @@
         }
       ],
       "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through its supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
-      "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com Control Plane rejects events and the local development DB has no row for this device. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current server-acknowledged dirtyPaths, SAFE source admission, Goal dispatch, or live Child receipt exists; keep LIVE_VERIFIED open.",
+      "rationale": "Runner source fixes are integrated and a required-secret signed build is installed in place with device/workspace identity preserved. Local payload rejection is gone, but the configured aimarkethubs.com endpoint rejects Runner events and the configured local development DB has no row for this device; this evidence does not identify the endpoint environment. There is no server-acknowledged snapshot. Real Codex task execution still fails. SPEC-293 workspace owner/fencing lease is not atomically connected to SPEC-224 admission/release/apply or terminal recovery. No current SAFE source admission, Goal dispatch, live Child receipt or Final Verify exists; keep LIVE_VERIFIED open.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3836,7 +3836,7 @@
     "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T12:09:13.065650Z",
+  "updated_at": "2026-10-28T12:10:55.246107Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
