@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `161`
-- Updated (UTC): `2026-10-28T03:19:06.273301+00:00`
+- State generation: `162`
+- Updated (UTC): `2026-10-28T03:20:20.071690+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `c1a26e9014bec52d143ef04493ee7bb4204bbc20`
+- Latest recorded merged Main SHA: `861ac2ad612b7bc84982d12fe16b0cfa994dd540`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: Integrate this focused Worker deployment/admission checkpoint. Then use authenticated production Admin read-only preflight; if READY, expose one exact 1% canary authorization and reconcile its canonical Job and Cloudflare receipts. The next independent Queue blocker is the missing scoped private synthetic runtime/control-plane credential profile; implement the full 12 recovery lifecycle probes before queue acceptance.
+- Next action: Production Worker Owner admission path is integrated at 861ac2ad612b7bc84982d12fe16b0cfa994dd540. Next: release the Admin/backend through the existing authorized Linux release path; perform authenticated read-only preflight; only if READY use the exact Owner-scoped 1% Worker-version canary action, then reconcile its canonical job and Cloudflare receipts. M3 Queue remains blocked on a separate scoped private synthetic runtime/control-plane profile and completion of 12 lifecycle probes.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-g194-worker-deployment-admission | /mnt/SmartSpecDev/projects/SmartSpecPro | dc3183bccff00d408dcb3c80adeb8bc845279a96 | c1a26e9014bec52d143ef04493ee7bb4204bbc20 | Integrate this focused Worker deployment/admission checkpoint. Then use authenticated production Admin read-only preflight; if READY, expose one exact 1% canary authorization and reconcile its canonical Job and Cloudflare receipts. The next independent Queue blocker is the missing scoped private synthetic runtime/control-plane credential profile; implement the full 12 recovery lifecycle probes before queue acceptance. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-g194-worker-deployment-admission | /mnt/SmartSpecDev/projects/SmartSpecPro | 861ac2ad612b7bc84982d12fe16b0cfa994dd540 | 861ac2ad612b7bc84982d12fe16b0cfa994dd540 | Production Worker Owner admission path is integrated at 861ac2ad612b7bc84982d12fe16b0cfa994dd540. Next: release the Admin/backend through the existing authorized Linux release path; perform authenticated read-only preflight; only if READY use the exact Owner-scoped 1% Worker-version canary action, then reconcile its canonical job and Cloudflare receipts. M3 Queue remains blocked on a separate scoped private synthetic runtime/control-plane profile and completion of 12 lifecycle probes. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -39,6 +39,8 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - Implementation checkpoint (not yet deployed): production deployment executor was already registered, but there was no Owner-scoped UI/admission path to issue its exact grant and canonical job. This change adds that path and stricter provider deployment/binding readback; production UI release and live provider readback remain outstanding. The active deployment ID, traffic weights, JOB_QUEUE, CF_VERSION_METADATA and Queue consumer are still unverified from this session.
 - Focused checks pass: web 148 tests, Cloudflare Worker 52 tests, Python Production-grant 14 tests; no full repo typecheck or production-serving browser/provider test was run.
 - No Cloudflare Production deployment job or live deployment/route receipt was created in this session; the authenticated Admin submission and provider readback remain outstanding.
+- Serving UI/backend still predates this change until the authorized Linux release is completed; this session did not release it.
+- No canonical production Worker deployment job was created and no Cloudflare provider mutation or live readback occurred in this session.
 
 ## Resume
 
