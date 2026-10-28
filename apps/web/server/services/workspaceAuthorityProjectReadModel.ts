@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { runnerNodes, workerJobs } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { workspaceFactsFromSnapshot } from "./spec224WorkspaceSpecSet";
+import { listAuthorizedWorkspaceScopeBindings, type AuthorizedWorkspaceScopeBinding } from "./workspaceScopeAuthority";
 
 type ProjectWorkspaceInput = {
   tenantId: string;
@@ -152,6 +153,7 @@ export function projectRunnerWorkspaceAuthority(input: {
   localMissionControl?: Record<string, unknown> | null;
   localAuthorityStatus?: "OBSERVED" | "STALE" | "UNAVAILABLE";
   localAuthorityObservedAt?: Date | null;
+  platformWorkspaceBindings?: AuthorizedWorkspaceScopeBinding[];
 }) {
   const { tenantId, rows, now } = input;
   const workspaceRows = rows.flatMap((runner) => {
@@ -163,7 +165,15 @@ export function projectRunnerWorkspaceAuthority(input: {
     const activeSession = snapshotFresh && runner.status === "online" && runner.trustState === "trusted" &&
       Boolean(runner.activeSessionId && snapshot?.runnerSessionId === runner.activeSessionId);
     const providerFact = activeSessionProvider(snapshot, activeSession, now);
-    return workspaceFactsFromSnapshot(snapshot).map((workspace) => ({
+    return workspaceFactsFromSnapshot(snapshot).map((workspace) => {
+      const platformBinding = input.platformWorkspaceBindings?.find(binding =>
+        binding.tenantId === runner.tenantId && binding.projectId === workspace.projectId &&
+        binding.repositoryId === workspace.repositoryId && binding.runnerId === runner.runnerId &&
+        binding.workspaceId === workspace.workspaceId && binding.scope === "PLATFORM_ENGINEERING");
+      const bindingCurrent = Boolean(platformBinding && runner.trustState === "trusted" && runner.status === "online" &&
+        !runner.revokedAt && snapshotFresh && runner.currentSnapshotRevision &&
+        snapshot?.runnerSessionId === runner.activeSessionId && runner.activeSessionId);
+      return {
       authorityId: "runner-control-plane",
       tenantId: runner.tenantId,
       projectId: workspace.projectId,
@@ -180,7 +190,12 @@ export function projectRunnerWorkspaceAuthority(input: {
       providerResolutionSource: providerFact.source,
       runnerProfile: runner.profile,
       workspaceId: workspace.workspaceId,
-      displayName: workspace.displayName ?? runner.displayName,
+      displayName: bindingCurrent && platformBinding ? platformBinding.projectTitle : workspace.displayName ?? runner.displayName,
+      ...(bindingCurrent && platformBinding ? {
+        scope: "PLATFORM_ENGINEERING",
+        canonicalProjectId: platformBinding.projectId,
+        canonicalProjectTitle: platformBinding.projectTitle,
+      } : {}),
       observedSha: workspace.gitHead,
       branch: workspace.gitBranch,
       dirty: workspace.dirty,
@@ -202,7 +217,8 @@ export function projectRunnerWorkspaceAuthority(input: {
       convergenceState: workspace.convergenceState,
       convergenceCanonicalSha: workspace.convergenceCanonicalSha,
       localPath: null,
-    }));
+      };
+    });
   });
 
   const byWorkspace = new Map<string, typeof workspaceRows>();
@@ -383,7 +399,7 @@ export async function getWorkspaceAuthorityProjectReadModel(input: ProjectWorksp
     throw new Error("WORKSPACE_AUTHORITY_SCOPE_INVALID");
   const now = input.now ?? new Date();
   const db = getDb();
-  const rows = await db.select({
+  const [rows, platformWorkspaceBindings] = await Promise.all([db.select({
     runnerId: runnerNodes.runnerId,
     tenantId: runnerNodes.tenantId,
     ownerUserId: runnerNodes.ownerUserId,
@@ -402,7 +418,7 @@ export async function getWorkspaceAuthorityProjectReadModel(input: ProjectWorksp
   }).from(runnerNodes).where(and(
     eq(runnerNodes.tenantId, input.tenantId),
     or(isNull(runnerNodes.ownerUserId), eq(runnerNodes.ownerUserId, input.actorId)),
-  ));
+  )), listAuthorizedWorkspaceScopeBindings({ ...input, scope: "PLATFORM_ENGINEERING" })]);
 
   const [latestAudit] = await db.select({ outputJson: workerJobs.outputJson, finishedAt: workerJobs.finishedAt })
     .from(workerJobs)
@@ -433,5 +449,6 @@ export async function getWorkspaceAuthorityProjectReadModel(input: ProjectWorksp
   return projectRunnerWorkspaceAuthority({ tenantId: input.tenantId, actorId: input.actorId, rows, now,
     localMissionControl: localAuthorityStatus === "OBSERVED" ? localMissionControl : null,
     localAuthorityStatus, localAuthorityObservedAt: latestAudit?.finishedAt ?? null,
+    platformWorkspaceBindings,
   });
 }

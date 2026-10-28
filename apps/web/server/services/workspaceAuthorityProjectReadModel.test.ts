@@ -20,6 +20,42 @@ describe("projectRunnerWorkspaceAuthority", () => {
     expect(result.pushState.state).toBe("UNKNOWN");
   });
 
+  it("projects Platform Engineering only from an actor-authorized canonical binding matching live Runner facts", () => {
+    const binding = {
+      tenantId: "tenant-a", projectId: "project-a", projectTitle: "SmartAIHub Platform Engineering",
+      repositoryId: "repo-a", scope: "PLATFORM_ENGINEERING", runnerId: "runner-a", workspaceId: "ws-a",
+      memberRole: "owner" as const,
+    };
+    const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [runner()] as never[], now,
+      platformWorkspaceBindings: [binding],
+    });
+
+    expect(result.workspaces.observed[0]).toMatchObject({
+      scope: "PLATFORM_ENGINEERING",
+      canonicalProjectId: "project-a",
+      canonicalProjectTitle: "SmartAIHub Platform Engineering",
+      displayName: "SmartAIHub Platform Engineering",
+      snapshotRevision: "snapshot-1",
+    });
+  });
+
+  it("fails closed for stale Runner snapshots and mismatched repository bindings", () => {
+    const binding = {
+      tenantId: "tenant-a", projectId: "project-a", projectTitle: "SmartAIHub Platform Engineering",
+      repositoryId: "repo-a", scope: "PLATFORM_ENGINEERING", runnerId: "runner-a", workspaceId: "ws-a",
+      memberRole: "editor" as const,
+    };
+    const stale = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner({ snapshotExpiresAt: new Date("2026-10-07T11:59:00.000Z") }),
+    ] as never[], now, platformWorkspaceBindings: [binding] });
+    const mismatched = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
+      runner({ currentSnapshotJson: { ...runner().currentSnapshotJson, workspaces: [{ ...runner().currentSnapshotJson.workspaces[0], repositoryId: "repo-other" }] } }),
+    ] as never[], now, platformWorkspaceBindings: [binding] });
+
+    expect(stale.workspaces.observed[0]).not.toHaveProperty("scope");
+    expect(mismatched.workspaces.observed[0]).not.toHaveProperty("scope");
+  });
+
   it("keeps the host provider unknown when its session or tool evidence is stale", () => {
     const result = projectRunnerWorkspaceAuthority({ tenantId: "tenant-a", actorId: 7, rows: [
       runner({ snapshotExpiresAt: new Date("2026-10-07T11:59:00.000Z") }),

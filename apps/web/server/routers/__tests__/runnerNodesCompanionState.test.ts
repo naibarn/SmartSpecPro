@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockGetRunnerCompanionState = vi.hoisted(() => vi.fn());
 const mockGetDb = vi.hoisted(() => vi.fn());
 const mockRunnerReadiness = vi.hoisted(() => vi.fn());
+const mockAuthorizedWorkspaceScopeBindings = vi.hoisted(() => vi.fn());
+const mockRestrictedWorkspaceScopeKeys = vi.hoisted(() => vi.fn());
 
 vi.mock("../../_core/trpc", () => {
   const createProcedure = () => {
@@ -28,6 +30,11 @@ vi.mock("../../services/runnerCompanionViewState", () => ({
 vi.mock("../../services/spec224AuthorizationService", () => ({
   defaultSpec224AuthorizationService: { runnerReadiness: (...args: unknown[]) => mockRunnerReadiness(...args) },
 }));
+vi.mock("../../services/workspaceScopeAuthority", () => ({
+  listAuthorizedWorkspaceScopeBindings: (...args: unknown[]) => mockAuthorizedWorkspaceScopeBindings(...args),
+  listRestrictedPlatformWorkspaceKeys: (...args: unknown[]) => mockRestrictedWorkspaceScopeKeys(...args),
+  workspaceScopeKey: (value: Record<string, unknown>) => JSON.stringify([value.tenantId, value.projectId, value.repositoryId, value.runnerId, value.workspaceId]),
+}));
 vi.mock("../../services/cloudflareStagingExecutorIdentityService", () => ({
   CLOUDFLARE_STAGING_EXECUTOR_CAPABILITY: "cloudflare.staging.executor",
   CLOUDFLARE_STAGING_EXECUTOR_PROFILE: "cloudflare_staging_executor",
@@ -45,6 +52,8 @@ describe("runnerNodesRouter.companionState", () => {
       schemaVersion: "runner-companion.v1",
     });
     mockRunnerReadiness.mockResolvedValue({ ready: true, code: "RUNNER_READY", ownerAction: null });
+    mockAuthorizedWorkspaceScopeBindings.mockResolvedValue([]);
+    mockRestrictedWorkspaceScopeKeys.mockResolvedValue([]);
   });
 
   it("binds the projection to the authenticated tenant and user", async () => {

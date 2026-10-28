@@ -15,6 +15,7 @@ import { getRunnerCompanionState } from "../services/runnerCompanionViewState";
 import { projectRunnerDisplayName, projectRunnerWorkspacePresentation } from "../../shared/projectIdentityPresentation";
 import { runnerReadinessForDisplay } from "../services/runnerGateway";
 import { defaultSpec224AuthorizationService } from "../services/spec224AuthorizationService";
+import { listAuthorizedWorkspaceScopeBindings, listRestrictedPlatformWorkspaceKeys, workspaceScopeKey } from "../services/workspaceScopeAuthority";
 
 function tenantRequired(ctx: {
   tenantId?: unknown;
@@ -191,7 +192,7 @@ export const runnerNodesRouter = router({
     const tenantId = tenantRequired(ctx);
     const viewMode = input?.viewMode ?? "simple";
     const db = getDb();
-    const rows = await db
+    const [rows, authorizedPlatformBindings, restrictedPlatformKeys] = await Promise.all([db
       .select()
       .from(runnerNodes)
       .where(
@@ -205,7 +206,12 @@ export const runnerNodesRouter = router({
         )
       )
       .orderBy(desc(runnerNodes.updatedAt))
-      .limit(100);
+      .limit(100),
+      listAuthorizedWorkspaceScopeBindings({ tenantId, actorId: ctx.user.id, scope: "PLATFORM_ENGINEERING" }),
+      listRestrictedPlatformWorkspaceKeys({ tenantId }),
+    ]);
+    const authorizedPlatformBindingKeys = new Set(authorizedPlatformBindings.map(workspaceScopeKey));
+    const restrictedPlatformWorkspaceKeys = new Set(restrictedPlatformKeys.map(binding => JSON.stringify([binding.tenantId, binding.runnerId, binding.workspaceId])));
     return {
       runners: rows.map(row => {
         const snapshot = row.currentSnapshotJson as {
@@ -226,16 +232,45 @@ export const runnerNodesRouter = router({
           "capability"
         );
         const workspaceIds = safeWorkspaceIds(snapshot?.workspaceIds);
-        const workspaces = safeWorkspaceFacts(snapshot?.workspaces, workspaceIds).map(workspace =>
-          projectRunnerWorkspacePresentation({
+        const workspaces = safeWorkspaceFacts(snapshot?.workspaces, workspaceIds).flatMap(workspace => {
+          const restricted = restrictedPlatformWorkspaceKeys.has(JSON.stringify([tenantId, row.runnerId, workspace.workspaceId]));
+          const scopeKey = workspaceScopeKey({ tenantId, projectId: workspace.projectId ?? "", repositoryId: workspace.repositoryId ?? "", runnerId: row.runnerId, workspaceId: workspace.workspaceId });
+          const authorizedBinding = authorizedPlatformBindingKeys.has(scopeKey)
+            ? authorizedPlatformBindings.find(binding => workspaceScopeKey(binding) === scopeKey) ?? null
+            : null;
+        const currentTrustedRunner = row.trustState === "trusted" && row.status === "online" && !row.revokedAt &&
+            Boolean(snapshot?.runnerId === row.runnerId && row.activeSessionId && snapshot?.runnerSessionId === row.activeSessionId &&
+              row.currentSnapshotRevision && row.snapshotExpiresAt && row.snapshotExpiresAt > new Date() &&
+              row.snapshotObservedAt && row.snapshotObservedAt <= new Date());
+          const currentPlatformBinding = Boolean(authorizedBinding && currentTrustedRunner &&
+            authorizedBinding.projectId === workspace.projectId && authorizedBinding.repositoryId === workspace.repositoryId);
+          if (restricted && !currentPlatformBinding) return [];
+          const presented = projectRunnerWorkspacePresentation({
             actorId: ctx.user.id,
             ownerUserId: row.ownerUserId,
             runnerProfile: row.profile,
             nodeKind: row.nodeKind,
             mode: viewMode,
             ...workspace,
-          })
-        );
+          });
+          if (!currentPlatformBinding || !authorizedBinding) return [presented];
+          return [{
+            ...presented,
+            provenance: "platform_engineering_authorized" as const,
+            scope: "PLATFORM_ENGINEERING" as const,
+            displayName: authorizedBinding.projectTitle,
+            ...(viewMode === "developer" ? {
+              workspaceId: workspace.workspaceId,
+              ...(workspace.rootId ? { rootId: workspace.rootId } : {}),
+              ...(workspace.kind ? { kind: workspace.kind } : {}),
+              ...(workspace.projectId ? { projectId: workspace.projectId } : {}),
+              ...(workspace.repositoryId ? { repositoryId: workspace.repositoryId } : {}),
+              ...(workspace.gitHead ? { gitHead: workspace.gitHead } : {}),
+              ...(workspace.gitBranch ? { gitBranch: workspace.gitBranch } : {}),
+              dirty: workspace.dirty,
+            } : {}),
+          }];
+        });
         const runWorkspaces = viewMode === "developer" && row.profile === "local_device" && row.ownerUserId === ctx.user.id
           ? safeRunWorkspaceFacts(snapshot?.runWorkspaces, safeWorkspaceFacts(snapshot?.workspaces, workspaceIds))
           : [];

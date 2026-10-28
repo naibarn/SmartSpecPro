@@ -50,6 +50,13 @@
       "when": 1793006784762,
       "tag": "0421_dev_runtime_source_parity",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793145600001,
+      "tag": "0422_spec293_canonical_project_workspace_bindings",
+      "breakpoints": true
     }
   ]
 }

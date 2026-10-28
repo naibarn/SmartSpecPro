@@ -13,6 +13,12 @@ import { getDb } from "../db";
 import { compileSpec224IncrementalSpecSet } from "./spec224IncrementalSpecCompiler";
 import { SPEC224_RUNNER_INPUT_MAX_BYTES } from "./spec224RunnerInputStaging";
 import { isRunnerWorkspaceConvergenceState } from "./runnerContracts";
+import {
+  listAuthorizedWorkspaceScopeBindings,
+  listRestrictedPlatformWorkspaceKeys,
+  matchesWorkspaceScopeBinding,
+  workspaceScopeKey,
+} from "./workspaceScopeAuthority";
 
 const MAX_ARTIFACTS = 64;
 const MAX_RAW_BYTES = 2 * 1024 * 1024;
@@ -34,7 +40,7 @@ export class Spec224WorkspaceSpecSetError extends Error {
 
 export type Spec224WorkspaceArtifactInput = { path: string; contentBase64: string };
 export type Spec224WorkspaceSpecFile = { path: string; digest: string; content: string };
-export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null };
+export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null };
 export type Spec224ConversationWorkspace = {
   conversationId: number; tenantId: string; actorId: number; runnerId: string; workspaceId: string;
   snapshotRevision: string; revision: number;
@@ -461,11 +467,41 @@ function summary(revision: Spec224WorkspaceSpecSetRevision) {
 class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStore {
   async listTrustedWorkspaces(input: { tenantId: string; actorId: number }): Promise<Spec224TrustedWorkspace[]> {
     const db = getDb();
+    const [authorizedPlatformBindings, restrictedPlatformKeys] = await Promise.all([
+      listAuthorizedWorkspaceScopeBindings({ ...input, scope: "PLATFORM_ENGINEERING" }),
+      listRestrictedPlatformWorkspaceKeys(input),
+    ]);
+    const authorizedKeys = new Set(authorizedPlatformBindings.map(binding => workspaceScopeKey(binding)));
+    const restrictedKeys = new Set(restrictedPlatformKeys.map(binding => JSON.stringify([binding.tenantId, binding.runnerId, binding.workspaceId])));
     const rows = await db.select().from(runnerNodes).where(and(eq(runnerNodes.tenantId, input.tenantId), or(isNull(runnerNodes.ownerUserId), eq(runnerNodes.ownerUserId, input.actorId)), eq(runnerNodes.trustState, "trusted"), eq(runnerNodes.status, "online"), isNull(runnerNodes.revokedAt), gt(runnerNodes.snapshotExpiresAt, new Date())));
     return rows.flatMap(row => {
       const snapshot = row.currentSnapshotJson as { runnerId?: unknown; runnerSessionId?: unknown } | null;
       if (!row.currentSnapshotRevision || !snapshot || snapshot.runnerId !== row.runnerId || (row.activeSessionId && snapshot.runnerSessionId !== row.activeSessionId)) return [];
-      return workspaceFactsFromSnapshot(snapshot).map(workspace => ({ runnerId: row.runnerId, displayName: workspace.displayName ?? row.displayName, status: row.status, snapshotRevision: row.currentSnapshotRevision!, workspaceId: workspace.workspaceId, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, contentFingerprint: workspace.contentFingerprint }));
+      return workspaceFactsFromSnapshot(snapshot).flatMap(workspace => {
+        const identity = { tenantId: row.tenantId, projectId: workspace.projectId ?? "", repositoryId: workspace.repositoryId ?? "", runnerId: row.runnerId, workspaceId: workspace.workspaceId };
+        const restricted = restrictedKeys.has(JSON.stringify([row.tenantId, row.runnerId, workspace.workspaceId]));
+        const authorized = authorizedKeys.has(workspaceScopeKey(identity));
+        if (restricted && !authorized) return [];
+        const scopeBinding = authorized
+          ? matchesWorkspaceScopeBinding(identity, authorizedPlatformBindings)
+          : null;
+        if (scopeBinding && (!workspace.projectId || !workspace.repositoryId ||
+            scopeBinding.projectId !== workspace.projectId || scopeBinding.repositoryId !== workspace.repositoryId)) return [];
+        return [{
+          runnerId: row.runnerId,
+          displayName: scopeBinding?.projectTitle ?? workspace.displayName ?? row.displayName,
+          status: row.status,
+          snapshotRevision: row.currentSnapshotRevision!,
+          workspaceId: workspace.workspaceId,
+          projectId: workspace.projectId,
+          repositoryId: workspace.repositoryId,
+          ...(scopeBinding ? { scope: scopeBinding.scope, canonicalProjectId: scopeBinding.projectId, canonicalProjectTitle: scopeBinding.projectTitle } : {}),
+          gitHead: workspace.gitHead,
+          gitBranch: workspace.gitBranch,
+          dirty: workspace.dirty,
+          contentFingerprint: workspace.contentFingerprint,
+        }];
+      });
     });
   }
   async getConversation(input: { tenantId: string; actorId: number; conversationId: number }) {

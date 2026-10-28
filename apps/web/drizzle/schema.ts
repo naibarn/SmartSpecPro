@@ -2780,6 +2780,36 @@ export const canonicalProjects = pgTable(
 export type CanonicalProjectRow = typeof canonicalProjects.$inferSelect;
 export type InsertCanonicalProjectRow = typeof canonicalProjects.$inferInsert;
 
+/** Trusted binding from a canonical Project/Repository to a registered Runner workspace. */
+export const canonicalProjectWorkspaceBindings = pgTable(
+  "canonical_project_workspace_bindings",
+  {
+    id: varchar("id", { length: 36 }).primaryKey().default(sql`gen_random_uuid()`),
+    tenantId: varchar("tenant_id", { length: 36 }).notNull(),
+    projectId: varchar("project_id", { length: 36 }).notNull(),
+    repositoryId: varchar("repository_id", { length: 160 }).notNull(),
+    scope: varchar("scope", { length: 32 }).notNull(),
+    runnerId: varchar("runner_id", { length: 160 }).notNull(),
+    workspaceId: varchar("workspace_id", { length: 200 }).notNull(),
+    lifecycle: varchar("lifecycle", { length: 16 }).notNull().default("ACTIVE"),
+    createdByPrincipalId: varchar("created_by_principal_id", { length: 160 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  t => [
+    foreignKey({ name: "canonical_project_workspace_bindings_project_fk", columns: [t.tenantId, t.projectId], foreignColumns: [canonicalProjects.tenantId, canonicalProjects.projectId] }).onDelete("cascade"),
+    foreignKey({ name: "canonical_project_workspace_bindings_runner_fk", columns: [t.tenantId, t.runnerId], foreignColumns: [runnerNodes.tenantId, runnerNodes.runnerId] }).onDelete("restrict"),
+    uniqueIndex("canonical_project_workspace_bindings_identity_unique").on(t.tenantId, t.projectId, t.repositoryId, t.scope, t.runnerId, t.workspaceId),
+    index("canonical_project_workspace_bindings_scope_idx").on(t.tenantId, t.scope, t.lifecycle),
+    check("canonical_project_workspace_bindings_scope_check", sql`${t.scope} IN ('PLATFORM_ENGINEERING', 'PLATFORM_MANAGED', 'ADMIN_CREATOR', 'TENANT', 'USER', 'CUSTOMER_EXTERNAL_ORG')`),
+    check("canonical_project_workspace_bindings_lifecycle_check", sql`(${t.lifecycle} = 'ACTIVE' AND ${t.revokedAt} IS NULL) OR (${t.lifecycle} = 'REVOKED' AND ${t.revokedAt} IS NOT NULL)`),
+    check("canonical_project_workspace_bindings_creator_check", sql`length(btrim(${t.createdByPrincipalId})) > 0`),
+  ],
+);
+export type CanonicalProjectWorkspaceBindingRow = typeof canonicalProjectWorkspaceBindings.$inferSelect;
+export type InsertCanonicalProjectWorkspaceBindingRow = typeof canonicalProjectWorkspaceBindings.$inferInsert;
+
 /** Tenant-scoped project ACL. Revocation changes authorization, not identity. */
 export const canonicalProjectMemberships = pgTable(
   "canonical_project_memberships",
@@ -16207,6 +16237,7 @@ export const runnerNodes = pgTable(
       .notNull(),
   },
   t => [
+  uniqueIndex("runner_nodes_tenant_runner_unique").on(t.tenantId, t.runnerId),
   index("runner_nodes_tenant_status_idx").on(t.tenantId, t.status),
   uniqueIndex("runner_nodes_tenant_device_unique").on(t.tenantId, t.deviceId),
   ]
