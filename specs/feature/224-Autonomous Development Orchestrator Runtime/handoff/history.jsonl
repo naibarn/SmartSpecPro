@@ -222,3 +222,4 @@
 {"changes": ["continuation.resume_point", "continuation_assessment.evidence", "continuation_assessment.next_action", "continuation_assessment.rationale", "integration.canonical_sha", "integration.integrated_at", "integration.source_sha"], "event_type": "CURRENT_TRANSITION", "generation": 226, "observed_at": "2026-10-28T12:09:13.065650Z", "provenance": "OBSERVED"}
 {"changes": ["continuation_assessment.rationale"], "event_type": "CURRENT_TRANSITION", "generation": 227, "observed_at": "2026-10-28T12:10:55.246107Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.resume_point", "continuation.waiting_predicate"], "event_type": "CURRENT_TRANSITION", "generation": 228, "observed_at": "2026-10-28T12:18:09.323765Z", "provenance": "OBSERVED"}
+{"changes": ["continuation.resume_point"], "event_type": "CURRENT_TRANSITION", "generation": 229, "observed_at": "2026-10-28T12:26:18.846161Z", "provenance": "OBSERVED"}

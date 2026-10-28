@@ -37,6 +37,12 @@ The installed Codex CLI authenticated and passed its version probe, but its read
 
 The existing Runner service was restarted through systemd user service control and remains active. Its startup snapshot delivery still receives `RUNNER_EVENT_REJECTED`, followed by `RUNNER_STARTUP_RECONCILIATION_INCOMPLETE`; therefore there is still no Control Plane acknowledgment of the passed Codex probe or complete dirty-path facts. The local development database still cannot be treated as evidence about the endpoint configured on the Runner. No endpoint was changed, no enrollment was repeated, and no Goal or synthetic receipt was created.
 
+## Codex CLI upgrade and retest — 2026-10-28
+
+The active `codex` executable resolves to the Node 24 global `@openai/codex` installation. Its owning npm executable was used to upgrade to the registry's `latest` tag, `0.165.0`, without switching Node installations. `/usr/local/bin/codex --version` reports `codex-cli 0.165.0`. The existing Runner command `/home/dev/.local/bin/smartaihub-runner verify codex` passed after the upgrade: authentication ready, version probe passed, task probe passed, evidence ref `runner-task-probe:sha256:653059b9d57dcd331f82d836729db054f3f1bea633a6885e3b3a342c2b5b883a`.
+
+The Runner service was restarted to refresh discovery and remains active. Its status now discovers Codex `0.165.0`, but startup delivery still receives `RUNNER_EVENT_REJECTED` and `RUNNER_STARTUP_RECONCILIATION_INCOMPLETE`. The successful local task probe therefore is not a Control Plane acknowledgment or server-side readiness proof; admission and live Goal execution remain blocked.
+
 ## Current boundary
 
 Codex task readiness is now locally verified, replacing the earlier failed-probe observation. Live Task Control readiness remains unverified because the configured Control Plane rejects Runner events. SPEC-293's current `workspace_authority.py` lease claim is limited to local `TASK_WORKTREE` developer claims and is not yet a run-scoped Project Workspace lease consumable by SPEC-224 release and Runner apply. The exact remaining source operation is to expose a run/attempt-bound, path-scoped lease through the existing `workspace.authority.safe_action` / `worker_jobs` lifecycle, then bind and revalidate its fencing receipt in SPEC-224 authorization, canonical release, Runner candidate apply, and terminal/recovery cleanup. Until those changes and the server ACK exist, source admission must remain blocked and no write-capable Goal may start.

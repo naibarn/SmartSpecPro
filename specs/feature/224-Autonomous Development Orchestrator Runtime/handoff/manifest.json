@@ -1004,7 +1004,7 @@
     "next_action": "Implement the run-scoped SPEC-293 Workspace Authority lease/fencing claim, renewal, release-boundary revalidation, and terminal/recovery release through the existing authority and canonical worker_jobs/outbox. Then bind this existing Debian device to the development Control Plane through the supported authority flow, publish and acknowledge the complete bounded dirtyPaths snapshot, and prove source-scoped SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission. Do not start a Goal until those server-authoritative facts are current.",
     "next_ready_workunit": "SPEC224_DEBIAN_PLATFORM_WORKSPACE_READINESS_RECONCILIATION",
     "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
-    "resume_point": "Fresh runtime recheck at origin/main 8aa59c84dc5acdeb3531c05a04e57c93dd9450cd: signed Runner 0.2.51 remains installed and service active; Codex CLI config was corrected from an account-unsupported model to the account-listed gpt-5.6-luna, and the real read-only Runner Codex probe now passes (evidence ref runner-task-probe:sha256:ee6076950fc710b93558be40e42a5397cfc67014355a9b140e805ce4ba61058c). Runner startup events are still rejected by its configured Control Plane, so no server ACK, complete dirtyPaths source facts, safe admission, Goal or live execution is established. Local scope receipt and authority gap remain documented in handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md.",
+    "resume_point": "Fresh runtime recheck at origin/main 07c17a85feeb931483c608bb4643338fa97de21c: signed Runner 0.2.51 remains installed and service active. Codex CLI was upgraded through its owning Node 24 global npm installation to registry latest 0.165.0. The real read-only Runner Codex probe passes (evidence ref runner-task-probe:sha256:653059b9d57dcd331f82d836729db054f3f1bea633a6885e3b3a342c2b5b883a). Runner startup events are still rejected by its configured Control Plane, so no server ACK, complete dirtyPaths source facts, safe admission, Goal or live execution is established. SPEC-293 run-scoped lease gap remains documented in handoff/evidence/spec224-runner-snapshot-and-lease-gate-20261028.md.",
     "waiting_predicate": "Resume live Goal preparation only after (1) the existing Debian device Control Plane accepts its current Runner session and acknowledges the capability/workspace snapshot with complete dirtyPaths, (2) a run/attempt-bound SPEC-293 path-scoped writer lease is integrated and revalidated at outbox release and Runner apply with terminal/recovery cleanup, and (3) server-authoritative source admission confirms the bounded scope is SAFE_CLEAN or SAFE_DISJOINT_DIRTY. Codex task probe is currently locally passed; actual approval and Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
@@ -1146,7 +1146,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 228,
+  "generation": 229,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -3836,7 +3836,7 @@
     "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T12:18:09.323765Z",
+  "updated_at": "2026-10-28T12:26:18.846161Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
