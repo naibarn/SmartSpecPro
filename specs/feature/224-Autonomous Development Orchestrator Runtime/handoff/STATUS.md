@@ -4,9 +4,9 @@
 - Disposition: `ACTIVE_CANONICAL` (HIGH)
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
-- Requirements: 6 pass / 1277 unresolved of 1284
-- Next action: Complete the remaining ingress proof with a disposable-PostgreSQL test invoking the real Task Control tRPC startWorkspaceRun caller, persisted conversation/workspace and Runner readiness, and the real Approval Authority HTTP path. Then perform a bounded Windows Runner two-phase pilot using a real approved tenant Goal Grant, isolated workspace and budget. The integrated code now persists Goal ID/scope, requests canonical approval, and resumes through durable reconciliation; no live run or receipt has been observed.
-- Manifest generation: 216
+- Requirements: 1 pass / 1282 unresolved of 1284
+- Next action: The authenticated HTTP tRPC ingress proof and canonical build are complete. Continue with a bounded live Windows two-phase Codex pilot only after an authenticated owner session confirms the deployed source SHA, fresh Runner heartbeat and applied capability ACK, isolated Project Workspace/source, actual owner-approved Goal Grant and active shared Goal Budget. No live DevelopmentRun or receipt has yet been observed.
+- Manifest generation: 220
 
 ## Source-declared status and relationship claims
 

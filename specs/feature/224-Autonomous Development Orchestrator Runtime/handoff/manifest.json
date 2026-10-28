@@ -77,6 +77,13 @@
         "scope": "Production RunnerControl journal at 2026-10-27T06:57:40+07:00 confirms stage=acknowledge_persisted_snapshot, ackState=applied, runnerId=local-runner, runnerSessionId=6ddda9fe-0845-44af-9b9f-1e1cb11e1e62, correlationId=runner:local-runner:capabilities:2026-10-26T23:57:40.469Z, snapshotRevision=snapshot:local-runner:2026-10-26T23:57:40.468Z, executionReadiness=capability_ready. This is a WSS acknowledgement (no HTTP status applies) after durable capability snapshot persistence. Capability readiness is not execution authorization. No current policy/device consent/budget decision, authenticated Start, DevelopmentRun, dispatch, Windows execution, audit/usage settlement, reconnect recovery or independent Final Verify is recorded. Runner 0.2.45/Codex task probe PASS is owner-reported; no probe was repeated.",
         "source_sha": "5859261fc7eb56880920477e92176a021778d144",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_LIVE_ACCEPTANCE_READINESS_OBSERVATION",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
+        "scope": "Public health was HTTP 200 but exposes no serving SHA. No fresh authenticated Runner heartbeat/capability ACK, owner-approved Goal Grant, isolated workspace, or live Codex receipts were available; Windows live acceptance remains unverified.",
+        "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -976,15 +983,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "7035b789476e2b3b96ec414674f285eb77f60988",
+    "expected_canonical_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Add one disposable-PostgreSQL ingress integration test that calls the real Task Control tRPC startWorkspaceRun caller with persisted conversation/workspace and Runner readiness records, creates/replays its Goal Approval through the real Approval Authority request path, then proves approved Child 1 dispatch and receipt-driven Child 2. Keep the Windows live pilot separate; do not infer execution from Codex readiness.",
-    "next_ready_workunit": "SPEC224_START_WORKSPACE_RUN_POSTGRES_INGRESS",
-    "reactivation_predicate": "Resume when the PostgreSQL ingress integration case proves the actual user Start path reaches authorized Child 1 and automatic Child 2; then begin the bounded Windows Runner pilot after a real tenant Goal Grant, workspace and budget are available.",
-    "resume_point": "Canonical origin/main 7035b789476e2b3b96ec414674f285eb77f60988. The production Goal Approval Authority endpoint and Task Control admission wiring are integrated. Connected delegated-child PostgreSQL suite passes 8/8; focused router/panel tests pass 46/46. Exact remaining operation: PostgreSQL test through startWorkspaceRun, persisted workspace/Runner and real Approval Authority HTTP call, followed by the separate live Windows two-phase pilot.",
-    "waiting_predicate": "The live pilot waits for a legitimate tenant Goal approval and isolated Runner workspace/source. Test completion waits for the real tRPC ingress case on disposable PostgreSQL."
+    "next_action": "After an authorized owner session can verify the deployed frontend/backend source SHA and current Windows Runner heartbeat plus applied capability ACK, use Task Control to confirm the real approved Goal Grant, isolated Project Workspace/source and shared Goal Budget, then execute and capture the bounded two-phase Codex pilot. Do not substitute the public health check or screenshot for these live prerequisites.",
+    "next_ready_workunit": "SPEC224_WINDOWS_RUNNER_OWNER_PREREQUISITE",
+    "reactivation_predicate": "Resume the live two-phase pilot when authenticated Task Control evidence shows a fresh online Windows Runner with applied capability ACK, deployed backend source SHA at or beyond the integrated ingress source, an owner-approved Goal Grant bound to the isolated workspace/source, and an active shared Goal Budget.",
+    "resume_point": "Canonical origin/main ac26e203df068e76f3bcd2be41e177478f614f3c. Authenticated HTTP tRPC startWorkspaceRun ingress passed on disposable PostgreSQL, delegated continuation passed 8/8, focused regressions passed 82/82, and canonical build passed with artifact sha256:3e4cf78b62153f2463b5872ab7f5fd087fb0832db03875c6c63f37a8aa7e1e74. No production deployment or live Windows execution was observed. Exact next action: obtain current authenticated Task Control/Runner evidence and the real owner-approved Goal Grant, then run live Child 1 and automatic Child 2.",
+    "waiting_predicate": "The live pilot waits for authenticated access to current Task Control/Windows Runner readiness, proof of the deployed backend source revision, an isolated workspace/source, and an actual owner-approved Goal Grant with an active shared budget. No approval or deployment is inferred from this integration."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1019,10 +1026,16 @@
         "observed_at": "2026-10-28T00:25:04Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
         "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-28T01:58:05Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
+        "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
       }
     ],
-    "next_action": "Complete the remaining ingress proof with a disposable-PostgreSQL test invoking the real Task Control tRPC startWorkspaceRun caller, persisted conversation/workspace and Runner readiness, and the real Approval Authority HTTP path. Then perform a bounded Windows Runner two-phase pilot using a real approved tenant Goal Grant, isolated workspace and budget. The integrated code now persists Goal ID/scope, requests canonical approval, and resumes through durable reconciliation; no live run or receipt has been observed.",
-    "rationale": "Goal admission is now connected in production source and focused plus service-level disposable PostgreSQL tests pass. The single connected test still starts from persisted service fixtures rather than the actual tRPC Start operation, and live tenant approval/dispatch/Final Verify remain unobserved.",
+    "next_action": "The authenticated HTTP tRPC ingress proof and canonical build are complete. Continue with a bounded live Windows two-phase Codex pilot only after an authenticated owner session confirms the deployed source SHA, fresh Runner heartbeat and applied capability ACK, isolated Project Workspace/source, actual owner-approved Goal Grant and active shared Goal Budget. No live DevelopmentRun or receipt has yet been observed.",
+    "rationale": "The real Task Control HTTP tRPC startWorkspaceRun path, real Approval Authority HTTP request, durable Goal admission, two child authorization/outbox records and automatic receipt-driven successor were verified on disposable PostgreSQL. Canonical build passed for the integrated SHA. Production source revision and live Windows execution remain unverified.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1100,7 +1113,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 216,
+  "generation": 220,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1302,11 +1315,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "7035b789476e2b3b96ec414674f285eb77f60988",
+    "canonical_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
     "integrated": true,
-    "integrated_at": "2026-10-28T07:25:00+07:00",
+    "integrated_at": "2026-10-28T01:58:05Z",
     "pull_request": null,
-    "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
+    "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2224,10 +2237,16 @@
           "observed_at": "2026-10-28T00:25:04Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-admission-checkpoint-7035b789-20261028.md",
           "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-28T01:58:05Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
+          "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c"
         }
       ],
-      "next_action": "Complete the remaining ingress proof with a disposable-PostgreSQL test invoking the real Task Control tRPC startWorkspaceRun caller, persisted conversation/workspace and Runner readiness, and the real Approval Authority HTTP path. Then perform a bounded Windows Runner two-phase pilot using a real approved tenant Goal Grant, isolated workspace and budget. The integrated code now persists Goal ID/scope, requests canonical approval, and resumes through durable reconciliation; no live run or receipt has been observed.",
-      "rationale": "Goal admission is now connected in production source and focused plus service-level disposable PostgreSQL tests pass. The single connected test still starts from persisted service fixtures rather than the actual tRPC Start operation, and live tenant approval/dispatch/Final Verify remain unobserved.",
+      "next_action": "The authenticated HTTP tRPC ingress proof and canonical build are complete. Continue with a bounded live Windows two-phase Codex pilot only after an authenticated owner session confirms the deployed source SHA, fresh Runner heartbeat and applied capability ACK, isolated Project Workspace/source, actual owner-approved Goal Grant and active shared Goal Budget. No live DevelopmentRun or receipt has yet been observed.",
+      "rationale": "The real Task Control HTTP tRPC startWorkspaceRun path, real Approval Authority HTTP request, durable Goal admission, two child authorization/outbox records and automatic receipt-driven successor were verified on disposable PostgreSQL. Canonical build passed for the integrated SHA. Production source revision and live Windows execution remain unverified.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -2534,22 +2553,23 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "65644d583564f31e9d39376c8cff57f8e53c3df8",
+        "evidence_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
+          "apps/web/server/routers/spec226DevelopmentControl.ts",
+          "apps/web/server/services/__tests__/spec224GoalAdmissionIngressPostgres.integration.test.ts"
         ],
-        "implementation_status": "PARTIAL",
-        "next_action": "Start one small isolated Core DevelopmentRun with the authorized non-production tenant owner and retain run/job/source identifiers.",
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Complete the bounded live Windows Task Control Start with an actual owner-approved Goal Grant and retain the DevelopmentRun, Job and Attempt references.",
         "requirement_digest": "bb693dedd5f5ebc678e4880f1547afbe79b5eef11326926cd1f83ed326332e2d",
         "requirement_id": "REQ-26611F40B8B9",
         "requirement_text": "- [ ] User can start a run from one goal/spec.",
         "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md"
         ],
-        "verification_method": "Disposable PostgreSQL integration persists a synthetic run/job lifecycle, but no authenticated live Core Start run or retained run/job identifiers were produced."
+        "verification_method": "Authenticated HTTP tRPC ingress on disposable PostgreSQL persisted the conversation-bound Goal Run, requested the canonical approval, and reached authorized Child 1 plus automatic Child 2. A live owner Goal Start and retained production run/job identifiers remain separate acceptance."
       },
       "REQ-28DAED30E097": {
         "applicability": "APPLICABLE",
@@ -2559,15 +2579,15 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17337",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
-        "final_state": "PASS",
+        "final_state": "STALE_EVIDENCE",
         "implementation_evidence": [
           "apps/web/server/services/personalMiniAppPreview.ts",
           "apps/web/server/services/miniAppFactoryRuntime.ts"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Retain closed V1/V2 LKG behavior; reopen only on regression evidence.",
+        "next_action": "Revalidate retained evidence against the current canonical source SHA; preserve the historical verification evidence and its original evidence_sha.",
         "requirement_digest": "dc1734f6a01adaa6863085747d1386e24d60e54ea0dd817fbdcf282f25e3b03d",
         "requirement_id": "REQ-28DAED30E097",
         "requirement_text": "- [ ] A partial development state or retained last-known-good build remains addressable at the canonical app URL, and a failed candidate does not replace the last-known-good version.",
@@ -2581,6 +2601,34 @@
         ],
         "verification_method": "Current-source personalMiniAppPreview.test.ts injects a failure before promotion and preserves V1; private full-document routing tests pass. Existing V1/V2 owner receipts are retained without a new live pilot run."
       },
+      "REQ-2C34C51DC8BD": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2514"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2514",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "apps/web/server/services/jobControlPlane.ts",
+          "apps/web/server/services/spec224AuthorizationService.ts",
+          "apps/web/server/services/__tests__/spec224GoalAdmissionIngressPostgres.integration.test.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Verify Child 1 and Child 2 dispatch acknowledgments from the registered Windows Runner during live acceptance.",
+        "requirement_digest": "e3756b41fe468b9129544f19a656cc10e88dde86773c2293f856f46563d5129f",
+        "requirement_id": "REQ-2C34C51DC8BD",
+        "requirement_text": "Dispatch to Runner/provider SHALL occur through the canonical reliable job/outbox path.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md"
+        ],
+        "verification_method": "Connected disposable PostgreSQL ingress proves one authorized canonical Outbox row and hold per distinct child Job/Attempt. Live Windows Runner dispatch acknowledgment remains unverified."
+      },
       "REQ-3917D7A777B0": {
         "applicability": "APPLICABLE",
         "authority_refs": [
@@ -2589,14 +2637,14 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L2596",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
-        "final_state": "PASS",
+        "final_state": "STALE_EVIDENCE",
         "implementation_evidence": [
           "apps/web/server/services/__tests__/spec224DevelopmentRunTaskControl.integration.test.ts"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Retain evidence-gated Final Verify rule; successful live Final Verify remains a separate requirement.",
+        "next_action": "Revalidate retained evidence against the current canonical source SHA; preserve the historical verification evidence and its original evidence_sha.",
         "requirement_digest": "21039b9da2c423f3a78a2894843c093b5f9769436ff4035417e37e2d2791df00",
         "requirement_id": "REQ-3917D7A777B0",
         "requirement_text": "- [ ] Missing evidence is not PASS.",
@@ -2641,15 +2689,15 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17340",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
-        "final_state": "PASS",
+        "final_state": "STALE_EVIDENCE",
         "implementation_evidence": [
           "apps/web/server/routes/miniAppRuntime.ts",
           "apps/web/server/routers/appIdentity.ts"
         ],
         "implementation_status": "COMPLETE",
-        "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
+        "next_action": "Revalidate retained evidence against the current canonical source SHA; preserve the historical verification evidence and its original evidence_sha.",
         "requirement_digest": "a0d1efc9ffa47b8be5aaec0427b977522a55ece9bcb4c54128eb9ccd2e7ed78c",
         "requirement_id": "REQ-410EE0357FDC",
         "requirement_text": "- [ ] Mobile internet access, authenticated owner access, public publish/unpublish, and tenant/user isolation pass against authorized synthetic test principals.",
@@ -2696,15 +2744,15 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17334",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
-        "final_state": "PASS",
+        "final_state": "STALE_EVIDENCE",
         "implementation_evidence": [
           "apps/web/server/routes/miniAppRuntime.ts",
           "apps/web/server/routers/appIdentity.ts"
         ],
         "implementation_status": "COMPLETE",
-        "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
+        "next_action": "Revalidate retained evidence against the current canonical source SHA; preserve the historical verification evidence and its original evidence_sha.",
         "requirement_digest": "0e20fb1e77641366e6d0e720ff7a39ae2c4fd4cbd0bafa5a365c45005ae613a3",
         "requirement_id": "REQ-6B95E2497188",
         "requirement_text": "- [ ] Anonymous access to an explicitly published app passes, and owner unpublish immediately denies anonymous access.",
@@ -2716,6 +2764,33 @@
           "apps/web/tests/e2e/uat/spec224-public-access.spec.ts"
         ],
         "verification_method": "Chromium on smartaihub.app generation 119 with authorized disposable synthetic owner/member/cross-tenant fixtures: private resolver denial, owner publication, anonymous sandboxed top-level mobile document, owner unpublish and immediate anonymous API/document denial; owner private workspace remains accessible. Fixture app and artifacts cleaned up."
+      },
+      "REQ-759DCE45F6BA": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L531"
+        ],
+        "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L531",
+        "blocker": null,
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
+        "final_state": "PASS",
+        "implementation_evidence": [
+          "apps/web/server/services/spec224RunnerContinuationReconciler.ts",
+          "apps/web/server/services/__tests__/spec224GoalAdmissionIngressPostgres.integration.test.ts"
+        ],
+        "implementation_status": "IMPLEMENTED",
+        "next_action": "Retain live Windows Child 1 receipt and automatic Child 2 evidence; synthetic PostgreSQL receipts are not live execution evidence.",
+        "requirement_digest": "ff5bd5c173adf19c3249011c76feaf791c19804ccfa98465f6e218d00c7a8063",
+        "requirement_id": "REQ-759DCE45F6BA",
+        "requirement_text": "No continuation SHALL depend on a browser tab, chat turn, or user copy/paste.",
+        "source_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md"
+        ],
+        "verification_method": "After a persisted terminal receipt, the durable reconciler automatically authorized and released Child 2; duplicate receipt and concurrent reconciliation retained one successor without browser callback or manual Continue."
       },
       "REQ-76F291D4743E": {
         "applicability": "APPLICABLE",
@@ -3043,15 +3118,15 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17333",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
-        "final_state": "PASS",
+        "final_state": "STALE_EVIDENCE",
         "implementation_evidence": [
           "apps/web/server/routes/miniAppRuntime.ts",
           "apps/web/server/routers/appIdentity.ts"
         ],
         "implementation_status": "COMPLETE",
-        "next_action": "Closed for the verified synthetic public/private access matrix; preserve evidence and do not reopen the existing Expense Tracker pilot.",
+        "next_action": "Revalidate retained evidence against the current canonical source SHA; preserve the historical verification evidence and its original evidence_sha.",
         "requirement_digest": "0abcede85de1df372242e86b1cc3755da8be4ac73fe4c58fad76579874b4224f",
         "requirement_id": "REQ-B92C79FEA294",
         "requirement_text": "- [ ] Private owner access passes; same-tenant other-user, cross-tenant, and anonymous access are denied before any private app bytes or data are returned.",
@@ -3350,15 +3425,15 @@
         "authority_source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md#L17341",
         "blocker": null,
         "current_relevance": "CURRENT",
-        "evidence_freshness": "FRESH",
+        "evidence_freshness": "STALE",
         "evidence_sha": "ae9d64ad1111cce5fd9f75b5a3d85d08b8e801ec",
-        "final_state": "PASS",
+        "final_state": "STALE_EVIDENCE",
         "implementation_evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-miniapp-v1-v2-pilot-receipts-20261025.md",
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md"
         ],
         "implementation_status": "IMPLEMENTED",
-        "next_action": "Keep milestone reporting separate; do not treat Mini-App acceptance as Core/Runner evidence.",
+        "next_action": "Revalidate retained evidence against the current canonical source SHA; preserve the historical verification evidence and its original evidence_sha.",
         "requirement_digest": "34ae08fd4c6d747014931a5c9d2682d1f9172396f65d871d6db3c34e2ea83b8c",
         "requirement_id": "REQ-F12D04357ED8",
         "requirement_text": "- [ ] Functional Mini-App Delivery, SPEC-224 normative completion, and Protected Runner acceptance are reported and evidenced independently.",
@@ -3707,16 +3782,16 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 26,
+    "applicable": 28,
     "blocked_true_external": 1,
     "fail": 0,
     "not_applicable": 0,
-    "pass": 6,
+    "pass": 1,
     "total": 1284,
-    "unresolved": 1277
+    "unresolved": 1282
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T00:27:21.513865Z",
+  "updated_at": "2026-10-28T02:00:39.177286Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4167,13 +4242,20 @@
         "scope": "Exact origin/main SHA 7035b789476e2b3b96ec414674f285eb77f60988: disposable PostgreSQL delegated-child suite 8/8, Task Control/panel focused regressions 46/46, Python syntax check passed. Connected production services passed; the single test does not yet enter through tRPC startWorkspaceRun. Synthetic Runner receipts are not live evidence.",
         "source_sha": "7035b789476e2b3b96ec414674f285eb77f60988",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_AUTHENTICATED_INGRESS_AND_BUILD",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ingress-build-acceptance-20261028.md",
+        "scope": "Real HTTP tRPC startWorkspaceRun + Approval Authority HTTP, disposable PostgreSQL: 1/1. Delegated continuation PostgreSQL: 8/8. Focused regressions: 82/82. Canonical build passed for this SHA; no service deployment or live Windows receipt.",
+        "source_sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "f1b400c014c692b08ae9fb6de66b832595987a4c",
+    "sha": "ac26e203df068e76f3bcd2be41e177478f614f3c",
     "status": "PARTIAL",
     "task_regressions": []
   }
