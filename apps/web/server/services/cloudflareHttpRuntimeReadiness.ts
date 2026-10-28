@@ -46,7 +46,18 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
     nextAction: restricted ? "Verify exact table grants, immutable plan checkpoint and live tenant isolation before acceptance."
       : "Prepare the separate bounded application role with exact table grants under runtime authority; preserve Linux roles and M1 intake role." });
   const access = await withCloudflareDeploymentCredential(db, { identity: { ...scope, environment: "production", provider: "cloudflare" }, credentialRef: target.credentialRef }, async token => {
-    const provider = await verifyHttpCandidateProviderReceipt({ receipt, accountRef: target.accountRef, token, restoredBaseline });
+    let provider: Awaited<ReturnType<typeof verifyHttpCandidateProviderReceipt>>;
+    try {
+      provider = await verifyHttpCandidateProviderReceipt({ receipt, accountRef: target.accountRef, token, restoredBaseline });
+    } catch (error) {
+      // A deployment that moved since Candidate preparation is a normal stale
+      // readback state. Keep the strict provider check, but return that state
+      // as data so the Admin does not emit a failing 412 query on every visit.
+      if (error instanceof Error && error.message === "HTTP_CANDIDATE_DEPLOYMENT_CHANGED") {
+        return { status: "STALE" as const, reason: "HTTP_CANDIDATE_DEPLOYMENT_CHANGED" as const };
+      }
+      throw error;
+    }
     const root = `/accounts/${target.accountRef}`;
     const get = async (path: string) => {
       try {
@@ -73,11 +84,14 @@ export async function getHttpRuntimeReadiness(db: DrizzleDB, scope: Scope, jobId
     return provider;
   });
   if (access.status !== "CONFIGURED" || !access.value) throw Error("HTTP_RUNTIME_CREDENTIAL_REQUIRED");
+  if ("status" in access.value && access.value.status === "STALE") return { observedAt: new Date().toISOString(), candidateJobId: jobId,
+    status: access.value.status, reason: access.value.reason, ready: false as const, runtimeAcceptance: false as const,
+    activationAuthorized: false as const, providerMutations: 0 as const, databaseMutations: 0 as const, containerStarts: 0 as const };
   checks.push({ code: "BOUNDED_RUNTIME_AUTHORITY", status: "MISSING",
     nextAction: "Candidate metadata authority permits zero starts. A runtime operation must cover the exact role, connector, bindings, bounded starts, test scope and compensation; production activation remains separate." });
   checks.push({ code: "LIVE_RUNTIME_ACCEPTANCE", status: "UNVERIFIED",
     nextAction: "After bounded starts, verify Node/Python SQL, HTTP/API, authentication, tenant boundaries, Gateway, billing, jobs, recovery and rollback with authorized synthetic fixtures." });
-  return { observedAt: new Date().toISOString(), candidateJobId: jobId, metadata: access.value, databaseRole: role, databaseNetwork,
+  return { observedAt: new Date().toISOString(), candidateJobId: jobId, status: "VERIFIED" as const, metadata: access.value, databaseRole: role, databaseNetwork,
     connectorHostname: "db.smartaihub.app", checks, ready: false as const, runtimeAcceptance: false as const,
     activationAuthorized: false as const, providerMutations: 0 as const, databaseMutations: 0 as const, containerStarts: 0 as const };
 }

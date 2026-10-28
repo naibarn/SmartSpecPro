@@ -90,12 +90,13 @@ describe("native metadata Owner action", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument(); expect(state.mutate).not.toHaveBeenCalled();
   });
 
-  it("explains a changed historical Candidate and offers explicit read-only recheck", async () => {
+  it("shows a changed Candidate as a read-only stale state without a query error", async () => {
     state.job = { jobId: "canonical-job", status: "succeeded", attempt: 1, maxAttempts: 1 };
-    state.runtimeError = { message: "HTTP_CANDIDATE_DEPLOYMENT_CHANGED" };
+    state.runtime = { status: "STALE", reason: "HTTP_CANDIDATE_DEPLOYMENT_CHANGED", candidateJobId: "canonical-job", ready: false,
+      runtimeAcceptance: false, activationAuthorized: false, providerMutations: 0, databaseMutations: 0, containerStarts: 0 };
     render(<CloudflareNativeCandidatePreparation {...props} />);
-    await userEvent.click(screen.getByText("Candidate resources and technical readiness details"));
-    expect(screen.getByRole("alert")).toHaveTextContent("no longer matches its deployed baseline");
+    expect(screen.getByText(/readback is stale/)).toHaveAttribute("role", "status");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Recheck Candidate readback" }));
     expect(state.runtimeRefetch).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: /Prepare isolated/ })).not.toBeInTheDocument();

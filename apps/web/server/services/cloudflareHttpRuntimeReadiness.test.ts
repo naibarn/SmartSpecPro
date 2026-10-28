@@ -65,6 +65,15 @@ describe("successful native Candidate runtime inspection", () => {
     expect(JSON.stringify(result)).not.toContain("DNS · Edit");
     expect(JSON.stringify(result)).not.toMatch(/private-fixture-token|private provider detail/);
   });
+  it("returns a stale Candidate readback as explicit non-ready data without masking provider validation", async () => {
+    const f = fixture(); mock.verify.mockRejectedValueOnce(Error("HTTP_CANDIDATE_DEPLOYMENT_CHANGED"));
+    const result = await getHttpRuntimeReadiness(f.db as any, scope, "exact-job");
+    expect(result).toMatchObject({ candidateJobId: "exact-job", status: "STALE", reason: "HTTP_CANDIDATE_DEPLOYMENT_CHANGED",
+      ready: false, runtimeAcceptance: false, activationAuthorized: false, providerMutations: 0, databaseMutations: 0, containerStarts: 0 });
+    expect(f.fetch).not.toHaveBeenCalled();
+    const mismatch = fixture(); mock.verify.mockRejectedValueOnce(Error("HTTP_CANDIDATE_VERSION_MISMATCH"));
+    await expect(getHttpRuntimeReadiness(mismatch.db as any, scope, "exact-job")).rejects.toThrow("VERSION_MISMATCH");
+  });
   it.each(["tenant", "owner", "project", "contract", "status", "review"])("rejects a mismatched %s before provider credential access", async kind => {
     const f = fixture();
     if (kind === "tenant") f.job.tenantId = "foreign";

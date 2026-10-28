@@ -29,7 +29,7 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
   const preflight = state.data?.preflight, job = state.data?.job;
   const runtime = trpc.infrastructure.getCloudflareHttpRuntimeReadiness.useQuery({ tenantId, projectId,
     jobId: job?.jobId ?? "00000000-0000-4000-8000-000000000000" }, { enabled: job?.status === "succeeded",
-      refetchInterval: query => query.state.error ? false : 30_000, retry: false });
+      refetchInterval: query => query.state.error || query.state.data?.status === "STALE" ? false : 30_000, retry: false });
   const submit = async () => {
     if (busy.current || job || !preflight?.ready) return;
     busy.current = true;
@@ -69,11 +69,18 @@ export function CloudflareNativeCandidatePreparation({ tenantId, projectId }: { 
     {job?.status === "succeeded" ? <Text>{text("Worker and Container metadata prepared. Native application runtime acceptance is still pending.",
       "เตรียมข้อมูล Worker และ Container แล้ว ยังรอตรวจรับแอปที่รันบน Cloudflare จริง")}</Text> : null}
     {job?.status === "succeeded" ? <CloudflareNativeRuntimeOperation tenantId={tenantId} projectId={projectId} candidateJobId={job.jobId} /> : null}
+    {runtime.data?.status === "STALE" ? <VStack as="section" gap={2} aria-label={text("Candidate readback status", "สถานะการตรวจ Candidate")}>
+      <Text role="status">{text("Candidate readback is stale: the active Cloudflare deployment no longer matches this Candidate receipt. No readiness result was accepted; automatic checks are paused.",
+        "ข้อมูล Candidate เก่าแล้ว: deployment ที่ทำงานบน Cloudflare ไม่ตรงกับ receipt ของ Candidate นี้ ระบบยังไม่ยืนยันความพร้อมและหยุดตรวจอัตโนมัติแล้ว")}</Text>
+      <Button type="button" variant="outline" onClick={() => void runtime.refetch()}>
+        {text("Recheck Candidate readback", "ตรวจ Candidate readback อีกครั้ง")}
+      </Button>
+    </VStack> : null}
     {job?.status === "succeeded" ? <details>
       <summary>{text("Candidate resources and technical readiness details", "ทรัพยากร Candidate และรายละเอียดการตรวจระบบ")}</summary>
       <VStack as="section" gap={2} aria-label={text("Native runtime readiness details", "รายละเอียดความพร้อม native runtime")}>
       {runtime.isLoading ? <Text role="status">{text("Checking actual Cloudflare resources…", "กำลังอ่านทรัพยากรจริงจาก Cloudflare…")}</Text> : null}
-      {runtime.data ? <>
+      {runtime.data && runtime.data.status !== "STALE" ? <>
         <Text>{runtime.data.metadata.workerName} · VERIFIED</Text>
         <Text>Deployment: {runtime.data.metadata.deploymentId}</Text>
         <Text>Version: {runtime.data.metadata.versionId}</Text>
