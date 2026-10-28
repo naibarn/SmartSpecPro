@@ -66,7 +66,7 @@ async function preparePanel() {
 describe("Core goal readiness feedback", () => {
   it("explains stale probe publication and missing workspace source facts separately", () => {
     expect(readinessMessage("CODEX_TASK_PROBE_EXPIRED", "stale")).toMatch(/ยังไม่ถูกรับรอง.*ACK/);
-    expect(readinessMessage("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE", "applied")).toMatch(/Git revision และ source fingerprint/);
+    expect(readinessMessage("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE", "applied")).toMatch(/เป็น Git repository.*เข้าถึงได้/);
   });
 
   it("renders only Runner-discovered models and sends the chosen model and supported effort with Start", async () => {

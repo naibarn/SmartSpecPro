@@ -118,7 +118,7 @@ export function readinessMessage(code: string, capabilityAckState?: RunnerOption
     return "ผลทดสอบล่าสุดยังไม่ถูกรับรองใน Control Plane; snapshot ที่เห็นยังไม่มีผลทดสอบใหม่ รอ Runner ส่งและรับ ACK";
   }
   if (code === "WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE") {
-    return "Runner ยังไม่รายงาน Git revision และ source fingerprint ของ workspace นี้ ตรวจรายการ workspace ใน Runner แล้วโหลดรายการใหม่";
+    return "Runner อ่าน Git revision และ source fingerprint ของ workspace นี้ไม่ได้ ตรวจว่าโฟลเดอร์ที่ลงทะเบียนเป็น Git repository และ Runner เข้าถึงได้ แล้วโหลดรายการใหม่";
   }
   if (code === "RUNNER_READY") return "Codex และ source ของ workspace พร้อมสำหรับตรวจสิทธิ์ก่อนเริ่มงาน";
   const messages: Record<string, string> = {
