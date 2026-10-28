@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1301 unresolved of 1302
 - Next action: WAITING_FOR_GOAL_APPROVAL: the authenticated owner must start the bounded Goal in Task Control and approve its resulting Goal Grant through the existing Approval Authority. Then refresh the existing Runner snapshot and trace the actual Child 1/Child 2 execution and Final Verify records.
-- Manifest generation: 244
+- Manifest generation: 245
 
 ## Source-declared status and relationship claims
 

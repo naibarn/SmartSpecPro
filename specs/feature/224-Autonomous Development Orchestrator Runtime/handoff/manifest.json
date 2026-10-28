@@ -128,6 +128,14 @@
         "scope": "Task Control primary Start flow and bounded Platform prompt scope are repaired; connected disposable PostgreSQL verifies tRPC Start, Approval Authority, Child 1 and automatic Child 2 continuation. No live Goal or owner decision was produced.",
         "source_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_FIRST_GOAL_LIVE_RUNTIME_RECHECK",
+        "observed_at": "2026-10-28T18:57:38Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-first-goal-activation-20261029.md",
+        "scope": "Development service uses smartspec_dev and serves 06035531a6be96a45f379188385b1fa759ff28a4-dirty; same trusted Debian Runner session had fresh heartbeat/snapshot and Codex authenticated task probe passed. Workspace snapshot matched origin/main and showed 818 dirty paths, none intersecting the bounded pilot path. No Goal Grant request or SPEC-224 Job exists; SAFE_DISJOINT_DIRTY must still be revalidated before lease acquisition.",
+        "source_sha": "06035531a6be96a45f379188385b1fa759ff28a4",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1224,7 +1232,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 244,
+  "generation": 245,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -3962,7 +3970,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T18:51:54.946262Z",
+  "updated_at": "2026-10-28T18:59:23.741509Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
