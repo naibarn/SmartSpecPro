@@ -35,9 +35,9 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "M1/M2 and successful application Job c3d735c8-d101-44ce-8f6f-2e39304df219 are preserved; do not repeat them. Deploy the integrated M3 parity slice through the authorized Linux release workflow. Reconcile authenticated credit preflight and, if READY, use one Owner submission for credit_billing_acceptance, then monitor its canonical job and receipt. Queue Recovery stays blocked until all 12 live lifecycle probes exist and pass.",
+      "next_action": "g192 is live and verified from source 6c48179aa81d94595dd764907481b0b94842cd1a; release receipt confirms web and Node worker revisions, Node v22.23.4, health HTTP 200, public Admin shell and AdminSettings asset include both M3 parity operations. origin/main subsequently advanced to 78ee1843fbac64ea0b586b39c884ee041a0467a6 through unrelated SPEC-224 commits; do not redeploy unrelated changes blindly. Next: in normal Owner session open Deployment Targets, read authenticated credit_billing_acceptance preflight; if READY, review the displayed plan and authorize exactly one bounded synthetic job. Reconcile same submission and verify canonical Cloudflare job/receipt. Queue Recovery remains blocked on 12 missing live lifecycle probes, which must be implemented before authorization.",
       "checkpoint_sha": "f61a09d3dbd69fa862d4bf0c7ead41cf2f0874a1",
-      "merged_main_sha": "f61a09d3dbd69fa862d4bf0c7ead41cf2f0874a1",
+      "merged_main_sha": "78ee1843fbac64ea0b586b39c884ee041a0467a6",
       "session_id": "codex-m3-parity"
     }
   },
@@ -50,11 +50,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 153,
-  "updated_at": "2026-10-28T00:20:11.974845+00:00",
+  "generation": 154,
+  "updated_at": "2026-10-28T00:29:39.063789+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "M1/M2 and successful application Job c3d735c8-d101-44ce-8f6f-2e39304df219 are preserved; do not repeat them. Deploy the integrated M3 parity slice through the authorized Linux release workflow. Reconcile authenticated credit preflight and, if READY, use one Owner submission for credit_billing_acceptance, then monitor its canonical job and receipt. Queue Recovery stays blocked until all 12 live lifecycle probes exist and pass.",
+    "next_action": "g192 is live and verified from source 6c48179aa81d94595dd764907481b0b94842cd1a; release receipt confirms web and Node worker revisions, Node v22.23.4, health HTTP 200, public Admin shell and AdminSettings asset include both M3 parity operations. origin/main subsequently advanced to 78ee1843fbac64ea0b586b39c884ee041a0467a6 through unrelated SPEC-224 commits; do not redeploy unrelated changes blindly. Next: in normal Owner session open Deployment Targets, read authenticated credit_billing_acceptance preflight; if READY, review the displayed plan and authorize exactly one bounded synthetic job. Reconcile same submission and verify canonical Cloudflare job/receipt. Queue Recovery remains blocked on 12 missing live lifecycle probes, which must be implemented before authorization.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
@@ -63,7 +63,7 @@
       "M1_ACCEPTED, M2_ACCEPTED and authenticated Cloudflare application acceptance Job c3d735c8-d101-44ce-8f6f-2e39304df219 remain preserved; do not repeat them. Bounded runtime Boot/SQL job 89489511-c363-4209-b9d9-f828024e5e41 passed and remains distinct from application acceptance. Credit/Billing and Queue/Recovery are the remaining M3 live parity gates; no live parity job/receipt exists yet. Native activation requires separate authority after M3 gates pass.",
       "Historical application job 95961f8d-309f-4037-8963-40955d4f2730 failed with Node health HTTP 503 and was compensated; later application acceptance Job c3d735c8-d101-44ce-8f6f-2e39304df219 succeeded and supersedes that failure for application acceptance. Preserve both records; do not repeat application acceptance."
     ],
-    "merged_main_sha": "f61a09d3dbd69fa862d4bf0c7ead41cf2f0874a1",
+    "merged_main_sha": "78ee1843fbac64ea0b586b39c884ee041a0467a6",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
