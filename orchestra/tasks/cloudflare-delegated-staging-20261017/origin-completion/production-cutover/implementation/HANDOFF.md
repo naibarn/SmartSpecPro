@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `170`
-- Updated (UTC): `2026-10-28T08:30:56.758975+00:00`
+- State generation: `172`
+- Updated (UTC): `2026-10-28T08:33:46.635231+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/cloudflare-delegated-staging-20261017/origin-completion/production-cutover/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `c3b429551fcf15e619ba34d45eaa3862dfba6acf`
+- Latest recorded merged Main SHA: `68c58bd1a607f0b66301c957315ac19309605f93`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-production-readiness-and-cutover`
-- Next action: Extend the canonical Mission projection and Admin Control Center to derive M1/M2/application/Worker/runtime/Credit/Queue/M3/native-cutover milestones only from verified scoped receipts. Then resolve mandate enrollment readiness and the exact live preflight through authenticated Owner session; do not mutate traffic.
+- Next action: Phase 7 milestone projection/UI is integrated and the latest canonical SHA is 68c58bd1a607f0b66301c957315ac19309605f93. Next: implement a single authenticated tenant Owner mandate enrollment/revocation through the existing approval store, with exact resource/action/budget limits and admission enforcement; do not treat the chat directive as the enrolled grant. In parallel, production Queue/Consumer/DLQ and active Worker readback need the Owner's normal authenticated Admin session; no such identity is available here. Origin revision is expired and baseline-digest bound; design new immutable revision + baseline reconciliation, then request enrollment once.
 
 ## Sections
 
@@ -20,7 +20,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-01-production-target-ui | checkpointed | — | — | a96a1d2307a77fea47b929a71122fec229b844ac | db36dcbad2befa78635c2586816f9aeb6e3f1b43 | Completed historical setup. Do not reopen target-picker or Staging work. M1_ACCEPTED and M2_ACCEPTED remain preserved; continue only the exact M3 native runtime application acceptance recorded in section-04. |
 | section-02-production-deploy-authority | checkpointed | — | — | 57da33899915f7a9497e1cefcec5362c6b583d7a | e46e3ab6650c6ede6433df944614443482008262 | Completed historical ingress authority. M2_ACCEPTED remains live and unchanged; do not repeat route/deployment or canary work. Continue only M3 application acceptance and later separate native activation. |
 | section-03-production-runtime-composition | checkpointed | — | /mnt/SmartSpecDev/projects/SmartSpecPro | cd81bc717da74f30c370107b02555efdc70baf4a | c23009cd3b6af59662e56f0e3697bf74abfcdf2e | M1 VPC/Hyperdrive and tenant-isolation acceptance are complete and preserved. Do not reprovision or revisit the old DB job. Continue M3 from the verified published pair and successful bounded runtime Job 89489511-c363-4209-b9d9-f828024e5e41; full API/tenant/Gateway/billing/job acceptance remains open. |
-| section-04-production-readiness-and-cutover | checkpointed | codex-mission-reset-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | 079a18c5f83263d159715d9c9b3e74cf2c597a7b | c3b429551fcf15e619ba34d45eaa3862dfba6acf | Extend the canonical Mission projection and Admin Control Center to derive M1/M2/application/Worker/runtime/Credit/Queue/M3/native-cutover milestones only from verified scoped receipts. Then resolve mandate enrollment readiness and the exact live preflight through authenticated Owner session; do not mutate traffic. |
+| section-04-production-readiness-and-cutover | checkpointed | codex-mission-reset-20261028 | /mnt/SmartSpecDev/projects/SmartSpecPro | 68c58bd1a607f0b66301c957315ac19309605f93 | 68c58bd1a607f0b66301c957315ac19309605f93 | Phase 7 milestone projection/UI is integrated and the latest canonical SHA is 68c58bd1a607f0b66301c957315ac19309605f93. Next: implement a single authenticated tenant Owner mandate enrollment/revocation through the existing approval store, with exact resource/action/budget limits and admission enforcement; do not treat the chat directive as the enrolled grant. In parallel, production Queue/Consumer/DLQ and active Worker readback need the Owner's normal authenticated Admin session; no such identity is available here. Origin revision is expired and baseline-digest bound; design new immutable revision + baseline reconciliation, then request enrollment once. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
@@ -49,6 +49,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 - The origin configuration shown EXPIRED is a Canary blocker: getProductionWorkerCanaryPreflight requires STORED status, a digest matching the active baseline annotation, and >20 minutes remaining. Origin versions are immutable and digest includes expiresAt; renewal must be a new scoped configuration plus baseline-compatible authorized deployment/reconciliation, not an in-place expiry edit.
 - No authenticated production Cloudflare provider readback was available in this session. Actual Queue ID, Consumer, DLQ, Worker identity and active baseline remain unverified until normal Owner Admin read-only preflight.
 - Production origin configuration is reported EXPIRED. Canary preflight requires STORED status, baseline-matching digest and >20 minutes validity; renewal changes immutable configuration digest, so baseline-compatible configuration and Worker version/deployment reconciliation must precede a Canary grant.
+- No FIRST_MIGRATION_MANDATE record or admission enforcement exists; current campaignAuthority remains NOT_AUTHORIZED.
 
 ## Resume
 
