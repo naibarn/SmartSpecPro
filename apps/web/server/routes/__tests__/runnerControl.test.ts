@@ -1388,6 +1388,73 @@ describe("Runner control transport routes", () => {
       .expect(401, { error: "runner_refresh_revoked" });
   });
 
+  it("renews legacy local-device credentials using the trusted registry owner binding", async () => {
+    const app = express();
+    app.use(express.json());
+    const runnerId = "runner-refresh-legacy-owner";
+    const tenantId = "tenant-refresh-owner";
+    const ownerUserId = 71;
+    const deviceId = "device-refresh-owner";
+    const keyPair = crypto.generateKeyPairSync("rsa", {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: "spki", format: "pem" },
+      privateKeyEncoding: { type: "pkcs8", format: "pem" },
+    });
+    const session = runnerSessionController.start({
+      runnerId, tenantId, deviceId, ownerUserId, ttlMs: 60_000,
+    });
+    runnerSessionController.approve({
+      runnerSessionId: session.runnerSessionId, nonce: session.nonce,
+      ownerUserId, tenantId,
+    });
+    runnerSessionController.authorize({
+      runnerSessionId: session.runnerSessionId, deviceProofVerified: true,
+    });
+    const repository = new InMemoryRunnerRepository();
+    await repository.saveNode({
+      runnerId, tenantId, ownerUserId, deviceId,
+      machineFingerprintHash: crypto.createHash("sha256").update("fingerprint").digest("hex"),
+      nodeKind: "local_device", profile: "local_device", displayName: "Legacy owner refresh",
+      trustState: "trusted", status: "online", currentSnapshotRevision: null,
+      currentSnapshot: null, lastSeenAt: new Date().toISOString(), revokedAt: null,
+      activeSessionId: session.runnerSessionId,
+    });
+    registerRunnerControlRoutes(app, new RunnerGateway(repository));
+
+    // This models a refresh token issued before runnerOwnerUserId was added.
+    const legacyTokens = issueRunnerAccessTokens({
+      runnerId, tenantId, profile: "local_device", nodeKind: "local_device",
+      runnerSessionId: session.runnerSessionId,
+      deviceBinding: { deviceId, machineFingerprint: "fingerprint", publicKey: keyPair.publicKey },
+    });
+    const path = `/api/runners/${runnerId}/access/refresh`;
+    const nonce = `legacy-refresh-${Date.now()}`;
+    const timestamp = new Date().toISOString();
+    const tokenClaims = await verifyBearerToken(legacyTokens.refreshToken);
+    const bodyHash = crypto.createHash("sha256").update("{}").digest("hex");
+    const signature = crypto.sign("sha256", Buffer.from(runnerDeviceProofPayload({
+      bodyHash, jti: String(tokenClaims.jti), method: "POST", nonce, path, timestamp,
+    })), keyPair.privateKey).toString("base64");
+    const refreshedResponse = await request(app)
+      .post(path)
+      .set("Authorization", `Bearer ${legacyTokens.refreshToken}`)
+      .set("X-Runner-Device-Id", deviceId)
+      .set("X-Runner-Device-Public-Key", keyPair.publicKey.replace(/\n/g, "\\n"))
+      .set("X-Runner-Machine-Fingerprint", "fingerprint")
+      .set("X-Runner-Device-Nonce", nonce)
+      .set("X-Runner-Device-Timestamp", timestamp)
+      .set("X-Runner-Device-Signature", signature);
+    expect(refreshedResponse.status, JSON.stringify(refreshedResponse.body)).toBe(200);
+
+    expect(runnerSessionController.assertAuthorized(session.runnerSessionId)).toMatchObject({
+      runnerId, tenantId, deviceId, ownerUserId, state: "authorized",
+    });
+    await expect(verifyBearerToken(refreshedResponse.body.refreshToken)).resolves.toMatchObject({
+      runnerOwnerUserId: ownerUserId,
+      runnerSessionId: session.runnerSessionId,
+    });
+  });
+
   it("revokes a local Runner only for its authenticated owner", async () => {
     vi.mocked(authorizeRequest).mockResolvedValue({
       ok: true,

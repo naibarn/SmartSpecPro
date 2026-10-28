@@ -180,6 +180,15 @@ const emptyQuery = {
   refetch: mocks.refetch,
 };
 
+const readyWorkspaceModelCatalog = {
+  state: "discovered",
+  observedAt: new Date().toISOString(),
+  expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  accountProviderFingerprint: "test-account-provider",
+  revision: "test-model-catalog-r1",
+  models: [{ id: "test-model", displayName: "Test Model", isDefault: true, reasoningEfforts: ["medium"], defaultReasoningEffort: "medium" }],
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.summaryQuery.mockReturnValue(emptyQuery);
@@ -392,6 +401,9 @@ describe("UniversalControlPlanePanel", () => {
   });
 
   it("prepares first, then starts prompt development only through the explicit user action", async () => {
+    mocks.availableWorkspacesQuery.mockReturnValue({ ...emptyQuery, data: { workspaces: [
+      { runnerId: "runner-1", workspaceId: "workspace-1", displayName: "Dev machine", status: "online", snapshotRevision: "r1", modelCatalog: readyWorkspaceModelCatalog },
+    ] } });
     mocks.prepareWorkspaceMutateAsync.mockResolvedValueOnce({
       planId: "plan-1", planRevision: 1, requirementCount: 0,
       runnableWorkPackageIds: ["prompt"], blockers: [],
@@ -448,6 +460,9 @@ describe("UniversalControlPlanePanel", () => {
   });
 
   it("starts one ready Spec package while leaving a blocked package unstartable", async () => {
+    mocks.availableWorkspacesQuery.mockReturnValue({ ...emptyQuery, data: { workspaces: [
+      { runnerId: "runner-1", workspaceId: "workspace-1", displayName: "Dev machine", status: "online", snapshotRevision: "r1", modelCatalog: readyWorkspaceModelCatalog },
+    ] } });
     mocks.featureSpecContextQuery.mockReturnValue({ ...emptyQuery, data: { handoff: { status: "CURRENT", nextReadyWorkunit: "ready-api", nextAction: "Implement ready-api", openRequirements: [] } } });
     mocks.conversationWorkspaceQuery.mockReturnValue({
       ...emptyQuery,

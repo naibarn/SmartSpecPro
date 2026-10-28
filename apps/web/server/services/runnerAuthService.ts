@@ -448,6 +448,7 @@ export function createRunnerControlToken(
     scopes?: string[];
     deviceBinding?: RunnerDeviceBindingInput;
     runnerSessionId?: string;
+    ownerUserId?: number | null;
   },
   expiresIn: "5m" | "15m" | "1h" = "15m"
 ): string {
@@ -460,6 +461,7 @@ export function createRunnerControlToken(
       runnerNodeKind: input.nodeKind,
       ...runnerDeviceClaims(input.profile, input.deviceBinding),
       ...(input.runnerSessionId ? { runnerSessionId: input.runnerSessionId } : {}),
+      ...(input.ownerUserId ? { runnerOwnerUserId: input.ownerUserId } : {}),
       aud: RUNNER_CONTROL_PLANE_AUDIENCE,
       tokenUse: "runner_control",
       scopes: input.scopes ?? [
@@ -513,6 +515,7 @@ export function issueRunnerAccessTokens(input: {
   scopes?: string[];
   deviceBinding?: RunnerDeviceBindingInput;
   runnerSessionId?: string;
+  ownerUserId?: number | null;
 }): { executionToken: string; uploadToken: string; refreshToken: string } {
   const base = {
     sub: input.subject ?? input.runnerId,
@@ -522,6 +525,7 @@ export function issueRunnerAccessTokens(input: {
     runnerNodeKind: input.nodeKind,
     ...runnerDeviceClaims(input.profile, input.deviceBinding),
     ...(input.runnerSessionId ? { runnerSessionId: input.runnerSessionId } : {}),
+    ...(input.ownerUserId ? { runnerOwnerUserId: input.ownerUserId } : {}),
     aud: RUNNER_CONTROL_PLANE_AUDIENCE,
     scopes: input.scopes ?? ["runner:execute", "runner:upload"],
   } as const;
@@ -638,7 +642,8 @@ export async function verifyRunnerRefreshToken(
 
 export async function refreshRunnerAccessTokens(
   token: string,
-  expected?: RunnerTokenExpectation
+  expected?: RunnerTokenExpectation,
+  authoritativeOwnerUserId?: number | null,
 ): Promise<RunnerTokenSet> {
   const now = Date.now();
   pruneRunnerRefreshGrace(now);
@@ -678,6 +683,9 @@ export async function refreshRunnerAccessTokens(
     profile: current.profile,
     nodeKind: current.nodeKind,
     runnerSessionId: current.runnerSessionId ?? undefined,
+    ownerUserId: authoritativeOwnerUserId !== undefined
+      ? authoritativeOwnerUserId
+      : current.ownerUserId,
     scopes: current.scopes,
     deviceBinding:
       current.deviceId && current.devicePublicKey

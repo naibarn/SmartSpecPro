@@ -2313,6 +2313,7 @@ export function registerRunnerControlRoutes(
           nodeKind: "local_device",
           deviceBinding,
           runnerSessionId: session.runnerSessionId,
+          ownerUserId: session.result.runner.ownerUserId,
         });
         const tokens = issueRunnerAccessTokens({
           runnerId: session.result.runner.runnerId,
@@ -2322,6 +2323,7 @@ export function registerRunnerControlRoutes(
           nodeKind: "local_device",
           deviceBinding,
           runnerSessionId: session.runnerSessionId,
+          ownerUserId: session.result.runner.ownerUserId,
         });
         return res.json({
           status: "approved",
@@ -2485,18 +2487,26 @@ export function registerRunnerControlRoutes(
       const node = await gateway.getStatus(auth);
       if (node.revokedAt || node.trustState === "revoked")
         throw new RunnerAuthError("runner_revoked", 403, "Runner is revoked");
+      if (
+        node.deviceId !== auth.deviceId ||
+        (node.machineFingerprintHash && node.machineFingerprintHash !== auth.machineFingerprintHash) ||
+        (auth.ownerUserId !== null && node.ownerUserId !== auth.ownerUserId)
+      )
+        throw new RunnerAuthError("runner_device_mismatch", 401, "Runner credential does not match its registered device");
       if (auth.runnerSessionId) {
         runnerSessionController.restoreAuthorized({
           runnerSessionId: auth.runnerSessionId,
           runnerId: auth.runnerId,
           tenantId: auth.tenantId,
-          deviceId: auth.deviceId ?? auth.runnerId,
-          ownerUserId: auth.ownerUserId,
+          // Older refresh tokens predate runnerOwnerUserId. The trusted
+          // Runner Registry is authoritative for the owner binding.
+          deviceId: node.deviceId ?? auth.runnerId,
+          ownerUserId: node.ownerUserId,
         });
       }
       const tokens = await refreshRunnerAccessTokens(token, {
         runnerId: req.params.runnerId,
-      });
+      }, node.ownerUserId);
       const controlToken = createRunnerControlToken({
         runnerId: auth.runnerId,
         tenantId: auth.tenantId,
@@ -2504,6 +2514,7 @@ export function registerRunnerControlRoutes(
         profile: auth.profile,
         nodeKind: auth.nodeKind,
         runnerSessionId: auth.runnerSessionId ?? undefined,
+        ownerUserId: node.ownerUserId,
         deviceBinding:
           auth.deviceId && auth.devicePublicKey && auth.machineFingerprintHash
             ? {
