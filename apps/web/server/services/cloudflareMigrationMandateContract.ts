@@ -29,7 +29,7 @@ export const cloudflareMigrationMandateEnvelopeSchema = z.object({
   ])).min(1).max(7),
   resourceBudget: z.object({
     maxProviderWrites: z.number().int().min(1).max(40),
-    maxWorkerDeployments: z.number().int().min(1).max(4),
+    maxWorkerDeployments: z.number().int().min(8).max(8),
     maxContainerStarts: z.number().int().min(0).max(8),
     maxContainerReservedSeconds: z.number().int().min(0).max(3600),
     maxQueueMessages: z.number().int().min(0).max(500),

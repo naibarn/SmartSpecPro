@@ -121,7 +121,10 @@ def _normalize_cloudflare_migration_mandate(value: dict) -> dict:
         not re.fullmatch(r"[a-f0-9]{32}", resources["pythonApplicationId"]) or
         not isinstance(actions, list) or not actions or len(actions) != len(set(actions)) or not set(actions) <= allowed_actions or
         type(budget["maxProviderWrites"]) is not int or not 1 <= budget["maxProviderWrites"] <= 40 or
-        type(budget["maxWorkerDeployments"]) is not int or not 1 <= budget["maxWorkerDeployments"] <= 4 or
+        # Four deployments cover the reviewed rollout and rollback path; the
+        # other four are a bounded recovery reserve. Keep this aligned with
+        # the Web envelope contract rather than accepting an underfunded plan.
+        type(budget["maxWorkerDeployments"]) is not int or budget["maxWorkerDeployments"] != 8 or
         type(budget["maxContainerStarts"]) is not int or not 0 <= budget["maxContainerStarts"] <= 8 or
         type(budget["maxContainerReservedSeconds"]) is not int or not 0 <= budget["maxContainerReservedSeconds"] <= 3600 or
         type(budget["maxQueueMessages"]) is not int or not 0 <= budget["maxQueueMessages"] <= 500 or

@@ -11,7 +11,10 @@ import { cloudflareMigrationMandateEnvelopeSchema, cloudflareMigrationMissionId,
   cloudflareMigrationMandateEnrollmentPayload, cloudflareCanonicalJson, cloudflarePlanDigest } from "./cloudflareMigrationMandateContract";
 
 const API_BASE = "/api/v1/approvals/cloudflare-migration-mandates";
-const RESOURCE_BUDGET = Object.freeze({ maxProviderWrites: 20, maxWorkerDeployments: 2, maxContainerStarts: 4,
+// One complete rollout needs four Worker deployments (candidate/canary,
+// promotion, native activation and the reserved rollback). Reserve one full
+// recovery pass as well; these are operation quotas, not a monetary cap.
+const RESOURCE_BUDGET = Object.freeze({ maxProviderWrites: 20, maxWorkerDeployments: 8, maxContainerStarts: 4,
   maxContainerReservedSeconds: 1800, maxQueueMessages: 100, maxSyntheticCredits: 60, syntheticFinancialMinorUnits: 0 as const });
 const ROLLBACK_POLICY = Object.freeze({ preserveM2Ingress: true as const, preserveLinuxFallback: true as const,
   containersOnDemand: true as const, rollbackOnFailedAcceptance: true as const, requireOwnerForOutOfScopeAction: true as const });

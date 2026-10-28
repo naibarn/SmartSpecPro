@@ -23,7 +23,7 @@ def _mandate(**overrides):
             "hyperdriveId": "e" * 32, "nodeApplicationId": "a" * 32, "pythonApplicationId": "b" * 32},
         "actions": ["rotate_origin_configuration", "deploy_worker", "worker_canary", "synthetic_credit_billing",
             "synthetic_queue_recovery", "native_runtime_activation", "rollback"],
-        "resourceBudget": {"maxProviderWrites": 20, "maxWorkerDeployments": 2, "maxContainerStarts": 4,
+        "resourceBudget": {"maxProviderWrites": 20, "maxWorkerDeployments": 8, "maxContainerStarts": 4,
             "maxContainerReservedSeconds": 1800, "maxQueueMessages": 100, "maxSyntheticCredits": 60, "syntheticFinancialMinorUnits": 0},
         "rollbackPolicy": {"preserveM2Ingress": True, "preserveLinuxFallback": True, "containersOnDemand": True,
             "rollbackOnFailedAcceptance": True, "requireOwnerForOutOfScopeAction": True},
@@ -39,6 +39,7 @@ def test_mandate_contract_rejects_foreign_scope_expanded_budget_and_charge_autho
     for candidate in (
         _mandate(tenantId="tenant-b"),
         _mandate(resourceBudget={**_mandate()["resourceBudget"], "maxQueueMessages": 501}),
+        _mandate(resourceBudget={**_mandate()["resourceBudget"], "maxWorkerDeployments": 7}),
         _mandate(resourceBudget={**_mandate()["resourceBudget"], "syntheticFinancialMinorUnits": 1}),
         _mandate(rollbackPolicy={**_mandate()["rollbackPolicy"], "preserveLinuxFallback": False}),
         _mandate(actions=["delete_customer_data"]),

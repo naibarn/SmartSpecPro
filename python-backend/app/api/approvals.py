@@ -377,7 +377,7 @@ class CloudflareMigrationMandateResources(BaseModel):
 class CloudflareMigrationMandateBudget(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
     max_provider_writes: StrictInt = Field(..., alias="maxProviderWrites", ge=1, le=40)
-    max_worker_deployments: StrictInt = Field(..., alias="maxWorkerDeployments", ge=1, le=4)
+    max_worker_deployments: StrictInt = Field(..., alias="maxWorkerDeployments", ge=8, le=8)
     max_container_starts: StrictInt = Field(..., alias="maxContainerStarts", ge=0, le=8)
     max_container_reserved_seconds: StrictInt = Field(..., alias="maxContainerReservedSeconds", ge=0, le=3600)
     max_queue_messages: StrictInt = Field(..., alias="maxQueueMessages", ge=0, le=500)
