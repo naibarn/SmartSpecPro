@@ -35,10 +35,10 @@
     "section-04-production-readiness-and-cutover": {
       "status": "checkpointed",
       "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro",
-      "next_action": "g196 DEPLOYED_VERIFIED from origin/main SHA 96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457. Canary job read model now returns null for empty registry and stable sanitized errors for DB init/query failures; null legacy probe maps render safely. Cloudflare deployments readback now requests per_page=100 and reconciles all result.deployments pages with exact schema/pagination diagnostics; canary transport reads the documented active deployment page. Public Admin and assets verified against g196. Next: from the Owner normal authenticated Admin session, recheck read-only Worker canary preflight and latest Job query; if READY review the exact 1% plan and use existing Owner operation, otherwise report the returned exact reason. No canary Job or traffic mutation was performed. Keep M1/M2/application receipt and Linux fallback; continue Credit/Billing and Queue/Recovery gates separately.",
-      "checkpoint_sha": "96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457",
-      "merged_main_sha": "96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457",
-      "session_id": "codex-g196-production-canary-readback"
+      "next_action": "g197 DEPLOYED_VERIFIED from source d07fe981bb3924cbf78dbb49158d9a088fe47dd2 (origin/main at the build checkpoint). Release smartspec-web-d07fe981bb3924cbf78dbb49158d9a088fe47dd2-86909081eb4f, artifact sha256:41dfb6517c2715b8009c43cb60525180fdf30d09d435b6910afce02a417712d3; runtime health 200, web and Node worker healthy on Node v22.23.4. Exact g195 500 cause confirmed from journal stack and production schema: read projection selected workerJobs.updatedAt, which is undefined because worker_jobs schema has no updatedAt; Drizzle orderSelectedFields threw Cannot convert undefined or null to object. Removed that selection, added real drizzle.mock schema-to-SQL regression. Focused tests 127/127 pass. Public AdminSettings asset SHA256 a06bd35d4b8c64f72a921b0300dd03d84bac369d20f1eb1a016437d3467bff3d matches g197; anonymous query returned expected 403 FORBIDDEN, and no authenticated query hit the server since deployment. Deployment inventory now reads paginated result.deployments and returns specific schema/pagination/permission/baseline/version diagnostics; no Cloudflare traffic changed. Current main advanced to a955f313 through runner-only change with no apps/web diff after d07; no app redeploy needed. Next: Owner normal session reloads Admin and runs read-only preflight/status query; only report the actual result then. If READY, review the exact existing 1% scoped plan and use Owner authority; otherwise fix the returned exact blocker. Continue independent M3 Credit/Billing and Queue/Recovery. Preserve M1/M2/application receipt/Linux fallback.",
+      "checkpoint_sha": "d07fe981bb3924cbf78dbb49158d9a088fe47dd2",
+      "merged_main_sha": "a955f3134fc12a84ffc5d2b784719c22d3057435",
+      "session_id": "codex-g197-production-canary-readback"
     }
   },
   "pre_commit": {
@@ -50,11 +50,11 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-24T12:51:46.600802+00:00",
-  "generation": 164,
-  "updated_at": "2026-10-28T05:06:54.138095+00:00",
+  "generation": 165,
+  "updated_at": "2026-10-28T05:19:04.034991+00:00",
   "progress": {
     "active_section": "section-04-production-readiness-and-cutover",
-    "next_action": "g196 DEPLOYED_VERIFIED from origin/main SHA 96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457. Canary job read model now returns null for empty registry and stable sanitized errors for DB init/query failures; null legacy probe maps render safely. Cloudflare deployments readback now requests per_page=100 and reconciles all result.deployments pages with exact schema/pagination diagnostics; canary transport reads the documented active deployment page. Public Admin and assets verified against g196. Next: from the Owner normal authenticated Admin session, recheck read-only Worker canary preflight and latest Job query; if READY review the exact 1% plan and use existing Owner operation, otherwise report the returned exact reason. No canary Job or traffic mutation was performed. Keep M1/M2/application receipt and Linux fallback; continue Credit/Billing and Queue/Recovery gates separately.",
+    "next_action": "g197 DEPLOYED_VERIFIED from source d07fe981bb3924cbf78dbb49158d9a088fe47dd2 (origin/main at the build checkpoint). Release smartspec-web-d07fe981bb3924cbf78dbb49158d9a088fe47dd2-86909081eb4f, artifact sha256:41dfb6517c2715b8009c43cb60525180fdf30d09d435b6910afce02a417712d3; runtime health 200, web and Node worker healthy on Node v22.23.4. Exact g195 500 cause confirmed from journal stack and production schema: read projection selected workerJobs.updatedAt, which is undefined because worker_jobs schema has no updatedAt; Drizzle orderSelectedFields threw Cannot convert undefined or null to object. Removed that selection, added real drizzle.mock schema-to-SQL regression. Focused tests 127/127 pass. Public AdminSettings asset SHA256 a06bd35d4b8c64f72a921b0300dd03d84bac369d20f1eb1a016437d3467bff3d matches g197; anonymous query returned expected 403 FORBIDDEN, and no authenticated query hit the server since deployment. Deployment inventory now reads paginated result.deployments and returns specific schema/pagination/permission/baseline/version diagnostics; no Cloudflare traffic changed. Current main advanced to a955f313 through runner-only change with no apps/web diff after d07; no app redeploy needed. Next: Owner normal session reloads Admin and runs read-only preflight/status query; only report the actual result then. If READY, review the exact existing 1% scoped plan and use Owner authority; otherwise fix the returned exact blocker. Continue independent M3 Credit/Billing and Queue/Recovery. Preserve M1/M2/application receipt/Linux fallback.",
     "gaps": [
       "M3_RUNTIME NOT_ACCEPTED. Exact bounded runtime job 89489511-c363-4209-b9d9-f828024e5e41 succeeded 1/1: live Cloudflare SIN Node/Python health and PostgreSQL database-readiness probes passed using the corrected immutable pair. Receipt verifies image references, actual on-demand starts, Node starts=2/reserved=911s and Python starts=1/reserved=349s, cleanup stopped both apps, revoked temporary database-role login, restored Candidate baseline version 7c144824-ccef-44b4-989b-c9c634e0e27c, and preserved M2. This job did not authorize or prove authenticated-positive application/API journeys, cross-tenant denial with synthetic fixtures, Gateway/billing/job parity, or end-to-end recovery; receipt correctly records runtimeAcceptance=false and m3Accepted=false. Linux remains the application fallback and production traffic is unchanged. Next execution must use synthetic fixtures and an exact bounded acceptance authority; native traffic activation remains separate.",
       "NATIVE_RUNTIME_ACTIVATION NOT_AUTHORIZED: only after the synthetic authenticated/API/tenant/Gateway/billing/job/recovery suite passes, prepare the exact traffic/rollback plan and use the existing separate production activation authorization. Keep M2 ingress and Linux fallback serving until that acceptance is verified.",
@@ -78,7 +78,7 @@
       "Authenticated Owner preflight and production Cloudflare inventory remain unverified from this CLI session; public unauthenticated endpoint returns expected 403.",
       "No production Worker canary canonical job, deployment receipt, route mutation, or traffic change was performed."
     ],
-    "merged_main_sha": "96d4b3744f4fc1e5c88b4cae6bc347fcd54a0457",
+    "merged_main_sha": "a955f3134fc12a84ffc5d2b784719c22d3057435",
     "worktree": "/mnt/SmartSpecDev/projects/SmartSpecPro"
   }
 }
