@@ -1467,8 +1467,9 @@ export async function handleRunnerSocketMessage(
       typeof rejectedPayload.snapshot === "object" &&
       !Array.isArray(rejectedPayload.snapshot)
         ? (rejectedPayload.snapshot as Record<string, unknown>)
-        : null;
+      : null;
     const safeErrorCode = safeRunnerCapabilityErrorCode(error);
+    const errorClass = error instanceof Error ? error.constructor.name : typeof error;
     console.warn("[RunnerControl] runner event rejected", {
       stage: failureStage,
       eventType: rejectedType ?? null,
@@ -1496,6 +1497,7 @@ export async function handleRunnerSocketMessage(
                 : 409
             : null,
       errorCode: safeErrorCode,
+      errorClass,
       ...(receiptDiagnostics ? { receiptDiagnostics } : {}),
     });
     sendRunnerSocket(ws, {
@@ -1526,6 +1528,11 @@ function safeRunnerCapabilityErrorCode(error: unknown): string {
     /^[A-Z][A-Z0-9_]{2,100}$/.test(error.message)
   )
     return error.message;
+  const structuredCode = error && typeof error === "object" && "code" in error
+    ? (error as { code?: unknown }).code
+    : undefined;
+  if (typeof structuredCode === "string" && /^[A-Za-z][A-Za-z0-9_]{2,100}$/.test(structuredCode))
+    return structuredCode.toUpperCase();
   if (
     error instanceof RunnerAuthError ||
     error instanceof RunnerGatewayError ||

@@ -329,6 +329,52 @@ describe("Runner control transport routes", () => {
     });
   });
 
+  it("preserves the stable control-plane contract error code for rejected capability snapshots", async () => {
+    const runnerId = `runner-invalid-capability-${Date.now()}`;
+    const tenantId = "tenant-invalid-capability";
+    const token = createRunnerControlToken({
+      runnerId,
+      tenantId,
+      profile: "shared_container",
+      nodeKind: "managed_container",
+    });
+    const sent: Array<Record<string, unknown>> = [];
+    const ws = {
+      readyState: 1,
+      send: (raw: string) => sent.push(JSON.parse(raw) as Record<string, unknown>),
+      close: vi.fn(),
+    } as unknown as WebSocket;
+    const invalidSnapshot = {
+      ...envelope(runnerId).payload.snapshot,
+      resourceClass: "unbounded",
+    };
+    const invalidEnvelope = {
+      ...envelope(runnerId),
+      payload: { type: "runner.capabilities.update", snapshot: invalidSnapshot },
+    };
+
+    await handleRunnerSocketMessage(
+      ws,
+      {
+        token,
+        runnerId,
+        tenantId,
+        runnerSessionId: null,
+        controlPlaneOrigin: "https://runner-test.example",
+        deviceProofVerified: false,
+      },
+      Buffer.from(JSON.stringify(invalidEnvelope)),
+      { getStatus: vi.fn(async () => ({})) } as unknown as RunnerGateway,
+    );
+
+    expect(sent[0]).toMatchObject({
+      ackState: "rejected",
+      reason: "RUNNER_CONTRACT_INVALID",
+      eventType: "runner.capabilities.update",
+      capabilityRevision: "snapshot:1",
+    });
+  });
+
   it("accepts the public Runner origin when internal dispatch uses a private host", () => {
     expect(
       validateRunnerCommandControlPlaneOrigin(
