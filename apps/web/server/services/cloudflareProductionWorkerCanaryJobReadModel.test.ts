@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
-import { readLatestCloudflareProductionWorkerCanaryJob } from "./cloudflareProductionWorkerCanaryJobReadModel";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { workerJobs } from "../../drizzle/schema";
+import { buildLatestCloudflareProductionWorkerCanaryJobQuery, readLatestCloudflareProductionWorkerCanaryJob } from "./cloudflareProductionWorkerCanaryJobReadModel";
 
 function database(result: unknown[]) {
   const limit = vi.fn().mockResolvedValue(result);
@@ -17,10 +19,18 @@ describe("latest Production Worker canary job read model", () => {
     expect(query.limit).toHaveBeenCalledWith(1);
   });
 
+  it("builds its projection with real Drizzle schema columns", () => {
+    const db = drizzle.mock({ schema: { workerJobs } });
+    const sql = buildLatestCloudflareProductionWorkerCanaryJobQuery(db, { tenantId: "tenant-a", projectId: "project-a" }).toSQL().sql;
+    expect(sql).toContain('"createdAt"');
+    expect(sql).toContain('"progressJson"');
+    expect(sql).not.toContain('"updatedAt"');
+  });
+
   it.each(["queued", "running", "succeeded", "failed"] as const)("reads a %s job and preserves nullable JSON fields", async status => {
     const job = { jobId: "job-1", status, errorCode: null, output: null, input: null, progress: null,
       attempt: 1, maxAttempts: 1, requesterUserId: 7, createdAt: new Date("2026-10-28T00:00:00Z"),
-      updatedAt: new Date("2026-10-28T00:00:01Z"), heartbeatAt: null, leaseExpiresAt: null };
+      heartbeatAt: null, leaseExpiresAt: null };
     const query = database([job]);
     await expect(readLatestCloudflareProductionWorkerCanaryJob(query.db, { tenantId: "tenant-a", projectId: "project-a" }))
       .resolves.toEqual(job);
