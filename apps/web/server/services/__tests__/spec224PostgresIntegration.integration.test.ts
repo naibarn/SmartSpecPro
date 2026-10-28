@@ -135,6 +135,18 @@ function makeManifest(input: {
     skillIds: ["skill-spec224"],
     mcpGrantIds: [],
     requestedCapabilities: ["workspace.read", "workspace.write"],
+    spec224ModelSelection: {
+      adapterId: "codex.v1",
+      policy: "explicit" as const,
+      selectedModelId: "gpt-6.1-terra",
+      resolvedModelId: "gpt-6.1-terra",
+      reasoningEffort: "high",
+      catalogRevision: "catalog:sha256:spec224-pg-test",
+      accountProviderFingerprint: "codex-account:sha256:spec224-pg-test",
+      capabilitySnapshotRevision: "snapshot-spec224-pg-test",
+      capabilityProfile: ["text"],
+      cliVersion: "codex-cli test",
+    },
     policyBinding: {
       runnerId: "runner-spec224-db",
       runnerSessionId: `session-${input.taskId}`,
@@ -210,6 +222,8 @@ async function executeWithDeterministicRunner(
   expect(observedLease).not.toBeNull();
   expect(dispatchedCommand?.executionKind).toBe("external_agent_task");
   expect(dispatchedCommand?.adapterId).toBe("codex.v1");
+  expect((dispatchedCommand?.payload as Record<string, unknown>).spec224ModelSelection)
+    .toEqual(manifest.spec224ModelSelection);
   return { lease: observedLease!, command: dispatchedCommand! };
 }
 
