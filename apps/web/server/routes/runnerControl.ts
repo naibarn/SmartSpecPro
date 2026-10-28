@@ -1075,13 +1075,13 @@ export async function handleRunnerSocketMessage(
         gateway,
         auth
       );
-      await gateway.getStatus(auth);
       const snapshot = validateRunnerCapabilitySnapshot(
         envelope.payload.snapshot as Parameters<
           typeof validateRunnerCapabilitySnapshot
         >[0]
       );
       assertRunnerCapabilitySessionBinding(auth, snapshot);
+      await gateway.getStatus(auth);
       failureStage = "persist_snapshot";
       const result = await gateway.publishCapabilities({
         auth,
