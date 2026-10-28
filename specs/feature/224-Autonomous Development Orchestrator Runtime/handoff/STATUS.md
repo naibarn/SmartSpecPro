@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1301 unresolved of 1302
-- Next action: Implement the run/attempt-bound path-scoped lease through the existing SPEC-293 workspace_authority.py authority and canonical worker_jobs/outbox; bind and revalidate its fence at authorization, release and Runner apply, and release idempotently on terminal/recovery. Then establish the configured endpoint's immutable serving identity and use its structured rejection diagnostics to get the same current Runner session/snapshot acknowledged. Do not admit a Goal before source admission passes.
-- Manifest generation: 240
+- Next action: Approve the pending same-device reconnect for the existing Debian Runner. Restore its existing systemd service after the CLI completes; verify the server-applied snapshot ACK, current source SHA, complete dirtyPaths, Codex readiness and safe disjoint admission. Then use Task Control and the existing Approval Authority for the bounded Goal and complete real Child 1/2 dispatch, receipts, settlement and Final Verify. The integrated lease path is complete; acceptance remains PARTIAL until live execution passes.
+- Manifest generation: 242
 
 ## Source-declared status and relationship claims
 
