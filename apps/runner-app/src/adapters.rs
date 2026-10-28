@@ -3,6 +3,7 @@ use crate::process::{command_for_cli, hide_console_window, ProcessSpec};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::io::Read as _;
+use std::io::{BufRead, BufReader, Write as IoWrite};
 use std::net::{TcpListener, TcpStream};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
@@ -10,6 +11,29 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AvailableModel {
+    pub id: String,
+    pub display_name: String,
+    pub capabilities: Vec<String>,
+    pub reasoning_efforts: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexModelCatalog {
+    pub cli_version: Option<String>,
+    pub account_provider_fingerprint: Option<String>,
+    pub account_scope_state: String,
+    pub revision: String,
+    pub source: String,
+    /// App-server model/list can be backed by a bundled cache. This is never
+    /// evidence that the current account is entitled to execute the model.
+    pub verification_state: String,
+    pub models: Vec<AvailableModel>,
+}
 
 #[derive(Debug, Clone)]
 pub struct AdapterManifest {
@@ -922,6 +946,312 @@ fn codex_login_status_authenticated(output: &[u8]) -> bool {
             line.trim(),
             "Logged in using ChatGPT" | "Logged in using API key"
         )
+    })
+}
+
+/// Discovers Codex model IDs through its supported app-server JSON-RPC
+/// `model/list` method. The returned catalog is explicitly unverified because
+/// some Codex configurations serve a bundled catalog; callers must verify a
+/// selected model before authorizing execution.
+pub fn list_available_models(
+    candidate: &ToolCandidate,
+    timeout: Duration,
+) -> Result<CodexModelCatalog, String> {
+    if !approved_manifest(candidate) || candidate.adapter_id.as_deref() != Some("codex.v1") {
+        return Err("RUNNER_MODEL_DISCOVERY_UNSUPPORTED".into());
+    }
+    if timeout.is_zero() || timeout > Duration::from_secs(15) {
+        return Err("RUNNER_MODEL_DISCOVERY_TIMEOUT_INVALID".into());
+    }
+    let program = candidate
+        .executable_path
+        .as_deref()
+        .ok_or_else(|| "RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING".to_string())?;
+    discover_codex_model_catalog(program, candidate.version.as_deref(), timeout)
+}
+
+/// Explicit user-triggered refresh uses the same authoritative, bounded
+/// app-server source as initial discovery.
+pub fn refresh_model_catalog(
+    candidate: &ToolCandidate,
+    timeout: Duration,
+) -> Result<CodexModelCatalog, String> {
+    list_available_models(candidate, timeout)
+}
+
+fn discover_codex_model_catalog(
+    program: &Path,
+    cli_version: Option<&str>,
+    timeout: Duration,
+) -> Result<CodexModelCatalog, String> {
+    let mut command = command_for_cli(program, &["app-server".into(), "--stdio".into()])?;
+    command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    hide_console_window(&mut command);
+    let mut child = command
+        .spawn()
+        .map_err(|_| "RUNNER_MODEL_DISCOVERY_LAUNCH_FAILED".to_string())?;
+    let Some(mut stdin) = child.stdin.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err("RUNNER_MODEL_DISCOVERY_PROTOCOL_ERROR".into());
+    };
+    let Some(stdout) = child.stdout.take() else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err("RUNNER_MODEL_DISCOVERY_PROTOCOL_ERROR".into());
+    };
+    let stderr = child
+        .stderr
+        .take()
+        .map(|stream| std::thread::spawn(move || read_bounded_output(stream, 16 * 1024)));
+    let (sender, receiver) = mpsc::channel::<Result<String, ()>>();
+    let reader = std::thread::spawn(move || {
+        let mut reader = BufReader::new(stdout);
+        loop {
+            let mut line = Vec::new();
+            match reader.read_until(b'\n', &mut line) {
+                Ok(0) => break,
+                Ok(_) if line.len() <= 256 * 1024 => {
+                    let Ok(line) = String::from_utf8(line) else {
+                        let _ = sender.send(Err(()));
+                        break;
+                    };
+                    if sender.send(Ok(line)).is_err() {
+                        break;
+                    }
+                }
+                _ => {
+                    let _ = sender.send(Err(()));
+                    break;
+                }
+            }
+        }
+    });
+
+    let deadline = Instant::now() + timeout;
+    let result = (|| {
+        write_app_server_request(
+            &mut stdin,
+            &json!({
+                "method": "initialize",
+                "id": 1,
+                "params": {"clientInfo": {"name": "smartaihub-runner", "version": "0.1.0"}}
+            }),
+        )?;
+        let initialize = receive_app_server_response(&receiver, 1, deadline)?;
+        if initialize.get("error").is_some() || initialize.get("result").is_none() {
+            return Err("RUNNER_MODEL_DISCOVERY_INITIALIZE_FAILED".into());
+        }
+        write_app_server_request(&mut stdin, &json!({"method": "initialized", "params": {}}))?;
+        write_app_server_request(
+            &mut stdin,
+            &json!({"method": "account/read", "id": 2, "params": {}}),
+        )?;
+        write_app_server_request(
+            &mut stdin,
+            &json!({"method": "model/list", "id": 3, "params": {}}),
+        )?;
+        let mut account_response = None;
+        let mut model_response = None;
+        while account_response.is_none() || model_response.is_none() {
+            let line = receive_app_server_line(&receiver, deadline)?;
+            let response: Value = serde_json::from_str(&line)
+                .map_err(|_| "RUNNER_MODEL_DISCOVERY_PROTOCOL_ERROR".to_string())?;
+            match response.get("id").and_then(Value::as_i64) {
+                Some(2) => account_response = Some(response),
+                Some(3) => model_response = Some(response),
+                _ => continue,
+            }
+        }
+        let account_response = account_response.expect("response loop completes with account");
+        let model_response = model_response.expect("response loop completes with models");
+        if account_response.get("error").is_some() {
+            return Err("RUNNER_MODEL_DISCOVERY_ACCOUNT_CONTEXT_FAILED".into());
+        }
+        if model_response.get("error").is_some() {
+            return Err("RUNNER_MODEL_DISCOVERY_CATALOG_FAILED".into());
+        }
+        parse_codex_model_list(
+            model_response
+                .get("result")
+                .ok_or_else(|| "RUNNER_MODEL_DISCOVERY_CATALOG_INVALID".to_string())?,
+            account_response.get("result"),
+            cli_version,
+        )
+    })();
+
+    drop(stdin);
+    let _ = child.kill();
+    let _ = child.wait();
+    let _ = reader.join();
+    let _ = stderr.and_then(|thread| thread.join().ok());
+    result
+}
+
+fn write_app_server_request(stdin: &mut impl IoWrite, request: &Value) -> Result<(), String> {
+    serde_json::to_writer(&mut *stdin, request)
+        .map_err(|_| "RUNNER_MODEL_DISCOVERY_PROTOCOL_ERROR".to_string())?;
+    stdin
+        .write_all(b"\n")
+        .and_then(|_| stdin.flush())
+        .map_err(|_| "RUNNER_MODEL_DISCOVERY_PROTOCOL_ERROR".to_string())
+}
+
+fn receive_app_server_response(
+    receiver: &mpsc::Receiver<Result<String, ()>>,
+    response_id: i64,
+    deadline: Instant,
+) -> Result<Value, String> {
+    loop {
+        let line = receive_app_server_line(receiver, deadline)?;
+        let value: Value = serde_json::from_str(&line)
+            .map_err(|_| "RUNNER_MODEL_DISCOVERY_PROTOCOL_ERROR".to_string())?;
+        if value.get("id").and_then(Value::as_i64) == Some(response_id) {
+            return Ok(value);
+        }
+    }
+}
+
+fn receive_app_server_line(
+    receiver: &mpsc::Receiver<Result<String, ()>>,
+    deadline: Instant,
+) -> Result<String, String> {
+    let remaining = deadline.saturating_duration_since(Instant::now());
+    if remaining.is_zero() {
+        return Err("RUNNER_MODEL_DISCOVERY_TIMEOUT".into());
+    }
+    match receiver.recv_timeout(remaining) {
+        Ok(Ok(line)) => Ok(line),
+        Ok(Err(())) => Err("RUNNER_MODEL_DISCOVERY_PROTOCOL_ERROR".into()),
+        Err(mpsc::RecvTimeoutError::Timeout) => Err("RUNNER_MODEL_DISCOVERY_TIMEOUT".into()),
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            Err("RUNNER_MODEL_DISCOVERY_SERVER_EXITED".into())
+        }
+    }
+}
+
+fn parse_codex_model_list(
+    result: &Value,
+    account_result: Option<&Value>,
+    cli_version: Option<&str>,
+) -> Result<CodexModelCatalog, String> {
+    let rows = result
+        .get("data")
+        .and_then(Value::as_array)
+        .ok_or_else(|| "RUNNER_MODEL_DISCOVERY_CATALOG_INVALID".to_string())?;
+    if rows.is_empty() || rows.len() > 256 {
+        return Err("RUNNER_MODEL_DISCOVERY_CATALOG_INVALID".into());
+    }
+    let mut models = Vec::with_capacity(rows.len());
+    for row in rows {
+        let id = row
+            .get("id")
+            .or_else(|| row.get("model"))
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty() && value.len() <= 160)
+            .ok_or_else(|| "RUNNER_MODEL_DISCOVERY_CATALOG_INVALID".to_string())?;
+        let display_name = row
+            .get("displayName")
+            .or_else(|| row.get("display_name"))
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty() && value.len() <= 160)
+            .unwrap_or(id);
+        let capabilities = row
+            .get("inputModalities")
+            .and_then(Value::as_array)
+            .map(|values| {
+                values
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .filter(|value| value.len() <= 48)
+                    .take(16)
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default();
+        let reasoning_efforts = row
+            .get("supportedReasoningEfforts")
+            .and_then(Value::as_array)
+            .map(|values| {
+                values
+                    .iter()
+                    .filter_map(|value| {
+                        value
+                            .get("reasoningEffort")
+                            .and_then(Value::as_str)
+                            .or_else(|| value.as_str())
+                    })
+                    .filter(|value| value.len() <= 32)
+                    .take(16)
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default();
+        models.push(AvailableModel {
+            id: id.to_string(),
+            display_name: display_name.to_string(),
+            capabilities,
+            reasoning_efforts,
+        });
+    }
+    models.sort_by(|left, right| left.id.cmp(&right.id));
+    models.dedup_by(|left, right| left.id == right.id);
+    if models.is_empty() {
+        return Err("RUNNER_MODEL_DISCOVERY_CATALOG_INVALID".into());
+    }
+
+    let account = account_result
+        .and_then(|value| value.get("account"))
+        .filter(|value| value.is_object());
+    let account_type = account
+        .and_then(|value| value.get("type"))
+        .and_then(Value::as_str)
+        .filter(|value| value.len() <= 64);
+    let account_email = account
+        .and_then(|value| value.get("email"))
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty() && value.len() <= 320);
+    let account_provider_fingerprint = account_email.map(|email| {
+        let mut hasher = Sha256::new();
+        hasher.update(b"codex-account-provider-v1\0");
+        hasher.update(account_type.unwrap_or("unknown").as_bytes());
+        hasher.update([0]);
+        hasher.update(email.trim().to_ascii_lowercase().as_bytes());
+        format!("codex-account:sha256:{:x}", hasher.finalize())
+    });
+    let account_scope_known = account_provider_fingerprint.is_some();
+    let mut revision_hasher = Sha256::new();
+    revision_hasher.update(b"codex-model-catalog-v1\0");
+    revision_hasher.update(cli_version.unwrap_or("unknown").as_bytes());
+    revision_hasher.update([0]);
+    if let Some(fingerprint) = account_provider_fingerprint.as_deref() {
+        revision_hasher.update(fingerprint.as_bytes());
+    }
+    for model in &models {
+        revision_hasher.update([0]);
+        revision_hasher.update(model.id.as_bytes());
+        revision_hasher.update([0]);
+        revision_hasher.update(model.display_name.as_bytes());
+        for effort in &model.reasoning_efforts {
+            revision_hasher.update([0]);
+            revision_hasher.update(effort.as_bytes());
+        }
+    }
+    Ok(CodexModelCatalog {
+        cli_version: cli_version.map(|value| value.chars().take(80).collect()),
+        account_provider_fingerprint,
+        account_scope_state: if account_scope_known {
+            "account_scoped_catalog_unverified".into()
+        } else {
+            "bundled_or_unknown_account_catalog".into()
+        },
+        revision: format!("catalog:sha256:{:x}", revision_hasher.finalize()),
+        source: "codex_app_server_model_list".into(),
+        verification_state: "unverified_catalog_only".into(),
+        models,
     })
 }
 
@@ -2086,6 +2416,53 @@ pub fn can_execute(candidate: &ToolCandidate) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn codex_app_server_catalog_is_projection_only_and_redacts_account_identity() {
+        let catalog = parse_codex_model_list(
+            &json!({
+                "data": [{
+                    "id": "model-z",
+                    "displayName": "Model Z",
+                    "inputModalities": ["text", "image"],
+                    "supportedReasoningEfforts": [
+                        {"reasoningEffort": "low"},
+                        {"reasoningEffort": "high"}
+                    ]
+                }]
+            }),
+            Some(&json!({"account": {"type": "chatgpt", "email": "owner@example.test"}})),
+            Some("codex-cli 0.165.0"),
+        )
+        .unwrap();
+
+        assert_eq!(catalog.source, "codex_app_server_model_list");
+        assert_eq!(catalog.verification_state, "unverified_catalog_only");
+        assert_eq!(
+            catalog.account_scope_state,
+            "account_scoped_catalog_unverified"
+        );
+        assert!(catalog.account_provider_fingerprint.is_some());
+        assert_eq!(catalog.models[0].id, "model-z");
+        assert_eq!(catalog.models[0].display_name, "Model Z");
+        assert_eq!(catalog.models[0].capabilities, ["text", "image"]);
+        assert_eq!(catalog.models[0].reasoning_efforts, ["low", "high"]);
+        let serialized = serde_json::to_string(&catalog).unwrap();
+        assert!(!serialized.contains("owner@example.test"));
+    }
+
+    #[test]
+    fn codex_app_server_catalog_rejects_empty_or_malformed_success_responses() {
+        assert_eq!(
+            parse_codex_model_list(&json!({"data": []}), None, None).unwrap_err(),
+            "RUNNER_MODEL_DISCOVERY_CATALOG_INVALID"
+        );
+        assert_eq!(
+            parse_codex_model_list(&json!({"data": [{"displayName": "No ID"}]}), None, None)
+                .unwrap_err(),
+            "RUNNER_MODEL_DISCOVERY_CATALOG_INVALID"
+        );
+    }
 
     #[test]
     fn codex_version_and_authentication_probes_do_not_prove_task_readiness() {

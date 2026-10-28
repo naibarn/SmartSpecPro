@@ -4631,6 +4631,45 @@ fn capability_snapshot(
     let tool_inventory = tools
         .iter()
         .map(|tool| {
+            let model_catalog = if tool.adapter_id.as_deref() == Some("codex.v1")
+                && tool.auth_state == CapabilityDimension::Ready
+                && tool.version_probe_state == crate::discovery::ProbeState::Passed
+            {
+                match crate::adapters::refresh_model_catalog(tool, Duration::from_secs(8)) {
+                    Ok(catalog) => json!({
+                        "state": "discovered",
+                        "adapterId": "codex.v1",
+                        "adapterVersion": "codex.v1",
+                        "cliVersion": catalog.cli_version,
+                        "accountProviderFingerprint": catalog.account_provider_fingerprint,
+                        "accountScopeState": catalog.account_scope_state,
+                        "source": catalog.source,
+                        "revision": catalog.revision,
+                        "verificationState": catalog.verification_state,
+                        "observedAt": observed_at,
+                        "expiresAt": expires_at,
+                        "models": catalog.models,
+                    }),
+                    Err(error_code) => json!({
+                        "state": "error",
+                        "adapterId": "codex.v1",
+                        "adapterVersion": "codex.v1",
+                        "cliVersion": tool.version,
+                        "observedAt": observed_at,
+                        "expiresAt": expires_at,
+                        "errorCode": error_code,
+                    }),
+                }
+            } else {
+                json!({
+                    "state": "not_ready",
+                    "adapterId": "codex.v1",
+                    "adapterVersion": "codex.v1",
+                    "cliVersion": tool.version,
+                    "observedAt": observed_at,
+                    "expiresAt": expires_at,
+                })
+            };
             json!({
                 "toolId": tool.tool_id,
                 "kind": serde_json::to_value(tool.kind).unwrap_or_else(|_| json!("generic_cli")),
@@ -4652,6 +4691,7 @@ fn capability_snapshot(
                 "taskProbeExpiresAtMs": tool.task_probe_expires_at_ms,
                 "taskProbeEvidenceRef": tool.task_probe_evidence_ref,
                 "authorizationEvidenceRef": tool.authorization_evidence_ref,
+                "modelCatalog": model_catalog,
                 "observedAt": observed_at,
                 "expiresAt": expires_at,
                 "reasonCodes": tool.reason_codes,

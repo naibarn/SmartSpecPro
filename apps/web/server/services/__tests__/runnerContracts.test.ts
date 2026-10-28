@@ -343,6 +343,25 @@ describe("Feature 197 Runner contracts", () => {
         taskProbeExpiresAtMs: Date.parse("2026-09-17T00:30:00Z"),
         taskProbeEvidenceRef: "runner-task-probe:sha256:TEST_ONLY_REFERENCE",
         authorizationEvidenceRef: "TEST_ONLY_REDACTED_REFERENCE",
+        modelCatalog: {
+          state: "discovered",
+          adapterId: "codex.v1",
+          adapterVersion: "codex.v1",
+          cliVersion: "codex-cli 0.165.0",
+          accountProviderFingerprint: "codex-account:sha256:0123456789abcdef",
+          accountScopeState: "account_scoped_catalog_unverified",
+          source: "codex_app_server_model_list",
+          revision: "catalog:sha256:abcdef0123456789",
+          verificationState: "unverified_catalog_only",
+          observedAt: "2026-09-17T00:00:00Z",
+          expiresAt: "2026-09-17T00:10:00Z",
+          models: [{
+            id: "model-z",
+            displayName: "Model Z",
+            capabilities: ["text"],
+            reasoningEfforts: ["low", "high"],
+          }],
+        },
         observedAt: "2026-09-17T00:00:00Z",
         expiresAt: "2026-09-17T00:10:00Z",
         reasonCodes: [],
@@ -350,6 +369,11 @@ describe("Feature 197 Runner contracts", () => {
     };
     const normalized = validateRunnerCapabilitySnapshot(rawCodexSnapshot);
     expect(normalized.capabilities).toContain("agent.external_task");
+    expect(normalized.toolInventory?.[0].modelCatalog).toMatchObject({
+      state: "discovered",
+      verificationState: "unverified_catalog_only",
+      models: [{ id: "model-z", reasoningEfforts: ["low", "high"] }],
+    });
     expect(normalized).not.toHaveProperty("grantId");
     const withoutToolCapability = validateRunnerCapabilitySnapshot({ ...rawCodexSnapshot, capabilities: [] });
     expect(withoutToolCapability.capabilities).not.toContain("agent.external_task");

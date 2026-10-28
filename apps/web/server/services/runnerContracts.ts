@@ -203,9 +203,32 @@ export type RunnerToolInventoryEntry = {
   taskProbeEvidenceRef?: string;
   /** Immutable, redacted proof that this adapter passed its auth/readiness gate. */
   authorizationEvidenceRef?: string;
+  /** Read-only discovered catalog. Its presence does not certify entitlement. */
+  modelCatalog?: RunnerModelCatalog;
   observedAt: string;
   expiresAt: string;
   reasonCodes: string[];
+};
+
+export type RunnerModelCatalog = {
+  state: "discovered" | "error" | "not_ready";
+  adapterId: string;
+  adapterVersion: string;
+  cliVersion: string | null;
+  observedAt: string;
+  expiresAt: string;
+  errorCode?: string;
+  accountProviderFingerprint?: string | null;
+  accountScopeState?: string;
+  source?: string;
+  revision?: string;
+  verificationState?: string;
+  models?: Array<{
+    id: string;
+    displayName: string;
+    capabilities: string[];
+    reasoningEfforts: string[];
+  }>;
 };
 
 export type RunnerCapabilityInventoryEntry = {
@@ -754,6 +777,66 @@ function validateInventoryWindow(
   return { observedAt, expiresAt };
 }
 
+function validateRunnerModelCatalog(
+  value: unknown,
+  prefix: string
+): RunnerModelCatalog {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    invalid(`${prefix} is invalid`);
+  const raw = value as Record<string, unknown>;
+  const state = enumText(raw.state, `${prefix}.state`, [
+    "discovered",
+    "error",
+    "not_ready",
+  ] as const);
+  const { observedAt, expiresAt } = validateInventoryWindow(raw, prefix);
+  const base = {
+    state,
+    adapterId: requiredText(raw.adapterId, `${prefix}.adapterId`, 128),
+    adapterVersion: requiredText(raw.adapterVersion, `${prefix}.adapterVersion`, 80),
+    cliVersion: nullableText(raw.cliVersion, `${prefix}.cliVersion`, 80),
+    observedAt,
+    expiresAt,
+  };
+  if (state === "error") {
+    if (typeof raw.errorCode !== "string" || !/^[A-Z][A-Z0-9_]{2,100}$/.test(raw.errorCode))
+      invalid(`${prefix}.errorCode is invalid`);
+    return { ...base, errorCode: raw.errorCode };
+  }
+  if (state !== "discovered") return base;
+  if (!Array.isArray(raw.models) || raw.models.length === 0 || raw.models.length > 256)
+    invalid(`${prefix}.models is invalid`);
+  const models = raw.models.map((item, index) => {
+    if (!item || typeof item !== "object" || Array.isArray(item))
+      invalid(`${prefix}.models[${index}] is invalid`);
+    const model = item as Record<string, unknown>;
+    return {
+      id: requiredText(model.id, `${prefix}.models[${index}].id`, 160),
+      displayName: requiredText(model.displayName, `${prefix}.models[${index}].displayName`, 160),
+      capabilities: stringList(model.capabilities ?? [], `${prefix}.models[${index}].capabilities`, 16, 48),
+      reasoningEfforts: stringList(model.reasoningEfforts ?? [], `${prefix}.models[${index}].reasoningEfforts`, 16, 32),
+    };
+  });
+  const ids = new Set<string>();
+  for (const model of models) {
+    if (ids.has(model.id)) invalid(`${prefix}.models contains duplicates`);
+    ids.add(model.id);
+  }
+  return {
+    ...base,
+    accountProviderFingerprint: nullableText(
+      raw.accountProviderFingerprint,
+      `${prefix}.accountProviderFingerprint`,
+      128
+    ),
+    accountScopeState: requiredText(raw.accountScopeState, `${prefix}.accountScopeState`, 80),
+    source: requiredText(raw.source, `${prefix}.source`, 80),
+    revision: requiredText(raw.revision, `${prefix}.revision`, 160),
+    verificationState: requiredText(raw.verificationState, `${prefix}.verificationState`, 80),
+    models,
+  };
+}
+
 function safeEpochMs(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0)
     invalid(`${field} is invalid`);
@@ -839,6 +922,11 @@ function validateRunnerToolInventory(
     const taskProbeEvidenceRef = raw.taskProbeEvidenceRef === undefined || raw.taskProbeEvidenceRef === null
       ? undefined
       : requiredText(raw.taskProbeEvidenceRef, `${prefix}.taskProbeEvidenceRef`, 240);
+    const modelCatalog = raw.modelCatalog === undefined || raw.modelCatalog === null
+      ? undefined
+      : validateRunnerModelCatalog(raw.modelCatalog, `${prefix}.modelCatalog`);
+    if (modelCatalog && modelCatalog.adapterId !== adapterId)
+      invalid(`${prefix}.modelCatalog adapter does not match tool adapter`);
     if (taskProbeState === "passed" && (
       taskProbeObservedAtMs === undefined || taskProbeExpiresAtMs === undefined ||
       !taskProbeEvidenceRef || taskProbeExpiresAtMs <= taskProbeObservedAtMs ||
@@ -904,6 +992,7 @@ function validateRunnerToolInventory(
               240,
             ),
           }),
+      ...(modelCatalog ? { modelCatalog } : {}),
       observedAt,
       expiresAt,
       reasonCodes: stringList(raw.reasonCodes, `${prefix}.reasonCodes`, 32, 96),
