@@ -18,6 +18,7 @@ type WorkspaceOption = {
   canonicalProjectTitle?: string;
   gitHead?: string | null;
   dirty?: boolean | null;
+  dirtyPaths?: string[] | null;
   convergenceState?: string;
   convergenceCanonicalSha?: string | null;
 };
@@ -126,6 +127,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const [selected, setSelected] = useState("");
   const [selectedRunnerId, setSelectedRunnerId] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [writeScopeText, setWriteScopeText] = useState("");
   const [visualReferences, setVisualReferences] = useState<ImageReferenceDraft[]>([]);
   const [similarityMode, setSimilarityMode] = useState<"inspired" | "close" | "high_fidelity">("close");
   const [targetDevices, setTargetDevices] = useState<Array<"mobile" | "tablet" | "desktop">>(["mobile", "desktop"]);
@@ -220,13 +222,14 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const selectedRunner = runners.find(runner => runner.runnerId === selectedRunnerId);
   const isPlatformWorkspace = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" || selectionKey(selectedWorkspace ?? { runnerId: "", workspaceId: "" }) === lastPlatformWorkspaceKey.current;
   const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && selectionKey(selectedWorkspace) === selectionKey(platformWorkspace ?? selectedWorkspace);
-  const platformSourceIsSafe = !isPlatformWorkspace || (platformBindingCurrent && selectedWorkspace.dirty === false && selectedWorkspace.convergenceState === "USER_WORKSPACE_CONVERGED" && Boolean(selectedWorkspace.gitHead && selectedWorkspace.convergenceCanonicalSha === selectedWorkspace.gitHead));
+  const platformSourceIsSafe = !isPlatformWorkspace || platformBindingCurrent;
   const specSet = workspaceQuery.data?.specSet;
   const boundKey = boundWorkspace
     ? JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId])
     : "";
   const boundIsListed = workspaces.some(item => selectionKey(item) === boundKey);
   const effectivePrompt = prompt.trim();
+  const proposedWriteScope = [...new Set(writeScopeText.split(/\r?\n/).map(path => path.trim()).filter(Boolean))];
   const canonicalHandoff = effectiveSpecSource === "catalog" ? featureSpecContextQuery.data?.handoff : undefined;
   const nextReadyWorkunit = canonicalHandoff?.status === "CURRENT" ? canonicalHandoff.nextReadyWorkunit : null;
   const isNextReadyPackage = (workPackage: { id: string; externalId: string }) => Boolean(nextReadyWorkunit && (workPackage.id === nextReadyWorkunit || workPackage.externalId === nextReadyWorkunit));
@@ -306,7 +309,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
           setPendingSpecFiles([]);
         }
       }
-      const result = await prepareMutation.mutateAsync({ conversationId: nextConversationId, mode, ...(mode === "prompt" ? { prompt } : {}), ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}) });
+      const result = await prepareMutation.mutateAsync({ conversationId: nextConversationId, mode, ...(mode === "prompt" ? { prompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {}), ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}) });
       setPreparation(result);
       toast.success("สร้างงาน ผูก Workspace และเตรียมแผนผ่าน Goal Control Plane แล้ว");
     } catch (error) {
@@ -381,7 +384,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       const result = await prepareMutation.mutateAsync({
         conversationId,
         mode,
-        ...(mode === "prompt" ? { prompt } : {}),
+        ...(mode === "prompt" ? { prompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {}),
         ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
       });
       setPreparation(result);
@@ -394,8 +397,9 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
 
   async function startWorkPackage(workPackageId: string) {
     if (!conversationId || !preparation) return;
-    if (!platformSourceIsSafe) {
-      toast.error("Platform workspace ยังไม่ปลอดภัยสำหรับงานเขียนไฟล์: ตรวจสอบ dirty changes และยืนยัน convergence SHA ผ่าน Runner Workspace Authority ก่อนเริ่ม");
+    const packageSourceAdmission = preparation.workPackages?.find(item => item.id === workPackageId)?.sourceAdmission;
+    if (!platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY"].includes(packageSourceAdmission?.status ?? "BLOCKED"))) {
+      toast.error("ขอบเขตไฟล์ชนกับการเปลี่ยนแปลงเดิม หรือหลักฐาน source/scope ยังไม่ครบ โปรดเลือกขอบเขตที่ปลอดภัยและตรวจผล preflight ก่อนเริ่ม");
       return;
     }
     if (budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000) {
@@ -416,7 +420,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       toast.error("เลือก responsive target อย่างน้อยหนึ่งอุปกรณ์");
       return;
     }
-    const key = `${conversationId}:${mode}:${preparation.planRevision}:${workPackageId}:${designStartFingerprint}:${budgetCapMinorUnits}`;
+    const key = `${conversationId}:${mode}:${preparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}`;
     const idempotencyKey = startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     try {
@@ -424,7 +428,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
         conversationId,
         mode,
         factoryMode: requestKind === "mini_app",
-        ...(mode === "prompt" ? { prompt: effectivePrompt } : {
+        ...(mode === "prompt" ? { prompt: effectivePrompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {
           // Start the immutable revision shown in this preparation. Another
           // Chat section may append a newer SpecSet while this preview is open.
           specSetRevision: preparation.planRevision,
@@ -532,7 +536,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
           <h2 id="spec224-workspace-heading" className="mt-1 text-lg font-semibold text-slate-950">พัฒนาระบบ SmartAIHub</h2>
           <p className="mt-1 text-sm text-slate-700">Project: {platformWorkspace.canonicalProjectTitle ?? platformWorkspace.displayName} · Runner: Debian Development Server · Harness: Codex</p>
           <p className="mt-1 text-xs text-slate-600" role="status">Codex readiness: {selectedWorkspace && selectedRunnerId === platformWorkspace.runnerId ? runnerReadiness?.ready ? "พร้อม" : runnerReadiness?.code ?? "กำลังตรวจสอบจาก Runner" : "กำลังตรวจสอบจาก Runner"}</p>
-          {selectedWorkspace && !platformSourceIsSafe ? <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">ยังเริ่มงานเขียนไม่ได้: workspace มี dirty changes หรือไม่มีหลักฐาน convergence SHA ล่าสุด โปรดรักษาการเปลี่ยนแปลงเดิม และให้ Runner ยืนยัน source SHA กับ canonical ก่อน</p> : null}
+          {selectedWorkspace && !platformSourceIsSafe ? <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">Runner หรือ Project Workspace binding เปลี่ยนไป โปรดโหลดข้อมูลใหม่และยืนยัน binding ปัจจุบันก่อนเริ่ม</p> : null}
         </section>
       ) : null}
       <h3 id="spec224-workspace-heading" className="text-sm font-semibold">{simpleMode ? "พื้นที่งานพัฒนา" : "Spec 224 workspace"}</h3>
@@ -666,6 +670,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
             ) : null}
             <>
           {mode === "prompt" ? <Textarea id="spec224-development-inputs" aria-label={requestKind === "mini_app" ? "Mini App requirements" : "Spec 224 prompt"} value={prompt} onChange={event => { setPrompt(event.target.value); setPreparation(null); }} placeholder={requestKind === "mini_app" ? "อธิบายหน้าจอ ข้อมูล และพฤติกรรมของ Mini App ที่ต้องการ" : "อธิบายงานพัฒนาที่ต้องการ โดยจำกัดตาม Workspace และสิทธิ์ Goal ที่ได้รับอนุมัติ"} maxLength={requestKind === "mini_app" ? 3600 : 4000} className="min-h-20 resize-y text-sm" /> : null}
+              {isPlatformWorkspace && mode === "prompt" && requestKind === "development" && !simpleMode ? <Textarea aria-label="ขอบเขตไฟล์ที่อนุญาต" value={writeScopeText} onChange={event => { setWriteScopeText(event.target.value); setPreparation(null); }} placeholder="ระบุ path หรือ glob ที่อนุญาต หนึ่งรายการต่อบรรทัด เช่น apps/web/server/services/myFeature/**" className="min-h-16 resize-y text-sm" /> : null}
+              {isPlatformWorkspace && mode === "prompt" && requestKind === "development" && simpleMode ? <p className="text-xs text-muted-foreground">งานพัฒนา Platform ต้องระบุขอบเขตไฟล์ที่แน่นอน โปรดเปลี่ยนเป็น Developer view เพื่อกำหนด scope ก่อนเตรียมงาน</p> : null}
               {requestKind === "mini_app" && mode === "prompt" ? (
                 <p className="text-xs text-muted-foreground">
                   การสร้างและทดสอบ Preview ไม่ต้องใช้ Windows Runner หรือ GitHub ส่วน GitHub จะใช้เก็บ source ใน repo ส่วนตัวหลังมี artifact แล้ว หากยังไม่มี provider สำหรับสร้างแอป ให้ตั้งค่าได้ที่ <a className="underline" href="/settings?tab=localAi">Settings → Local AI</a>
@@ -883,8 +889,10 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                 <section key={workPackage.id} className="mt-2 border-t border-[var(--color-border)] pt-2" aria-label={simpleMode ? `งานส่วนที่ ${index + 1}` : `Work package ${workPackage.externalId}`}>
                   <p className="text-xs font-medium">{simpleMode ? `งานส่วนที่ ${index + 1}` : `${workPackage.externalId} · ${workPackage.readiness}`}</p>
                   {workPackage.blockers.length && !simpleMode ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
+                  {workPackage.sourceAdmission?.status === "BLOCKED" ? <p className="mt-1 text-xs text-amber-800" role="status">{simpleMode ? "ขอบเขตงานยังทับกับไฟล์ที่เปลี่ยนอยู่ หรือข้อมูล source ยังไม่ครบ" : `Source preflight: ${workPackage.sourceAdmission.code}${workPackage.sourceAdmission.conflictingPaths?.length ? ` · ชนกับ ${workPackage.sourceAdmission.conflictingPaths.join(", ")}` : ""}`}</p> : null}
+                  {workPackage.sourceAdmission?.status === "SAFE_DISJOINT_DIRTY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "ไฟล์ที่เปลี่ยนอยู่แยกจากขอบเขตงานนี้" : `Source preflight: ขอบเขตไม่ชนไฟล์ที่เปลี่ยนอยู่ · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isNextReadyPackage(workPackage)) ? (
-                    <Button type="button" className="mt-2" disabled={startMutation.isPending || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !platformSourceIsSafe} onClick={() => void startWorkPackage(workPackage.id)}>
+                    <Button type="button" className="mt-2" disabled={startMutation.isPending || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
                       {startMutation.isPending ? "กำลังส่งคำสั่ง…" : mode === "prompt" || simpleMode ? "สั่งพัฒนา" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}

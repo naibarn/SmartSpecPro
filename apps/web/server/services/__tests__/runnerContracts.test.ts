@@ -157,13 +157,13 @@ describe("Feature 197 Runner contracts", () => {
       ...snapshot,
       workspaceIds: ["workspace-1", "workspace-2"],
       workspaces: [
-        { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64), taskId: "task-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "c".repeat(40) },
+        { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, dirtyPaths: [], contentFingerprint: "b".repeat(64), taskId: "task-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "c".repeat(40) },
         { workspaceId: "workspace-2" },
       ],
     });
     expect(normalized.workspaces).toEqual([
-      { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, contentFingerprint: "b".repeat(64), taskId: "task-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "c".repeat(40) },
-      { workspaceId: "workspace-2", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null },
+      { workspaceId: "workspace-1", projectId: "smartspecpro", repositoryId: "smartspecpro", displayName: "Primary workspace", gitHead: "a".repeat(40), gitBranch: "feature/spec-224", dirty: false, dirtyPaths: [], contentFingerprint: "b".repeat(64), taskId: "task-42", convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "c".repeat(40) },
+      { workspaceId: "workspace-2", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, dirtyPaths: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null },
     ]);
     expect(() => validateRunnerCapabilitySnapshot({
       ...snapshot,

@@ -66,7 +66,7 @@ describe("spec224 workspace Spec Set", () => {
       runnerId: "runner-a",
       workspaceIds: ["workspace-legacy"],
       workspaces: [{ workspaceId: "workspace-a", displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64), repositoryId: "https://token@github.com/org/repository" }, { workspaceId: "workspace-a", repositoryRef: "do-not-expose" }],
-    })).toEqual([{ workspaceId: "workspace-a", projectId: null, repositoryId: null, displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, contentFingerprint: "d".repeat(64), taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }, { workspaceId: "workspace-legacy", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }]);
+    })).toEqual([{ workspaceId: "workspace-a", projectId: null, repositoryId: null, displayName: "App", gitHead: "b".repeat(40), gitBranch: "main", dirty: true, dirtyPaths: null, contentFingerprint: "d".repeat(64), taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }, { workspaceId: "workspace-legacy", projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, dirtyPaths: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }]);
   });
 
   it("keeps authenticated project and repository bindings through snapshot normalization", () => {
@@ -91,6 +91,31 @@ describe("spec224 workspace Spec Set", () => {
       workspaceIds: ["workspace-a"],
       workspaces: [{ workspaceId: "workspace-a", convergenceState: "USER_WORKSPACE_CONVERGED" }],
     })).toMatchObject([{ convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }]);
+  });
+
+  it("admits only finite prompt scopes disjoint from authoritative dirty paths", async () => {
+    const store = memoryStore();
+    let dirtyPaths = ["python-backend/app/api/approvals.py"];
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: true, dirtyPaths, contentFingerprint: "c".repeat(64) }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const scope = ["apps/web/server/services/spec224/**"];
+    const prepared = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Add a focused service behavior", writeScope: scope });
+    expect(prepared.workPackages[0]).toMatchObject({ readiness: "READY", sourceAdmission: { status: "SAFE_DISJOINT_DIRTY" } });
+    const runInput = await service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Add a focused service behavior", writeScope: scope });
+    expect(runInput.allowedWriteSet).toEqual(scope);
+    dirtyPaths = ["apps/web/server/services/spec224/task.ts"];
+    await expect(service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Add a focused service behavior", writeScope: scope })).rejects.toMatchObject({ code: "WORKSPACE_SOURCE_ADMISSION_SCOPE_CONFLICT" });
+  });
+
+  it("requires a bounded prompt scope for Platform Engineering", async () => {
+    const store = memoryStore();
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, dirtyPaths: [], contentFingerprint: "c".repeat(64) }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const prepared = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
+    expect(prepared.runnableWorkPackageIds).toEqual([]);
+    expect(prepared.workPackages[0].blockers).toContain("PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED");
   });
 
   it("accepts bounded Markdown and JSON artifacts deterministically", async () => {

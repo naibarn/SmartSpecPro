@@ -11,6 +11,7 @@ import {
 } from "../../drizzle/schema";
 import { getDb } from "../db";
 import { compileSpec224IncrementalSpecSet } from "./spec224IncrementalSpecCompiler";
+import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
 import { SPEC224_RUNNER_INPUT_MAX_BYTES } from "./spec224RunnerInputStaging";
 import { isRunnerWorkspaceConvergenceState } from "./runnerContracts";
 import {
@@ -40,7 +41,7 @@ export class Spec224WorkspaceSpecSetError extends Error {
 
 export type Spec224WorkspaceArtifactInput = { path: string; contentBase64: string };
 export type Spec224WorkspaceSpecFile = { path: string; digest: string; content: string };
-export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null };
+export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths?: string[] | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null };
 export type Spec224ConversationWorkspace = {
   conversationId: number; tenantId: string; actorId: number; runnerId: string; workspaceId: string;
   snapshotRevision: string; revision: number;
@@ -97,19 +98,21 @@ function normalizeFile(path: string, bytes: Buffer): Spec224WorkspaceSpecFile {
 }
 
 /** Selects only the Runner's opaque, sanitized workspace identity/display facts. */
-export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspaceId: string; projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null; taskId: string | null; convergenceState: string; convergenceCanonicalSha: string | null }> {
+export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspaceId: string; projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths: string[] | null; contentFingerprint: string | null; taskId: string | null; convergenceState: string; convergenceCanonicalSha: string | null }> {
   if (!snapshot || typeof snapshot !== "object") return [];
   const source = snapshot as { workspaceIds?: unknown; workspaces?: unknown };
-  const facts = new Map<string, { projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; contentFingerprint: string | null; taskId: string | null; convergenceState: string; convergenceCanonicalSha: string | null }>();
+  const facts = new Map<string, { projectId: string | null; repositoryId: string | null; displayName: string | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths: string[] | null; contentFingerprint: string | null; taskId: string | null; convergenceState: string; convergenceCanonicalSha: string | null }>();
   if (Array.isArray(source.workspaces)) {
     for (const candidate of source.workspaces) {
       if (!candidate || typeof candidate !== "object") continue;
-      const record = candidate as { workspaceId?: unknown; projectId?: unknown; repositoryId?: unknown; displayName?: unknown; gitHead?: unknown; gitBranch?: unknown; dirty?: unknown; contentFingerprint?: unknown; taskId?: unknown; convergenceState?: unknown; convergenceCanonicalSha?: unknown };
+      const record = candidate as { workspaceId?: unknown; projectId?: unknown; repositoryId?: unknown; displayName?: unknown; gitHead?: unknown; gitBranch?: unknown; dirty?: unknown; dirtyPaths?: unknown; contentFingerprint?: unknown; taskId?: unknown; convergenceState?: unknown; convergenceCanonicalSha?: unknown };
       if (typeof record.workspaceId !== "string" || !record.workspaceId.trim() || record.workspaceId.length > 200) continue;
       const displayName = typeof record.displayName === "string" && record.displayName.trim() ? record.displayName.trim() : null;
       const gitHead = typeof record.gitHead === "string" && /^[a-f0-9]{40,64}$/.test(record.gitHead) ? record.gitHead : null;
       const gitBranch = typeof record.gitBranch === "string" && /^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/.test(record.gitBranch) && !record.gitBranch.includes("..") && !record.gitBranch.includes("//") ? record.gitBranch : null;
       const dirty = typeof record.dirty === "boolean" ? record.dirty : null;
+      const dirtyPaths = Array.isArray(record.dirtyPaths) && record.dirtyPaths.length <= 4_096 && record.dirtyPaths.every(path => typeof path === "string" && path.length <= 512 && !path.startsWith("/") && !path.includes("\\") && !path.split("/").some(part => !part || part === "." || part === ".."))
+        ? [...new Set(record.dirtyPaths as string[])] : null;
       const contentFingerprint = typeof record.contentFingerprint === "string" && /^[a-f0-9]{64}$/.test(record.contentFingerprint) ? record.contentFingerprint : null;
       const taskId = typeof record.taskId === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(record.taskId) ? record.taskId : null;
       const convergenceCanonicalSha = typeof record.convergenceCanonicalSha === "string" && /^[a-f0-9]{40,64}$/.test(record.convergenceCanonicalSha) ? record.convergenceCanonicalSha : null;
@@ -119,12 +122,12 @@ export function workspaceFactsFromSnapshot(snapshot: unknown): Array<{ workspace
       const safeIdentity = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$/.test(value.trim()) && !value.includes("://") && !value.includes("@") && !value.includes("//") && !value.includes("..") ? value.trim() : null;
       const projectId = safeIdentity(record.projectId);
       const repositoryId = safeIdentity(record.repositoryId);
-      if (!current || (current.displayName === null && displayName)) facts.set(record.workspaceId, { projectId, repositoryId, displayName, gitHead, gitBranch, dirty, contentFingerprint, taskId, convergenceState, convergenceCanonicalSha });
+      if (!current || (current.displayName === null && displayName)) facts.set(record.workspaceId, { projectId, repositoryId, displayName, gitHead, gitBranch, dirty, dirtyPaths, contentFingerprint, taskId, convergenceState, convergenceCanonicalSha });
     }
   }
   if (Array.isArray(source.workspaceIds)) {
     for (const workspaceId of source.workspaceIds) {
-      if (typeof workspaceId === "string" && workspaceId.trim() && workspaceId.length <= 200 && !facts.has(workspaceId)) facts.set(workspaceId, { projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null });
+      if (typeof workspaceId === "string" && workspaceId.trim() && workspaceId.length <= 200 && !facts.has(workspaceId)) facts.set(workspaceId, { projectId: null, repositoryId: null, displayName: null, gitHead: null, gitBranch: null, dirty: null, dirtyPaths: null, contentFingerprint: null, taskId: null, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null });
     }
   }
   return [...facts.entries()].map(([workspaceId, facts]) => ({ workspaceId, ...facts })).sort((left, right) => left.workspaceId.localeCompare(right.workspaceId));
@@ -286,7 +289,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
       }
     },
-    async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; additionalInstructions?: string; specSetRevision?: number }) {
+    async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; additionalInstructions?: string; specSetRevision?: number; writeScope?: string[] }) {
       const { binding } = await requireCurrentBinding(input);
       if (input.mode === "prompt") {
         if (input.additionalInstructions) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC");
@@ -294,8 +297,12 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
         const current = (await store.listTrustedWorkspaces(input)).find(item => item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId);
         const blockers = current?.gitHead && current.contentFingerprint ? [] : ["WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE"];
-        const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode, gitHead: current?.gitHead ?? null, snapshotRevision: current?.snapshotRevision ?? null, prompt }));
-        const workPackages = [{ id: "prompt", externalId: "prompt", readiness: blockers.length ? "BLOCKED" as const : "READY" as const, blockers }];
+        const sourceAdmission = current?.scope === "PLATFORM_ENGINEERING"
+          ? evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet: input.writeScope })
+          : null;
+        if (sourceAdmission?.status === "BLOCKED") blockers.push(sourceAdmission.code === "WRITE_SCOPE_UNBOUNDED" ? "PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED" : `WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
+        const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode, gitHead: current?.gitHead ?? null, snapshotRevision: current?.snapshotRevision ?? null, prompt, writeScope: input.writeScope ?? null }));
+        const workPackages = [{ id: "prompt", externalId: "prompt", readiness: blockers.length ? "BLOCKED" as const : "READY" as const, blockers, ...(sourceAdmission ? { sourceAdmission } : {}) }];
         return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: binding.revision, contextPackHash, workPackages, requirementCount: 0, runnableWorkPackageIds: blockers.length ? [] : ["prompt"], blockers };
       }
       const additionalInstructions = input.additionalInstructions?.trim() ? input.additionalInstructions : undefined;
@@ -325,7 +332,13 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       const current = (await store.listTrustedWorkspaces(input)).find(item => item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId);
       if (!current?.gitHead || !current.contentFingerprint) blockers.push("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
       const contextPackHash = sha(canonicalJson({ workspaceId: binding.workspaceId, runnerId: binding.runnerId, revision: revision.revision, digest: revision.digest, additionalInstructions: additionalInstructions ?? null }));
-      return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: revision.revision, contextPackHash, workPackages: compiled.workPackages, requirements: compiled.requirements, runnableWorkPackageIds: compiled.runnableWorkPackageIds, findings: compiled.findings, impact: compiled.impact, requirementCount: compiled.requirements.length, blockers };
+      const workPackages = compiled.workPackages.map(workPackage => ({
+        ...workPackage,
+        ...(current?.scope === "PLATFORM_ENGINEERING" ? {
+          sourceAdmission: evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet: workPackage.allowedWriteSet }),
+        } : {}),
+      }));
+      return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: revision.revision, contextPackHash, workPackages, requirements: compiled.requirements, runnableWorkPackageIds: compiled.runnableWorkPackageIds, findings: compiled.findings, impact: compiled.impact, requirementCount: compiled.requirements.length, blockers };
     },
     async resolveWorkspaceRunInput(input: {
       tenantId: string;
@@ -333,6 +346,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       conversationId: number;
       mode: "prompt" | "spec_set";
       prompt?: string;
+      writeScope?: string[];
       additionalInstructions?: string;
       specSetRevision?: number;
       workPackageId?: string;
@@ -347,16 +361,22 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         if (input.additionalInstructions) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC");
         const prompt = input.prompt;
         if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
+        const allowedWriteSet = workspace.scope === "PLATFORM_ENGINEERING" ? input.writeScope : ["**"];
+        if (workspace.scope === "PLATFORM_ENGINEERING") {
+          const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({ gitHead: workspace.gitHead, contentFingerprint: workspace.contentFingerprint, snapshotRevision: workspace.snapshotRevision, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths, allowedWriteSet });
+          if (sourceAdmission.status === "BLOCKED") fail(`WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
+        }
         const contextPackHash = sha(canonicalJson({
           conversationId: input.conversationId,
           workspaceId: binding.workspaceId,
           gitHead: workspace.gitHead,
           snapshotRevision: workspace.snapshotRevision,
           prompt,
+          writeScope: allowedWriteSet,
         }));
         return {
           workspace: binding,
-          runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, contentFingerprint: workspace.contentFingerprint },
+          runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths ?? null, contentFingerprint: workspace.contentFingerprint },
           goal: `Implement the requested change from the staged prompt.md in this existing workspace. Keep changes scoped to the request and preserve unrelated workspace content.`,
           planId: `plan:${contextPackHash.slice(0, 40)}`,
           planRevision: binding.revision,
@@ -366,7 +386,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
           specSetRevision: null,
           workPackageId: null,
           workPackageExternalId: null,
-          allowedWriteSet: ["**"],
+          allowedWriteSet: [...(allowedWriteSet ?? ["**"])],
           inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from(prompt, "utf8").toString("base64") }],
         };
       }
@@ -397,6 +417,17 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (!workPackage || workPackage.readiness !== "READY" || !compiled.runnableWorkPackageIds.includes(workPackage.id))
         fail("SPEC_SET_WORK_PACKAGE_NOT_READY");
       const packageFiles = filesForWorkPackage(workPackage, compiled.workPackages, compiled.requirements, revision.files);
+      if (workspace.scope === "PLATFORM_ENGINEERING") {
+        const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({
+          gitHead: workspace.gitHead,
+          contentFingerprint: workspace.contentFingerprint,
+          snapshotRevision: workspace.snapshotRevision,
+          dirty: workspace.dirty,
+          dirtyPaths: workspace.dirtyPaths,
+          allowedWriteSet: workPackage.allowedWriteSet,
+        });
+        if (sourceAdmission.status === "BLOCKED") fail(`WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
+      }
       const additionalInstructions = input.additionalInstructions?.trim() ? input.additionalInstructions : undefined;
       if (additionalInstructions && additionalInstructions.length > 4_000) fail("PREPARE_PROMPT_INVALID");
       if (additionalInstructions && packageFiles.some(file => file.path === "spec224-additional-instructions.md")) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_CONFLICT");
@@ -417,7 +448,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       }));
       return {
         workspace: binding,
-        runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, contentFingerprint: workspace.contentFingerprint },
+        runner: { runnerId: workspace.runnerId, snapshotRevision: workspace.snapshotRevision, gitHead: workspace.gitHead, gitBranch: workspace.gitBranch, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths ?? null, contentFingerprint: workspace.contentFingerprint },
         goal,
         planId: `plan:${contextPackHash.slice(0, 40)}`,
         planRevision: revision.revision,
@@ -511,6 +542,7 @@ class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStor
           gitHead: workspace.gitHead,
           gitBranch: workspace.gitBranch,
           dirty: workspace.dirty,
+          dirtyPaths: workspace.dirtyPaths ?? null,
           convergenceState: workspace.convergenceState,
           convergenceCanonicalSha: workspace.convergenceCanonicalSha,
           contentFingerprint: workspace.contentFingerprint,

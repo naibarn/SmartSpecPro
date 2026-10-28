@@ -84,6 +84,7 @@ export function evaluateSpec224RunnerReadiness(input: {
   actorId: number;
   workspaceId: string;
   sourceCommit?: string;
+  sourceFingerprint?: string;
   now?: Date;
 }): Spec224RunnerReadiness {
   const { runner } = input;
@@ -130,6 +131,7 @@ export function evaluateSpec224RunnerReadiness(input: {
   if (!snapshot.workspaceIds.includes(input.workspaceId) || !workspace) return result("WORKSPACE_BINDING_MISMATCH");
   if (!workspace.gitHead || !workspace.contentFingerprint) return result("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
   if (input.sourceCommit && workspace.gitHead !== input.sourceCommit) return result("WORKSPACE_SOURCE_REVISION_MISMATCH");
+  if (input.sourceFingerprint && workspace.contentFingerprint !== input.sourceFingerprint) return result("WORKSPACE_SOURCE_FINGERPRINT_MISMATCH");
   // Pending means this snapshot has not evaluated a particular run policy.
   // The approval authority still evaluates and binds that policy at Start.
   return result("RUNNER_READY");

@@ -660,6 +660,7 @@ export const spec226DevelopmentControlRouter = router({
       conversationId: z.number().int().positive(),
       mode: z.enum(["prompt", "spec_set"]),
       prompt: z.string().max(4_000).optional(),
+      writeScope: z.array(z.string().trim().min(1).max(512)).max(128).optional(),
       additionalInstructions: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
     }).superRefine((input, refinement) => {
@@ -884,6 +885,7 @@ export const spec226DevelopmentControlRouter = router({
       factoryMode: z.boolean().default(false),
       appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/).optional(),
       prompt: z.string().max(4_000).optional(),
+      writeScope: z.array(z.string().trim().min(1).max(512)).max(128).optional(),
       additionalInstructions: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
@@ -1070,6 +1072,7 @@ export const spec226DevelopmentControlRouter = router({
         if ((input.provider ?? "codex") !== "codex") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "SPEC224_DELEGATED_PROVIDER_UNSUPPORTED" });
         const requestDigest = createHash("sha256").update(JSON.stringify({
           conversationId: input.conversationId, mode: input.mode, prompt: input.prompt ?? null,
+          writeScope: input.writeScope ?? null,
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
           provider: input.provider ?? "codex", visualReferences: input.visualReferences ?? [],
@@ -1104,6 +1107,7 @@ export const spec226DevelopmentControlRouter = router({
           conversationId: input.conversationId,
           mode: input.mode,
           ...(input.prompt === undefined ? {} : { prompt: input.prompt }),
+          ...(input.writeScope === undefined ? {} : { writeScope: input.writeScope }),
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           ...(input.specSetRevision === undefined ? {} : { specSetRevision: input.specSetRevision }),
           ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
@@ -1206,6 +1210,7 @@ export const spec226DevelopmentControlRouter = router({
           workspace: prepared.workspace.workspaceId,
           runnerId: prepared.runner.runnerId,
           runnerSnapshotRevision: prepared.runner.snapshotRevision,
+          platformScope: prepared.workspace.scope === "PLATFORM_ENGINEERING",
           gitHead: prepared.runner.gitHead,
           gitBranch: prepared.runner.gitBranch,
           dirty: prepared.runner.dirty,
@@ -1296,6 +1301,9 @@ export const spec226DevelopmentControlRouter = router({
             },
             ...(visualBlueprintMetadata ? { spec224VisualBlueprint: visualBlueprintMetadata } : {}),
             spec224Execution: {
+              platformScope: prepared.workspace.scope === "PLATFORM_ENGINEERING",
+              sourceSnapshotRevision: prepared.runner.snapshotRevision,
+              sourceSha: prepared.runner.gitHead,
               sourceFingerprint: prepared.runner.contentFingerprint,
               mode: prepared.workPackageId ? "work_package" : "prompt",
               allowedWriteSet: prepared.allowedWriteSet,

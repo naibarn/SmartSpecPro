@@ -645,6 +645,7 @@ mod tests {
         assert_eq!(facts[0].git_head, None);
         assert_eq!(facts[0].git_branch, None);
         assert!(!facts[0].dirty);
+        assert!(facts[0].dirty_paths.is_none());
         let published = serde_json::to_string(&facts).unwrap();
         assert!(!published.contains(&project.to_string_lossy().to_string()));
 
@@ -696,6 +697,10 @@ mod tests {
         let first = workspace_registry::snapshot_facts(&config).unwrap()[0]
             .content_fingerprint
             .clone();
+        assert!(workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .dirty_paths
+            .as_ref()
+            .is_some_and(Vec::is_empty));
         fs::write(project.join("ignored.txt"), "secret or generated").unwrap();
         let ignored = workspace_registry::snapshot_facts(&config).unwrap()[0]
             .content_fingerprint
@@ -706,6 +711,11 @@ mod tests {
             .content_fingerprint
             .clone();
         assert_ne!(first, changed);
+        let changed_paths = workspace_registry::snapshot_facts(&config).unwrap()[0]
+            .dirty_paths
+            .clone()
+            .unwrap();
+        assert_eq!(changed_paths, vec!["source.txt"]);
         assert!(first.as_deref().is_some_and(|value| value.len() == 64));
 
         std::process::Command::new("git")
@@ -718,6 +728,12 @@ mod tests {
             .content_fingerprint
             .clone();
         assert_ne!(first, untracked);
+        assert_eq!(
+            workspace_registry::snapshot_facts(&config).unwrap()[0]
+                .dirty_paths
+                .as_deref(),
+            Some(["new.md".to_string()].as_slice())
+        );
         fs::remove_file(project.join("new.md")).unwrap();
 
         fs::remove_file(project.join("source.txt")).unwrap();
@@ -864,6 +880,10 @@ pub struct WorkspaceSnapshotFacts {
     pub git_head: Option<String>,
     pub git_branch: Option<String>,
     pub dirty: bool,
+    /// Repository-relative paths observed in the Runner's current Git status.
+    /// `None` means the Runner could not produce a complete safe path set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dirty_paths: Option<Vec<String>>,
     pub content_fingerprint: Option<String>,
     pub task_id: Option<String>,
     pub convergence_state: String,
@@ -974,6 +994,7 @@ pub fn snapshot_facts(config: &RunnerConfig) -> Result<Vec<WorkspaceSnapshotFact
                 git_head: inspection.git_head,
                 git_branch: inspection.git_branch,
                 dirty: inspection.dirty,
+                dirty_paths: git_dirty_paths(&record.local_path),
                 content_fingerprint: fingerprint_workspace(&record.local_path),
                 task_id: None,
                 convergence_state: "NOT_REPORTED".into(),
@@ -981,6 +1002,50 @@ pub fn snapshot_facts(config: &RunnerConfig) -> Result<Vec<WorkspaceSnapshotFact
             }
         })
         .collect())
+}
+
+/// Return a complete, bounded list of paths that differ from HEAD. An
+/// unrepresentable path or failed Git query is unknown, never an empty set.
+fn git_dirty_paths(workspace: &Path) -> Option<Vec<String>> {
+    let status = git_output_bytes(
+        workspace,
+        &["status", "--porcelain=v1", "--untracked-files=all", "-z"],
+    )?;
+    if status.is_empty() {
+        return Some(Vec::new());
+    }
+    let tracked = git_output_bytes(
+        workspace,
+        &["diff", "--name-only", "--no-renames", "-z", "HEAD", "--"],
+    )?;
+    let untracked = git_output_bytes(
+        workspace,
+        &["ls-files", "--others", "--exclude-standard", "-z"],
+    )?;
+    let mut paths = std::collections::BTreeSet::new();
+    for raw in tracked
+        .split(|byte| *byte == 0)
+        .chain(untracked.split(|byte| *byte == 0))
+        .filter(|part| !part.is_empty())
+    {
+        let path = path_from_git_bytes(raw)?;
+        if path.is_absolute()
+            || path.components().any(|part| {
+                matches!(part, std::path::Component::ParentDir | std::path::Component::RootDir)
+            })
+        {
+            return None;
+        }
+        let path = path.to_str()?.replace('\\', "/");
+        if path.is_empty() || path.starts_with('/') || path.split('/').any(|part| part == "..") {
+            return None;
+        }
+        paths.insert(path);
+    }
+    if paths.len() > 4_096 {
+        return None;
+    }
+    Some(paths.into_iter().collect())
 }
 
 pub(crate) fn fingerprint_workspace(workspace: &Path) -> Option<String> {

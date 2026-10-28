@@ -192,7 +192,7 @@ describe("spec226DevelopmentControlRouter", () => {
 
   it("resumes authorization for the same Start key without restaging a changing heartbeat snapshot", async () => {
     const input = { conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "repeat-same-owner-goal-key" };
-    const digest = createHash("sha256").update(JSON.stringify({ conversationId: 8, mode: "prompt", prompt: input.prompt,
+    const digest = createHash("sha256").update(JSON.stringify({ conversationId: 8, mode: "prompt", prompt: input.prompt, writeScope: null,
       specSetRevision: null, workPackageId: null, provider: "codex", visualReferences: [], visualFiles: [], designPreferences: {} })).digest("hex");
     const runId = `run-${createHash("sha256").update(`${CTX.tenantId}:${CTX.user.id}:${input.idempotencyKey}`).digest("hex").slice(0, 40)}`;
     mocks.developmentRunService.get.mockResolvedValueOnce({ run: { runId, workerJobId: "existing-job", state: "DISCOVERY", workspaceId: "workspace-a",
@@ -711,7 +711,7 @@ describe("spec226DevelopmentControlRouter", () => {
         workPackageId: "prompt",
         metadata: expect.objectContaining({
           spec224Input: expect.objectContaining({ inputSourceRef: "spec224-source:run-1" }),
-          spec224Execution: { sourceFingerprint: "d".repeat(64), mode: "prompt", allowedWriteSet: ["**"] },
+          spec224Execution: { platformScope: false, sourceSnapshotRevision: "snap-1", sourceSha: "a".repeat(40), sourceFingerprint: "d".repeat(64), mode: "prompt", allowedWriteSet: ["**"] },
         }),
       }),
     }));

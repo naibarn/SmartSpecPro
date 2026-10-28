@@ -36,6 +36,7 @@ describe("safeWorkspaceFacts", () => {
         gitHead: "a".repeat(40),
         gitBranch: "feature/workspace-status",
         dirty: true,
+        dirtyPaths: ["apps/web/src/app.ts"],
         taskId: "task-42",
         convergenceState: "USER_WORKSPACE_CONVERGED",
         convergenceCanonicalSha: "c".repeat(40),
@@ -68,6 +69,7 @@ describe("safeWorkspaceFacts", () => {
         gitHead: "a".repeat(40),
         gitBranch: "feature/workspace-status",
         dirty: true,
+        dirtyPaths: ["apps/web/src/app.ts"],
         taskId: "task-42",
         convergenceState: "USER_WORKSPACE_CONVERGED",
         convergenceCanonicalSha: "c".repeat(40),
@@ -82,6 +84,7 @@ describe("safeWorkspaceFacts", () => {
         gitHead: null,
         gitBranch: null,
         dirty: null,
+        dirtyPaths: null,
         taskId: null,
         convergenceState: "NOT_REPORTED",
         convergenceCanonicalSha: null,
@@ -110,6 +113,7 @@ describe("safeRunWorkspaceFacts", () => {
     ], [{
       workspaceId: "ws-1", projectId: "project-1", repositoryId: null, rootId: null, kind: "project",
       displayName: "Project", gitHead: null, gitBranch: null, dirty: null, taskId: null,
+      dirtyPaths: null,
       convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null,
     }])).toEqual([]);
   });

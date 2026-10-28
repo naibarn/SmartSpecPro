@@ -25,6 +25,7 @@ import {
   type DurableReleaseInput,
 } from "./economicDurableService";
 import { provisionEconomicBudget, provisionSpec224GoalBudget } from "./economicProvisioningService";
+import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
 import { parseSpec224GoalGrant, type Spec224GoalGrantAuthorityEvidence } from "./spec224GoalDelegationGrant";
 import {
   type AgentTaskManifest,
@@ -772,7 +773,10 @@ export function createSpec224AuthorizationService() {
     const { context, loaded, runnerId, budgetCapMinorUnits } = input;
     if (!Number.isSafeInteger(budgetCapMinorUnits) || budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000)
       throw new Spec224AuthorizationError("SPEC224_DEVELOPMENT_BUDGET_CAP_INVALID");
-    const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId });
+    const sourceExecution = asRecord(loaded.run.metadata?.spec224Execution);
+    const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId,
+      sourceFingerprint: typeof sourceExecution.sourceFingerprint === "string" ? sourceExecution.sourceFingerprint : undefined,
+      allowedWriteSet: sourceExecution.platformScope === true && Array.isArray(sourceExecution.allowedWriteSet) ? sourceExecution.allowedWriteSet as string[] : undefined });
     if (!readiness.ready) throw new Spec224AuthorizationError(readiness.code);
     const node = await defaultRunnerGateway.getNode(runnerId, context.tenantId);
     const snapshot = node?.currentSnapshot;
@@ -866,6 +870,7 @@ export function createSpec224AuthorizationService() {
       const workspace = asRecord(run.metadata?.spec224Workspace);
       const execution = asRecord(run.metadata?.spec224Execution);
       const source = /^git:([a-f0-9]{40}|[a-f0-9]{64})$/i.exec(run.baseRevision)?.[1];
+      const platformScope = workspace?.platformScope === true || execution?.platformScope === true;
       const actionMap: Record<string, string> = { DISCOVERY: "discover", PLANNING: "plan", PLAN_VERIFY: "verify", IMPLEMENT: "implement", BUILD: "build", TEST: "test", DEBUG_REPAIR: "repair", REVIEW: "review", FIX_REVIEW_FINDINGS: "repair", VERIFY: "verify", REGRESSION: "test", FINAL_VERIFY: "verify" };
       const action = actionMap[run.state];
       const paths = execution?.allowedWriteSet;
@@ -887,7 +892,31 @@ export function createSpec224AuthorizationService() {
       await createJobControlPlane().prepareAuthorizationAttempt({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
       loaded = await loadRun(input.context, input.runId);
       if (!loaded.attemptId || loaded.run.workerJobId !== run.workerJobId) throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
-      const runner = mapRunner(await defaultRunnerGateway.getNode(workspace.runnerId, input.context.tenantId));
+      const authorizedAttemptId = loaded.attemptId;
+      const checkPinnedSource = (node: RunnerGatewayNode | null) => {
+        if (!platformScope) return null;
+        const readiness = evaluateSpec224RunnerReadiness({
+          runner: mapRunner(node), tenantId: input.context.tenantId, actorId: input.context.actorId,
+          workspaceId: run.workspaceId, sourceCommit: source,
+          sourceFingerprint: typeof execution?.sourceFingerprint === "string" ? execution.sourceFingerprint : undefined,
+        });
+        if (!readiness.ready) return readiness.code;
+        const workspaceFact = node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === run.workspaceId);
+        const admission = evaluateSpec224WorkspaceSourceAdmission({
+          gitHead: workspaceFact?.gitHead ?? null,
+          contentFingerprint: workspaceFact?.contentFingerprint ?? null,
+          snapshotRevision: node?.currentSnapshot?.revision ?? null,
+          dirty: workspaceFact?.dirty ?? null,
+          dirtyPaths: workspaceFact?.dirtyPaths ?? null,
+          allowedWriteSet: paths,
+          expectedFingerprint: typeof execution?.sourceFingerprint === "string" ? execution.sourceFingerprint : null,
+        });
+        return admission.status === "BLOCKED" ? `WORKSPACE_SOURCE_ADMISSION_${admission.code}` : null;
+      };
+      const runnerNode = await defaultRunnerGateway.getNode(workspace.runnerId, input.context.tenantId);
+      const sourceBlock = checkPinnedSource(runnerNode);
+      if (sourceBlock) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [sourceBlock] };
+      const runner = mapRunner(runnerNode);
       const scope = { goalId: run.goalId, repositoryRef: run.repositoryRef, sourceSha: source, action, changedPaths: [], allowedWriteSet: paths as string[], requiredCapabilities: capabilities as string[] };
       const runBinding = { ...runInput(loaded, grant.provider, grant.expiresAt), goalDelegationScope: scope };
       const preflight = evaluateSpec224Authorization({ run: runBinding, runner, approval: null, goalDelegationAuthority: authority,
@@ -913,7 +942,20 @@ export function createSpec224AuthorizationService() {
         if (!checked || checked.status !== "READY_FOR_LIVE") throw new Spec224AuthorizationError("SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");
         return { hold: await reserveEconomicHoldInTransaction(tx, reservation), authority: current };
       });
-      const evaluated = evaluateSpec224Authorization({ run: runBinding, runner, approval: null, goalDelegationAuthority: hold.authority, budget: mapHold({ ...hold.hold, workerJobId: run.workerJobId, attemptId: loaded.attemptId }) });
+      // The runner snapshot and child attempt can change while the shared-budget
+      // hold is being acquired. Revalidate both immediately before binding and
+      // canonical outbox release so stale source facts cannot authorize a child.
+      loaded = await loadRun(input.context, input.runId);
+      if (!loaded.attemptId || loaded.attemptId !== authorizedAttemptId || loaded.run.workerJobId !== run.workerJobId)
+        throw new Spec224AuthorizationError("RUN_ATTEMPT_CHANGED");
+      const currentRunnerNode = await defaultRunnerGateway.getNode(workspace.runnerId, input.context.tenantId);
+      const currentSourceBlock = checkPinnedSource(currentRunnerNode);
+      if (currentSourceBlock) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [currentSourceBlock] };
+      const currentRunner = mapRunner(currentRunnerNode);
+      if (!currentRunner || currentRunner.activeSessionId !== runner?.activeSessionId ||
+          currentRunner.snapshot?.capabilitySnapshotId !== runner?.snapshot?.capabilitySnapshotId)
+        return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: ["RUNNER_SNAPSHOT_CHANGED"] };
+      const evaluated = evaluateSpec224Authorization({ run: runBinding, runner: currentRunner, approval: null, goalDelegationAuthority: hold.authority, budget: mapHold({ ...hold.hold, workerJobId: run.workerJobId, attemptId: loaded.attemptId }) });
       if (evaluated.status !== "READY_FOR_LIVE" || !evaluated.binding) return evaluated;
       await persistBinding(input.context, loaded, evaluated.binding);
       const released = await createJobControlPlane().releaseAuthorizationHold({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
@@ -925,6 +967,8 @@ export function createSpec224AuthorizationService() {
       runnerId: string;
       workspaceId: string;
       sourceCommit?: string;
+      sourceFingerprint?: string;
+      allowedWriteSet?: string[];
     }) {
       const node = await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId);
       const readiness = evaluateSpec224RunnerReadiness({
@@ -932,7 +976,21 @@ export function createSpec224AuthorizationService() {
         runner: mapRunner(node),
         workspaceId: input.workspaceId,
         sourceCommit: input.sourceCommit,
+        sourceFingerprint: input.sourceFingerprint,
       });
+      if (readiness.ready && input.allowedWriteSet) {
+        const workspace = node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === input.workspaceId);
+        const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({
+          gitHead: workspace?.gitHead ?? null,
+          contentFingerprint: workspace?.contentFingerprint ?? null,
+          snapshotRevision: node?.currentSnapshot?.revision ?? null,
+          dirty: workspace?.dirty ?? null,
+          dirtyPaths: workspace?.dirtyPaths ?? null,
+          allowedWriteSet: input.allowedWriteSet,
+          expectedFingerprint: input.sourceFingerprint,
+        });
+        if (sourceAdmission.status === "BLOCKED") return { ...readiness, ready: false, code: `WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}` };
+      }
       return { ...readiness,
         projectId: node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === input.workspaceId)?.projectId ?? null,
         profileId: node?.currentSnapshot?.platform?.os === "windows"
@@ -969,6 +1027,12 @@ export function createSpec224AuthorizationService() {
         if (current.status === "READY_FOR_LIVE") {
           const loaded = await loadRun(input.context, input.runId);
           if (!loaded.run.workerJobId) throw new Spec224AuthorizationError("RUN_JOB_REQUIRED");
+          const sourceExecution = asRecord(loaded.run.metadata?.spec224Execution);
+          const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId,
+            sourceCommit: /^git:([a-f0-9]{40})$/i.exec(loaded.run.baseRevision)?.[1],
+            sourceFingerprint: typeof sourceExecution.sourceFingerprint === "string" ? sourceExecution.sourceFingerprint : undefined,
+            allowedWriteSet: sourceExecution.platformScope === true && Array.isArray(sourceExecution.allowedWriteSet) ? sourceExecution.allowedWriteSet as string[] : undefined });
+          if (!readiness.ready) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [readiness.code] };
           const released = await createJobControlPlane(defaultJobControlPlaneRepository).releaseAuthorizationHold({
             jobId: loaded.run.workerJobId,
             tenantId: input.context.tenantId,
@@ -989,8 +1053,11 @@ export function createSpec224AuthorizationService() {
             loaded = await loadRun(input.context, input.runId);
           }
         }
+        const sourceExecution = asRecord(loaded.run.metadata?.spec224Execution);
         const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId,
-          sourceCommit: /^git:([a-f0-9]{40})$/i.exec(loaded.run.baseRevision)?.[1] });
+          sourceCommit: /^git:([a-f0-9]{40})$/i.exec(loaded.run.baseRevision)?.[1],
+          sourceFingerprint: typeof sourceExecution.sourceFingerprint === "string" ? sourceExecution.sourceFingerprint : undefined,
+          allowedWriteSet: sourceExecution.platformScope === true && Array.isArray(sourceExecution.allowedWriteSet) ? sourceExecution.allowedWriteSet as string[] : undefined });
         if (!readiness.ready) return { version: "spec-224-authorization-binding-v1", status: "RUNNER_BINDING_REQUIRED", reasons: [readiness.code] };
         const node = await defaultRunnerGateway.getNode(input.runnerId, input.context.tenantId);
         const workspace = node?.currentSnapshot?.workspaces?.find(item => item.workspaceId === loaded.run.workspaceId);

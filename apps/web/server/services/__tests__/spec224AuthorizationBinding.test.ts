@@ -94,7 +94,7 @@ const baseInput = (): Spec224AuthorizationInput => ({
 });
 
 describe("session-bound Codex Start readiness", () => {
-  function input() {
+  function input(): Parameters<typeof evaluateSpec224RunnerReadiness>[0] {
     const value = baseInput();
     const snapshot = value.runner!.snapshot!;
     const tool = snapshot.toolInventory![0];
@@ -115,6 +115,13 @@ describe("session-bound Codex Start readiness", () => {
     value.runner!.snapshot!.toolInventory!.push({ ...value.runner!.snapshot!.toolInventory![0],
       toolId: "claude", adapterId: "claude.v1", installState: "not_installed", authState: "unknown", taskProbeState: "not_run" });
     expect(evaluateSpec224RunnerReadiness(value)).toMatchObject({ ready: true, code: "RUNNER_READY", policyDecision: "pending" });
+  });
+
+  it("rejects a Runner workspace fingerprint that changed after Goal preparation", () => {
+    const value = input();
+    value.sourceFingerprint = "b".repeat(64);
+    value.runner!.snapshot!.workspaces![0].contentFingerprint = "c".repeat(64);
+    expect(evaluateSpec224RunnerReadiness(value)).toMatchObject({ ready: false, code: "WORKSPACE_SOURCE_FINGERPRINT_MISMATCH" });
   });
 
   it.each([['not_run', 'CODEX_TASK_PROBE_NOT_RUN'], ['failed', 'CODEX_TASK_PROBE_FAILED']] as const)("distinguishes %s from authentication or policy denial", (state, code) => {

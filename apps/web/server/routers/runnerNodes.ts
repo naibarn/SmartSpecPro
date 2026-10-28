@@ -105,6 +105,7 @@ export type SafeWorkspaceFact = {
   gitHead: string | null;
   gitBranch: string | null;
   dirty: boolean | null;
+  dirtyPaths: string[] | null;
   taskId: string | null;
   convergenceState: string;
   convergenceCanonicalSha: string | null;
@@ -128,6 +129,9 @@ export function safeWorkspaceFacts(
     const projectId = boundedText(raw.projectId, 200);
     const repositoryId = boundedText(raw.repositoryId, 200);
     const taskId = boundedText(raw.taskId, 160);
+    const dirtyPaths = Array.isArray(raw.dirtyPaths) && raw.dirtyPaths.length <= 4_096 && raw.dirtyPaths.every(path =>
+      typeof path === "string" && path.length > 0 && path.length <= 512 && !path.startsWith("/") && !path.includes("\\") && !path.split("/").some(part => !part || part === "." || part === "..")
+    ) ? [...new Set(raw.dirtyPaths as string[])] : null;
     const convergenceState = isRunnerWorkspaceConvergenceState(raw.convergenceState)
       ? raw.convergenceState
       : "NOT_REPORTED";
@@ -144,6 +148,7 @@ export function safeWorkspaceFacts(
       gitHead: gitHead && /^[a-f0-9]{40,64}$/i.test(gitHead) ? gitHead : null,
       gitBranch: gitBranch && /^[A-Za-z0-9][A-Za-z0-9._/-]{0,159}$/.test(gitBranch) && !gitBranch.includes("..") && !gitBranch.includes("//") ? gitBranch : null,
       dirty: typeof raw.dirty === "boolean" ? raw.dirty : null,
+      dirtyPaths,
       taskId: taskId && /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$/.test(taskId) ? taskId : null,
       convergenceState: convergenceState === "USER_WORKSPACE_CONVERGED" && !convergenceCanonicalSha ? "NOT_REPORTED" : convergenceState,
       convergenceCanonicalSha,
@@ -268,6 +273,7 @@ export const runnerNodesRouter = router({
               ...(workspace.gitHead ? { gitHead: workspace.gitHead } : {}),
               ...(workspace.gitBranch ? { gitBranch: workspace.gitBranch } : {}),
               dirty: workspace.dirty,
+              dirtyPaths: workspace.dirtyPaths,
             } : {}),
           }];
         });

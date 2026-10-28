@@ -263,7 +263,7 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_REQUIRED")));
   });
 
-  it("preselects the authorized Platform workspace and fails closed when it is dirty", async () => {
+  it("preselects the authorized Platform workspace and lets scoped preflight handle dirty files", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
     mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: true, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }];
@@ -271,7 +271,8 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(screen.getByLabelText("1. เลือก Runner")).toHaveValue("runner-test"));
     expect(screen.getByLabelText("2. เลือก Project Workspace")).toHaveValue('["runner-test","workspace-test"]');
     expect(screen.getByRole("heading", { name: "พัฒนาระบบ SmartAIHub" })).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent(/dirty changes/);
+    expect(screen.getByText(/เปลี่ยนเป็น Developer view เพื่อกำหนด scope/)).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText(/runner-test|workspace-test/)).not.toBeInTheDocument();
   });
 
