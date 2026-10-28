@@ -60,6 +60,7 @@ import { cloudflareRuntimeStatus } from "../services/cloudflareRuntimeTarget";
 import { refreshSearchResultCacheProvider } from "../services/cloudflareSearchResultCache";
 import { clearVectorProviderConfigCache } from "../services/vectorProvider";
 import {
+  bindPlatformCloudflareCredentialProfile,
   getCloudflareCredentialCenterState,
   getCloudflareDeploymentCredentialState,
   probeCloudflareDeploymentCredential,
@@ -1869,6 +1870,30 @@ export const infrastructureRouter = router({
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       const identity = input;
       return getCloudflareDeploymentCredentialState(db, { identity, credentialRef: deploymentCredentialRef(identity) });
+    }),
+
+  bindPlatformCloudflareCredentialProfile: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100),
+      environment: z.enum(["staging", "production"]), provider: z.literal("cloudflare") }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      try {
+        if (!await isProductionTenantOwner(db, input.tenantId, ctx.user!.id))
+          throw new Error("PLATFORM_CREDENTIAL_OWNER_SCOPE_REQUIRED");
+        const result = await bindPlatformCloudflareCredentialProfile(db, { identity: input, actorUserId: ctx.user!.id });
+        const masked = (value: string) => `${value.slice(0, 4)}…${value.slice(-4)}`;
+        auditLogger.log({ eventType: "platform_cloudflare_credential_reference_bound", userId: ctx.user?.id ?? null,
+          requestType: "cloudflare_platform_credential_binding", responsePayload: { tenantId: input.tenantId, projectId: input.projectId,
+            environment: input.environment, provider: input.provider, workerRef: result.workerRef,
+            accountRef: masked(result.accountId), zoneRef: masked(result.zoneId), source: "cloudflare-credential-center:deployment" }, statusCode: 200 });
+        return { status: result.status, accountIdMasked: masked(result.accountId), zoneIdMasked: masked(result.zoneId),
+          workerRef: result.workerRef, environment: result.environment, source: "platform-credential-center" as const };
+      } catch (error) {
+        const code = error instanceof Error && /^PLATFORM_CREDENTIAL_[A-Z0-9_]+$/.test(error.message)
+          ? error.message : "PLATFORM_CREDENTIAL_BINDING_FAILED";
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: code });
+      }
     }),
 
   probeCloudflareDeploymentCredential: exactAdminProcedure

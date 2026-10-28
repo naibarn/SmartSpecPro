@@ -53,21 +53,22 @@ describe("tenant-bound Cloudflare deployment credentials", () => {
   it("distinguishes missing, revoked, and undecryptable credentials without exposing secrets", async () => {
     process.env.LLM_ENCRYPTION_KEY = key;
     await expect(getCloudflareDeploymentCredentialState(dbFor(), { identity, credentialRef: ref }))
-      .resolves.toEqual({ status: "NOT_CONFIGURED", credentialRef: ref, savedAt: null });
+      .resolves.toMatchObject({ status: "NOT_CONFIGURED", credentialRef: ref, savedAt: null });
     await expect(withCloudflareDeploymentCredential(dbFor({ status: "REVOKED", encryptedSecret: "cipher" }), { identity, credentialRef: ref }, async () => "never"))
       .resolves.toEqual({ status: "REVOKED" });
     await expect(withCloudflareDeploymentCredential(dbFor({ status: "CONFIGURED", encryptedSecret: "invalid-ciphertext" }), { identity, credentialRef: ref }, async () => "never"))
       .resolves.toEqual({ status: "UNAVAILABLE" });
     const savedAt = new Date("2026-10-24T09:30:49.037Z");
     const state = await getCloudflareDeploymentCredentialState(dbFor({ status: "CONFIGURED", encryptedSecret: encrypt("secret-token", key), updatedAt: savedAt }), { identity, credentialRef: ref });
-    expect(state).toEqual({ status: "CONFIGURED", credentialRef: ref, savedAt: savedAt.toISOString() });
+    expect(state).toMatchObject({ status: "CONFIGURED", credentialRef: ref, savedAt: savedAt.toISOString(), source: "target" });
     expect(JSON.stringify(state)).not.toContain("secret-token");
   });
 
   it("stores encrypted credential material and revokes only the exact binding", async () => {
     process.env.LLM_ENCRYPTION_KEY = key;
     let inserted: Record<string, unknown> | undefined;
-    const saveDb = { insert: () => ({ values: (value: Record<string, unknown>) => { inserted = value; return { onConflictDoUpdate: async () => undefined }; } }) } as never;
+    const saveDb = { insert: () => ({ values: (value: Record<string, unknown>) => { inserted = value; return { onConflictDoUpdate: async () => undefined }; } }),
+      delete: () => ({ where: async () => undefined }) } as never;
     await expect(saveCloudflareDeploymentCredential(saveDb, { identity, token: "secret-token", actorUserId: 4 }))
       .resolves.toEqual({ status: "CONFIGURED", credentialRef: ref });
     expect(inserted?.credentialRef).toBe(ref);

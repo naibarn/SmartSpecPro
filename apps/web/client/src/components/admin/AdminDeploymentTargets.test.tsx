@@ -64,11 +64,13 @@ const mocks = vi.hoisted(() => ({
   databaseVpcReadable: false,
   databaseVpcs: [] as Array<Record<string, unknown>>,
   saveCredential: vi.fn(),
+  bindPlatformCredential: vi.fn(),
   revokeCredential: vi.fn(),
   probeCredential: vi.fn(),
   targets: [] as Array<Record<string, unknown>>,
   stagingTargets: [] as Array<Record<string, unknown>>,
   targetsError: false,
+  deploymentCredentialState: { status: "CONFIGURED", savedAt: "2026-10-24T09:30:49.037Z" } as Record<string, unknown>,
 }));
 
 vi.mock("@/lib/cloudflareIngressAcceptance",()=>({verifyCloudflareIngressInBrowser:mocks.verifyIngressBrowser}));
@@ -134,7 +136,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionQueueJobStatus: { useQuery: () => ({ data: null }) },
       getLatestCloudflareProductionQueueJob: { useQuery: () => ({ data: mocks.latestProductionQueueJob, refetch: mocks.refetchLatestProductionQueueJob }) },
       getLatestCloudflareProductionDatabaseJob: { useQuery: () => ({ data: mocks.latestProductionDatabaseJob, refetch: mocks.refetchProductionProviderInventory }) },
-      getDeploymentCredentialState: { useQuery: () => ({ data: { status: "CONFIGURED", savedAt: "2026-10-24T09:30:49.037Z" }, isLoading: false, isError: false }) },
+      getDeploymentCredentialState: { useQuery: () => ({ data: mocks.deploymentCredentialState, isLoading: false, isError: false }) },
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
       disableProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.disable, isPending: false, error: null }) },
@@ -190,6 +192,9 @@ vi.mock("@/lib/trpc", () => ({
         error: mocks.activationError ? { message: mocks.activationError } : null,
       }) },
       saveDeploymentCredential: { useMutation: () => ({ mutate: mocks.saveCredential, isPending: false, error: null }) },
+      bindPlatformCloudflareCredentialProfile: { useMutation: (options: { onSuccess?: () => unknown }) => ({
+        mutate: (input: unknown) => { mocks.bindPlatformCredential(input); void options.onSuccess?.(); }, isPending: false, error: null,
+      }) },
       revokeDeploymentCredential: { useMutation: () => ({ mutate: mocks.revokeCredential, isPending: false, error: null }) },
       probeCloudflareDeploymentCredential: { useMutation: (options: { onSuccess?: (result: unknown) => unknown }) => ({
         mutate: (input: unknown) => {
@@ -264,6 +269,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.targets = [];
     mocks.stagingTargets = [];
     mocks.targetsError = false;
+    mocks.deploymentCredentialState = { status: "CONFIGURED", savedAt: "2026-10-24T09:30:49.037Z" };
     mocks.latestProductionQueueJob = null;
     mocks.latestProductionDatabaseJob = null;
     mocks.ingressPreflight = null;
@@ -433,6 +439,20 @@ describe("AdminDeploymentTargets", () => {
       provider: "cloudflare",
       targetRowId: "target-row-1",
     });
+  });
+
+  it("offers an explicit safe reference bind for the existing platform credential without asking for a second token", async () => {
+    const user = userEvent.setup();
+    mocks.stagingTargets = [stagingActivationTarget];
+    mocks.deploymentCredentialState = { status: "NOT_CONFIGURED", savedAt: null, canBindPlatformCredential: true,
+      source: "platform-credential-center" };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText(/can use the existing deployment profile/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Use the saved platform deployment credential" }));
+    expect(mocks.bindPlatformCredential).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", provider: "cloudflare" });
+    expect(screen.getByLabelText("Cloudflare API token")).not.toBeVisible();
   });
 
   it("shows when the Production target's encrypted token copy was last saved", async () => {

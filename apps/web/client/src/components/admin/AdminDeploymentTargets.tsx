@@ -281,6 +281,12 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
   const probeCredential = trpc.infrastructure.probeCloudflareDeploymentCredential.useMutation({
     onSuccess: result => setProbe(result as TargetCredentialProbe),
   });
+  const bindPlatformCredential = trpc.infrastructure.bindPlatformCloudflareCredentialProfile.useMutation({
+    onSuccess: async () => {
+      setProbe(null);
+      await utils.infrastructure.getDeploymentCredentialState.invalidate(identity);
+    },
+  });
   const label = isLoading
     ? "Checking"
     : isError
@@ -291,6 +297,20 @@ function CredentialReadiness({ target }: { target: DeploymentTarget }) {
       <Badge variant={data?.status === "CONFIGURED" ? "default" : "secondary"}>
         {text("Credential", "Credential")}: {label}
       </Badge>
+      {data?.source === "platform-credential-center" ? <p role="status">
+        {text("Using the existing encrypted platform Credential Center profile by reference. No duplicate token is stored.",
+          "ใช้โปรไฟล์ Credential Center ของแพลตฟอร์มที่เข้ารหัสอยู่แล้วผ่าน reference โดยไม่เก็บ token ซ้ำ")}
+      </p> : null}
+      {data?.canBindPlatformCredential ? <VStack as="section" gap={1}>
+        <p>{text("This verified platform-owned target can use the existing deployment profile. Binding checks the exact account, Worker, zone, tenant, project, and environment; it does not deploy or change traffic.",
+          "Target นี้เป็นของแพลตฟอร์มและสามารถอ้างอิงโปรไฟล์ deployment เดิมได้ การผูกจะตรวจ account, Worker, zone, tenant, project และ environment ให้ตรงกัน โดยไม่ deploy หรือเปลี่ยน traffic")}</p>
+        <Button type="button" variant="outline" disabled={bindPlatformCredential.isPending}
+          onClick={() => bindPlatformCredential.mutate(identity)}>
+          {bindPlatformCredential.isPending ? text("Verifying and binding…", "กำลังตรวจและผูก credential…")
+            : text("Use the saved platform deployment credential", "ใช้ credential deployment ของแพลตฟอร์มที่บันทึกไว้")}
+        </Button>
+        {bindPlatformCredential.error ? <p role="alert">{bindPlatformCredential.error.message}</p> : null}
+      </VStack> : null}
       {target.environment === "production" && data?.status === "CONFIGURED" && data.savedAt ? <p role="status">
         {text(
           "Production token copy saved here: ",
