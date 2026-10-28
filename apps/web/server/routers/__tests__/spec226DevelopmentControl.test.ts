@@ -711,6 +711,7 @@ describe("spec226DevelopmentControlRouter", () => {
       workerJobId: "canonical-job-1",
     });
     expect(mocks.requestGoalGrantApproval).toHaveBeenCalledWith(expect.objectContaining({
+      tenantId: CTX.tenantId,
       projectId: "project-a",
       goalId: expect.stringMatching(/^[0-9a-f-]{36}$/),
       payload: expect.objectContaining({ kind: "spec224_goal_delegation_grant", goalId: expect.stringMatching(/^[0-9a-f-]{36}$/), provider: "codex" }),

@@ -54,6 +54,17 @@ import {
 } from "./spec224DevelopmentRunContracts";
 import type { AgentTaskPolicyBinding } from "./agentControlPlaneContracts";
 
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, nested]) => nested !== undefined)
+      .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
+    return `{${entries.map(([key, nested]) => `${JSON.stringify(key)}:${stableJson(nested)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
 export type DevelopmentRunScope = {
   tenantId: string;
   actorId: number;
@@ -589,7 +600,7 @@ export function createDevelopmentRunService(
         if (duplicate) {
           if (
             duplicate.type !== input.type ||
-            JSON.stringify(duplicate.payload) !== JSON.stringify(input.payload)
+            stableJson(duplicate.payload) !== stableJson(input.payload)
           ) {
             throw new Error("RUN_IDEMPOTENCY_CONFLICT");
           }

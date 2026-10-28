@@ -1740,6 +1740,11 @@ async def create_spec224_goal_grant_approval(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Persist one immutable Goal Grant request through the canonical approval authority."""
+    authenticated_tenant_id = getattr(current_user, "currentTenantId", None)
+    if tenant_id is None:
+        tenant_id = authenticated_tenant_id
+    elif authenticated_tenant_id and tenant_id != authenticated_tenant_id:
+        raise HTTPException(status_code=403, detail="SPEC224_GOAL_GRANT_TENANT_MISMATCH")
     if not tenant_id:
         raise HTTPException(status_code=403, detail="tenant_id is required")
     payload = data.payload

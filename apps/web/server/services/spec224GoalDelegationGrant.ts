@@ -95,21 +95,30 @@ export function buildSpec224GoalGrantApprovalPayload(
 
 export async function requestSpec224GoalGrantApproval(input: {
   userToken: string | null | undefined;
+  tenantId: string;
   projectId: string;
   goalId: string;
   payload: Record<string, unknown>;
 }): Promise<{ approvalRef: string; status: string; expiresAt: string | null }> {
   if (!input.userToken?.trim()) throw new Error("APPROVAL_AUTHENTICATION_REQUIRED");
+  if (!input.tenantId.trim()) throw new Error("APPROVAL_TENANT_CONTEXT_REQUIRED");
   const runtime = await getAppRuntimeConfig();
   const response = await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/spec224/goal-grants`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${input.userToken}` },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${input.userToken}`,
+      "X-Tenant-ID": input.tenantId,
+    },
     body: JSON.stringify({ project_id: input.projectId, goal_id: input.goalId, payload: input.payload, timeout_minutes: 1440 }),
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { detail?: unknown } | null;
-    const detail = typeof body?.detail === "string" && /^SPEC224_[A-Z0-9_]+$/.test(body.detail)
-      ? body.detail : response.status === 403 ? "APPROVAL_AUTHORITY_FORBIDDEN" : "APPROVAL_AUTHORITY_UNAVAILABLE";
+    const detail = typeof body?.detail === "string" && /^[A-Z][A-Z0-9_]{1,100}$/.test(body.detail)
+      ? body.detail : response.status === 403 ? "APPROVAL_AUTHORITY_FORBIDDEN"
+        : response.status === 401 ? "APPROVAL_AUTHORITY_AUTHENTICATION_FAILED"
+          : response.status === 400 ? "APPROVAL_AUTHORITY_TENANT_CONTEXT_REQUIRED"
+            : `APPROVAL_AUTHORITY_HTTP_${response.status}`;
     throw new Error(detail);
   }
   const result = await response.json() as Record<string, unknown>;

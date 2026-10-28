@@ -260,6 +260,7 @@ async function advanceWorkspaceGoalAdmission(input: {
   if (!goalId) throw new Error("SPEC224_GOAL_SCOPE_REQUIRED");
   const approval = await requestSpec224GoalGrantApproval({
     userToken: input.context.userToken,
+    tenantId: input.context.tenantId,
     projectId: input.projectId,
     goalId,
     payload: input.payload,
@@ -1040,8 +1041,9 @@ export const spec226DevelopmentControlRouter = router({
           throw error;
         });
         if (existing) {
-          if (existing.run.metadata?.spec224StartRequestDigest !== requestDigest || existing.run.workspaceId !== binding.workspace.workspaceId)
+          if (existing.run.metadata?.spec224StartRequestDigest !== requestDigest || existing.run.workspaceId !== binding.workspace.workspaceId) {
             throw new Error("RUN_IDEMPOTENCY_CONFLICT");
+          }
           const persistedGrant = existing.run.metadata?.spec224GoalGrantPayload;
           const authorization = persistedGrant && runnerReadiness.projectId
             ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId,
@@ -1228,7 +1230,10 @@ export const spec226DevelopmentControlRouter = router({
             profileId: runnerReadiness.profileId,
             environment: "development",
             spec224StartRequestDigest: requestDigest,
-            spec224BudgetCapMinorUnits: input.budgetCapMinorUnits,
+            // `budgetCapMinorUnits` is the cumulative Goal Grant limit. Reserve
+            // at most half for one child so a receipt-driven successor can
+            // hold a distinct reservation against the same shared Goal Budget.
+            spec224BudgetCapMinorUnits: Math.max(1, Math.floor(input.budgetCapMinorUnits / 2)),
             spec224GoalGrantPayload: grantPayload,
             ...(factoryState ? { [MINI_APP_FACTORY_STATE_KEY]: factoryState } : {}),
             ...(factoryStageDocument && factoryPipeline && factoryState && firstFactoryStage ? {
