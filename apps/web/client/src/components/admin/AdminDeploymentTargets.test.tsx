@@ -937,6 +937,17 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.queryByRole("button",{name:"Approve 1% Worker version canary"})).not.toBeInTheDocument();
   });
 
+  it("shows the exact Production Queue ID blocker in the visible canary status", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
+    mocks.productionWorkerCanaryPreflight={ready:false,reason:"PRODUCTION_QUEUE_ID_INVALID"};
+    mocks.productionWorkerCanaryJob=null;
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.getByText(/queue_id is missing or invalid/i)).toBeInTheDocument();
+    expect(screen.getByText("PRODUCTION_QUEUE_ID_INVALID")).toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:"Approve 1% Worker version canary"})).not.toBeInTheDocument();
+  });
+
   it("does not turn a failed canary job read into an empty-registry claim", async () => {
     const user=userEvent.setup();
     mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];

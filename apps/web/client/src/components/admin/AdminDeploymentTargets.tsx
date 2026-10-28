@@ -746,6 +746,27 @@ export default function AdminDeploymentTargets() {
     const pair=messages[reason];return pair?text(pair[0],pair[1]):text("Readiness checks must pass before the migration can start.","ต้องเตรียมระบบให้ผ่านการตรวจความพร้อมก่อนเริ่มย้าย");
   };
   const workerCanaryBlockerText=(reason:string)=>{
+    if(reason==="PRODUCTION_QUEUE_ID_INVALID")return text(
+      "Cloudflare returned the Production Queue, but its queue_id is missing or invalid. Consumer and DLQ verification was skipped.",
+      "พบ Production Queue จาก Cloudflare แต่ไม่มี queue_id หรือรูปแบบไม่ถูกต้อง จึงยังตรวจ consumer และ DLQ ไม่ได้");
+    if(reason==="PRODUCTION_QUEUE_NOT_FOUND")return text(
+      "The complete Queue inventory does not contain the required Production Queue. No Queue was created.",
+      "อ่านรายการ Queue ครบแล้วแต่ไม่พบ Production Queue ที่ต้องใช้ ระบบยังไม่ได้สร้าง Queue ใหม่");
+    if(reason==="PRODUCTION_QUEUE_NAME_AMBIGUOUS")return text(
+      "More than one Queue has the Production name, so the system cannot safely choose an ID.",
+      "พบ Queue ชื่อ Production ซ้ำมากกว่าหนึ่งรายการ ระบบจึงเลือก ID อย่างปลอดภัยไม่ได้");
+    if(reason.startsWith("PRODUCTION_QUEUE_CONSUMER_READ_HTTP_")||reason==="PRODUCTION_QUEUE_CONSUMER_READ_UNAVAILABLE")return text(
+      "The Production Queue ID is valid, but Cloudflare did not return its consumer inventory. Check Queue read access and recheck.",
+      "Queue ID ของ Production ถูกต้อง แต่ยังอ่านรายการ consumer จาก Cloudflare ไม่ได้ ให้ตรวจสิทธิ์อ่าน Queue แล้วตรวจซ้ำ");
+    if(reason==="PRODUCTION_QUEUE_CONSUMER_WORKER_MISMATCH")return text(
+      "The Queue consumer points to a different Worker than the approved Production Worker.",
+      "Queue consumer ผูกกับ Worker คนละตัวกับ Production Worker ที่กำหนดไว้");
+    if(reason==="PRODUCTION_QUEUE_DEAD_LETTER_QUEUE_MISMATCH")return text(
+      "The Production Queue consumer does not reference the required dead-letter queue.",
+      "Queue consumer ยังไม่ได้ผูกกับ dead-letter queue ที่กำหนดไว้");
+    if(reason==="PRODUCTION_ORIGIN_CONFIGURATION_NOT_VALID_FOR_BASELINE")return text(
+      "The saved Production origin configuration is expired, revoked, or does not match the active Worker baseline. Canary remains blocked until a baseline-compatible configuration is verified.",
+      "origin configuration ของ Production หมดอายุ ถูกเพิกถอน หรือ digest ไม่ตรงกับ Worker baseline ปัจจุบัน ต้องยืนยัน configuration ที่เข้ากับ baseline ก่อนจึงเริ่ม Canary ได้");
     if(reason.includes("PERMISSION_DENIED_HTTP_401")||reason.includes("PERMISSION_DENIED_HTTP_403"))return text(
       "The encrypted Production credential was denied this read. Check the named Cloudflare read permission; no deployment change was attempted.",
       "credential Production ที่เข้ารหัสถูกปฏิเสธสิทธิ์อ่าน ให้ตรวจ permission ของ Cloudflare ตามรายการที่ระบุ ระบบยังไม่ได้เปลี่ยน deployment");
