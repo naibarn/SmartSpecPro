@@ -1004,14 +1004,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
+    "expected_canonical_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e",
     "expected_spec_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0"
   },
   "continuation": {
-    "next_action": "Extend scripts/development-lifecycle/workspace_authority.py to issue a run/attempt-bound, path-scoped lease for registered Project Workspaces. Connect claim, renewal, validation/fencing and idempotent release through the existing workspace.authority.safe_action and canonical worker_jobs/outbox lifecycle; bind the lease receipt at SPEC-224 authorization, outbox release, Runner candidate apply, and terminal/recovery. Add connected contention, disjoint-path, stale-fence, crash/replay and duplicate-release tests. Then use the structured rejection code and authorized release/runtime evidence to establish the configured endpoint's actual serving revision and resolve the live Runner ACK. Then complete the Session C Task Control picker/refresh integration, run connected PostgreSQL integration, verify a bounded real Codex task on the Debian Runner, and prove current configured-endpoint Runner snapshot ACK; keep acceptance PARTIAL until those pass.",
+    "next_action": "Extend scripts/development-lifecycle/workspace_authority.py to issue a run/attempt-bound, path-scoped lease for registered Project Workspaces. Connect claim, renewal, validation/fencing and idempotent release through the existing workspace.authority.safe_action and canonical worker_jobs/outbox lifecycle; bind the lease receipt at SPEC-224 authorization, outbox release, Runner candidate apply, and terminal/recovery. Add connected contention, disjoint-path, stale-fence, crash/replay and duplicate-release tests. Then use the structured rejection code and authorized release/runtime evidence to establish the configured endpoint's actual serving revision and resolve the live Runner ACK. Then complete the Session C Task Control picker/refresh integration, run connected PostgreSQL integration, verify a bounded real Codex task on the Debian Runner, and prove current configured-endpoint Runner snapshot ACK; keep acceptance PARTIAL until those pass. First establish an isolated current-schema PostgreSQL test target through the repo migration workflow, then rerun the model-selection dispatch integration. Keep P0 lease and configured-endpoint ACK prerequisites ahead of live Goal admission.",
     "next_ready_workunit": "SPEC224_RUN_SCOPED_WRITER_LEASE_AND_RUNNER_EVENT_ACK",
     "reactivation_predicate": "A durable run-scoped writer lease/fence is acquired, checked at outbox release and Runner apply, and released idempotently on terminal/recovery; the development Control Plane resolves the existing Debian device identity to its authorized Project Workspace, has a current acknowledged snapshot with complete dirtyPaths, Codex task probe is passed, and the bounded write set is disjoint from all current dirty paths and active writer leases.",
-    "resume_point": "Canonical main is 988909d0583462bcc5e8289b7fbc4a5eb70a70d2. SPEC-224 backend model selection is integrated: Auto resolves from the trusted Runner catalog, the resolved model/account/reasoning selection is persisted in DevelopmentRun and Goal approval, and the canonical Runner revalidates it before passing pinned Codex CLI arguments. Focused Web and Rust checks plus read-only live app-server model/list passed; there is no PostgreSQL integration, model inference, Task Control UI, or configured-endpoint ACK evidence. Continue P0 with the run/attempt-bound SPEC-293 Project Workspace lease and resolve the live Runner event ACK before any Goal/source admission.",
+    "resume_point": "Canonical main is 2fa582001e5d409768a492960d0f3fed0ac93b7e. Backend Codex selection is implemented and focused Web/Rust checks plus read-only live model/list passed. The PostgreSQL dispatch assertion is integrated but not verified: local smartspec_test has an empty Drizzle migration ledger and lacks worker_jobs.activeDedupeKey. Do not run a broad historical migration set for this task. Prepare an isolated schema using the approved migration lifecycle, then rerun the opt-in PostgreSQL suite. Task Control UI remains Session C-owned; actual bounded Codex task and configured-endpoint Runner ACK remain pending. P0 run/attempt path-scoped SPEC-293 lease and current acknowledged snapshot are required before live Goal admission.",
     "waiting_predicate": "Resume live Goal preparation only after (1) the existing Debian device Control Plane accepts its current Runner session and acknowledges the capability/workspace snapshot with complete dirtyPaths, (2) a run/attempt-bound SPEC-293 path-scoped writer lease is integrated and revalidated at outbox release and Runner apply with terminal/recovery cleanup, and (3) server-authoritative source admission confirms the bounded scope is SAFE_CLEAN or SAFE_DISJOINT_DIRTY. Codex task probe is currently locally passed; actual approval and Child 1/2 receipts remain later acceptance evidence."
   },
   "continuation_assessment": {
@@ -1159,7 +1159,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 235,
+  "generation": 236,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
@@ -1178,6 +1178,7 @@
   "implementation": {
     "checkpoint_shas": [
       "0dbde80ae8935ef42ddae7c76144dda20ae524a8",
+      "2fa582001e5d409768a492960d0f3fed0ac93b7e",
       "988909d0583462bcc5e8289b7fbc4a5eb70a70d2"
     ],
     "mapping": [
@@ -1345,6 +1346,14 @@
           "apps/web/server/services/externalAgentRunnerDispatcher.ts"
         ],
         "source_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2"
+      },
+      {
+        "coverage": "PARTIAL; PostgreSQL integration assertion added, but connected verification did not reach dispatch because the existing test database has an empty Drizzle migration ledger and lacks activeDedupeKey",
+        "scope": "Extend SPEC-224 PostgreSQL control-plane test to assert the pinned model selection reaches the canonical Runner payload",
+        "source_paths": [
+          "apps/web/server/services/__tests__/spec224PostgresIntegration.integration.test.ts"
+        ],
+        "source_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e"
       }
     ],
     "source_paths": [
@@ -1358,6 +1367,7 @@
       "apps/web/server/jobs/workspaceAuthorityGithub.ts",
       "apps/web/server/jobs/workspaceAuthoritySafeActionJob.ts",
       "apps/web/server/routers/spec226DevelopmentControl.ts",
+      "apps/web/server/services/__tests__/spec224PostgresIntegration.integration.test.ts",
       "apps/web/server/services/__tests__/spec224WorkspaceLifecycleReceiptReader.test.ts",
       "apps/web/server/services/agentControlPlaneContracts.ts",
       "apps/web/server/services/developmentRunEligibility.ts",
@@ -1380,11 +1390,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
+    "canonical_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e",
     "integrated": true,
-    "integrated_at": "2026-10-28T12:56:59Z",
+    "integrated_at": "2026-10-28T13:00:15Z",
     "pull_request": null,
-    "source_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2"
+    "source_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3874,7 +3884,7 @@
     "unresolved": 1283
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T12:57:27.107337Z",
+  "updated_at": "2026-10-28T13:00:20.106664Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4340,6 +4350,13 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-dynamic-harness-model-selection-20261028.md",
         "scope": "Focused Web 6 files/59 tests; Runner external_agent 3 tests; Codex app-server catalog 2 tests; installed authenticated CLI read-only model/list 1 test. No PostgreSQL integration, model inference, Task Control UI, or configured-endpoint ACK evidence.",
         "source_sha": "988909d0583462bcc5e8289b7fbc4a5eb70a70d2",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_MODEL_SELECTION_POSTGRES_TEST_BLOCKED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-model-selection-postgres-test-blocked-20261028.md",
+        "scope": "Connected opt-in test attempted against local smartspec_test. postgres hostname was unresolved from this checkout; localhost connected but the worker_jobs query failed because activeDedupeKey is absent. Read-only migration ledger query returned no applied rows. No successful PostgreSQL dispatch evidence.",
+        "source_sha": "2fa582001e5d409768a492960d0f3fed0ac93b7e",
         "status": "PARTIAL"
       }
     ],
