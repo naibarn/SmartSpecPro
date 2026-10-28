@@ -194,6 +194,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const mode = developmentInputMode === "prompt" ? "prompt" : "spec_set";
   const [specSource, setSpecSource] = useState<"upload" | "catalog">("upload");
   const lastPlatformWorkspaceKey = useRef<string | null>(null);
+  const creatingTaskInFlight = useRef(false);
+  const startInFlight = useRef(false);
   const [featureSpecSearch, setFeatureSpecSearch] = useState("");
   const [selectedFeatureSpec, setSelectedFeatureSpec] = useState("");
   const [pendingSpecFiles, setPendingSpecFiles] = useState<File[]>([]);
@@ -311,7 +313,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const nextReadyWorkunit = canonicalHandoff?.status === "CURRENT" ? canonicalHandoff.nextReadyWorkunit : null;
   const isNextReadyPackage = (workPackage: { id: string; externalId: string }) => Boolean(nextReadyWorkunit && (workPackage.id === nextReadyWorkunit || workPackage.externalId === nextReadyWorkunit));
   const canCreateConversation = developmentInputMode === "prompt"
-    ? Boolean(effectivePrompt)
+    ? Boolean(effectivePrompt) && (!isPlatformWorkspace || mode !== "prompt" || proposedWriteScope.length > 0)
     : (developmentInputMode !== "spec_prompt" || Boolean(effectivePrompt)) && (effectiveSpecSource === "catalog"
       ? Boolean(selectedFeatureSpec) && (!platformWorkspace || featureSpecContextQuery.data?.handoff.status === "CURRENT")
       : pendingSpecFiles.length > 0);
@@ -379,7 +381,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   }
 
   async function createTaskConversation() {
-    if (!onCreateConversation || !selectedWorkspace || !canCreateConversation || creatingTask) return;
+    if (!onCreateConversation || !selectedWorkspace || !canCreateConversation || creatingTaskInFlight.current) return;
+    creatingTaskInFlight.current = true;
     setCreatingTask(true);
     try {
       const titleSource = developmentInputMode === "prompt" ? effectivePrompt : featureSpecsQuery.data?.specs.find(spec => spec.id === selectedFeatureSpec)?.title ?? "งานพัฒนาจาก Spec";
@@ -401,10 +404,20 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       }
       const result = await prepareMutation.mutateAsync({ conversationId: nextConversationId, mode, ...(mode === "prompt" ? { prompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {}), ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}) });
       setPreparation(result);
-      toast.success("สร้างงาน ผูก Workspace และเตรียมแผนผ่าน Goal Control Plane แล้ว");
+      const runnable = result.runnableWorkPackageIds.filter(id => {
+        const item = result.workPackages?.find(workPackage => workPackage.id === id);
+        return item && (effectiveSpecSource !== "catalog" || isNextReadyPackage(item));
+      });
+      const startablePackage = mode === "prompt" ? "prompt" : runnable.length === 1 ? runnable[0] : null;
+      if (startablePackage && (runnerReadiness?.ready ?? result.runnerReadiness.ready) && result.runnerReadiness.ready && catalogFresh && activeModel && supportedEffort && platformSourceIsSafe) {
+        await startWorkPackage(startablePackage, nextConversationId, result, globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+      } else {
+        toast.success("สร้างงาน ผูก Workspace และเตรียมแผนแล้ว ตรวจ readiness และเลือกขอบเขตก่อนเริ่ม");
+      }
     } catch (error) {
       toast.error(presentCustomerError(error, "สร้างงานใหม่ไม่สำเร็จ"));
     } finally {
+      creatingTaskInFlight.current = false;
       setCreatingTask(false);
     }
   }
@@ -485,9 +498,9 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     }
   }
 
-  async function startWorkPackage(workPackageId: string) {
-    if (!conversationId || !preparation) return;
-    const packageSourceAdmission = preparation.workPackages?.find(item => item.id === workPackageId)?.sourceAdmission;
+  async function startWorkPackage(workPackageId: string, targetConversationId = conversationId, targetPreparation = preparation, stableKey?: string) {
+    if (!targetConversationId || !targetPreparation || startInFlight.current) return;
+    const packageSourceAdmission = targetPreparation.workPackages?.find(item => item.id === workPackageId)?.sourceAdmission;
     if (!platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY"].includes(packageSourceAdmission?.status ?? "BLOCKED"))) {
       toast.error("ขอบเขตไฟล์ชนกับการเปลี่ยนแปลงเดิม หรือหลักฐาน source/scope ยังไม่ครบ โปรดเลือกขอบเขตที่ปลอดภัยและตรวจผล preflight ก่อนเริ่ม");
       return;
@@ -511,18 +524,23 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       return;
     }
     const modelSelection = { policy: effectiveModelPolicy, ...(effectiveModelPolicy === "explicit" ? { modelId: selectedModelId } : {}), reasoningEffort: supportedEffort };
-    const key = `${conversationId}:${mode}:${preparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}:${JSON.stringify(modelSelection)}`;
-    const idempotencyKey = startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    if (!(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || !targetPreparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort))) {
+      toast.error("Runner หรือ Codex model readiness ยังไม่พร้อม จึงยังไม่เริ่มงาน");
+      return;
+    }
+    const key = `${targetConversationId}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}:${JSON.stringify(modelSelection)}`;
+    const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
+    startInFlight.current = true;
     try {
       const result = await startMutation.mutateAsync({
-        conversationId,
+        conversationId: targetConversationId,
         mode,
         factoryMode: requestKind === "mini_app",
         ...(mode === "prompt" ? { prompt: effectivePrompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {
           // Start the immutable revision shown in this preparation. Another
           // Chat section may append a newer SpecSet while this preview is open.
-          specSetRevision: preparation.planRevision,
+          specSetRevision: targetPreparation.planRevision,
           workPackageId,
           ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
         }),
@@ -567,12 +585,18 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
         const authorization = "authorization" in result ? result.authorization : null;
         const reasons = authorization && typeof authorization === "object" && "reasons" in authorization && Array.isArray(authorization.reasons)
           ? authorization.reasons.join(", ") : status;
+        await Promise.resolve(trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId: targetConversationId })).catch(() => undefined);
         toast.info(status === "GOAL_APPROVAL_PENDING"
           ? "บันทึก Goal แล้ว รอผู้มีสิทธิ์อนุมัติขอบเขตก่อนเริ่มงาน"
-          : simpleMode ? "บันทึกงานแล้ว แต่ยังรอสิทธิ์หรือความพร้อมก่อนเริ่ม" : `DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
+          : status === "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED"
+            ? "บันทึกงานไว้แล้ว แต่ส่งคำขออนุมัติไม่สำเร็จ ตรวจรายการงานแล้วลองทำงานเดิมต่อเพื่อ retry"
+            : simpleMode ? "บันทึกงานแล้ว แต่ยังรอสิทธิ์หรือความพร้อมก่อนเริ่ม" : `DevelopmentRun ${result.runId} ถูกเก็บไว้ · ${reasons}`);
       }
     } catch (error) {
+      await Promise.resolve(trpcUtils.spec226DevelopmentControl.getConversationWorkspace.invalidate({ conversationId: targetConversationId })).catch(() => undefined);
       toast.error(presentCustomerError(error, "สั่งพัฒนาไม่สำเร็จ"));
+    } finally {
+      startInFlight.current = false;
     }
   }
 
@@ -851,7 +875,13 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
             ) : null}
             <>
           {mode === "prompt" ? <Textarea id="spec224-development-inputs" aria-label={requestKind === "mini_app" ? "Mini App requirements" : "Spec 224 prompt"} value={prompt} onChange={event => { setPrompt(event.target.value); setPreparation(null); }} placeholder={requestKind === "mini_app" ? "อธิบายหน้าจอ ข้อมูล และพฤติกรรมของ Mini App ที่ต้องการ" : "อธิบายงานพัฒนาที่ต้องการ โดยจำกัดตาม Workspace และสิทธิ์ Goal ที่ได้รับอนุมัติ"} maxLength={requestKind === "mini_app" ? 3600 : 4000} className="min-h-20 resize-y text-sm" /> : null}
-              {isPlatformWorkspace && mode === "prompt" && requestKind === "development" && !simpleMode ? <Textarea aria-label="ขอบเขตไฟล์ที่อนุญาต" value={writeScopeText} onChange={event => { setWriteScopeText(event.target.value); setPreparation(null); }} placeholder="ระบุ path หรือ glob ที่อนุญาต หนึ่งรายการต่อบรรทัด เช่น apps/web/server/services/myFeature/**" className="min-h-16 resize-y text-sm" /> : null}
+              {isPlatformWorkspace && mode === "prompt" && requestKind === "development" ? (
+                <section className="mt-3" aria-label="ขอบเขตการแก้ไข">
+                  <label className="block text-xs font-medium" htmlFor="spec224-write-scope">ขอบเขตไฟล์ที่อนุญาต</label>
+                  <Textarea id="spec224-write-scope" aria-label="ขอบเขตไฟล์ที่อนุญาต" value={writeScopeText} onChange={event => { setWriteScopeText(event.target.value); setPreparation(null); }} placeholder="ระบุ path หรือ glob ที่อนุญาต หนึ่งรายการต่อบรรทัด" className="mt-1 min-h-16 resize-y text-sm" />
+                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">ระบุเฉพาะไฟล์ที่งานนี้แก้ได้ ขอบเขตว่างหรือกว้างเกินไปจะเริ่มไม่ได้</p>
+                </section>
+              ) : null}
               {isPlatformWorkspace && mode === "prompt" && requestKind === "development" && simpleMode ? <p className="text-xs text-muted-foreground">งานพัฒนา Platform ต้องระบุขอบเขตไฟล์ที่แน่นอน โปรดเปลี่ยนเป็น Developer view เพื่อกำหนด scope ก่อนเตรียมงาน</p> : null}
               {requestKind === "mini_app" && mode === "prompt" ? (
                 <p className="text-xs text-muted-foreground">
@@ -1036,7 +1066,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
               disabled={!onCreateConversation || !selectedWorkspace || !canCreateConversation || creatingTask || bindMutation.isPending}
               onClick={() => void createTaskConversation()}
             >
-              {creatingTask ? "กำลังเตรียม DevelopmentRun…" : isPlatformWorkspace ? "เริ่มพัฒนา" : "สร้างงานใหม่"}
+              {creatingTask ? "กำลังเตรียมและเริ่มงาน…" : "เริ่มพัฒนา"}
             </Button>
           ) : null}
           {requestKind === "mini_app" ? (

@@ -191,9 +191,11 @@ describe("spec226DevelopmentControlRouter", () => {
   });
 
   it("resumes authorization for the same Start key without restaging a changing heartbeat snapshot", async () => {
-    const input = { conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "repeat-same-owner-goal-key" };
+    const input = { conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "repeat-same-owner-goal-key",
+      budgetCapMinorUnits: 100, provider: "codex", modelSelection: { policy: "auto" }, visualReferences: [], visualFiles: [], designPreferences: {} };
     const digest = createHash("sha256").update(JSON.stringify({ conversationId: 8, mode: "prompt", prompt: input.prompt, writeScope: null,
-      specSetRevision: null, workPackageId: null, provider: "codex", visualReferences: [], visualFiles: [], designPreferences: {} })).digest("hex");
+      specSetRevision: null, workPackageId: null, provider: "codex", visualReferences: [], visualFiles: [], designPreferences: {},
+      modelSelection: { policy: "auto" }, budgetCapMinorUnits: 100 })).digest("hex");
     const runId = `run-${createHash("sha256").update(`${CTX.tenantId}:${CTX.user.id}:${input.idempotencyKey}`).digest("hex").slice(0, 40)}`;
     mocks.developmentRunService.get.mockResolvedValueOnce({ run: { runId, workerJobId: "existing-job", state: "DISCOVERY", workspaceId: "workspace-a",
       metadata: { spec224StartRequestDigest: digest, spec224Input: { inputDigest: "c".repeat(64) }, spec224Workspace: { specSetRevision: null, workPackageId: null } } } });
@@ -657,10 +659,10 @@ describe("spec226DevelopmentControlRouter", () => {
     expect(mocks.developmentRunService.recordVerificationEvent).not.toHaveBeenCalled();
   });
 
-  it("starts a prompt run from server-derived workspace facts and stages bytes before canonical admission", async () => {
+  it("keeps a durably created prompt run recoverable when Goal Approval Authority is temporarily unavailable", async () => {
     mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
       workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },
-      runner: { runnerId: "runner-a", snapshotRevision: "snap-1", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64) },
+      runner: { runnerId: "runner-a", snapshotRevision: "snap-1", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64), modelCatalog: { state: "discovered", adapterId: "codex.v1", cliVersion: "test", accountProviderFingerprint: "codex-account:sha256:test", revision: "catalog:test", observedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), models: [{ id: "test-model", displayName: "Test Model", capabilities: ["text"], reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium", isDefault: true }] } },
       goal: "Implement the staged prompt.",
       planId: "plan:ready",
       planRevision: 1,
@@ -683,6 +685,7 @@ describe("spec226DevelopmentControlRouter", () => {
       jobRef: { jobId: "canonical-job-1", created: true },
     }));
     mocks.runnerInputStaging.bindSourceToWorkerJob.mockResolvedValueOnce(undefined);
+    mocks.requestGoalGrantApproval.mockRejectedValueOnce(new Error("GOAL_APPROVAL_AUTHORITY_TIMEOUT"));
     const input = {
       conversationId: 8,
       mode: "prompt",
@@ -694,9 +697,16 @@ describe("spec226DevelopmentControlRouter", () => {
 
     expect(result).toMatchObject({
       jobId: "canonical-job-1",
-      dispatchStatus: "PENDING_AUTHORIZATION",
+      dispatchStatus: "BLOCKED",
+      goalAdmissionStatus: "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED",
       inputDigest: "c".repeat(64),
     });
+    expect(mocks.developmentRunService.recordVerificationEvent).toHaveBeenCalledWith(expect.objectContaining({
+      runId: result.runId,
+      type: "VERIFICATION_ADMISSION",
+      payload: { status: "request_retry_required", errorCode: "GOAL_APPROVAL_AUTHORITY_TIMEOUT" },
+      runMetadata: { spec224GoalAdmission: expect.objectContaining({ status: "request_retry_required", grantPayload: expect.objectContaining({ kind: "spec224_goal_delegation_grant", goalId: expect.stringMatching(/^[0-9a-f-]{36}$/) }) }) },
+    }));
     expect(mocks.runnerInputStaging.preStageRunnerInput).toHaveBeenCalledWith(expect.objectContaining({
       tenantId: CTX.tenantId,
       startRef: result.runId,

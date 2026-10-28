@@ -192,7 +192,7 @@ describe("Core goal readiness feedback", () => {
     fireEvent.change(screen.getByLabelText("Spec 224 prompt"), {
       target: { value: "Create a tiny utility and tests" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "สร้างงานใหม่" }));
+    fireEvent.click(screen.getByRole("button", { name: "เริ่มพัฒนา" }));
 
     await waitFor(() => expect(createConversation).toHaveBeenCalledWith("Create a tiny utility and tests"));
     expect(mocks.bindWorkspace).toHaveBeenCalledWith({
@@ -335,10 +335,11 @@ describe("Core goal readiness feedback", () => {
     expect(screen.queryByText(/runner-test|workspace-test/)).not.toBeInTheDocument();
   });
 
-  it("creates and binds SPEC plus prompt through the existing preparation path", async () => {
+  it("creates and binds SPEC plus prompt, then starts exactly once from the primary development action", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
-    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40) }];
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
+    mocks.prepare.mockResolvedValueOnce({ ...preparation(true), runnableWorkPackageIds: ["WU-1"], workPackages: [{ id: "WU-1", externalId: "WU-1", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] });
     const createConversation = vi.fn().mockResolvedValue(47);
     mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
     render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={createConversation} />);
@@ -350,7 +351,33 @@ describe("Core goal readiness feedback", () => {
     expect(createConversation).toHaveBeenCalledWith("Example Feature");
     expect(mocks.bindWorkspace).toHaveBeenCalledWith({ conversationId: 47, runnerId: "runner-test", workspaceId: "workspace-test" });
     expect(mocks.prepare).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 47, mode: "spec_set", additionalInstructions: "Keep the public API backward compatible." }));
-    expect(mocks.start).not.toHaveBeenCalled();
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 47,
+      mode: "spec_set",
+      workPackageId: "WU-1",
+      idempotencyKey: expect.any(String),
+    }));
+  });
+
+  it("requires a bounded Platform write scope and sends it with one-click prompt Start", async () => {
+    mocks.role = "user";
+    mocks.workspace = { workspace: null, availability: null, specSet: null };
+    mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
+    mocks.prepare.mockResolvedValueOnce({ ...preparation(true), workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }] });
+    const createConversation = vi.fn().mockResolvedValue(48);
+    render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={createConversation} />);
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Create bounded tests" } });
+    expect(screen.getByRole("button", { name: "เริ่มพัฒนา" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("ขอบเขตไฟล์ที่อนุญาต"), { target: { value: "apps/runner-app/tests/spec224-live-pilot/**" } });
+    fireEvent.click(screen.getByRole("button", { name: "เริ่มพัฒนา" }));
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
+    expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 48,
+      mode: "prompt",
+      prompt: "Create bounded tests",
+      writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"],
+    }));
   });
 
   it("blocks a canonical SPEC package that is not the next handoff WorkUnit", async () => {

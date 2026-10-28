@@ -277,13 +277,37 @@ async function advanceWorkspaceGoalAdmission(input: {
 }) {
   const goalId = typeof input.payload.goalId === "string" ? input.payload.goalId : null;
   if (!goalId) throw new Error("SPEC224_GOAL_SCOPE_REQUIRED");
-  const approval = await requestSpec224GoalGrantApproval({
-    userToken: input.context.userToken,
-    tenantId: input.context.tenantId,
-    projectId: input.projectId,
-    goalId,
-    payload: input.payload,
-  });
+  let approval: Awaited<ReturnType<typeof requestSpec224GoalGrantApproval>>;
+  try {
+    approval = await requestSpec224GoalGrantApproval({
+      userToken: input.context.userToken,
+      tenantId: input.context.tenantId,
+      projectId: input.projectId,
+      goalId,
+      payload: input.payload,
+    });
+  } catch (error) {
+    const failureCode = /^[A-Z][A-Z0-9_]{1,100}$/.test(errorCode(error)) ? errorCode(error) : "GOAL_APPROVAL_AUTHORITY_UNAVAILABLE";
+    // The DevelopmentRun and deferred Job are already durable by this point.
+    // Persist a recoverable admission state and return its identity instead of
+    // turning a partially completed Start into an opaque browser error.
+    await developmentRunService.recordVerificationEvent({
+      runId: input.runId,
+      tenantId: input.context.tenantId,
+      actorId: input.context.actorId,
+      idempotencyKey: `spec224-goal-approval-request-failed:${goalId}:${failureCode}`,
+      type: "VERIFICATION_ADMISSION",
+      payload: { status: "request_retry_required", errorCode: failureCode },
+      runMetadata: { spec224GoalAdmission: {
+        status: "request_retry_required",
+        errorCode: failureCode,
+        grantPayload: input.payload,
+        projectId: input.projectId,
+        runnerId: input.runnerId,
+      } },
+    });
+    return { status: "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED" as const, errorCode: failureCode };
+  }
   await developmentRunService.recordVerificationEvent({
     runId: input.runId,
     tenantId: input.context.tenantId,

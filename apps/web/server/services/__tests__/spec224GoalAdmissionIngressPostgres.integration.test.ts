@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:net";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { promisify } from "node:util";
+import { tmpdir } from "node:os";
+import { cp, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { resolve } from "node:path";
 import postgres from "postgres";
 import { afterAll, describe, expect, it } from "vitest";
 import { provisionSpec224EconomicTestBudget } from "./helpers/spec224EconomicTestProvisioning";
@@ -18,6 +21,31 @@ if (enabled && (!/^(localhost|127\.0\.0\.1)$/.test(target.hostname) || !/^spec22
 process.env.DATABASE_URL = databaseUrl;
 const sql = postgres(databaseUrl, { max: 8 });
 const suite = enabled ? describe : describe.skip;
+const execFileAsync = promisify(execFile);
+const leaseWorkspaces: string[] = [];
+const previousWorkspaceAuthorityRepository = process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY;
+async function createExecutionAuthorityWorkspace() {
+  const root = await mkdtemp(join(tmpdir(), "spec224-ingress-authority-"));
+  leaseWorkspaces.push(root);
+  await execFileAsync("git", ["init", "--initial-branch=main", root]);
+  await execFileAsync("git", ["-C", root, "config", "user.name", "SPEC-224 integration"]);
+  await execFileAsync("git", ["-C", root, "config", "user.email", "spec224-test@example.invalid"]);
+  await execFileAsync("git", ["-C", root, "remote", "add", "origin", "https://example.invalid/test/repository.git"]);
+  await mkdir(join(root, "src"), { recursive: true });
+  await writeFile(join(root, "src", "seed.js"), "export const seed = true;\n");
+  await writeFile(join(root, ".development-repository.toml"), `[repository]\nproject_id = "project-test"\nrepository_id = "repo-test"\nremote = "origin"\ncanonical_ref = "refs/heads/main"\n`);
+  await execFileAsync("git", ["-C", root, "add", "src/seed.js", ".development-repository.toml"]);
+  await execFileAsync("git", ["-C", root, "commit", "-m", "seed disposable execution workspace"]);
+  const lifecycleRoot = resolve(process.cwd(), "../../scripts/development-lifecycle");
+  const target = join(root, "scripts", "development-lifecycle");
+  await mkdir(target, { recursive: true });
+  for (const file of ["workspace_authority.py", "canonical_source.py", "convergence_contract.py", "portable_file_lock.py"])
+    await cp(join(lifecycleRoot, file), join(target, file));
+  const registerScript = `import json, sys\nfrom pathlib import Path\nsys.path.insert(0, str(Path.cwd() / "scripts" / "development-lifecycle"))\nimport workspace_authority as authority\nworkspace = authority.register_workspace(Path.cwd(), Path.cwd() / ".development-repository.toml", Path.cwd(), role="CANONICAL_USER_WORKSPACE")\nhead, fingerprint, dirty = authority._execution_source_facts(Path.cwd())\nprint(json.dumps({"workspaceId": workspace["workspace_id"], "sourceSha": head, "sourceFingerprint": fingerprint, "dirtyPaths": dirty}))`;
+  const { stdout } = await execFileAsync("python3", ["-c", registerScript], { cwd: root });
+  process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY = root;
+  return JSON.parse(stdout.trim()) as { workspaceId: string; sourceSha: string; sourceFingerprint: string; dirtyPaths: string[] };
+}
 
 async function freePort() {
   const server = createServer();
@@ -88,10 +116,14 @@ suite("SPEC-224 actual Task Control Goal admission ingress", () => {
     await closeDb();
     if (previousControlPlaneApiKey === undefined) delete process.env.CONTROL_PLANE_API_KEY;
     else process.env.CONTROL_PLANE_API_KEY = previousControlPlaneApiKey;
+    if (previousWorkspaceAuthorityRepository === undefined) delete process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY;
+    else process.env.SMARTSPEC_WORKSPACE_AUTHORITY_REPOSITORY = previousWorkspaceAuthorityRepository;
+    await Promise.all(leaseWorkspaces.map(root => rm(root, { recursive: true, force: true })));
   });
 
   it("starts through the real tRPC handler and reaches Child 2 through the actual Approval Authority HTTP route", async () => {
-    const tenantId = randomUUID(), projectId = randomUUID(), runnerId = `runner-${randomUUID()}`, workspaceId = `workspace-${randomUUID()}`;
+    const executionAuthority = await createExecutionAuthorityWorkspace();
+    const tenantId = randomUUID(), projectId = randomUUID(), runnerId = `runner-${randomUUID()}`, workspaceId = executionAuthority.workspaceId;
     const sessionId = `session-${randomUUID()}`, snapshotId = randomUUID(), revision = `revision-${randomUUID()}`;
     const expires = new Date(Date.now() + 3_600_000), observed = new Date(Date.now() - 1_000);
     const [tenant] = await sql`INSERT INTO tenants (id, slug, name, "isActive", status, plan, created_at, "createdAt", "updatedAt") VALUES (${tenantId}, ${randomUUID()}, 'SPEC-224 ingress test', true, 'ACTIVE', 'FREE', NOW(), NOW(), NOW()) RETURNING id`;
@@ -135,6 +167,32 @@ suite("SPEC-224 actual Task Control Goal admission ingress", () => {
       description text, "updatedBy" integer, "createdAt" timestamptz NOT NULL DEFAULT now(),
       "updatedAt" timestamptz NOT NULL DEFAULT now()
     )`);
+    // The narrow SPEC-224 disposable baseline intentionally excludes SPEC-293
+    // canonical workspace authority. Provision its production-shaped tables so
+    // the real Workspace Authority read path is exercised by this test.
+    await sql.unsafe(`CREATE TABLE IF NOT EXISTS canonical_projects (
+      project_id varchar(36) PRIMARY KEY, tenant_id varchar(36) NOT NULL REFERENCES tenants(id),
+      project_type varchar(40) NOT NULL, title varchar(200) NOT NULL, owner_principal_id varchar(160) NOT NULL,
+      aliases jsonb NOT NULL DEFAULT '[]'::jsonb, lifecycle varchar(24) NOT NULL DEFAULT 'ACTIVE',
+      identity_version integer NOT NULL DEFAULT 1, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE (tenant_id, project_id)
+    )`);
+    await sql.unsafe(`CREATE TABLE IF NOT EXISTS canonical_project_memberships (
+      tenant_id varchar(36) NOT NULL REFERENCES tenants(id), project_id varchar(36) NOT NULL,
+      principal_id varchar(160) NOT NULL, role varchar(16) NOT NULL, lifecycle varchar(16) NOT NULL DEFAULT 'ACTIVE',
+      created_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz,
+      PRIMARY KEY (tenant_id, project_id, principal_id),
+      FOREIGN KEY (tenant_id, project_id) REFERENCES canonical_projects(tenant_id, project_id) ON DELETE CASCADE
+    )`);
+    await sql.unsafe(`CREATE UNIQUE INDEX IF NOT EXISTS runner_nodes_tenant_runner_unique ON runner_nodes ("tenantId", "runnerId")`);
+    await sql.unsafe(`CREATE TABLE IF NOT EXISTS canonical_project_workspace_bindings (
+      id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(), tenant_id varchar(36) NOT NULL, project_id varchar(36) NOT NULL,
+      repository_id varchar(160) NOT NULL, scope varchar(32) NOT NULL, runner_id varchar(160) NOT NULL, workspace_id varchar(200) NOT NULL,
+      lifecycle varchar(16) NOT NULL DEFAULT 'ACTIVE', created_by_principal_id varchar(160) NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz,
+      FOREIGN KEY (tenant_id, project_id) REFERENCES canonical_projects(tenant_id, project_id) ON DELETE CASCADE,
+      FOREIGN KEY (tenant_id, runner_id) REFERENCES runner_nodes("tenantId", "runnerId") ON DELETE RESTRICT
+    )`);
     await sql.unsafe(`CREATE TABLE spec224_workspace_spec_set_revisions (
       id varchar(36) PRIMARY KEY DEFAULT gen_random_uuid(), "tenantId" varchar(36) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
       "actorId" integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, "runnerId" varchar(160) NOT NULL,
@@ -150,15 +208,18 @@ suite("SPEC-224 actual Task Control Goal admission ingress", () => {
       "inputDigest" varchar(64) NOT NULL, "totalBytes" integer NOT NULL, "filesJson" jsonb NOT NULL,
       "createdAt" timestamptz NOT NULL DEFAULT now()
     )`);
-    const sourceSha = "a".repeat(40), fingerprint = "b".repeat(64);
+    const sourceSha = executionAuthority.sourceSha, fingerprint = executionAuthority.sourceFingerprint;
     const snapshot = {
       runnerId, tenantId, runnerSessionId: sessionId, capabilitySnapshotId: snapshotId, revision,
       observedAt: observed.toISOString(), expiresAt: expires.toISOString(), capabilities: ["agent.external_task"], workspaceIds: [workspaceId], resourceClass: "medium",
       workspaces: [{ workspaceId, projectId, repositoryId: `repo-${tenantId}`, displayName: "Disposable workspace", gitHead: sourceSha, gitBranch: "main", dirty: false, contentFingerprint: fingerprint }],
-      toolInventory: [{ toolId: "codex", kind: "agent_cli", displayName: "Codex", version: "0.161.0", adapterId: "codex.v1", adapterVersion: "1", discoverySource: "runner_probe", installState: "installed", configurationState: "configured", authState: "authenticated", healthState: "healthy", availabilityState: "available", trustState: "ready", fingerprint: "ingress-test", authorizationEvidenceRef: "test-auth", versionProbeState: "passed", observedAt: observed.toISOString(), expiresAt: expires.toISOString(), reasonCodes: [], taskProbeState: "passed", taskProbeObservedAtMs: observed.getTime(), taskProbeExpiresAtMs: expires.getTime(), taskProbeEvidenceRef: "test-probe" }],
+      toolInventory: [{ toolId: "codex", kind: "agent_cli", displayName: "Codex", version: "0.165.0", adapterId: "codex.v1", adapterVersion: "codex.v1", discoverySource: "runner_probe", installState: "installed", configurationState: "configured", authState: "authenticated", healthState: "healthy", availabilityState: "available", trustState: "ready", fingerprint: "ingress-test", authorizationEvidenceRef: "test-auth", versionProbeState: "passed", observedAt: observed.toISOString(), expiresAt: expires.toISOString(), reasonCodes: [], taskProbeState: "passed", taskProbeObservedAtMs: observed.getTime(), taskProbeExpiresAtMs: expires.getTime(), taskProbeEvidenceRef: "test-probe", modelCatalog: { state: "discovered", adapterId: "codex.v1", adapterVersion: "codex.v1", cliVersion: "codex-cli 0.165.0", accountProviderFingerprint: "codex-account:sha256:spec224-ingress-test", accountScopeState: "account_scoped_catalog_unverified", source: "codex_app_server_model_list", revision: "catalog:sha256:spec224-ingress-test", verificationState: "unverified_catalog_only", observedAt: observed.toISOString(), expiresAt: expires.toISOString(), models: [{ id: "test-model", displayName: "Test Model", capabilities: ["text"], reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium", isDefault: true }] } }],
       platform: { os: "windows" },
     };
     await sql`INSERT INTO runner_nodes ("runnerId", "tenantId", "ownerUserId", "nodeKind", profile, "displayName", "trustState", status, "currentSnapshotRevision", "currentSnapshotJson", "snapshotExpiresAt", "activeSessionId") VALUES (${runnerId}, ${tenantId}, ${actorId}, 'rust_runner', 'development', 'Disposable ingress runner', 'trusted', 'online', ${revision}, ${sql.json(snapshot)}, ${expires}, ${sessionId})`;
+    await sql`INSERT INTO canonical_projects (project_id, tenant_id, project_type, title, owner_principal_id) VALUES (${projectId}, ${tenantId}, 'REPOSITORY', 'Disposable SPEC-224 workspace', ${`user:${actorId}`})`;
+    await sql`INSERT INTO canonical_project_memberships (tenant_id, project_id, principal_id, role) VALUES (${tenantId}, ${projectId}, ${`user:${actorId}`}, 'owner')`;
+    await sql`INSERT INTO canonical_project_workspace_bindings (tenant_id, project_id, repository_id, scope, runner_id, workspace_id, created_by_principal_id) VALUES (${tenantId}, ${projectId}, ${`repo-${tenantId}`}, 'PLATFORM_ENGINEERING', ${runnerId}, ${workspaceId}, ${`user:${actorId}`})`;
     await sql`INSERT INTO runner_capability_snapshots (id, "runnerId", "tenantId", revision, "idempotencyKey", "observedAt", "expiresAt", "snapshotJson") VALUES (${snapshotId}, ${runnerId}, ${tenantId}, ${revision}, ${randomUUID()}, ${observed}, ${expires}, ${sql.json(snapshot)})`;
     const [{ getDb }, { conversations, spec224ConversationWorkspaces }, { defaultSpec224WorkspaceSpecSetService }, { refreshAppRuntimeConfigCache }, { signBearerToken }] = await Promise.all([
       import("../../db"), import("../../../drizzle/schema"), import("../spec224WorkspaceSpecSet"), import("../appRuntimeConfig"), import("../../_core/tokens"),
@@ -202,7 +263,7 @@ suite("SPEC-224 actual Task Control Goal admission ingress", () => {
           throw new Error(`TASK_CONTROL_TRPC_START_FAILED:${response.status}:${body.error?.json?.message ?? "response_invalid"}`);
         return body.result.data.json;
       };
-      const startInput = { conversationId: conversation.id, mode: "prompt" as const, prompt: "Make a bounded reversible test-only change", idempotencyKey: `goal-ingress-${randomUUID()}`, budgetCapMinorUnits: 10_000, provider: "codex" as const };
+      const startInput = { conversationId: conversation.id, mode: "prompt" as const, prompt: "Make a bounded reversible test-only change", writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"], idempotencyKey: `goal-ingress-${randomUUID()}`, budgetCapMinorUnits: 10_000, provider: "codex" as const };
       let first;
       const originalFetch = globalThis.fetch;
       globalThis.fetch = async (input, init) => {
