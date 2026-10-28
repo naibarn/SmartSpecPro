@@ -34,15 +34,15 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "c3b429551fcf15e619ba34d45eaa3862dfba6acf",
+    "expected_canonical_sha": "838523a86ec6c76c95d542334801cdd49ebb134b",
     "expected_spec_digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688"
   },
   "continuation": {
-    "next_action": "Coordinate the Task Control UX-owned explicit “พัฒนาระบบ SmartAIHub” entry and authenticated browser selection acceptance with Session C; then verify the existing dirty Debian workspace is safely converged or isolated before any write-capable Goal.",
+    "next_action": "In the already-authenticated owner browser, verify Task Control Platform Engineering selection and the existing Goal approval flow; then refresh Debian Runner Codex task readiness, Workspace authorization, source convergence and write scope before any live Goal. Keep SPEC-224 live two-phase acceptance open until actual Child 1 and automatic Child 2 receipts are observed.",
     "next_ready_workunit": "SPEC293_TASK_CONTROL_PLATFORM_ENGINEERING_SELECTION_UI",
-    "reactivation_predicate": "Resume UI acceptance when Session C ownership is available; resume live execution only after the registered workspace is safely non-dirty/current and current Runner/Codex readiness is revalidated.",
-    "resume_point": "Trusted Platform Engineering binding is integrated at c3b429551fcf15e619ba34d45eaa3862dfba6acf. Connected disposable PostgreSQL path passed 122 tests and focused projection tests passed 25 tests. Local dev web serves this SHA. Explicit SmartAIHub CTA/authenticated browser selection and safe workspace convergence remain open; no Goal or DevelopmentRun was started.",
-    "waiting_predicate": "Session C coordinates the explicit Task Control entry/browser check; the existing Debian workspace must report a safe current source revision with no conflicting dirty changes before write-capable execution."
+    "reactivation_predicate": "Resume authenticated acceptance when the owner opens Task Control in the existing authenticated dev browser; resume live execution only after fresh Runner Codex task readiness, trusted Project/Runner binding, canonical source convergence, and an owner-approved Goal Grant are observed.",
+    "resume_point": "Platform Development Task Control UI integrated at 838523a86ec6c76c95d542334801cdd49ebb134b. Focused suites passed 99/99; authenticated local development UAT passed 8/8 using repository test identities and real services. Development web/Python health returned 200; Runner capability snapshot ACK was applied/capability_ready. Owner-session Platform Engineering selection and Goal preparation remain unverified (dev login probe 401; GUI automation inaccessible); no Goal or DevelopmentRun was started.",
+    "waiting_predicate": "An owner-authenticated dev browser session is needed to verify Platform Engineering scope and Goal preparation; the actual Debian Runner must independently report fresh Codex task readiness and a safe current authorized Workspace before write-capable execution."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -152,7 +152,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 83,
+  "generation": 85,
   "identity": {
     "canonical_path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
     "digest": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688",
@@ -274,9 +274,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "c3b429551fcf15e619ba34d45eaa3862dfba6acf",
+    "canonical_sha": "838523a86ec6c76c95d542334801cdd49ebb134b",
     "integrated": true,
-    "integrated_at": "2026-10-28T07:44:41Z"
+    "integrated_at": "2026-10-28T09:02:35Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -674,7 +674,7 @@
     "unresolved": 253
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T07:45:15.005077Z",
+  "updated_at": "2026-10-28T09:10:06.308652Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
