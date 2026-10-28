@@ -95,6 +95,49 @@ describe("infrastructure deployment target project selector", () => {
     expect(from).toHaveBeenCalledTimes(2);
   });
 
+  it("returns null for an empty canary registry and a stable error when its database is unavailable", async () => {
+    const caller = infrastructureRouter.createCaller({ user: { id: 7, role: "admin", currentTenantId: tenantId }, tenantId } as any);
+    getDbMock.mockResolvedValueOnce(null);
+    await expect(caller.getLatestCloudflareProductionWorkerCanaryJob({ tenantId, projectId, environment: "production" }))
+      .rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR", message: "DATABASE_UNAVAILABLE" });
+
+    const limit = vi.fn().mockResolvedValue([]);
+    const orderBy = vi.fn(() => ({ limit }));
+    const where = vi.fn(() => ({ orderBy }));
+    const from = vi.fn(() => ({ where }));
+    getDbMock.mockResolvedValueOnce({ select: vi.fn(() => ({ from })) });
+    await expect(caller.getLatestCloudflareProductionWorkerCanaryJob({ tenantId, projectId, environment: "production" }))
+      .resolves.toBeNull();
+  });
+
+  it("sanitizes a database connection initialization failure for the canary job query", async () => {
+    getDbMock.mockRejectedValueOnce(Object.assign(new Error("database connection string unavailable"), { code: "08001" }));
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const caller = infrastructureRouter.createCaller({ user: { id: 7, role: "admin", currentTenantId: tenantId }, tenantId,
+      req: { requestId: "trace-canary-db-init" } } as any);
+    await expect(caller.getLatestCloudflareProductionWorkerCanaryJob({ tenantId, projectId, environment: "production" }))
+      .rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR", message: "PRODUCTION_WORKER_CANARY_JOB_READ_UNAVAILABLE" });
+    expect(log).toHaveBeenCalledWith("[CloudflareProductionWorkerCanaryJobRead]", expect.stringContaining('"sqlState":"08001"'));
+    expect(log.mock.calls[0]?.[1]).not.toContain("database connection string unavailable");
+  });
+
+  it("sanitizes a canary job registry SQL failure and logs only trace and SQLSTATE", async () => {
+    const failure = Object.assign(new Error("secret-bearing database detail"), { code: "08006" });
+    const limit = vi.fn().mockRejectedValue(failure);
+    const orderBy = vi.fn(() => ({ limit }));
+    const where = vi.fn(() => ({ orderBy }));
+    const from = vi.fn(() => ({ where }));
+    getDbMock.mockResolvedValue({ select: vi.fn(() => ({ from })) });
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const caller = infrastructureRouter.createCaller({ user: { id: 7, role: "admin", currentTenantId: tenantId }, tenantId,
+      req: { requestId: "trace-canary-read" } } as any);
+    await expect(caller.getLatestCloudflareProductionWorkerCanaryJob({ tenantId, projectId, environment: "production" }))
+      .rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR", message: "PRODUCTION_WORKER_CANARY_JOB_READ_UNAVAILABLE" });
+    expect(log).toHaveBeenCalledWith("[CloudflareProductionWorkerCanaryJobRead]", expect.stringContaining('"sqlState":"08006"'));
+    expect(log.mock.calls[0]?.[1]).toContain('"requestId":"trace-canary-read"');
+    expect(log.mock.calls[0]?.[1]).not.toContain("secret-bearing database detail");
+  });
+
   it("keeps origin versions and secret writes behind the exact-admin guard", async () => {
     const identity = { tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging" as const, provider: "cloudflare" as const };
     const reference = { ...identity, configurationRef: `cf-origin:${"a".repeat(64)}` };

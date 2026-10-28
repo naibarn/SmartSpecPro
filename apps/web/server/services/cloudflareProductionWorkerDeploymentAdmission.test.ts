@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   grantRequest: null as Record<string, any> | null,
   storedJob: null as Record<string, any> | null,
   readCount: 0,
+  workerReadbackReason: null as string | null,
 }));
 
 vi.mock("./cloudflareProductionDeploymentContract", async original => ({
@@ -16,14 +17,16 @@ vi.mock("./cloudflareProductionDeploymentContract", async original => ({
   }),
 }));
 vi.mock("./cloudflareProductionProviderInventory", () => ({ probeCloudflareProductionProviderInventory: async () => ({
-  status: "CHECKED", accessChecks: { zone: { complete: true }, routes: { complete: true }, workerDeployments: { complete: true },
+  status: "CHECKED", accessChecks: { zone: { complete: true }, routes: { complete: true }, workerDeployments: { complete: true,
+    ...(mocks.workerReadbackReason ? { diagnosticCode: mocks.workerReadbackReason } : {}) },
     workerVersions: [{ complete: true }] },
   domainRoute: { zoneId: "9".repeat(32), routeId: "route-1", script: "smartspec-cloudflare-runtime", attached: true, conflicting: false },
-  worker: { activeDeploymentId: "11111111-1111-4111-8111-111111111111", versions: [{
+  worker: { activeDeploymentId: "11111111-1111-4111-8111-111111111111", deploymentInventoryComplete: !mocks.workerReadbackReason,
+    readbackReason: mocks.workerReadbackReason, versions: [{
     versionId: "22222222-2222-4222-8222-222222222222", deploymentId: "11111111-1111-4111-8111-111111111111",
     percentage: 100, sourceSha: "e".repeat(40), buildDigest: "f".repeat(64), configurationDigest: "d".repeat(64),
     hasVerifiedReleaseIdentity: true, bindingNames: [],
-    hasProductionQueueBinding: false, hasVersionMetadataBinding: false,
+    hasProductionQueueBinding: false, hasVersionMetadataBinding: false, checked: true,
   }] },
   productionQueueConsumerInventory: { complete: true, consumers: [{ consumerId: "33333333333333333333333333333333",
     queueName: "smartspec-canonical-job-queue-production", scriptName: "smartspec-cloudflare-runtime",
@@ -50,7 +53,7 @@ function database() {
 }
 
 describe("Production Worker canary admission", () => {
-  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); mocks.grantRequest = null; mocks.storedJob = null; mocks.readCount = 0; });
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.clearAllMocks(); mocks.grantRequest = null; mocks.storedJob = null; mocks.readCount = 0; mocks.workerReadbackReason = null; });
 
   it("preflights the exact active route, single-version rollback, immutable artifact and Queue consumer", async () => {
     vi.stubEnv("CLOUDFLARE_PRODUCTION_EXECUTOR_ID", "production-executor-fixture");
@@ -60,6 +63,15 @@ describe("Production Worker canary admission", () => {
     expect(plan).toMatchObject({ ready: true, routePreserved: true, candidateTrafficPercent: 1,
       rollback: { deploymentId: "11111111-1111-4111-8111-111111111111", versionId: "22222222-2222-4222-8222-222222222222" },
       queue: { name: "smartspec-canonical-job-queue-production" } });
+  });
+
+  it("returns the exact sanitized deployment readback blocker instead of a generic incomplete message", async () => {
+    vi.stubEnv("CLOUDFLARE_PRODUCTION_EXECUTOR_ID", "production-executor-fixture");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ grantSchemas: ["cloudflare.production-deployment-grant.v2"] })));
+    mocks.workerReadbackReason = "WORKER_DEPLOYMENT_PAGINATION_INCOMPLETE";
+    const { getProductionWorkerCanaryPreflight } = await import("./cloudflareProductionWorkerDeploymentAdmission");
+    await expect(getProductionWorkerCanaryPreflight(database() as never, { tenantId: "tenant-a", projectId: "project-a" }))
+      .resolves.toMatchObject({ ready: false, reason: "WORKER_DEPLOYMENT_PAGINATION_INCOMPLETE" });
   });
 
   it("creates one scoped canonical job from the authenticated Owner grant and reconciles the same submission", async () => {

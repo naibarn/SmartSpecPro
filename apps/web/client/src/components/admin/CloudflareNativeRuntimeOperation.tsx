@@ -272,8 +272,8 @@ export function CloudflareNativeRuntimeOperation({ tenantId, projectId, candidat
     {appJob?.checkpoint?.applicationProbe ? <VStack gap={1} role="status">
       <Text>{text("Application probe HTTP", "ผล HTTP ของการตรวจแอป")}: {appJob.checkpoint.applicationProbe.http}</Text>
       {appJob.checkpoint.applicationProbe.pythonError ? <Text>{text("Python bridge", "Python bridge")}: {appJob.checkpoint.applicationProbe.pythonError}</Text> : null}
-      <Text>{text("Checks that failed", "ข้อที่ตรวจไม่ผ่าน")}: {Object.entries(appJob.checkpoint.applicationProbe.checks).filter(([, passed]) => passed === false).map(([name]) => name).join(", ") || text("none recorded", "ไม่มีข้อมูลที่บันทึก")}</Text>
-      <Text>{text("Safe response statuses", "รหัสผลตรวจ")}: {Object.entries(appJob.checkpoint.applicationProbe.status).map(([name, value]) => `${name}=${value}`).join(" · ") || "—"}</Text>
+      <Text>{text("Checks that failed", "ข้อที่ตรวจไม่ผ่าน")}: {Object.entries(appJob.checkpoint.applicationProbe.checks ?? {}).filter(([, passed]) => passed === false).map(([name]) => name).join(", ") || text("none recorded", "ไม่มีข้อมูลที่บันทึก")}</Text>
+      <Text>{text("Safe response statuses", "รหัสผลตรวจ")}: {Object.entries(appJob.checkpoint.applicationProbe.status ?? {}).map(([name, value]) => `${name}=${value}`).join(" · ") || "—"}</Text>
     </VStack> : null}
     {appJob?.receipt ? <Text>{text("Authenticated application checks", "ผลตรวจ authenticated application")}: {appJob.receipt.authenticatedApplicationAcceptance ? "PASS" : "FAIL"} ·
       {text("M3 acceptance", "ตรวจรับ M3")}: {appJob.receipt.runtimeAcceptance ? "PASS" : "PENDING"} · {text("Credit settlement, application jobs/recovery and native activation remain separate gates", "การ settle credit, application jobs/recovery และการเปิด native traffic ยังเป็นเกณฑ์แยก")}</Text> : null}

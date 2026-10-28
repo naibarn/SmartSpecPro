@@ -1,5 +1,6 @@
 import { getProductionIngressPreflight, getProductionIngressRollbackPreflight, queueProductionIngress } from "../services/cloudflareProductionIngressAdmission";
 import { getProductionWorkerCanaryPreflight, queueProductionWorkerCanary } from "../services/cloudflareProductionWorkerDeploymentAdmission";
+import { readLatestCloudflareProductionWorkerCanaryJob } from "../services/cloudflareProductionWorkerCanaryJobReadModel";
 import { PRODUCTION_INGRESS_CONTRACT } from "../services/cloudflareProductionIngressContract";
 import { CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT, CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB } from "../services/cloudflareProductionDeploymentContract";
 import { ingressBrowserReceiptSchema, recordIngressBrowserAcceptance } from "../services/cloudflareProductionIngressAcceptance";
@@ -859,14 +860,20 @@ export const infrastructureRouter = router({
     .query(async({input,ctx})=>{
       const tenantId=resolveTenantIdVarchar(ctx.tenantId,ctx.user?.currentTenantId);
       if(tenantId!==input.tenantId)throw new TRPCError({code:"FORBIDDEN",message:"PRODUCTION_WORKER_TENANT_MISMATCH"});
-      const [job]=await getDb().select({jobId:workerJobs.id,status:workerJobs.status,errorCode:workerJobs.errorCode,
-        output:workerJobs.outputJson,input:workerJobs.inputJson,progress:workerJobs.progressJson,attempt:workerJobs.attempt,
-        maxAttempts:workerJobs.maxAttempts,requesterUserId:workerJobs.requestedByUserId,createdAt:workerJobs.createdAt,
-        updatedAt:workerJobs.updatedAt,heartbeatAt:workerJobs.heartbeatAt,leaseExpiresAt:workerJobs.leaseExpiresAt})
-        .from(workerJobs).where(and(eq(workerJobs.tenantId,input.tenantId),eq(workerJobs.jobType,CLOUDFLARE_PRODUCTION_DEPLOYMENT_JOB),
-          eq(workerJobs.contractVersion,CLOUDFLARE_PRODUCTION_DEPLOYMENT_CONTRACT),sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`))
-        .orderBy(desc(workerJobs.createdAt)).limit(1);
-      return job??null;
+      try {
+        const db=await getDb();
+        if(!db)throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"DATABASE_UNAVAILABLE"});
+        return await readLatestCloudflareProductionWorkerCanaryJob(db,input);
+      } catch(error) {
+        if(error instanceof TRPCError&&error.message==="DATABASE_UNAVAILABLE")throw error;
+        const value=error as {name?:unknown;code?:unknown;cause?:{code?:unknown};stack?:unknown};
+        const sqlState=[value?.code,value?.cause?.code].find(code=>typeof code==="string"&&/^[0-9A-Z]{5}$/.test(code));
+        const stackFrames=typeof value?.stack==="string"?value.stack.split("\n").slice(1,6).map(line=>line.slice(0,240)):[];
+        console.error("[CloudflareProductionWorkerCanaryJobRead]",JSON.stringify({requestId:ctx.req?.requestId??null,
+          outcome:"failed",errorCode:"PRODUCTION_WORKER_CANARY_JOB_READ_UNAVAILABLE",exceptionName:typeof value?.name==="string"?value.name:"Error",
+          ...(sqlState?{sqlState}:{}),stackFrames}));
+        throw new TRPCError({code:"INTERNAL_SERVER_ERROR",message:"PRODUCTION_WORKER_CANARY_JOB_READ_UNAVAILABLE"});
+      }
     }),
 
   recordCloudflareProductionIngressAcceptance: exactAdminProcedure

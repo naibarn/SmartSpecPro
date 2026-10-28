@@ -132,6 +132,58 @@ describe("Cloudflare production provider inventory", () => {
       accessChecks: { queues: { httpStatus: 200, complete: false } } });
   });
 
+  it("follows the Cloudflare deployments pagination contract and validates the complete immutable baseline", async () => {
+    const activeVersion = "81e64be8-af01-4efb-ad82-94e78da2510b";
+    const activeDeployment = { id: "33333333-3333-4333-8333-333333333333", created_on: "2026-10-27T00:00:00Z",
+      versions: [{ version_id: activeVersion, percentage: 100 }] };
+    const oldDeployment = { id: "22222222-2222-4222-8222-222222222222", created_on: "2026-10-20T00:00:00Z",
+      versions: [{ version_id: "44444444-4444-4444-8444-444444444444", percentage: 100 }] };
+    const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
+      const url = new URL(String(request));
+      if (url.pathname.endsWith("/deployments")) {
+        const page = Number(url.searchParams.get("page"));
+        const deployments = page === 1 ? [activeDeployment] : [oldDeployment];
+        return new Response(JSON.stringify({ success: true, result: { deployments }, result_info: { page, per_page: 100, total_pages: 2 } }),
+          { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (url.pathname.endsWith("/queues") || url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") ||
+          url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications") ||
+          url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) {
+        return response(url.pathname === "/client/v4/zones" ? [{ id: "z".repeat(32), name: "smartaihub.app" }] : []);
+      }
+      if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith(`/versions/${activeVersion}`)) return response({ id: activeVersion,
+        annotations: { "workers/message": `SmartAIHub production ${"a".repeat(40)} ${"b".repeat(64)} origin ${"c".repeat(64)}` },
+        resources: { bindings: [] } });
+      throw new Error(`Unexpected provider request: ${url.pathname}`);
+    });
+
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result).toMatchObject({ status: "CHECKED", accessChecks: { workerDeployments: { httpStatus: 200, complete: true } },
+      worker: { activeDeploymentId: activeDeployment.id, deploymentCount: 2, deploymentInventoryComplete: true,
+        readbackReason: null, versions: [{ versionId: activeVersion, hasVerifiedReleaseIdentity: true }] } });
+    const deploymentRequests = fetchImpl.mock.calls.map(([request]) => new URL(String(request)))
+      .filter(url => url.pathname.endsWith("/deployments"));
+    expect(deploymentRequests.map(url => url.searchParams.get("page"))).toEqual(["1", "2"]);
+    expect(deploymentRequests.every(url => url.searchParams.get("per_page") === "100")).toBe(true);
+  });
+
+  it("returns a precise permission diagnostic when deployment readback is denied", async () => {
+    const fetchImpl = vi.fn(async (request: RequestInfo | URL) => {
+      const url = new URL(String(request));
+      if (url.pathname.endsWith("/deployments")) return response(null, 403);
+      if (url.pathname === "/client/v4/zones") return response([{ id: "z".repeat(32), name: "smartaihub.app" }]);
+      if (url.pathname.endsWith("/queues") || url.pathname.endsWith("/hyperdrive/configs") || url.pathname.endsWith("/workers/routes") ||
+          url.pathname.endsWith("/cfd_tunnel") || url.pathname.endsWith("/containers/applications") ||
+          url.pathname.endsWith("/connectivity/directory/services") || url.pathname.endsWith("/mtls_certificates")) return response([]);
+      throw new Error(`Unexpected provider request: ${url.pathname}`);
+    });
+    const result = await probeCloudflareProductionProviderInventory({ db: {} as DrizzleDB, tenantId: "tenant-a", projectId: "project-a", fetchImpl });
+    expect(result).toMatchObject({ worker: { readbackReason: "WORKER_DEPLOYMENT_PERMISSION_DENIED_HTTP_403" },
+      accessChecks: { workerDeployments: { httpStatus: 403, complete: false,
+        diagnosticCode: "WORKER_DEPLOYMENT_PERMISSION_DENIED_HTTP_403" } } });
+  });
+
   it("reads all positively weighted versions and the actual production Queue consumer", async () => {
     const candidateVersion = "92f40f82-179d-4b94-8a2f-30c6fa0ce63a";
     const queueId = "d".repeat(32);

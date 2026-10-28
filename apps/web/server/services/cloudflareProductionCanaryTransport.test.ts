@@ -75,6 +75,9 @@ describe("Cloudflare production canary transport", () => {
     await expect(transport.canary({ token: "test-token", target, grant, candidate, assertMutationAuthorized }))
       .resolves.toMatchObject({ deploymentId: canaryDeploymentId, queueConsumer: { consumerId: productionQueueConsumer[0]!.consumer_id } });
     expect(fetchImpl.mock.calls.filter(([request, init]) => new URL(String(request)).pathname.endsWith("/deployments") && init?.method === "POST")).toHaveLength(1);
+    const activeList = fetchImpl.mock.calls.map(([request]) => new URL(String(request))).find(url =>
+      url.pathname.endsWith("/deployments") && url.searchParams.get("page") === "1");
+    expect(activeList?.searchParams.get("per_page")).toBe("100");
     expect(assertMutationAuthorized).toHaveBeenCalledTimes(1);
     expect(fetchImpl).toHaveBeenCalledTimes(8);
   });

@@ -164,18 +164,15 @@ export function createCloudflareProductionCanaryTransport(input: {
 
   async function activeDeployments(token: string, target: CloudflareProductionDeploymentTarget) {
     const result = await api<{ deployments?: Deployment[] }>(token,
-      `/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/deployments`, "GET");
+      `/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/deployments?page=1&per_page=100`, "GET");
     if (!Array.isArray(result.deployments)) throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_DEPLOYMENTS_RESPONSE_INVALID");
-    const dated = result.deployments.map(deployment => ({ deployment,
-      createdAt: typeof deployment.created_on === "string" ? Date.parse(deployment.created_on) : Number.NaN }));
-    if (dated.length === 0 || dated.some(item => !VERSION_ID.test(item.deployment.id ?? "") || !Number.isFinite(item.createdAt))) {
+    // Cloudflare documents the first list item as the deployment actively serving traffic.
+    // Historical records may span many pages; they are not needed for the exact active baseline.
+    const active = result.deployments[0];
+    if (!active || !VERSION_ID.test(active.id ?? "") || !Number.isFinite(Date.parse(active.created_on ?? ""))) {
       throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ACTIVE_DEPLOYMENT_IDENTITY_UNVERIFIED");
     }
-    dated.sort((left, right) => right.createdAt - left.createdAt);
-    if (dated.length > 1 && dated[0]!.createdAt === dated[1]!.createdAt) {
-      throw new CloudflareProductionCanaryTransportError("CLOUDFLARE_PRODUCTION_ACTIVE_DEPLOYMENT_AMBIGUOUS");
-    }
-    return dated.map(item => item.deployment);
+    return [active];
   }
 
   async function createDeployment(token: string, target: CloudflareProductionDeploymentTarget,

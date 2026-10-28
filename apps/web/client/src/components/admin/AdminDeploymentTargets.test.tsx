@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   queueProductionWorkerCanary: vi.fn(),
   productionWorkerCanaryPreflight: null as any,
   productionWorkerCanaryJob: null as any,
+  productionWorkerCanaryJobError: false,
   verifyIngressBrowser:vi.fn(async()=>({passed:true})),
   databaseAdmissionUnknownOnce: false,
   activateStagingProfile: vi.fn(),
@@ -153,8 +154,9 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareProductionIngressPreflight: {useQuery:()=>({data:mocks.ingressPreflight,isLoading:false,refetch:vi.fn()})},
       getCloudflareMigrationMission: {useQuery:()=>({data:mocks.migrationMission,refetch:vi.fn()})},
       getLatestCloudflareProductionIngressJob: {useQuery:()=>({data:mocks.ingressJob,refetch:vi.fn()})},
-      getCloudflareProductionWorkerCanaryPreflight: {useQuery:()=>({data:mocks.productionWorkerCanaryPreflight,isLoading:false,isError:false,refetch:vi.fn()})},
-      getLatestCloudflareProductionWorkerCanaryJob: {useQuery:()=>({data:mocks.productionWorkerCanaryJob,isLoading:false,isError:false,refetch:vi.fn()})},
+      getCloudflareProductionWorkerCanaryPreflight: {useQuery:()=>({data:mocks.productionWorkerCanaryPreflight,isLoading:false,isFetching:false,isError:false,refetch:vi.fn()})},
+      getLatestCloudflareProductionWorkerCanaryJob: {useQuery:()=>({data:mocks.productionWorkerCanaryJob,isLoading:false,isError:mocks.productionWorkerCanaryJobError,
+        error:{message:"PRODUCTION_WORKER_CANARY_JOB_READ_UNAVAILABLE"},refetch:vi.fn()})},
       getCloudflareHttpCandidatePreparation: {useQuery:()=>({data:{preflight:{ready:false},job:null},isLoading:false,isError:false,refetch:vi.fn()})},
       getCloudflareHttpRuntimeOperation: {useQuery:()=>({data:{job:null},isLoading:false,isError:false,refetch:vi.fn()})},
       queueCloudflareProductionWorkerCanary: {useMutation:()=>({isPending:false,mutate:mocks.queueProductionWorkerCanary,error:null})},
@@ -254,6 +256,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.ingressJob = null;
     mocks.productionWorkerCanaryPreflight = null;
     mocks.productionWorkerCanaryJob = null;
+    mocks.productionWorkerCanaryJobError = false;
     mocks.migrationMission = { migrationMode: "FIRST_MIGRATION", state: "IN_PROGRESS", currentMilestone: "M3_APPLICATION_ACCEPTANCE" };
     mocks.productionQueues = [];
     mocks.productionHyperdrives = [];
@@ -920,6 +923,31 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.queueProductionWorkerCanary).not.toHaveBeenCalled();
   });
 
+  it("shows the exact deployment readback blocker and keeps job retrieval separate", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
+    mocks.productionWorkerCanaryPreflight={ready:false,reason:"WORKER_DEPLOYMENT_PAGINATION_INCOMPLETE"};
+    mocks.productionWorkerCanaryJob=null;
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.getByRole("heading",{name:"Cloudflare Worker Canary Deployment"})).toBeInTheDocument();
+    expect(screen.getByRole("button",{name:"Recheck read-only preflight"})).toBeInTheDocument();
+    expect(screen.getByText(/incomplete or inconsistent deployment page set/i)).toBeInTheDocument();
+    expect(screen.getByText("WORKER_DEPLOYMENT_PAGINATION_INCOMPLETE")).toBeInTheDocument();
+    expect(screen.getByText(/No canonical Worker canary job is recorded/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button",{name:"Approve 1% Worker version canary"})).not.toBeInTheDocument();
+  });
+
+  it("does not turn a failed canary job read into an empty-registry claim", async () => {
+    const user=userEvent.setup();
+    mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
+    mocks.productionWorkerCanaryPreflight={ready:false,reason:"WORKER_DEPLOYMENT_NOT_FOUND"};
+    mocks.productionWorkerCanaryJob=null;mocks.productionWorkerCanaryJobError=true;
+    render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
+    expect(screen.getByText(/Unable to load canary job status/i)).toBeInTheDocument();
+    expect(screen.queryByText(/No canonical Worker canary job is recorded/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button",{name:"Retry read-only job status"})).toBeInTheDocument();
+  });
+
   it("does not offer another deployment after a successful 1% canary", async () => {
     const user=userEvent.setup();
     mocks.targets=[{...existingTarget,environment:"production",deploymentTargetId:"smartspec-cloudflare-runtime",workerRef:"smartspec-cloudflare-runtime"}];
@@ -931,7 +959,7 @@ describe("AdminDeploymentTargets", () => {
         queueConsumer:{consumerId:"b".repeat(32)}}};
     render(<AdminDeploymentTargets/>);await chooseProductionScope(user);
     expect(screen.getByText(/The 1% canary is active/i)).toBeInTheDocument();
-    expect(screen.getByText("b".repeat(32))).toBeInTheDocument();
+    expect(screen.getAllByText("b".repeat(32))).toHaveLength(2);
     expect(screen.queryByRole("button",{name:"Approve 1% Worker version canary"})).not.toBeInTheDocument();
     expect(mocks.queueProductionWorkerCanary).not.toHaveBeenCalled();
   });

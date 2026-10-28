@@ -40,10 +40,20 @@ export async function getProductionWorkerCanaryPreflight(db: DrizzleDB, scope: S
   if (!(await approvalContractReady())) return blocked("PRODUCTION_APPROVAL_CONTRACT_UNAVAILABLE");
 
   const inventory = await probeCloudflareProductionProviderInventory({ db, ...scope });
-  if (!("accessChecks" in inventory) || inventory.accessChecks.zone.complete !== true ||
-      inventory.accessChecks.routes.complete !== true || inventory.accessChecks.workerDeployments.complete !== true ||
-      inventory.accessChecks.workerVersions.length !== 1 || inventory.accessChecks.workerVersions.some(item => item.complete !== true) ||
-      !inventory.domainRoute.zoneId) return blocked("WORKER_DEPLOYMENT_READBACK_INCOMPLETE");
+  if (!("accessChecks" in inventory)) return blocked("PRODUCTION_PROVIDER_INVENTORY_UNAVAILABLE");
+  if (!inventory.accessChecks.zone.complete) return blocked(inventory.accessChecks.zone.httpStatus === 403
+    ? "WORKER_ZONE_PERMISSION_DENIED_HTTP_403" : inventory.accessChecks.zone.httpStatus === 401
+      ? "WORKER_ZONE_PERMISSION_DENIED_HTTP_401" : `WORKER_ZONE_READ_HTTP_${inventory.accessChecks.zone.httpStatus ?? "UNAVAILABLE"}`);
+  if (!inventory.accessChecks.routes.complete) return blocked(inventory.accessChecks.routes.httpStatus === 403
+    ? "WORKER_ROUTE_PERMISSION_DENIED_HTTP_403" : inventory.accessChecks.routes.httpStatus === 401
+      ? "WORKER_ROUTE_PERMISSION_DENIED_HTTP_401" : `WORKER_ROUTE_READ_HTTP_${inventory.accessChecks.routes.httpStatus ?? "UNAVAILABLE"}`);
+  if (!inventory.domainRoute.zoneId) return blocked("WORKER_ZONE_SMARTAIHUB_APP_NOT_FOUND");
+  if (!inventory.worker.deploymentInventoryComplete || inventory.worker.readbackReason) {
+    return blocked(inventory.worker.readbackReason ?? "WORKER_DEPLOYMENT_READBACK_INCOMPLETE");
+  }
+  if (inventory.worker.versions.length !== 1 || inventory.worker.versions.some(item => item.checked !== true)) {
+    return blocked("WORKER_ACTIVE_VERSION_READBACK_INCOMPLETE");
+  }
   if (inventory.domainRoute.conflicting || !inventory.domainRoute.attached ||
       inventory.domainRoute.script !== target.targetId || !inventory.domainRoute.routeId) return blocked("M2_ROUTE_BASELINE_MISMATCH");
   if (!inventory.worker.activeDeploymentId || inventory.worker.versions.length !== 1) return blocked("WORKER_BASELINE_NOT_SINGLE_VERSION");

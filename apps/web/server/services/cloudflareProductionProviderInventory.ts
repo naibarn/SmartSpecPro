@@ -6,26 +6,88 @@ import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter
 const API_ROOT = "https://api.cloudflare.com/client/v4";
 const VERSION_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 
-type Envelope = { success?: boolean; result?: unknown; result_info?: { total_pages?: number } };
-type SafeResponse = { status: number; result: unknown; complete: boolean };
+type Envelope = { success?: boolean; result?: unknown; result_info?: { total_pages?: number; page?: number } };
+type SafeResponse = { status: number; result: unknown; complete: boolean; diagnosticCode?: string; totalPages?: number; page?: number };
 
 async function get(token: string, path: string, fetchImpl: typeof fetch): Promise<SafeResponse> {
   const url = new URL(`${API_ROOT}${path}`);
   if (url.origin !== new URL(API_ROOT).origin || !url.pathname.startsWith("/client/v4/") || url.username || url.password || url.hash) {
-    return { status: 0, result: null, complete: false };
+    return { status: 0, result: null, complete: false, diagnosticCode: "CLOUDFLARE_API_URL_DENIED" };
   }
   try {
     const response = await fetchImpl(url, {
       method: "GET", headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       redirect: "error", cache: "no-store", signal: AbortSignal.timeout(12_000),
     });
-    if (!response.ok) { await response.body?.cancel(); return { status: response.status, result: null, complete: false }; }
-    const envelope = await response.json() as Envelope;
-    return { status: response.status, result: envelope?.success === true ? envelope.result ?? null : null,
-      complete: envelope?.success === true && (envelope.result_info?.total_pages ?? 1) <= 1 };
+    if (!response.ok) { await response.body?.cancel(); return { status: response.status, result: null, complete: false,
+      diagnosticCode: `CLOUDFLARE_HTTP_${response.status}` }; }
+    let envelope: Envelope;
+    try { envelope = await response.json() as Envelope; }
+    catch { return { status: response.status, result: null, complete: false, diagnosticCode: "CLOUDFLARE_RESPONSE_JSON_INVALID" }; }
+    if (envelope?.success !== true || envelope.result === undefined) {
+      return { status: response.status, result: null, complete: false, diagnosticCode: "CLOUDFLARE_API_RESPONSE_UNSUCCESSFUL" };
+    }
+    const totalPages = envelope.result_info?.total_pages;
+    const page = envelope.result_info?.page;
+    return { status: response.status, result: envelope.result,
+      complete: (totalPages ?? 1) <= 1,
+      ...(typeof totalPages === "number" ? { totalPages } : {}),
+      ...(typeof page === "number" ? { page } : {}) };
   } catch {
-    return { status: 0, result: null, complete: false };
+    return { status: 0, result: null, complete: false, diagnosticCode: "CLOUDFLARE_TRANSPORT_UNAVAILABLE" };
   }
+}
+
+const DEPLOYMENTS_PER_PAGE = 100;
+const MAX_DEPLOYMENT_PAGES = 50;
+const DEPLOYMENT_PAGE_CONCURRENCY = 5;
+
+/** Read every bounded page: Cloudflare's list endpoint defaults to 20 rows and exposes total_pages. */
+async function getAllWorkerDeployments(token: string, path: string, fetchImpl: typeof fetch): Promise<SafeResponse> {
+  const first = await get(token, `${path}?page=1&per_page=${DEPLOYMENTS_PER_PAGE}`, fetchImpl);
+  if (first.diagnosticCode) return first;
+  const firstResult = first.result && typeof first.result === "object" && !Array.isArray(first.result)
+    ? first.result as { deployments?: unknown } : null;
+  if (!firstResult || !Array.isArray(firstResult.deployments)) {
+    return { status: first.status, result: first.result, complete: false, diagnosticCode: "WORKER_DEPLOYMENT_RESPONSE_SCHEMA_INVALID" };
+  }
+  const rows = [...firstResult.deployments];
+  if (first.totalPages === undefined) {
+    return rows.length < DEPLOYMENTS_PER_PAGE
+      ? { status: first.status, result: { deployments: rows }, complete: true }
+      : { status: first.status, result: { deployments: rows }, complete: false, diagnosticCode: "WORKER_DEPLOYMENT_PAGINATION_METADATA_MISSING" };
+  }
+  if (!Number.isSafeInteger(first.totalPages) || first.totalPages < 1 || first.totalPages > MAX_DEPLOYMENT_PAGES) {
+    return { status: first.status, result: { deployments: rows }, complete: false, diagnosticCode: "WORKER_DEPLOYMENT_PAGINATION_LIMIT_EXCEEDED" };
+  }
+  if (first.page !== undefined && first.page !== 1) {
+    return { status: first.status, result: { deployments: rows }, complete: false, diagnosticCode: "WORKER_DEPLOYMENT_PAGINATION_PAGE_MISMATCH" };
+  }
+  if (first.totalPages > 1) {
+    for (let startPage = 2; startPage <= first.totalPages; startPage += DEPLOYMENT_PAGE_CONCURRENCY) {
+      const endPage = Math.min(first.totalPages, startPage + DEPLOYMENT_PAGE_CONCURRENCY - 1);
+      const pages = await Promise.all(Array.from({ length: endPage - startPage + 1 }, (_, index) => {
+        const page = startPage + index;
+        return get(token, `${path}?page=${page}&per_page=${DEPLOYMENTS_PER_PAGE}`, fetchImpl)
+          .then(response => ({ page, response }));
+      }));
+      for (const item of pages) {
+        if (item.response.diagnosticCode) return { status: item.response.status, result: { deployments: rows }, complete: false,
+          diagnosticCode: item.response.diagnosticCode };
+        const result = item.response.result && typeof item.response.result === "object" && !Array.isArray(item.response.result)
+          ? item.response.result as { deployments?: unknown } : null;
+        if (!result || !Array.isArray(result.deployments)) return { status: item.response.status, result: { deployments: rows },
+          complete: false, diagnosticCode: "WORKER_DEPLOYMENT_RESPONSE_SCHEMA_INVALID" };
+        if (item.response.totalPages !== undefined && item.response.totalPages !== first.totalPages ||
+            item.response.page !== undefined && item.response.page !== item.page) {
+          return { status: item.response.status, result: { deployments: rows }, complete: false,
+            diagnosticCode: "WORKER_DEPLOYMENT_PAGINATION_PAGE_MISMATCH" };
+        }
+        rows.push(...result.deployments);
+      }
+    }
+  }
+  return { status: first.status, result: { deployments: rows }, complete: true };
 }
 
 /** Read-only inventory that distinguishes Staging resources from a Production rollback candidate. */
@@ -67,7 +129,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/queues?per_page=100`, fetchImpl),
       get(token, `/accounts/${encodeURIComponent(target.accountRef)}/hyperdrive/configs?per_page=100`, fetchImpl),
       get(token, "/zones?name=smartaihub.app&per_page=50", fetchImpl),
-      get(token, `/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/deployments`, fetchImpl),
+      getAllWorkerDeployments(token, `/accounts/${encodeURIComponent(target.accountRef)}/workers/scripts/${encodeURIComponent(target.workerRef)}/deployments`, fetchImpl),
     ]);
     const zoneRows = Array.isArray(zones.result) ? zones.result as Array<{ id?: unknown; name?: unknown }> : [];
     const zone = zoneRows.find(row => row.name === "smartaihub.app" && typeof row.id === "string");
@@ -127,8 +189,27 @@ export async function probeCloudflareProductionProviderInventory(input: {
         containerNames: containers.map((container: any) => container?.name).filter((name: unknown): name is string => typeof name === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(name)),
         hasVerifiedReleaseIdentity: releaseIdentity !== null,
         ...(releaseIdentity ? { sourceSha: releaseIdentity[1], buildDigest: releaseIdentity[2], configurationDigest: releaseIdentity[3] } : {}),
-        checked: detail.complete };
+        checked: detail.complete, httpStatus: detail.status,
+        ...(!detail.complete ? { readbackReason: detail.diagnosticCode ?? (detail.status === 403 ? "WORKER_VERSION_PERMISSION_DENIED_HTTP_403" :
+          detail.status === 401 ? "WORKER_VERSION_PERMISSION_DENIED_HTTP_401" : `WORKER_VERSION_READ_HTTP_${detail.status || "UNAVAILABLE"}`) } :
+          releaseIdentity === null ? { readbackReason: "WORKER_VERSION_RELEASE_IDENTITY_MISSING" } : {}) };
     }));
+    const workerDeploymentReadbackReason = !deployments.complete
+      ? deployments.status === 403 ? "WORKER_DEPLOYMENT_PERMISSION_DENIED_HTTP_403"
+        : deployments.status === 401 ? "WORKER_DEPLOYMENT_PERMISSION_DENIED_HTTP_401"
+          : deployments.diagnosticCode?.startsWith("WORKER_DEPLOYMENT_") ? deployments.diagnosticCode
+            : deployments.status === 200 && deployments.diagnosticCode === "CLOUDFLARE_RESPONSE_JSON_INVALID" ? "WORKER_DEPLOYMENT_RESPONSE_JSON_INVALID"
+              : deployments.status === 200 && deployments.diagnosticCode === "CLOUDFLARE_API_RESPONSE_UNSUCCESSFUL" ? "WORKER_DEPLOYMENT_API_RESPONSE_UNSUCCESSFUL"
+                : deployments.status === 200 && !deployments.diagnosticCode ? "WORKER_DEPLOYMENT_PAGINATION_INCOMPLETE"
+              : deployments.diagnosticCode ?? `WORKER_DEPLOYMENT_READ_HTTP_${deployments.status || "UNAVAILABLE"}`
+      : !deploymentRows || !Array.isArray(deploymentRows) ? "WORKER_DEPLOYMENT_RESPONSE_SCHEMA_INVALID"
+        : records.length === 0 ? "WORKER_DEPLOYMENT_NOT_FOUND"
+          : datedRecords.length !== records.length ? "WORKER_DEPLOYMENT_IDENTITY_INVALID"
+            : newestRecords.length !== 1 ? "WORKER_ACTIVE_DEPLOYMENT_AMBIGUOUS"
+              : !validWeights ? "WORKER_ACTIVE_VERSION_WEIGHTS_INVALID"
+                : versionDetails.some(version => !version.checked) ? versionDetails.find(version => !version.checked)?.readbackReason ?? "WORKER_VERSION_READBACK_INCOMPLETE"
+                  : versionDetails.some(version => !version.hasVerifiedReleaseIdentity) ? "WORKER_VERSION_RELEASE_IDENTITY_MISSING"
+                    : null;
     const queueNames = queueRows.map(row => row.queue_name).filter((name: unknown): name is string => typeof name === "string" && /^[a-z0-9][a-z0-9-]{0,62}$/.test(name));
     const consumerRows = Array.isArray(productionQueueConsumers?.result)
       ? productionQueueConsumers.result as Array<{ consumer_id?: unknown; queue_name?: unknown; script_name?: unknown; dead_letter_queue?: unknown; type?: unknown; settings?: { max_retries?: unknown } }>
@@ -152,7 +233,8 @@ export async function probeCloudflareProductionProviderInventory(input: {
         hyperdrive: { httpStatus: hyperdrive.status, complete: hyperdrive.complete },
         zone: { httpStatus: zones.status, complete: zones.complete },
         routes: { httpStatus: routes?.status ?? null, complete: routes?.complete ?? false },
-        workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows) },
+        workerDeployments: { httpStatus: deployments.status, complete: deployments.complete && Array.isArray(deploymentRows),
+          ...(workerDeploymentReadbackReason ? { diagnosticCode: workerDeploymentReadbackReason } : {}) },
         workerVersions: versionDetails.map(version => ({ httpStatus: version.checked ? 200 : null, complete: version.checked })),
         productionQueueConsumers: { httpStatus: productionQueueConsumers?.status ?? null, complete: Boolean(productionQueueConsumers?.complete) },
         vpcServices: { httpStatus: vpcServices.status, complete: vpcServices.complete },
@@ -241,7 +323,7 @@ export async function probeCloudflareProductionProviderInventory(input: {
         conflicting: matchingRoutes.length > 1 || (matchingRoutes.length === 1 && matchingRoutes[0].script !== target.targetId) },
       worker: { activeDeploymentId: activeDeploymentIsUnambiguous && typeof first?.id === "string" ? first.id : null,
         deploymentInventoryComplete: deployments.complete && Array.isArray(deploymentRows) && activeDeploymentIsUnambiguous, deploymentCount: records.length,
-        activeVersionCount: active.length, versions: versionDetails },
+        activeVersionCount: active.length, versions: versionDetails, readbackReason: workerDeploymentReadbackReason },
     };
   });
   if (fetched.status !== "CONFIGURED" || !fetched.value) {
