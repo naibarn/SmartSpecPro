@@ -140,7 +140,19 @@ pub fn spawn_isolated_moli_command(
         .envs(environment.iter().map(|(key, value)| (key, value)))
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::null());
+        .stderr(
+            if environment
+                .iter()
+                .any(|(key, value)| key == NAMESPACE_PROBE_ENV && value == "1")
+            {
+                // Keep the namespace integration test's failure output available
+                // for diagnosis. This branch is reachable only from the test-only
+                // probe and the caller reads it with a strict byte limit.
+                Stdio::piped()
+            } else {
+                Stdio::null()
+            },
+        );
     if environment
         .iter()
         .any(|(key, value)| key == NAMESPACE_PROBE_ENV && value == "1")
@@ -794,7 +806,25 @@ mod tests {
             );
             std::thread::sleep(std::time::Duration::from_millis(10));
         };
-        assert_eq!(status, 0);
+        let child_stderr = if status == 0 {
+            String::new()
+        } else {
+            use std::io::Read;
+            let mut bytes = Vec::new();
+            if let Some(stderr) = process.child.as_mut().and_then(|child| child.stderr.take()) {
+                let _ = stderr.take(4096).read_to_end(&mut bytes);
+            }
+            let output = String::from_utf8_lossy(&bytes)
+                .replace(&profile_path.to_string_lossy().to_string(), "<profile>");
+            output
+                .chars()
+                .filter(|character| !character.is_control() || matches!(character, '\n' | '\t'))
+                .collect()
+        };
+        assert_eq!(
+            status, 0,
+            "namespace child stderr (max 4096 bytes): {child_stderr}"
+        );
         assert!(!profile_path.exists());
 
         let mut sleeper = spawn_isolated_moli_command(
