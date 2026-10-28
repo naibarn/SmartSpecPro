@@ -28,6 +28,10 @@ export function sameVersionWeights(left, right) {
   return JSON.stringify(normalize(left)) === JSON.stringify(normalize(right));
 }
 
+export function buildDeploymentPayload(versions, message) {
+  return { strategy: "percentage", versions, annotations: { "workers/message": message, "workers/triggered_by": "github-actions" } };
+}
+
 export function parseUploadedVersion(output) {
   const matches = [...output.matchAll(/version(?:\s+id)?\s*[:=]\s*([0-9a-f-]{36})/gi)].map(match => match[1]);
   const unique = [...new Set(matches)];
@@ -103,7 +107,7 @@ async function inspectTarget(summaryPath) {
 async function publishTraffic(versions, message) {
   const payload = await providerRequest(`/accounts/{account}/workers/scripts/${encodeURIComponent(workerName())}/deployments`, {
     method: "POST",
-    body: JSON.stringify({ versions, annotations: { "workers/message": message, "workers/triggered_by": "github-actions" } }),
+    body: JSON.stringify(buildDeploymentPayload(versions, message)),
   });
   const created = payload.result;
   if (!created?.id || !Array.isArray(created.versions) || !sameVersionWeights(created.versions, versions)) {

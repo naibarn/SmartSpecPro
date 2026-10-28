@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseDeploymentList, parseUploadedVersion, sameVersionWeights, smokeTest } from "./cloudflare-deploy-control.mjs";
+import { buildDeploymentPayload, parseDeploymentList, parseUploadedVersion, sameVersionWeights, smokeTest } from "./cloudflare-deploy-control.mjs";
 
 const first = "11111111-1111-4111-8111-111111111111";
 const second = "22222222-2222-4222-8222-222222222222";
@@ -25,6 +25,14 @@ test("traffic comparison is order-independent and upload parsing accepts one imm
   assert.equal(parseUploadedVersion(`Uploaded smartspec-cloudflare-runtime\nVersion ID: ${second}\n`), second);
   assert.throws(() => parseUploadedVersion("Upload succeeded without a version receipt"), /VERSION_ID_UNAVAILABLE/);
   assert.throws(() => parseUploadedVersion(`Version ID: ${first}\nVersion ID: ${second}`), /VERSION_ID_UNAVAILABLE/);
+});
+
+test("Cloudflare deployment API payload uses percentage strategy and carries exact version weights", () => {
+  assert.deepEqual(buildDeploymentPayload([{ version_id: first, percentage: 100 }], "test deploy"), {
+    strategy: "percentage",
+    versions: [{ version_id: first, percentage: 100 }],
+    annotations: { "workers/message": "test deploy", "workers/triggered_by": "github-actions" },
+  });
 });
 
 test("staging smoke requires Worker readiness and confirms the API session route is served by a Container", async () => {
