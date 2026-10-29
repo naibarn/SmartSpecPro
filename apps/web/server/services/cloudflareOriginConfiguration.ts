@@ -5,8 +5,9 @@ import type { DrizzleDB } from "../db";
 import { providerDeploymentTargets, systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
 import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt } from "./cloudflarePrivateDatabaseBinding";
-import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB } from "./cloudflarePrivateDatabaseContract";
+import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
+import { getStagingApplicationPreparation } from "./cloudflareStagingApplicationPreparation";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "./cloudflareOriginContracts";
@@ -350,6 +351,8 @@ export async function getCloudflareOriginConfiguration(db: DrizzleDB, input: {
     descriptor: stored.descriptor,
     workflowRuntimeTokenConfigured: Boolean(stored.secrets.workflowRuntimeToken),
     controlPlaneTokenConfigured: Boolean(stored.secrets.controlPlaneToken),
+    applicationPreparation: input.identity.environment === "staging"
+      ? getStagingApplicationPreparation(stored.descriptor, stored.secrets, input.configurationRef) : null,
     providerAccessVerified: false as const, deploymentAuthorized: false as const };
 }
 

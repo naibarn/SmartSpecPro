@@ -93,6 +93,9 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
       { name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
       { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
+    ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{
+      name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text", text: JSON.stringify(value.descriptor.allowedPublicOrigins),
+    }] : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.runnerReleaseCatalog ? [
       { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },
@@ -135,7 +138,7 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
     binding?.name?.startsWith("CLOUDFLARE_NODE_HTTP_") || binding?.name?.startsWith("CLOUDFLARE_PYTHON_HTTP_") ||
     binding?.name === "CLOUDFLARE_APPLICATION_CANARY_TOKEN" ||
     binding?.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC" || binding?.name === "CLOUDFLARE_INGRESS_MODE" ||
-    binding?.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES" ||
+    binding?.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES" || binding?.name === "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");
 }

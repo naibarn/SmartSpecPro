@@ -555,6 +555,29 @@ describe("AdminDeploymentTargets", () => {
     expect(ingress).toHaveTextContent("Missing application bindings: NODE_HTTP, PYTHON_HTTP");
   });
 
+  it("explains why namespace-only Staging cannot produce a Full Application candidate", async () => {
+    const user = userEvent.setup();
+    mocks.originConfiguration = { status: "STORED", applicationPreparation: {
+      phase: "NAMESPACE_ONLY", sourceConfigurationRef: `cf-origin:${"a".repeat(64)}`, candidateStatus: "BLOCKED",
+      missingRuntimeFields: ["CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", "encrypted Node/Python application secrets"],
+      imageReceipts: "VERIFIED", encryptedApplicationSecrets: "MISSING", containerBindings: "NOT_GENERATED",
+      databaseAuthority: { status: "MISSING", code: "STAGING_DB_AUTHORITY_MISSING", existingRoleAccess: "READ_ONLY_PROBE_ONLY",
+        host: "db-staging.smartaihub.app", databaseName: "staging_app", readOnlyProbeRole: "sah_cf_staging_aaaaaaaaaaaa",
+        requiredPermissions: ["CONNECT", "SELECT/INSERT/UPDATE/DELETE on reviewed application tables", "USAGE/SELECT on required sequences"],
+        excludedPermissions: ["DDL", "OWNERSHIP", "ROLE ADMIN", "RLS BYPASS", "Production database access"] },
+      deploymentAuthorized: false,
+    } };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText(/NAMESPACE ONLY — not deployable as the application/i)).toBeInTheDocument();
+    const databaseBlocker = screen.getByLabelText("Staging database authority required");
+    expect(databaseBlocker).toHaveTextContent("STAGING_DB_AUTHORITY_MISSING");
+    expect(databaseBlocker).toHaveTextContent("db-staging.smartaihub.app/staging_app");
+    expect(databaseBlocker).toHaveTextContent("READ_ONLY_PROBE_ONLY");
+    expect(screen.getByText(/does not create a Full HTTP candidate or deploy application traffic/i)).toBeInTheDocument();
+  });
+
   it("probes the exact Production target credential and shows the permission to add", async () => {
     const user = userEvent.setup();
     mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime" }];
@@ -639,11 +662,11 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
 
     expect(await screen.findByText("STAGING_READINESS_PROBE_UNAVAILABLE")).toBeInTheDocument();
-    const activate = screen.getByRole("button", { name: "Prepare Staging with saved secrets" });
+    const activate = screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" });
     expect(activate).toBeEnabled();
     await user.click(activate);
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
-    expect(await screen.findByRole("dialog")).toHaveTextContent("Prepare Staging configuration");
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Prepare Staging control-plane profile");
     await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith({
       tenantId,
@@ -670,7 +693,7 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
 
-    const activate = screen.getByRole("button", { name: "Generate secrets and prepare Staging" });
+    const activate = screen.getByRole("button", { name: "Generate secrets and prepare Staging control-plane profile" });
     expect(activate).toBeEnabled();
     expect(screen.getByText(/You do not need to find or copy any tokens/)).toBeInTheDocument();
     expect(screen.getByLabelText("Staging workflow runtime token")).not.toBeVisible();
@@ -685,13 +708,13 @@ describe("AdminDeploymentTargets", () => {
     mocks.activateStagingProfile.mockClear();
     await user.click(screen.getByText("Advanced: use existing internal secrets"));
     await user.type(screen.getByLabelText("Staging workflow runtime token"), "w".repeat(32));
-    expect(screen.getByRole("button", { name: "Use supplied secrets and prepare Staging" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Use supplied secrets and prepare Staging control-plane profile" })).toBeDisabled();
     expect(screen.getByRole("alert")).toHaveTextContent(/two different secrets/);
     await user.type(screen.getByLabelText("Staging control-plane token"), "w".repeat(32));
-    expect(screen.getByRole("button", { name: "Use supplied secrets and prepare Staging" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Use supplied secrets and prepare Staging control-plane profile" })).toBeDisabled();
     await user.clear(screen.getByLabelText("Staging control-plane token"));
     await user.type(screen.getByLabelText("Staging control-plane token"), "c".repeat(32));
-    const manual = screen.getByRole("button", { name: "Use supplied secrets and prepare Staging" });
+    const manual = screen.getByRole("button", { name: "Use supplied secrets and prepare Staging control-plane profile" });
     expect(manual).toBeEnabled();
     await user.click(manual);
     await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
@@ -702,7 +725,7 @@ describe("AdminDeploymentTargets", () => {
     }));
     await user.click(screen.getByRole("button", { name: "Use automatic setup instead" }));
     await user.click(screen.getByRole("button", { name: "Clear these fields" }));
-    expect(screen.getByRole("button", { name: "Generate secrets and prepare Staging" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Generate secrets and prepare Staging control-plane profile" })).toBeEnabled();
     expect(screen.getByLabelText("Staging workflow runtime token")).toHaveValue("");
     expect(screen.getByLabelText("Staging control-plane token")).toHaveValue("");
   });
@@ -722,7 +745,7 @@ describe("AdminDeploymentTargets", () => {
     const { rerender } = render(<AdminDeploymentTargets />);
     await chooseScope(user);
     expect(await screen.findByText("STAGING_ORIGIN_CONFIGURATION_EXPIRED")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" })).toBeDisabled();
     expect(screen.getByText(/Prepare Staging is intentionally disabled/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Recheck Staging configuration (read-only)" }));
     expect(mocks.refetchStagingOriginConfiguration).not.toHaveBeenCalled();
@@ -744,13 +767,13 @@ describe("AdminDeploymentTargets", () => {
     };
     rerender(<AdminDeploymentTargets />);
     expect(await screen.findByText("STAGING_PRIVATE_DATABASE_BINDING_REQUIRED")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" })).toBeDisabled();
 
     mocks.originConfigurationError = true;
     mocks.stagingPreflight = { ready: false, reason: "STAGING_PRIVATE_DATABASE_RECEIPT_INVALID", artifact: null, baseline: null };
     rerender(<AdminDeploymentTargets />);
     expect(screen.getAllByText("STAGING_PRIVATE_DATABASE_RECEIPT_INVALID").length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" })).toBeDisabled();
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
   });
 
@@ -955,7 +978,7 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
 
     expect(await screen.findByText(/Prepare Staging is intentionally disabled/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" })).toBeDisabled();
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
   });
@@ -975,7 +998,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.activationSucceeds = true;
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
-    await user.click(screen.getByRole("button", { name: "Prepare Staging with saved secrets" }));
+    await user.click(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" }));
     await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
 
     await waitFor(() => expect(mocks.fetchTargets).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging" }));
@@ -1003,7 +1026,7 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
 
-    await user.click(screen.getByRole("button", { name: "Prepare Staging with saved secrets" }));
+    await user.click(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" }));
     await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
 
     expect(await screen.findAllByText("CLOUDFLARE_STAGING_ACTIVE_TENANT_OWNER_REQUIRED")).toHaveLength(2);

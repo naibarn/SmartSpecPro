@@ -4,7 +4,7 @@ import { cloudflareOriginDescriptorDigest, cloudflareOriginDescriptorSchema, clo
   assertCloudflareWorkflowVersionBindings, cloudflareOriginSecretsSchema } from "./cloudflareOriginVersionBindings";
 import { nativeProvisionNamespace, nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
 import { privateDatabasePlanDigest } from "./cloudflarePrivateDatabaseContract";
-import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
+import { httpApplicationNamespace, httpApplicationWorkerMetadata } from "./cloudflareHttpApplicationBindings";
 
 function fixture() {
   const tenantId = "tenant-a", projectId = "project-a", namespace = nativeProvisionNamespace(tenantId, projectId);
@@ -81,8 +81,12 @@ describe("exact bounded Workflow deployment configuration", () => {
     const bindings = cloudflareWorkflowVersionBindings(validated);
     expect(bindings.find(binding => binding.name === "CLOUDFLARE_NODE_HTTP_PROFILE")?.text).toContain("smartspec-cloudflare-runtime");
     expect(bindings.find(binding => binding.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC")?.text).toBe("production-full-http-v1");
+    expect(bindings.find(binding => binding.name === "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS")?.text)
+      .toBe(JSON.stringify(value.descriptor.allowedPublicOrigins));
     expect(bindings.find(binding => binding.name === "CLOUDFLARE_NODE_HTTP_SECRETS")?.type).toBe("secret_text");
     expect(() => assertCloudflareWorkflowVersionBindings(bindings, validated)).not.toThrow();
+    expect(() => assertCloudflareWorkflowVersionBindings([...bindings,
+      { name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text", text: '["https://unreviewed.example"]' }], validated)).toThrow("MISMATCH");
     const wrongNamespace = cloudflareOriginDescriptorSchema.parse({ ...value.descriptor,
       applicationHttp: { ...value.descriptor.applicationHttp!, namespace: nativeProvisionNamespace("tenant-a", "project-a") } });
     const wrongNamespaceDigest = cloudflareOriginDescriptorDigest(wrongNamespace);
@@ -90,6 +94,34 @@ describe("exact bounded Workflow deployment configuration", () => {
     expect(() => validateCloudflareOriginVersionBindings({ ...validated, descriptor: wrongNamespace,
       configurationDigest: wrongNamespaceDigest, configurationRef: wrongNamespaceRef }, { ...target, runtimePolicy: wrongNamespaceRef })).toThrow();
     expect(() => cloudflareOriginDescriptorSchema.parse({ ...value.descriptor, nativeResources: fixture().value.descriptor.nativeResources })).toThrow();
+  });
+
+  it("derives Staging auth origins and paired runtime bindings from the reviewed immutable configuration", () => {
+    const { value } = fixture();
+    const namespace = httpApplicationNamespace(value.descriptor.tenantId, value.descriptor.projectId, "staging");
+    const image = (runtime: "node" | "python") => `registry.cloudflare.com/${value.descriptor.accountRef}/${namespace}-${runtime}-http@sha256:${(runtime === "node" ? "1" : "2").repeat(64)}`;
+    value.descriptor.applicationHttp = {
+      mode: "private-canary", namespace, sourceSha: "e".repeat(40), traffic: "staging-full-http-v1",
+      node: { provisionJobId: randomUUID(), planDigest: "f".repeat(64), image: image("node") },
+      python: { provisionJobId: randomUUID(), planDigest: "1".repeat(64), image: image("python") },
+      issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 50_000).toISOString(),
+      maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic",
+    };
+    value.secrets.applicationHttp = { node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: {} };
+    value.secrets.applicationCanaryToken = "application-canary-token-" + "a".repeat(32);
+    value.descriptor = cloudflareOriginDescriptorSchema.parse(value.descriptor);
+    const bindings = cloudflareWorkflowVersionBindings(value);
+    expect(bindings.find(binding => binding.name === "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS")?.text)
+      .toBe(JSON.stringify(value.descriptor.allowedPublicOrigins));
+    expect(bindings.find(binding => binding.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC")?.text).toBe("staging-full-http-v1");
+    expect(bindings.find(binding => binding.name === "CLOUDFLARE_CONTAINER_POLICY")?.text).toBe("on-demand");
+    expect(bindings.some(binding => binding.name === "CLOUDFLARE_NODE_HTTP_PROFILE")).toBe(true);
+    expect(bindings.some(binding => binding.name === "CLOUDFLARE_PYTHON_HTTP_PROFILE")).toBe(true);
+    const metadata = httpApplicationWorkerMetadata(value.descriptor.applicationHttp!, value.descriptor);
+    expect(metadata.bindings).toEqual(expect.arrayContaining([
+      { name: "NODE_HTTP", type: "durable_object_namespace", class_name: "StagingNodeHttpContainer" },
+      { name: "PYTHON_HTTP", type: "durable_object_namespace", class_name: "StagingPythonHttpContainer" },
+    ]));
   });
 
   it("binds public Runner catalog reads independently of paid job transport, and rejects capability injection", () => {
