@@ -1748,6 +1748,8 @@ export default function AdminDeploymentTargets() {
                 const configurationVerified = config?.status === "STORED" &&
                   Boolean(config.descriptor.nativeResources?.privateDatabase);
                 const activationBlocker = stagingDeployPreflight.data?.reason;
+                const stagingConfigurationExpired = config?.status === "EXPIRED" ||
+                  activationBlocker === "STAGING_ORIGIN_CONFIGURATION_EXPIRED";
                 return <VStack gap={2}>
                   <h4>{text("1. Prepare Staging", "1. เตรียม Staging")}</h4>
                   <p>{text(
@@ -1756,7 +1758,7 @@ export default function AdminDeploymentTargets() {
                   )}</p>
                   {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
                     <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
-                  {stagingOriginConfiguration.data?.status === "EXPIRED" ? <VStack gap={1} role="alert" aria-label={text("Staging preparation is blocked", "หยุดการเตรียม Staging") }>
+                  {stagingConfigurationExpired ? <VStack gap={1} role="alert" aria-label={text("Staging preparation is blocked", "หยุดการเตรียม Staging") }>
                     <p><strong><code>STAGING_ORIGIN_CONFIGURATION_EXPIRED</code></strong></p>
                     <p id="staging-expired-config-help">{text(
                       "Prepare Staging is intentionally disabled: this immutable configuration and its private-database lease have expired. A fresh, verified database receipt and new configuration version are required before profile activation. Rechecking below is read-only and will not create a job or change Cloudflare resources.",
@@ -1799,8 +1801,8 @@ export default function AdminDeploymentTargets() {
                     "มี secret ภายในที่บันทึกไว้อย่างปลอดภัยแล้ว ระบบจะใช้ค่าเดิมโดยไม่สร้างใหม่",
                   )}</p>}
                   {stagingOriginConfiguration.isError ? <p role="alert"><code>{activationBlocker && activationBlocker.startsWith("STAGING_") ? activationBlocker : "STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE"}</code> · {text("Stored configuration or its resource receipts could not be verified. Use the authorized origin-configuration repair path, then refresh this registry.", "ตรวจสอบ config หรือ resource receipt ที่บันทึกไว้ไม่สำเร็จ ให้ใช้ขั้นตอนซ่อม origin-configuration ที่ได้รับอนุญาต แล้วรีเฟรช registry")}</p> : null}
-                  <Button type="button" aria-describedby={config?.status === "EXPIRED" ? "staging-expired-config-help" : undefined}
-                    variant={config?.status === "EXPIRED" ? "outline" : "default"}
+                  <Button type="button" aria-describedby={stagingConfigurationExpired ? "staging-expired-config-help" : undefined}
+                    variant={stagingConfigurationExpired ? "outline" : "default"}
                     disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
                     (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}

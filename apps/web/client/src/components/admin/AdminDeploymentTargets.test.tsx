@@ -636,6 +636,28 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
   });
 
+  it("explains an expired preflight blocker even when the configuration readback is still STORED", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingRuntime = { status: "NOT_DEPLOYED", checkedAt: "2026-10-22T00:00:00.000Z", missing: [], reason: "STAGING_READINESS_PROBE_UNAVAILABLE" };
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_EXPIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = {
+      status: "STORED",
+      configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      workflowRuntimeTokenConfigured: true,
+      controlPlaneTokenConfigured: true,
+      descriptor: { nativeResources: { privateDatabase: { provisionJobId: "private-db-receipt" } } },
+    };
+
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText(/Prepare Staging is intentionally disabled/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
+    expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
+    expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
+  });
+
   it("refreshes targets, the newly bound configuration reference, and preflight after activation", async () => {
     const user = userEvent.setup();
     mocks.targets = [stagingActivationTarget];
