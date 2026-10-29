@@ -64,7 +64,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "threads.overviewHint": "Choose a thread to continue focused work.",
         "threads.projectThreads": `${params?.project ?? ""} threads`,
         "threads.projectUnlinked": "Chats without a linked project",
-        "threads.recentActivityOrder": "Work threads ordered by most recent activity",
+        "threads.recentActivityOrder": "Work threads grouped by status, newest activity first within each group",
         "threads.statusFilter": "Filter by status",
         "threads.allStatuses": "All statuses",
         "threads.status.IDLE": "Idle",
@@ -185,13 +185,41 @@ describe("ChatSidebar", () => {
 
     expect(screen.getByRole("button", { name: /start new chat/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /start personal chat/i })).toBeInTheDocument();
-    expect(screen.getByTitle("Personal scope is locked to this user")).toBeInTheDocument();
+    expect(screen.getByTitle("Personal chats stay private to you.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /start new chat/i }));
     fireEvent.click(screen.getByRole("button", { name: /start personal chat/i }));
 
     expect(onNewChat).toHaveBeenCalledTimes(1);
     expect(onNewPersonalChat).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens Chat on the project-aware thread overview and keeps Sessions one click away", () => {
+    mocks.mockRecentThreadsQuery.mockReturnValue({
+      data: { pages: [{ items: [{
+        threadId: "thread-project-first",
+        title: "SPEC-224 pilot",
+        parentThreadId: null,
+        status: "WORKING",
+        lastActivityAt: "2026-10-29T10:00:00.000Z",
+        conversationId: 12,
+        conversationTitle: "Pilot chat",
+        projectId: "platform-project",
+        projectTitle: "SmartAIHub Development",
+        latestJob: null,
+      }], nextCursor: null }] },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    });
+    render(<ChatSidebar selectedConversationId={12} onSelectConversation={vi.fn()} onSelectThread={vi.fn()} onNewChat={vi.fn()} />);
+    expect(screen.getByRole("region", { name: "Thread overview" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "SmartAIHub Development" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open SPEC-224 pilot in Pilot chat" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Sessions" }));
+    expect(screen.getByRole("button", { name: "Open chat: Personal Finance" })).toBeInTheDocument();
   });
 
   it("opens an existing chat session and can load older sessions", () => {
@@ -232,6 +260,7 @@ describe("ChatSidebar", () => {
       />
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Sessions" }));
     const chatButton = screen.getByRole("button", { name: "Open chat: SPEC-224 Pilot" });
     expect(chatButton).toHaveAttribute("aria-current", "page");
     fireEvent.click(chatButton);
@@ -252,6 +281,7 @@ describe("ChatSidebar", () => {
       />,
     );
 
+    fireEvent.click(screen.getByRole("button", { name: "Sessions" }));
     expect(screen.getByRole("region", { name: "Threads" })).toBeInTheDocument();
     const threadButton = screen.getByText("SPEC-224 Pilot").closest("button");
     expect(threadButton).not.toBeNull();
@@ -305,7 +335,7 @@ describe("ChatSidebar", () => {
     });
     render(<ChatSidebar selectedConversationId={42} selectedThreadId="new-error" onSelectConversation={vi.fn()} onSelectThread={vi.fn()} onNewChat={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Threads overview" }));
-    const orderedThreads = screen.getByRole("list", { name: "Work threads ordered by most recent activity" });
+    const orderedThreads = screen.getByRole("list", { name: "Work threads grouped by status, newest activity first within each group" });
     const rows = within(orderedThreads).getAllByRole("button");
     expect(rows[0]).toHaveAccessibleName("Open Older running work in Old chat");
     expect(rows[1]).toHaveAccessibleName("Open Just updated failure in New chat");
@@ -313,6 +343,24 @@ describe("ChatSidebar", () => {
     expect(screen.getByRole("region", { name: "Failed" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Working" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Working" }).compareDocumentPosition(screen.getByRole("region", { name: "Failed" })!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("keeps an unlinked thread separate from a project with a sentinel-like title", () => {
+    mocks.mockRecentThreadsQuery.mockReturnValue({
+      data: { pages: [{ items: [
+        { threadId: "unlinked", title: "No project", parentThreadId: null, status: "WORKING", lastActivityAt: "2026-10-29T10:00:00.000Z", conversationId: 42, conversationTitle: "Chat A", projectId: null, projectTitle: null, latestJob: null },
+        { threadId: "named-project", title: "Project task", parentThreadId: null, status: "WORKING", lastActivityAt: "2026-10-29T09:00:00.000Z", conversationId: 43, conversationTitle: "Chat B", projectId: "project-sentinel", projectTitle: "__unlinked__", latestJob: null },
+      ], nextCursor: null }] },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    });
+    render(<ChatSidebar selectedConversationId={null} onSelectConversation={vi.fn()} onSelectThread={vi.fn()} onNewChat={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Threads overview" }));
+    expect(screen.getByRole("heading", { name: "Chats without a linked project" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "__unlinked__" })).toBeInTheDocument();
   });
 
   it("offers retry instead of rendering a failed session query as an empty list", () => {

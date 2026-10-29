@@ -78,7 +78,8 @@ export function ChatSidebar({
 
   // Trash view
   const [showTrash, setShowTrash] = useState(false);
-  const [sidebarView, setSidebarView] = useState<"sessions" | "threads">("sessions");
+  // Lead with project-aware work threads; full chat history remains one click away.
+  const [sidebarView, setSidebarView] = useState<"sessions" | "threads">("threads");
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
   const createThreadIdempotencyKey = useRef<{ scope: string; key: string } | null>(null);
 

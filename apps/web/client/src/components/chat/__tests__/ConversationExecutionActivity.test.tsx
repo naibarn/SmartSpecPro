@@ -29,6 +29,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "chat.executionActivityLoading": "Loading work status…",
       "chat.executionActivityUnavailable": "Work status is temporarily unavailable.",
       "chat.executionActivityRecorded": "Activity recorded",
+      "chat.executionSelectJob": "Choose task activity",
       "chat.executionAgent": "Agent",
       "chat.executionWorker": "Worker",
       "chat.executionJob": "Job",
@@ -114,6 +115,26 @@ describe("ConversationExecutionActivity", () => {
     expect(screen.getByText("Agent").nextElementSibling).toHaveTextContent("Not recorded");
     expect(screen.getByText("Worker").nextElementSibling).toHaveTextContent("Debian Agent Worker");
     expect(screen.getByText("Job").nextElementSibling).toHaveTextContent("job-1");
+  });
+
+  it("lets users inspect the exact Job when one Thread has multiple executions", () => {
+    mocks.observabilityQuery.mockReturnValue({
+      data: { snapshot: { projectionToken: "projection-token" }, items: [
+        { id: "job-active", jobType: "spec224.development", status: "running" },
+        { id: "job-review", jobType: "spec224.verify", status: "completed" },
+      ] },
+      error: null,
+      isLoading: false,
+    });
+    const { rerender } = render(<ConversationExecutionActivity conversationId={241} />);
+    const selector = screen.getByRole("combobox", { name: "Choose task activity" });
+    expect(selector).toHaveValue("job-active");
+    fireEvent.change(selector, { target: { value: "job-review" } });
+    rerender(<ConversationExecutionActivity conversationId={241} />);
+    expect(mocks.detailQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({ jobId: "job-review", projectionToken: "projection-token" }),
+      expect.anything(),
+    );
   });
 
   it("does not request or display execution activity without a conversation", () => {

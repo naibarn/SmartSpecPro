@@ -36,6 +36,7 @@ function taskControlHref(conversationId: number, threadId?: string | null): stri
 /** Safe lifecycle summary for Chat; detailed harness output stays in authorized Task Control. */
 export function ConversationExecutionActivity({ conversationId, threadId = null }: { conversationId: number | null; threadId?: string | null }) {
   const { t, locale } = useScopedTranslation("chat");
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const query = trpc.workerJobs.observability.useQuery(
     conversationId ? { conversationId, threadId } : {},
     {
@@ -48,8 +49,11 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
   );
   const selectedJob = useMemo(() => {
     const items = query.error ? [] : query.data?.items ?? [];
-    return items.find(item => ACTIVE_STATUSES.has(item.status)) ?? items[0] ?? null;
-  }, [query.data?.items, query.error]);
+    return items.find(item => item.id === selectedJobId)
+      ?? items.find(item => ACTIVE_STATUSES.has(item.status))
+      ?? items[0]
+      ?? null;
+  }, [query.data?.items, query.error, selectedJobId]);
   const detailQuery = trpc.workerJobs.observabilityDetail.useQuery(
     {
       jobId: selectedJob?.id ?? "",
@@ -83,6 +87,19 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
         <h2 className="text-sm font-semibold">{t("chat.executionActivityTitle")}</h2>
         {selectedJob ? <Badge variant={ACTIVE_STATUSES.has(selectedJob.status) ? "secondary" : "outline"}>{statusLabel(selectedJob.status, t)}</Badge> : null}
       </header>
+      {(query.data?.items.length ?? 0) > 1 ? (
+        <label className="mt-2 block space-y-1">
+          <span className="text-xs text-muted-foreground">{t("chat.executionSelectJob")}</span>
+          <select
+            aria-label={t("chat.executionSelectJob")}
+            value={selectedJob?.id ?? ""}
+            onChange={event => setSelectedJobId(event.target.value)}
+            className="h-9 w-full rounded-[var(--radius-element)] border border-[var(--color-border)] bg-[var(--color-background-surface)] px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {query.data?.items.map(item => <option key={item.id} value={item.id}>{item.jobType} · {statusLabel(item.status, t)} · {item.id}</option>)}
+          </select>
+        </label>
+      ) : null}
       {query.isLoading && !selectedJob ? (
         <p className="mt-2 text-sm text-muted-foreground" role="status">{t("chat.executionActivityLoading")}</p>
       ) : failed ? (
@@ -94,7 +111,7 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
             {formattedTime ? ` · ${formattedTime}` : ""}
           </p>
           {detailQuery.data ? (
-            <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-muted-foreground sm:grid-cols-4 lg:grid-cols-6">
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
               <dt className="font-medium">{t("chat.executionAgent")}</dt>
               <dd>{detailQuery.data.executionIdentity?.agent ?? t("chat.executionNotRecorded")}</dd>
               <dt className="font-medium">{t("chat.executionHarness")}</dt>

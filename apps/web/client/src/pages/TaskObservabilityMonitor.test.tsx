@@ -60,6 +60,8 @@ describe("TaskObservabilityMonitor", () => {
   it("defaults to a simple evidence summary and keeps unknown progress explicit", () => {
     renderMonitor();
     expect(screen.getByRole("heading", { name: "Task Control" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "SPEC-224 pilot · In progress" })).toBeTruthy();
+    expect(screen.getByText("Chat: Authorized pilot")).toBeTruthy();
     expect(screen.getAllByText("Current step: implement").length).toBeGreaterThan(0);
     expect(screen.getByText(/Verified progress: Unknown · trusted_baseline_missing/)).toBeTruthy();
     expect(screen.getByText("Action needed: Please review this task.")).toBeTruthy();

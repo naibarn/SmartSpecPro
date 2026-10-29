@@ -122,11 +122,12 @@ export default function TaskObservabilityMonitor() {
       {mode === "simple" && items.length > 0 ? <Section>
         <VStack gap={2}>
           <Heading level={2}>Your tasks</Heading>
-          {items.map((item, index) => (
+          {items.map((item) => (
             <HStack as="article" key={item.id} gap={2} wrap="wrap" padding={2}>
-              <Button label={`Task ${index + 1} · ${simpleStatusLabel(item.status)}`} variant={selected?.id === item.id ? "primary" : "secondary"} onClick={() => setSelectedId(item.id)} />
+              <Button label={`${item.threadTitle ?? item.jobType} · ${simpleStatusLabel(item.status)}`} variant={selected?.id === item.id ? "primary" : "secondary"} onClick={() => setSelectedId(item.id)} />
               {item.operatorAttention.required ? <Badge variant="warning" label="Action needed" /> : null}
               <Text type="supporting">Current step: {simpleStepLabel(item.stage)}</Text>
+              {item.conversationTitle ? <Text type="supporting">Chat: {item.conversationTitle}</Text> : null}
               {item.conversationId ? <Link href={chatHref(item.conversationId, item.threadId)} isStandalone>
                 {item.threadId ? "Open in Chat thread" : "Open conversation in Chat"}
               </Link> : null}

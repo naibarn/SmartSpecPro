@@ -40,10 +40,10 @@ export function ThreadOverviewSidebarPanel({
   );
   const items = useMemo(() => (query.data?.pages ?? []).flatMap(page => page.items), [query.data?.pages]);
   const groupedItems = useMemo(() => {
-    const groups = new Map<string, Map<string, typeof items>>();
+    const groups = new Map<string, Map<string | null, typeof items>>();
     for (const item of items) {
-      const statusItems = groups.get(item.status) ?? new Map<string, typeof items>();
-      const projectKey = item.projectTitle ?? "__unlinked__";
+      const statusItems = groups.get(item.status) ?? new Map<string | null, typeof items>();
+      const projectKey = item.projectTitle;
       const projectItems = statusItems.get(projectKey) ?? [];
       projectItems.push(item);
       statusItems.set(projectKey, projectItems);
@@ -94,8 +94,8 @@ export function ThreadOverviewSidebarPanel({
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t(`threads.status.${groupStatus}`)} · {Array.from(projects.values()).reduce((count, threads) => count + threads.length, 0)}</h4>
                 {Array.from(projects.entries()).map(([projectKey, projectItems]) => (
                   <section key={`${groupStatus}:${projectKey}`} className="space-y-1">
-                    <h5 className="px-2 text-xs font-medium text-muted-foreground">{projectKey === "__unlinked__" ? t("threads.projectUnlinked") : projectKey}</h5>
-                    <ol className="space-y-1" aria-label={`${t("threads.projectThreads", { project: projectKey === "__unlinked__" ? t("threads.projectUnlinked") : projectKey })} · ${t(`threads.status.${groupStatus}`)}`}>
+                    <h5 className="px-2 text-xs font-medium text-muted-foreground">{projectKey ?? t("threads.projectUnlinked")}</h5>
+                    <ol className="space-y-1" aria-label={`${t("threads.projectThreads", { project: projectKey ?? t("threads.projectUnlinked") })} · ${t(`threads.status.${groupStatus}`)}`}>
                       {projectItems.map(item => (
                         <li key={item.threadId}>
                           <button

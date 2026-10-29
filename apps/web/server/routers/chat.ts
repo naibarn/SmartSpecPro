@@ -2064,6 +2064,8 @@ export const chatRouter = router({
   listRecentConversationThreads: protectedProcedure
     .input(z.object({
       cursor: z.string().trim().max(2048).nullable().optional(),
+      // tRPC's useInfiniteQuery adds direction to each page request.
+      direction: z.enum(["forward", "backward"]).optional(),
       limit: z.number().int().min(1).max(50).default(30),
       search: z.string().trim().max(100).optional(),
       projectId: z.string().trim().min(1).max(100).optional(),
@@ -2072,7 +2074,11 @@ export const chatRouter = router({
     .query(async ({ ctx, input }) => {
       try {
         return await listRecentConversationThreads({
-          ...input,
+          cursor: input.cursor,
+          limit: input.limit,
+          search: input.search,
+          projectId: input.projectId,
+          status: input.status,
           userId: ctx.user.id,
           tenantId: chatTenantId(ctx),
         });
