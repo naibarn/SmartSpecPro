@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 504 unresolved of 504
-- Next action: Continue SPEC-294 WP33 from integrated ca6860f89: resolve the isolated authenticated-UAT web startup export error, complete authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps; retain SPEC-224 genuine Child 1/2 live execution and Independent Final Verify as open acceptance.
-- Manifest generation: 103
+- Next action: Resume from integrated 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Verify exact-thread persisted result restoration and correlate authenticated runtime 500s; implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.
+- Manifest generation: 105
 
 ## Source-declared status and relationship claims
 

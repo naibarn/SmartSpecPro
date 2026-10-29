@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ca6860f892b05a538d8f85758b2e8c58a17d1067",
+    "expected_canonical_sha": "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Continue SPEC-294 WP33 from integrated ca6860f89: resolve the isolated authenticated-UAT web startup export error, complete authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps; retain SPEC-224 genuine Child 1/2 live execution and Independent Final Verify as open acceptance.",
+    "next_action": "Continue SPEC-294 unified workbench: verify exact-thread message/result restoration after browser revisit and correlate current authenticated runtime 500s; then implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving revision and SPEC-224 genuine Child 1/2 execution plus Independent Final Verify open.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Integrated source e74cf6e plus follow-ups 594e3a109, 4f3e15371, and ca6860f89. Implemented: global recent-thread ordering, session/thread labels, Runner presentation/readiness facts, Simple-mode machine-name hiding, one verified Harness/model selection explanation, Task Control observation retry, Chat session/thread query retry with stale-session retention, and active-thread selection. Evidence: amendments/uwac-r06/implementation/review-loops-20261029.md (10 review loops plus follow-up passes); focused Vitest 4 files/58 tests passed; Chat locale 384/384. Authenticated Playwright still stops before browser assertions because isolated dev web server reports ./_core/env does not provide named export ENV. Hosted chat.getMessages/workerJobs.observability 500s remain unroot-caused; global project/thread replay gaps and actual SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify remain open.",
+    "resume_point": "Integrated current source through 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Project/status Thread navigation and shared canonical execution identity are implemented with 45 focused tests, 4 disposable PostgreSQL tests, and local authenticated UAT (14 pass, 2 unrelated fail, 1 skip); evidence is handoff/evidence/unified-thread-overview-acceptance-20261029.md. Hosted runtime is not verified; the UAT skipped live model catalog, Gateway lacks an authorized model, and local storage conditional-create blocks unrelated SPEC-224 public-access. Remaining: exact-thread persisted result return browser proof, authenticated 500 correlation, global cross-host Mission Control Thread/Agent graph, immutable multi-source event replay/gap recovery, hosted serving provenance, and genuine SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -102,7 +102,7 @@
       "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
     ],
-    "next_action": "Continue SPEC-294 WP33 from integrated ca6860f89: resolve the isolated authenticated-UAT web startup export error, complete authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps; retain SPEC-224 genuine Child 1/2 live execution and Independent Final Verify as open acceptance.",
+    "next_action": "Resume from integrated 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Verify exact-thread persisted result restoration and correlate authenticated runtime 500s; implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
     "rationale": "The integrated follow-up closes same-Job Chat/Task Control durable harness replay, adds authorized page-scoped Thread-to-Job correlation and fixes stale snapshot navigation and mismatched-owner Thread title disclosure. Cross-source Mission Control scope, hosted runtime verification and live SPEC-224 acceptance remain incomplete.",
     "residual_requirements": [
       "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 103,
+  "generation": 105,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -223,7 +223,8 @@
       "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c",
       "594e3a109ee0422d71ff63b276be58c007e34506",
       "4f3e15371176e42c441ad8806b9dbbe8d90dd35c",
-      "ca6860f892b05a538d8f85758b2e8c58a17d1067"
+      "ca6860f892b05a538d8f85758b2e8c58a17d1067",
+      "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081"
     ],
     "mapping": [],
     "source_paths": [
@@ -266,9 +267,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ca6860f892b05a538d8f85758b2e8c58a17d1067",
+    "canonical_sha": "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081",
     "integrated": true,
-    "integrated_at": "2026-10-29T13:35:17Z"
+    "integrated_at": "2026-10-29T14:19:56Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -436,7 +437,7 @@
         "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
       ],
-      "next_action": "Continue SPEC-294 WP33 from integrated ca6860f89: resolve the isolated authenticated-UAT web startup export error, complete authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps; retain SPEC-224 genuine Child 1/2 live execution and Independent Final Verify as open acceptance.",
+      "next_action": "Resume from integrated 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Verify exact-thread persisted result restoration and correlate authenticated runtime 500s; implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
       "rationale": "The integrated follow-up closes same-Job Chat/Task Control durable harness replay, adds authorized page-scoped Thread-to-Job correlation and fixes stale snapshot navigation and mismatched-owner Thread title disclosure. Cross-source Mission Control scope, hosted runtime verification and live SPEC-224 acceptance remain incomplete.",
       "residual_requirements": [
         "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
@@ -1374,7 +1375,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T13:50:13.660382Z",
+  "updated_at": "2026-10-29T14:22:39.568034Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1716,6 +1717,15 @@
         "scope": "32 owner requirements; 15 source/document review lenses; 36 NOT_RUN acceptance designs; nine implementation sections; official preservation/index checks. Not runtime or production acceptance.",
         "source_sha": "ab8b5b4e81d493f730952d7570a10a400e72e6bb",
         "status": "PASS"
+      },
+      {
+        "canonical_sha": "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081",
+        "kind": "SCOPED_UNIFIED_CHAT_TASK_CONTROL_ACCEPTANCE",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-thread-overview-acceptance-20261029.md",
+        "scope": "Project/status grouped authenticated Thread overview; authorized Project title; canonical task identity fields in Chat and Task Control/Mission; local authenticated navigation and Task Control desktop/tablet/mobile in Thai/English.",
+        "source_sha": "cd538f528f7b19091379cc300d20b10d184ed853",
+        "status": "PARTIAL",
+        "summary": "45/45 focused tests and 4/4 disposable PostgreSQL integration tests passed. Authenticated local UAT profile: 14 passed, 2 failed, 1 skipped. The 2 failures are Gateway test configuration with no authorized model and unrelated SPEC-224 public-access local storage conditional-create unsupported; live Runner model-catalog check skipped because no current authorized catalog was returned. No hosted serving revision or SPEC-224 live execution claimed."
       }
     ],
     "freshness": "UNKNOWN",
