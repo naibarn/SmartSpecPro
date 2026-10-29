@@ -18506,6 +18506,7 @@ export const verticalDramaEpisodesRouter = router({
       updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
       const updatedPlan: VerticalDramaStartFramePlan = { ...basePlan, frames: updatedFrames };
       const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const promptStaleAt = new Date().toISOString();
       const updatedPack = existingPack?.clips
         ? {
             ...existingPack,
@@ -18514,12 +18515,18 @@ export const verticalDramaEpisodesRouter = router({
                 ? (clip as any).sourceShotNumbers as number[]
                 : [Number((clip as any).shotNumber)];
               const parentShot = Number((clip as any).parentShotNumber);
-              return sourceShots.includes(input.shotNumber) || parentShot === input.shotNumber
-                ? invalidateVideoPromptVariantsOnInputChange(
-                    clip as unknown as Record<string, unknown>,
-                    "speaker_visual_binding_changed"
-                  ) as typeof clip
-                : clip;
+              if (!sourceShots.includes(input.shotNumber) && parentShot !== input.shotNumber) {
+                return clip;
+              }
+              const invalidated = invalidateVideoPromptVariantsOnInputChange(
+                clip as unknown as Record<string, unknown>,
+                "speaker_visual_binding_changed"
+              );
+              return {
+                ...invalidated,
+                promptStaleReason: "speaker_visual_binding_changed",
+                promptStaleAt,
+              } as typeof clip;
             }),
           }
         : existingPack;
