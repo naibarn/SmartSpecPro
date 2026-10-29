@@ -1,5 +1,5 @@
 {
-  "generation": 14,
+  "generation": 15,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -11202,19 +11202,36 @@
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4066",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-294, WP32/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse the existing read model and OBS partial evidence; add missing cross-session Work/Skill timeline/provenance, honest snapshot/live coverage and outcome adapters. Preserve existing P0 closure, current unknown inputs and separate accepted-pilot scope. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "PARTIAL_SAME_JOB_HARNESS_PROJECTION",
+          "path": "apps/web/client/src/lib/useTaskHarnessOutputEvents.ts",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        },
+        {
+          "kind": "THREAD_JOB_CORRELATION",
+          "path": "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Continue source-linked Work/Skill/agent event adapters and immutable multi-source replay/gap recovery; preserve explicit unknown and unavailable states.",
       "requirement_digest": "90020d38253d47b6b433fdf83df6c744435c4e19d089ab9a4b83e70d4233d1ce",
       "requirement_id": "REQ-294-UWAC-01",
       "requirement_text": "- REQ-294-UWAC-01: Mission Control MUST project one versioned, authorization-scoped activity/evidence timeline across work, Skills, agents, harnesses and sessions using existing task/job/event sources. Each event MUST expose provenance/class, source/native identity, original and normalized state, reason/progress, freshness/coverage, cursor and permitted evidence drilldown; task/session/parent scope MUST remain distinct.",
       "source_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Execute owner-scoped UW-03 UW-09 UW-11 UW-12 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      "verification_evidence": [
+        {
+          "kind": "FOCUSED_POSTGRES_AND_UI_REGRESSION",
+          "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-thread-overview-followup-20261029.md",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "verification_method": "Focused Chat/Task Control/Mission-view tests plus disposable PostgreSQL replay, privacy, tenant and owner checks; full Work/Skill/agent cross-source parity and hosted authenticated acceptance remain required."
     },
     {
       "applicability": "APPLICABLE",
@@ -11224,19 +11241,36 @@
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4067",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-294, WP32/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse the existing read model and OBS partial evidence; add missing cross-session Work/Skill timeline/provenance, honest snapshot/live coverage and outcome adapters. Preserve existing P0 closure, current unknown inputs and separate accepted-pilot scope. Keep this requirement OPEN/UNVERIFIED until owner-scoped implementation and acceptance evidence exist.",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "SHARED_CHAT_TASK_CONTROL_EVENT_HOOK",
+          "path": "apps/web/client/src/lib/useTaskHarnessOutputEvents.ts",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        },
+        {
+          "kind": "AUTHORIZED_THREAD_JOB_OVERVIEW",
+          "path": "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Extend shared snapshot/outcome parity across all required producers and surfaces; complete hosted authenticated UI verification without treating current local tests as deployment proof.",
       "requirement_digest": "b2ef85146a42ffb080f18f96ceff4ba63246c82acd45e3e8c07bd8d86f29ae1c",
       "requirement_id": "REQ-294-UWAC-02",
       "requirement_text": "- REQ-294-UWAC-02: Task/Mission/Chat consumers MUST preserve identical snapshot/outcome facts and explicit unknowns. Stall/stop inference MUST distinguish liveness from progress and lifecycle from health/delivery, with next actor/action. Collector/UI failures MUST NOT gate execution; source, artifact, Skill and optional Git/release acceptance MUST remain separate and current tenant permissions MUST apply before aggregation/drilldown.",
       "source_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Execute owner-scoped UW-03 UW-09 UW-11 UW-12 UW-19 UW-20 UW-21 UW-22 UW-23 UW-26 UW-27 UW-33; retain source/target/policy/evidence/time and distinct document/runtime evidence."
+      "verification_evidence": [
+        {
+          "kind": "FOCUSED_POSTGRES_AND_UI_REGRESSION",
+          "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-thread-overview-followup-20261029.md",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "verification_method": "Focused component/router/read-model tests and disposable PostgreSQL replay and authorization checks; broader same-snapshot parity, hosted browser and live-runtime checks remain required."
     },
     {
       "applicability": "UNASSESSED",
@@ -11268,18 +11302,23 @@
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4077",
       "blocker": null,
       "current_relevance": "CURRENT",
-      "evidence_freshness": "STALE",
-      "evidence_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
-          "kind": "INTEGRATED_PARTIAL_IMPLEMENTATION",
+          "kind": "PRIOR_PARTIAL_OBSERVABILITY",
           "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md",
           "source_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
+        },
+        {
+          "kind": "DURABLE_HARNESS_EVENT_REPLAY",
+          "path": "apps/web/server/services/taskObservabilityReadModel.ts",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Continue missing Work/Skill entry, authorized producer contracts, full parity and actual live and production acceptance; preserve existing owner boundaries.",
+      "next_action": "Add missing Work/Skill producer contracts, full parity and fresh authenticated runtime acceptance; current evidence covers bounded same-Job Harness replay only.",
       "requirement_digest": "5aca2c548d47a6147ac300eefbb963ad1f48ee775905a206e295ca8d759d159c",
       "requirement_id": "REQ-294-UWAC-03",
       "requirement_text": "- REQ-294-UWAC-03: The existing authorized Work observation contract MUST provide source-linked activity for jobs, attempts, sessions and supported harnesses, with deterministic ordering and deduplication, bounded durable replay after reconnect, observation time, freshness and coverage. Process/session liveness, job status, progress, stop/blocker reasons and verified outputs MUST remain distinct. Missing producer fields or evidence MUST be reported as unknown or unavailable; observation failures MUST NOT alter or interrupt execution. Explicit provider selection MUST be shown as selected or unavailable without inventing a successful substitution.",
@@ -11287,56 +11326,92 @@
       "successor_mapping": [],
       "verification_evidence": [
         {
-          "kind": "PARTIAL_DEVELOPMENT_UAT",
+          "kind": "PRIOR_PARTIAL_DEVELOPMENT_UAT",
           "path": "specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md",
           "source_sha": "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0"
+        },
+        {
+          "kind": "FOCUSED_POSTGRES_AND_UI_REGRESSION",
+          "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-thread-overview-followup-20261029.md",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
         }
       ],
-      "verification_method": "Focused component checks and authenticated development browser checks; see evidence for uncovered acceptance."
+      "verification_method": "Run focused read-model and disposable PostgreSQL output replay tests for ordering, pagination, duplicate replay, privacy and scope; hosted and cross-source acceptance remains required."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
+      "applicability_rationale": "The active product needs an authorization-scoped Thread/Job overview and cross-surface navigation using existing Task and Conversation projections.",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4084"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4084",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "JOB_BACKED_THREAD_GROUPING",
+          "path": "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Complete the global project/thread listing, filters and pagination on the existing authorized projection without introducing a second event store or mutable Thread state.",
       "requirement_digest": "58520ec0db250bf795d740087b08f5d95e3bca59bdfd664710c4680b740cb488",
       "requirement_id": "REQ-294-THR-02",
       "requirement_text": "- REQ-294-THR-02: Cross-project thread listing, grouping, filters and pagination MUST reuse the existing authorization-scoped Mission/Task projection and its snapshot/cursor contract. It MUST NOT introduce a separate mission scheduler, Job ledger, event store, approval authority or mutable thread status.",
       "source_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        {
+          "kind": "FOCUSED_POSTGRES_AND_UI_REGRESSION",
+          "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-thread-overview-followup-20261029.md",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "verification_method": "Focused Task Observability component and PostgreSQL tests verify page-scoped Thread grouping, exact Job links and owner/tenant binding; global project/thread filters and all-conversation pagination remain unverified."
     },
     {
-      "applicability": "UNASSESSED",
+      "applicability": "APPLICABLE",
+      "applicability_rationale": "Chat and task links must preserve the verified originating identity while applying the current user and tenant scope at every read.",
       "authority_refs": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4085"
       ],
       "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4085",
       "blocker": null,
-      "current_relevance": "UNASSESSED",
-      "evidence_freshness": "UNKNOWN",
-      "evidence_sha": null,
-      "final_state": "OPEN",
-      "implementation_evidence": [],
-      "implementation_status": "UNVERIFIED",
-      "next_action": "Assess current relevance, implementation mapping, and required evidence.",
+      "current_relevance": "CURRENT",
+      "evidence_freshness": "FRESH",
+      "evidence_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
+      "final_state": "PARTIAL",
+      "implementation_evidence": [
+        {
+          "kind": "AUTHORIZED_THREAD_JOB_READ_MODEL",
+          "path": "apps/web/server/services/taskObservabilityReadModel.ts",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        },
+        {
+          "kind": "EXACT_CHAT_AND_JOB_LINKS",
+          "path": "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "implementation_status": "IMPLEMENTED_PARTIAL",
+      "next_action": "Verify the exact Chat and Task Control navigation against the authenticated hosted development UI and confirm the serving runtime SHA before making deployment or acceptance claims.",
       "requirement_digest": "169d193cc70cc26693aa08f0ed157ee5e4147f8a952325874cf9d0624eb94bd9",
       "requirement_id": "REQ-294-THR-03",
       "requirement_text": "- REQ-294-THR-03: Mission Control MUST preserve current tenant/project authorization when following Chat and Task Control deep links. Unknown host/provider/session identity and missing replay/evidence remain explicitly unknown or unavailable; a correlated display row is not evidence that a runtime is deployed or a Goal completed.",
       "source_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
       "successor_mapping": [],
-      "verification_evidence": [],
-      "verification_method": "Determine from current implementation and applicable lifecycle obligations."
+      "verification_evidence": [
+        {
+          "kind": "FOCUSED_POSTGRES_AND_UI_REGRESSION",
+          "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-thread-overview-followup-20261029.md",
+          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+        }
+      ],
+      "verification_method": "Focused UI and PostgreSQL tests cover owner/tenant denial, mismatched Thread hiding, exact Chat/Job links and refreshed task snapshots; hosted authenticated browser acceptance remains required."
     },
     {
       "applicability": "UNASSESSED",

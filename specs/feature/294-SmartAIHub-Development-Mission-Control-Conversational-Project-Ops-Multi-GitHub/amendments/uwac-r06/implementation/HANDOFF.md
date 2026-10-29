@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `5`
-- Updated (UTC): `2026-10-29T09:50:43.767023+00:00`
+- State generation: `7`
+- Updated (UTC): `2026-10-29T10:21:33.947363+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `44676a99d616827c7b446acceae31e0ffb8def84`
+- Latest recorded merged Main SHA: `a073f3d017cb6c6d0ac9df848c332ba826e39176`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `event-projection`
-- Next action: Implement durable shared event replay/gap recovery and Mission Control Thread links from the canonical read model; then apply development migration 0416 and perform authenticated browser acceptance.
+- Next action: Continue the global project/thread overview and immutable multi-source replay/gap recovery through the existing authorized read model; then complete hosted authenticated UI verification and keep real SPEC-224 Child 1/2 live receipts and Independent Final Verify open.
 
 ## Sections
 
@@ -26,12 +26,11 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | section-07-artifact-evidence | pending | — | — | — | — | — |
 | section-08-development-source-release | pending | — | — | — | — | — |
 | section-09-cross-boundary-acceptance | pending | — | — | — | — | — |
-| event-projection | checkpointed | — | — | 44676a99d616827c7b446acceae31e0ffb8def84 | 44676a99d616827c7b446acceae31e0ffb8def84 | Implement durable shared event replay/gap recovery and Mission Control Thread links from the canonical read model; then apply development migration 0416 and perform authenticated browser acceptance. |
+| event-projection | checkpointed | — | — | a073f3d017cb6c6d0ac9df848c332ba826e39176 | a073f3d017cb6c6d0ac9df848c332ba826e39176 | Continue the global project/thread overview and immutable multi-source replay/gap recovery through the existing authorized read model; then complete hosted authenticated UI verification and keep real SPEC-224 Child 1/2 live receipts and Independent Final Verify open. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
-- Mission Control has no web Thread Overview or shared multi-source replay/gap recovery in this slice.
-- Mission Control Thread UI and durable multi-source replay/gap recovery remain unimplemented; hosted development UI and genuine SPEC-224 live Child 1/2 acceptance remain unverified.
+- Global project/thread overview across conversations and sources plus immutable multi-source replay/gap recovery remain open; current Task Observability developer view correlates Jobs present in the selected task snapshot only. Hosted authenticated UI/development-runtime verification and real SPEC-224 Child 1/2 live acceptance remain unverified.
 
 ## Resume
 

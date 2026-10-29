@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 504 unresolved of 504
-- Next action: Resume the P0/P1 gaps listed in continuation.next_action from integrated source 44676a99d616827c7b446acceae31e0ffb8def84; first verify and apply additive migration 0416 on the configured development database through the existing migration authority, then continue Mission Control event replay and browser acceptance.
-- Manifest generation: 93
+- Next action: Continue from integrated a073f3d017cb6c6d0ac9df848c332ba826e39176: finish the global project/thread overview and immutable multi-source replay/gap recovery on the existing authorized projections, then verify hosted authenticated UI and deployed runtime provenance. Preserve full Inspector/result return and genuine SPEC-224 Child 1/2 Runner receipts, settlement and Independent Final Verify as open acceptance.
+- Manifest generation: 96
 
 ## Source-declared status and relationship claims
 
