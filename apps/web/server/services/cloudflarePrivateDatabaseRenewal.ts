@@ -1,4 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
+import { ZodError } from "zod";
 import { getDb, type DrizzleDB } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { decrypt } from "./crypto";
@@ -13,14 +14,27 @@ import { privateDatabaseRenewalPlanDigest, privateDatabaseRenewalPlanSchema,
 
 export type PrivateDatabaseRenewalIdentity = DeploymentTargetIdentity & { provider: "cloudflare"; environment: "staging" };
 export type PrivateDatabaseRenewalPreflight = {
-  ready: boolean; reason: string | null; failureStage: string | null; checkedAt: string; configurationRef: string; configurationDigest: string;
+  ready: boolean; reason: string | null; failureStage: string | null; failureDetail: string | null; checkedAt: string; configurationRef: string; configurationDigest: string;
   accountRef: string;
   plan: PrivateDatabaseRenewalPlan | null; planDigest: string | null; leaseExpiresAt: string | null;
   existingJob: { jobId: string; status: string; errorCode: string | null; heartbeatAt: string | null } | null;
 };
 
-function result(input: Omit<PrivateDatabaseRenewalPreflight, "checkedAt" | "failureStage"> & { failureStage?: string | null }): PrivateDatabaseRenewalPreflight {
-  return { ...input, failureStage: input.failureStage ?? null, checkedAt: new Date().toISOString() };
+function result(input: Omit<PrivateDatabaseRenewalPreflight, "checkedAt" | "failureStage" | "failureDetail"> & { failureStage?: string | null; failureDetail?: string | null }): PrivateDatabaseRenewalPreflight {
+  return { ...input, failureStage: input.failureStage ?? null, failureDetail: input.failureDetail ?? null, checkedAt: new Date().toISOString() };
+}
+const SAFE_PLAN_PATHS = new Set(["configurationRef", "configurationDigest", "sourceProvisionJobId", "sourcePlan", "sourcePlanDigest", "resources",
+  "hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId", "leaseExpiresAt", "authorizationExpiresAt",
+  "namespace", "hostname", "zoneId", "tunnelId", "databaseName", "caSha256", "connectionLimit", "configurationExpiresAt"]);
+const SAFE_ZOD_CODES = new Set(["invalid_type", "invalid_format", "too_small", "too_big", "custom", "unrecognized_keys", "invalid_union", "not_multiple_of"]);
+export function privateDatabaseRenewalPlanFailureDetail(error: unknown): string | null {
+  if (!(error instanceof ZodError)) return null;
+  const issue = error.issues[0];
+  if (!issue) return "plan (invalid)";
+  const path = issue.path.filter((part): part is string | number => typeof part === "string" || typeof part === "number")
+    .filter(part => typeof part === "number" || SAFE_PLAN_PATHS.has(part)).map(String).join(".");
+  const code = SAFE_ZOD_CODES.has(issue.code) ? issue.code : "invalid";
+  return `${path || "plan"} (${code})`;
 }
 function reason(error: unknown): string {
   const code = error instanceof Error ? error.message : "";
@@ -32,7 +46,11 @@ function reason(error: unknown): string {
 async function atStage<T>(stage: string, operation: () => Promise<T>): Promise<T> {
   try { return await operation(); }
   catch (error) {
-    throw Object.assign(new Error(reason(error)), { preflightStage: stage });
+    throw Object.assign(new Error(stage === "PLAN_BINDING" && error instanceof ZodError
+      ? "PRIVATE_DATABASE_RENEWAL_PLAN_BINDING_INVALID" : reason(error)), {
+      preflightStage: stage,
+      ...(stage === "PLAN_BINDING" ? { preflightFailureDetail: privateDatabaseRenewalPlanFailureDetail(error) } : {}),
+    });
   }
 }
 

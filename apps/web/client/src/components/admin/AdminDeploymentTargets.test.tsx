@@ -147,13 +147,16 @@ vi.mock("@/lib/trpc", () => ({
       createProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.create, isPending: false, error: null }) },
       updateProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.update, isPending: false, error: null }) },
       disableProviderDeploymentTarget: { useMutation: () => ({ mutate: mocks.disable, isPending: false, error: null }) },
-      queueCloudflareStagingDeploy: { useMutation: () => ({ mutate: mocks.queueStagingDeploy, isPending: false, error: null }) },
+      queueCloudflareStagingDeploy: { useMutation: () => ({ mutate: mocks.queueStagingDeploy,
+        mutateAsync: async (input: unknown) => { mocks.queueStagingDeploy(input); return { jobId: "88888888-8888-4888-8888-888888888888" }; }, isPending: false, error: null }) },
       queueCloudflareStagingPrivateDatabaseRenewal: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
         mutate: (input: unknown) => { mocks.queueStagingDatabaseRenewal(input); void options.onSuccess?.({ jobId: "77777777-7777-4777-8777-777777777777" }); },
+        mutateAsync: async (input: unknown) => { mocks.queueStagingDatabaseRenewal(input); await options.onSuccess?.({ jobId: "77777777-7777-4777-8777-777777777777" }); return { jobId: "77777777-7777-4777-8777-777777777777" }; },
         isPending: false, error: null,
       }) },
       finalizeCloudflareStagingPrivateDatabaseRenewal: { useMutation: (options: { onSuccess?: (result: { configurationRef: string }) => unknown }) => ({
         mutate: (input: unknown) => { mocks.finalizeStagingDatabaseRenewal(input); void options.onSuccess?.({ configurationRef: "cf-origin:new-renewed-configuration" }); },
+        mutateAsync: async (input: unknown) => { mocks.finalizeStagingDatabaseRenewal(input); await options.onSuccess?.({ configurationRef: "cf-origin:new-renewed-configuration" }); return { configurationRef: "cf-origin:new-renewed-configuration" }; },
         isPending: false, error: null,
       }) },
       prepareCloudflareProductionQueue: { useMutation: (options: { onSuccess?: (result: { jobId: string }) => unknown }) => ({
@@ -202,6 +205,13 @@ vi.mock("@/lib/trpc", () => ({
           mocks.activateStagingProfile(input);
           if (!cloudflareStagingActivationInputSchema.safeParse(input).success) return;
           if (mocks.activationSucceeds) void options.onSuccess?.({ configurationRef: "cf-origin:new-reference" });
+        },
+        mutateAsync: async (input: unknown) => {
+          mocks.activateStagingProfile(input);
+          if (!cloudflareStagingActivationInputSchema.safeParse(input).success) throw new Error("INVALID_INPUT");
+          if (mocks.activationError) throw new Error(mocks.activationError);
+          if (mocks.activationSucceeds) await options.onSuccess?.({ configurationRef: "cf-origin:new-reference" });
+          return { configurationRef: "cf-origin:new-reference" };
         },
         isPending: false,
         error: mocks.activationError ? { message: mocks.activationError } : null,
@@ -532,7 +542,11 @@ describe("AdminDeploymentTargets", () => {
     const bootstrap = screen.getByRole("button", { name: "Authorize one-time first Staging deployment" });
     expect(bootstrap).toBeEnabled();
     await user.click(bootstrap);
+    expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Authorize first Staging deployment");
+    await user.dblClick(screen.getByRole("button", { name: "Authorize first Staging deploy" }));
     expect(mocks.queueStagingDeploy).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging" });
+    expect(await screen.findByText(/Action completed/)).toBeInTheDocument();
   });
 
   it("shows the staging activation action when the runtime probe is unavailable and preflight requires activation", async () => {
@@ -555,6 +569,9 @@ describe("AdminDeploymentTargets", () => {
     const activate = screen.getByRole("button", { name: "Prepare Staging with saved secrets" });
     expect(activate).toBeEnabled();
     await user.click(activate);
+    expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Prepare Staging configuration");
+    await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith({
       tenantId,
       projectId,
@@ -585,6 +602,8 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByText(/You do not need to find or copy any tokens/)).toBeInTheDocument();
     expect(screen.getByLabelText("Staging workflow runtime token")).not.toBeVisible();
     await user.click(activate);
+    expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", provider: "cloudflare",
       configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
     expect(cloudflareStagingActivationInputSchema.safeParse(mocks.activateStagingProfile.mock.lastCall?.[0]).success).toBe(true);
@@ -602,12 +621,14 @@ describe("AdminDeploymentTargets", () => {
     const manual = screen.getByRole("button", { name: "Use supplied secrets and prepare Staging" });
     expect(manual).toBeEnabled();
     await user.click(manual);
+    await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith(expect.objectContaining({
       provider: "cloudflare",
       workflowRuntimeToken: "w".repeat(32),
       controlPlaneToken: "c".repeat(32),
     }));
     await user.click(screen.getByRole("button", { name: "Use automatic setup instead" }));
+    await user.click(screen.getByRole("button", { name: "Clear these fields" }));
     expect(screen.getByRole("button", { name: "Generate secrets and prepare Staging" })).toBeEnabled();
     expect(screen.getByLabelText("Staging workflow runtime token")).toHaveValue("");
     expect(screen.getByLabelText("Staging control-plane token")).toHaveValue("");
@@ -631,6 +652,9 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
     expect(screen.getByText(/Prepare Staging is intentionally disabled/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Recheck Staging configuration (read-only)" }));
+    expect(mocks.refetchStagingOriginConfiguration).not.toHaveBeenCalled();
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Recheck Staging configuration");
+    await user.click(screen.getByRole("button", { name: "Recheck now" }));
     expect(mocks.refetchStagingOriginConfiguration).toHaveBeenCalled();
     expect(mocks.refetchStagingPreflight).toHaveBeenCalled();
     expect(mocks.refetchStagingRuntimeReadiness).toHaveBeenCalled();
@@ -680,19 +704,19 @@ describe("AdminDeploymentTargets", () => {
     mocks.stagingDatabaseRenewal = { ready: true, reason: null, checkedAt: "2026-10-29T00:00:00.000Z", configurationRef,
       configurationDigest: "a".repeat(64), accountRef: "b".repeat(32), plan, planDigest: "7".repeat(64),
       leaseExpiresAt: plan.leaseExpiresAt, existingJob: null };
-    const confirm = vi.fn(() => true);
-    vi.stubGlobal("confirm", confirm);
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
 
     const renew = await screen.findByRole("button", { name: "Authorize and renew the existing Staging database lease" });
     expect(renew).toBeEnabled();
     await user.click(renew);
-    expect(confirm).toHaveBeenCalledOnce();
+    expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Authorize and renew the Staging database lease");
+    await user.click(screen.getByRole("button", { name: "Authorize one renewal Job" }));
     expect(mocks.queueStagingDatabaseRenewal).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", configurationRef,
       planDigest: "7".repeat(64) });
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
+    expect(await screen.findByText(/Action completed/)).toBeInTheDocument();
   });
 
   it("shows the sanitized failing stage when lease renewal preflight cannot complete", async () => {
@@ -710,6 +734,21 @@ describe("AdminDeploymentTargets", () => {
     expect(await screen.findByText("CLOUDFLARE_PROVIDER_READBACK")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Authorize and renew the existing Staging database lease" })).not.toBeInTheDocument();
     expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
+  });
+
+  it("shows only sanitized plan field and validation rule when renewal plan binding fails", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingRuntime = { status: "READY", checkedAt: "2026-10-29T00:00:00.000Z", activation: "disabled", missing: [], reason: null };
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_EXPIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = { status: "EXPIRED", configurationRef: `cf-origin:${"a".repeat(64)}`, descriptor: {} };
+    mocks.stagingDatabaseRenewal = { ready: false, reason: "PRIVATE_DATABASE_RENEWAL_PLAN_BINDING_INVALID", failureStage: "PLAN_BINDING",
+      failureDetail: "resources.accessApplicationId (invalid_format)", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    expect(await screen.findByText("PLAN_BINDING")).toBeInTheDocument();
+    expect(screen.getByText("resources.accessApplicationId (invalid_format)")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Authorize and renew the existing Staging database lease" })).not.toBeInTheDocument();
   });
 
   it("does not offer a second lease renewal while the canonical renewal Job already exists", async () => {
@@ -769,6 +808,7 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
     await user.click(screen.getByRole("button", { name: "Prepare Staging with saved secrets" }));
+    await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
 
     await waitFor(() => expect(mocks.fetchTargets).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging" }));
     expect(screen.getByText(/Staging settings saved\. Continue with/)).toBeInTheDocument();
@@ -796,8 +836,9 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
 
     await user.click(screen.getByRole("button", { name: "Prepare Staging with saved secrets" }));
+    await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("CLOUDFLARE_STAGING_ACTIVE_TENANT_OWNER_REQUIRED");
+    expect(await screen.findAllByText("CLOUDFLARE_STAGING_ACTIVE_TENANT_OWNER_REQUIRED")).toHaveLength(2);
     expect(mocks.activateStagingProfile).toHaveBeenCalledTimes(1);
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
   });

@@ -68,6 +68,14 @@ type ProductionDatabaseAdmission = {
   traceId?: string;
 };
 
+type StagingConfirmation = {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  run: () => Promise<unknown>;
+};
+type StagingActionStatus = { state: "running" | "succeeded" | "failed"; action: string; detail?: string; at: string };
+
 function productionDatabaseAdmissionStorageKey(scopeKey: string) {
   return `smartspec:cloudflare-production-database:${scopeKey}`;
 }
@@ -487,6 +495,10 @@ export default function AdminDeploymentTargets() {
   const [fields, setFields] = useState<TargetFields>(EMPTY_FIELDS);
   const [showNonOperationalTenants, setShowNonOperationalTenants] = useState(false);
   const [mandateDialogOpen, setMandateDialogOpen] = useState(false);
+  const [stagingConfirmation, setStagingConfirmation] = useState<StagingConfirmation | null>(null);
+  const [stagingActionRunning, setStagingActionRunning] = useState(false);
+  const [stagingActionStatus, setStagingActionStatus] = useState<StagingActionStatus | null>(null);
+  const stagingActionLock = useRef(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery();
   const tenantInventory = tenantsQuery.data ?? [];
@@ -884,6 +896,30 @@ export default function AdminDeploymentTargets() {
   };
   const setNewField = (key: keyof TargetFields) => (event: ChangeEvent<HTMLInputElement>) =>
     setFields(current => ({ ...current, [key]: event.target.value }));
+  const requestStagingConfirmation = (action: StagingConfirmation) => {
+    if (stagingActionLock.current || stagingActionRunning || stagingConfirmation) return;
+    setStagingActionStatus(null);
+    setStagingConfirmation(action);
+  };
+  const confirmStagingAction = async () => {
+    if (!stagingConfirmation || stagingActionLock.current) return;
+    const action = stagingConfirmation;
+    stagingActionLock.current = true;
+    setStagingActionRunning(true);
+    setStagingActionStatus({ state: "running", action: action.title, at: new Date().toISOString() });
+    try {
+      await action.run();
+      setStagingActionStatus({ state: "succeeded", action: action.title, at: new Date().toISOString() });
+      setStagingConfirmation(null);
+    } catch (error) {
+      const message = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "STAGING_ACTION_FAILED";
+      setStagingActionStatus({ state: "failed", action: action.title, detail: message, at: new Date().toISOString() });
+      setStagingConfirmation(null);
+    } finally {
+      stagingActionLock.current = false;
+      setStagingActionRunning(false);
+    }
+  };
 
   return (
     <VStack as="section" gap={4}>
@@ -1721,13 +1757,25 @@ export default function AdminDeploymentTargets() {
 
       {validScope && environment === "staging" ? (
         <VStack as="section" gap={2}>
+          {stagingActionStatus ? <VStack gap={0} role={stagingActionStatus.state === "failed" ? "alert" : "status"} aria-live="polite">
+            <p><strong>{stagingActionStatus.state === "running" ? text("Action started", "เริ่มดำเนินการแล้ว")
+              : stagingActionStatus.state === "succeeded" ? text("Action completed", "ดำเนินการเสร็จแล้ว")
+                : text("Action failed", "ดำเนินการไม่สำเร็จ")}</strong>: {stagingActionStatus.action}</p>
+            {stagingActionStatus.detail ? <p><code>{stagingActionStatus.detail}</code></p> : null}
+            <p>{text("Updated", "อัปเดตเมื่อ")}: {new Date(stagingActionStatus.at).toLocaleString()}</p>
+          </VStack> : null}
           {savedStagingScope?.tenantId === tenantId && savedStagingScope.projectId === projectId ? <p role="status">{text(
             "Staging settings saved. Continue with “Authorize and deploy to staging” below. Worker readiness changes after deployment.",
             "บันทึกการตั้งค่า Staging สำเร็จแล้ว ให้ดำเนินการ “อนุมัติและ deploy ไป staging” ด้านล่าง สถานะ Worker จะเปลี่ยนหลัง deploy",
           )}</p> : null}
           <HStack gap={2} wrap="wrap">
             <h3>{text("Live Cloudflare Worker readiness", "ความพร้อมของ Cloudflare Worker ที่กำลังทำงาน")}</h3>
-            <Button type="button" variant="outline" size="sm" onClick={() => void stagingRuntimeReadiness.refetch()} disabled={stagingRuntimeReadiness.isFetching}>
+            <Button type="button" variant="outline" size="sm" onClick={() => requestStagingConfirmation({
+              title: text("Check Staging runtime readiness", "ตรวจความพร้อม runtime ของ Staging"),
+              description: text("This performs a read-only request to the exact Staging Worker /readyz endpoint. It does not deploy or change traffic.", "ระบบจะเรียก /readyz ของ Staging Worker เป้าหมายแบบอ่านอย่างเดียว ไม่ deploy และไม่เปลี่ยน traffic"),
+              confirmLabel: text("Run read-only check", "เริ่มตรวจแบบอ่านอย่างเดียว"),
+              run: async () => { const result = await stagingRuntimeReadiness.refetch(); if (result.isError) throw new Error("STAGING_RUNTIME_READINESS_CHECK_FAILED"); return result; },
+            })} disabled={stagingRuntimeReadiness.isFetching || stagingActionRunning}>
               {text("Check now", "ตรวจสอบตอนนี้")}
             </Button>
           </HStack>
@@ -1781,9 +1829,19 @@ export default function AdminDeploymentTargets() {
                       "ปุ่มเตรียม Staging ถูกปิดโดยตั้งใจ เพราะ immutable configuration และ lease ของฐานข้อมูล private หมดอายุแล้ว ต้องมี receipt ฐานข้อมูลชุดใหม่ที่ตรวจสอบแล้วและ configuration version ใหม่ก่อน จึงจะ activate profile ได้ ปุ่มตรวจซ้ำด้านล่างเป็นการอ่านอย่างเดียว ไม่สร้าง job และไม่เปลี่ยนทรัพยากร Cloudflare",
                     )}</p>
                     <Button type="button" variant="outline" size="sm" disabled={stagingOriginConfiguration.isFetching || stagingDeployPreflight.isFetching ||
-                      stagingRuntimeReadiness.isFetching || stagingDatabaseRenewal.isFetching}
-                      onClick={() => void Promise.all([refreshTargets(), stagingOriginConfiguration.refetch(), stagingDeployPreflight.refetch(),
-                        stagingRuntimeReadiness.refetch(), stagingDatabaseRenewal.refetch()])}>
+                      stagingRuntimeReadiness.isFetching || stagingDatabaseRenewal.isFetching || stagingActionRunning}
+                      onClick={() => requestStagingConfirmation({
+                        title: text("Recheck Staging configuration", "ตรวจ config Staging ซ้ำ"),
+                        description: text("Read-only: refresh the saved configuration, database lease preflight, deploy preflight, and Worker readiness. This creates no Job and changes no Cloudflare resources.", "อ่านอย่างเดียว: โหลด config, ตรวจ lease ฐานข้อมูล, deploy preflight และ readiness ของ Worker ใหม่ ไม่สร้าง Job และไม่เปลี่ยน Cloudflare resource"),
+                        confirmLabel: text("Recheck now", "เริ่มตรวจซ้ำ"),
+                        run: async () => {
+                          await refreshTargets();
+                          const results = await Promise.all([stagingOriginConfiguration.refetch(), stagingDeployPreflight.refetch(),
+                            stagingRuntimeReadiness.refetch(), stagingDatabaseRenewal.refetch()]);
+                          if (results.some(result => result.isError)) throw new Error("STAGING_READ_ONLY_RECHECK_FAILED");
+                          return results;
+                        },
+                      })}>
                       {text("Recheck Staging configuration (read-only)", "ตรวจ config Staging ซ้ำ (อ่านอย่างเดียว)")}
                     </Button>
                     {stagingDatabaseRenewal.isLoading ? <p role="status">{text("Checking the existing database lease and Cloudflare resource identities…", "กำลังตรวจ lease ฐานข้อมูลและรหัส resource Cloudflare เดิม…")}</p> : null}
@@ -1795,6 +1853,7 @@ export default function AdminDeploymentTargets() {
                       return <VStack gap={1} role="group" aria-label={text("Staging database lease renewal", "การต่ออายุ lease ฐานข้อมูล Staging")}>
                         <p><strong>{text("Database lease renewal", "ต่ออายุ lease ฐานข้อมูล")}</strong> · {renewal.ready ? text("READY", "พร้อมอนุมัติ") : renewal.reason}</p>
                         {!renewal.ready && renewal.failureStage ? <p role="status">{text("Blocking stage", "ขั้นตอนที่ติดปัญหา")}: <code>{renewal.failureStage}</code></p> : null}
+                        {!renewal.ready && renewal.failureDetail ? <p role="status">{text("Validation detail (field and rule only)", "รายละเอียดตรวจสอบ (แสดงเฉพาะ field และกฎ)")}: <code>{renewal.failureDetail}</code></p> : null}
                         {plan ? <>
                           <p>{text("Existing scope", "ขอบเขต resource เดิม")}: <code>{plan.sourcePlan.namespace}</code> · <code>{plan.sourceProvisionJobId}</code></p>
                           <details>
@@ -1811,20 +1870,27 @@ export default function AdminDeploymentTargets() {
                           <p><strong>{text("Existing renewal Job", "Job ต่ออายุเดิม")}</strong>: <code>{job.jobId}</code> · {job.status}</p>
                           {job.heartbeatAt ? <p>{text("Last heartbeat", "heartbeat ล่าสุด")}: {new Date(job.heartbeatAt).toLocaleString()}</p> : null}
                           {job.errorCode ? <p role="alert"><code>{job.errorCode}</code> · {text("Inspect this existing Job before starting another operation.", "ตรวจ Job เดิมนี้ก่อน ห้ามเริ่มซ้ำ")}</p> : null}
-                          {job.status === "succeeded" ? <Button type="button" disabled={finalizeStagingRenewal.isPending}
-                            onClick={() => finalizeStagingRenewal.mutate({ tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef, renewalJobId: job.jobId })}>
+                          {job.status === "succeeded" ? <Button type="button" disabled={finalizeStagingRenewal.isPending || stagingActionRunning}
+                            onClick={() => requestStagingConfirmation({
+                              title: text("Save verified Staging renewal", "บันทึกผลต่ออายุ Staging ที่ตรวจแล้ว"),
+                              description: text(`Save the verified result from existing Job ${job.jobId} as a new immutable Staging configuration. No new provider mutation will be started.`, `บันทึกผลที่ตรวจแล้วจาก Job ${job.jobId} เป็น config Staging แบบ immutable ชุดใหม่ โดยไม่เริ่มเปลี่ยน provider เพิ่ม`),
+                              confirmLabel: text("Save new configuration", "บันทึก config ใหม่"),
+                              run: () => finalizeStagingRenewal.mutateAsync({ tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef, renewalJobId: job.jobId }),
+                            })}>
                             {finalizeStagingRenewal.isPending ? text("Saving renewed configuration…", "กำลังบันทึก config ใหม่…") : text("Save verified renewal as a new Staging configuration", "บันทึก lease ที่ตรวจแล้วเป็น config Staging ชุดใหม่")}
                           </Button> : null}
                           {job.status === "failed" || job.status === "cancelled" || job.status === "dead_letter" ? <p>{text("This attempt is preserved. Resolve its recorded failure before requesting another lease operation.", "เก็บหลักฐานการทำงานนี้ไว้แล้ว ให้แก้สาเหตุจาก Job ก่อนขอทำรายการใหม่")}</p> : null}
                         </VStack> : null}
-                        {renewal.ready && plan && !job ? <Button type="button" disabled={stagingRenewalMutation.isPending || Date.parse(plan.authorizationExpiresAt) <= Date.now()}
-                          onClick={() => {
-                            const message = text(
-                              `Authorize one Staging-only job to extend the existing read-only database role lease until ${plan.leaseExpiresAt}. It will verify the existing Cloudflare resource IDs, change only the role VALID UNTIL value, and save a new immutable Staging configuration after success. It will not create Cloudflare resources, change DNS/routes, or affect Production traffic.`,
-                              `อนุมัติ Job สำหรับ Staging หนึ่งรายการ เพื่อขยาย lease ของ role ฐานข้อมูลแบบอ่านอย่างเดียวถึง ${plan.leaseExpiresAt} ระบบจะตรวจ resource Cloudflare เดิม เปลี่ยนเฉพาะค่า VALID UNTIL ของ role และบันทึก config Staging แบบ immutable ชุดใหม่เมื่อสำเร็จ จะไม่สร้าง Cloudflare resource ไม่เปลี่ยน DNS/route และไม่กระทบ Production`);
-                            if (window.confirm(message)) stagingRenewalMutation.mutate({ tenantId, projectId, environment: "staging",
-                              configurationRef: currentStagingConfigRef, planDigest: renewal.planDigest! });
-                          }}>
+                        {renewal.ready && plan && !job ? <Button type="button" disabled={stagingRenewalMutation.isPending || stagingActionRunning || Date.parse(plan.authorizationExpiresAt) <= Date.now()}
+                          onClick={() => requestStagingConfirmation({
+                            title: text("Authorize and renew the Staging database lease", "อนุมัติและต่ออายุ lease ฐานข้อมูล Staging"),
+                            description: text(
+                              `One Staging-only Job will extend the existing read-only database role lease until ${plan.leaseExpiresAt}. It will verify the existing Cloudflare resource IDs, change only the role VALID UNTIL value, and save a new immutable Staging configuration after success. It will not create Cloudflare resources, change DNS/routes, or affect Production traffic.`,
+                              `จะสร้าง Job สำหรับ Staging หนึ่งรายการเพื่อขยาย lease ของ role ฐานข้อมูลแบบอ่านอย่างเดียวถึง ${plan.leaseExpiresAt} โดยตรวจ resource เดิม เปลี่ยนเฉพาะค่า VALID UNTIL และบันทึก config immutable ชุดใหม่เมื่อสำเร็จ ไม่สร้าง Cloudflare resource ไม่เปลี่ยน DNS/route และไม่กระทบ Production`),
+                            confirmLabel: text("Authorize one renewal Job", "อนุมัติ Job ต่ออายุหนึ่งรายการ"),
+                            run: () => stagingRenewalMutation.mutateAsync({ tenantId, projectId, environment: "staging",
+                              configurationRef: currentStagingConfigRef, planDigest: renewal.planDigest! }),
+                          })}>
                           {stagingRenewalMutation.isPending ? text("Submitting the authorized renewal…", "กำลังส่งคำขอต่ออายุ…") : text("Authorize and renew the existing Staging database lease", "อนุมัติและต่ออายุ lease ฐานข้อมูล Staging เดิม")}
                         </Button> : null}
                         {stagingRenewalMutation.error ? <p role="alert"><code>{stagingRenewalMutation.error.message}</code></p> : null}
@@ -1855,7 +1921,12 @@ export default function AdminDeploymentTargets() {
                           "Enter two different secrets of at least 32 characters without spaces, or clear both fields to use automatic setup.",
                           "กรอก secret ให้ครบสองค่า ต้องเป็นคนละค่า ยาวอย่างน้อย 32 ตัวอักษรและไม่มีช่องว่าง หรือล้างทั้งสองช่องเพื่อให้ระบบสร้างให้อัตโนมัติ",
                         )}</p> : null}
-                        {suppliedRuntimeSecrets ? <Button type="button" variant="outline" onClick={() => { setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}>
+                        {suppliedRuntimeSecrets ? <Button type="button" variant="outline" disabled={stagingActionRunning} onClick={() => requestStagingConfirmation({
+                          title: text("Clear the two locally entered Staging secrets", "ล้าง secret Staging ที่กรอกไว้สองค่า"),
+                          description: text("This only clears the unsaved password fields in this page. It does not change saved secrets or Cloudflare resources.", "ล้างเฉพาะช่องรหัสผ่านที่ยังไม่ได้บันทึกในหน้านี้ ไม่เปลี่ยน secret ที่บันทึกแล้วหรือ Cloudflare resource"),
+                          confirmLabel: text("Clear these fields", "ยืนยันล้างช่องกรอก"),
+                          run: async () => { setWorkflowRuntimeToken(""); setControlPlaneToken(""); },
+                        })}>
                           {text("Use automatic setup instead", "ให้ระบบตั้งค่าอัตโนมัติแทน")}
                         </Button> : null}
                       </VStack>
@@ -1867,11 +1938,16 @@ export default function AdminDeploymentTargets() {
                   {stagingOriginConfiguration.isError ? <p role="alert"><code>{activationBlocker && activationBlocker.startsWith("STAGING_") ? activationBlocker : "STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE"}</code> · {text("Stored configuration or its resource receipts could not be verified. Use the authorized origin-configuration repair path, then refresh this registry.", "ตรวจสอบ config หรือ resource receipt ที่บันทึกไว้ไม่สำเร็จ ให้ใช้ขั้นตอนซ่อม origin-configuration ที่ได้รับอนุญาต แล้วรีเฟรช registry")}</p> : null}
                   <Button type="button" aria-describedby={stagingConfigurationExpired ? "staging-expired-config-help" : undefined}
                     variant={stagingConfigurationExpired ? "outline" : "default"}
-                    disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
+                    disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending || stagingActionRunning ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
                     (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}
-                    onClick={() => activateStagingProfile.mutate({ tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: configRef,
-                      ...(secretsMissing && suppliedRuntimeSecrets ? { workflowRuntimeToken, controlPlaneToken } : {}) })}>
+                    onClick={() => requestStagingConfirmation({
+                      title: text("Prepare Staging configuration", "เตรียม configuration สำหรับ Staging"),
+                      description: text("Save a new immutable Staging runtime configuration and securely reuse or generate its internal secrets. This does not deploy a Worker, change DNS/routes, or affect Production traffic.", "บันทึก runtime config Staging แบบ immutable และใช้หรือสร้าง secret ภายในอย่างปลอดภัย ขั้นตอนนี้ไม่ deploy Worker ไม่เปลี่ยน DNS/route และไม่กระทบ Production traffic"),
+                      confirmLabel: text("Prepare Staging", "ยืนยันเตรียม Staging"),
+                      run: () => activateStagingProfile.mutateAsync({ tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: configRef,
+                        ...(secretsMissing && suppliedRuntimeSecrets ? { workflowRuntimeToken, controlPlaneToken } : {}) }),
+                    })}>
                     {activateStagingProfile.isPending ? text("Preparing Staging…", "กำลังเตรียม Staging…") : secretsMissing
                       ? suppliedRuntimeSecrets ? text("Use supplied secrets and prepare Staging", "ใช้ secret ที่ระบุและเตรียม Staging")
                         : text("Generate secrets and prepare Staging", "สร้าง secret และเตรียม Staging อัตโนมัติ")
@@ -1899,14 +1975,24 @@ export default function AdminDeploymentTargets() {
                 "One owner action opens a four-hour campaign for up to four staging jobs, bound to this exact candidate, configuration, target, executor, and verified rollback release. Every job receives a fresh one-job grant. A different artifact or configuration requires new owner authorization. This cannot change production DNS or routes.",
                 "การอนุมัติของ owner หนึ่งครั้งเปิด campaign 4 ชั่วโมง สูงสุด 4 staging jobs โดยผูกกับ candidate, configuration, target, executor และ rollback release ที่ตรวจแล้วชุดนี้เท่านั้น แต่ละ job ได้ grant ใหม่ที่ใช้ได้งานเดียว หาก artifact หรือ configuration เปลี่ยนต้องอนุมัติ scope ใหม่ และคำสั่งนี้เปลี่ยน DNS หรือ route ของ production ไม่ได้",
               )}</p>
-              <Button type="button" disabled={stagingDeployMutation.isPending} onClick={() => stagingDeployMutation.mutate({ tenantId, projectId, environment: "staging" })}>
+              <Button type="button" disabled={stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
+                title: text("Authorize Staging deployment campaign", "อนุมัติ campaign deploy ไป Staging"),
+                description: text(`Deploy the exact reviewed candidate ${stagingDeployPreflight.data.artifact!.sourceSha} to the Staging Worker only. The current rollback baseline is ${stagingDeployPreflight.data.baseline.deploymentId}. Production DNS/routes and traffic will not change.`, `deploy candidate ${stagingDeployPreflight.data.artifact!.sourceSha} ที่ตรวจแล้วไปยัง Staging Worker เท่านั้น โดยมี rollback baseline ${stagingDeployPreflight.data.baseline.deploymentId} ไม่เปลี่ยน DNS/route หรือ traffic ของ Production`),
+                confirmLabel: text("Authorize and queue Staging deploy", "อนุมัติและส่งงาน deploy Staging"),
+                run: () => stagingDeployMutation.mutateAsync({ tenantId, projectId, environment: "staging" }),
+              })}>
                 {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize and deploy to staging", "อนุมัติและ deploy ไป staging")}
               </Button>
             </> : stagingDeployPreflight.data.reason === "STAGING_BOOTSTRAP_REQUIRED" && stagingDeployPreflight.data.artifact ? <>
               <p>{text("This is the first Staging deployment, so Cloudflare has no verified Staging deployment to use as a rollback baseline yet.", "นี่คือการ deploy Staging ครั้งแรก จึงยังไม่มี deployment ที่ตรวจสอบแล้วสำหรับใช้ rollback")}</p>
               <p>{text("The one-time bootstrap below is limited to this published artifact, saved origin configuration, Staging Worker, Cloudflare account, and registered executor. It allows one job, creates no production DNS or route changes, and fails closed if the Worker is already owned by a different deployment.", "bootstrap ครั้งเดียวนี้จำกัดเฉพาะ artifact, origin config ที่บันทึกไว้, Staging Worker, บัญชี Cloudflare และ executor ที่ลงทะเบียน อนุญาตเพียงหนึ่ง job ไม่เปลี่ยน DNS หรือ route ของ production และจะหยุดทันทีหาก Worker มี deployment ที่ไม่ตรงกับงานนี้")}</p>
               <p>{text("Candidate", "รุ่นที่จะ deploy")}: <code>{stagingDeployPreflight.data.artifact.sourceSha}</code> · <code>{stagingDeployPreflight.data.artifact.artifactRef}</code></p>
-              <Button type="button" disabled={stagingDeployMutation.isPending} onClick={() => stagingDeployMutation.mutate({ tenantId, projectId, environment: "staging" })}>
+              <Button type="button" disabled={stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
+                title: text("Authorize first Staging deployment", "อนุมัติ deploy Staging ครั้งแรก"),
+                description: text(`Deploy the exact reviewed candidate ${stagingDeployPreflight.data.artifact!.sourceSha} to the Staging Worker only. This is a one-time bootstrap with no Production DNS/route or traffic changes.`, `deploy candidate ${stagingDeployPreflight.data.artifact!.sourceSha} ที่ตรวจแล้วไปยัง Staging Worker เท่านั้น เป็น bootstrap ครั้งเดียว ไม่เปลี่ยน DNS/route หรือ traffic ของ Production`),
+                confirmLabel: text("Authorize first Staging deploy", "อนุมัติ deploy Staging ครั้งแรก"),
+                run: () => stagingDeployMutation.mutateAsync({ tenantId, projectId, environment: "staging" }),
+              })}>
                 {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize one-time first Staging deployment", "อนุมัติ deploy Staging ครั้งแรก (ครั้งเดียว)")}
               </Button>
             </> : stagingDeployPreflight.data.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED" ? <>
@@ -1955,6 +2041,25 @@ export default function AdminDeploymentTargets() {
       {validScope && <Button variant="outline" onClick={() => void refreshTargets()} disabled={targetsQuery.isFetching}>{text("Refresh registry", "รีเฟรช registry")}</Button>}
       {createMutation.error || updateMutation.error || disableMutation.error ? <p role="alert">{text("The registry rejected the action or exact-admin authority is missing. No target state was assumed.", "registry ปฏิเสธคำสั่งหรือไม่มี exact-admin authority ระบบจะไม่สมมติสถานะ target")}</p> : null}
       <Button variant="link" onClick={() => setLocation("/admin/settings?tab=infrastructure")}>{text("Open the existing Cloudflare credential center", "เปิดศูนย์ credential Cloudflare เดิม")}</Button>
+      <Dialog open={Boolean(stagingConfirmation)} onOpenChange={open => {
+        if (!open && !stagingActionRunning) setStagingConfirmation(null);
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{stagingConfirmation?.title ?? text("Confirm Staging action", "ยืนยันการทำงานของ Staging")}</DialogTitle>
+            <DialogDescription>{stagingConfirmation?.description}</DialogDescription>
+          </DialogHeader>
+          {stagingActionRunning ? <p role="status" aria-live="polite">{text("Working… please wait. Do not click again.", "กำลังทำงาน… กรุณารอและอย่ากดซ้ำ")}</p> : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={stagingActionRunning} onClick={() => setStagingConfirmation(null)}>
+              {text("Cancel", "ยกเลิก")}
+            </Button>
+            <Button type="button" disabled={stagingActionRunning || !stagingConfirmation} onClick={() => void confirmStagingAction()}>
+              {stagingActionRunning ? text("Working…", "กำลังทำงาน…") : stagingConfirmation?.confirmLabel ?? text("Confirm", "ยืนยัน")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </VStack>
   );
 }

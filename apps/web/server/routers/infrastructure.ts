@@ -693,6 +693,8 @@ export const infrastructureRouter = router({
         ? error.message : "PRIVATE_DATABASE_RENEWAL_PREFLIGHT_FAILED",
         failureStage: typeof (error as { preflightStage?: unknown })?.preflightStage === "string"
           ? (error as { preflightStage: string }).preflightStage : "PREFLIGHT_REQUEST",
+        failureDetail: typeof (error as { preflightFailureDetail?: unknown })?.preflightFailureDetail === "string"
+          ? (error as { preflightFailureDetail: string }).preflightFailureDetail : null,
         checkedAt: new Date().toISOString(),
         configurationRef: input.configurationRef, configurationDigest: input.configurationRef.slice("cf-origin:".length), accountRef: null,
         plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null }; }

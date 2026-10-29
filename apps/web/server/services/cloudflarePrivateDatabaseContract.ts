@@ -8,9 +8,11 @@ export const PRIVATE_DATABASE_GRANT = "cloudflare.staging-private-database-provi
 export const PRIVATE_DATABASE_RENEWAL_CONTRACT = "cloudflare-staging-private-db-renewal-v1";
 export const PRIVATE_DATABASE_RENEWAL_JOB = "cloudflare.staging.private_database.renew_lease";
 export const PRIVATE_DATABASE_RENEWAL_GRANT = "cloudflare.staging-private-database-renewal-grant.v1";
-const privateDatabaseResourceIds = z.object({
-  hyperdriveId: z.string().regex(/^[a-f0-9]{32}$/), caId: z.string().regex(/^[a-f0-9]{32}$/),
-  accessApplicationId: z.string().uuid(), accessPolicyId: z.string().uuid(), serviceTokenId: z.string().uuid(), dnsRecordId: z.string().regex(/^[a-f0-9]{32}$/),
+export const privateDatabaseResourceIdSchema = z.string().regex(/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+export const privateDatabaseResourceIdsSchema = z.object({
+  hyperdriveId: privateDatabaseResourceIdSchema, caId: privateDatabaseResourceIdSchema,
+  accessApplicationId: privateDatabaseResourceIdSchema, accessPolicyId: privateDatabaseResourceIdSchema,
+  serviceTokenId: privateDatabaseResourceIdSchema, dnsRecordId: privateDatabaseResourceIdSchema,
 }).strict();
 export const privateDatabaseRole = (namespace: string) => `sah_cf_staging_${namespace.slice(-12)}`;
 export const privateDatabasePlanSchema = z.object({
@@ -52,7 +54,7 @@ export const privateDatabaseRenewalPlanSchema = z.object({
   configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/),
   configurationDigest: z.string().regex(/^[a-f0-9]{64}$/),
   sourceProvisionJobId: z.string().uuid(), sourcePlan: privateDatabasePlanSchema,
-  sourcePlanDigest: z.string().regex(/^[a-f0-9]{64}$/), resources: privateDatabaseResourceIds,
+  sourcePlanDigest: z.string().regex(/^[a-f0-9]{64}$/), resources: privateDatabaseResourceIdsSchema,
   leaseExpiresAt: z.string().datetime({ offset: true }), authorizationExpiresAt: z.string().datetime({ offset: true }),
 }).strict().refine(value => value.configurationRef === `cf-origin:${value.configurationDigest}`
   && value.sourcePlanDigest === privateDatabasePlanDigest(value.sourcePlan)
@@ -86,6 +88,6 @@ export const privateDatabaseRenewalReceiptSchema = z.object({
   status: z.literal("verified"), configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/),
   configurationDigest: z.string().regex(/^[a-f0-9]{64}$/), sourceProvisionJobId: z.string().uuid(),
   sourcePlanDigest: z.string().regex(/^[a-f0-9]{64}$/), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
-  resourceIds: privateDatabaseResourceIds, leaseExpiresAt: z.string().datetime({ offset: true }),
+  resourceIds: privateDatabaseResourceIdsSchema, leaseExpiresAt: z.string().datetime({ offset: true }),
   providerResourcesVerified: z.literal(true), databaseRoleReadbackVerified: z.literal(true),
 }).strict();

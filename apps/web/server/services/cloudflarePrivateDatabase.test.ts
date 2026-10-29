@@ -7,6 +7,8 @@ import { X509Certificate } from "node:crypto";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB,
   certificateDigest, privateDatabaseGrantSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
+import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
+import { privateDatabaseRenewalPlanFailureDetail } from "./cloudflarePrivateDatabaseRenewal";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { validateJobDefinition } from "./jobCanonicalization";
@@ -70,6 +72,40 @@ function fixture() {
 }
 
 describe("private PostgreSQL staging provisioning", () => {
+  it("uses the same provider ID formats for stored bindings and renewal plans", () => {
+    const resources = { hyperdriveId: "e".repeat(32), caId: "f".repeat(32),
+      accessApplicationId: "33333333-3333-4333-8333-333333333333", accessPolicyId: "44444444-4444-4444-8444-444444444444",
+      serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) };
+    const input = { configurationRef: `cf-origin:${"a".repeat(64)}`, configurationDigest: "a".repeat(64),
+      sourceProvisionJobId: "11111111-1111-4111-8111-111111111111",
+      sourcePlan: { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app", zoneId: "b".repeat(32),
+        tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub", caSha256: "c".repeat(64), connectionLimit: 5,
+        configurationExpiresAt: "2026-10-01T00:00:00.000Z" }, sourcePlanDigest: "d".repeat(64), resources,
+      leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" };
+    input.sourcePlanDigest = privateDatabasePlanDigest(input.sourcePlan);
+    expect(privateDatabaseRenewalPlanSchema.safeParse(input).success).toBe(true);
+    expect(privateDatabaseRenewalPlanSchema.safeParse({ ...input, resources: { ...resources, accessApplicationId: "bad" } }).success).toBe(false);
+  });
+
+  it("returns safe validation paths without leaking rejected values", () => {
+    const secretishValue = "never-return-this-provider-id";
+    const sourcePlan = { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app" as const,
+      zoneId: "b".repeat(32), tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub", caSha256: "c".repeat(64),
+      connectionLimit: 5 as const, configurationExpiresAt: "2026-10-01T00:00:00.000Z" };
+    const parsed = privateDatabaseRenewalPlanSchema.safeParse({ configurationRef: `cf-origin:${"a".repeat(64)}`, configurationDigest: "a".repeat(64),
+      sourceProvisionJobId: "11111111-1111-4111-8111-111111111111", sourcePlan, sourcePlanDigest: privateDatabasePlanDigest(sourcePlan),
+      resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: secretishValue,
+        accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" });
+    expect(parsed.success).toBe(false);
+    if (!parsed.success) {
+      const detail = privateDatabaseRenewalPlanFailureDetail(parsed.error);
+      expect(detail).toContain("resources.accessApplicationId");
+      expect(detail).not.toContain(secretishValue);
+      expect(detail).not.toContain(parsed.error.issues[0].message);
+    }
+  });
+
   it("matches the Python approval service's immutable renewal plan digest", () => {
     const sourcePlan = { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app" as const,
       zoneId: "b".repeat(32), tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub",

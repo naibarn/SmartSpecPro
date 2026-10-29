@@ -3,14 +3,16 @@ import { X509Certificate } from "node:crypto";
 import { z } from "zod";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, certificateDigest, privateDatabaseJobSchema,
   PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalJobSchema, privateDatabaseRenewalReceiptSchema,
-  privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, privateDatabaseResourceDigest, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
+  privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, privateDatabaseResourceDigest, privateDatabaseRole,
+  privateDatabaseResourceIdSchema } from "./cloudflarePrivateDatabaseContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 
-const id = z.string().regex(/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
 export const privateDatabaseBindingSchema = z.object({
   provisionJobId: z.string().uuid(), plan: privateDatabasePlanSchema, planDigest: z.string().regex(/^[a-f0-9]{64}$/),
-  hyperdriveId: id, caId: id, accessApplicationId: id, accessPolicyId: id, serviceTokenId: id, dnsRecordId: id,
+  hyperdriveId: privateDatabaseResourceIdSchema, caId: privateDatabaseResourceIdSchema,
+  accessApplicationId: privateDatabaseResourceIdSchema, accessPolicyId: privateDatabaseResourceIdSchema,
+  serviceTokenId: privateDatabaseResourceIdSchema, dnsRecordId: privateDatabaseResourceIdSchema,
   leaseRenewal: z.object({ jobId: z.string().uuid(), leaseExpiresAt: z.string().datetime({ offset: true }), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
     sourceConfigurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), sourceConfigurationDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional(),
 }).strict().refine(value => value.planDigest === privateDatabasePlanDigest(value.plan));
