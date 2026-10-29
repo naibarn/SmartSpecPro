@@ -261,6 +261,9 @@ describe("private PostgreSQL staging provisioning", () => {
     const planDigest = privateDatabaseRenewalPlanDigest(plan), renewalJobId = "77777777-7777-4777-8777-777777777777";
     const renewed = { ...descriptor, leaseRenewal: { jobId: renewalJobId, leaseExpiresAt: plan.leaseExpiresAt, planDigest,
       sourceConfigurationRef: configurationRef, sourceConfigurationDigest: configurationDigest } };
+    expect(planDigest).not.toBe(descriptor.planDigest);
+    expect(validatePrivateDatabaseBinding(renewed, { tenantId: f.grant.tenantId, projectId: f.grant.projectId,
+      expiresAt: plan.leaseExpiresAt })).toEqual(renewed);
     const receipt = { id: renewalJobId, tenantId: f.grant.tenantId, requestedByUserId: f.grant.requesterUserId,
       jobType: PRIVATE_DATABASE_RENEWAL_JOB, contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, status: "succeeded", operatorReviewRequired: false,
       inputJson: { contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, grantRef: "88888888-8888-4888-8888-888888888888",
@@ -273,6 +276,9 @@ describe("private PostgreSQL staging provisioning", () => {
       projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId })).not.toThrow();
     expect(() => assertPrivateDatabaseRenewalReceipt(renewed, { ...receipt, inputJson: { ...receipt.inputJson, configurationRef: `cf-origin:${"b".repeat(64)}` } },
       { tenantId: f.grant.tenantId, projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId })).toThrow("RENEWAL_RECEIPT_DENIED");
+    expect(() => validatePrivateDatabaseBinding({ ...renewed, leaseRenewal: { ...renewed.leaseRenewal,
+      sourceConfigurationDigest: "b".repeat(64) } }, { tenantId: f.grant.tenantId, projectId: f.grant.projectId,
+      expiresAt: plan.leaseExpiresAt })).toThrow();
   });
 
   it("keeps the standalone runtime public release SQL contract aligned with shared Cloudflare readers", () => {

@@ -14,7 +14,8 @@ export const privateDatabaseBindingSchema = z.object({
   accessApplicationId: privateDatabaseResourceIdSchema, accessPolicyId: privateDatabaseResourceIdSchema,
   serviceTokenId: privateDatabaseResourceIdSchema, dnsRecordId: privateDatabaseResourceIdSchema,
   leaseRenewal: z.object({ jobId: z.string().uuid(), leaseExpiresAt: z.string().datetime({ offset: true }), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
-    sourceConfigurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), sourceConfigurationDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional(),
+    sourceConfigurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), sourceConfigurationDigest: z.string().regex(/^[a-f0-9]{64}$/) })
+    .strict().refine(value => value.sourceConfigurationRef === `cf-origin:${value.sourceConfigurationDigest}`).optional(),
 }).strict().refine(value => value.planDigest === privateDatabasePlanDigest(value.plan));
 export type PrivateDatabaseBinding = z.infer<typeof privateDatabaseBindingSchema>;
 const ids = ["hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId"] as const;
@@ -26,8 +27,10 @@ export function validatePrivateDatabaseBinding(value: PrivateDatabaseBinding, sc
   const descriptor = privateDatabaseBindingSchema.parse(value);
   const leaseExpiresAt = descriptor.leaseRenewal?.leaseExpiresAt ?? descriptor.plan.configurationExpiresAt;
   if (descriptor.plan.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId)
-    || (descriptor.leaseRenewal && (descriptor.leaseRenewal.planDigest !== descriptor.planDigest
-      || !Number.isFinite(Date.parse(leaseExpiresAt)) || Date.parse(leaseExpiresAt) <= now))
+    // A renewal job has its own immutable operation-plan digest. It must not be
+    // compared with the source database provisioning-plan digest above; the
+    // exact relationship is verified against the canonical renewal receipt.
+    || (descriptor.leaseRenewal && (!Number.isFinite(Date.parse(leaseExpiresAt)) || Date.parse(leaseExpiresAt) <= now))
     || Date.parse(leaseExpiresAt) < Date.parse(scope.expiresAt)
     || (!descriptor.leaseRenewal && Date.parse(leaseExpiresAt) <= now))
     denied("PRIVATE_DATABASE_BINDING_SCOPE_DENIED");
