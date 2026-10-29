@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `10`
-- Updated (UTC): `2026-10-29T13:36:06.006446+00:00`
+- State generation: `11`
+- Updated (UTC): `2026-10-29T16:35:43.444796+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c`
+- Latest recorded merged Main SHA: `40aca3d847b293d05a5032daf6124b8369ac3153`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-unified-experience`
-- Next action: Resolve the isolated authenticated-UAT server named-export startup error, then use authenticated request correlation to root-cause hosted chat.getMessages and workerJobs.observability 500s; continue global project/thread replay and SPEC-224 genuine two-child live acceptance.
+- Next action: Local authenticated child-thread transcript restore and Mission Control overview UAT pass at the current dev source. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-work-profiles | pending | — | — | — | — | — |
 | section-02-event-projection | pending | — | — | — | — | — |
-| section-03-unified-experience | checkpointed | — | — | e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c | e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c | Resolve the isolated authenticated-UAT server named-export startup error, then use authenticated request correlation to root-cause hosted chat.getMessages and workerJobs.observability 500s; continue global project/thread replay and SPEC-224 genuine two-child live acceptance. |
+| section-03-unified-experience | checkpointed | — | — | e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c | 40aca3d847b293d05a5032daf6124b8369ac3153 | Local authenticated child-thread transcript restore and Mission Control overview UAT pass at the current dev source. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution. |
 | section-04-skill-invocation | pending | — | — | — | — | — |
 | section-05-skill-authoring | pending | — | — | — | — | — |
 | section-06-delegation-controls | pending | — | — | — | — | — |
