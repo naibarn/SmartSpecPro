@@ -552,8 +552,10 @@ export function ChatSidebar({
       ) : <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="p-2">
           {conversationsError ? (
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-element)] border border-[var(--color-border)] p-2 text-sm text-destructive" role="alert">
-              <p>{t("sidebar.sessionsUnavailable")}</p>
+            <>
+              <p className="text-sm text-destructive" role="alert">
+                {t("sidebar.sessionsUnavailable")}
+              </p>
               <Button
                 type="button"
                 variant="outline"
@@ -563,7 +565,7 @@ export function ChatSidebar({
               >
                 {isRefreshingConversations ? t("sidebar.refreshingSessions") : t("sidebar.retrySessions")}
               </Button>
-            </div>
+            </>
           ) : null}
           {isLoading && conversations.length === 0 ? (
             <div className="flex items-center justify-center py-8">

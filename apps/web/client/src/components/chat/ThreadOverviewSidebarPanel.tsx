@@ -66,12 +66,12 @@ export function ThreadOverviewSidebarPanel({
         </select>
       </label>
       {query.isLoading ? <p className="flex items-center gap-2 py-4 text-sm text-muted-foreground" role="status"><Loader2 className="h-4 w-4 animate-spin" />{t("threads.loading")}</p> : null}
-      {query.error ? <div className="flex flex-wrap items-center gap-2 text-sm text-destructive" role="alert">
-        <p>{t("threads.overviewUnavailable")}</p>
+      {query.error ? <>
+        <p className="text-sm text-destructive" role="alert">{t("threads.overviewUnavailable")}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => void query.refetch()} disabled={query.isFetching}>
           {query.isFetching ? t("threads.refreshing") : t("threads.retryOverview")}
         </Button>
-      </div> : null}
+      </> : null}
       {!query.isLoading && !query.error && items.length === 0 ? <p className="py-4 text-sm text-muted-foreground">{t("threads.overviewEmpty")}</p> : null}
       {items.length > 0 ? (
         <ol className="space-y-1" aria-label={t("threads.recentActivityOrder")}>
@@ -82,7 +82,11 @@ export function ThreadOverviewSidebarPanel({
                 onClick={() => onOpenThread(item.conversationId, item.threadId)}
                 aria-current={selectedConversationId === item.conversationId && selectedThreadId === item.threadId ? "page" : undefined}
                 aria-label={t("threads.openThread", { thread: item.title, conversation: item.conversationTitle })}
-                className={`flex min-h-12 w-full items-start gap-2 rounded-[var(--radius-element)] px-2 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${selectedConversationId === item.conversationId && selectedThreadId === item.threadId ? "bg-[var(--color-accent-muted)] text-[var(--color-text-accent)]" : "hover:bg-[var(--color-overlay-hover)]"}`}
+                className="flex min-h-12 w-full items-start gap-2 rounded-[var(--radius-element)] px-2 py-2 text-left hover:bg-[var(--color-overlay-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                style={selectedConversationId === item.conversationId && selectedThreadId === item.threadId ? {
+                  backgroundColor: "var(--color-accent-muted)",
+                  color: "var(--color-text-accent)",
+                } : undefined}
               >
                 <MessageSquareText className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <span className="min-w-0 flex-1">
