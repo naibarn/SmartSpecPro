@@ -559,9 +559,6 @@ import {
   canonicalizeVerticalDramaCharacterDescriptionOverrideKeys,
   normalizeVerticalDramaCharacterDescriptionOverrides,
   resolveVerticalDramaSpeakerIdentity,
-  validateVerticalDramaCastPositionLock,
-  VERTICAL_DRAMA_MAX_CAST_POSITION_LOCK_CHARACTERS,
-  type VerticalDramaCastPositionLock,
   type VerticalDramaCharacterDescriptionOverrides,
   type VerticalDramaSpeakerIdentityCandidate,
 } from "@shared/verticalDramaSeries/castPositionLock";
@@ -17966,193 +17963,9 @@ export const verticalDramaEpisodesRouter = router({
     }),
 
   /**
-   * Persist a user-confirmed viewer-left -> viewer-right cast order for the
-   * exact current video anchor. This is intentionally separate from changing
-   * the shot's character membership: it records what the user actually sees
-   * and is consumed as an independent authority by prompt/render gates.
-   */
-  setShotCastPositionLock: verticalDramaProcedure
-    .input(
-      z.object({
-        seriesId: z.string().min(1),
-        episodeId: z.string().min(1),
-        shotNumber: z.number().int().positive(),
-        orderedCharacterRefs: z
-          .array(z.string().trim().min(1))
-          .min(1)
-          .max(VERTICAL_DRAMA_MAX_CAST_POSITION_LOCK_CHARACTERS),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const tenantId = requireTenantId(ctx.tenantId);
-      const userId = ctx.user.id;
-      const seriesId = parseId(input.seriesId, "series id");
-      const episodeId = parseId(input.episodeId, "episode id");
-      const row = await loadOwnedEpisode({
-        tenantId,
-        userId,
-        seriesId,
-        episodeId,
-      });
-      const planCandidate =
-        row.startFramePlan as VerticalDramaStartFramePlan | null;
-      const frameCandidate = planCandidate?.frames?.find(
-        f => f.shotNumber === input.shotNumber
-      );
-      if (!planCandidate || !frameCandidate) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "ต้องมีภาพ start frame ของช็อตนี้ก่อนยืนยันตำแหน่งตัวละคร",
-        });
-      }
-      const plan = planCandidate;
-      const frame = frameCandidate;
-      const orderedCharacterRefs = input.orderedCharacterRefs.map(key =>
-        key.trim()
-      );
-      const rosterRows = await db
-        .select({ characterKey: verticalDramaCharacters.characterKey })
-        .from(verticalDramaCharacters)
-        .where(
-          and(
-            eq(verticalDramaCharacters.tenantId, tenantId),
-            eq(verticalDramaCharacters.seriesId, seriesId),
-            inArray(verticalDramaCharacters.characterKey, orderedCharacterRefs)
-          )
-        );
-      const foundKeys = new Set(
-        rosterRows.map((row: { characterKey: string }) => row.characterKey)
-      );
-      if (orderedCharacterRefs.some(key => !foundKeys.has(key))) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "ผังตำแหน่งมีตัวละครที่ไม่อยู่ใน roster ของซีรีส์",
-        });
-      }
-      // Position confirmation can race with saving a shot-specific identity
-      // description. Lock and re-read the row so this update always merges
-      // with the latest frame instead of writing a stale JSON snapshot that
-      // drops the newly saved description.
-      const updatedPlan = await db.transaction(async tx => {
-        const [freshRow] = await tx
-          .select()
-          .from(verticalDramaEpisodes)
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          )
-          .for("update")
-          .limit(1);
-        const freshPlan =
-          (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
-          null;
-        const freshFrameIndex =
-          freshPlan?.frames?.findIndex(
-            candidate => candidate.shotNumber === input.shotNumber
-          ) ?? -1;
-        const freshFrame =
-          freshPlan && freshFrameIndex >= 0
-            ? freshPlan.frames[freshFrameIndex]
-            : undefined;
-        if (!freshRow || !freshPlan || !freshFrame) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "ต้องมีภาพ start frame ของช็อตนี้ก่อนยืนยันตำแหน่งตัวละคร",
-          });
-        }
-        const videoStartAssetId = Number(freshFrame.videoStartMediaAssetId);
-        const approvedAssetId = Number(freshFrame.approvedMediaAssetId);
-        const activeAssetId =
-          Number.isInteger(videoStartAssetId) && videoStartAssetId > 0
-            ? videoStartAssetId
-            : Number.isInteger(approvedAssetId) && approvedAssetId > 0
-              ? approvedAssetId
-              : undefined;
-        if (!activeAssetId) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "ภาพยังไม่พร้อมยืนยันตำแหน่ง — เปลี่ยนภาพ ซ่อมภาพ หรือสร้าง Video-Safe frame ก่อน",
-          });
-        }
-        const lock: VerticalDramaCastPositionLock = {
-          assetId: String(activeAssetId),
-          orderedCharacterRefs,
-          confirmedAt: new Date().toISOString(),
-        };
-        const validation = validateVerticalDramaCastPositionLock({
-          lock,
-          activeAssetId: String(activeAssetId),
-          requiredCharacterRefs: freshFrame.requiredCharacterRefs ?? [],
-        });
-        if (!validation.valid) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message:
-              "ต้องเลือกตัวละครทุกตัวในช็อตให้ครบหนึ่งครั้งและเรียงจากซ้ายไปขวาโดยไม่ซ้ำกัน",
-          });
-        }
-        const updatedFrames = freshPlan.frames.slice();
-        updatedFrames[freshFrameIndex] = {
-          ...freshFrame,
-          castPositionLock: lock,
-        };
-        const nextPlan: VerticalDramaStartFramePlan = {
-          ...freshPlan,
-          frames: updatedFrames,
-        };
-        const existingPack =
-          freshRow.motionPromptPack as VerticalDramaMotionPromptPack | null;
-        const updatedPack = existingPack
-          ? {
-              ...existingPack,
-              clips: existingPack.clips.flatMap(clip => {
-                const affected =
-                  clip.sourceShotNumbers?.includes(input.shotNumber) ||
-                  clip.parentShotNumber === input.shotNumber ||
-                  clip.clipNumber === input.shotNumber;
-                if (!affected) return [clip];
-                const invalidated = invalidateVideoPromptVariantsOnInputChange(
-                  clip as unknown as Record<string, unknown>,
-                  "cast_position_lock_changed"
-                );
-                return invalidated === clip ? [] : [invalidated as typeof clip];
-              }),
-            }
-          : existingPack;
-        await tx
-          .update(verticalDramaEpisodes)
-          .set({
-            startFramePlan: nextPlan,
-            ...(updatedPack
-              ? {
-                  motionPromptPack:
-                    updatedPack as VerticalDramaMotionPromptPack,
-                }
-              : {}),
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          );
-        return nextPlan;
-      });
-      return { startFramePlan: updatedPlan };
-    }),
-
-  /**
    * Persist optional, shot-local identity cues for dialogue speakers. These
    * cues are user-authored facts (for example, "woman wearing an apron") and
-   * take precedence over screen position for the named character only. Any
+   * add detail to the detected speaker mapping for the named character. Any
    * existing video prompts for the shot are discarded because they were
    * generated without the new identity fact.
    */
@@ -18179,9 +17992,9 @@ export const verticalDramaEpisodesRouter = router({
         seriesId,
         episodeId,
       });
-      // Serialize this JSON snapshot update with cast-position confirmation.
-      // Both controls edit the same frame, so the latest locked row must be
-      // the source of truth or one fast click can erase the other field.
+      // Serialize this JSON snapshot update with speaker mapping saves. Both
+      // controls edit the same frame, so the latest locked row must be the
+      // source of truth or one fast click can erase the other field.
       return db.transaction(async tx => {
         const [freshRow] = await tx
           .select()
