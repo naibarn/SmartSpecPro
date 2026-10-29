@@ -1039,7 +1039,10 @@ export async function handleRunnerSocketMessage(
     : Array.isArray(raw)
       ? Buffer.concat(raw)
       : Buffer.from(raw);
-  if (message.byteLength > 256 * 1024) {
+  // The envelope validator separately bounds payload JSON at 512 KiB. Allow
+  // enough room for the protocol envelope metadata while preserving a strict
+  // transport limit above that payload ceiling.
+  if (message.byteLength > 520 * 1024) {
     ws.close(1009, "runner_message_too_large");
     return;
   }

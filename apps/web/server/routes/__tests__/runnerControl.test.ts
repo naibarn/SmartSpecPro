@@ -331,6 +331,46 @@ describe("Runner control transport routes", () => {
     });
   });
 
+  it("accepts bounded large snapshots through the socket size guard", async () => {
+    const sent: Array<Record<string, unknown>> = [];
+    const close = vi.fn();
+    const ws = {
+      readyState: 1,
+      send: (raw: string) => sent.push(JSON.parse(raw) as Record<string, unknown>),
+      close,
+    } as unknown as WebSocket;
+    const largeEnvelope = envelope("runner-other");
+    (largeEnvelope.payload.snapshot as Record<string, unknown>).workspaces = [{
+      workspaceId: "workspace-test",
+      dirtyPaths: Array.from({ length: 2_300 }, (_, index) =>
+        `apps/module/${String(index).padStart(4, "0")}-${"x".repeat(100)}.txt`,
+      ),
+    }];
+    const raw = Buffer.from(JSON.stringify(largeEnvelope));
+    expect(raw.byteLength).toBeGreaterThan(256 * 1024);
+    expect(raw.byteLength).toBeLessThan(520 * 1024);
+
+    await handleRunnerSocketMessage(
+      ws,
+      {
+        token: "redacted-test-token",
+        runnerId: "runner-expected",
+        tenantId: "tenant-large-snapshot",
+        runnerSessionId: "session-large-snapshot",
+        controlPlaneOrigin: "http://localhost:3000",
+        deviceProofVerified: true,
+      },
+      raw,
+      {} as RunnerGateway,
+    );
+
+    expect(close).not.toHaveBeenCalled();
+    expect(sent[0]).toMatchObject({
+      ackState: "rejected",
+      reason: "RUNNER_SCOPE_MISMATCH",
+    });
+  });
+
   it("preserves the stable control-plane contract error code for rejected capability snapshots", async () => {
     const runnerId = `runner-invalid-capability-${Date.now()}`;
     const tenantId = "tenant-invalid-capability";
