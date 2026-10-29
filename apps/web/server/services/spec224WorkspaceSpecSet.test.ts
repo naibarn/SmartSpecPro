@@ -136,6 +136,23 @@ describe("spec224 workspace Spec Set", () => {
     expect(runInput.workspaceAccessMode).toBe("exclude_risky");
   });
 
+  it("admits known workspace dirt for candidate-isolated broad access and still rejects unknown dirty paths", async () => {
+    const store = memoryStore();
+    let dirtyPaths: string[] | null = ["apps/web/test-results/unrelated.json", "orchestra/tasks/other-session/HANDOFF.md"];
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: true, dirtyPaths, contentFingerprint: "c".repeat(64) }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+
+    const prepared = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
+    expect(prepared).toMatchObject({ runnableWorkPackageIds: ["prompt"], workPackages: [{ sourceAdmission: { status: "SAFE_CANDIDATE_OVERLAY", dirtyPathCount: 2 } }] });
+    const runInput = await service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
+    expect(runInput).toMatchObject({ allowedWriteSet: ["**"], workspaceAccessMode: "exclude_risky" });
+
+    dirtyPaths = null;
+    await expect(service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" })).resolves.toMatchObject({ runnableWorkPackageIds: [], workPackages: [{ sourceAdmission: { status: "BLOCKED", code: "DIRTY_PATHS_UNKNOWN" } }] });
+    await expect(service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" })).rejects.toMatchObject({ code: "WORKSPACE_SOURCE_ADMISSION_DIRTY_PATHS_UNKNOWN" });
+  });
+
   it("keeps legacy path input from downgrading user workspaces to an unbound broad scope", async () => {
     const store = memoryStore();
     const service = createSpec224WorkspaceSpecSetService(store);

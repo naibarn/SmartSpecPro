@@ -305,7 +305,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         const accessPolicy = workspaceAccessMode ? resolveSpec224WorkspaceWritePolicy(workspaceAccessMode) : null;
         const allowedWriteSet = accessPolicy?.allowedWriteSet ?? input.writeScope;
         const sourceAdmission = current?.scope === "PLATFORM_ENGINEERING"
-          ? evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet })
+          ? evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet, candidateOverlay: Boolean(workspaceAccessMode && allowedWriteSet?.length === 1 && allowedWriteSet[0] === "**") })
           : null;
         if (sourceAdmission?.status === "BLOCKED") blockers.push(sourceAdmission.code === "WRITE_SCOPE_UNBOUNDED" ? "PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED" : `WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
         const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode, gitHead: current?.gitHead ?? null, snapshotRevision: current?.snapshotRevision ?? null, prompt, writeScope: allowedWriteSet, workspaceAccessMode }));
@@ -373,7 +373,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         const accessPolicy = workspaceAccessMode ? resolveSpec224WorkspaceWritePolicy(workspaceAccessMode) : null;
         const allowedWriteSet = accessPolicy?.allowedWriteSet ?? (workspace.scope === "PLATFORM_ENGINEERING" ? input.writeScope : ["**"]);
         if (workspace.scope === "PLATFORM_ENGINEERING") {
-          const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({ gitHead: workspace.gitHead, contentFingerprint: workspace.contentFingerprint, snapshotRevision: workspace.snapshotRevision, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths, allowedWriteSet });
+          const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({ gitHead: workspace.gitHead, contentFingerprint: workspace.contentFingerprint, snapshotRevision: workspace.snapshotRevision, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths, allowedWriteSet, candidateOverlay: Boolean(workspaceAccessMode && allowedWriteSet?.length === 1 && allowedWriteSet[0] === "**") });
           if (sourceAdmission.status === "BLOCKED") fail(`WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
         }
         const contextPackHash = sha(canonicalJson({

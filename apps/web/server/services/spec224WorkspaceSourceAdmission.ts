@@ -1,7 +1,8 @@
 export type WorkspaceSourceAdmission = {
-  status: "SAFE_CLEAN" | "SAFE_DISJOINT_DIRTY" | "BLOCKED";
-  code: "SOURCE_FACTS_UNKNOWN" | "DIRTY_PATHS_UNKNOWN" | "WRITE_SCOPE_UNBOUNDED" | "SCOPE_CONFLICT" | "SOURCE_CHANGED" | "SAFE_CLEAN" | "SAFE_DISJOINT_DIRTY";
+  status: "SAFE_CLEAN" | "SAFE_DISJOINT_DIRTY" | "SAFE_CANDIDATE_OVERLAY" | "BLOCKED";
+  code: "SOURCE_FACTS_UNKNOWN" | "DIRTY_PATHS_UNKNOWN" | "WRITE_SCOPE_UNBOUNDED" | "SCOPE_CONFLICT" | "SOURCE_CHANGED" | "SAFE_CLEAN" | "SAFE_DISJOINT_DIRTY" | "SAFE_CANDIDATE_OVERLAY";
   conflictingPaths: string[];
+  dirtyPathCount?: number;
   sourceFingerprint: string | null;
   sourceSha: string | null;
   snapshotRevision: string | null;
@@ -48,6 +49,9 @@ export function evaluateSpec224WorkspaceSourceAdmission(input: {
   dirtyPaths?: string[] | null;
   allowedWriteSet: unknown;
   expectedFingerprint?: string | null;
+  /** Known dirty files remain safe for broad access only when Runner executes
+   * in its isolated per-attempt candidate and applies with per-file CAS. */
+  candidateOverlay?: boolean;
 }): WorkspaceSourceAdmission {
   const base = {
     conflictingPaths: [] as string[],
@@ -65,6 +69,9 @@ export function evaluateSpec224WorkspaceSourceAdmission(input: {
   if (!input.dirty) return { ...base, status: "SAFE_CLEAN", code: "SAFE_CLEAN" };
   if (!Array.isArray(input.dirtyPaths) || input.dirtyPaths.length > 4_096 || input.dirtyPaths.some(path => typeof path !== "string" || !validRepoPath(path)))
     return blocked("DIRTY_PATHS_UNKNOWN");
+  if (input.candidateOverlay && input.allowedWriteSet.length === 1 && input.allowedWriteSet[0] === "**") {
+    return { ...base, status: "SAFE_CANDIDATE_OVERLAY", code: "SAFE_CANDIDATE_OVERLAY", dirtyPathCount: input.dirtyPaths.length };
+  }
   const conflicts = input.dirtyPaths.filter(path => input.allowedWriteSet.some(pattern => globMatches(pattern, path))).sort();
   return conflicts.length
     ? blocked("SCOPE_CONFLICT", conflicts)

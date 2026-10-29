@@ -939,6 +939,7 @@ export function createSpec224AuthorizationService() {
           dirtyPaths: workspaceFact?.dirtyPaths ?? null,
           allowedWriteSet: paths,
           expectedFingerprint: typeof execution?.sourceFingerprint === "string" ? execution.sourceFingerprint : null,
+          candidateOverlay: (execution?.workspaceAccessMode === "workspace" || execution?.workspaceAccessMode === "exclude_risky") && Array.isArray(paths) && paths.length === 1 && paths[0] === "**",
         });
         return admission.status === "BLOCKED" ? `WORKSPACE_SOURCE_ADMISSION_${admission.code}` : null;
       };
