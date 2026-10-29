@@ -1071,6 +1071,7 @@ export default function Chat() {
               <div className="min-h-0 flex-1 overflow-hidden">
                 <ChatView
                   conversationId={selectedConversationId}
+                  showExecutionActivity={!fullControlPlane && rightPanel !== "control-plane"}
                   onTitleUpdate={handleTitleUpdate}
                   browserSessionSuggestion={browserSessionSuggestion}
                   showBrowserSessionEntry={chatBrowserSessionEnabled}

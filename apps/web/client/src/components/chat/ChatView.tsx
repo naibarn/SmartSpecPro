@@ -69,6 +69,7 @@ import { createChatInferenceIdempotencyKey } from "@/lib/chatInferenceIdempotenc
 import { ImageLightbox } from "./media/ImageLightbox";
 import { AuthenticatedMediaImage } from "@/components/media/AuthenticatedMediaImage";
 import { SafeMarkdown } from "./SafeMarkdown";
+import { ConversationExecutionActivity } from "./ConversationExecutionActivity";
 import {
   LLMArtifactViewer,
   parseArtifacts,
@@ -93,6 +94,7 @@ import {
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 import { useTenantFeatureFlag } from "@/hooks/useTenantFeatureFlag";
 import { useAuth } from "@/contexts/AuthContext";
+import { useChatSessionDraft } from "@/lib/chatSessionDraft";
 import { resolveLocalAiSyncedPreferences } from "@/features/local-ai/state/localAiSettingsStore";
 import type { MessageRuntimeMetadata } from "@/features/local-ai/types/capability";
 import {
@@ -764,6 +766,7 @@ interface Attachment {
 interface ChatViewProps {
   conversationId: number | null;
   density?: "default" | "compact";
+  showExecutionActivity?: boolean;
   composerPrompt?: { id: number; text: string } | null;
   skillSelectorRequest?: { id: number } | null;
   onSkillSelectorRequestHandled?: () => void;
@@ -787,6 +790,7 @@ type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 export function ChatView({
   conversationId,
   density = "default",
+  showExecutionActivity = true,
   composerPrompt,
   skillSelectorRequest,
   onSkillSelectorRequestHandled,
@@ -808,7 +812,6 @@ export function ChatView({
   const [messages, setMessages] = useState<Message[]>([]);
   const [canLoadOlderMessages, setCanLoadOlderMessages] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
-  const [input, setInput] = useState("");
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -856,6 +859,11 @@ export function ChatView({
   } | null>(null);
   const skipNextAutoScrollRef = useRef(false);
   const { user } = useAuth();
+  const [input, setInput] = useChatSessionDraft({
+      tenantId: user?.currentTenantId,
+      userId: user?.id,
+      conversationId,
+    });
   const ocrOnlyModeStorageKey = useMemo(() => {
     const tenantId =
       user?.currentTenantId != null ? String(user.currentTenantId) : "unknown";
@@ -6704,6 +6712,9 @@ export function ChatView({
               )}
             </>
           )}
+          {showExecutionActivity ? (
+            <ConversationExecutionActivity conversationId={conversationId} />
+          ) : null}
           <div ref={bottomRef} />
         </div>
       </div>

@@ -468,6 +468,7 @@ export function ChatSidebar({
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            aria-label={t("sidebar.search")}
             placeholder={t("sidebar.search")}
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -495,83 +496,95 @@ export function ChatSidebar({
                 </div>
                 <div className="space-y-1">
                   {convs.map(conv => (
-                    <div
+                    <article
                       key={conv.id}
                       className={cn(
-                        "group flex min-h-11 cursor-pointer items-center gap-2 rounded-[var(--radius-element)] px-3 py-2 transition-colors",
+                        "group flex min-h-11 items-center gap-2 rounded-[var(--radius-element)] px-2 py-1 transition-colors",
                         selectMode && selectedIds.has(conv.id)
                           ? "bg-destructive/10"
                           : selectedConversationId === conv.id
                             ? "bg-[var(--color-accent-muted)] text-[var(--color-text-accent)]"
-                            : "hover:bg-[var(--color-overlay-hover)]"
+                            : "hover:bg-[var(--color-overlay-hover)] focus-within:bg-[var(--color-overlay-hover)]"
                       )}
-                      onClick={() => {
-                        if (selectMode) toggleSelect(conv.id);
-                        else onSelectConversation(conv.id);
-                      }}
                     >
                       {selectMode && (
                         <Checkbox
                           checked={selectedIds.has(conv.id)}
+                          aria-label={t("sidebar.selectChat", { title: conv.title })}
                           onCheckedChange={() => toggleSelect(conv.id)}
-                          onClick={e => e.stopPropagation()}
                           className="shrink-0"
                         />
                       )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                      {editingId === conv.id ? (
+                        <label className="flex min-w-0 flex-1 items-center gap-2 px-1 py-1">
                           {conv.isPinned && (
-                            <Pin className="h-3 w-3 text-muted-foreground shrink-0" />
-                          )}
-                          {editingId === conv.id ? (
-                            <Input
-                              value={editingTitle}
-                              onChange={e => setEditingTitle(e.target.value)}
-                              onKeyDown={e => {
-                                if (e.key === "Enter") submitRename();
-                                if (e.key === "Escape") setEditingId(null);
-                              }}
-                              onBlur={submitRename}
-                              onClick={e => e.stopPropagation()}
-                              className="h-6 text-sm py-0 px-1"
-                              autoFocus
+                            <Pin
+                              className="h-3 w-3 shrink-0 text-muted-foreground"
+                              aria-hidden="true"
                             />
-                          ) : (
-                            <span
-                              className="truncate text-sm font-medium"
-                              onDoubleClick={e => {
-                                if (selectMode) return;
-                                e.stopPropagation();
-                                startRename(conv.id, conv.title);
-                              }}
-                            >
+                          )}
+                          <span className="sr-only">
+                            {t("sidebar.renameChat", { title: conv.title })}
+                          </span>
+                          <Input
+                            value={editingTitle}
+                            onChange={e => setEditingTitle(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === "Enter") submitRename();
+                              if (e.key === "Escape") setEditingId(null);
+                            }}
+                            onBlur={submitRename}
+                            className="h-6 px-1 py-0 text-sm"
+                            autoFocus
+                          />
+                        </label>
+                      ) : (
+                        <button
+                          type="button"
+                          aria-label={selectMode
+                            ? t("sidebar.selectChat", { title: conv.title })
+                            : t("sidebar.openChat", { title: conv.title })}
+                          aria-current={!selectMode && selectedConversationId === conv.id ? "page" : undefined}
+                          aria-pressed={selectMode ? selectedIds.has(conv.id) : undefined}
+                          onClick={() => {
+                            if (selectMode) toggleSelect(conv.id);
+                            else onSelectConversation(conv.id);
+                          }}
+                          onDoubleClick={event => {
+                            if (selectMode) return;
+                            event.preventDefault();
+                            startRename(conv.id, conv.title);
+                          }}
+                          className="flex min-w-0 flex-1 items-center gap-2 rounded-[var(--radius-element)] px-1 py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {conv.isPinned && (
+                            <Pin className="h-3 w-3 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">
                               {conv.title}
                             </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{conv.messageCount} messages</span>
-                          {(conv as any).projectId && (
-                            <>
-                              <span>·</span>
-                              <ConversationScopeBadge
-                                projectId={(conv as any).projectId}
-                                className="h-4 px-1.5"
-                              />
-                            </>
-                          )}
-                          {conv.totalCreditsUsed &&
-                            Number(conv.totalCreditsUsed) > 0 && (
-                              <>
-                                <span>·</span>
-                                <span>
-                                  {Number(conv.totalCreditsUsed).toFixed(2)}{" "}
-                                  credits
-                                </span>
-                              </>
-                            )}
-                        </div>
-                      </div>
+                            <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>{conv.messageCount} messages</span>
+                              {(conv as any).projectId && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <ConversationScopeBadge
+                                    projectId={(conv as any).projectId}
+                                    className="h-4 px-1.5"
+                                  />
+                                </>
+                              )}
+                              {conv.totalCreditsUsed && Number(conv.totalCreditsUsed) > 0 ? (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <span>{Number(conv.totalCreditsUsed).toFixed(2)} credits</span>
+                                </>
+                              ) : null}
+                            </span>
+                          </span>
+                        </button>
+                      )}
 
                       {!selectMode && (
                         <DropdownMenu>
@@ -579,8 +592,8 @@ export function ChatSidebar({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
-                              onClick={e => e.stopPropagation()}
+                              aria-label={t("sidebar.chatActions", { title: conv.title })}
+                              className="h-8 w-8 shrink-0 p-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                             >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
@@ -614,7 +627,7 @@ export function ChatSidebar({
                           </DropdownMenuContent>
                         </DropdownMenu>
                       )}
-                    </div>
+                    </article>
                   ))}
                 </div>
               </div>

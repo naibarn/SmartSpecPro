@@ -30,6 +30,10 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "sidebar.startHere": "Start here",
         "sidebar.startHint": "New Chat starts a normal conversation. Personal Chat is locked to you and is best for receipts, bills, and private notes.",
         "sidebar.search": "Search chats...",
+        "sidebar.openChat": `Open chat: ${params?.title ?? ""}`,
+        "sidebar.selectChat": `Select chat: ${params?.title ?? ""}`,
+        "sidebar.renameChat": `Rename chat: ${params?.title ?? ""}`,
+        "sidebar.chatActions": `Actions for ${params?.title ?? ""}`,
         "sidebar.loadOlder": "Load older chats",
         "sidebar.loadingOlder": "Loading chats...",
         "sidebar.select": "Select",
@@ -153,13 +157,15 @@ describe("ChatSidebar", () => {
 
     render(
       <ChatSidebar
-        selectedConversationId={null}
+        selectedConversationId={12}
         onSelectConversation={onSelectConversation}
         onNewChat={vi.fn()}
       />
     );
 
-    fireEvent.click(screen.getByText("SPEC-224 Pilot"));
+    const chatButton = screen.getByRole("button", { name: "Open chat: SPEC-224 Pilot" });
+    expect(chatButton).toHaveAttribute("aria-current", "page");
+    fireEvent.click(chatButton);
     fireEvent.click(screen.getByRole("button", { name: "Load older chats" }));
 
     expect(onSelectConversation).toHaveBeenCalledWith(12);

@@ -187,6 +187,7 @@ const emptyQuery = {
 
 const readyWorkspaceModelCatalog = {
   state: "discovered",
+  adapterId: "codex.v1",
   observedAt: new Date().toISOString(),
   expiresAt: new Date(Date.now() + 60_000).toISOString(),
   accountProviderFingerprint: "test-account-provider",
@@ -413,7 +414,7 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByRole("option", { name: "spec224-live-pilot" })).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("2. เลือก Project Workspace"), { target: { value: '["runner-1","workspace-1"]' } });
     fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Build the pilot utility" } });
-    fireEvent.click(screen.getByRole("button", { name: "สร้างงานใหม่" }));
+    fireEvent.click(screen.getByRole("button", { name: "เริ่มพัฒนา" }));
 
     await waitFor(() => expect(createConversation).toHaveBeenCalledWith("Build the pilot utility"));
     expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 84, runnerId: "runner-1", workspaceId: "workspace-1" });
@@ -449,7 +450,7 @@ describe("UniversalControlPlanePanel", () => {
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
     fireEvent.change(screen.getByRole("textbox", { name: "Spec 224 prompt" }), { target: { value: "Add a settings page" } });
     fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
-    await waitFor(() => expect(mocks.prepareWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, mode: "prompt", prompt: "Add a settings page" }));
+    await waitFor(() => expect(mocks.prepareWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, mode: "prompt", prompt: "Add a settings page", workspaceAccessMode: "exclude_risky" }));
     expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
     await waitFor(() => expect(mocks.startWorkspaceMutateAsync).toHaveBeenCalledWith(expect.objectContaining({

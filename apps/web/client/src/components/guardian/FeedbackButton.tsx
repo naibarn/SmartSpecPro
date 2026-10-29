@@ -1519,6 +1519,7 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
             <ChatView
               conversationId={chatConversationId}
               density="compact"
+              showExecutionActivity={activePanel === "chat"}
               composerPrompt={chatPromptRequest}
               mapContextDraft={mapContextDraft}
               onRemoveMapContext={() => {
