@@ -135,16 +135,15 @@ export function VerticalDramaShotSpeakerBindingEditor({
           </p>
           {options.map((speaker, index) => (
             <article
-              key={`${speaker.speakerLabel}-${index}`}
+              key={
+                (speaker as VerticalDramaSpeakerVisualBinding).id ??
+                `speaker-${speaker.speakerLabel}-${index}`
+              }
             >
               {speakers.some(
                 option => option.speakerLabel === speaker.speakerLabel
               ) ? (
-                <label
-                  htmlFor={`speaker-cue-${shotNumber}-${index}`}
-                >
-                  {speaker.speakerLabel}
-                </label>
+                <strong>{speaker.speakerLabel}</strong>
               ) : (
                 <TextInput
                   label="ชื่อผู้พูดตามบท"
