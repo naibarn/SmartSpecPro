@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "92950351bf2f978aa1258d3afa436838694e9c1a",
+    "expected_canonical_sha": "f1a91b797c9b356b5415efc7d403340741b59d6f",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Owner refreshes ~/.config/smartspec-dev/admin-login.txt with the current development Admin password (or resets that development account through its existing recovery flow), then reruns pnpm run dev:web:verify and authenticated Chat/Task Control acceptance. Continue separately with source-linked cross-producer replay/gap recovery and global cross-host Mission/Agent session correlation. SPEC-224 still requires its real approved Child 1/2 receipts, settlement, automatic continuation, and Independent Final Verify.",
+    "next_action": "Refresh the configured local authenticated-UAT credential through the existing development account recovery path, then rerun pnpm run dev:web:verify and authenticated Chat/Task Control acceptance. The Chat activity panel now preserves a successfully loaded Job status when detail loading fails and retries only the failed read (e0e98fba226e41e19935d395b7e4e1037e901229; evidence: handoff/evidence/chat-task-detail-error-isolation-20261029.md). Correlate hosted chat.getMessages/workerJobs.observability 500s only with authenticated runtime evidence; continue source-linked multi-producer replay/gap recovery, cross-host Mission/Agent session correlation, and SPEC-224 genuine live acceptance.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "At integrated source 92950351bf2f978aa1258d3afa436838694e9c1a: Chat transcript failures are visible/retryable, execution-status query failures have direct retry, and Thread status groups sort by newest activity. Focused Chat/Task Control regressions passed 60/60. Dev tunnel public checks passed at f4fb4a75d2cc634c9bc1e139d14948eb0ac00a72. Authenticated dev browser verification is still blocked because ~/.config/smartspec-dev/admin-login.txt does not match the enabled smartspec_dev Admin password. Refresh the local verifier credential through owner access or normal dev account recovery, then rerun dev:web:verify and authenticated acceptance. Hosted chat.getMessages/workerJobs.observability 500 root cause remains unverified; multi-source replay/gap recovery, cross-host Mission/Agent session correlation, and genuine SPEC-224 live two-phase execution/settlement/final verify remain open.",
+    "resume_point": "At integrated source f1a91b797c9b356b5415efc7d403340741b59d6f, Chat transcript reads and execution-status failures have explicit retry behavior; the execution-status panel separates Job-list and Job-detail failures and preserves status if only detail fails. Focused UI regression passed 23/23 across Chat/Task Control files. Development browser verification is still blocked because the configured verifier credential does not match the enabled smartspec_dev Admin password. Refresh that local credential through owner access or normal dev recovery, then run authenticated acceptance. Hosted 500 root cause remains unverified; global immutable replay/gap recovery, cross-host Agent/Session correlation, and actual SPEC-224 two-child Runner receipts, settlement, automatic continuation and independent Final Verify remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 117,
+  "generation": 118,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -268,9 +268,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "92950351bf2f978aa1258d3afa436838694e9c1a",
+    "canonical_sha": "f1a91b797c9b356b5415efc7d403340741b59d6f",
     "integrated": true,
-    "integrated_at": "2026-10-29T22:31:42+07:00"
+    "integrated_at": "2026-10-29T22:40:00+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1386,7 +1386,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T15:33:16.480370Z",
+  "updated_at": "2026-10-29T15:44:13.954523Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
