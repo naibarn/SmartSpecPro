@@ -1,4 +1,5 @@
 import { Heading, HStack, Section, Text, VStack } from "@/components/AppPage";
+import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
@@ -18,7 +19,7 @@ function activityLabel(type: string): string {
 }
 
 /** A bounded, conversation-scoped view of the existing authorized job projection. */
-export function WorkOverview({ items, state, hasContext, fleetScope, hasMore, hasWorkspace, monitorHref, activity, activityState, snapshotAt, developer }: {
+export function WorkOverview({ items, state, hasContext, fleetScope, hasMore, hasWorkspace, monitorHref, activity, activityState, snapshotAt, developer, onRefresh, refreshing }: {
   items: WorkItem[];
   state: "loading" | "unavailable" | "ready";
   hasContext: boolean;
@@ -30,6 +31,8 @@ export function WorkOverview({ items, state, hasContext, fleetScope, hasMore, ha
   activityState: "no-task" | "loading" | "unavailable" | "ready";
   snapshotAt: string | null;
   developer: boolean;
+  onRefresh: () => void;
+  refreshing: boolean;
 }) {
   const { t, locale } = useScopedTranslation("chat");
   const attention = items.filter(item => item.operatorAttention?.required || ["failed", "expired"].includes(item.status));
@@ -53,7 +56,12 @@ export function WorkOverview({ items, state, hasContext, fleetScope, hasMore, ha
           {!hasContext ? t("taskControl.overviewNoContext") : hasWorkspace ? t("taskControl.overviewWorkspace") : t("taskControl.overviewChat")}
         </Text>
         {state === "loading" ? <Text as="p">{t("taskControl.overviewLoading")}</Text> : null}
-        {state === "unavailable" ? <Text as="p">{t("taskControl.overviewUnavailable")}</Text> : null}
+        {state === "unavailable" ? <HStack gap={2} wrap="wrap">
+          <Text as="p" role="alert">{t("taskControl.overviewUnavailable")}</Text>
+          <Button type="button" variant="outline" size="sm" onClick={onRefresh} disabled={refreshing}>
+            {refreshing ? t("taskControl.refreshing") : t("taskControl.retryWorkStatus")}
+          </Button>
+        </HStack> : null}
         <HStack as="section" gap={4} wrap="wrap" aria-label={t("taskControl.overviewTitle")}>
           <VStack as="section" gap={1}><Heading level={4}>{t("taskControl.attention")}</Heading><Text as="p">{count(attention.length)}</Text></VStack>
           <VStack as="section" gap={1}><Heading level={4}>{t("taskControl.running")}</Heading><Text as="p">{count(active.length)}</Text></VStack>

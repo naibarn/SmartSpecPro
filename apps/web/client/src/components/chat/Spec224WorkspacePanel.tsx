@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
+import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { presentCustomerError, sanitizePlatformDiagnostic } from "@shared/projectIdentityPresentation";
 import { Text } from "@/components/AppPage";
 
@@ -188,6 +189,13 @@ function runnerPlatformLabel(os?: string): string {
   return ({ windows: "Windows", linux: "Linux", macos: "macOS" } as Record<string, string>)[os ?? ""] ?? os ?? "OS ไม่ทราบ";
 }
 
+function runnerOptionLabel(runner: RunnerOption, onlineLabel: string, waitingLabel: string): string {
+  const heartbeatAt = runner.lastSeenAt ? Date.parse(runner.lastSeenAt) : Number.NaN;
+  const heartbeatFresh = Number.isFinite(heartbeatAt) && heartbeatAt <= Date.now() && Date.now() - heartbeatAt < 5 * 60_000;
+  const online = runner.readinessStatus === "online" && runner.trustState === "trusted" && heartbeatFresh;
+  return `${runner.displayName} · ${runnerPlatformLabel(runner.platform?.os)} · ${online ? onlineLabel : waitingLabel}`;
+}
+
 function imageMimeType(file: File): "image/png" | "image/jpeg" | "image/webp" | null {
   if (file.type === "image/png" || file.type === "image/jpeg" || file.type === "image/webp") return file.type;
   const extension = file.name.split(".").pop()?.toLowerCase();
@@ -225,6 +233,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   simpleMode?: boolean;
   onCreateConversation?: (title: string) => Promise<number>;
 }) {
+  const { t } = useScopedTranslation("chat");
   const { user } = useAuth();
   const trpcUtils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
@@ -870,7 +879,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             disabled={runnersQuery.isLoading || creatingTask}
           >
             <option value="">เลือก Runner</option>
-            {runners.map(runner => <option key={runner.runnerId} value={runner.runnerId}>{runner.displayName}</option>)}
+            {runners.map(runner => <option key={runner.runnerId} value={runner.runnerId}>{runnerOptionLabel(runner, t("taskControl.runnerOnline"), t("taskControl.runnerWaiting"))}</option>)}
           </select>
           {runnersQuery.error ? <p className="mt-2 text-xs text-rose-700" role="alert">โหลด Runner ไม่สำเร็จ โปรดลองใหม่หรือตรวจสอบสิทธิ์</p> : null}
           {selectedRunner ? (() => {
@@ -879,7 +888,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             const online = selectedRunner.readinessStatus === "online" && selectedRunner.trustState === "trusted" && heartbeatFresh;
             return (
               <section className="mt-2 rounded-md bg-[var(--color-background-subtle)] px-3 py-2 text-xs" aria-label="สถานะ Runner ที่เลือก">
-                <p className="font-medium">{selectedRunner.displayName} · {runnerPlatformLabel(selectedRunner.platform?.os)}{selectedRunner.platform?.machineName ? ` · ${selectedRunner.platform.machineName}` : " · ยังไม่มีชื่อเครื่องจาก Runner"} · {online ? "ออนไลน์" : selectedRunner.trustState !== "trusted" ? "ยังไม่ trust" : "ออฟไลน์หรือ heartbeat เก่า"}</p>
+                <p className="font-medium">{selectedRunner.displayName} · {runnerPlatformLabel(selectedRunner.platform?.os)}{!simpleMode && selectedRunner.platform?.machineName ? ` · ${selectedRunner.platform.machineName}` : ""} · {online ? "ออนไลน์" : selectedRunner.trustState !== "trusted" ? "ยังไม่ trust" : "ออฟไลน์หรือ heartbeat เก่า"}</p>
                 <p className="mt-1 text-[var(--color-text-secondary)]">Heartbeat: {heartbeatFresh ? `สด · ${new Date(heartbeatAt).toLocaleString()}` : selectedRunner.lastSeenAt ? `เก่า · ${new Date(heartbeatAt).toLocaleString()}` : "ไม่มีข้อมูล"}</p>
                 <p className="mt-1 text-[var(--color-text-secondary)]">Capability ACK: {selectedRunner.capabilityAckState === "applied" && selectedRunner.capabilitySnapshotPersisted && selectedRunner.capabilitySnapshotCurrent ? "applied · snapshot ปัจจุบัน" : selectedRunner.capabilityAckState === "stale" ? "snapshot เก่า ต้องรอ Runner เผยแพร่ใหม่" : "ยังไม่มี ACK/snapshot ที่ยืนยันได้"}</p>
                 {!online ? <p className="mt-1 text-amber-800" role="status">เหตุผลที่รอ: {selectedRunner.trustState !== "trusted" ? "RUNNER_NOT_TRUSTED" : selectedRunner.readinessStatus !== "online" ? selectedRunner.readinessStatus : "RUNNER_HEARTBEAT_STALE"}</p> : null}
@@ -995,6 +1004,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   emptyText="Runner ยังไม่รายงาน Harness ที่รองรับ"
                   width="100%"
                 />
+                <AstryxText type="supporting">{t("taskControl.singleHarnessGoal")}</AstryxText>
                 <Selector
                   label="AI Model"
                   value={modelPolicy === "auto" ? "auto" : selectedModelId}

@@ -1,6 +1,9 @@
 # Section 03 — WP33: unified-experience
 
-Priority: P1. Primary owners: SPEC-198/277/287.
+Priority: P1. Primary owners: SPEC-198/277/287. This implementation section
+uses the current cross-SPEC contract in
+[`unified-workbench-r02.md`](../../unified-workbench-r02.md). It refines the
+existing interfaces; it does not reopen completed backend authorities.
 
 ## Prerequisites
 
@@ -8,7 +11,29 @@ WP31/32 stable consumer contracts; preserve existing UI capabilities. Refresh ca
 
 ## Owned scope to assign
 
-`apps/web/client/src/pages/Chat.tsx; apps/web/client/src/pages/TaskObservabilityMonitor.tsx; apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx; existing navigation/router files`. Existing shared modules require one editor and versioned consumer fixtures; do not concurrently change shared schemas. Actual task packets must enumerate exact ownership_paths and preserve other sessions.
+`apps/web/client/src/pages/Chat.tsx; apps/web/client/src/pages/TaskObservabilityMonitor.tsx; apps/web/client/src/components/chat/ChatSidebar.tsx; apps/web/client/src/components/chat/ThreadOverviewSidebarPanel.tsx; apps/web/client/src/components/chat/WorkOverview.tsx; apps/web/client/src/components/chat/Spec224WorkspacePanel.tsx; apps/web/client/src/components/chat/UniversalControlPlanePanel.tsx; apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx; existing navigation/router files`. Existing shared modules require one editor and versioned consumer fixtures; do not concurrently change shared schemas. Actual task packets must enumerate exact ownership_paths and preserve other sessions.
+
+## Three implementation phases and baseline
+
+1. **Chat sessions and threads (partially implemented):** persisted conversation
+   history and child-thread navigation already exist. Keep the two identities
+   distinct and make recency, labels, route restoration and recoverable empty /
+   error states understandable. Global immutable event replay is still open.
+2. **Runner, Workspace and Harness selection (partially implemented):** consume
+   authorized Runner/Workspace registry and fresh account-verified catalog.
+   Display facts separately and explain that a Goal chooses one Harness. Do not
+   fan out to multiple Harnesses without a canonical authorization/budget/
+   lease/settlement contract.
+3. **Unified Chat, Task Control and Mission Control (partially implemented):**
+   share exact Conversation/Thread and Job links, preserve all information
+   states, provide recoverable refresh, and keep detail evidence in its
+   authorized surface. Current projections remain bounded to available pages.
+
+Current hosted console evidence reported authenticated HTTP 500 for
+`chat.getMessages` and `workerJobs.observability`; unauthenticated probes only
+establish the expected 401 and cannot identify the failing production boundary.
+Do not mark this runtime defect fixed without authenticated correlated logs or
+browser replay against a matching development runtime.
 
 ## Observable deliverable
 
@@ -33,7 +58,7 @@ Use existing retries/idempotency/lease/fencing; classify resource failures separ
 
 ## Known gaps and limits
 
-Run Astryx build/docs layout/component discovery before writing UI. Source-only review cannot close conformance. Do not remove current navigation or controls.
+Run Astryx build/docs layout/component discovery before writing UI. Source-only review cannot close conformance. Do not remove current navigation or controls. Use real status and server timestamps; a query error is not an empty-success state. Preserve explicit catalog-backed model pinning and use clear recovery actions without bypassing authorization.
 
 ## Completion evidence
 

@@ -544,6 +544,7 @@ export function UniversalControlPlanePanel({
     setTaskOffset(0);
     setTaskGroups([]);
     await Promise.all([
+      taskObservabilityQuery.refetch(),
       summaryQuery.refetch(),
       taskGroupsQuery.refetch(),
       devicesQuery.refetch(),
@@ -884,6 +885,8 @@ export function UniversalControlPlanePanel({
           activityState={taskObservabilityQuery.isLoading ? "loading" : taskObservabilityQuery.error || !taskObservabilityQuery.data ? "unavailable" : !latestConversationJob ? "no-task" : conversationTaskDetailQuery.isLoading ? "loading" : conversationTaskDetailQuery.error || !conversationTaskDetail ? "unavailable" : "ready"}
           snapshotAt={taskObservabilityQuery.data?.snapshot.asOf ?? null}
           developer={runnerViewMode === "developer"}
+          onRefresh={() => void refresh()}
+          refreshing={taskObservabilityQuery.isFetching}
         />
       ) : null}
       <section

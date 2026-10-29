@@ -523,6 +523,9 @@ export function ChatSidebar({
             {t("sidebar.threadsView")}
           </Button>
         </div>
+        <p className="mt-2 px-1 text-xs text-muted-foreground">
+          {t(sidebarView === "sessions" ? "sidebar.sessionsHint" : "sidebar.threadsHint")}
+        </p>
       </div>
 
       {/* Conversation List */}

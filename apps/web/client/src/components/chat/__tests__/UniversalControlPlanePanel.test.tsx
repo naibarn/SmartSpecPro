@@ -146,6 +146,9 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "taskControl.evidenceLabel": "Chat task evidence",
       "taskControl.snapshotTitle": "Chat model and usage snapshot",
       "taskControl.harnessOutputTitle": "Harness execution output",
+      "taskControl.singleHarnessGoal": "Choose one Harness for this Goal from the capabilities verified by the Runner. A Goal is not sent to multiple Harnesses automatically.",
+      "taskControl.runnerOnline": "ออนไลน์",
+      "taskControl.runnerWaiting": "ออฟไลน์ / รอตรวจสอบ",
       "taskControl.inspectEvidence": "Inspect this Chat’s model, usage, and Runner evidence",
       "taskControl.openFullPage": "Open full workspace",
       "taskControl.close": "Close Task Control Center",
@@ -264,12 +267,13 @@ beforeEach(() => {
 
 describe("UniversalControlPlanePanel", () => {
   it("binds the active Chat section to a selected Runner workspace without starting a run", async () => {
-    mocks.runnersQuery.mockReturnValue({ ...emptyQuery, data: { runners: [{ runnerId: "runner-1", displayName: "Windows Runner", profile: "local_device", nodeKind: "local_device", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1", toolCount: 1, capabilityCount: 1, workspaceCount: 1, workspaces: [] }] } });
+    mocks.runnersQuery.mockReturnValue({ ...emptyQuery, data: { runners: [{ runnerId: "runner-1", displayName: "Windows Runner", profile: "local_device", nodeKind: "local_device", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1", toolCount: 1, capabilityCount: 1, workspaceCount: 1, platform: { os: "linux", architecture: "x64", target: "linux-x64", machineName: "dev-host" }, workspaces: [] }] } });
     mocks.availableWorkspacesQuery.mockReturnValue({
       ...emptyQuery,
       data: { workspaces: [{ runnerId: "runner-1", workspaceId: "workspace-1", displayName: "Dev machine", status: "online", snapshotRevision: "r1" }] },
     });
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    expect(screen.getByRole("option", { name: "Windows Runner · Linux · ออนไลน์" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute(
       "href",
       "/chat?panel=control-plane&view=full&c=42",
@@ -278,6 +282,7 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ })).toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=main");
     fireEvent.change(screen.getByLabelText("1. เลือก Runner"), { target: { value: "runner-1" } });
     fireEvent.change(screen.getByLabelText("2. เลือก Project Workspace"), { target: { value: '["runner-1","workspace-1"]' } });
+    expect(screen.getByText(/Choose one Harness for this Goal/)).toBeInTheDocument();
     await waitFor(() => expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1" }));
     expect(mocks.createRunMutateAsync).not.toHaveBeenCalled();
   });
@@ -426,6 +431,9 @@ describe("UniversalControlPlanePanel", () => {
     render(<UniversalControlPlanePanel conversationId={null} fullPage onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
     expect(screen.getByText("taskControl.overviewUnavailable")).toBeVisible();
     expect(screen.getByText("taskControl.activityUnavailable")).toBeVisible();
+    const retry = screen.getByRole("button", { name: "taskControl.retryWorkStatus" });
+    fireEvent.click(retry);
+    expect(mocks.refetch).toHaveBeenCalled();
     expect(screen.queryByText("taskControl.activityUnknown")).toBeNull();
   });
 
