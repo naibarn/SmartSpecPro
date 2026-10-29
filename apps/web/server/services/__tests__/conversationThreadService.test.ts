@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { projectConversationThreadStatus } from "../conversationThreadService";
+import { projectConversationThreadStatus, projectTitleForThread } from "../conversationThreadService";
 
 const now = Date.parse("2026-10-29T12:00:00.000Z");
 
@@ -35,5 +35,14 @@ describe("conversation thread status projection", () => {
       heartbeatAt: new Date(now - 6 * 60_000),
     }), now)).toBe("STALE");
     expect(projectConversationThreadStatus(job("future_status"), now)).toBe("UNKNOWN");
+  });
+});
+
+describe("thread project title authorization", () => {
+  it("shows canonical project names only to the project owner or active member", () => {
+    expect(projectTitleForThread({ title: "SmartAIHub", ownerPrincipalId: "user:7", memberPrincipalId: null, userId: 7 })).toBe("SmartAIHub");
+    expect(projectTitleForThread({ title: "SmartAIHub", ownerPrincipalId: "user:7", memberPrincipalId: "user:9", userId: 9 })).toBe("SmartAIHub");
+    expect(projectTitleForThread({ title: "Private project", ownerPrincipalId: "user:7", memberPrincipalId: null, userId: 9 })).toBeNull();
+    expect(projectTitleForThread({ title: null, ownerPrincipalId: null, memberPrincipalId: null, userId: 9 })).toBeNull();
   });
 });

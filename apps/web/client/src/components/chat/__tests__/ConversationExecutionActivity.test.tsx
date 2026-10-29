@@ -29,6 +29,14 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "chat.executionActivityLoading": "Loading work status…",
       "chat.executionActivityUnavailable": "Work status is temporarily unavailable.",
       "chat.executionActivityRecorded": "Activity recorded",
+      "chat.executionAgent": "Agent",
+      "chat.executionWorker": "Worker",
+      "chat.executionJob": "Job",
+      "chat.executionHarness": "Harness",
+      "chat.executionModel": "Model",
+      "chat.executionRunner": "Runner",
+      "chat.executionRun": "Run",
+      "chat.executionNotRecorded": "Not recorded",
       "chat.executionOpenTaskControl": "Open Task Control",
       "taskControl.developerMode": "Developer view",
       "taskControl.simpleMode": "Simple view",
@@ -89,6 +97,23 @@ describe("ConversationExecutionActivity", () => {
     );
     await waitFor(() => expect(screen.getByText("Codex executed the test suite.")).toBeInTheDocument());
     expect(screen.getByTestId("chat-harness-output-event")).toBeInTheDocument();
+  });
+
+  it("shows the actual execution identity shared with Task Control", () => {
+    mocks.detailQuery.mockReturnValue({ data: {
+      timeline: [],
+      executionIdentity: { agent: null, agentType: "external_agent_task", harness: "codex", model: "gpt-6-luna", reasoningEffort: "high", runId: "run-224-actual" },
+      worker: { displayName: "Debian Agent Worker" },
+      runner: { displayName: "Debian Runner" },
+    }, error: null });
+    render(<ConversationExecutionActivity conversationId={241} />);
+    expect(screen.getByText("Harness").nextElementSibling).toHaveTextContent("codex");
+    expect(screen.getByText("Model").nextElementSibling).toHaveTextContent("gpt-6-luna");
+    expect(screen.getByText("Runner").nextElementSibling).toHaveTextContent("Debian Runner");
+    expect(screen.getByText("Run").nextElementSibling).toHaveTextContent("run-224-actual");
+    expect(screen.getByText("Agent").nextElementSibling).toHaveTextContent("Not recorded");
+    expect(screen.getByText("Worker").nextElementSibling).toHaveTextContent("Debian Agent Worker");
+    expect(screen.getByText("Job").nextElementSibling).toHaveTextContent("job-1");
   });
 
   it("does not request or display execution activity without a conversation", () => {

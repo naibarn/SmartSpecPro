@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { and, desc, eq, ilike, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 
-import { conversationThreads, conversations, workerJobs } from "../../drizzle/schema";
+import { canonicalProjectMemberships, canonicalProjects, conversationThreads, conversations, workerJobs } from "../../drizzle/schema";
 import { getDb } from "../db";
 
 export type ConversationThreadStatus =
@@ -174,6 +174,11 @@ function projectThread(thread: typeof conversationThreads.$inferSelect, job: Lat
   };
 }
 
+export function projectTitleForThread(input: { title: string | null; ownerPrincipalId: string | null; memberPrincipalId: string | null; userId: number }): string | null {
+  const principalId = `user:${input.userId}`;
+  return input.title && (input.ownerPrincipalId === principalId || input.memberPrincipalId === principalId) ? input.title : null;
+}
+
 /**
  * Returns one virtual legacy/main thread plus durable child threads. Status is
  * a projection of canonical worker_jobs state and is never stored separately.
@@ -330,6 +335,9 @@ export async function listRecentConversationThreads(input: {
     thread: conversationThreads,
     conversationTitle: conversations.title,
     projectId: conversations.projectId,
+    canonicalProjectTitle: canonicalProjects.title,
+    canonicalProjectOwner: canonicalProjects.ownerPrincipalId,
+    canonicalProjectMember: canonicalProjectMemberships.principalId,
     activityAt: lastActivity,
     latestJob: {
       id: rankedJobs.id,
@@ -344,6 +352,17 @@ export async function listRecentConversationThreads(input: {
     },
   }).from(conversationThreads)
     .innerJoin(conversations, eq(conversations.id, conversationThreads.conversationId))
+    .leftJoin(canonicalProjects, and(
+      eq(canonicalProjects.projectId, conversations.projectId),
+      eq(canonicalProjects.tenantId, input.tenantId),
+      eq(canonicalProjects.lifecycle, "ACTIVE"),
+    ))
+    .leftJoin(canonicalProjectMemberships, and(
+      eq(canonicalProjectMemberships.tenantId, canonicalProjects.tenantId),
+      eq(canonicalProjectMemberships.projectId, canonicalProjects.projectId),
+      eq(canonicalProjectMemberships.principalId, `user:${input.userId}`),
+      eq(canonicalProjectMemberships.lifecycle, "ACTIVE"),
+    ))
     .leftJoin(rankedJobs, and(
       eq(rankedJobs.threadId, conversationThreads.id),
       eq(rankedJobs.rank, 1),
@@ -362,6 +381,7 @@ export async function listRecentConversationThreads(input: {
       conversationId: row.thread.conversationId,
       conversationTitle: row.conversationTitle,
       projectId: row.projectId,
+      projectTitle: projectTitleForThread({ title: row.canonicalProjectTitle, ownerPrincipalId: row.canonicalProjectOwner, memberPrincipalId: row.canonicalProjectMember, userId: input.userId }),
       cursorActivityAt: activityAt.toISOString(),
     };
   });

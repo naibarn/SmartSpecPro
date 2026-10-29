@@ -11,9 +11,10 @@ budget or harness runtime.
 
 | Phase | Already present in source | Still incomplete and not accepted |
 | --- | --- | --- |
-| 1. Chat sessions and threads | Chat sidebar has paginated conversation history, visibly named Chat sessions / Work threads navigation, child-thread creation, a recent-thread overview ordered by server activity, and conversation/thread URL identity. | Session history is not yet a project-first work navigator; global project grouping, full cross-source immutable replay and gap recovery remain open. Provider-native session resume is not implied by thread selection. |
+| 1. Chat sessions and threads | Chat sidebar has paginated conversation history, visibly named Chat sessions / Work threads navigation, child-thread creation, a cross-conversation paginated thread overview grouped by execution status and authorized Project title, status-first priority with recent activity within groups, and conversation/thread URL identity. | Full cross-source immutable replay and gap recovery remain open. Provider-native session resume is not implied by thread selection. |
 | 2. Runner, Workspace and Harness choices | Task Control reads authorized Runner/Workspace registry data, capability ACK/readiness, discovered per-account model catalogs, and can choose Auto or one explicit supported Harness/model. Runner options explain display name, OS and online/waiting state; the selected device shows heartbeat, capability ACK and waiting reason. Simple mode hides machineName. Draft choices persist per user/conversation/thread. | Workspace/source provenance and some unavailable-state recovery still need a clearer, end-to-end presentation. A single Job/Goal has one selected Harness; the UI does not fan one Goal out across multiple harnesses. Concurrent multi-harness execution is not implemented or authorized by this amendment. Show multiple existing jobs/harnesses only when returned by canonical task projections. |
 | 3. Unified Chat / Task Control / Mission Control | Chat links to exact task evidence; Task Control has a work overview and start form; Mission/Task Observability has paginated task snapshots, project/SPEC filters, thread backlinks and detail evidence. | There is no compact, discoverable project/session workbench tying the three surfaces together. Mission/Task views cover only the current authorized task snapshot page and existing projection sources. Full cross-project event replay/gap recovery, a complete result return to the transcript, hosted authenticated UAT, deployment provenance, and SPEC-224 genuine Child 1/2 receipts plus Independent Final Verify remain open. API 500 reports from an authenticated browser are not root-caused by available anonymous evidence. |
+| 3. Unified Chat / Task Control / Mission Control | Chat links to exact task evidence; Task Control and the Mission/Task Observability view resolve the same canonical Job and show recorded Agent, Harness, Model, Runner, Run, Worker and Job identity without substituting a Worker/Job ID for missing Agent/Run data. Mission/Task Observability retains its authorized multi-Runner topology. | There is no compact, discoverable project/session workbench tying the three surfaces together. Mission/Task views cover only the current authorized task snapshot page and existing projection sources. Full cross-project event replay/gap recovery, a complete result return to the transcript, hosted authenticated UAT, deployment provenance, and SPEC-224 genuine Child 1/2 receipts plus Independent Final Verify remain open. API 500 reports from an authenticated browser are not root-caused by available anonymous evidence. |
 
 ## Product contract
 
@@ -142,3 +143,24 @@ exits with a named-export error for `./_core/env` before browser assertions.
 See `uwac-r06/implementation/review-loops-20261029.md` for the ten review
 passes, follow-up regression pass, evidence and remaining gaps. No hosted
 deployment or SPEC-224 live execution is claimed.
+
+## Source implementation checkpoint — 2026-10-29
+
+The follow-up source now groups the existing globally paginated authorized
+Thread projection by status and authorized Project title. Active/waiting/review
+states precede closed/error states, while rows retain server activity ordering
+within each status. The same Chat and Task Control read model now exposes
+recorded execution identity; UI fields distinguish Agent, Worker, Job and
+DevelopmentRun, and show unknown where the canonical record lacks a value.
+Authorized Runner observation remains the Mission/Task topology source. No
+duplicate session, event, Job or Run store was introduced.
+
+Verification for this checkpoint: five focused component/service test files,
+44 tests passed; the real disposable PostgreSQL conversation-thread integration
+test passed 4/4, including project-title owner scope. `git diff --check` is
+required before integration. These are source-level checks only. Hosted
+authenticated browser verification, serving revision, global cross-host
+Mission Thread board, immutable multi-source replay/gap recovery, complete
+result return to the Chat transcript, and real SPEC-224 two-child execution
+remain open. Exact evidence is in
+`../handoff/evidence/unified-thread-overview-acceptance-20261029.md`.

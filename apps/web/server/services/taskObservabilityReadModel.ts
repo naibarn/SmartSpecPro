@@ -122,6 +122,21 @@ function asIso(value: Date | string | null | undefined): string | null {
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
+export function projectExecutionIdentity(input: Record<string, unknown> | null, jobType: string) {
+  const manifest = objectValue(input?.manifest);
+  const run = objectValue(input?.spec224Run);
+  const modelSelection = objectValue(manifest?.spec224ModelSelection)
+    ?? objectValue(objectValue(run?.metadata)?.spec224ModelSelection);
+  return {
+    runId: safeText(run?.runId ?? input?.runId, 120),
+    agent: safeText(manifest?.agentName ?? manifest?.agentId, 120),
+    agentType: safeText(jobType, 80),
+    harness: safeText(manifest?.provider ?? input?.provider, 80),
+    model: safeText(modelSelection?.resolvedModelId ?? modelSelection?.selectedModelId, 160),
+    reasoningEffort: safeText(modelSelection?.reasoningEffort, 32),
+  };
+}
+
 export function projectRunnerTimelineEvent(event: {
   id: string;
   sessionId: string;
@@ -482,6 +497,7 @@ async function loadJobDetail(scope: Scope, job: typeof workerJobs.$inferSelect, 
       source: conversation ? "owned_conversation_current_config" : input?.uiSessionModel ? "job_metadata" : "unknown",
       asOf: asIso(conversation?.updatedAt) ?? asIso(job.createdAt),
     },
+    executionIdentity: projectExecutionIdentity(input, job.jobType),
     owner: { userId: job.requestedByUserId, tenantId: scope.tenantId },
     operatorAttention: job.operatorReviewRequired ? { required: true, reason: safeText(job.operatorReviewReason, 300) } : { required: false, reason: null },
     recovery: { nextRetryAt: asIso(job.nextRetryAt), retryEligible: job.status === "retry_scheduled" && Boolean(job.nextRetryAt), runnerSessionState: runnerSession?.state ?? null },

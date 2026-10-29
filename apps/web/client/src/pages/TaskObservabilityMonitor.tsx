@@ -319,6 +319,15 @@ export default function TaskObservabilityMonitor() {
                 <Text>SPEC: {detail.specId ?? "Unbound"} · binding {detail.identityBinding.status}</Text>
                 <Text>Runner: {detail.runner?.displayName ?? detail.runner?.status ?? "Unknown"} · freshness {detail.runner?.freshness ?? "unknown"}</Text>
               </HStack>
+              <HStack gap={4} wrap="wrap">
+                <Text>Agent: {detail.executionIdentity?.agent ?? "Not recorded"}</Text>
+                <Text>Harness: {detail.executionIdentity?.harness ?? "Not recorded"}</Text>
+                <Text>Model: {detail.executionIdentity?.model ?? "Not recorded"}</Text>
+                <Text>Reasoning effort: {detail.executionIdentity?.reasoningEffort ?? "Not recorded"}</Text>
+                <Text>Run: {detail.executionIdentity?.runId ?? "Not linked"}</Text>
+                <Text>Job: {selected.id}</Text>
+                <Text>Worker: {detail.worker?.displayName ?? "Not assigned"}</Text>
+              </HStack>
               {detail.operatorAttention.required ? <Text>Human attention: {detail.operatorAttention.reason ?? "required; reason unavailable"}</Text> : null}
               <Text>Recovery: {detail.recovery.retryEligible ? `retry scheduled for ${detail.recovery.nextRetryAt}` : detail.recovery.runnerSessionState ?? "no recovery action recorded"}</Text>
               <Heading level={3}>Goal progress</Heading>

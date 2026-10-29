@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskHarnessOutputEvents, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskHarnessOutputEvents, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectExecutionIdentity, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -89,6 +89,40 @@ describe("projectRunnerTimelineEvent", () => {
     expect(JSON.stringify(event)).not.toContain("secret-process-identity");
     expect(JSON.stringify(event)).not.toContain("private-host-name");
     expect(JSON.stringify(event)).not.toContain("secret-value");
+  });
+});
+
+describe("projectExecutionIdentity", () => {
+  it("projects recorded run, harness, and pinned model facts", () => {
+    expect(projectExecutionIdentity({
+      spec224Run: { runId: "run-224-live" },
+      manifest: {
+        provider: "codex",
+        spec224ModelSelection: { selectedModelId: "gpt-6-luna", resolvedModelId: "gpt-6-luna", reasoningEffort: "high" },
+      },
+    }, "external_agent_task")).toEqual({
+      runId: "run-224-live",
+      agent: null,
+      agentType: "external_agent_task",
+      harness: "codex",
+      model: "gpt-6-luna",
+      reasoningEffort: "high",
+    });
+  });
+
+  it("keeps absent execution identity unknown instead of inventing values", () => {
+    expect(projectExecutionIdentity({}, "chat_completion")).toEqual({
+      runId: null,
+      agent: null,
+      agentType: "chat_completion",
+      harness: null,
+      model: null,
+      reasoningEffort: null,
+    });
+  });
+
+  it("does not mislabel a worker task identifier as a DevelopmentRun", () => {
+    expect(projectExecutionIdentity({ manifest: { taskId: "job-224" } }, "external_agent_task").runId).toBeNull();
   });
 });
 

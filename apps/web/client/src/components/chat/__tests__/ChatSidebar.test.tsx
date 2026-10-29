@@ -62,6 +62,8 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "threads.overviewTitle": "Thread overview",
         "threads.overviewDescription": "Recent work threads",
         "threads.overviewHint": "Choose a thread to continue focused work.",
+        "threads.projectThreads": `${params?.project ?? ""} threads`,
+        "threads.projectUnlinked": "Chats without a linked project",
         "threads.recentActivityOrder": "Work threads ordered by most recent activity",
         "threads.statusFilter": "Filter by status",
         "threads.allStatuses": "All statuses",
@@ -289,11 +291,11 @@ describe("ChatSidebar", () => {
     expect(screen.getByRole("link", { name: "Open Task Control" })).toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1&jobId=job-42");
   });
 
-  it("keeps recent activity order across different work states", () => {
+  it("groups threads by status with active work above more recent failures", () => {
     mocks.mockRecentThreadsQuery.mockReturnValue({
       data: { pages: [{ items: [
-        { threadId: "new-error", title: "Just updated failure", parentThreadId: null, status: "ERROR", lastActivityAt: "2026-10-29T10:00:00.000Z", conversationId: 42, conversationTitle: "New chat", latestJob: null },
-        { threadId: "old-working", title: "Older running work", parentThreadId: null, status: "WORKING", lastActivityAt: "2026-10-29T09:00:00.000Z", conversationId: 43, conversationTitle: "Old chat", latestJob: null },
+        { threadId: "new-error", title: "Just updated failure", parentThreadId: null, status: "ERROR", lastActivityAt: "2026-10-29T10:00:00.000Z", conversationId: 42, conversationTitle: "New chat", projectId: "project-a", projectTitle: "SmartAIHub", latestJob: null },
+        { threadId: "old-working", title: "Older running work", parentThreadId: null, status: "WORKING", lastActivityAt: "2026-10-29T09:00:00.000Z", conversationId: 43, conversationTitle: "Old chat", projectId: "project-a", projectTitle: "SmartAIHub", latestJob: null },
       ], nextCursor: null }] },
       isLoading: false,
       error: null,
@@ -305,9 +307,12 @@ describe("ChatSidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Threads overview" }));
     const orderedThreads = screen.getByRole("list", { name: "Work threads ordered by most recent activity" });
     const rows = within(orderedThreads).getAllByRole("button");
-    expect(rows[0]).toHaveAccessibleName("Open Just updated failure in New chat");
-    expect(rows[0]).toHaveAttribute("aria-current", "page");
-    expect(rows[1]).toHaveAccessibleName("Open Older running work in Old chat");
+    expect(rows[0]).toHaveAccessibleName("Open Older running work in Old chat");
+    expect(rows[1]).toHaveAccessibleName("Open Just updated failure in New chat");
+    expect(screen.getAllByText("SmartAIHub", { selector: "h5" })).toHaveLength(2);
+    expect(screen.getByRole("region", { name: "Failed" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Working" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Working" }).compareDocumentPosition(screen.getByRole("region", { name: "Failed" })!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("offers retry instead of rendering a failed session query as an empty list", () => {

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { access } from "node:fs/promises";
 import postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { conversationThreads, conversations } from "../../../drizzle/schema";
+import { canonicalProjectMemberships, canonicalProjects, conversationThreads, conversations } from "../../../drizzle/schema";
 import { closeDb } from "../../db";
 import { createSpec277DisposablePostgres } from "./support/spec277DisposablePostgres";
 import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRuntimeSchema";
@@ -21,6 +21,7 @@ describe("conversation thread PostgreSQL integration", () => {
   const foreignUserId = 72;
   const mainConversationId = 571;
   const foreignConversationId = 572;
+  const projectId = randomUUID();
   const busyThreadId = randomUUID();
   const quietThreadId = randomUUID();
   const foreignThreadId = randomUUID();
@@ -33,10 +34,14 @@ describe("conversation thread PostgreSQL integration", () => {
     await fixture.assertOwned();
     writer = postgres(fixture.databaseUrl, { max: 1, connect_timeout: 3 });
     await writer.unsafe("CREATE EXTENSION IF NOT EXISTS pgcrypto");
-    await installSpec277AutoTeamRuntimeSchema(writer, [conversations, conversationThreads]);
-    await writer`INSERT INTO conversations (id, "userId", "tenantId", title) VALUES
-      (${mainConversationId}, ${ownerUserId}, ${tenantId}, 'Thread test conversation'),
-      (${foreignConversationId}, ${foreignUserId}, ${tenantId}, 'Foreign conversation')`;
+    await installSpec277AutoTeamRuntimeSchema(writer, [canonicalProjects, canonicalProjectMemberships, conversations, conversationThreads]);
+    await writer`INSERT INTO canonical_projects (project_id, tenant_id, project_type, title, owner_principal_id, lifecycle)
+      VALUES (${projectId}, ${tenantId}, 'PLATFORM_ENGINEERING', 'Authorized Platform Project', ${`user:${ownerUserId}`}, 'ACTIVE')`;
+    await writer`INSERT INTO canonical_project_memberships (tenant_id, project_id, principal_id, role, lifecycle)
+      VALUES (${tenantId}, ${projectId}, ${`user:${ownerUserId}`}, 'owner', 'ACTIVE')`;
+    await writer`INSERT INTO conversations (id, "userId", "tenantId", title, project_id) VALUES
+      (${mainConversationId}, ${ownerUserId}, ${tenantId}, 'Thread test conversation', ${projectId}),
+      (${foreignConversationId}, ${foreignUserId}, ${tenantId}, 'Foreign conversation', null)`;
     await writer`INSERT INTO conversation_threads
       (id, conversation_id, tenant_id, owner_user_id, title, idempotency_key) VALUES
       (${busyThreadId}, ${mainConversationId}, ${tenantId}, ${ownerUserId}, 'Busy thread', 'seed-busy-thread'),
@@ -123,6 +128,7 @@ describe("conversation thread PostgreSQL integration", () => {
     expect(second.items[0].threadId).not.toBe(first.items[0].threadId);
     expect([first.items[0].threadId, second.items[0].threadId]).not.toContain(foreignThreadId);
     expect(first.items[0]).toMatchObject({ conversationId: mainConversationId, conversationTitle: "Thread test conversation" });
+    expect(first.items[0].projectTitle).toBe("Authorized Platform Project");
     const working = await listRecentConversationThreads({ userId: ownerUserId, tenantId, status: "WORKING" });
     expect(working.items.some(item => item.threadId === busyThreadId)).toBe(true);
     await expect(listRecentConversationThreads({

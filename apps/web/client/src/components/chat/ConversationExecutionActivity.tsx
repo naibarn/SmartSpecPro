@@ -88,10 +88,30 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
       ) : failed ? (
         <p className="mt-2 text-sm text-muted-foreground">{t("chat.executionActivityUnavailable")}</p>
       ) : selectedJob ? (
-        <p className="mt-2 text-sm text-muted-foreground">
-          {activity ? activityLabel(activity.type, t) : t("chat.executionActivityRecorded")}
-          {formattedTime ? ` · ${formattedTime}` : ""}
-        </p>
+        <>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {activity ? activityLabel(activity.type, t) : t("chat.executionActivityRecorded")}
+            {formattedTime ? ` · ${formattedTime}` : ""}
+          </p>
+          {detailQuery.data ? (
+            <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-muted-foreground sm:grid-cols-4 lg:grid-cols-6">
+              <dt className="font-medium">{t("chat.executionAgent")}</dt>
+              <dd>{detailQuery.data.executionIdentity?.agent ?? t("chat.executionNotRecorded")}</dd>
+              <dt className="font-medium">{t("chat.executionHarness")}</dt>
+              <dd>{detailQuery.data.executionIdentity?.harness ?? t("chat.executionNotRecorded")}</dd>
+              <dt className="font-medium">{t("chat.executionModel")}</dt>
+              <dd>{detailQuery.data.executionIdentity?.model ?? t("chat.executionNotRecorded")}</dd>
+              <dt className="font-medium">{t("chat.executionRunner")}</dt>
+              <dd>{detailQuery.data.runner?.displayName ?? t("chat.executionNotRecorded")}</dd>
+              <dt className="font-medium">{t("chat.executionRun")}</dt>
+              <dd>{detailQuery.data.executionIdentity?.runId ?? t("chat.executionNotRecorded")}</dd>
+              <dt className="font-medium">{t("chat.executionJob")}</dt>
+              <dd>{selectedJob.id}</dd>
+              <dt className="font-medium">{t("chat.executionWorker")}</dt>
+              <dd>{detailQuery.data.worker?.displayName ?? t("chat.executionNotRecorded")}</dd>
+            </dl>
+          ) : null}
+        </>
       ) : null}
       <Button asChild variant="link" className="mt-1 h-auto px-0 py-1 text-sm">
         <a href={taskControlHref(conversationId, threadId)}>{t("chat.executionOpenTaskControl")}</a>
