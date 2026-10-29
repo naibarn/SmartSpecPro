@@ -300,7 +300,6 @@ import {
   VdSchemaValidationError as ClipDialogueSchemaValidationError,
   RateLimitExceededError as ClipDialogueRateLimitExceededError,
   appendPresetVisualIdentityStyleTokensToMotionPrompt,
-  buildCustomCharacterIdentityLockFragments,
   resolveScreenCallerCharacterNames,
   // Multi-character reference images (multi-character disambiguation fix,
   // `polished-toasting-gadget.md`) — type-only, shared by
@@ -555,11 +554,7 @@ import type {
   VdMotionProfile,
 } from "@shared/verticalDramaSeries";
 import {
-  addVerticalDramaVariantCharacterDescriptionAliases,
-  canonicalizeVerticalDramaCharacterDescriptionOverrideKeys,
-  normalizeVerticalDramaCharacterDescriptionOverrides,
   resolveVerticalDramaSpeakerIdentity,
-  type VerticalDramaCharacterDescriptionOverrides,
   type VerticalDramaSpeakerIdentityCandidate,
 } from "@shared/verticalDramaSeries/castPositionLock";
 // Model-family-aware, vision-grounded video prompt quality upgrade — the
@@ -1249,11 +1244,6 @@ async function loadEnhancedShotContext(input: {
     rawStoryboardShot,
     input.shotNumber
   );
-  const characterDescriptionOverrides =
-    normalizeVerticalDramaCharacterDescriptionOverrides(
-      frame?.characterDescriptionOverrides,
-      frame?.requiredCharacterRefs ?? []
-    );
   const shotReferenceRoles = frame
     ? resolveExplicitShotReferenceRoles(storyboard, input.shotNumber, frame)
     : {
@@ -1376,18 +1366,6 @@ async function loadEnhancedShotContext(input: {
       speakerNameMap.set(r.characterKey.toLowerCase(), r.name);
     }
   }
-  const promptCharacterDescriptionOverrides =
-    addVerticalDramaVariantCharacterDescriptionAliases(
-      characterDescriptionOverrides,
-      rosterRows.map(character => ({
-        characterKey: character.characterKey,
-        characterId: String(character.id),
-        parentCharacterId:
-          character.parentCharacterId != null
-            ? String(character.parentCharacterId)
-            : undefined,
-      }))
-    );
   const speakerVisualBindings = getCurrentVerticalDramaSpeakerVisualBindings(
     frame?.speakerVisualBindings,
     frame?.approvedMediaAssetId,
@@ -1632,7 +1610,6 @@ async function loadEnhancedShotContext(input: {
       ...storyboardShot,
       characterIds,
       screenCallerCharacterRefs,
-      characterDescriptionOverrides: promptCharacterDescriptionOverrides,
       visualCastPolicy,
       clipNumber: (clip as { clipNumber?: number }).clipNumber,
       sourceShotNumbers:
@@ -1676,7 +1653,6 @@ async function loadEnhancedShotContext(input: {
     continuity: {
       storyboardRevision: row.updatedAt.toISOString(),
       storyboardShot,
-      characterDescriptionOverrides: promptCharacterDescriptionOverrides,
       visualCastPolicy,
       episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
       episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
@@ -1685,7 +1661,6 @@ async function loadEnhancedShotContext(input: {
     },
     mediaBundle,
     visionReferences,
-    characterDescriptionOverrides: promptCharacterDescriptionOverrides,
     targetVideoModel,
     authoringModel,
     nativeAudioEnabled: pack.nativeAudioEnabled === true,
@@ -11337,7 +11312,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
    * forwards it to `generateVerticalDramaShotVideoPromptSpeakerSwitch`).
    */
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
-  characterDescriptionOverrides?: Record<string, string>;
   barrierMultiView?: ReturnType<typeof normalizeVerticalDramaBarrierMultiView>;
   barrierReferenceImage?: { url: string; name?: string };
   /**
@@ -11418,7 +11392,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     extraDialogueCreditsUsed,
     subShotWindows,
     characterReferenceImages,
-    characterDescriptionOverrides,
     barrierMultiView,
     barrierReferenceImage,
     locationReferenceImage,
@@ -11453,7 +11426,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       imageUrl,
       imagePrompt,
       characterReferenceImages,
-      characterDescriptionOverrides,
       barrierReferenceImage,
       locationReferenceImage,
       qualityLoop,
@@ -11578,10 +11550,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
           .map(l => l.lineTh.trim())
           .filter(Boolean)
       : []),
-    ...buildCustomCharacterIdentityLockFragments(
-      characterDescriptionOverrides,
-      characterNameByKey ?? new Map()
-    ),
   ];
   const qc = await ensurePromptWithinLimit({
     kind: "video",
@@ -17960,189 +17928,6 @@ export const verticalDramaEpisodesRouter = router({
         publicUrl: ctx.publicUrl,
       });
       return { ...result, sourceMediaAssetId };
-    }),
-
-  /**
-   * Persist optional, shot-local identity cues for dialogue speakers. These
-   * cues are user-authored facts (for example, "woman wearing an apron") and
-   * add detail to the detected speaker mapping for the named character. Any
-   * existing video prompts for the shot are discarded because they were
-   * generated without the new identity fact.
-   */
-  setShotCharacterDescriptionOverrides: verticalDramaProcedure
-    .input(
-      z.object({
-        seriesId: z.string().min(1),
-        episodeId: z.string().min(1),
-        shotNumber: z.number().int().positive(),
-        overrides: z.record(
-          z.string().trim().min(1).max(120),
-          z.string().trim().max(240)
-        ),
-      })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const tenantId = requireTenantId(ctx.tenantId);
-      const userId = ctx.user.id;
-      const seriesId = parseId(input.seriesId, "series id");
-      const episodeId = parseId(input.episodeId, "episode id");
-      await loadOwnedEpisode({
-        tenantId,
-        userId,
-        seriesId,
-        episodeId,
-      });
-      // Serialize this JSON snapshot update with speaker mapping saves. Both
-      // controls edit the same frame, so the latest locked row must be the
-      // source of truth or one fast click can erase the other field.
-      return db.transaction(async tx => {
-        const [freshRow] = await tx
-          .select()
-          .from(verticalDramaEpisodes)
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          )
-          .for("update")
-          .limit(1);
-        const plan =
-          (freshRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
-          null;
-        const frameIndex =
-          plan?.frames?.findIndex(
-            frame => frame.shotNumber === input.shotNumber
-          ) ?? -1;
-        if (!freshRow || !plan || frameIndex < 0) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "ไม่พบภาพเริ่มต้นของช็อตนี้",
-          });
-        }
-        const frame = plan.frames[frameIndex];
-        const characterRows = await tx
-          .select({
-            id: verticalDramaCharacters.id,
-            characterKey: verticalDramaCharacters.characterKey,
-            parentCharacterId: verticalDramaCharacters.parentCharacterId,
-          })
-          .from(verticalDramaCharacters)
-          .where(
-            and(
-              eq(verticalDramaCharacters.tenantId, tenantId),
-              eq(verticalDramaCharacters.userId, userId),
-              eq(verticalDramaCharacters.seriesId, seriesId)
-            )
-          );
-        const characterRefs = characterRows.map(character => ({
-          characterKey: character.characterKey,
-          characterId: String(character.id),
-          parentCharacterId:
-            character.parentCharacterId != null
-              ? String(character.parentCharacterId)
-              : undefined,
-        }));
-        const canonicalInputOverrides =
-          canonicalizeVerticalDramaCharacterDescriptionOverrideKeys(
-            input.overrides,
-            frame.requiredCharacterRefs ?? [],
-            characterRefs
-          );
-        const submittedCharacterKeys = Object.entries(canonicalInputOverrides)
-          .filter(([, description]) => description.trim().length > 0)
-          .map(([key]) => key.trim());
-        const overrides = normalizeVerticalDramaCharacterDescriptionOverrides(
-          canonicalInputOverrides,
-          frame.requiredCharacterRefs ?? []
-        );
-        const rejectedCharacterKeys = submittedCharacterKeys.filter(
-          key => !Object.hasOwn(overrides, key)
-        );
-        if (rejectedCharacterKeys.length > 0) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `บันทึกรายละเอียดไม่ได้: ตัวละคร ${rejectedCharacterKeys.join(", ")} ไม่อยู่ในรายชื่อตัวละครของช็อตนี้ กรุณาโหลดหน้าใหม่แล้วลองอีกครั้ง`,
-          });
-        }
-        const updatedFrame = {
-          ...frame,
-          ...(Object.keys(overrides).length > 0
-            ? { characterDescriptionOverrides: overrides }
-            : { characterDescriptionOverrides: undefined }),
-        };
-        const updatedPlan: VerticalDramaStartFramePlan = {
-          ...plan,
-          frames: plan.frames.map((entry, index) =>
-            index === frameIndex ? updatedFrame : entry
-          ),
-        };
-        const existingPack =
-          freshRow.motionPromptPack as VerticalDramaMotionPromptPack | null;
-        const updatedPack = existingPack
-          ? {
-              ...existingPack,
-              clips: existingPack.clips.flatMap(clip => {
-                const affected =
-                  clip.sourceShotNumbers?.includes(input.shotNumber) ||
-                  clip.parentShotNumber === input.shotNumber ||
-                  clip.clipNumber === input.shotNumber;
-                if (!affected) return [clip];
-                const invalidated = invalidateVideoPromptVariantsOnInputChange(
-                  clip as unknown as Record<string, unknown>,
-                  "character_identity_override_changed"
-                );
-                return invalidated === clip ? [] : [invalidated as typeof clip];
-              }),
-            }
-          : existingPack;
-        const [savedRow] = await tx
-          .update(verticalDramaEpisodes)
-          .set({
-            startFramePlan: updatedPlan,
-            ...(updatedPack ? { motionPromptPack: updatedPack } : {}),
-            updatedAt: new Date(),
-          })
-          .where(
-            and(
-              eq(verticalDramaEpisodes.id, episodeId),
-              eq(verticalDramaEpisodes.tenantId, tenantId),
-              eq(verticalDramaEpisodes.userId, userId),
-              eq(verticalDramaEpisodes.seriesId, seriesId)
-            )
-          )
-          .returning({ startFramePlan: verticalDramaEpisodes.startFramePlan });
-        const savedPlan =
-          (savedRow?.startFramePlan as VerticalDramaStartFramePlan | null) ??
-          null;
-        const savedFrame = savedPlan?.frames?.find(
-          entry => entry.shotNumber === input.shotNumber
-        );
-        const savedOverrides = normalizeVerticalDramaCharacterDescriptionOverrides(
-          savedFrame?.characterDescriptionOverrides,
-          frame.requiredCharacterRefs ?? []
-        );
-        const overridesWereSaved =
-          Object.keys(savedOverrides).length === Object.keys(overrides).length &&
-          Object.entries(overrides).every(
-            ([key, description]) => savedOverrides[key] === description
-          );
-        if (
-          !savedPlan ||
-          !overridesWereSaved
-        ) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "บันทึกรายละเอียดตัวละครไม่สำเร็จ กรุณาลองอีกครั้ง",
-          });
-        }
-        return {
-          startFramePlan: savedPlan,
-          overrides: savedOverrides as VerticalDramaCharacterDescriptionOverrides,
-        };
-      });
     }),
 
   /**
@@ -28837,11 +28622,6 @@ export const verticalDramaEpisodesRouter = router({
           ]),
           activeVideoAnchorAssetId
         );
-      const characterDescriptionOverrides =
-        normalizeVerticalDramaCharacterDescriptionOverrides(
-          frame?.characterDescriptionOverrides,
-          frame?.requiredCharacterRefs ?? []
-        );
       const requiresSpeakerVisualBindings =
         !barrierMultiView &&
         (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
@@ -29075,7 +28855,6 @@ export const verticalDramaEpisodesRouter = router({
             extraDialogueCreditsUsed,
             subShotWindows: subShotDecision.windows,
             characterReferenceImages: splitShotVideoCharacterReferenceImages,
-            characterDescriptionOverrides,
             visualCastPolicy,
             barrierMultiView,
             barrierReferenceImage,
@@ -29133,7 +28912,6 @@ export const verticalDramaEpisodesRouter = router({
           imageUrl,
           imagePrompt: frame?.imagePrompt,
           characterReferenceImages: shotVideoCharacterReferenceImages,
-          characterDescriptionOverrides,
           barrierReferenceImage,
           motionContractsEnabled,
           locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
@@ -29326,10 +29104,6 @@ export const verticalDramaEpisodesRouter = router({
         ...(finalVideoCapabilities.nativeAudioDialogue === true
           ? dialogueLines.map(l => l.lineTh.trim()).filter(Boolean)
           : []),
-        ...buildCustomCharacterIdentityLockFragments(
-          characterDescriptionOverrides,
-          shotVideoCharacterNameByKey
-        ),
       ];
       const shotVideoPromptQc = await ensurePromptWithinLimit({
         kind: "video",

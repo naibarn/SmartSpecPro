@@ -526,7 +526,7 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
     expect(source).toContain("enhancedReadinessFrameKey,");
   });
 
-  it("rechecks Enhanced readiness when shot-local character identity overrides are saved", () => {
+  it("rechecks Enhanced readiness when detected speaker mappings are saved", () => {
     const source = fs.readFileSync(
       path.resolve(__dirname, "../VerticalDramaEpisodePage.tsx"),
       "utf8"
@@ -535,7 +535,8 @@ describe("VerticalDramaEpisodePage prompt + image flow", () => {
       source.indexOf("const enhancedReadinessFrameKey = useMemo("),
       source.indexOf("const enhancedReadinessShotNumbers = useMemo(")
     );
-    expect(frameKey).toContain("frame.characterDescriptionOverrides");
+    expect(frameKey).toContain("frame.speakerVisualBindings");
+    expect(frameKey).not.toContain("characterDescriptionOverrides");
     expect(source).toContain("enhancedReadinessFrameKey,");
   });
 
