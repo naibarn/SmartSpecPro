@@ -26,6 +26,7 @@ import { CloudflareLiveMissionStatus } from "./CloudflareLiveMissionStatus";
 const PROJECT_WIKI_APP_ID = "app_project_wiki_pages";
 const ENVIRONMENTS = ["preview", "staging", "production"] as const;
 const CLOUDFLARE_PRODUCTION_WORKER_ID = "smartspec-cloudflare-runtime";
+const STAGING_RENEWAL_PREFLIGHT_STALL_MS = 20_000;
 
 type DeploymentTarget = {
   id: string;
@@ -510,6 +511,7 @@ export default function AdminDeploymentTargets() {
   const [stagingConfirmation, setStagingConfirmation] = useState<StagingConfirmation | null>(null);
   const [stagingActionRunning, setStagingActionRunning] = useState(false);
   const [stagingActionStatus, setStagingActionStatus] = useState<StagingActionStatus | null>(null);
+  const [stagingRenewalPreflightStalled, setStagingRenewalPreflightStalled] = useState(false);
   const stagingActionLock = useRef(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery(undefined, { retry: 1, refetchOnWindowFocus: true });
@@ -701,6 +703,15 @@ export default function AdminDeploymentTargets() {
     tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef,
   }, { enabled: validScope && environment === "staging" && stagingOriginConfiguration.data?.status === "EXPIRED",
     refetchInterval: query => query.state.data?.existingJob && !["succeeded", "failed", "cancelled", "dead_letter"].includes(query.state.data.existingJob.status) ? 2_000 : false });
+  useEffect(() => {
+    if (!stagingDatabaseRenewal.isFetching) {
+      setStagingRenewalPreflightStalled(false);
+      return;
+    }
+    setStagingRenewalPreflightStalled(false);
+    const timeout = window.setTimeout(() => setStagingRenewalPreflightStalled(true), STAGING_RENEWAL_PREFLIGHT_STALL_MS);
+    return () => window.clearTimeout(timeout);
+  }, [stagingDatabaseRenewal.isFetching, tenantId, projectId, currentStagingConfigRef]);
   const enabledCloudflareTargets = cloudflareTargets.filter(target => target.enabled);
   const isConflict = enabledCloudflareTargets.length > 1;
   const canCreate = validScope && !targetsQuery.isLoading && !targetsQuery.isError && !isConflict && enabledCloudflareTargets.length === 0;
@@ -1860,12 +1871,15 @@ export default function AdminDeploymentTargets() {
                       "ปุ่มเตรียม Staging ถูกปิดโดยตั้งใจ เพราะ immutable configuration และ lease ของฐานข้อมูล private หมดอายุแล้ว ต้องมี receipt ฐานข้อมูลชุดใหม่ที่ตรวจสอบแล้วและ configuration version ใหม่ก่อน จึงจะ activate profile ได้ ปุ่มตรวจซ้ำด้านล่างเป็นการอ่านอย่างเดียว ไม่สร้าง job และไม่เปลี่ยนทรัพยากร Cloudflare",
                     )}</p>
                     <Button type="button" variant="outline" size="sm" disabled={stagingOriginConfiguration.isFetching || stagingDeployPreflight.isFetching ||
-                      stagingRuntimeReadiness.isFetching || stagingDatabaseRenewal.isFetching || stagingActionRunning}
+                      stagingRuntimeReadiness.isFetching || (stagingDatabaseRenewal.isFetching && !stagingRenewalPreflightStalled) || stagingActionRunning}
                       onClick={() => requestStagingConfirmation({
                         title: text("Recheck Staging configuration", "ตรวจ config Staging ซ้ำ"),
                         description: text("Read-only: refresh the saved configuration, database lease preflight, deploy preflight, and Worker readiness. This creates no Job and changes no Cloudflare resources.", "อ่านอย่างเดียว: โหลด config, ตรวจ lease ฐานข้อมูล, deploy preflight และ readiness ของ Worker ใหม่ ไม่สร้าง Job และไม่เปลี่ยน Cloudflare resource"),
                         confirmLabel: text("Recheck now", "เริ่มตรวจซ้ำ"),
                         run: async () => {
+                          if (stagingRenewalPreflightStalled) {
+                            await utils.infrastructure.getCloudflareStagingPrivateDatabaseRenewalPreflight.cancel();
+                          }
                           await refreshTargets();
                           const results = await Promise.all([stagingOriginConfiguration.refetch(), stagingDeployPreflight.refetch(),
                             stagingRuntimeReadiness.refetch(), stagingDatabaseRenewal.refetch()]);
@@ -1873,9 +1887,15 @@ export default function AdminDeploymentTargets() {
                           return results;
                         },
                       })}>
-                      {text("Recheck Staging configuration (read-only)", "ตรวจ config Staging ซ้ำ (อ่านอย่างเดียว)")}
+                      {stagingRenewalPreflightStalled
+                        ? text("Retry Staging check (read-only)", "ตรวจ Staging ซ้ำ (อ่านอย่างเดียว)")
+                        : text("Recheck Staging configuration (read-only)", "ตรวจ config Staging ซ้ำ (อ่านอย่างเดียว)")}
                     </Button>
                     {stagingDatabaseRenewal.isLoading ? <p role="status">{text("Checking the existing database lease and Cloudflare resource identities…", "กำลังตรวจ lease ฐานข้อมูลและรหัส resource Cloudflare เดิม…")}</p> : null}
+                    {stagingRenewalPreflightStalled ? <p role="alert">{text(
+                      "The read-only check has taken over 20 seconds. No renewal Job was created and no Cloudflare resources were changed. Use “Retry Staging check” above to cancel the stalled read and safely check again.",
+                      "การตรวจแบบอ่านอย่างเดียวใช้เวลาเกิน 20 วินาที ยังไม่มีการสร้าง Job ต่ออายุหรือเปลี่ยน Cloudflare resource ให้กด “ตรวจ Staging ซ้ำ” ด้านบนเพื่อยกเลิกคำขออ่านที่ค้างแล้วตรวจใหม่อย่างปลอดภัย",
+                    )}</p> : null}
                     {stagingDatabaseRenewal.isError ? <p role="alert"><code>PRIVATE_DATABASE_RENEWAL_PREFLIGHT_UNAVAILABLE</code> · {text("The read-only renewal check did not complete. Retry the check before authorizing anything.", "ตรวจข้อมูลก่อนต่ออายุไม่สำเร็จ ให้ตรวจซ้ำก่อนอนุมัติ")}</p> : null}
                     {stagingDatabaseRenewal.data ? (() => {
                       const renewal = stagingDatabaseRenewal.data;

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AdminDeploymentTargets from "./AdminDeploymentTargets";
@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   stagingRenewalSubmissionFailure: null as Error | null,
   finalizeStagingDatabaseRenewal: vi.fn(),
   stagingDatabaseRenewal: null as any,
+  stagingRenewalFetching: false,
   prepareProductionQueue: vi.fn(),
   prepareProductionDatabase: vi.fn(),
   resumeProductionDatabase: vi.fn(),
@@ -52,6 +53,7 @@ const mocks = vi.hoisted(() => ({
   refetchStagingPreflight: vi.fn(),
   refetchStagingRuntimeReadiness: vi.fn(),
   refetchStagingDatabaseRenewal: vi.fn(),
+  cancelStagingDatabaseRenewal: vi.fn(),
   refetchStagingOriginConfiguration: vi.fn(),
   refetchProductionRuntimeReadiness: vi.fn(),
   refetchProductionProviderInventory: vi.fn(),
@@ -90,7 +92,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareStagingDeployPreflight: { invalidate: mocks.invalidate },
       getCloudflareStagingRuntimeReadiness: { invalidate: mocks.invalidate },
       getCloudflareOriginConfiguration: { invalidate: mocks.invalidate, fetch: mocks.fetchOriginConfiguration },
-      getCloudflareStagingPrivateDatabaseRenewalPreflight: { invalidate: mocks.invalidate },
+      getCloudflareStagingPrivateDatabaseRenewalPreflight: { invalidate: mocks.invalidate, cancel: mocks.cancelStagingDatabaseRenewal },
       getCloudflareProductionRuntimeReadiness: { invalidate: mocks.invalidate },
       getCloudflareProductionProviderInventory: { invalidate: mocks.invalidate },
       getCloudflareProductionQueueJobStatus: { invalidate: mocks.invalidate },
@@ -107,8 +109,9 @@ vi.mock("@/lib/trpc", () => ({
       listProviderDeploymentTargets: { useQuery: (input: { environment: string }) => ({ data: input.environment === "production" ? mocks.targets : (mocks.stagingTargets.length ? mocks.stagingTargets : mocks.targets), isLoading: false, isError: mocks.targetsError, isFetching: false }) },
       getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: mocks.stagingPreflight, isLoading: false, isError: false, refetch: mocks.refetchStagingPreflight }) },
       getCloudflareOriginConfiguration: { useQuery: () => ({ data: mocks.originConfiguration, isLoading: false, isError: mocks.originConfigurationError, refetch: mocks.refetchStagingOriginConfiguration }) },
-      getCloudflareStagingPrivateDatabaseRenewalPreflight: { useQuery: () => ({ data: mocks.stagingDatabaseRenewal, isLoading: false,
-        isFetching: false, isError: false, refetch: mocks.refetchStagingDatabaseRenewal }) },
+      getCloudflareStagingPrivateDatabaseRenewalPreflight: { useQuery: () => ({ data: mocks.stagingDatabaseRenewal,
+        isLoading: mocks.stagingRenewalFetching && !mocks.stagingDatabaseRenewal,
+        isFetching: mocks.stagingRenewalFetching, isError: false, refetch: mocks.refetchStagingDatabaseRenewal }) },
       getCloudflareStagingRuntimeReadiness: { useQuery: () => ({ data: mocks.stagingRuntime, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchStagingRuntimeReadiness }) },
       getCloudflareProductionRuntimeReadiness: { useQuery: () => ({ data: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", environment: "production", activation: "disabled", transport: "queues", missing: ["HYPERDRIVE", "JOB_QUEUE"], unconfigured: ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"], applicationIngress: { enabled: false, ready: false, missing: ["CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", "NODE_HTTP", "PYTHON_HTTP"] }, jobHandlerConfigured: false, reason: "CLOUDFLARE_PRODUCTION_WORKER_RUNTIME_NOT_READY" }, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionRuntimeReadiness }) },
       getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: mocks.productionInventoryStatus, checkedAt: "2026-10-24T00:00:00.000Z",
@@ -297,6 +300,7 @@ describe("AdminDeploymentTargets", () => {
     ], isLoading: false, isSuccess: true, isError: false, isFetching: false, refetch: vi.fn() };
     mocks.targets = [];
     mocks.stagingTargets = [];
+    mocks.stagingRenewalFetching = false;
     mocks.targetsError = false;
     mocks.deploymentCredentialState = { status: "CONFIGURED", savedAt: "2026-10-24T09:30:49.037Z" };
     mocks.latestProductionQueueJob = null;
@@ -771,6 +775,41 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
     expect(await screen.findByText(/Canonical Job accepted/)).toBeInTheDocument();
     expect(screen.getAllByText("77777777-7777-4777-8777-777777777777")).toHaveLength(2);
+  });
+
+  it("restores an explicit read-only retry after the staging renewal preflight stalls", async () => {
+    const user = userEvent.setup();
+    const configurationRef = `cf-origin:${"a".repeat(64)}`;
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_EXPIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = { status: "EXPIRED", configurationRef,
+      descriptor: { nativeResources: { privateDatabase: { provisionJobId: "11111111-1111-4111-8111-111111111111" } } } };
+    mocks.stagingDatabaseRenewal = null;
+    mocks.refetchStagingOriginConfiguration.mockResolvedValue({ isError: false });
+    mocks.refetchStagingPreflight.mockResolvedValue({ isError: false });
+    mocks.refetchStagingRuntimeReadiness.mockResolvedValue({ isError: false });
+    mocks.refetchStagingDatabaseRenewal.mockResolvedValue({ isError: false });
+
+    const { rerender } = render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    mocks.stagingRenewalFetching = true;
+    vi.useFakeTimers();
+    rerender(<AdminDeploymentTargets />);
+    expect(screen.getByText(/Checking the existing database lease/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recheck Staging configuration (read-only)" })).toBeDisabled();
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+    expect(screen.getByText(/The read-only check has taken over 20 seconds/)).toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: "Retry Staging check (read-only)" });
+    expect(retry).toBeEnabled();
+    await act(async () => { retry.click(); });
+    expect(screen.getByRole("dialog")).toHaveTextContent("Read-only");
+    await act(async () => { screen.getByRole("button", { name: "Recheck now" }).click(); });
+    expect(mocks.refetchStagingDatabaseRenewal).toHaveBeenCalled();
+    expect(mocks.cancelStagingDatabaseRenewal).toHaveBeenCalledOnce();
+    expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
+    expect(mocks.invalidate).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 
   it("shows the sanitized failing stage when lease renewal preflight cannot complete", async () => {
