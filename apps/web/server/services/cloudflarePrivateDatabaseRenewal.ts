@@ -36,6 +36,11 @@ export function privateDatabaseRenewalPlanFailureDetail(error: unknown): string 
   const code = SAFE_ZOD_CODES.has(issue.code) ? issue.code : "invalid";
   return `${path || "plan"} (${code})`;
 }
+export function privateDatabaseProviderFailureDetail(error: unknown): string | null {
+  const detail = (error as { diagnosticDetail?: unknown } | null)?.diagnosticDetail;
+  return typeof detail === "string" && /^(hyperdrive|ca|accessApplication|serviceToken|accessPolicy|dnsRecord|tunnel|zone)\.[a-zA-Z0-9_.]+ \(mismatch\)$/.test(detail)
+    ? detail : null;
+}
 function reason(error: unknown): string {
   const code = error instanceof Error ? error.message : "";
   if (/^[A-Z0-9_]+$/.test(code)) return code;
@@ -49,9 +54,10 @@ async function atStage<T>(stage: string, operation: () => Promise<T>): Promise<T
     throw Object.assign(new Error(stage === "PLAN_BINDING" && error instanceof ZodError
       ? "PRIVATE_DATABASE_RENEWAL_PLAN_BINDING_INVALID" : reason(error)), {
       preflightStage: stage,
-      ...(stage === "PLAN_BINDING" ? { preflightFailureDetail: privateDatabaseRenewalPlanFailureDetail(error) } : {}),
+      ...(stage === "PLAN_BINDING" ? { preflightFailureDetail: privateDatabaseRenewalPlanFailureDetail(error) } :
+        stage === "CLOUDFLARE_PROVIDER_READBACK" ? { preflightFailureDetail: privateDatabaseProviderFailureDetail(error) } : {}),
     });
-  }
+}
 }
 
 async function verifyExpiredRole(db: DrizzleDB, plan: PrivateDatabaseRenewalPlan["sourcePlan"], now = Date.now()) {

@@ -1853,7 +1853,7 @@ export default function AdminDeploymentTargets() {
                       return <VStack gap={1} role="group" aria-label={text("Staging database lease renewal", "การต่ออายุ lease ฐานข้อมูล Staging")}>
                         <p><strong>{text("Database lease renewal", "ต่ออายุ lease ฐานข้อมูล")}</strong> · {renewal.ready ? text("READY", "พร้อมอนุมัติ") : renewal.reason}</p>
                         {!renewal.ready && renewal.failureStage ? <p role="status">{text("Blocking stage", "ขั้นตอนที่ติดปัญหา")}: <code>{renewal.failureStage}</code></p> : null}
-                        {!renewal.ready && renewal.failureDetail ? <p role="status">{text("Validation detail (field and rule only)", "รายละเอียดตรวจสอบ (แสดงเฉพาะ field และกฎ)")}: <code>{renewal.failureDetail}</code></p> : null}
+                        {!renewal.ready && renewal.failureDetail ? <p role="status">{text("Read-only diagnostic (field and check only)", "รายละเอียดตรวจสอบแบบอ่านอย่างเดียว (แสดงเฉพาะ field และผลตรวจ)")}: <code>{renewal.failureDetail}</code></p> : null}
                         {plan ? <>
                           <p>{text("Existing scope", "ขอบเขต resource เดิม")}: <code>{plan.sourcePlan.namespace}</code> · <code>{plan.sourceProvisionJobId}</code></p>
                           <details>

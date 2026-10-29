@@ -18,7 +18,9 @@ export const privateDatabaseBindingSchema = z.object({
 }).strict().refine(value => value.planDigest === privateDatabasePlanDigest(value.plan));
 export type PrivateDatabaseBinding = z.infer<typeof privateDatabaseBindingSchema>;
 const ids = ["hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId"] as const;
-function denied(code: string): never { throw Object.assign(new Error(code), { diagnosticCode: code, class: "permanent" }); }
+function denied(code: string, diagnosticDetail?: string): never {
+  throw Object.assign(new Error(code), { diagnosticCode: code, class: "permanent", ...(diagnosticDetail ? { diagnosticDetail } : {}) });
+}
 
 export function validatePrivateDatabaseBinding(value: PrivateDatabaseBinding, scope: { tenantId: string; projectId: string; expiresAt: string }, now = Date.now()) {
   const descriptor = privateDatabaseBindingSchema.parse(value);
@@ -125,19 +127,48 @@ export async function verifyPrivateDatabaseProviderResources(input: {
     caDigest = certificateDigest(certificate.raw);
     caValidTo = Date.parse(certificate.validTo);
   } catch {}
-  if (hyperdrive?.id !== d.hyperdriveId || hyperdrive.name !== marker || hyperdrive.origin?.host !== p.hostname
-    || hyperdrive.origin?.database !== p.databaseName || hyperdrive.origin?.user !== privateDatabaseRole(p.namespace)
-    || hyperdrive.origin?.access_client_id !== token?.client_id || !token?.client_id || hyperdrive.caching?.disabled !== true
-    || hyperdrive.mtls?.sslmode !== "verify-full" || hyperdrive.mtls?.ca_certificate_id !== d.caId || hyperdrive.origin_connection_limit !== 5
-    || ca?.id !== d.caId || ca.name !== marker || ca.ca !== true || caDigest !== p.caSha256
-    || !Number.isFinite(caValidTo) || caValidTo! <= Date.parse(effectiveExpiry)
-    || app?.id !== d.accessApplicationId || app.domain !== p.hostname || app.name !== marker || app.type !== "self_hosted"
-    || token?.id !== d.serviceTokenId || token.name !== marker || !Number.isFinite(Date.parse(token.expires_at)) || Date.parse(token.expires_at) < Date.parse(effectiveExpiry)
-    || !Array.isArray(policies) || policies.length !== 1 || policies[0].id !== d.accessPolicyId || policies[0].name !== marker
-    || policies[0].decision !== "non_identity" || JSON.stringify(policies[0].include) !== JSON.stringify([{ service_token: { token_id: d.serviceTokenId } }])
-    || policies[0].exclude?.length || policies[0].require?.length
-    || dns?.id !== d.dnsRecordId || dns.name !== p.hostname || dns.type !== "CNAME" || dns.proxied !== true || dns.content !== `${p.tunnelId}.cfargotunnel.com` || dns.comment !== marker
-    || tunnel?.id !== p.tunnelId || tunnel.status !== "healthy" || tunnel.config_src !== "local" || tunnel.deleted_at
-    || zone?.name !== "smartaihub.app" || zone.account?.id !== input.accountRef)
-    denied("PRIVATE_DATABASE_PROVIDER_RESOURCE_DRIFT");
+  // Report only a reviewed field path and a categorical result. Never include
+  // provider values (which can contain hostnames, IDs, or credential material).
+  const drift = (field: string): never => denied("PRIVATE_DATABASE_PROVIDER_RESOURCE_DRIFT", `${field} (mismatch)`);
+  if (hyperdrive?.id !== d.hyperdriveId) drift("hyperdrive.id");
+  if (hyperdrive.name !== marker) drift("hyperdrive.name");
+  if (hyperdrive.origin?.host !== p.hostname) drift("hyperdrive.origin.host");
+  if (hyperdrive.origin?.database !== p.databaseName) drift("hyperdrive.origin.database");
+  if (hyperdrive.origin?.user !== privateDatabaseRole(p.namespace)) drift("hyperdrive.origin.user");
+  if (hyperdrive.origin?.access_client_id !== token?.client_id || !token?.client_id) drift("hyperdrive.origin.access_client_id");
+  if (hyperdrive.caching?.disabled !== true) drift("hyperdrive.caching.disabled");
+  if (hyperdrive.mtls?.sslmode !== "verify-full") drift("hyperdrive.mtls.sslmode");
+  if (hyperdrive.mtls?.ca_certificate_id !== d.caId) drift("hyperdrive.mtls.ca_certificate_id");
+  if (hyperdrive.origin_connection_limit !== 5) drift("hyperdrive.origin_connection_limit");
+  if (ca?.id !== d.caId) drift("ca.id");
+  if (ca.name !== marker) drift("ca.name");
+  if (ca.ca !== true) drift("ca.ca");
+  if (caDigest !== p.caSha256) drift("ca.certificate");
+  if (!Number.isFinite(caValidTo) || caValidTo! <= Date.parse(effectiveExpiry)) drift("ca.validity");
+  if (app?.id !== d.accessApplicationId) drift("accessApplication.id");
+  if (app.domain !== p.hostname) drift("accessApplication.domain");
+  if (app.name !== marker) drift("accessApplication.name");
+  if (app.type !== "self_hosted") drift("accessApplication.type");
+  if (token?.id !== d.serviceTokenId) drift("serviceToken.id");
+  if (token.name !== marker) drift("serviceToken.name");
+  if (!Number.isFinite(Date.parse(token.expires_at)) || Date.parse(token.expires_at) < Date.parse(effectiveExpiry)) drift("serviceToken.expires_at");
+  if (!Array.isArray(policies) || policies.length !== 1) drift("accessPolicy.count");
+  if (policies[0].id !== d.accessPolicyId) drift("accessPolicy.id");
+  if (policies[0].name !== marker) drift("accessPolicy.name");
+  if (policies[0].decision !== "non_identity") drift("accessPolicy.decision");
+  if (JSON.stringify(policies[0].include) !== JSON.stringify([{ service_token: { token_id: d.serviceTokenId } }])) drift("accessPolicy.include");
+  if (policies[0].exclude?.length) drift("accessPolicy.exclude");
+  if (policies[0].require?.length) drift("accessPolicy.require");
+  if (dns?.id !== d.dnsRecordId) drift("dnsRecord.id");
+  if (dns.name !== p.hostname) drift("dnsRecord.name");
+  if (dns.type !== "CNAME") drift("dnsRecord.type");
+  if (dns.proxied !== true) drift("dnsRecord.proxied");
+  if (dns.content !== `${p.tunnelId}.cfargotunnel.com`) drift("dnsRecord.content");
+  if (dns.comment !== marker) drift("dnsRecord.comment");
+  if (tunnel?.id !== p.tunnelId) drift("tunnel.id");
+  if (tunnel.status !== "healthy") drift("tunnel.status");
+  if (tunnel.config_src !== "local") drift("tunnel.config_src");
+  if (tunnel.deleted_at) drift("tunnel.deleted_at");
+  if (zone?.name !== "smartaihub.app") drift("zone.name");
+  if (zone.account?.id !== input.accountRef) drift("zone.account.id");
 }

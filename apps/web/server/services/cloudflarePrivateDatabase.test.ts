@@ -8,7 +8,7 @@ import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB,
   certificateDigest, privateDatabaseGrantSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
-import { privateDatabaseRenewalPlanFailureDetail } from "./cloudflarePrivateDatabaseRenewal";
+import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail } from "./cloudflarePrivateDatabaseRenewal";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { validateJobDefinition } from "./jobCanonicalization";
@@ -104,6 +104,13 @@ describe("private PostgreSQL staging provisioning", () => {
       expect(detail).not.toContain(secretishValue);
       expect(detail).not.toContain(parsed.error.issues[0].message);
     }
+  });
+
+  it("accepts only categorical provider field diagnostics", () => {
+    expect(privateDatabaseProviderFailureDetail({ diagnosticDetail: "hyperdrive.mtls.sslmode (mismatch)" }))
+      .toBe("hyperdrive.mtls.sslmode (mismatch)");
+    for (const diagnosticDetail of ["hyperdrive.origin.host: private.internal", "token=secret", "provider response body", "unknown.field (mismatch)"])
+      expect(privateDatabaseProviderFailureDetail({ diagnosticDetail })).toBeNull();
   });
 
   it("matches the Python approval service's immutable renewal plan digest", () => {
@@ -382,6 +389,19 @@ describe("immutable private database binding authority", () => {
     expect(f.fetchImpl.mock.calls.every(([, init]) => !init.method || init.method === "GET")).toBe(true);
     f.resources.hyperdrive.mtls.sslmode = "require";
     await expect(verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token, fetchImpl: f.input.fetchImpl })).rejects.toThrow("RESOURCE_DRIFT");
+  });
+  it.each([
+    ["hyperdrive.origin.host", (resources: Record<string, any>) => { resources.hyperdrive.origin.host = "private-hostname-must-not-leak"; }],
+    ["accessPolicy.decision", (resources: Record<string, any>) => { resources.policy.decision = "allow"; }],
+  ] as const)("identifies %s drift without returning provider values", async (field, mutate) => {
+    const f = await bindingFixture();
+    mutate(f.resources);
+    let thrown: unknown;
+    try { await verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token, fetchImpl: f.input.fetchImpl }); }
+    catch (error) { thrown = error; }
+    expect(thrown).toMatchObject({ message: "PRIVATE_DATABASE_PROVIDER_RESOURCE_DRIFT", diagnosticDetail: `${field} (mismatch)` });
+    expect(JSON.stringify(thrown)).not.toContain("private-hostname-must-not-leak");
+    expect(JSON.stringify(thrown)).not.toContain("fixture-private-service-secret");
   });
   it("requires the existing database CA certificate to remain valid through the renewed lease", async () => {
     const f = await bindingFixture();
