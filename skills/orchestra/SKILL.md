@@ -10,6 +10,8 @@ Use the existing repository `AGENTS.md` and [development lifecycle](../developme
 
 Use the existing primary source checkout by default under the [workspace policy](../development-lifecycle/workspace-policy.md). For a single developer, work on the configured canonical branch, normally local `main` tracking `origin/main`. Resume owned dirty work in place and preserve unrelated files. Do not create a worktree per task, SPEC, section, session, reviewer or PR. Serialize overlapping writers before considering isolation. Read [worktree discipline](references/worktree-discipline.md) only for an actual isolation exception; it includes reuse and same-task integration/cleanup obligations. This default takes precedence over older parallel examples.
 
+For canonical Specs, follow the shared `../development-lifecycle/spec-handoff-contract.md`; keep the manifest and requirement ledger as the status authority, and treat plans and task notes as supporting evidence.
+
 The same shared policy governs standing task-start authority, immediate commit/push reconciliation and dev DB migrations across every SPEC, including 224. With one human developer, local owner/lease metadata is process coordination, not another human approval. Use the existing task authority, keep local `main` and fetched `origin/main` equal at each checkpoint, apply applicable dev migrations promptly and debug forward on canonical source. Do not wait for a perfect SPEC, full build/UAT or another owner before integrating a fast-gate-passing slice.
 
 ## Route the task

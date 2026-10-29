@@ -167,7 +167,11 @@ def build_classifications(repo: Path, *, baseline_sha: str) -> dict[str, Any]:
         "relationship_edge_count": graph["edge_count"],
         "renumber_alias_count": len(alias_projection["aliases"]),
         "canonical_spec_count": data["invariants"]["canonical_spec_count"],
-        "duplicate_canonical_authority_count": sum(bool(r["relationships"]["duplicate_ids"]) for r in data["records"] if r["record_kind"] == "CANONICAL_SPEC"),
+        # Count conflicting IDs, not both sides of each conflict.
+        "duplicate_canonical_authority_count": len({
+            str(r["spec_id"]) for r in data["records"]
+            if r["record_kind"] == "CANONICAL_SPEC" and r.get("relationships", {}).get("duplicate_ids")
+        }),
         "classification_counts": dict(sorted(categories.items())),
         "review_classification_counts": dict(sorted(review_categories.items())),
         "records": rows,

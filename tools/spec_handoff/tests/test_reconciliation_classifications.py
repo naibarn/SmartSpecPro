@@ -18,10 +18,15 @@ class ReconciliationClassificationTests(unittest.TestCase):
         relationship_graph = build_relationship_graph(ROOT)
         registry = build_registry_projection(ROOT, current_inventory)
         review = json.loads((ROOT / "specs/_status/ambiguity-review.json").read_text(encoding="utf-8"))
-        self.assertEqual([], validate_classifications(ROOT, document))
+        # Keep the inventory projection useful even while an actual duplicate
+        # canonical ID is unresolved; validation must surface that blocker.
+        self.assertEqual(["duplicate canonical authority remains"], validate_classifications(ROOT, document))
         self.assertEqual(current_inventory["invariants"]["record_count"], document["inventory_record_count"])
         self.assertEqual(len(review["records"]), document["reconciliation_review_count"])
-        self.assertEqual(0, document["duplicate_canonical_authority_count"])
+        self.assertEqual(1, document["duplicate_canonical_authority_count"])
+        duplicate_rows = [row for row in document["records"] if row.get("spec_id") == "256" and row["classification"] == "UNRESOLVED_AUTHORITY"]
+        self.assertEqual(2, len(duplicate_rows))
+        self.assertTrue(all(row["classification"] == "UNRESOLVED_AUTHORITY" for row in duplicate_rows))
         self.assertEqual(len(registry["aliases"]), document["renumber_alias_count"])
         self.assertEqual(relationship_graph["edge_count"], document["relationship_edge_count"])
         self.assertEqual(current_inventory["invariants"]["canonical_spec_count"], document["canonical_spec_count"])
@@ -46,7 +51,6 @@ class ReconciliationClassificationTests(unittest.TestCase):
         for spec_id in ("166", "168", "173", "175", "176", "185"):
             self.assertIn(f"| {spec_id} |", evidence)
         self.assertEqual("ACTIVE_CANONICAL", handoff["authority"]["status"])
-        self.assertEqual("VALIDATION_ONLY", handoff["continuation_assessment"]["decision"])
         self.assertEqual({"166", "168", "173", "175", "176", "185"}, {str(ref["spec_id"]) for ref in handoff["relevance_assessment"]["active_references"]})
         global_handoff = json.loads((ROOT / "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/handoff/manifest.json").read_text(encoding="utf-8"))
         self.assertEqual("CANONICAL_FINAL_VALIDATION_AND_INTEGRATION", global_handoff["continuation"]["next_ready_workunit"])

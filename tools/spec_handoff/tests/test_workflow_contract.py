@@ -113,7 +113,8 @@ class WorkflowContractTests(unittest.TestCase):
         session_finish = (REPO / "skills/session-finish/SKILL.md").read_text(encoding="utf-8").lower()
         integration = (REPO / "skills/integration-controller/SKILL.md").read_text(encoding="utf-8").lower()
         self.assertIn("stage only files owned by this task", session_finish)
-        self.assertIn("without staging other work", integration)
+        self.assertIn("preserve unrelated staged, unstaged and untracked files", integration)
+        self.assertIn("stage/commit only owned paths", integration)
 
     def test_planning_to_resume_flow_uses_one_manifest_and_exact_sha(self):
         with tempfile.TemporaryDirectory() as tmp:

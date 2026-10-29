@@ -46,4 +46,6 @@ Reviewers, section-by-section interviews, mandatory repeated clean review rounds
 Stop only the affected operation for a genuine external authority/product decision, unauthorized destructive/production action, or an actual repository-required check that cannot yet pass. Continue independent work. Report code integrated, what visibly works, pending gaps and specific next steps.
 ## Shared lifecycle contract
 
+For canonical Specs, follow `skills/development-lifecycle/spec-handoff-contract.md` and update the existing manifest and requirement ledger through their shared writer; do not create a competing completion ledger.
+
 Use the shared `development-lifecycle` skill and its requirement ledger. Keep evidence freshness explicit when recording section completion and final acceptance.
