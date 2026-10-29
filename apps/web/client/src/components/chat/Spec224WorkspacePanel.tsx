@@ -343,7 +343,14 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     setPreparation(null);
   }
 
-  const workspacesQuery = trpc.spec226DevelopmentControl.availableWorkspaces.useQuery({});
+  const workspacesQuery = trpc.spec226DevelopmentControl.availableWorkspaces.useQuery({}, {
+    // The Runner publishes a fresh capability snapshot every two minutes.
+    // Re-read the authorized projection in the foreground so an expired model
+    // catalog can recover without a page reload; do not churn background tabs.
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
   const workspaces = workspacesQuery.data?.workspaces ?? [];
   const platformWorkspace = workspaces.find(item => item.scope === "PLATFORM_ENGINEERING");
   // Canonical SmartAIHub specs are read from the platform source authority and
@@ -406,6 +413,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     : catalogHarnesses[0] ?? "";
   const effectiveProvider = effectiveHarnessAdapterId === "codex.v1" ? "codex" : "";
   const catalogModels = modelCatalog?.models ?? [];
+  const catalogExpired = modelCatalog?.state === "discovered"
+    && Date.parse(modelCatalog.expiresAt) <= Date.now();
   const catalogFresh = Boolean(modelCatalog?.state === "discovered"
     && modelCatalog.accountProviderFingerprint
     && modelCatalog.revision
@@ -945,7 +954,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                   onClick={() => void workspacesQuery.refetch()}
                   aria-label="ตรวจสอบ Model ล่าสุด"
                 >
-                  {workspacesQuery.isFetching ? "กำลังตรวจสอบ…" : "↻ รายละเอียด"}
+                  {workspacesQuery.isFetching ? "กำลังตรวจสอบ…" : "↻ ตรวจสอบ Catalog ล่าสุด"}
                 </Button>
                 </HStack>
                 <Selector
@@ -965,7 +974,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                     }
                   }}
                   placeholder="ยังไม่มี catalog จาก Runner"
-                  isDisabled={!catalogFresh || workspacesQuery.isFetching}
+                  isDisabled={!catalogFresh}
                   disabledMessage="รอ catalog ล่าสุดจาก Runner ก่อนเลือก Harness"
                   emptyText="Runner ยังไม่รายงาน Harness ที่รองรับ"
                   width="100%"
@@ -988,7 +997,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                   }}
                   disabledMessage="รอ Model catalog ล่าสุดจาก Runner ก่อนเลือกรุ่น"
                   emptyText="Runner ยังไม่รายงานรุ่น AI"
-                  isDisabled={!catalogFresh || catalogModels.length === 0 || workspacesQuery.isFetching}
+                  isDisabled={!catalogFresh || catalogModels.length === 0}
                   width="100%"
                 />
               {!simpleMode ? (
@@ -1008,7 +1017,13 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
               ) : null}
               {!catalogFresh ? (
                 <AstryxText type="supporting" as="p" role="status">
-                  {workspacesQuery.isFetching ? "กำลังโหลด Model catalog จาก Runner…" : modelCatalog?.state === "error" ? "Runner รายงานข้อผิดพลาดระหว่างค้นหา Model โปรดลองตรวจสอบใหม่" : "ยังไม่มี Model catalog ที่ยืนยันขอบเขตบัญชีและความใหม่จาก Runner โปรดตรวจสอบอีกครั้ง"}
+                  {workspacesQuery.isFetching
+                    ? "กำลังโหลด Model catalog ล่าสุดจาก Runner…"
+                    : modelCatalog?.state === "error"
+                      ? "Runner รายงานข้อผิดพลาดระหว่างค้นหา Model โปรดลองตรวจสอบใหม่"
+                      : catalogExpired
+                        ? "Model catalog หมดอายุแล้ว ระบบกำลังรอ snapshot ใหม่จาก Runner; ตัวเลือกจะเปิดเองเมื่อได้รับข้อมูลปัจจุบัน"
+                        : "ยังไม่มี Model catalog ที่ยืนยันขอบเขตบัญชีและความใหม่จาก Runner โปรดตรวจสอบอีกครั้ง"}
                 </AstryxText>
               ) : (
                 <AstryxText type="supporting" as="p" role="status">

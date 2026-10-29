@@ -17,6 +17,121 @@
 
 Spec 218 remains an implementation target. The canonical durable execution boundary is still Feature 195 / `worker_jobs` and outbox; no second development queue or release ledger is implied by the contract slice.
 
+## 0.2 SPEC-224 delivery priorities and runtime-selection contract — 2026-10-29
+
+This addendum translates the current SPEC-224 live-execution work into three
+ordered delivery levels. It does not reopen the harness architecture or change
+ownership: SPEC-224 owns Goal admission and execution continuation, SPEC-200
+owns Runner/harness adapters and their runtime catalogs, SPEC-195 owns durable
+Jobs/events/outbox, and SPEC-294 owns the operations read projection.
+
+### P0 — usable autonomous development from Task Control
+
+Task Control in Simple and Developer presentation MUST allow the user to
+choose an authorized Runner/Workspace, Harness, and Model. `Auto` is the
+initial selection and is used only while the user has not made an explicit
+choice. An explicit harness/model/reasoning selection MUST remain pinned to the
+Goal and its child attempts. If that exact selection disappears or fails
+current Runner revalidation, execution MUST stop with an actionable reason;
+the platform MUST NOT silently substitute a different model.
+
+The user-facing flow MUST be one connected Goal lifecycle:
+
+```text
+Task Control Start
+→ durable Goal/DevelopmentRun and Goal-scoped approval
+→ shared Goal Budget and authorized Child Job/Attempt
+→ existing Writer Lease/Fencing and canonical Outbox
+→ Runner ACK and genuine Harness events/receipt
+→ settlement and checkpoint
+→ automatic next-phase admission and dispatch
+→ independent final verification
+```
+
+Progress, changed files, test evidence, receipts, budget/settlement state and
+verification MUST be projections of canonical persisted events and evidence.
+Chat, Task Control and Mission Control MUST NOT create parallel state or
+require a browser Continue action for an already approved in-scope next phase.
+Goal-scoped approval remains bounded by workspace, provider, source/write
+policy, budget and deadline; a high-risk operation still requires its own
+existing authority.
+
+The Runner Model Catalog MUST be read from a currently authorized Runner
+snapshot. Task Control MUST recover when a new snapshot arrives or the browser
+returns to the foreground, while retaining the draft and explicit selection.
+An expired catalog disables Start until fresh evidence returns; it MUST NOT
+clear the selected value or reload the page. Runner capability snapshot
+publication and catalog expiry remain authoritative. The UI may refresh its
+authorized read projection, but MUST NOT fabricate a catalog or claim that a
+discovered catalog alone proves successful model execution.
+
+Release-download catalog failures are independent from Harness Model Catalog
+delivery. For example, `/api/runner-releases/desktop-review` is an optional
+desktop-release listing and MUST NOT disable Task Control model selection; its
+errors remain visible only in the Runner Release surface. Any separate tRPC
+failure MUST be diagnosed by its own procedure and response code.
+
+### P1 — complete runtime discovery behind existing adapters
+
+Runner discovery MUST report each installed harness's version, adapter and
+transport compatibility, authentication/readiness state, task-probe evidence,
+available models, supported reasoning efforts, account/provider fingerprint,
+catalog revision and freshness. Only a compatible, authenticated harness with
+a current account-scoped catalog is selectable. The server revalidates the
+same Runner, account fingerprint, selected model and reasoning effort at
+authorization/release; catalog visibility does not replace Goal approval,
+budget, source admission, lease or dispatch checks.
+
+New harnesses are enabled only when their existing adapter implements the
+required execution, event/result normalization and revalidation contract.
+Discovery may show installed-but-unsupported tools as unavailable with a
+reason; it MUST NOT present them as runnable. The Copilot SDK's documented
+runtime `listModels()` method is evidence that dynamic model discovery is a
+reasonable adapter capability, not a mandate to add that SDK or route work
+through it. The active Codex path continues to use its native App Server
+`model/list` protocol.
+
+### P2 — governed strategies and cross-machine operations
+
+Single, Cascade and Independent Critique are future Goal policies, not new
+schedulers:
+
+- **Single** pins one approved Harness/Model for the Goal.
+- **Cascade** records the ordered, owner-selected alternatives and the exact
+  retry/fallback conditions in the Goal grant before execution. A fallback is
+  never silent and cannot exceed the approved budget or scope.
+- **Independent Critique** creates a separate read-only review attempt with
+  distinct evidence; it cannot alter the implementation workspace or certify
+  its own result.
+
+Multi-Agent, multi-Session and multi-Runner work MUST continue to use canonical
+Goal/Run/Job/Attempt/Session identities, `worker_jobs`, `worker_job_events`,
+outbox, workspace ownership and Writer Lease/Fencing. Chat, Task Control and
+Mission Control show different levels of detail from the same event stream.
+Concurrent write scopes MUST be isolated by the existing Workspace/Worktree
+authority or serialized by leases; UI grouping is not execution coordination.
+
+### Acceptance sequence
+
+1. A fresh Runner snapshot restores the Simple and Developer Harness/Model
+   pickers without browser reload, loses no draft, and exposes only discovered
+   account-scoped choices with the selected model's supported reasoning values.
+2. The connected PostgreSQL Goal/Child authorization and continuation evidence
+   remains the backend acceptance; live acceptance separately proves real
+   Runner dispatch, receipts, automatic next-phase execution and independent
+   verification.
+3. Each additional Harness adapter passes discovery, authorization-bound
+   selection, runtime revalidation, event/receipt, recovery and isolation checks
+   before being enabled in the picker.
+4. Cascade, critique and concurrent multi-Runner operations are introduced
+   only after the Single-Runner P0 path is live-verified, with strategy-specific
+   budgets, identities, recovery and independent evidence.
+
+Research references: [GitHub Copilot SDK](https://github.com/github/copilot-sdk)
+documents runtime model listing; [SDK compatibility](https://docs.github.com/en/copilot/how-tos/copilot-sdk/troubleshooting/compatibility)
+documents `listModels()` and separates model listing from the interactive
+model picker. These references inform the adapter contract above only.
+
 # 0. Executive Decision
 
 SmartAIHub SHALL let a Tenant Admin develop or modify a branded AI Product from the normal `smartaihub.app` UI using natural language, without requiring the user to operate Git, terminal commands, Cloudflare dashboards or deployment tooling.
