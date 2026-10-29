@@ -23,6 +23,9 @@ const simpleStatusLabels: Record<string, string> = { running: "In progress", que
 const simpleStatusLabel = (status: string): string => simpleStatusLabels[status] ?? status.replaceAll("_", " ");
 const simpleStepLabel = (step: string | null): string => step ? step.toLowerCase().replaceAll("_", " ") : "Not reported";
 const threadOverviewFallbacks: Record<string, string> = {
+  "workspaceNav.chat": "Chat",
+  "workspaceNav.taskControl": "Task Control",
+  "workspaceNav.missionControl": "Mission Control",
   "taskControl.threadOverviewTitle": "Project and thread correlation",
   "taskControl.threadOverviewDescription": "Read-only links from authorized task records. A thread can contain multiple Jobs; each link keeps the exact Chat and task context.",
   "taskControl.threadOverviewPageLimit": "Showing threads represented in this task snapshot page. Load the next task page to see older work.",
@@ -115,9 +118,14 @@ export default function TaskObservabilityMonitor() {
   return (
     <VStack as="main" gap={4} padding={4}>
       <VStack gap={1}>
-        <Heading level={1}>{mode === "simple" ? "Task Control" : "Task Control and Agent Monitor"}</Heading>
-        <Text type="supporting">{mode === "simple" ? "See what is happening, what is verified, and whether anything needs your attention." : "Canonical task, runner, goal, model and resource evidence. Missing evidence remains unknown."}</Text>
-        <SegmentedControl label="Task Control view" value={mode} onChange={setMode}>
+        <HStack as="nav" aria-label="Development workspace" gap={1} wrap="wrap">
+          <Button label={t("workspaceNav.chat")} variant="secondary" onClick={() => setLocation(conversationId ? chatHref(conversationId, threadId ?? null) : "/chat")} />
+          <Button label={t("workspaceNav.taskControl")} variant="secondary" onClick={() => setLocation(`/chat?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`)} />
+          <Button label={t("workspaceNav.missionControl")} variant="primary" aria-current="page" />
+        </HStack>
+        <Heading level={1}>Mission Control</Heading>
+        <Text type="supporting">{mode === "simple" ? "ติดตามงานที่กำลังทำ งานที่รอ และสิ่งที่ต้องตัดสินใจ; เลือกงานเพื่อกลับไปยัง Chat เดิมได้" : "หลักฐานจาก task, Runner, Goal, model และ resource ตามสิทธิ์; ข้อมูลที่ยืนยันไม่ได้จะแสดงเป็น Unknown"}</Text>
+        <SegmentedControl label="Mission Control detail level" value={mode} onChange={setMode}>
           <SegmentedControlItem value="simple" label="Simple" />
           <SegmentedControlItem value="developer" label="Developer" />
         </SegmentedControl>

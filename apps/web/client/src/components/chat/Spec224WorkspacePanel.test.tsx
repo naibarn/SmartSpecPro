@@ -190,7 +190,7 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByRole("option", { name: "Dynamic Model B" })).toBeInTheDocument();
     expect(screen.queryByRole("option", { name: /gpt-|claude|o[0-9]/i })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("option", { name: "Dynamic Model B" }));
-    expect(screen.queryByRole("radiogroup", { name: "Reasoning Effort" })).not.toBeInTheDocument();
+    expect(screen.getByRole("radiogroup", { name: "Reasoning Effort" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
 
     await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({

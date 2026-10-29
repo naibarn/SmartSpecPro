@@ -1026,21 +1026,19 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   isDisabled={!catalogFresh || catalogModels.length === 0}
                   width="100%"
                 />
-              {!simpleMode ? (
-                <RadioList
-                  label="Reasoning Effort"
-                  value={supportedEffort}
-                  onChange={setReasoningEffort}
-                  orientation="horizontal"
-                  isDisabled={!catalogFresh || availableEfforts.length === 0}
-                  description={availableEfforts.length ? "ระบบจะแสดงระดับที่รุ่นนี้รองรับเท่านั้น" : "รุ่นที่เลือกไม่ได้ประกาศระดับ reasoning"}
-                  htmlName="spec224-reasoning-effort"
-                >
-                  {availableEfforts.map(effort => (
-                    <RadioListItem key={effort} value={effort} label={effort.replace(/[-_]/g, " ").replace(/\b\w/g, character => character.toUpperCase())} />
-                  ))}
-                </RadioList>
-              ) : null}
+              <RadioList
+                label="Reasoning Effort"
+                value={supportedEffort}
+                onChange={setReasoningEffort}
+                orientation="horizontal"
+                isDisabled={!catalogFresh || availableEfforts.length === 0}
+                description={availableEfforts.length ? "ระบบจะแสดงระดับที่รุ่นนี้รองรับเท่านั้น" : "รุ่นที่เลือกไม่ได้ประกาศระดับ reasoning"}
+                htmlName="spec224-reasoning-effort"
+              >
+                {availableEfforts.map(effort => (
+                  <RadioListItem key={effort} value={effort} label={effort.replace(/[-_]/g, " ").replace(/\b\w/g, character => character.toUpperCase())} />
+                ))}
+              </RadioList>
               {!catalogFresh ? (
                 <AstryxText type="supporting" as="p" role="status">
                   {workspacesQuery.isFetching

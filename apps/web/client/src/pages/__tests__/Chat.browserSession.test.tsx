@@ -56,6 +56,9 @@ const translationMap: Record<string, string> = {
   "chat.startNewChat": "Start New Chat",
   "chat.title": "AI Chat",
   "chat.useAgency": "Use Agency",
+  "workspaceNav.chat": "Chat",
+  "workspaceNav.taskControl": "Task Control",
+  "workspaceNav.missionControl": "Mission Control",
   "taskControl.title": "Task Control Center",
   "taskControl.openButton": "Task Control",
 };
@@ -103,9 +106,11 @@ vi.mock("@/components/chat", () => ({
   ChatSidebar: ({
     onNewChat,
     onNewPersonalChat,
+    onSelectThread,
   }: {
     onNewChat: () => void;
     onNewPersonalChat?: () => void;
+    onSelectThread?: (conversationId: number, threadId: string | null) => void;
   }) => (
     <div>
       <button type="button" onClick={() => onNewChat()}>
@@ -115,6 +120,9 @@ vi.mock("@/components/chat", () => ({
         <button type="button" onClick={() => onNewPersonalChat()}>
           Start Personal Chat
         </button>
+      ) : null}
+      {onSelectThread ? (
+        <button type="button" onClick={() => onSelectThread(42, "thread-42")}>Open saved thread</button>
       ) : null}
     </div>
   ),
@@ -224,6 +232,7 @@ vi.mock("@/lib/trpc", () => ({
       chat: {
         getMessages: { invalidate: invalidateMessages },
         listConversations: { invalidate: invalidateConversations },
+        listConversationThreads: { invalidate: vi.fn() },
       },
     }),
     llmProviders: {
@@ -248,6 +257,9 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     chat: {
+      touchConversationThread: {
+        useMutation: () => ({ mutate: vi.fn() }),
+      },
       getMessages: {
         useQuery: () => ({ data: messagesData }),
       },
@@ -384,7 +396,7 @@ describe("Chat Browser Session entry", () => {
   it("opens the Task Control Center from the Chat toolbar", () => {
     render(<Chat />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Task Control" }));
+    fireEvent.click(screen.getByTestId("task-control-toolbar-button"));
 
     expect(screen.getByTestId("mock-control-plane")).toBeInTheDocument();
     expect(screen.getByTestId("chat-right-panel")).toHaveAttribute("aria-hidden", "false");
@@ -407,6 +419,27 @@ describe("Chat Browser Session entry", () => {
     expect(screen.getByTestId("chat-right-panel")).toHaveClass("lg:flex-1");
     expect(screen.getByTestId("chat-right-panel")).not.toHaveClass("lg:w-[32rem]");
     expect(screen.getByTestId("chat-primary-content")).toHaveClass("hidden");
+    expect(screen.getByRole("navigation", { name: "Development workspace" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Open saved thread" })).toHaveLength(2);
+  });
+
+  it("returns from full Task Control to the exact selected Chat thread", () => {
+    window.history.replaceState({}, "", "/chat?panel=control-plane&view=full&c=42");
+    render(<Chat />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Open saved thread" })[0]);
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=42&t=thread-42");
+    expect(screen.getByTestId("chat-primary-content")).not.toHaveClass("hidden");
+  });
+
+  it("exposes Mission Control from the shared Chat and Task Control shell", () => {
+    window.history.replaceState({}, "", "/chat?panel=control-plane&view=full&c=42");
+    render(<Chat />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Mission Control" }));
+
+    expect(mockSetLocation).toHaveBeenCalledWith("/agent-monitor?conversationId=42&threadId=main");
   });
 
   it("opens the finance panel from the chat toolbar", () => {

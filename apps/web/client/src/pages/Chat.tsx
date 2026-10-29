@@ -451,6 +451,7 @@ export default function Chat() {
     setSelectedConversationId(conversationId);
     setSelectedThreadId(null);
     setChatPromptRequest(null);
+    setFullControlPlane(false);
     setRightPanel("none");
     setLocation(`/chat?c=${conversationId}`);
     if (options?.closeSidebar ?? window.innerWidth < 1024) {
@@ -462,6 +463,7 @@ export default function Chat() {
     setSelectedConversationId(conversationId);
     setSelectedThreadId(threadId);
     setChatPromptRequest(null);
+    setFullControlPlane(false);
     setRightPanel("none");
     setLocation(`/chat?c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`);
     if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -796,7 +798,7 @@ export default function Chat() {
             variant="outline"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={cn("h-9 w-9 shrink-0 lg:hidden", fullControlPlane && "hidden")}
+            className="h-9 w-9 shrink-0 lg:hidden"
             aria-label={
               sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")
             }
@@ -811,6 +813,45 @@ export default function Chat() {
             {fullControlPlane ? t("taskControl.title") : t("chat.title")}
           </h1>
         </div>
+        <nav aria-label="Development workspace" data-testid="development-workspace-navigation" className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <Button
+            type="button"
+            size="sm"
+            variant={!fullControlPlane && rightPanel !== "control-plane" ? "secondary" : "ghost"}
+            aria-current={!fullControlPlane && rightPanel !== "control-plane" ? "page" : undefined}
+            onClick={() => {
+              setFullControlPlane(false);
+              setRightPanel("none");
+              setLocation(selectedConversationId ? `/chat?c=${selectedConversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}` : "/chat");
+            }}
+            className="h-9 shrink-0 px-2 sm:px-3"
+          >{t("workspaceNav.chat")}</Button>
+          <Button
+            type="button"
+            size="sm"
+            variant={fullControlPlane || rightPanel === "control-plane" ? "secondary" : "ghost"}
+            aria-current={fullControlPlane || rightPanel === "control-plane" ? "page" : undefined}
+            onClick={() => {
+              setRightPanel("control-plane");
+              setFullControlPlane(true);
+              setLocation(`/chat?panel=control-plane&view=full${selectedConversationId ? `&c=${selectedConversationId}` : ""}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}`);
+            }}
+            className="h-9 shrink-0 px-2 sm:px-3"
+          >{t("workspaceNav.taskControl")}</Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (selectedConversationId) params.set("conversationId", String(selectedConversationId));
+              if (selectedConversationId) params.set("threadId", selectedThreadId ?? "main");
+              const query = params.toString();
+              setLocation(`/agent-monitor${query ? `?${query}` : ""}`);
+            }}
+            className="h-9 shrink-0 px-2 sm:px-3"
+          >{t("workspaceNav.missionControl")}</Button>
+        </nav>
         <div className={cn("flex min-w-0 flex-1 basis-0 items-center justify-start gap-1 overflow-x-auto pl-2 md:justify-end [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", fullControlPlane && "hidden")}>
           <LocaleToggle className="hidden xl:inline-flex" />
           <HelpButton page="/chat" variant="ghost" size="sm" />
@@ -824,6 +865,7 @@ export default function Chat() {
             }
             className="h-9 shrink-0 gap-2"
             aria-label={t("taskControl.openButton")}
+            data-testid="task-control-toolbar-button"
           >
             <Network className="h-4 w-4" />
             <span className="hidden md:inline">{t("taskControl.openButton")}</span>
@@ -921,18 +963,19 @@ export default function Chat() {
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         {/* Sidebar - mobile: overlay drawer, desktop: inline */}
         {/* Mobile backdrop */}
-        {!fullControlPlane && sidebarOpen && (
+        {sidebarOpen && (
           <button
             type="button"
             aria-label={t("chat.hideSidebar")}
-            className="fixed inset-x-0 bottom-0 top-14 z-30 bg-[var(--color-overlay)] lg:hidden"
+            className={cn("fixed inset-x-0 bottom-0 top-14 bg-[var(--color-overlay)] lg:hidden", fullControlPlane ? "z-[65]" : "z-30")}
             onClick={() => setSidebarOpen(false)}
           />
         )}
         {/* Mobile sidebar drawer — always in DOM, slides in/out via CSS */}
-        {!fullControlPlane ? <div
+        <div
           className={cn(
-            "fixed bottom-2 left-2 top-16 z-40 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-[var(--radius-container)] border border-[var(--color-border)] bg-[var(--color-background-surface)] shadow-[var(--shadow-high)] transition-transform duration-300 ease-in-out lg:hidden",
+            "fixed bottom-2 left-2 top-16 w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-[var(--radius-container)] border border-[var(--color-border)] bg-[var(--color-background-surface)] shadow-[var(--shadow-high)] transition-transform duration-300 ease-in-out lg:hidden",
+            fullControlPlane ? "z-[70]" : "z-40",
             sidebarOpen ? "translate-x-0" : "-translate-x-[calc(100%+1rem)]"
           )}
         >
@@ -948,9 +991,9 @@ export default function Chat() {
             onNewPersonalChat={handleNewPersonalChat}
             onOpenTeamRoom={handleOpenTeamRoom}
           />
-        </div> : null}
+        </div>
         {/* Desktop sidebar inline */}
-        {!fullControlPlane ? <div
+        <div
           className={cn(
             "hidden flex-shrink-0 overflow-hidden border-r border-[var(--color-border)] bg-[var(--color-background-surface)] transition-all duration-200 lg:block",
             sidebarOpen && "w-80 xl:w-[22rem]",
@@ -970,10 +1013,10 @@ export default function Chat() {
               onOpenTeamRoom={handleOpenTeamRoom}
             />
           )}
-        </div> : null}
+        </div>
 
         {/* Sidebar Toggle for Desktop */}
-        {!fullControlPlane ? <button
+        <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="group hidden h-full w-5 shrink-0 items-center justify-center border-r border-[var(--color-border)] transition-colors hover:bg-[var(--color-overlay-hover)] lg:flex"
           title={sidebarOpen ? t("chat.hideSidebar") : t("chat.showSidebar")}
@@ -982,7 +1025,7 @@ export default function Chat() {
           }
         >
           <div className="h-8 w-1.5 rounded-full bg-[var(--color-border-emphasized)] transition-colors group-hover:bg-[var(--color-accent-muted)]" />
-        </button> : null}
+        </button>
 
         {/* Chat View */}
         <div data-testid="chat-primary-content" aria-hidden={fullControlPlane} className={cn("min-w-0 flex-1 overflow-hidden bg-background", fullControlPlane && "hidden")}>

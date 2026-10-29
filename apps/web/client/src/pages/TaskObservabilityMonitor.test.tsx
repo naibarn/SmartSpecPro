@@ -111,7 +111,7 @@ describe("TaskObservabilityMonitor", () => {
 
   it("defaults to a simple evidence summary and keeps unknown progress explicit", () => {
     renderMonitor();
-    expect(screen.getByRole("heading", { name: "Task Control" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Mission Control" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "SPEC-224 pilot · In progress" })).toBeTruthy();
     expect(screen.getByText("Chat: Authorized pilot")).toBeTruthy();
     expect(screen.getAllByText("Current step: implement").length).toBeGreaterThan(0);
@@ -119,6 +119,13 @@ describe("TaskObservabilityMonitor", () => {
     expect(screen.getByText("Action needed: Please review this task.")).toBeTruthy();
     expect(screen.getByText("No final deliverable references are recorded in this task view.")).toBeTruthy();
     expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
+  });
+
+  it("provides obvious navigation between Chat, Task Control, and Mission Control", () => {
+    renderMonitor();
+    expect(screen.getByRole("navigation", { name: "Development workspace" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Task Control" }));
+    expect(setLocation).toHaveBeenCalledWith("/chat?panel=control-plane&view=full");
   });
 
   it("opens the originating Chat thread from the same task in both Task Control views", () => {
