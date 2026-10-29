@@ -83,7 +83,8 @@ export function resolveSpec224ModelSelection(input: {
     throw new Error("SPEC224_MODEL_ACCOUNT_SCOPE_UNKNOWN");
   const reasoningEffort = request.reasoningEffort ?? selectedModel.defaultReasoningEffort ??
     (selectedModel.reasoningEfforts.includes("medium") ? "medium" : selectedModel.reasoningEfforts[0]);
-  if (!reasoningEffort || !selectedModel.reasoningEfforts.includes(reasoningEffort))
+  const providerDefault = input.adapterId === "microsoft-copilot.v1" && selectedModel.reasoningEfforts.length === 0 && request.reasoningEffort === "provider_default";
+  if (!reasoningEffort || (!providerDefault && !selectedModel.reasoningEfforts.includes(reasoningEffort)))
     throw new Error("SPEC224_MODEL_REASONING_EFFORT_UNSUPPORTED");
 
   return {
@@ -91,7 +92,7 @@ export function resolveSpec224ModelSelection(input: {
     policy: request.policy,
     selectedModelId: request.policy === "explicit" ? selectedModel.id : null,
     resolvedModelId: selectedModel.id,
-    reasoningEffort,
+    reasoningEffort: reasoningEffort ?? "provider_default",
     catalogRevision: catalog.revision,
     accountProviderFingerprint: catalog.accountProviderFingerprint ?? null,
     capabilitySnapshotRevision: input.capabilitySnapshotRevision,

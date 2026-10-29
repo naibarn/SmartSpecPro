@@ -8,7 +8,7 @@ export type Spec224ExternalApprovalCorrelation = {
   jobId: string;
   tenantId: string;
   operationKey: string;
-  provider: "codex" | "claude_code";
+  provider: "codex" | "claude_code" | "microsoft_copilot";
   providerRequestId: string;
   runnerId: string;
   runnerSessionId: string;
@@ -539,7 +539,7 @@ export function createSpec224ApprovalContinuation(
           approvalRequestId: record.id,
           decision: record.status,
           runnerId: correlation.runnerId,
-          adapter: correlation.provider === "codex" ? "codex.v1" : "claude.v1",
+          adapter: correlation.provider === "codex" ? "codex.v1" : correlation.provider === "microsoft_copilot" ? "microsoft-copilot.v1" : "claude.v1",
           actionId: correlation.actionId,
           runnerSessionId: correlation.runnerSessionId,
           fencingVersion: correlation.fencingVersion,

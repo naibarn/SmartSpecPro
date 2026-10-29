@@ -481,6 +481,12 @@ describe("Spec 224 protected execution-start identity", () => {
         "attempt-a"
       )
     ).toBe(true);
+    expect(isRunnerCommandBoundToCanonicalAgentManifest(
+      { ...command, adapterId: "microsoft-copilot.v1" },
+      { ...manifest, provider: "microsoft_copilot" },
+      "job-a",
+      "attempt-a"
+    )).toBe(true);
     expect(
       isRunnerCommandBoundToCanonicalAgentManifest(
         {

@@ -386,6 +386,30 @@ describe("Feature 197 Runner contracts", () => {
     expect(untrustedCodex.capabilities).not.toContain("agent.external_task");
   });
 
+  it("maps a verified Copilot Runner tool to external-task availability", () => {
+    const normalized = validateRunnerCapabilitySnapshot({
+      ...snapshot,
+      capabilities: ["tool.execute.copilot"],
+      toolInventory: [{
+        toolId: "copilot", kind: "agent_cli", displayName: "Microsoft Copilot", version: "1.0.28",
+        adapterId: "microsoft-copilot.v1", adapterVersion: "microsoft-copilot.v1", discoverySource: "runner_probe",
+        installState: "installed", configurationState: "configured", authState: "authenticated", healthState: "healthy",
+        availabilityState: "available", trustState: "ready", fingerprint: "copilot-fingerprint",
+        versionProbeState: "passed", taskProbeState: "passed", taskProbeObservedAtMs: Date.parse("2026-09-17T00:00:00Z"),
+        taskProbeExpiresAtMs: Date.parse("2026-09-17T00:30:00Z"), taskProbeEvidenceRef: "copilot-probe:TEST_ONLY",
+        authorizationEvidenceRef: "copilot-auth:TEST_ONLY",
+        modelCatalog: { state: "discovered", adapterId: "microsoft-copilot.v1", adapterVersion: "microsoft-copilot.v1",
+          cliVersion: "Copilot CLI 1.0.28", accountProviderFingerprint: "copilot-account:sha256:test",
+          accountScopeState: "runner_user_profile", source: "github_copilot_sdk_models_list", revision: "catalog-copilot",
+          verificationState: "account_catalog_unverified_entitlement", observedAt: "2026-09-17T00:00:00Z",
+          expiresAt: "2026-09-17T00:10:00Z", models: [{ id: "dynamic-model", displayName: "Dynamic", capabilities: ["text"], reasoningEfforts: [], isDefault: false }] },
+        observedAt: "2026-09-17T00:00:00Z", expiresAt: "2026-09-17T00:10:00Z", reasonCodes: [],
+      }],
+    });
+    expect(normalized.capabilities).toContain("agent.external_task");
+    expect(normalized.toolInventory?.[0].modelCatalog?.adapterId).toBe("microsoft-copilot.v1");
+  });
+
   it("preserves a redacted platform target for Task Control projection", () => {
     const normalized = validateRunnerCapabilitySnapshot({
       ...snapshot,

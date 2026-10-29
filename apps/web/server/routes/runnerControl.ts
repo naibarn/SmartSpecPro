@@ -395,7 +395,7 @@ export function runnerSnapshotHasReadyExecution(
     (browser?.availabilityState === "available" && browser.authState === "authenticated" &&
       browser.probeState === "ready" && browser.manifest?.supports.structuredObservation === true) ||
     snapshot.toolInventory?.some(tool =>
-      (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1") &&
+      (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1" || tool.adapterId === "microsoft-copilot.v1") &&
       tool.trustState === "ready" && tool.availabilityState === "available" &&
       tool.authState === "authenticated" && tool.healthState === "healthy" &&
       tool.installState === "installed" && tool.configurationState === "configured" &&
@@ -622,7 +622,8 @@ function runnerCapabilityEligibility(
       tool.adapterId === command.adapterId &&
       (command.executionKind !== "external_agent_task" ||
         tool.adapterId === "codex.v1" ||
-        tool.adapterId === "claude.v1")
+        tool.adapterId === "claude.v1" ||
+        tool.adapterId === "microsoft-copilot.v1")
   );
   return {
     runner: {
@@ -649,7 +650,7 @@ function runnerCapabilityEligibility(
       externalAgentAdapters: (snapshot?.toolInventory ?? [])
         .filter(
           tool =>
-            (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1") &&
+            (tool.adapterId === "codex.v1" || tool.adapterId === "claude.v1" || tool.adapterId === "microsoft-copilot.v1") &&
             tool.trustState === "ready" &&
             (tool.availabilityState === "available" ||
               tool.availabilityState === "busy") &&

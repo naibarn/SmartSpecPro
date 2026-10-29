@@ -123,7 +123,7 @@ export type TxRepo = {
   assertSpec224ReleaseAuthority?(input: {
     tenantId: string; actorId: number; jobId: string; attemptId: string;
     approvalRef: string; holdRef: string; amount: number; currency: string; now: Date; deadline?: string;
-    goal?: { goalId: string; provider: "codex" | "claude_code"; workspaceId: string; repositoryRef: string;
+    goal?: { goalId: string; provider: "codex" | "claude_code" | "microsoft_copilot"; workspaceId: string; repositoryRef: string;
       sourceSha: string; action: string; changedPaths: string[]; allowedWriteSet?: string[]; requiredCapabilities: string[] };
   }): Promise<boolean>;
   markDispatchConsumed?(input: {
@@ -2444,12 +2444,12 @@ export function createJobControlPlane(
           rootRun.baseRevision === specRun.baseRevision && rootRun.workspaceId === specRun.workspaceId &&
           isDeepStrictEqual(rootRun.metadata?.spec224Execution, specRun.metadata?.spec224Execution) &&
           rootRun.metadata?.spec224Workspace?.runnerId === binding.runnerId &&
-          ["codex", "claude_code"].includes(manifest.provider) &&
+          ["codex", "claude_code", "microsoft_copilot"].includes(manifest.provider) &&
           manifest.workspaceId === specRun.workspaceId && binding.workspaceRef === specRun.workspaceId &&
           typeof specRun.repositoryRef === "string" && sourceSha && actions[specRun.state] &&
           Array.isArray(execution?.allowedWriteSet) && execution.allowedWriteSet.every((p: unknown) => typeof p === "string") &&
           Array.isArray(manifest.requestedCapabilities) && manifest.requestedCapabilities.every((c: unknown) => typeof c === "string")
-          ? { goalId: specRun.goalId as string, provider: manifest.provider as "codex" | "claude_code", workspaceId: specRun.workspaceId as string,
+          ? { goalId: specRun.goalId as string, provider: manifest.provider as "codex" | "claude_code" | "microsoft_copilot", workspaceId: specRun.workspaceId as string,
             repositoryRef: specRun.repositoryRef as string, sourceSha, action: actions[specRun.state],
             changedPaths: [], allowedWriteSet: execution.allowedWriteSet as string[], requiredCapabilities: manifest.requestedCapabilities as string[] }
           : undefined;
@@ -6515,7 +6515,7 @@ export function createJobControlPlane(
             !input.capabilitySnapshotId?.trim() ||
             !input.capabilitySnapshotRevision?.trim() ||
             !input.providerRequestId?.trim() ||
-            (input.provider !== "codex" && input.provider !== "claude_code")))
+            (input.provider !== "codex" && input.provider !== "claude_code" && input.provider !== "microsoft_copilot")))
       )
         return "ignored";
       return repository.transaction(async repo => {

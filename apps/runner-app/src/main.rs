@@ -12,6 +12,13 @@ use smartaihub_runner::{
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("status");
+    if command == "__sah-copilot-sdk-worker" {
+        if let Err(error) = smartaihub_runner::copilot_harness::run_worker_cli(&args[1..]) {
+            eprintln!("Copilot SDK worker failed: {error}");
+            std::process::exit(3);
+        }
+        return;
+    }
     let config = RunnerConfig::from_env().unwrap_or_else(|error| {
         eprintln!("runner configuration error: {error}");
         std::process::exit(2);

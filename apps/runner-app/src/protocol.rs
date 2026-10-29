@@ -132,7 +132,10 @@ impl RunnerJobCommand {
         #[cfg(not(feature = "spec208-moli-acceptance"))]
         let moli_acceptance_command = false;
         let external_agent_command = self.execution_kind == "external_agent_task"
-            && matches!(self.adapter_id.as_str(), "codex.v1" | "claude.v1");
+            && matches!(
+                self.adapter_id.as_str(),
+                "codex.v1" | "claude.v1" | "microsoft-copilot.v1"
+            );
         if !browser_command && !external_agent_command && !moli_acceptance_command {
             return Err("RUNNER_COMMAND_ADAPTER_UNSUPPORTED".into());
         }

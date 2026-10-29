@@ -31,7 +31,7 @@ export type Spec224AuthorizationRun = {
   attemptId: string | null;
   workspaceId: string;
   profileId?: string;
-  provider: "codex" | "claude_code";
+  provider: "codex" | "claude_code" | "microsoft_copilot";
   deadline: string;
   /** Required only when authorization is delegated from an approved Goal grant. */
   goalDelegationScope?: {
@@ -66,14 +66,15 @@ export type Spec224RunnerReadiness = {
   capabilitySnapshotRevision: string | null;
 };
 
-function codexTaskProbeOwnerAction(snapshot: RunnerCapabilitySnapshot | null | undefined): string {
+function taskProbeOwnerAction(snapshot: RunnerCapabilitySnapshot | null | undefined, provider: string): string {
   const os = snapshot?.platform?.os.toLowerCase() ?? "";
   const runner = /windows/.test(os)
     ? "Windows SmartAIHub Runner"
     : /linux|debian|ubuntu/.test(os)
       ? "Debian/Linux SmartAIHub Runner"
       : "registered SmartAIHub Runner";
-  return `${runner} → Codex → ทดสอบสั่งงานจริง แล้วรอ capability ACK ล่าสุด`;
+  const harness = provider === "microsoft_copilot" ? "Microsoft Copilot" : provider === "claude_code" ? "Claude Code" : "Codex";
+  return `${runner} → ${harness} → ทดสอบสั่งงานจริง แล้วรอ capability ACK ล่าสุด`;
 }
 
 /** Readiness is observation, not a job grant. Only the requested adapter is
@@ -83,6 +84,7 @@ export function evaluateSpec224RunnerReadiness(input: {
   tenantId: string;
   actorId: number;
   workspaceId: string;
+  provider?: "codex" | "claude_code" | "microsoft_copilot";
   sourceCommit?: string;
   sourceFingerprint?: string;
   now?: Date;
@@ -90,7 +92,10 @@ export function evaluateSpec224RunnerReadiness(input: {
   const { runner } = input;
   const snapshot = runner?.snapshot;
   const now = (input.now ?? new Date()).getTime();
-  const tool = snapshot?.toolInventory?.find(item => item.adapterId === "codex.v1");
+  const provider = input.provider ?? "codex";
+  const adapterId = provider === "microsoft_copilot" ? "microsoft-copilot.v1" : provider === "claude_code" ? "claude.v1" : "codex.v1";
+  const prefix = provider === "microsoft_copilot" ? "COPILOT" : provider === "claude_code" ? "CLAUDE" : "CODEX";
+  const tool = snapshot?.toolInventory?.find(item => item.adapterId === adapterId);
   const capability = snapshot?.capabilityInventory?.find(item => item.capabilityId === `tool.execute.${tool?.toolId}`);
   const policyDecision = capability?.policyDecision ?? "pending";
   const result = (code: string, ownerAction: string | null = null): Spec224RunnerReadiness => ({
@@ -112,21 +117,21 @@ export function evaluateSpec224RunnerReadiness(input: {
     return result("RUNNER_SESSION_OR_SNAPSHOT_MISMATCH");
   const fresh = (observed: string, expires: string) => Date.parse(observed) <= now && Date.parse(expires) > now;
   if (!fresh(snapshot.observedAt, snapshot.expiresAt)) return result("CAPABILITY_SNAPSHOT_EXPIRED");
-  if (policyDecision === "denied") return result("CODEX_CAPABILITY_POLICY_DENIED");
-  if (!tool || tool.installState !== "installed") return result("CODEX_NOT_INSTALLED");
-  if (tool.authState !== "authenticated") return result("CODEX_AUTHENTICATION_REQUIRED", "เข้าสู่ระบบ Codex บน Windows Runner ด้วยบัญชีของคุณ");
-  const probeAction = codexTaskProbeOwnerAction(snapshot);
-  if (tool.taskProbeState === "not_run" || !tool.taskProbeState) return result("CODEX_TASK_PROBE_NOT_RUN", probeAction);
-  if (tool.taskProbeState === "failed") return result("CODEX_TASK_PROBE_FAILED", probeAction);
-  if (tool.taskProbeState !== "passed") return result("CODEX_TASK_PROBE_UNSUPPORTED");
+  if (policyDecision === "denied") return result(`${prefix}_CAPABILITY_POLICY_DENIED`);
+  if (!tool || tool.installState !== "installed") return result(`${prefix}_NOT_INSTALLED`);
+  if (tool.authState !== "authenticated") return result(`${prefix}_AUTHENTICATION_REQUIRED`, `ยืนยันตัวตน ${provider === "microsoft_copilot" ? "Microsoft Copilot" : provider === "claude_code" ? "Claude Code" : "Codex"} บน Runner ด้วยบัญชีที่ได้รับอนุญาต`);
+  const probeAction = taskProbeOwnerAction(snapshot, provider);
+  if (tool.taskProbeState === "not_run" || !tool.taskProbeState) return result(`${prefix}_TASK_PROBE_NOT_RUN`, probeAction);
+  if (tool.taskProbeState === "failed") return result(`${prefix}_TASK_PROBE_FAILED`, probeAction);
+  if (tool.taskProbeState !== "passed") return result(`${prefix}_TASK_PROBE_UNSUPPORTED`);
   if (!Number.isSafeInteger(tool.taskProbeObservedAtMs) || Number(tool.taskProbeObservedAtMs) > now ||
     !Number.isSafeInteger(tool.taskProbeExpiresAtMs) || Number(tool.taskProbeExpiresAtMs) <= now)
-    return result("CODEX_TASK_PROBE_EXPIRED", probeAction);
+    return result(`${prefix}_TASK_PROBE_EXPIRED`, probeAction);
   if (!fresh(tool.observedAt, tool.expiresAt) || !tool.taskProbeEvidenceRef || !tool.authorizationEvidenceRef ||
     tool.versionProbeState !== "passed" || tool.configurationState !== "configured" || tool.healthState !== "healthy" ||
     tool.trustState !== "ready" || tool.availabilityState !== "available" || !snapshot.capabilities.includes("agent.external_task"))
-    return result("CODEX_READINESS_PUBLICATION_REQUIRED", "รอ Runner เผยแพร่และรับ acknowledgement ของผล Codex probe ล่าสุด");
-  if (capability && !fresh(capability.observedAt, capability.expiresAt)) return result("CODEX_CAPABILITY_EXPIRED");
+    return result(`${prefix}_READINESS_PUBLICATION_REQUIRED`, "รอ Runner เผยแพร่และรับ acknowledgement ของผลทดสอบ Harness ล่าสุด");
+  if (capability && !fresh(capability.observedAt, capability.expiresAt)) return result(`${prefix}_CAPABILITY_EXPIRED`);
   const workspace = snapshot.workspaces?.find(item => item.workspaceId === input.workspaceId);
   if (!snapshot.workspaceIds.includes(input.workspaceId) || !workspace) return result("WORKSPACE_BINDING_MISMATCH");
   if (!workspace.gitHead || !workspace.contentFingerprint) return result("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
@@ -278,12 +283,14 @@ function isExpired(value: string | null | undefined, now: Date): boolean {
   );
 }
 
-function codexTool(
-  snapshot: RunnerCapabilitySnapshot
+function providerTool(
+  snapshot: RunnerCapabilitySnapshot,
+  provider: Spec224AuthorizationRun["provider"]
 ): RunnerToolInventoryEntry | null {
+  const adapterId = provider === "microsoft_copilot" ? "microsoft-copilot.v1" : provider === "claude_code" ? "claude.v1" : "codex.v1";
   return (
     snapshot.toolInventory?.find(
-      tool => tool.toolId === "codex" || tool.adapterId === "codex.v1"
+      tool => tool.adapterId === adapterId
     ) ?? null
   );
 }
@@ -314,7 +321,7 @@ export function evaluateSpec224Authorization(
   const reasons: string[] = [];
 
   if (
-    run.provider !== "codex" ||
+    !["codex", "claude_code", "microsoft_copilot"].includes(run.provider) ||
     !run.workerJobId ||
     !run.attemptId ||
     !run.workspaceId.trim() ||
@@ -356,7 +363,7 @@ export function evaluateSpec224Authorization(
     return result("RUNNER_BINDING_REQUIRED", ["RUNNER_NOT_ONLINE"]);
   }
 
-  const tool = codexTool(snapshot);
+  const tool = providerTool(snapshot, run.provider);
   if (
     !tool ||
     tool.authState !== "authenticated" ||

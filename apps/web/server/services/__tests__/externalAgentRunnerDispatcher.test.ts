@@ -105,6 +105,15 @@ describe("Feature 195 external-agent Runner dispatcher", () => {
     );
   });
 
+  it("dispatches Copilot through its registered Runner adapter", async () => {
+    const state = input();
+    state.manifest = { ...manifest, provider: "microsoft_copilot" };
+    const dispatch = vi.fn().mockResolvedValue({ status: "accepted", commandId: "command-copilot", runnerId: "runner-1", runnerSessionId: "session-1" });
+    const dispatcher = createExternalAgentTaskDispatcher({ dispatch, now: () => new Date("2026-09-23T00:00:00.000Z"), commandId: () => "command-copilot", controlPlaneOrigin: "http://localhost:3000" });
+    await dispatcher(state as any);
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ adapterId: "microsoft-copilot.v1", executionKind: "external_agent_task" }));
+  });
+
   it("creates an idempotent dark session projection before persisting external wait metadata", async () => {
     const state = input();
     const dispatch = vi.fn().mockResolvedValue({

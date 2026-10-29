@@ -341,7 +341,7 @@ async function advanceWorkspaceGoalAdmission(input: {
 const providerInput = z.object({
   runId: runIdSchema,
   runnerId: z.string().trim().min(1).max(160),
-  provider: z.literal("codex").default("codex"),
+  provider: z.enum(["codex", "microsoft_copilot"]).default("codex"),
 });
 
 const safeActionInput = z.object({
@@ -921,7 +921,7 @@ export const spec226DevelopmentControlRouter = router({
       workPackageId: z.string().trim().min(1).max(160).optional(),
       idempotencyKey: z.string().trim().min(16).max(160),
       budgetCapMinorUnits: z.number().int().positive().max(10_000_000).default(100),
-      provider: z.enum(["codex", "claude_code"]).default("codex"),
+      provider: z.enum(["codex", "microsoft_copilot"]).default("codex"),
       modelSelection: z.object({
         policy: z.enum(["auto", "explicit"]),
         modelId: z.string().trim().min(1).max(160).optional(),
@@ -1093,10 +1093,12 @@ export const spec226DevelopmentControlRouter = router({
         }
         const binding = await defaultSpec224WorkspaceSpecSetService.getConversationWorkspace({ ...scope, conversationId: input.conversationId });
         if (!binding?.workspace) throw new Error("WORKSPACE_BINDING_REQUIRED");
+        const provider = input.provider ?? "codex";
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({
           context: scope,
           runnerId: binding.workspace.runnerId,
           workspaceId: binding.workspace.workspaceId,
+          provider,
         });
         if (!runnerReadiness.ready) {
           throw new TRPCError({
@@ -1104,14 +1106,14 @@ export const spec226DevelopmentControlRouter = router({
             message: [runnerReadiness.code, runnerReadiness.ownerAction].filter(Boolean).join(": "),
           });
         }
-        if ((input.provider ?? "codex") !== "codex") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "SPEC224_DELEGATED_PROVIDER_UNSUPPORTED" });
+        const harnessAdapterId = provider === "codex" ? "codex.v1" : "microsoft-copilot.v1";
         const requestDigest = createHash("sha256").update(JSON.stringify({
           conversationId: input.conversationId, mode: input.mode, prompt: input.prompt ?? null,
           writeScope: input.writeScope ?? null,
           workspaceAccessMode: input.workspaceAccessMode ?? null,
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
-          provider: input.provider ?? "codex", visualReferences: input.visualReferences ?? [],
+          provider, visualReferences: input.visualReferences ?? [],
           visualFiles: input.visualFiles ?? [], designPreferences: input.designPreferences ?? {},
           modelSelection: input.modelSelection ?? { policy: "auto" },
           budgetCapMinorUnits: input.budgetCapMinorUnits,
@@ -1151,10 +1153,11 @@ export const spec226DevelopmentControlRouter = router({
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           ...(input.specSetRevision === undefined ? {} : { specSetRevision: input.specSetRevision }),
           ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
+          adapterId: harnessAdapterId,
         });
         const modelSelection = resolveSpec224ModelSelection({
           request: input.modelSelection,
-          adapterId: "codex.v1",
+          adapterId: harnessAdapterId,
           catalog: prepared.runner.modelCatalog,
           capabilitySnapshotRevision: prepared.runner.snapshotRevision,
         });
@@ -1471,6 +1474,7 @@ export const spec226DevelopmentControlRouter = router({
         const grantPayload = record.run.metadata?.spec224GoalGrantPayload;
         const runnerReadiness = await defaultSpec224AuthorizationService.runnerReadiness({ context: scope,
           runnerId: binding.workspace.runnerId, workspaceId: binding.workspace.workspaceId,
+          provider: record.run.provider,
           sourceCommit: /^git:([a-f0-9]{40})$/i.exec(record.run.baseRevision)?.[1] });
         const goalAdmission = grantPayload && typeof grantPayload === "object" && runnerReadiness.ready && runnerReadiness.projectId
           ? await advanceWorkspaceGoalAdmission({ context: authorizationContext(ctx), runId: input.runId,
@@ -1514,7 +1518,7 @@ export const spec226DevelopmentControlRouter = router({
         planId: z.string().trim().min(1).max(200),
         planRevision: z.number().int().min(1),
         idempotencyKey: z.string().trim().min(16).max(160),
-        provider: z.enum(["codex", "claude_code"]).default("codex"),
+        provider: z.enum(["codex", "claude_code", "microsoft_copilot"]).default("codex"),
         skillIds: z
           .array(z.string().trim().min(1).max(200))
           .max(32)
@@ -1685,7 +1689,7 @@ export const spec226DevelopmentControlRouter = router({
       z.object({
         runId: runIdSchema,
         runnerId: z.string().trim().min(1).max(160).optional(),
-        provider: z.literal("codex").default("codex"),
+        provider: z.enum(["codex", "microsoft_copilot"]).default("codex"),
       })
     )
     .query(async ({ ctx, input }) => {

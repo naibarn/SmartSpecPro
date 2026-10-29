@@ -50,6 +50,26 @@ describe("Feature 200 Agent control-plane contracts", () => {
     })).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });
 
+  it("binds Copilot model selections to the Microsoft Copilot adapter", () => {
+    const copilotManifest = { ...manifest, provider: "microsoft_copilot" as const };
+    const selection = {
+      adapterId: "microsoft-copilot.v1",
+      policy: "explicit" as const,
+      selectedModelId: "dynamic-copilot-model",
+      resolvedModelId: "dynamic-copilot-model",
+      reasoningEffort: "medium",
+      catalogRevision: "catalog:sha256:copilot",
+      accountProviderFingerprint: "copilot-account:sha256:account",
+      capabilitySnapshotRevision: "revision-2",
+      capabilityProfile: ["text", "tool_calls"],
+      cliVersion: "0.1.28",
+    };
+    expect(validateAgentTaskManifest({ ...copilotManifest, spec224ModelSelection: selection }))
+      .toMatchObject({ provider: "microsoft_copilot", spec224ModelSelection: selection });
+    expect(() => validateAgentTaskManifest({ ...copilotManifest, spec224ModelSelection: { ...selection, adapterId: "codex.v1" } }))
+      .toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+  });
+
   it("validates provider-neutral manifests and rejects credential leakage", () => {
     expect(validateAgentTaskManifest(manifest)).toMatchObject({
       provider: "codex",

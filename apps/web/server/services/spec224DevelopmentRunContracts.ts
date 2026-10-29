@@ -668,7 +668,7 @@ export function classifyDevelopmentFailure(input: {
 
 export function buildDevelopmentHarnessJob(input: {
   run: DevelopmentRun;
-  provider: Extract<AgentProvider, "codex" | "claude_code">;
+  provider: Extract<AgentProvider, "codex" | "claude_code" | "microsoft_copilot">;
   runtime: AgentRuntime;
   planId: string;
   planRevision: number;
@@ -715,7 +715,7 @@ export function buildDevelopmentHarnessJob(input: {
 
 export async function enqueueDevelopmentHarnessJob(input: {
   run: DevelopmentRun;
-  provider: Extract<AgentProvider, "codex" | "claude_code">;
+  provider: Extract<AgentProvider, "codex" | "claude_code" | "microsoft_copilot">;
   runtime: AgentRuntime;
   planId: string;
   planRevision: number;

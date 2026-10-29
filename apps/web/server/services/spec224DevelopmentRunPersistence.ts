@@ -1840,7 +1840,7 @@ export const defaultDevelopmentRunPersistenceAdapter = buildDatabaseAdapter();
 
 export async function createPersistedDevelopmentRun(input: {
   run: DevelopmentRun;
-  provider: "codex" | "claude_code";
+  provider: "codex" | "claude_code" | "microsoft_copilot";
   runtime: "local_runner" | "cloudflare_container";
   planId: string;
   planRevision: number;

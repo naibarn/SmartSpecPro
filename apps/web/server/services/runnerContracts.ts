@@ -949,7 +949,7 @@ function validateRunnerToolInventory(
         (authState !== "authenticated" && authState !== "not_required") ||
         healthState !== "healthy" ||
         (availabilityState !== "available" && availabilityState !== "busy") ||
-        ((adapterId === "codex.v1" || adapterId === "claude.v1") &&
+        ((adapterId === "codex.v1" || adapterId === "claude.v1" || adapterId === "microsoft-copilot.v1") &&
           (versionProbeState !== "passed" || taskProbeState !== "passed")))
     )
       invalid(`${prefix} claims ready without verified execution state`);
@@ -1286,7 +1286,7 @@ export function validateRunnerCapabilitySnapshot(
   // high-level external-task capability as availability only when the
   // authenticated Codex adapter is actually ready. This does not approve a
   // policy decision, tenant-owner authorization, or a Recovery Grant.
-  const codexReady = toolInventory.some(tool => tool.adapterId === "codex.v1" &&
+  const externalAgentReady = toolInventory.some(tool => ["codex.v1", "claude.v1", "microsoft-copilot.v1"].includes(tool.adapterId ?? "") &&
     capabilities.includes(`tool.execute.${tool.toolId}`) &&
     tool.installState === "installed" && tool.configurationState === "configured" &&
     tool.authState === "authenticated" && tool.healthState === "healthy" &&
@@ -1294,7 +1294,7 @@ export function validateRunnerCapabilitySnapshot(
     tool.versionProbeState === "passed" && tool.taskProbeState === "passed" &&
     Boolean(tool.taskProbeEvidenceRef?.trim()) &&
     Boolean(tool.authorizationEvidenceRef?.trim()));
-  if (codexReady && !capabilities.includes("agent.external_task")) {
+  if (externalAgentReady && !capabilities.includes("agent.external_task")) {
     capabilities.push("agent.external_task");
   }
   return {

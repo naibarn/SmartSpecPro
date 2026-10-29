@@ -353,6 +353,7 @@ export const runnerNodesRouter = router({
     .input(z.object({
       runnerId: z.string().trim().min(1).max(160),
       workspaceId: z.string().trim().min(1).max(200),
+      provider: z.enum(["codex", "claude_code", "microsoft_copilot"]).default("codex"),
     }))
     .query(async ({ ctx, input }) => defaultSpec224AuthorizationService.runnerReadiness({
       context: { tenantId: tenantRequired(ctx), actorId: ctx.user.id },

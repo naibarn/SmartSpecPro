@@ -45,7 +45,7 @@ export type CreateAndBindNextPhaseInput = {
   expectedRevision: number;
   expectedFencingVersion: number;
   idempotencyKey: string;
-  provider: Extract<AgentProvider, "codex" | "claude_code">;
+  provider: Extract<AgentProvider, "codex" | "claude_code" | "microsoft_copilot">;
   runtime: AgentRuntime;
   planId: string;
   planRevision: number;

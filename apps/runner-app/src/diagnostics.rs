@@ -317,7 +317,10 @@ fn tool_ready_for_authorized_execution(tool: &ToolCandidate) -> bool {
     if tool.trust_state != TrustState::Ready {
         return false;
     }
-    if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1")) {
+    if matches!(
+        tool.adapter_id.as_deref(),
+        Some("codex.v1" | "claude.v1" | "microsoft-copilot.v1")
+    ) {
         return tool.version_probe_state == ProbeState::Passed
             && tool.auth_state == CapabilityDimension::Ready
             && tool.task_probe_state == ProbeState::Passed
@@ -672,8 +675,10 @@ fn apply_task_probe_evidence(
         && tool.availability_state == CapabilityDimension::Ready
     {
         tool.trust_state = TrustState::Ready;
-    } else if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1"))
-        && tool.trust_state == TrustState::Ready
+    } else if matches!(
+        tool.adapter_id.as_deref(),
+        Some("codex.v1" | "claude.v1" | "microsoft-copilot.v1")
+    ) && tool.trust_state == TrustState::Ready
     {
         tool.trust_state = TrustState::Probed;
     }
@@ -708,13 +713,14 @@ fn renew_task_probe_if_due(
     runner_session_id: Option<&str>,
     tenant_id: Option<&str>,
 ) {
-    if !matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1"))
-        || !task_probe_renewal_due(
-            tool.task_probe_state,
-            tool.task_probe_expires_at_ms,
-            current_time_ms(),
-        )
-    {
+    if !matches!(
+        tool.adapter_id.as_deref(),
+        Some("codex.v1" | "claude.v1" | "microsoft-copilot.v1")
+    ) || !task_probe_renewal_due(
+        tool.task_probe_state,
+        tool.task_probe_expires_at_ms,
+        current_time_ms(),
+    ) {
         return;
     }
     let key = task_probe_renewal_key(&config.runner_id, runner_session_id, tenant_id, tool);
@@ -1000,7 +1006,10 @@ fn scan_capability_tools(
                 runner_session_id,
                 tenant_id,
             );
-            if matches!(tool.adapter_id.as_deref(), Some("codex.v1" | "claude.v1")) {
+            if matches!(
+                tool.adapter_id.as_deref(),
+                Some("codex.v1" | "claude.v1" | "microsoft-copilot.v1")
+            ) {
                 renew_task_probe_if_due(config, tool, runner_session_id, tenant_id);
                 tool.authorization_evidence_ref = external_agent_readiness_ref(
                     config,
@@ -1040,8 +1049,13 @@ fn external_agent_readiness_ref(
         || tool
             .task_probe_expires_at_ms
             .is_none_or(|expires_at| expires_at <= current_time_ms())
-        || !(adapter_id == "codex.v1" || deterministic_certification_adapter_enabled())
-        || !matches!(adapter_id, "codex.v1" | "claude.v1")
+        || !(adapter_id == "codex.v1"
+            || adapter_id == crate::copilot_harness::ADAPTER_ID
+            || deterministic_certification_adapter_enabled())
+        || !matches!(
+            adapter_id,
+            "codex.v1" | "claude.v1" | "microsoft-copilot.v1"
+        )
     {
         return None;
     }
@@ -1452,7 +1466,8 @@ fn rebind_capability_snapshot(
                     .get("taskProbeExpiresAtMs")
                     .and_then(serde_json::Value::as_u64)
                     .is_some_and(|expires_at| expires_at > current_time_ms());
-            (ready && matches!(adapter, "codex.v1" | "claude.v1")).then(|| adapter.to_string())
+            (ready && matches!(adapter, "codex.v1" | "claude.v1" | "microsoft-copilot.v1"))
+                .then(|| adapter.to_string())
         })
         .collect();
     channel.bind_external_agent_adapters(external_agent_adapters);
@@ -1467,7 +1482,7 @@ fn rebind_capability_snapshot(
                 let evidence = tool
                     .get("authorizationEvidenceRef")
                     .and_then(serde_json::Value::as_str)?;
-                matches!(adapter, "codex.v1" | "claude.v1")
+                matches!(adapter, "codex.v1" | "claude.v1" | "microsoft-copilot.v1")
                     .then(|| (adapter.to_string(), evidence.to_string()))
             })
             .collect(),
@@ -5385,6 +5400,39 @@ mod lifecycle_tests {
             Some(expiry)
         )
         .is_none());
+    }
+
+    #[test]
+    fn authenticated_copilot_has_session_bound_evidence_after_real_task_probe() {
+        let config =
+            RunnerConfig::local("runner-copilot", "device-copilot", "https://example.test");
+        let mut tool = scan_known_tools(RunnerProfile::LocalDevice, &["copilot".into()])
+            .into_iter()
+            .find(|tool| tool.tool_id == "copilot")
+            .unwrap_or_else(|| {
+                let mut tool = scan_known_tools(RunnerProfile::LocalDevice, &["codex".into()])
+                    .into_iter()
+                    .find(|tool| tool.tool_id == "codex")
+                    .unwrap();
+                tool.tool_id = "copilot".into();
+                tool.adapter_id = Some(crate::copilot_harness::ADAPTER_ID.into());
+                tool
+            });
+        tool.adapter_id = Some(crate::copilot_harness::ADAPTER_ID.into());
+        tool.trust_state = crate::discovery::TrustState::Ready;
+        tool.auth_state = crate::discovery::CapabilityDimension::Ready;
+        tool.version_probe_state = crate::discovery::ProbeState::Passed;
+        tool.task_probe_state = crate::discovery::ProbeState::Passed;
+        tool.task_probe_expires_at_ms = Some(super::current_time_ms() + 60_000);
+        tool.task_probe_evidence_ref = Some("runner-task-probe:sha256:copilot".into());
+        let evidence = external_agent_readiness_ref(
+            &config,
+            &tool,
+            Some("session"),
+            Some("tenant"),
+            Some(super::snapshot_expiry_ms()),
+        );
+        assert!(evidence.is_some());
     }
 
     #[test]

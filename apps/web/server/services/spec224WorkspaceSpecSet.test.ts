@@ -62,6 +62,17 @@ function memoryStore(): Spec224WorkspaceSpecSetStore & {
 }
 
 describe("spec224 workspace Spec Set", () => {
+  it("selects the catalog belonging to the requested Runner harness", async () => {
+    const store = memoryStore();
+    const codexCatalog = { state: "discovered" as const, adapterId: "codex.v1", adapterVersion: "codex.v1", cliVersion: "codex", accountProviderFingerprint: "codex-account:sha256:test", accountScopeState: "account_scoped_catalog_unverified", source: "test", revision: "codex-catalog", verificationState: "unverified_catalog_only", observedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), models: [] };
+    const copilotCatalog = { ...codexCatalog, adapterId: "microsoft-copilot.v1", adapterVersion: "microsoft-copilot.v1", cliVersion: "Copilot CLI 1.0.28", accountProviderFingerprint: "copilot-account:sha256:test", revision: "copilot-catalog" };
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64), modelCatalog: codexCatalog, modelCatalogs: [codexCatalog, copilotCatalog] }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const prepared = await service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "A small task", adapterId: "microsoft-copilot.v1" });
+    expect(prepared.runner.modelCatalog).toMatchObject({ adapterId: "microsoft-copilot.v1", revision: "copilot-catalog" });
+  });
+
   it("hides platform repository titles while preserving user workspace names", () => {
     expect(presentWorkspaceDisplayName("SmartSpecPro", "PLATFORM_ENGINEERING")).toBe("SmartAIHub Development Workspace");
     expect(presentWorkspaceDisplayName("SmartSpecPro", "USER_WORKSPACE")).toBe("SmartSpecPro");

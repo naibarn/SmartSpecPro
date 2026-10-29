@@ -15,6 +15,24 @@ import { trpc } from "@/lib/trpc";
 import { presentCustomerError, sanitizePlatformDiagnostic } from "@shared/projectIdentityPresentation";
 import { Text } from "@/components/AppPage";
 
+type WorkspaceModelCatalog = {
+  state: "discovered" | "error" | "not_ready";
+  adapterId: string;
+  cliVersion: string | null;
+  observedAt: string;
+  expiresAt: string;
+  accountProviderFingerprint?: string | null;
+  verificationState?: string;
+  revision?: string;
+  models?: Array<{
+    id: string;
+    displayName: string;
+    reasoningEfforts: string[];
+    defaultReasoningEffort?: string | null;
+    isDefault: boolean;
+  }>;
+};
+
 type WorkspaceOption = {
   runnerId: string;
   workspaceId: string;
@@ -28,23 +46,8 @@ type WorkspaceOption = {
   dirtyPaths?: string[] | null;
   convergenceState?: string;
   convergenceCanonicalSha?: string | null;
-  modelCatalog?: {
-    state: "discovered" | "error" | "not_ready";
-    adapterId: string;
-    cliVersion: string | null;
-    observedAt: string;
-    expiresAt: string;
-    accountProviderFingerprint?: string | null;
-    verificationState?: string;
-    revision?: string;
-    models?: Array<{
-      id: string;
-      displayName: string;
-      reasoningEfforts: string[];
-      defaultReasoningEffort?: string | null;
-      isDefault: boolean;
-    }>;
-  } | null;
+  modelCatalog?: WorkspaceModelCatalog | null;
+  modelCatalogs?: WorkspaceModelCatalog[];
 };
 
 type RunnerOption = {
@@ -389,9 +392,19 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const readinessTarget = runnerWorkspaces.find(item => item.workspaceId === boundWorkspace?.workspaceId && item.runnerId === boundWorkspace?.runnerId)
     ?? runnerWorkspaces.find(item => selectionKey(item) === selected)
     ?? (boundWorkspace ? { runnerId: boundWorkspace.runnerId, workspaceId: boundWorkspace.workspaceId } : null);
+  const readinessCatalogs = readinessTarget && "modelCatalogs" in readinessTarget
+    ? readinessTarget.modelCatalogs ?? (readinessTarget.modelCatalog ? [readinessTarget.modelCatalog] : [])
+    : [];
+  const readinessAdapterId = harnessPolicy === "explicit"
+    ? selectedHarnessAdapterId
+    : readinessCatalogs.some(catalog => catalog.adapterId === "codex.v1") ? "codex.v1"
+      : readinessCatalogs.find(catalog => catalog.adapterId === "microsoft-copilot.v1")?.adapterId ?? "codex.v1";
+  const readinessProvider = readinessAdapterId === "microsoft-copilot.v1" ? "microsoft_copilot"
+    : readinessAdapterId === "claude.v1" ? "claude_code" : "codex";
   const workspaceReadinessQuery = trpc.runnerNodes.workspaceReadiness.useQuery({
     runnerId: readinessTarget?.runnerId ?? "",
     workspaceId: readinessTarget?.workspaceId ?? "",
+    provider: readinessProvider,
   }, {
     enabled: Boolean(readinessTarget),
     refetchInterval: 5_000,
@@ -403,15 +416,16 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const platformWorkspaceSelected = Boolean(platformWorkspace && selectedWorkspace
     && selectionKey(platformWorkspace) === selectionKey(selectedWorkspace));
-  const modelCatalog = selectedWorkspace?.modelCatalog;
-  // Only expose an execution adapter when the selected Runner's fresh,
-  // account-bound catalog reports it. The current delegated Start contract
-  // supports Codex; do not offer other adapters until that path is enabled.
-  const catalogHarnesses = modelCatalog?.adapterId === "codex.v1" ? [modelCatalog.adapterId] : [];
+  const availableCatalogs = selectedWorkspace?.modelCatalogs ?? (selectedWorkspace?.modelCatalog ? [selectedWorkspace.modelCatalog] : []);
+  const catalogHarnesses = availableCatalogs
+    .map(catalog => catalog.adapterId)
+    .filter(adapterId => adapterId === "codex.v1" || adapterId === "microsoft-copilot.v1");
   const effectiveHarnessAdapterId = harnessPolicy === "explicit"
     ? selectedHarnessAdapterId
-    : catalogHarnesses[0] ?? "";
-  const effectiveProvider = effectiveHarnessAdapterId === "codex.v1" ? "codex" : "";
+    : catalogHarnesses.includes("codex.v1") ? "codex.v1" : catalogHarnesses[0] ?? "";
+  const modelCatalog = availableCatalogs.find(catalog => catalog.adapterId === effectiveHarnessAdapterId) ?? null;
+  const effectiveProvider = effectiveHarnessAdapterId === "codex.v1" ? "codex"
+    : effectiveHarnessAdapterId === "microsoft-copilot.v1" ? "microsoft_copilot" : "";
   const catalogModels = modelCatalog?.models ?? [];
   const catalogExpired = modelCatalog?.state === "discovered"
     && Date.parse(modelCatalog.expiresAt) <= Date.now();
@@ -429,7 +443,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     ? reasoningEffort
     : activeModel?.defaultReasoningEffort && availableEfforts.includes(activeModel.defaultReasoningEffort)
       ? activeModel.defaultReasoningEffort
-      : availableEfforts.includes("medium") ? "medium" : availableEfforts[0] ?? "";
+      : availableEfforts.includes("medium") ? "medium" : availableEfforts[0] ?? (effectiveHarnessAdapterId === "microsoft-copilot.v1" ? "provider_default" : "");
   const selectedRunner = runners.find(runner => runner.runnerId === selectedRunnerId);
   const isPlatformWorkspace = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" || selectionKey(selectedWorkspace ?? { runnerId: "", workspaceId: "" }) === lastPlatformWorkspaceKey.current;
   const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && selectionKey(selectedWorkspace) === selectionKey(platformWorkspace ?? selectedWorkspace);
@@ -680,8 +694,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       return;
     }
     const modelSelection = { policy: modelPolicy, ...(modelPolicy === "explicit" ? { modelId: selectedModelId } : {}), reasoningEffort: supportedEffort };
-    if (!(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || !targetPreparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !effectiveProvider || (harnessPolicy === "explicit" && !catalogHarnesses.includes(selectedHarnessAdapterId)) || !activeModel || !supportedEffort))) {
-      toast.error("Runner หรือ Codex model readiness ยังไม่พร้อม จึงยังไม่เริ่มงาน");
+    if (!(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || (requestKind === "development" && (!catalogFresh || !effectiveProvider || (harnessPolicy === "explicit" && !catalogHarnesses.includes(selectedHarnessAdapterId)) || !activeModel || !supportedEffort))) {
+      toast.error("Runner หรือ model readiness ของ Harness ที่เลือกยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
     const key = `${targetConversationId}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${workspaceAccessMode}:${budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
@@ -701,7 +715,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
           ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
         }),
         budgetCapMinorUnits,
-        ...(requestKind === "development" ? { provider: effectiveProvider as "codex" } : {}),
+        ...(requestKind === "development" ? { provider: effectiveProvider as "codex" | "microsoft_copilot" } : {}),
         modelSelection,
         ...(visualReferences.length ? {
           visualReferences: visualReferences.map(reference => ({
@@ -983,7 +997,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                   label="AI Model"
                   value={modelPolicy === "auto" ? "auto" : selectedModelId}
                   options={[
-                    { value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto — ใช้รุ่นเริ่มต้นจาก Runner" },
+                    { value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto — ไม่มีรุ่นเริ่มต้นจาก Runner" },
                     ...catalogModels.map(model => ({ value: model.id, label: `${model.displayName}${model.isDefault ? " · Default" : ""}` })),
                   ]}
                   onChange={value => {

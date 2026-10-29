@@ -230,13 +230,13 @@ export function isRunnerCommandBoundToCanonicalAgentManifest(
     !policy ||
     command.projectRef !== undefined ||
     command.browserEngineConstraint !== undefined ||
-    (manifest.provider !== "codex" && manifest.provider !== "claude_code")
+    (manifest.provider !== "codex" && manifest.provider !== "claude_code" && manifest.provider !== "microsoft_copilot")
   ) {
     return false;
   }
   const expected = {
     executionKind: "external_agent_task",
-    adapterId: manifest.provider === "codex" ? "codex.v1" : "claude.v1",
+    adapterId: manifest.provider === "codex" ? "codex.v1" : manifest.provider === "claude_code" ? "claude.v1" : "microsoft-copilot.v1",
     adapterVersionConstraint: "0.1.0",
     workspaceRef: policy.workspaceRef,
     deadline: policy.deadline,

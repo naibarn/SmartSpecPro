@@ -36,7 +36,7 @@ export type Spec224GoalGrantScope = {
   grantId: string;
   goalId: string;
   actorId: number;
-  provider: "codex" | "claude_code";
+  provider: "codex" | "claude_code" | "microsoft_copilot";
   workspaceId: string;
   repositoryRef: string;
   sourceSha: string;
@@ -71,7 +71,7 @@ export function buildSpec224GoalGrantApprovalPayload(
     !isText(scope.goalId, 160) ||
     !Number.isSafeInteger(scope.actorId) ||
     scope.actorId <= 0 ||
-    !["codex", "claude_code"].includes(scope.provider) ||
+    !["codex", "claude_code", "microsoft_copilot"].includes(scope.provider) ||
     !isText(scope.workspaceId, 200) ||
     !isText(scope.repositoryRef, 255) ||
     !SHA.test(scope.sourceSha) ||
@@ -168,7 +168,7 @@ export type Spec224GoalDelegationInput = {
     goalId: string;
     tenantId: string;
     actorId: number;
-    provider: "codex" | "claude_code";
+    provider: "codex" | "claude_code" | "microsoft_copilot";
     workspaceId: string;
     repositoryRef: string;
     sourceSha: string;
@@ -189,7 +189,7 @@ export type Spec224GoalDelegationBinding = {
   goalId: string;
   tenantId: string;
   actorId: number;
-  provider: "codex" | "claude_code";
+  provider: "codex" | "claude_code" | "microsoft_copilot";
   workspaceId: string;
   repositoryRef: string;
   sourceSha: string;
@@ -274,7 +274,7 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
     !SHA.test(payload.sourceSha) ||
     !Number.isSafeInteger(payload.actorId) ||
     (payload.actorId as number) <= 0 ||
-    (payload.provider !== "codex" && payload.provider !== "claude_code") ||
+    (payload.provider !== "codex" && payload.provider !== "claude_code" && payload.provider !== "microsoft_copilot") ||
     !Array.isArray(payload.allowedActions) ||
     payload.allowedActions.length === 0 ||
     payload.allowedActions.length > ACTIONS.size ||
@@ -334,7 +334,7 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
     goalId: payload.goalId,
     tenantId: authority.tenantId,
     actorId: payload.actorId as number,
-    provider: payload.provider as "codex" | "claude_code",
+    provider: payload.provider as "codex" | "claude_code" | "microsoft_copilot",
     workspaceId: payload.workspaceId,
     repositoryRef: payload.repositoryRef,
     sourceSha: payload.sourceSha,

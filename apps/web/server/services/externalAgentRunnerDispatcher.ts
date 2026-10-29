@@ -48,9 +48,10 @@ function requiredOrigin(): string {
   }
 }
 
-function adapterId(provider: string): "codex.v1" | "claude.v1" {
+function adapterId(provider: string): "codex.v1" | "claude.v1" | "microsoft-copilot.v1" {
   if (provider === "codex") return "codex.v1";
   if (provider === "claude_code") return "claude.v1";
+  if (provider === "microsoft_copilot") return "microsoft-copilot.v1";
   throw new Error("AGENT_PROVIDER_RUNNER_UNSUPPORTED");
 }
 

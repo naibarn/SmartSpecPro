@@ -44,6 +44,20 @@ describe("SPEC-224 model selection", () => {
     expect(() => resolveSpec224ModelSelection({ ...base, request: { policy: "explicit", modelId: "gpt-6.1-terra", reasoningEffort: "medium" } })).toThrow("SPEC224_MODEL_REASONING_EFFORT_UNSUPPORTED");
   });
 
+  it("uses an explicit Copilot model when the SDK advertises no reasoning controls", () => {
+    const copilotCatalog: RunnerModelCatalog = {
+      ...catalog,
+      adapterId: "microsoft-copilot.v1",
+      adapterVersion: "microsoft-copilot.v1",
+      cliVersion: "Copilot CLI 1.0.28",
+      accountProviderFingerprint: "copilot-account:sha256:abcdef0123456789",
+      models: [{ id: "copilot-dynamic-model", displayName: "Dynamic model", capabilities: ["text"], reasoningEfforts: [], defaultReasoningEffort: null, isDefault: false }],
+    };
+    expect(resolveSpec224ModelSelection({ ...base, adapterId: "microsoft-copilot.v1", catalog: copilotCatalog,
+      request: { policy: "explicit", modelId: "copilot-dynamic-model", reasoningEffort: "provider_default" } }))
+      .toMatchObject({ adapterId: "microsoft-copilot.v1", resolvedModelId: "copilot-dynamic-model", reasoningEffort: "provider_default" });
+  });
+
   it("fails closed for stale, unverified-by-discovery, or wrong-adapter catalogs", () => {
     expect(() => resolveSpec224ModelSelection({ ...base, catalog: { ...catalog, expiresAt: "2026-10-28T12:04:59Z" } })).toThrow("SPEC224_MODEL_CATALOG_NOT_READY");
     expect(() => resolveSpec224ModelSelection({ ...base, catalog: { ...catalog, state: "error", models: undefined } })).toThrow("SPEC224_MODEL_CATALOG_NOT_READY");

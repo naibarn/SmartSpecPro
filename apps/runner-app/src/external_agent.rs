@@ -41,6 +41,7 @@ struct PinnedCodexModelSelection {
     selected_model_id: Option<String>,
     resolved_model_id: String,
     reasoning_effort: String,
+    catalog_revision: String,
     account_provider_fingerprint: Option<String>,
     capability_snapshot_revision: String,
 }
@@ -48,13 +49,20 @@ struct PinnedCodexModelSelection {
 fn pinned_codex_model_selection(
     command: &RunnerJobCommand,
 ) -> Result<Option<PinnedCodexModelSelection>, String> {
+    pinned_model_selection(command, "codex.v1")
+}
+
+fn pinned_model_selection(
+    command: &RunnerJobCommand,
+    expected_adapter: &str,
+) -> Result<Option<PinnedCodexModelSelection>, String> {
     let Some(value) = command.payload.get("spec224ModelSelection") else {
         return Ok(None);
     };
     let selection: PinnedCodexModelSelection = serde_json::from_value(value.clone())
         .map_err(|_| "RUNNER_MODEL_SELECTION_INVALID".to_string())?;
-    if command.adapter_id != "codex.v1"
-        || selection.adapter_id != "codex.v1"
+    if command.adapter_id != expected_adapter
+        || selection.adapter_id != expected_adapter
         || !matches!(selection.policy.as_str(), "auto" | "explicit")
         || selection.resolved_model_id.trim().is_empty()
         || selection.resolved_model_id.len() > 160
@@ -69,6 +77,38 @@ fn pinned_codex_model_selection(
         return Err("RUNNER_MODEL_SELECTION_INVALID".into());
     }
     Ok(Some(selection))
+}
+
+fn verify_live_copilot_model_selection(
+    command: &RunnerJobCommand,
+    candidate: &ToolCandidate,
+) -> Result<PinnedCodexModelSelection, String> {
+    let selection = pinned_model_selection(command, crate::copilot_harness::ADAPTER_ID)?
+        .ok_or("RUNNER_MODEL_SELECTION_REQUIRED")?;
+    let program = candidate
+        .executable_path
+        .as_deref()
+        .ok_or("RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING")?;
+    let catalog = crate::copilot_harness::refresh_model_catalog(program, Duration::from_secs(10))?;
+    if selection.catalog_revision != catalog.revision
+        || selection.account_provider_fingerprint.as_deref()
+            != Some(catalog.account_provider_fingerprint.as_str())
+    {
+        return Err("RUNNER_MODEL_ACCOUNT_SCOPE_CHANGED".into());
+    }
+    let model = catalog
+        .models
+        .iter()
+        .find(|model| model.id == selection.resolved_model_id)
+        .ok_or("RUNNER_SELECTED_MODEL_UNAVAILABLE")?;
+    if !model
+        .reasoning_efforts
+        .iter()
+        .any(|effort| effort == &selection.reasoning_effort)
+    {
+        return Err("RUNNER_SELECTED_MODEL_REASONING_UNSUPPORTED".into());
+    }
+    Ok(selection)
 }
 
 fn verify_live_codex_model_selection(
@@ -210,22 +250,7 @@ fn deadline_duration(deadline: &str) -> Result<Duration, String> {
 }
 
 pub fn fixed_provider_args(command: &RunnerJobCommand) -> Result<Vec<String>, String> {
-    let task_id = command
-        .payload
-        .get("taskId")
-        .and_then(serde_json::Value::as_str)
-        .ok_or_else(|| "RUNNER_AGENT_TASK_ID_REQUIRED".to_string())?;
-    let instruction = if command.input_ref.starts_with("spec224-input:") {
-        let manifest = crate::run_input::manifest_relative_path(&command.input_ref);
-        format!(
-            "SmartAIHub task {task_id}. Read the verified governed task input manifest at {manifest} in the isolated candidate workspace and make only the requested source changes. Do not build, test, or launch the application; those actions are controlled separately by the user."
-        )
-    } else {
-        format!(
-            "SmartAIHub task {task_id}. Read the governed task input reference {} from the isolated candidate workspace and make only the requested source changes. Do not build, test, or launch the application; those actions are controlled separately by the user.",
-            command.input_ref
-        )
-    };
+    let instruction = fixed_provider_instruction(command)?;
     match command.adapter_id.as_str() {
         "codex.v1" => {
             let selection = pinned_codex_model_selection(command)?;
@@ -265,6 +290,25 @@ pub fn fixed_provider_args(command: &RunnerJobCommand) -> Result<Vec<String>, St
     }
 }
 
+pub fn fixed_provider_instruction(command: &RunnerJobCommand) -> Result<String, String> {
+    let task_id = command
+        .payload
+        .get("taskId")
+        .and_then(serde_json::Value::as_str)
+        .ok_or_else(|| "RUNNER_AGENT_TASK_ID_REQUIRED".to_string())?;
+    Ok(if command.input_ref.starts_with("spec224-input:") {
+        let manifest = crate::run_input::manifest_relative_path(&command.input_ref);
+        format!(
+            "SmartAIHub task {task_id}. Read the verified governed task input manifest at {manifest} in the isolated candidate workspace and make only the requested source changes. Do not build, test, or launch the application; those actions are controlled separately by the user."
+        )
+    } else {
+        format!(
+            "SmartAIHub task {task_id}. Read the governed task input reference {} from the isolated candidate workspace and make only the requested source changes. Do not build, test, or launch the application; those actions are controlled separately by the user.",
+            command.input_ref
+        )
+    })
+}
+
 fn agent_process_command(
     spec: &crate::process::ProcessSpec,
     stdout: std::fs::File,
@@ -279,7 +323,32 @@ fn agent_process_command(
         .envs(spec.environment.iter().map(|(key, value)| (key, value)))
         .stdout(Stdio::from(stdout))
         .stderr(Stdio::from(stderr));
+    #[cfg(unix)]
+    if spec.args.first().map(String::as_str) == Some("__sah-copilot-sdk-worker") {
+        use std::os::unix::process::CommandExt;
+        process.process_group(0);
+    }
     Ok(process)
+}
+
+fn terminate_external_child(child: &mut Child, adapter_id: &str) -> Result<(), String> {
+    #[cfg(unix)]
+    if adapter_id == crate::copilot_harness::ADAPTER_ID {
+        let group = -(child.id() as i32);
+        // The worker starts the SDK-owned Copilot CLI in the same process
+        // group so timeout/cancel reaps the complete provider process tree.
+        let result = unsafe { libc::kill(group, libc::SIGKILL) };
+        if result != 0 && child.try_wait().ok().flatten().is_none() {
+            return Err("RUNNER_AGENT_CANCEL_FAILED".into());
+        }
+        let _ = child.wait();
+        return Ok(());
+    }
+    child
+        .kill()
+        .map_err(|_| "RUNNER_AGENT_CANCEL_FAILED".to_string())?;
+    let _ = child.wait();
+    Ok(())
 }
 
 pub fn start_external_agent(
@@ -311,11 +380,79 @@ pub fn start_external_agent(
     if command.adapter_id == "codex.v1" {
         verify_live_codex_model_selection(command, candidate)?;
     }
-    let args = fixed_provider_args(command)?;
-    if command.adapter_id == "claude.v1" {
-        ensure_claude_sandbox_available()?;
-    }
-    let spec = build_process_spec(candidate, &workspace, &args)?;
+    let spec = if command.adapter_id == crate::copilot_harness::ADAPTER_ID {
+        let selection = verify_live_copilot_model_selection(command, candidate)?;
+        let executable = candidate
+            .executable_path
+            .as_ref()
+            .ok_or("RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING")?;
+        let prompt = fixed_provider_instruction(command)?;
+        let capabilities = command
+            .payload
+            .get("requestedCapabilities")
+            .and_then(serde_json::Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(serde_json::Value::as_str)
+                    .filter(|value| {
+                        matches!(
+                            *value,
+                            "workspace.read"
+                                | "file.read"
+                                | "read"
+                                | "workspace.write"
+                                | "file.write"
+                                | "write"
+                                | "shell.execute"
+                                | "terminal.execute"
+                                | "shell"
+                                | "agent.external_task"
+                        )
+                    })
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let approval_bound = command
+            .payload
+            .get("approvalRef")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|value| !value.is_empty())
+            && !command.authorization_grant_ref.is_empty();
+        let mut hasher = Sha256::new();
+        hasher.update(command.tenant_id.as_bytes());
+        hasher.update([0]);
+        hasher.update(command.job_id.as_bytes());
+        hasher.update([0]);
+        hasher.update(command.attempt.to_le_bytes());
+        hasher.update([0]);
+        hasher.update(command.idempotency_key.as_bytes());
+        let session_id = format!("sah-{:x}", hasher.finalize());
+        let profile = crate::copilot_harness::profile_directory()?;
+        let mut spec = build_process_spec(candidate, &workspace, &[])?;
+        spec.program = std::env::current_exe().map_err(|_| "RUNNER_EXECUTABLE_UNAVAILABLE")?;
+        spec.args = vec![
+            "__sah-copilot-sdk-worker".into(),
+            executable.to_string_lossy().into_owned(),
+            selection.resolved_model_id,
+            prompt,
+            serde_json::to_string(&capabilities).map_err(|_| "RUNNER_COPILOT_POLICY_INVALID")?,
+            if approval_bound { "approved" } else { "denied" }.into(),
+            session_id,
+        ];
+        spec.environment.push((
+            "COPILOT_HOME".into(),
+            profile.to_string_lossy().into_owned(),
+        ));
+        spec
+    } else {
+        let args = fixed_provider_args(command)?;
+        if command.adapter_id == "claude.v1" {
+            ensure_claude_sandbox_available()?;
+        }
+        build_process_spec(candidate, &workspace, &args)?
+    };
     let bounded_duration = deadline_duration(&command.deadline)?;
     #[cfg(target_os = "linux")]
     if std::env::var("SMARTAIHUB_SPEC278_SESSION_HOST").as_deref() == Ok("true") {
@@ -786,8 +923,7 @@ impl ExternalAgentProcess {
                     let _ = host.terminate(status.command_sequence + 1, "command-deadline");
                 }
             } else if let Some(child) = self.child.as_mut() {
-                let _ = child.kill();
-                let _ = child.wait();
+                let _ = terminate_external_child(child, &self.adapter_id);
             }
             #[cfg(windows)]
             self.windows_job
@@ -795,8 +931,7 @@ impl ExternalAgentProcess {
                 .map_err(|error| self.with_recovery_ref(&error))?;
             #[cfg(not(target_os = "linux"))]
             if let Some(child) = self.child.as_mut() {
-                let _ = child.kill();
-                let _ = child.wait();
+                let _ = terminate_external_child(child, &self.adapter_id);
             }
             return Err(self.with_recovery_ref("RUNNER_AGENT_TIMEOUT"));
         }
@@ -896,14 +1031,13 @@ impl ExternalAgentProcess {
             .map_err(|_| "RUNNER_AGENT_CANCEL_FAILED")?
             .is_none()
         {
-            child.kill().map_err(|_| {
+            terminate_external_child(child, &self.adapter_id).map_err(|_| {
                 format!(
                     "RUNNER_AGENT_CANCEL_FAILED:{}",
                     recovery_ref.unwrap_or_default()
                 )
             })?;
         }
-        let _ = child.wait();
         let _ = std::fs::remove_file(&self.output_path);
         let _ = std::fs::remove_file(&self.error_path);
         if let Some(candidate) = self.candidate.as_ref() {

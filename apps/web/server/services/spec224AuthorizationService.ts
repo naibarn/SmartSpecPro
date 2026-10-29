@@ -175,7 +175,7 @@ function parseBinding(value: unknown): Spec224PolicyBinding | null {
 
 function runInput(
   loaded: LoadedRun,
-  provider: "codex" | "claude_code",
+  provider: "codex" | "claude_code" | "microsoft_copilot",
   deadline?: string
 ): Spec224AuthorizationRun {
   return {
@@ -263,7 +263,7 @@ async function createApproval(
   ctx: Spec224AuthorizationContext,
   loaded: LoadedRun,
   runner: Spec224AuthorizationRunner,
-  provider: "codex" | "claude_code",
+  provider: "codex" | "claude_code" | "microsoft_copilot",
   profileId: string,
   deadline: string,
   budgetCapMinorUnits: number,
@@ -798,7 +798,7 @@ export function createSpec224AuthorizationService() {
     if (!Number.isSafeInteger(budgetCapMinorUnits) || budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000)
       throw new Spec224AuthorizationError("SPEC224_DEVELOPMENT_BUDGET_CAP_INVALID");
     const sourceExecution = asRecord(loaded.run.metadata?.spec224Execution);
-    const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId,
+    const readiness = await service.runnerReadiness({ ...input, workspaceId: loaded.run.workspaceId, provider: loaded.run.provider,
       sourceFingerprint: typeof sourceExecution?.sourceFingerprint === "string" ? sourceExecution.sourceFingerprint : undefined,
       allowedWriteSet: sourceExecution?.platformScope === true && Array.isArray(sourceExecution.allowedWriteSet) ? sourceExecution.allowedWriteSet as string[] : undefined });
     if (!readiness.ready) throw new Spec224AuthorizationError(readiness.code);
@@ -808,10 +808,11 @@ export function createSpec224AuthorizationService() {
     const projectId = workspace?.projectId ?? loaded.run.metadata?.projectId;
     const profileId = snapshot?.platform?.os === "windows"
       ? "spec224-recovery-windows-x64-codex-nonprod" : "spec224-recovery-registered-runner-nonprod";
-    const codex = snapshot?.toolInventory?.find(item => item.adapterId === "codex.v1");
+    const harnessAdapterId = loaded.run.provider === "microsoft_copilot" ? "microsoft-copilot.v1" : loaded.run.provider === "claude_code" ? "claude.v1" : "codex.v1";
+    const harnessTool = snapshot?.toolInventory?.find(item => item.adapterId === harnessAdapterId);
     const attemptId = loaded.attemptId;
     const workerJobId = loaded.run.workerJobId;
-    if (!projectId || !attemptId || !workerJobId || !workspace || !snapshot?.runnerSessionId || !snapshot.capabilitySnapshotId || !snapshot.revision || !codex?.authorizationEvidenceRef)
+    if (!projectId || !attemptId || !workerJobId || !workspace || !snapshot?.runnerSessionId || !snapshot.capabilitySnapshotId || !snapshot.revision || !harnessTool?.authorizationEvidenceRef)
       throw new Spec224AuthorizationError("SPEC224_POLICY_RUNTIME_BINDING_REQUIRED");
     const resourceScopes = [
       { kind: "development_run", id: loaded.run.runId },
@@ -915,9 +916,9 @@ export function createSpec224AuthorizationService() {
         !Array.isArray(capabilities) || !capabilities.every(c => typeof c === "string") ||
         !Number.isSafeInteger(amount) || (amount as number) <= 0 || (amount as number) > grant.budgetLimitMinorUnits)
         throw new Spec224AuthorizationError("SPEC224_DELEGATED_CONFIGURATION_INVALID");
-      // The current readiness and binding evaluator verifies the Codex adapter.
-      // Never reuse that evidence for another provider.
-      if (grant.provider !== "codex") throw new Spec224AuthorizationError("SPEC224_DELEGATED_PROVIDER_UNSUPPORTED");
+      // Verify readiness and authorization against this run's adapter. Never
+      // reuse capability evidence from a different provider.
+      if (grant.provider !== run.provider) throw new Spec224AuthorizationError("SPEC224_DELEGATED_PROVIDER_UNSUPPORTED");
       await createJobControlPlane().prepareAuthorizationAttempt({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
       loaded = await loadRun(input.context, input.runId);
       if (!loaded.attemptId || loaded.run.workerJobId !== run.workerJobId) throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
@@ -926,7 +927,7 @@ export function createSpec224AuthorizationService() {
         if (!platformScope) return null;
         const readiness = evaluateSpec224RunnerReadiness({
           runner: mapRunner(node), tenantId: input.context.tenantId, actorId: input.context.actorId,
-          workspaceId: run.workspaceId, sourceCommit: source,
+          workspaceId: run.workspaceId, sourceCommit: source, provider: run.provider,
           sourceFingerprint: typeof execution?.sourceFingerprint === "string" ? execution.sourceFingerprint : undefined,
         });
         if (!readiness.ready) return readiness.code;
@@ -1058,6 +1059,7 @@ export function createSpec224AuthorizationService() {
       context: Pick<Spec224AuthorizationContext, "tenantId" | "actorId">;
       runnerId: string;
       workspaceId: string;
+      provider?: "codex" | "claude_code" | "microsoft_copilot";
       sourceCommit?: string;
       sourceFingerprint?: string;
       allowedWriteSet?: string[];
@@ -1067,6 +1069,7 @@ export function createSpec224AuthorizationService() {
         ...input.context,
         runner: mapRunner(node),
         workspaceId: input.workspaceId,
+        provider: input.provider,
         sourceCommit: input.sourceCommit,
         sourceFingerprint: input.sourceFingerprint,
       });
@@ -1184,7 +1187,7 @@ export function createSpec224AuthorizationService() {
             Number.isSafeInteger(value.maxBudgetMinorUnits) && value.maxBudgetMinorUnits > 0 &&
             Number.isSafeInteger(value.maxTtlSeconds) && value.maxTtlSeconds > 0 &&
             typeof value.currency === "string" && /^[A-Za-z]{3}$/.test(value.currency) &&
-            Boolean(codex?.authorizationEvidenceRef) && requiredPolicyScopes.length === 7 &&
+            Boolean(harnessTool?.authorizationEvidenceRef) && requiredPolicyScopes.length === 7 &&
             Array.isArray(value.resourceScopes) && requiredPolicyScopes.every(required =>
               value.resourceScopes.some((allowed: { kind?: string; id?: string }) => allowed.kind === required.kind && allowed.id === required.id)) &&
             Date.parse(value.expiresAt) > Date.now();
@@ -1266,7 +1269,7 @@ export function createSpec224AuthorizationService() {
       context: Spec224AuthorizationContext;
       runId: string;
       runnerId?: string;
-      provider?: "codex" | "claude_code";
+      provider?: "codex" | "claude_code" | "microsoft_copilot";
       now?: Date;
     }): Promise<Spec224AuthorizationResult> {
       const loaded = await loadRun(input.context, input.runId);
@@ -1334,7 +1337,7 @@ export function createSpec224AuthorizationService() {
       context: Spec224AuthorizationContext;
       runId: string;
       runnerId: string;
-      provider: "codex" | "claude_code";
+      provider: "codex" | "claude_code" | "microsoft_copilot";
       deadline: string;
       budgetCapMinorUnits: number;
       currency: string;
@@ -1426,7 +1429,7 @@ export function createSpec224AuthorizationService() {
           ? approval.payload.deadline
           : undefined;
       const check = evaluateSpec224Authorization({
-        run: runInput(loaded, "codex", approvalDeadline),
+        run: runInput(loaded, loaded.run.provider, approvalDeadline),
         runner,
         approval,
         budget: null,
@@ -1594,7 +1597,7 @@ export function createSpec224AuthorizationService() {
           : undefined;
       const evaluated = evaluateSpec224Authorization({
         now: input.now,
-        run: runInput(loaded, "codex", approvalDeadline),
+        run: runInput(loaded, loaded.run.provider, approvalDeadline),
         runner,
         approval,
         budget,

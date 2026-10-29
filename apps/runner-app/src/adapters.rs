@@ -1376,6 +1376,7 @@ pub fn supports_task_smoke_test(adapter_id: Option<&str>) -> bool {
                 | "antigravity.v1"
                 | "openclaw.v1"
                 | "hermes.v1"
+                | crate::copilot_harness::ADAPTER_ID
         )
     )
 }
@@ -1406,6 +1407,20 @@ pub fn run_task_smoke_test(
     }
 
     let adapter_id = candidate.adapter_id.as_deref().unwrap_or_default();
+    if adapter_id == crate::copilot_harness::ADAPTER_ID {
+        let result = crate::copilot_harness::run_task_smoke_test(program, &workspace)
+            .map(|response| ("passed", Some(response), None))
+            .unwrap_or_else(|error| {
+                let safe_code = if error.starts_with("RUNNER_COPILOT_") {
+                    error
+                } else {
+                    "RUNNER_COPILOT_TASK_PROBE_FAILED".into()
+                };
+                ("failed", None, Some(safe_code))
+            });
+        let _ = std::fs::remove_dir_all(workspace);
+        return result;
+    }
     let prompt = "สวัสดี ช่วยตอบกลับเป็นภาษาไทยสั้น ๆ ว่า ระบบพร้อมแล้วมีอะไรให้ช่วยไหม โดยไม่ต้องใช้เครื่องมือ";
     let (args, output_format) = match adapter_id {
         "codex.v1" => (

@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 const MAX_EVENT_TEXT_CHARS: usize = 6_000;
 
-fn clean_text(value: &str) -> String {
+pub(crate) fn clean_text(value: &str) -> String {
     let cleaned = value
         .chars()
         .filter(|character| !character.is_control() || matches!(character, '\n' | '\r' | '\t'))
@@ -302,6 +302,79 @@ fn project_claude(value: &Value) -> Vec<Value> {
     }
 }
 
+fn project_copilot(value: &Value) -> Vec<Value> {
+    match field(value, "type").unwrap_or_default() {
+        "session.start" => status_event("started", None),
+        "assistant.turn_start" => status_event("working", None),
+        "assistant.message_delta" => field(value, "delta")
+            .map(|text| bounded_events("assistant_message", text, "text"))
+            .unwrap_or_default(),
+        "assistant.message" => status_event("working", None),
+        "tool.execution_start" => vec![json!({
+            "kind": "tool_call",
+            "name": field(value, "toolName").map(clean_text).unwrap_or_else(|| "tool".into()),
+        })],
+        "tool.execution_complete" => vec![json!({
+            "kind": "tool_status",
+            "name": "tool",
+            "status": if value.get("success").and_then(Value::as_bool).unwrap_or(false) { "completed" } else { "failed" },
+        })],
+        "assistant.usage" => {
+            let mut usage = json!({ "kind": "usage_reported", "source": "copilot_reported" });
+            for key in [
+                "modelId",
+                "inputTokens",
+                "outputTokens",
+                "cacheReadTokens",
+                "cacheWriteTokens",
+                "reasoningTokens",
+                "durationMs",
+                "isByok",
+            ] {
+                if let Some(value) = value.get(key) {
+                    usage[key] = value.clone();
+                }
+            }
+            vec![usage]
+        }
+        "session.quota_observation" => {
+            let mut quota = json!({ "kind": "quota_status", "source": "copilot_reported" });
+            for key in [
+                "accessState",
+                "capacityState",
+                "acquisitionStatus",
+                "unit",
+                "availableQuantity",
+                "entitledQuantity",
+            ] {
+                if let Some(value) = value.get(key) {
+                    quota[key] = value.clone();
+                }
+            }
+            vec![quota]
+        }
+        "session.usage_info" => {
+            let mut usage = json!({ "kind": "context_usage", "source": "copilot_reported" });
+            for key in ["currentTokens", "tokenLimit", "messagesLength"] {
+                if let Some(value) = value.get(key) {
+                    usage[key] = value.clone();
+                }
+            }
+            vec![usage]
+        }
+        "session.idle" | "session.autopilot_stopped" => status_event("completed", None),
+        "session.error" => status_event(
+            "attention",
+            Some("Copilot runtime reported an execution error"),
+        ),
+        "permission.required" => vec![json!({
+            "kind": "approval_required",
+            "permissionKind": field(value, "permissionKind").unwrap_or("other"),
+        })],
+        _ => Vec::new(),
+    }
+}
+
 pub fn project_harness_json_line(adapter_id: &str, line: &[u8]) -> Vec<Value> {
     let Ok(value) = serde_json::from_slice::<Value>(line) else {
         return Vec::new();
@@ -309,6 +382,7 @@ pub fn project_harness_json_line(adapter_id: &str, line: &[u8]) -> Vec<Value> {
     match adapter_id {
         "codex.v1" => project_codex(&value),
         "claude.v1" => project_claude(&value),
+        crate::copilot_harness::ADAPTER_ID => project_copilot(&value),
         _ => Vec::new(),
     }
 }
@@ -351,6 +425,47 @@ mod tests {
         let authorization = clean_text("Authorization: Bearer very-secret-token");
         assert_eq!(authorization, "[redacted]");
         assert!(!clean_text("refresh_token: abc123").contains("abc123"));
+    }
+
+    #[test]
+    fn copilot_projects_streamed_text_and_safe_tool_metadata_only() {
+        let text = project_harness_json_line(
+            crate::copilot_harness::ADAPTER_ID,
+            br#"{"type":"assistant.message_delta","delta":"token=private visible"}"#,
+        );
+        assert_eq!(text[0]["text"], "[redacted] visible");
+        let tool = project_harness_json_line(
+            crate::copilot_harness::ADAPTER_ID,
+            br#"{"type":"tool.execution_start","toolName":"shell","arguments":{"command":"secret"}}"#,
+        );
+        assert_eq!(tool[0]["name"], "shell");
+        assert!(tool[0].get("arguments").is_none());
+        let approval = project_harness_json_line(
+            crate::copilot_harness::ADAPTER_ID,
+            br#"{"type":"permission.required","permissionKind":"shell"}"#,
+        );
+        assert_eq!(approval[0]["kind"], "approval_required");
+        assert_eq!(approval[0]["permissionKind"], "shell");
+        let usage = project_harness_json_line(
+            crate::copilot_harness::ADAPTER_ID,
+            br#"{"type":"assistant.usage","modelId":"model-x","inputTokens":12,"outputTokens":4,"source":"copilot_reported","cost":999}"#,
+        );
+        assert_eq!(usage[0]["kind"], "usage_reported");
+        assert_eq!(usage[0]["inputTokens"], 12);
+        assert!(usage[0].get("cost").is_none());
+        let quota = project_harness_json_line(
+            crate::copilot_harness::ADAPTER_ID,
+            br#"{"type":"session.quota_observation","accessState":"unknown","capacityState":"unknown"}"#,
+        );
+        assert_eq!(quota[0]["accessState"], "unknown");
+        assert!(quota[0].get("availableQuantity").is_none());
+        assert_eq!(
+            project_harness_json_line(
+                crate::copilot_harness::ADAPTER_ID,
+                br#"{"type":"assistant.reasoning_delta","delta":"private thought"}"#
+            ),
+            Vec::<Value>::new()
+        );
     }
 
     #[test]

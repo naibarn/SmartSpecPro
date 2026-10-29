@@ -12,7 +12,7 @@ import {
 export const AGENT_CONTROL_PLANE_CONTRACT_VERSION =
   "sah-agent-control-plane-v1";
 export type AgentProvider =
-  "codex" | "claude_code" | "antigravity" | "deepseek";
+  "codex" | "claude_code" | "microsoft_copilot" | "antigravity" | "deepseek";
 export type AgentRuntime = "local_runner" | "cloudflare_container";
 
 /** Opaque policy references only. Credentials and provider tokens never cross
@@ -197,7 +197,7 @@ export function validateAgentTaskManifest(
   if (
     !(
       typeof raw.provider === "string" &&
-      ["codex", "claude_code", "antigravity", "deepseek"].includes(raw.provider)
+      ["codex", "claude_code", "microsoft_copilot", "antigravity", "deepseek"].includes(raw.provider)
     ) ||
     !(
       typeof raw.runtime === "string" &&
@@ -267,7 +267,7 @@ export function validateAgentTaskManifest(
   const spec224ModelSelection = raw.spec224ModelSelection === undefined
     ? undefined
     : validateSpec224ResolvedModelSelection(raw.spec224ModelSelection);
-  if (spec224ModelSelection && spec224ModelSelection.adapterId !== (raw.provider === "codex" ? "codex.v1" : raw.provider === "claude_code" ? "claude.v1" : ""))
+  if (spec224ModelSelection && spec224ModelSelection.adapterId !== (raw.provider === "codex" ? "codex.v1" : raw.provider === "claude_code" ? "claude.v1" : raw.provider === "microsoft_copilot" ? "microsoft-copilot.v1" : ""))
     invalid("model selection adapter does not match provider");
   if (containsSecret(manifest))
     invalid("agent manifest cannot contain credentials");

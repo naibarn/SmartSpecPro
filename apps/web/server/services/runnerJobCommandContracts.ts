@@ -135,7 +135,7 @@ export function validateRunnerJobCommand(
     (raw.executionKind === "computer_use.browser" &&
       raw.adapterId !== "browser.v1") ||
     (raw.executionKind === "external_agent_task" &&
-      !["codex.v1", "claude.v1"].includes(raw.adapterId))
+      !["codex.v1", "claude.v1", "microsoft-copilot.v1"].includes(raw.adapterId))
   )
     throw new Error("RUNNER_COMMAND_ADAPTER_UNSUPPORTED");
   if (

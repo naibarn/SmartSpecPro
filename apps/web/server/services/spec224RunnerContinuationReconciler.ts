@@ -199,7 +199,7 @@ export async function reconcileSpec224RunnerContinuations(
     const record = await developmentRuns.get({ runId: intent.runId, tenantId: intent.tenantId, actorId: intent.actorId });
     const action = decideNextSafeAction(record.run);
     if (!["RUN_PHASE", "RECOVER_PHASE"].includes(action.command)) return false;
-    if (!manifest || !["codex", "claude_code"].includes(manifest.provider) ||
+    if (!manifest || !["codex", "claude_code", "microsoft_copilot"].includes(manifest.provider) ||
       !["local_runner", "cloudflare_container"].includes(manifest.runtime) || typeof manifest.planId !== "string" ||
       !Number.isSafeInteger(manifest.planRevision) || !Array.isArray(manifest.skillIds) || !Array.isArray(manifest.requestedCapabilities))
       throw new Error("SPEC224_CONTINUATION_CONFIGURATION_INVALID");

@@ -100,6 +100,8 @@ describe("SPEC-224 Goal delegation contract", () => {
       ...scope,
       currency: "USD",
     });
+    expect(buildSpec224GoalGrantApprovalPayload({ ...scope, provider: "microsoft_copilot" }))
+      .toMatchObject({ provider: "microsoft_copilot" });
     expect(() =>
       buildSpec224GoalGrantApprovalPayload({ ...scope, writeScope: ["../**"] })
     ).toThrow("SPEC224_GOAL_GRANT_SCOPE_INVALID");

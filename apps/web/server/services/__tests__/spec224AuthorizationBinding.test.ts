@@ -117,6 +117,27 @@ describe("session-bound Codex Start readiness", () => {
     expect(evaluateSpec224RunnerReadiness(value)).toMatchObject({ ready: true, code: "RUNNER_READY", policyDecision: "pending" });
   });
 
+  it("requires the selected Copilot tool's fresh authenticated task probe", () => {
+    const value = input();
+    const codex = value.runner!.snapshot!.toolInventory![0];
+    const copilot = { ...codex, toolId: "copilot", displayName: "Microsoft Copilot", adapterId: "microsoft-copilot.v1", authorizationEvidenceRef: "runner-auth:copilot" };
+    value.runner!.snapshot!.toolInventory!.push(copilot);
+    expect(evaluateSpec224RunnerReadiness({ ...value, provider: "microsoft_copilot" })).toMatchObject({ ready: true, code: "RUNNER_READY" });
+    copilot.taskProbeState = "not_run";
+    expect(evaluateSpec224RunnerReadiness({ ...value, provider: "microsoft_copilot" })).toMatchObject({ ready: false, code: "COPILOT_TASK_PROBE_NOT_RUN" });
+  });
+
+  it("binds Copilot authorization evidence to the Copilot tool record", () => {
+    const value = baseInput();
+    value.run.provider = "microsoft_copilot";
+    const codex = value.runner!.snapshot!.toolInventory![0];
+    const copilot = { ...codex, toolId: "copilot", adapterId: "microsoft-copilot.v1", authorizationEvidenceRef: "runner-auth:copilot" };
+    value.runner!.snapshot!.toolInventory!.push(copilot);
+    value.approval!.payload.provider = "microsoft_copilot";
+    value.approval!.payload.authorizationGrantRef = "runner-auth:copilot";
+    expect(evaluateSpec224Authorization(value)).toMatchObject({ status: "READY_FOR_LIVE" });
+  });
+
   it("rejects a Runner workspace fingerprint that changed after Goal preparation", () => {
     const value = input();
     value.sourceFingerprint = "b".repeat(64);
