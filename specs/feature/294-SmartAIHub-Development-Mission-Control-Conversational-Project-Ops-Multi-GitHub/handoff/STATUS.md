@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 504 unresolved of 504
 - Next action: Continue SPEC-294 residual acceptance: verify exact-Thread transcript/result restoration after browser revisit, correlate remaining authenticated runtime errors, and implement the separately scoped global cross-host Mission Control Thread/Agent graph with immutable event replay and gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.
-- Manifest generation: 110
+- Manifest generation: 112
 
 ## Source-declared status and relationship claims
 

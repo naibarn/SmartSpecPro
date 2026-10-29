@@ -25,10 +25,10 @@
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Continue the remaining acceptance only: correlate the hosted Chat/Task 500s against the exact serving revision, verify Thread cursor/snapshot parity and post-reload transcript on the authenticated development site, then close the cross-host source-linked event graph/replay gaps. Resume SPEC-224 only through its existing authorized Goal and require genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify.",
+    "next_action": "The stale local dev web process was restarted after a read-only check found no active worker jobs; workerJobs.observability rejected threadId before restart and the authenticated local responsive UAT now passes. Next, verify the hosted serving revision and correlate the hosted chat.getMessages 500, confirm Thread cursor/snapshot parity, then continue cross-source event replay and genuine SPEC-224 two-phase execution through the existing authorities.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Global Project/Thread overview is integrated at feature commit 1f940d5ce11e412b4fb9d0fa9030c886aaaff2da; current origin/main is d8dfec6a9e7748277a447c0b8a5cd6c617623dc8. Focused UI tests (24 passed) and authenticated local responsive UAT (1 passed at 390/768/1440) are recorded in handoff/evidence/global-project-thread-overview-20261029.md. Hosted serving identity and screenshot 500 root cause remain unverified; cross-source replay/gap recovery and real SPEC-224 two-phase execution remain open.",
+    "resume_point": "Global Project/Thread overview integrated at 1f940d5ce11e412b4fb9d0fa9030c886aaaff2da. Local dev service restarted at 21:48 +07 and loaded c5e556db7b8f02e60c0e7d0e41008e998d2ed22e-dirty after no-active-job read-only inspection. Zod rejected threadId/direction in the stale process; authenticated responsive UAT then passed at 390/768/1440 with no tracked Thread/Task 5xx. Evidence: handoff/evidence/global-project-thread-overview-20261029.md. Hosted serving identity and chat.getMessages 500 cause, Mission/Task cursor parity, cross-source replay, and genuine SPEC-224 Child 1/2 receipts and Independent Final Verify remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 110,
+  "generation": 112,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -919,7 +919,7 @@
         "blocker": null,
         "current_relevance": "CURRENT",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "02de528ad9c89140334329a19ff868ea78509b16f0d9943bb4d0a8f6abe11b32",
+        "evidence_sha": "e3e542a948b10a4c3c3c5389c276e21dec783574fbdbe4b6d8a6a7bee801abf6",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           {
@@ -934,7 +934,7 @@
           }
         ],
         "implementation_status": "IMPLEMENTED_PARTIAL",
-        "next_action": "Confirm cursor/snapshot parity with the Mission/Task projection and complete authenticated hosted serving-revision acceptance; keep cross-source immutable replay and SPEC-224 live execution as separately open requirements.",
+        "next_action": "Verify the hosted serving revision and correlate the remaining hosted chat.getMessages 500; confirm the global Thread cursor contract with the Mission/Task snapshot. Cross-source immutable replay and SPEC-224 live execution remain separately open.",
         "requirement_digest": "58520ec0db250bf795d740087b08f5d95e3bca59bdfd664710c4680b740cb488",
         "requirement_id": "REQ-294-THR-02",
         "requirement_text": "- REQ-294-THR-02: Cross-project thread listing, grouping, filters and pagination MUST reuse the existing authorization-scoped Mission/Task projection and its snapshot/cursor contract. It MUST NOT introduce a separate mission scheduler, Job ledger, event store, approval authority or mutable thread status.",
@@ -944,15 +944,15 @@
           {
             "kind": "AUTHENTICATED_LOCAL_RESPONSIVE_UAT",
             "path": "handoff/evidence/global-project-thread-overview-20261029.md",
-            "source_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8"
+            "source_sha": "c5e556db7b8f02e60c0e7d0e41008e998d2ed22e"
           },
           {
             "kind": "FOCUSED_TASK_CONTROL_THREAD_UI_TESTS",
             "path": "handoff/evidence/global-project-thread-overview-20261029.md",
-            "source_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8"
+            "source_sha": "c5e556db7b8f02e60c0e7d0e41008e998d2ed22e"
           }
         ],
-        "verification_method": "Focused TaskObservabilityMonitor and ChatSidebar UI tests plus authenticated local Playwright at 390/768/1440 verify the global authorized Project/Thread list, status filter, pagination availability, exact Chat and Task Control links, no tracked Thread/Task 5xx, no work mutation, and no horizontal overflow. Hosted serving revision, shared Mission/Task snapshot-cursor parity, and cross-source replay remain required."
+        "verification_method": "Focused UI regressions and authenticated local responsive UAT validate global Project/Thread navigation and no tracked Thread/Task 5xx. Local dev workerJobs.observability Zod rejection of threadId was traced to a stale process and cleared by restarting the current integrated dev service. Hosted serving identity, hosted chat.getMessages cause, and shared snapshot/cursor parity remain required."
       },
       "REQ-294-THR-03": {
         "applicability": "APPLICABLE",
@@ -1386,7 +1386,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T14:46:45.629146Z",
+  "updated_at": "2026-10-29T14:49:58.051265Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

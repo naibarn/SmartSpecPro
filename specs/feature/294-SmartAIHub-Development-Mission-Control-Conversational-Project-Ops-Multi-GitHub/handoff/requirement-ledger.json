@@ -1,5 +1,5 @@
 {
-  "generation": 17,
+  "generation": 18,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -11348,7 +11348,7 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "02de528ad9c89140334329a19ff868ea78509b16f0d9943bb4d0a8f6abe11b32",
+      "evidence_sha": "e3e542a948b10a4c3c3c5389c276e21dec783574fbdbe4b6d8a6a7bee801abf6",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
@@ -11363,7 +11363,7 @@
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Confirm cursor/snapshot parity with the Mission/Task projection and complete authenticated hosted serving-revision acceptance; keep cross-source immutable replay and SPEC-224 live execution as separately open requirements.",
+      "next_action": "Verify the hosted serving revision and correlate the remaining hosted chat.getMessages 500; confirm the global Thread cursor contract with the Mission/Task snapshot. Cross-source immutable replay and SPEC-224 live execution remain separately open.",
       "requirement_digest": "58520ec0db250bf795d740087b08f5d95e3bca59bdfd664710c4680b740cb488",
       "requirement_id": "REQ-294-THR-02",
       "requirement_text": "- REQ-294-THR-02: Cross-project thread listing, grouping, filters and pagination MUST reuse the existing authorization-scoped Mission/Task projection and its snapshot/cursor contract. It MUST NOT introduce a separate mission scheduler, Job ledger, event store, approval authority or mutable thread status.",
@@ -11373,15 +11373,15 @@
         {
           "kind": "AUTHENTICATED_LOCAL_RESPONSIVE_UAT",
           "path": "handoff/evidence/global-project-thread-overview-20261029.md",
-          "source_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8"
+          "source_sha": "c5e556db7b8f02e60c0e7d0e41008e998d2ed22e"
         },
         {
           "kind": "FOCUSED_TASK_CONTROL_THREAD_UI_TESTS",
           "path": "handoff/evidence/global-project-thread-overview-20261029.md",
-          "source_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8"
+          "source_sha": "c5e556db7b8f02e60c0e7d0e41008e998d2ed22e"
         }
       ],
-      "verification_method": "Focused TaskObservabilityMonitor and ChatSidebar UI tests plus authenticated local Playwright at 390/768/1440 verify the global authorized Project/Thread list, status filter, pagination availability, exact Chat and Task Control links, no tracked Thread/Task 5xx, no work mutation, and no horizontal overflow. Hosted serving revision, shared Mission/Task snapshot-cursor parity, and cross-source replay remain required."
+      "verification_method": "Focused UI regressions and authenticated local responsive UAT validate global Project/Thread navigation and no tracked Thread/Task 5xx. Local dev workerJobs.observability Zod rejection of threadId was traced to a stale process and cleared by restarting the current integrated dev service. Hosted serving identity, hosted chat.getMessages cause, and shared snapshot/cursor parity remain required."
     },
     {
       "applicability": "APPLICABLE",

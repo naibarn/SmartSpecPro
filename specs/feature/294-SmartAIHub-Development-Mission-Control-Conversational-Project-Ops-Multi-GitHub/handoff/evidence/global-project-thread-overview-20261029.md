@@ -17,10 +17,12 @@ Feature commit: `1f940d5ce11e412b4fb9d0fa9030c886aaaff2da`.
 - Focused Vitest: **24 tests passed across 2 files** (`TaskObservabilityMonitor.test.tsx`, `ChatSidebar.test.tsx`). The requested optional `ThreadOverviewSidebarPanel.test.tsx` path did not exist and was not counted as a test file.
 - Authenticated local development Playwright UAT: **1 test passed** at 390px, 768px, and 1440px. It verified the overview renders, the tracked Thread/task-observability reads had no HTTP 5xx, no DevelopmentControl mutation was made, and the view had no horizontal overflow.
 - `git diff --check` passed before the feature commit. The change is integrated on `origin/main`.
+- Read-only inspection of the local dev web logs identified a stale-process boundary: the process had started at 16:57 (+07), before the Thread overview source fixes integrated at 21:42 (+07). Its 21:28–21:39 logs show `workerJobs.observability` and `chat.listRecentConversationThreads` rejecting `threadId` / `direction` as unrecognized Zod keys. A read-only query found no active worker jobs before restart.
+- Restarted only `smartspec-dev-web.service` at 21:48 (+07). It loaded revision `c5e556db7b8f02e60c0e7d0e41008e998d2ed22e-dirty`; the dirty suffix is from a separately owned unrelated test file and was preserved. Guarded development schema check and audit ran at startup. The authenticated local UAT then passed with no 5xx from the tracked Thread and Task observability reads.
 
 ## Boundaries that remain open
 
-- This is local authenticated UAT, not proof of the hosted website's serving revision. The hosted browser screenshot's `chat.getMessages` and `workerJobs.observability` 500 responses were not reproduced in this UAT, so their hosted runtime cause remains unverified.
+- The `workerJobs.observability` 500 boundary was reproduced in local dev logs and cleared by restarting the stale local process. The `chat.getMessages` 500 from the hosted screenshot was not correlated to a server-side cause. This local service/UAT result is not proof of the hosted website's serving revision; hosted runtime parity remains unverified.
 - The cross-project Thread list uses its existing owner/tenant-bound signed cursor. Shared immutable replay and explicit gap recovery across Work, Skill, Agent, Harness, and Session producers remain partial.
 - The overview links to canonical Job detail; it does not claim a complete cross-host Agent/Session graph or provider-native Harness session restoration.
 - SPEC-224 still requires genuine authorized Runner Child 1 and Child 2 receipts, settlement, automatic continuation, and Independent Final Verify. No synthetic evidence is counted.
