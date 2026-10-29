@@ -42,6 +42,50 @@ function matches(descriptor: Descriptor, identity: DeploymentTargetIdentity) {
     descriptor.environment === identity.environment && descriptor.provider === identity.provider;
 }
 
+function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
+      .map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "undefined";
+}
+
+/**
+ * Expired Staging deployments remain usable as rollback baselines only across
+ * the exact private-database lease renewal that produced the currently bound
+ * immutable config. All other descriptor and secret fields must stay equal.
+ */
+export function isCompatibleCloudflareOriginRenewalRevision(input: {
+  previousRef: string; previous: Descriptor; previousSecrets: OriginSecrets; previousRevokedAt: string | null;
+  activeRef: string; active: Descriptor; activeSecrets: OriginSecrets; activeRevokedAt: string | null;
+  now?: number;
+}): boolean {
+  const now = input.now ?? Date.now();
+  const previousDatabase = input.previous.nativeResources?.privateDatabase;
+  const activeDatabase = input.active.nativeResources?.privateDatabase;
+  const renewal = activeDatabase?.leaseRenewal;
+  if (input.previous.environment !== "staging" || input.active.environment !== "staging" ||
+      input.previousRevokedAt || input.activeRevokedAt || Date.parse(input.previous.expiresAt) > now ||
+      Date.parse(input.active.expiresAt) <= now || input.previousRef !== reference(input.previous) ||
+      input.activeRef !== reference(input.active) || !previousDatabase || !activeDatabase ||
+      previousDatabase.leaseRenewal || !renewal || renewal.sourceConfigurationRef !== input.previousRef ||
+      renewal.sourceConfigurationDigest !== digest(input.previous) || renewal.leaseExpiresAt !== input.active.expiresAt ||
+      !/^[a-f0-9]{64}$/.test(renewal.planDigest) || !z.string().uuid().safeParse(renewal.jobId).success ||
+      (input.previous.applicationHttp && !input.previous.applicationHttpPhase && Date.parse(input.previous.applicationHttp.expiresAt) <= now) ||
+      (input.active.applicationHttp && !input.active.applicationHttpPhase && Date.parse(input.active.applicationHttp.expiresAt) <= now)) return false;
+
+  const comparable = (descriptor: Descriptor) => {
+    const value = structuredClone(descriptor) as Record<string, any>;
+    delete value.versionId;
+    delete value.expiresAt;
+    if (value.nativeResources?.privateDatabase) delete value.nativeResources.privateDatabase.leaseRenewal;
+    return value;
+  };
+  return canonicalJson(comparable(input.previous)) === canonicalJson(comparable(input.active)) &&
+    canonicalJson(input.previousSecrets) === canonicalJson(input.activeSecrets);
+}
+
 async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: Descriptor, actorUserId: number | null, now = Date.now()) {
   if (descriptor.applicationHttp) {
     if (!actorUserId) denied();
@@ -329,6 +373,51 @@ export async function withCloudflareOriginConfigurationForTransition<T>(db: Driz
       target.target.runtimePolicy !== input.activeConfigurationRef || target.target.accountRef !== stored.descriptor.accountRef ||
       !expectedTargetId || target.target.workerRef !== expectedTargetId || target.target.deploymentTargetId !== expectedTargetId || target.target.containerApplicationRef) denied();
   return operation({ descriptor: stored.descriptor, secrets: stored.secrets });
+}
+
+/**
+ * Read the exact prior configuration used by an already active Staging
+ * deployment. An expired version is accepted only as immutable rollback
+ * metadata when the currently bound version is its verified lease renewal.
+ * This never authorizes deploying or reactivating the expired configuration.
+ */
+export async function withCloudflareOriginRollbackConfiguration<T>(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; rollbackConfigurationRef: string; rollbackConfigurationDigest: string;
+  activeConfigurationRef: string; activeConfigurationDigest: string;
+}, operation: (value: { descriptor: Descriptor; secrets: OriginSecrets }) => Promise<T>): Promise<T> {
+  const [{ stored: rollback }, { stored: active }] = await Promise.all([
+    readVersion(db, input.identity, input.rollbackConfigurationRef),
+    readVersion(db, input.identity, input.activeConfigurationRef),
+  ]);
+  const target = await resolveProviderDeploymentTarget(db, input.identity);
+  const expectedTargetId = targetForEnvironment(input.identity.environment);
+  const now = Date.now();
+  const rollbackUsable = !rollback.revokedAt && Date.parse(rollback.descriptor.expiresAt) > now &&
+    (!rollback.descriptor.applicationHttp || rollback.descriptor.applicationHttpPhase || Date.parse(rollback.descriptor.applicationHttp.expiresAt) > now);
+  const rollbackCompatible = isCompatibleCloudflareOriginRenewalRevision({ previousRef: input.rollbackConfigurationRef,
+    previous: rollback.descriptor, previousSecrets: rollback.secrets, previousRevokedAt: rollback.revokedAt,
+    activeRef: input.activeConfigurationRef, active: active.descriptor, activeSecrets: active.secrets,
+    activeRevokedAt: active.revokedAt, now });
+  if (input.rollbackConfigurationRef !== `cf-origin:${input.rollbackConfigurationDigest}` ||
+      digest(rollback.descriptor) !== input.rollbackConfigurationDigest ||
+      input.activeConfigurationRef !== `cf-origin:${input.activeConfigurationDigest}` ||
+      digest(active.descriptor) !== input.activeConfigurationDigest || active.revokedAt ||
+      Date.parse(active.descriptor.expiresAt) <= now || (!rollbackUsable && !rollbackCompatible) ||
+      target.status !== "CONFIGURED" || target.target.runtimePolicy !== input.activeConfigurationRef ||
+      target.target.accountRef !== active.descriptor.accountRef || rollback.descriptor.accountRef !== active.descriptor.accountRef ||
+      !expectedTargetId || target.target.workerRef !== expectedTargetId || target.target.deploymentTargetId !== expectedTargetId ||
+      target.target.containerApplicationRef) denied();
+  return operation({ descriptor: rollback.descriptor, secrets: rollback.secrets });
+}
+
+/** Metadata-only predicate used by the Staging preflight projection. */
+export async function isCloudflareOriginRollbackConfigurationUsable(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; rollbackConfigurationRef: string; rollbackConfigurationDigest: string;
+  activeConfigurationRef: string; activeConfigurationDigest: string;
+}): Promise<boolean> {
+  try {
+    return await withCloudflareOriginRollbackConfiguration(db, input, async () => true);
+  } catch { return false; }
 }
 
 /** Revoke a saved version without deleting its audit/recovery metadata. */

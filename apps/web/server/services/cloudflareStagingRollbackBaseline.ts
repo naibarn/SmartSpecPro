@@ -15,9 +15,10 @@ export type VerifiedStagingRollbackBaseline = {
 /**
  * Resolve a rollback baseline only when a succeeded canonical job's immutable
  * receipt identifies the deployment that is currently serving at Cloudflare.
- * The baseline may use an older still-valid origin configuration: changing the
- * candidate config must not turn an existing deployment into a first-deploy
- * bootstrap or authorize replacing an unowned Worker.
+ * The baseline may use an older still-valid origin configuration, or an expired
+ * version only when the active immutable config is its exact verified DB-lease
+ * renewal. Changing the candidate config must not turn an existing deployment
+ * into a first-deploy bootstrap or authorize replacing an unowned Worker.
  */
 export async function findVerifiedStagingRollbackBaseline(input: {
   candidates: StagingRollbackCandidate[];

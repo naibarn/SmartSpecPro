@@ -7,7 +7,7 @@ import {
   cloudflareStagingOriginGrantSchema, cloudflareStagingOriginJobSchema, cloudflareStagingOriginAuthority,
   type CloudflareStagingOriginAuthority, type CloudflareStagingOriginGrant, type CloudflareStagingOriginJob,
 } from "./cloudflareStagingOriginContract";
-import { withCloudflareOriginConfigurationForTransition } from "./cloudflareOriginConfiguration";
+import { withCloudflareOriginConfigurationForTransition, withCloudflareOriginRollbackConfiguration } from "./cloudflareOriginConfiguration";
 import type { CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
 import type { RetryPolicy } from "./jobControlPlaneTypes";
@@ -101,6 +101,11 @@ export type CloudflareStagingDeploymentRuntime = Readonly<{
     target: CloudflareStagingTarget; configurationRef: string; configurationDigest: string; activeConfigurationRef: string;
     operation: (configuration: CloudflareOriginVersionBindings) => Promise<T>;
   }) => Promise<T>;
+  withRollbackOriginConfiguration?: <T>(input: {
+    target: CloudflareStagingTarget; rollbackConfigurationRef: string; rollbackConfigurationDigest: string;
+    activeConfigurationRef: string; activeConfigurationDigest: string;
+    operation: (configuration: CloudflareOriginVersionBindings) => Promise<T>;
+  }) => Promise<T>;
   resolveTarget: (input: {
     tenantId: string;
     projectId: string;
@@ -151,6 +156,12 @@ export function bindCloudflareStagingDeploymentAuthorities(input: {
         identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "staging", provider: "cloudflare" },
         configurationRef, configurationDigest, activeConfigurationRef,
       }, value => operation({ ...value, configurationRef, configurationDigest })),
+    withRollbackOriginConfiguration: async ({ target, rollbackConfigurationRef, rollbackConfigurationDigest,
+      activeConfigurationRef, activeConfigurationDigest, operation }) =>
+      withCloudflareOriginRollbackConfiguration(input.db, {
+        identity: { tenantId: target.tenantId, projectId: target.projectId, environment: "staging", provider: "cloudflare" },
+        rollbackConfigurationRef, rollbackConfigurationDigest, activeConfigurationRef, activeConfigurationDigest,
+      }, value => operation({ ...value, configurationRef: rollbackConfigurationRef, configurationDigest: rollbackConfigurationDigest })),
     resolveTarget: async identity => {
       const resolution = await resolveProviderDeploymentTarget(input.db, {
         ...identity,
@@ -556,14 +567,17 @@ export function createCloudflareStagingDeploymentExecutor(
           throw new CloudflareStagingDeploymentError("CLOUDFLARE_STAGING_ROLLBACK_TARGET_INVALID");
         }
       }
-      for (const [configurationRef, configurationDigest] of [
-        [originGrant.configurationRef, originGrant.configurationDigest],
-        [originGrant.rollbackConfigurationRef, originGrant.rollbackConfigurationDigest],
-      ]) {
-        if (configurationRef && configurationDigest) await activeRuntime.withOriginConfiguration({
-          target, configurationRef, configurationDigest, activeConfigurationRef: originGrant.configurationRef,
-          operation: async () => undefined,
-        });
+      await activeRuntime.withOriginConfiguration({ target, configurationRef: originGrant.configurationRef,
+        configurationDigest: originGrant.configurationDigest, activeConfigurationRef: originGrant.configurationRef,
+        operation: async () => undefined });
+      if (originGrant.rollbackConfigurationRef && originGrant.rollbackConfigurationDigest) {
+        const rollbackConfiguration = { target, rollbackConfigurationRef: originGrant.rollbackConfigurationRef,
+          rollbackConfigurationDigest: originGrant.rollbackConfigurationDigest, activeConfigurationRef: originGrant.configurationRef,
+          activeConfigurationDigest: originGrant.configurationDigest, operation: async () => undefined };
+        if (activeRuntime.withRollbackOriginConfiguration) await activeRuntime.withRollbackOriginConfiguration(rollbackConfiguration);
+        else await activeRuntime.withOriginConfiguration({ target, configurationRef: originGrant.rollbackConfigurationRef,
+          configurationDigest: originGrant.rollbackConfigurationDigest, activeConfigurationRef: originGrant.configurationRef,
+          operation: async () => undefined });
       }
     };
     await validateOriginTransition();

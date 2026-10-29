@@ -2,9 +2,10 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import { nativeProvisionNamespace, nativeProvisionPlanDigest, nativeResourceNames } from "./cloudflareNativeProvisionContract";
+import { cloudflareOriginDescriptorDigest } from "./cloudflareOriginVersionBindings";
 import { saveCloudflareOriginConfiguration, getCloudflareOriginConfiguration,
   withCloudflareOriginConfiguration, withCloudflareOriginConfigurationForTransition, revokeCloudflareOriginConfiguration,
-  activateCloudflareStagingQueueProfile } from "./cloudflareOriginConfiguration";
+  activateCloudflareStagingQueueProfile, isCompatibleCloudflareOriginRenewalRevision } from "./cloudflareOriginConfiguration";
 
 const identity = { tenantId: "origin-test", projectId: "origin-project", environment: "staging", provider: "cloudflare" };
 const settings = () => ({ origin: "https://origin-staging.smartaihub.app", allowedPublicOrigins: ["https://staging.account.workers.dev"],
@@ -58,6 +59,36 @@ describe("origin configuration validation before storage", () => {
       settings: { ...settings(), applicationHttpPhase: "namespace-only" }, secrets, actorUserId: 1,
     })).rejects.toThrow();
     expect(db.transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("expired Staging rollback configuration compatibility", () => {
+  const expiresAt = new Date(Date.now() - 60_000).toISOString();
+  const renewedUntil = new Date(Date.now() + 3_600_000).toISOString();
+  const previous = { schemaVersion: "cloudflare.origin-configuration.v1", versionId: "11111111-1111-4111-8111-111111111111",
+    tenantId: identity.tenantId, projectId: identity.projectId, environment: "staging", provider: "cloudflare",
+    accountRef: "a".repeat(32), targetId: "smartspec-cloudflare-staging", origin: "https://origin-staging.smartaihub.app",
+    allowedPublicOrigins: ["https://staging.account.workers.dev"], accessApplicationId: "11111111-1111-4111-8111-111111111111",
+    accessTeamName: "fixture-team", accessAudience: "fixture-audience", expiresAt,
+    nativeResources: { privateDatabase: { provisionJobId: "source-db-job", plan: { namespace: "staging" } } } } as any;
+  const previousRef = `cf-origin:${cloudflareOriginDescriptorDigest(previous)}`;
+  const active = { ...previous, versionId: "22222222-2222-4222-8222-222222222222", expiresAt: renewedUntil,
+    nativeResources: { privateDatabase: { ...previous.nativeResources.privateDatabase, leaseRenewal: {
+      jobId: "33333333-3333-4333-8333-333333333333", leaseExpiresAt: renewedUntil, planDigest: "d".repeat(64),
+      sourceConfigurationRef: previousRef, sourceConfigurationDigest: cloudflareOriginDescriptorDigest(previous),
+    } } } } as any;
+  const activeRef = `cf-origin:${cloudflareOriginDescriptorDigest(active)}`;
+
+  it("accepts only a direct verified lease renewal with unchanged scope and secrets", () => {
+    const input = { previousRef, previous, previousSecrets: secrets, previousRevokedAt: null,
+      activeRef, active, activeSecrets: secrets, activeRevokedAt: null };
+    expect(isCompatibleCloudflareOriginRenewalRevision(input)).toBe(true);
+    expect(isCompatibleCloudflareOriginRenewalRevision({ ...input, active: { ...active, origin: "https://other.example" } })).toBe(false);
+    expect(isCompatibleCloudflareOriginRenewalRevision({ ...input, activeSecrets: { ...secrets, secret: "different-secret-value" } })).toBe(false);
+    expect(isCompatibleCloudflareOriginRenewalRevision({ ...input, active: { ...active, nativeResources: { privateDatabase: {
+      ...active.nativeResources.privateDatabase, leaseRenewal: { ...active.nativeResources.privateDatabase.leaseRenewal, sourceConfigurationRef: `cf-origin:${"f".repeat(64)}` },
+    } } } })).toBe(false);
+    expect(isCompatibleCloudflareOriginRenewalRevision({ ...input, previousRevokedAt: new Date().toISOString() })).toBe(false);
   });
 });
 

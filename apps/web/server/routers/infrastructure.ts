@@ -74,7 +74,7 @@ import {
 import { auditLogger } from "../services/auditLogger";
 import { cloudflareOriginSettingsSchema, cloudflareOriginSecretsSchema, saveCloudflareOriginConfiguration,
   getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration, activateCloudflareStagingQueueProfile,
-  saveCloudflareStagingConfigurationAfterDatabaseRenewal } from "../services/cloudflareOriginConfiguration";
+  saveCloudflareStagingConfigurationAfterDatabaseRenewal, isCloudflareOriginRollbackConfigurationUsable } from "../services/cloudflareOriginConfiguration";
 import { getCloudflarePrivateDatabaseRenewalPreflight, projectPrivateDatabaseRenewalJobStatus } from "../services/cloudflarePrivateDatabaseRenewal";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
@@ -512,7 +512,10 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
         isConfigurationUsable: async (candidateRef, candidateDigest) => {
           const stored = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef: candidateRef })
             .catch(() => null);
-          return stored?.status === "STORED" && stored.configurationRef === candidateRef && stored.configurationDigest === candidateDigest;
+          if (stored?.status === "STORED" && stored.configurationRef === candidateRef && stored.configurationDigest === candidateDigest) return true;
+          return isCloudflareOriginRollbackConfigurationUsable(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" },
+            rollbackConfigurationRef: candidateRef, rollbackConfigurationDigest: candidateDigest,
+            activeConfigurationRef: configurationRef, activeConfigurationDigest: configurationDigest });
         },
       });
       if (baseline) return { ready: true, reason: null,
