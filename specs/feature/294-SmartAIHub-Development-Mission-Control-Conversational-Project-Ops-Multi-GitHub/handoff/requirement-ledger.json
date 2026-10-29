@@ -1,5 +1,5 @@
 {
-  "generation": 15,
+  "generation": 17,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -11348,17 +11348,22 @@
       "blocker": null,
       "current_relevance": "CURRENT",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
+      "evidence_sha": "02de528ad9c89140334329a19ff868ea78509b16f0d9943bb4d0a8f6abe11b32",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         {
           "kind": "JOB_BACKED_THREAD_GROUPING",
           "path": "apps/web/client/src/pages/TaskObservabilityMonitor.tsx",
-          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+          "source_sha": "1f940d5ce11e412b4fb9d0fa9030c886aaaff2da"
+        },
+        {
+          "kind": "GLOBAL_PROJECT_THREAD_OVERVIEW",
+          "path": "apps/web/client/src/components/chat/ThreadOverviewSidebarPanel.tsx",
+          "source_sha": "1f940d5ce11e412b4fb9d0fa9030c886aaaff2da"
         }
       ],
       "implementation_status": "IMPLEMENTED_PARTIAL",
-      "next_action": "Complete the global project/thread listing, filters and pagination on the existing authorized projection without introducing a second event store or mutable Thread state.",
+      "next_action": "Confirm cursor/snapshot parity with the Mission/Task projection and complete authenticated hosted serving-revision acceptance; keep cross-source immutable replay and SPEC-224 live execution as separately open requirements.",
       "requirement_digest": "58520ec0db250bf795d740087b08f5d95e3bca59bdfd664710c4680b740cb488",
       "requirement_id": "REQ-294-THR-02",
       "requirement_text": "- REQ-294-THR-02: Cross-project thread listing, grouping, filters and pagination MUST reuse the existing authorization-scoped Mission/Task projection and its snapshot/cursor contract. It MUST NOT introduce a separate mission scheduler, Job ledger, event store, approval authority or mutable thread status.",
@@ -11366,12 +11371,17 @@
       "successor_mapping": [],
       "verification_evidence": [
         {
-          "kind": "FOCUSED_POSTGRES_AND_UI_REGRESSION",
-          "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-thread-overview-followup-20261029.md",
-          "source_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+          "kind": "AUTHENTICATED_LOCAL_RESPONSIVE_UAT",
+          "path": "handoff/evidence/global-project-thread-overview-20261029.md",
+          "source_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8"
+        },
+        {
+          "kind": "FOCUSED_TASK_CONTROL_THREAD_UI_TESTS",
+          "path": "handoff/evidence/global-project-thread-overview-20261029.md",
+          "source_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8"
         }
       ],
-      "verification_method": "Focused Task Observability component and PostgreSQL tests verify page-scoped Thread grouping, exact Job links and owner/tenant binding; global project/thread filters and all-conversation pagination remain unverified."
+      "verification_method": "Focused TaskObservabilityMonitor and ChatSidebar UI tests plus authenticated local Playwright at 390/768/1440 verify the global authorized Project/Thread list, status filter, pagination availability, exact Chat and Task Control links, no tracked Thread/Task 5xx, no work mutation, and no horizontal overflow. Hosted serving revision, shared Mission/Task snapshot-cursor parity, and cross-source replay remain required."
     },
     {
       "applicability": "APPLICABLE",
