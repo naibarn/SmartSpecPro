@@ -72,7 +72,6 @@ import {
   resolveVerticalDramaCharacterDescriptionKeys,
   normalizeVerticalDramaCharacterDescriptionOverrides,
   VERTICAL_DRAMA_CHARACTER_DESCRIPTION_MAX_LENGTH,
-  validateVerticalDramaCastPositionLock,
   type VerticalDramaCastPositionLock,
   type VerticalDramaCharacterDescriptionOverrides,
 } from "@shared/verticalDramaSeries/castPositionLock";
@@ -1518,11 +1517,6 @@ interface VerticalDramaStoryboardPanelProps {
     shotNumber: number,
     characterRefs: string[]
   ) => void;
-  /** Persist the user-confirmed viewer-left -> viewer-right cast order. */
-  onSetShotCastPositionLock?: (
-    shotNumber: number,
-    orderedCharacterRefs: string[]
-  ) => void;
   /** Persist optional shot-local identity cues for difficult/crowded frames. */
   onSetShotCharacterDescriptionOverrides?: (
     shotNumber: number,
@@ -2403,7 +2397,6 @@ export function VerticalDramaStoryboardPanel({
   savingCharacterLookForAllShots = false,
   onDropCharacterReference,
   onSetShotCharacterReferences,
-  onSetShotCastPositionLock,
   onSetShotCharacterDescriptionOverrides,
   savingCharacterDescriptionOverridesForShot = null,
   onSetShotScreenCallerReferences,
@@ -2888,9 +2881,6 @@ export function VerticalDramaStoryboardPanel({
   type VideoPromptViewId = VideoPromptVariantId | "enhanced_full";
   const [viewedPromptVariantByClip, setViewedPromptVariantByClip] = useState<
     Record<number, VideoPromptViewId>
-  >({});
-  const [castPositionDraftByShot, setCastPositionDraftByShot] = useState<
-    Record<number, string[]>
   >({});
   /** Confirm-gate for "re-assemble" (destructive overwrite of the existing
    *  compiled video) — mirrors `confirmingRegenerateVideoForClip`'s
@@ -4815,31 +4805,25 @@ export function VerticalDramaStoryboardPanel({
           const videoSafetyNeedsReview =
             (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
             (!videoSafetyIsCurrent || videoSafetyVerdict !== "safe");
-          const castPositionLockIsCurrent =
-            validateVerticalDramaCastPositionLock({
-              lock: frame?.castPositionLock,
-              activeAssetId: selectedVideoAnchorAssetId,
-              requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
-            }).valid;
           const detectedSpeakerBindingsAreComplete =
             hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
               frame?.speakerVisualBindings,
               speakerOptionsForShot.map(speaker => [speaker.speakerLabel]),
               selectedVideoAnchorAssetId
             );
-          const castPositionLockNeedsReview =
+          const speakerVisualBindingsNeedReview =
             !barrierMultiView &&
             (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
-            !castPositionLockIsCurrent &&
+            speakerOptionsForShot.length > 0 &&
             !detectedSpeakerBindingsAreComplete;
           const enhancedReadiness = enhancedReadinessByShot[shotNumber];
           const enhancedButtonTitle = !asset?.url
             ? t2.generateShotVideoPromptNeedsImage
-            : castPositionLockNeedsReview
+            : speakerVisualBindingsNeedReview
               ? t(
                   locale,
-                  "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
-                  "Confirm the left-to-right cast order for the current image first"
+                  "จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบก่อน",
+                  "Map every speaker to a detected person in the current image first"
                 )
               : enhancedReadiness?.ready === false
                 ? enhancedReadiness.reasons.join("; ")
@@ -5671,16 +5655,16 @@ export function VerticalDramaStoryboardPanel({
                           )}
                         </Badge>
                       ) : null}
-                      {castPositionLockNeedsReview ? (
+                      {speakerVisualBindingsNeedReview ? (
                         <Badge
                           variant="outline"
                           className="gap-1 border-amber-400 px-1.5 py-0 text-[9px] text-amber-700 dark:text-amber-300"
-                          data-testid={`vd-storyboard-cast-position-review-${shotNumber}`}
+                          data-testid={`vd-storyboard-speaker-mapping-review-${shotNumber}`}
                         >
                           {t(
                             locale,
-                            "ต้องยืนยันซ้าย→ขวา",
-                            "Confirm left→right cast"
+                            "ต้องระบุผู้พูดในภาพให้ครบ",
+                            "Map every speaker to a person in the image"
                           )}
                         </Badge>
                       ) : null}
@@ -7538,200 +7522,6 @@ export function VerticalDramaStoryboardPanel({
                     );
                   })()}
 
-                  {(() => {
-                    const physicalKeys =
-                      frame?.requiredCharacterRefs !== undefined
-                        ? frame.requiredCharacterRefs
-                        : shot.required_character_refs?.length
-                          ? shot.required_character_refs
-                          : (shot.characters ?? []);
-                    if (barrierMultiView || physicalKeys.length < 2)
-                      return null;
-                    const activeAssetId = [
-                      frame?.videoStartMediaAssetId,
-                      frame?.approvedMediaAssetId,
-                    ]
-                      .map(value => Number(value))
-                      .find(value => Number.isInteger(value) && value > 0);
-                    const lock = frame?.castPositionLock;
-                    const lockIsCurrent = validateVerticalDramaCastPositionLock(
-                      {
-                        lock,
-                        activeAssetId: activeAssetId
-                          ? String(activeAssetId)
-                          : undefined,
-                        requiredCharacterRefs: physicalKeys,
-                      }
-                    ).valid;
-                    const persistedDraft =
-                      castPositionDraftByShot[shotNumber] ??
-                      lock?.orderedCharacterRefs ??
-                      physicalKeys;
-                    // Keep the editor recoverable when an old/stale lock has
-                    // the wrong cardinality: always render exactly one slot
-                    // per current physical character and fill missing slots
-                    // with the remaining roster keys so the user can repair
-                    // the order without needing a hidden reset action.
-                    const draft = physicalKeys.map((fallbackKey, index) => {
-                      const candidate = persistedDraft[index];
-                      return candidate && physicalKeys.includes(candidate)
-                        ? candidate
-                        : fallbackKey;
-                    });
-                    const draftIsComplete =
-                      draft.length === physicalKeys.length &&
-                      draft.every(
-                        key =>
-                          physicalKeys.includes(key) &&
-                          draft.indexOf(key) === draft.lastIndexOf(key)
-                      );
-                    return (
-                      <div
-                        className={cn(
-                          "rounded-md border p-2",
-                          lockIsCurrent
-                            ? "border-emerald-300/70 bg-emerald-50/40 dark:bg-emerald-950/10"
-                            : "border-amber-300/70 bg-amber-50/40 dark:bg-amber-950/10"
-                        )}
-                        id={`vd-storyboard-cast-position-lock-${shotNumber}`}
-                        tabIndex={-1}
-                        data-testid={`vd-storyboard-cast-position-lock-${shotNumber}`}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="text-xs font-medium">
-                              {t(
-                                locale,
-                                "ยืนยันตำแหน่งตัวละครซ้าย → ขวา",
-                                "Confirm cast positions left → right"
-                              )}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {lockIsCurrent
-                                ? t(
-                                    locale,
-                                    "ยืนยันกับภาพปัจจุบันแล้ว",
-                                    "Confirmed for the current image"
-                                  )
-                                : t(
-                                    locale,
-                                    "ภาพไม่ชัดหรือตำแหน่งเปลี่ยน — แก้ภาพก่อนสร้าง prompt/วิดีโอ",
-                                    "Unclear or changed image — fix it before generating a prompt/video"
-                                  )}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {t(
-                                locale,
-                                "ระหว่างสลับตำแหน่งเลือกชื่อซ้ำชั่วคราวได้ ระบบจะตรวจความซ้ำก่อนยืนยัน",
-                                "You can temporarily choose the same name while swapping; duplicates are checked before confirmation."
-                              )}
-                            </p>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className={
-                              lockIsCurrent
-                                ? "border-emerald-400 text-emerald-700 dark:text-emerald-300"
-                                : "border-amber-400 text-amber-700 dark:text-amber-300"
-                            }
-                          >
-                            {lockIsCurrent
-                              ? t(locale, "พร้อม", "Ready")
-                              : t(locale, "ต้องยืนยัน", "Needs confirmation")}
-                          </Badge>
-                        </div>
-                        <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
-                          {draft.map((key, index) => (
-                            <label
-                              key={`${shotNumber}-${index}`}
-                              className="flex items-center gap-1.5 text-[10px]"
-                            >
-                              <span className="w-5 shrink-0 text-muted-foreground">
-                                {index + 1}
-                              </span>
-                              <select
-                                aria-label={t(
-                                  locale,
-                                  `ตัวละครตำแหน่งที่ ${index + 1}`,
-                                  `Character at position ${index + 1}`
-                                )}
-                                className="h-7 min-w-0 flex-1 rounded border border-border bg-background px-1.5 text-xs"
-                                value={key}
-                                onChange={event => {
-                                  const next = [...draft];
-                                  next[index] = event.target.value;
-                                  setCastPositionDraftByShot(previous => ({
-                                    ...previous,
-                                    [shotNumber]: next,
-                                  }));
-                                }}
-                              >
-                                <option value="">
-                                  {t(
-                                    locale,
-                                    "เลือกตัวละคร",
-                                    "Select character"
-                                  )}
-                                </option>
-                                {physicalKeys.map(optionKey => (
-                                  <option key={optionKey} value={optionKey}>
-                                    {characterPortraits[optionKey]?.name ??
-                                      optionKey}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-                          ))}
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-7 gap-1 px-2 text-[10px]"
-                            disabled={
-                              !onSetShotCastPositionLock ||
-                              !activeAssetId ||
-                              !draftIsComplete
-                            }
-                            onClick={() =>
-                              onSetShotCastPositionLock?.(shotNumber, draft)
-                            }
-                            data-testid={`vd-storyboard-confirm-cast-position-${shotNumber}`}
-                          >
-                            <Check aria-hidden="true" className="h-3 w-3" />
-                            {t(locale, "ยืนยันตำแหน่ง", "Confirm positions")}
-                          </Button>
-                          {!activeAssetId ? (
-                            <span className="text-[10px] text-amber-700 dark:text-amber-300">
-                              {t(
-                                locale,
-                                "ต้องมีภาพปัจจุบันก่อน",
-                                "A current image is required first"
-                              )}
-                            </span>
-                          ) : !draftIsComplete ? (
-                            <span className="text-[10px] text-red-700 dark:text-red-300">
-                              {t(
-                                locale,
-                                "เลือกตัวละครให้ครบและห้ามซ้ำ",
-                                "Choose every character exactly once"
-                              )}
-                            </span>
-                          ) : !lockIsCurrent ? (
-                            <span className="text-[10px] text-amber-700 dark:text-amber-300">
-                              {t(
-                                locale,
-                                "ถ้าหน้า/ตำแหน่งอ่านไม่ชัด ให้เปลี่ยนภาพหรือสร้าง Video-Safe frame",
-                                "If faces/positions are unclear, change the image or generate a Video-Safe frame"
-                              )}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })()}
-
                   {frame?.sceneDescription?.trim() && !frame.locationKey ? (
                     <div
                       className="flex items-start gap-2 rounded-lg border border-sky-300/70 bg-sky-50/60 px-2.5 py-1.5 text-xs text-sky-900 dark:bg-sky-950/20 dark:text-sky-100"
@@ -9201,17 +8991,17 @@ export function VerticalDramaStoryboardPanel({
                               }}
                               disabled={
                                 !asset?.url ||
-                                castPositionLockNeedsReview ||
+                                speakerVisualBindingsNeedReview ||
                                 generatingShotVideoPromptForShot.has(shotNumber)
                               }
                               title={
                                 !asset?.url
                                   ? t2.generateShotVideoPromptNeedsImage
-                                  : castPositionLockNeedsReview
+                                  : speakerVisualBindingsNeedReview
                                     ? t(
                                         locale,
-                                        "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
-                                        "Confirm the left-to-right cast order for the current image first"
+                                        "จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบก่อน",
+                                        "Map every speaker to a detected person in the current image first"
                                       )
                                     : !selectedVideoModelId
                                       ? t2.selectVideoModelFirst
@@ -9272,7 +9062,7 @@ export function VerticalDramaStoryboardPanel({
                                 }}
                                 disabled={
                                   !asset?.url ||
-                                  castPositionLockNeedsReview ||
+                                  speakerVisualBindingsNeedReview ||
                                   enhancedGeneratingForShot.has(shotNumber) ||
                                   enhancedReadinessByShot[shotNumber]?.ready !==
                                     true
@@ -9322,7 +9112,7 @@ export function VerticalDramaStoryboardPanel({
                                 (() => {
                                   if (
                                     !asset?.url ||
-                                    castPositionLockNeedsReview
+                                    speakerVisualBindingsNeedReview
                                   ) {
                                     return enhancedButtonTitle;
                                   }
@@ -9351,28 +9141,6 @@ export function VerticalDramaStoryboardPanel({
                                       );
                                 })()}
                             </span>
-                            {asset?.url &&
-                            castPositionLockNeedsReview &&
-                            onSetShotCastPositionLock ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  const review = document.getElementById(
-                                    `vd-storyboard-cast-position-lock-${shotNumber}`
-                                  );
-                                  review?.scrollIntoView({ block: "center" });
-                                  review?.focus({ preventScroll: true });
-                                }}
-                              >
-                                {t(
-                                  locale,
-                                  "ไปยืนยันลำดับตัวละคร",
-                                  "Review cast order"
-                                )}
-                              </Button>
-                            ) : null}
                             {videoPromptJobErrorByShot[shotNumber] ? (
                               <span
                                 role="alert"
@@ -9585,17 +9353,17 @@ export function VerticalDramaStoryboardPanel({
                                 }}
                                 disabled={
                                   !clip.prompt?.trim() ||
-                                  castPositionLockNeedsReview ||
+                                  speakerVisualBindingsNeedReview ||
                                   generatingVideoClipForClip.has(
                                     clip.clipNumber
                                   )
                                 }
                                 title={
-                                  castPositionLockNeedsReview
+                                  speakerVisualBindingsNeedReview
                                     ? t(
                                         locale,
-                                        "ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน",
-                                        "Confirm the left-to-right cast order for the current image first"
+                                        "จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบก่อน",
+                                        "Map every speaker to a detected person in the current image first"
                                       )
                                     : !selectedVideoModelId
                                       ? t2.selectVideoModelFirst

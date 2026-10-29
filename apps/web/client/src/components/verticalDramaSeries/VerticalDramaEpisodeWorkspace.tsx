@@ -566,11 +566,6 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     characterRefs: string[]
   ) => void;
-  /** Persist the user-confirmed viewer-left -> viewer-right cast order. */
-  onSetShotCastPositionLock?: (
-    shotNumber: number,
-    orderedCharacterRefs: string[]
-  ) => void;
   onSetShotCharacterDescriptionOverrides?: (
     shotNumber: number,
     overrides: Record<string, string>
@@ -1797,7 +1792,6 @@ export function VerticalDramaEpisodeWorkspace({
           onSetShotCharacterReferences={
             storyboardPanel?.onSetShotCharacterReferences
           }
-          onSetShotCastPositionLock={storyboardPanel?.onSetShotCastPositionLock}
           onSetShotCharacterDescriptionOverrides={
             storyboardPanel?.onSetShotCharacterDescriptionOverrides
           }

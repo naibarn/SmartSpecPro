@@ -556,7 +556,6 @@ import type {
 } from "@shared/verticalDramaSeries";
 import {
   addVerticalDramaVariantCharacterDescriptionAliases,
-  buildVerticalDramaVerifiedCastPositions,
   canonicalizeVerticalDramaCharacterDescriptionOverrideKeys,
   normalizeVerticalDramaCharacterDescriptionOverrides,
   resolveVerticalDramaSpeakerIdentity,
@@ -1429,51 +1428,18 @@ async function loadEnhancedShotContext(input: {
       enhancedDialogueSpeakerAliases,
       activeVideoAnchorAssetId
     );
-  const requiresCastPositionLock =
+  const requiresSpeakerVisualBindings =
     input.operation === "generate" &&
     !frame?.barrierMultiView &&
     (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
+    enhancedDialogueSpeakerAliases.length > 0 &&
     !dialogueSpeakersHaveDetectedBindings;
-  if (requiresCastPositionLock) {
-    const lockValidation = validateVerticalDramaCastPositionLock({
-      lock: frame?.castPositionLock,
-      activeAssetId:
-        activeVideoAnchorAssetId != null
-          ? String(activeVideoAnchorAssetId)
-          : undefined,
-      requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
+  if (requiresSpeakerVisualBindings) {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "ยังสร้าง Enhanced video prompt ไม่ได้: ต้องจับคู่ผู้พูดทุกคนกับคนที่ตรวจพบในภาพปัจจุบันก่อน",
     });
-    if (!lockValidation.valid) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message:
-          "ยังสร้าง Enhanced video prompt ไม่ได้: ต้องจับคู่ผู้พูดกับคนในภาพให้ครบ หรือยืนยันลำดับซ้าย→ขวาสำหรับผู้พูดที่ยังไม่จับคู่ หากภาพไม่ชัดให้เปลี่ยนภาพ/ซ่อมภาพหรือสร้าง Video-Safe frame",
-      });
-    }
-  }
-
-  // Resolve verified cast positions from start frame lock if present
-  let verifiedCastPositions: Array<{
-    characterKey: string;
-    name: string;
-    position: string;
-  }> = [];
-  if (frame?.castPositionLock) {
-    const rawPositions = buildVerticalDramaVerifiedCastPositions({
-      lock: frame.castPositionLock,
-      characterNameByKey: speakerNameMap,
-    });
-    verifiedCastPositions = rawPositions.map(p => ({
-      characterKey: p.characterKey,
-      name: p.name,
-      position: p.position,
-    }));
-    for (const vp of verifiedCastPositions) {
-      if (vp.characterKey && vp.name) {
-        speakerNameMap.set(vp.characterKey, vp.name);
-        speakerNameMap.set(vp.characterKey.toLowerCase(), vp.name);
-      }
-    }
   }
 
   // If generic "character" or "character-1" is used, resolve to main protagonist if not yet mapped
@@ -1549,14 +1515,10 @@ async function loadEnhancedShotContext(input: {
         resolution.status === "resolved" || resolution.status === "offscreen"
           ? resolution.characterKey
           : `speaker-${idx + 1}`;
-      const matchedPosition = verifiedCastPositions.find(
-        p => p.characterKey.toLowerCase() === stableCharacterKey.toLowerCase()
-      );
       const speaker =
         localSpeakerBinding?.speakerLabel ??
         speakerNameMap.get(stableCharacterKey) ??
         speakerNameMap.get(stableCharacterKey.toLowerCase()) ??
-        matchedPosition?.name ??
         line.speaker ??
         line.speakerHint ??
         stableCharacterKey;
@@ -1569,7 +1531,7 @@ async function loadEnhancedShotContext(input: {
         ? "viewer-offscreen"
         : localSpeakerBinding
           ? "viewer-visible-as-described"
-          : matchedPosition?.position ?? line.position ?? undefined;
+          : line.position ?? undefined;
       const text = String(
         line.lineTh ?? line.text ?? line.dialogue_line ?? line.line ?? ""
       ).trim();
@@ -1704,7 +1666,6 @@ async function loadEnhancedShotContext(input: {
       locationId,
       continuityNotes: storyboardShot?.continuityNotes ?? [],
       canonicalContext,
-      verifiedCastPositions,
       episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
       episodeKeyBeats: shotEpisodePlanItem?.keyBeats ?? undefined,
       audioDirection:
@@ -1718,7 +1679,6 @@ async function loadEnhancedShotContext(input: {
     continuity: {
       storyboardRevision: row.updatedAt.toISOString(),
       storyboardShot,
-      verifiedCastPositions,
       characterDescriptionOverrides: promptCharacterDescriptionOverrides,
       visualCastPolicy,
       episodeSynopsis: shotEpisodePlanItem?.logline ?? undefined,
@@ -11381,9 +11341,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
    */
   characterReferenceImages?: ShotVideoPromptCharacterReferenceImage[];
   characterDescriptionOverrides?: Record<string, string>;
-  verifiedCastPositions?: ReturnType<
-    typeof buildVerticalDramaVerifiedCastPositions
-  >;
   barrierMultiView?: ReturnType<typeof normalizeVerticalDramaBarrierMultiView>;
   barrierReferenceImage?: { url: string; name?: string };
   /**
@@ -11465,7 +11422,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     subShotWindows,
     characterReferenceImages,
     characterDescriptionOverrides,
-    verifiedCastPositions,
     barrierMultiView,
     barrierReferenceImage,
     locationReferenceImage,
@@ -11501,7 +11457,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
       imagePrompt,
       characterReferenceImages,
       characterDescriptionOverrides,
-      verifiedCastPositions,
       barrierReferenceImage,
       locationReferenceImage,
       qualityLoop,
@@ -11852,17 +11807,6 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     audioDirection: speakerSwitchGeneration.audioDirection,
     promptModelTarget: splitShotVideoPromptModelTarget,
     frameAnalysis: speakerSwitchGeneration.frameAnalysis,
-    ...(verifiedCastPositions?.length
-      ? {
-          castPositionLock: {
-            assetId: approvedStartFrameAssetId,
-            orderedCharacterRefs: verifiedCastPositions.map(
-              position => position.characterKey
-            ),
-            confirmedAt: new Date().toISOString(),
-          },
-        }
-      : {}),
     ...(speakerSwitchGeneration.motionContractStatus
       ? {
           motionContractStatus: speakerSwitchGeneration.motionContractStatus,
@@ -23998,42 +23942,6 @@ export const verticalDramaEpisodesRouter = router({
           message: `ยังสร้างวิดีโอไม่ได้สำหรับ clip ${input.clipNumber}: ${videoSafetyGate.message} กด “ตรวจความพร้อมวิดีโอ” ที่ภาพ start frame หรือสร้าง Video-Safe frame ก่อน`,
         });
       }
-      // Once a shot has two or more physical cast members, the paid render
-      // must use the same user-confirmed image/left-to-right lock as prompt
-      // generation, even for a silent clip. Otherwise a legacy silent clip
-      // could bypass the ambiguity guard and still spend provider credits.
-      const renderRequiresCastLock =
-        !barrierRenderView &&
-        (primaryStartFrame?.requiredCharacterRefs?.length ?? 0) >= 2;
-      if (renderRequiresCastLock) {
-        const currentLockValidation = validateVerticalDramaCastPositionLock({
-          lock: primaryStartFrame?.castPositionLock,
-          activeAssetId: startFrameAssetId
-            ? String(startFrameAssetId)
-            : undefined,
-          requiredCharacterRefs: primaryStartFrame?.requiredCharacterRefs ?? [],
-        });
-        const clipLock = clip.castPositionLock;
-        const clipMatchesCurrentLock = Boolean(
-          clipLock &&
-          primaryStartFrame?.castPositionLock &&
-          clipLock.assetId === primaryStartFrame.castPositionLock.assetId &&
-          clipLock.orderedCharacterRefs.length ===
-            primaryStartFrame.castPositionLock.orderedCharacterRefs.length &&
-          clipLock.orderedCharacterRefs.every(
-            (key, index) =>
-              key ===
-              primaryStartFrame.castPositionLock!.orderedCharacterRefs[index]
-          )
-        );
-        if (!currentLockValidation.valid || !clipMatchesCurrentLock) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "ยังสร้างวิดีโอไม่ได้: ภาพหรือผังตัวละครซ้าย→ขวาเปลี่ยนไปแล้ว กรุณายืนยันตำแหน่งและสร้าง video prompt ใหม่ก่อน เพื่อไม่ให้เสียเครดิตกับภาพที่ไม่ชัดเจน",
-          });
-        }
-      }
       // Reference-mapping fix Phase 5b (`vd-start-frame-reference-mapping/
       // plan.md`) — WHY this budget is `maxReferenceImages - 1` (not
       // `maxReferenceImages`) whenever a start frame is present: the start
@@ -29121,31 +29029,16 @@ export const verticalDramaEpisodesRouter = router({
           frame?.characterDescriptionOverrides,
           frame?.requiredCharacterRefs ?? []
         );
-      const requiresCastLock =
+      const requiresSpeakerVisualBindings =
         !barrierMultiView &&
         (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
+        dialogueLines.length > 0 &&
         !dialogueSpeakersHaveDetectedBindings;
-      let verifiedCastPositions:
-        | ReturnType<typeof buildVerticalDramaVerifiedCastPositions>
-        | undefined;
-      if (requiresCastLock) {
-        const lockValidation = validateVerticalDramaCastPositionLock({
-          lock: frame?.castPositionLock,
-          activeAssetId: activeVideoAnchorAssetId
-            ? String(activeVideoAnchorAssetId)
-            : undefined,
-          requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
-        });
-        if (!lockValidation.valid) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message:
-              "ยังสร้าง video prompt ไม่ได้: จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบ หรือยืนยันลำดับซ้าย→ขวาสำหรับผู้พูดที่ยังไม่จับคู่ก่อน หากภาพไม่ชัดให้เปลี่ยนภาพ/ซ่อมภาพหรือสร้าง Video-Safe frame",
-          });
-        }
-        verifiedCastPositions = buildVerticalDramaVerifiedCastPositions({
-          lock: frame!.castPositionLock!,
-          characterNameByKey: shotVideoCharacterNameByKey,
+      if (requiresSpeakerVisualBindings) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "ยังสร้าง video prompt ไม่ได้: ต้องจับคู่ผู้พูดทุกคนกับคนที่ตรวจพบในภาพปัจจุบันก่อน",
         });
       }
       const withSpeakerNames = <T extends { characterKey?: string }>(
@@ -29370,7 +29263,6 @@ export const verticalDramaEpisodesRouter = router({
             subShotWindows: subShotDecision.windows,
             characterReferenceImages: splitShotVideoCharacterReferenceImages,
             characterDescriptionOverrides,
-            verifiedCastPositions,
             visualCastPolicy,
             barrierMultiView,
             barrierReferenceImage,
@@ -29429,7 +29321,6 @@ export const verticalDramaEpisodesRouter = router({
           imagePrompt: frame?.imagePrompt,
           characterReferenceImages: shotVideoCharacterReferenceImages,
           characterDescriptionOverrides,
-          verifiedCastPositions,
           barrierReferenceImage,
           motionContractsEnabled,
           locationReferenceImage: shotVideoLocationReferenceImage ?? undefined,
@@ -29921,17 +29812,6 @@ export const verticalDramaEpisodesRouter = router({
             audioDirection: result.audioDirection,
             promptModelTarget: shotVideoPromptModelTarget,
             frameAnalysis: result.frameAnalysis,
-            ...(verifiedCastPositions?.length
-              ? {
-                  castPositionLock: {
-                    assetId: String(approvedMediaAssetId),
-                    orderedCharacterRefs: verifiedCastPositions.map(
-                      position => position.characterKey
-                    ),
-                    confirmedAt: new Date().toISOString(),
-                  },
-                }
-              : {}),
             ...(result.motionContractStatus
               ? {
                   motionContractStatus: result.motionContractStatus,
@@ -30006,17 +29886,6 @@ export const verticalDramaEpisodesRouter = router({
                 audioDirection: result.audioDirection,
                 promptModelTarget: shotVideoPromptModelTarget,
                 frameAnalysis: result.frameAnalysis,
-                ...(verifiedCastPositions?.length
-                  ? {
-                      castPositionLock: {
-                        assetId: String(approvedMediaAssetId),
-                        orderedCharacterRefs: verifiedCastPositions.map(
-                          position => position.characterKey
-                        ),
-                        confirmedAt: new Date().toISOString(),
-                      },
-                    }
-                  : {}),
                 ...(result.motionContractStatus
                   ? {
                       motionContractStatus: result.motionContractStatus,

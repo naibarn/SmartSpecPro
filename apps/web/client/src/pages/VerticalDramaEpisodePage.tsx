@@ -4627,34 +4627,6 @@ function EpisodeWorkspaceShell({
     );
   }
 
-  const setShotCastPositionLockMutation =
-    trpc.verticalDramaEpisodes.setShotCastPositionLock.useMutation({
-      onSuccess: () => {
-        toast.success(
-          lang === "th"
-            ? "ยืนยันลำดับตัวละครซ้าย→ขวาแล้ว"
-            : "Left-to-right cast order confirmed."
-        );
-        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate({
-          seriesId,
-          episodeId,
-        });
-      },
-      onError: err => toast.error(err.message),
-    });
-
-  function handleSetShotCastPositionLock(
-    shotNumber: number,
-    orderedCharacterRefs: string[]
-  ) {
-    setShotCastPositionLockMutation.mutate({
-      seriesId,
-      episodeId,
-      shotNumber,
-      orderedCharacterRefs,
-    });
-  }
-
   const setShotCharacterDescriptionOverridesMutation =
     trpc.verticalDramaEpisodes.setShotCharacterDescriptionOverrides.useMutation(
       {
@@ -9162,7 +9134,7 @@ function EpisodeWorkspaceShell({
       (episodeDetailQuery.data?.startFramePlan?.frames ?? [])
         .map(
           frame =>
-            `${frame.shotNumber}:${frame.approvedMediaAssetId ?? ""}:${frame.videoStartMediaAssetId ?? ""}:${frame.approvedStopFrameAssetId ?? ""}:${frame.castPositionLock?.assetId ?? ""}:${(frame.castPositionLock?.orderedCharacterRefs ?? []).join(",")}:${frame.castPositionLock?.confirmedAt ?? ""}:${JSON.stringify(Object.entries(frame.characterDescriptionOverrides ?? {}).sort(([left], [right]) => left.localeCompare(right)))}:${JSON.stringify(frame.speakerVisualBindings ?? [])}`
+            `${frame.shotNumber}:${frame.approvedMediaAssetId ?? ""}:${frame.videoStartMediaAssetId ?? ""}:${frame.approvedStopFrameAssetId ?? ""}:${JSON.stringify(Object.entries(frame.characterDescriptionOverrides ?? {}).sort(([left], [right]) => left.localeCompare(right)))}:${JSON.stringify(frame.speakerVisualBindings ?? [])}`
         )
         .join("|"),
     [episodeDetailQuery.data?.startFramePlan?.frames]
@@ -10598,7 +10570,6 @@ function EpisodeWorkspaceShell({
             savingCharacterLookForAllShots,
             onDropCharacterReference: handleDropCharacterReference,
             onSetShotCharacterReferences: handleSetShotCharacterReferences,
-            onSetShotCastPositionLock: handleSetShotCastPositionLock,
             onSetShotCharacterDescriptionOverrides:
               handleSetShotCharacterDescriptionOverrides,
             savingCharacterDescriptionOverridesForShot:
