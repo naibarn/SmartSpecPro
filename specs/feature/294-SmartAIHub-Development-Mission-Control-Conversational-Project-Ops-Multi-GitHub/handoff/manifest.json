@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
+    "expected_canonical_sha": "44676a99d616827c7b446acceae31e0ffb8def84",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Continue P0 internal closure: add authenticated target CRUD, tenant/project/environment credential broker and revocation, bind Worker and Container callers through persisted authority, receipt-wire every production-capable migration path, and connect normalized production evidence to Mission Control. Keep P0 partial; no production verification was performed. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-294, WP32/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse the existing read model and OBS partial evidence; add missing cross-session Work/Skill timeline/provenance, honest snapshot/live coverage and outcome adapters. Preserve existing P0 closure, current unknown inputs and separate accepted-pilot scope. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
+    "next_action": "Continue the Unified Thread Overview P0/P1 gap closure: implement durable multi-source event replay and gap recovery, add Mission Control Thread correlation/deep links, complete the authorized Inspector/result-return flow, then run migration and authenticated development browser acceptance. Keep SPEC-224 live Runner Child 1/2 acceptance open.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Latest live-readiness continuation:PR1036 f250326711d7d170e575d03b7c358f74891dfecc.41/41 scopedtests; latestknownactivity fix and realSQL isolation/paging/currentownership/readonly verification passed. Liveauth/Runner NOTACCEPTED:0freshRunner,0unexpiredcapability,0requestedprofile,0approvedunrevokedrecoveryapproval candidates. Currentlocalreadroute404; primarydirtysource preserved. No selfissuedauthority, sharedDBwrites, migrations, newGoalstore or Pilotrerun. Canonical evidence orchestra/tasks/task-control-completed-pilot-20261017/evidence/live-acceptance-readiness-20261017.json. Earlier broader continuation: Latest bounded completed-Pilot observability checkpoint: PR1014/1018/1028, exact final functional source 86a16d13592b7be4063c0ab37044418a8212de7c. TaskControl82/82 focused tests, three-viewport simulated-auth component drilldown, independent reviews and14 source hashes verified. Seven distinctions and parent-scope guard pass; fullSPEC remains open. OriginalPilot295+5 remain separately tied to47235563d and retained3190569a. Runtime trusted Goal/WU producer is absent: Unknown, never self-authorized by job metadata. Full helper/funding/quota, parity/history and live acceptance remain open. Canonical proof: specs/feature/277-task-control-experience-r1-6/handoff/evidence/completed-pilot-shared-projection-20261017.json. Historical broader continuation: Resume from origin/main 78f6aa42f197d76a4df28eae81ac3a3cb99b57a6. PR #224 and #225 are integrated. The canonical user workspace is clean and resolver-verified at this SHA with receipt workspace-convergence:f88d5c50-b31f-4720-bf98-23cc5c1e756f. Evidence for this partial checkpoint: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-internal-gap-closure-checkpoint-20261007.md. Remaining internal authority and migration-path wiring is open. | UWAC R0.6 specification/planning integrated at ab8b5b4e81d493f730952d7570a10a400e72e6bb; specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/uwac-r06-checkpoint-20261021.md. New UWAC rows remain OPEN/UNVERIFIED. Future WP31/32 begins only in the next authorized implementation scope; existing SPEC224 live work is unchanged. | UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-294, WP32/WP37). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse the existing read model and OBS partial evidence; add missing cross-session Work/Skill timeline/provenance, honest snapshot/live coverage and outcome adapters. Preserve existing P0 closure, current unknown inputs and separate accepted-pilot scope. Audited canonical source c4f8e8a44f83d68f793ae7aed5c105aefd028fe3; current manifest/ledger and source take precedence over stale section markers. | Work-first Task Control partial checkpoint: specs/feature/277-task-control-experience-r1-6/handoff/evidence/work-first-web-progress-20261027.md; code 0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0; continue missing Work/Skill entry, provider-specific readiness, full replay/privacy and live/production acceptance.",
+    "resume_point": "Partial integrated checkpoint 44676a99d616827c7b446acceae31e0ffb8def84. Evidence: handoff/evidence/unified-thread-overview-review-20261029.md; 14 cohesion passes; focused Vitest 15 files/171 tests and drizzle-kit check passed. Cross-session overview uses owner/tenant-bound signed cursors and Job-derived status/activity. Development DB migration, hosted UI/browser, Mission Control UI/replay, complete Inspector/result delivery and real SPEC-224 Child 1/2 receipts/settlement/Independent Final Verify remain unverified or open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -102,8 +102,8 @@
       "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
     ],
-    "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
-    "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
+    "next_action": "Resume the P0/P1 gaps listed in continuation.next_action from integrated source 44676a99d616827c7b446acceae31e0ffb8def84; first verify and apply additive migration 0416 on the configured development database through the existing migration authority, then continue Mission Control event replay and browser acceptance.",
+    "rationale": "This is a partial source integration. Focused tests and schema metadata checks pass, but no authenticated hosted browser, deployed UI, dev migration postcondition or genuine SPEC-224 live Runner execution was observed. Preserve unresolved requirements and do not mark overall Spec acceptance.",
     "residual_requirements": [
       "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
       "complete Mission Control push/integration and task/provider identity evidence",
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 92,
+  "generation": 93,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -262,9 +262,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
+    "canonical_sha": "44676a99d616827c7b446acceae31e0ffb8def84",
     "integrated": true,
-    "integrated_at": "2026-10-17T07:04:29Z"
+    "integrated_at": "2026-10-29T09:50:01Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -432,8 +432,8 @@
         "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
       ],
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
-      "rationale": "Handoff PR #175 reconciles Specs 293–295 to current canonical SHA 965a21b. The primary user checkout remains dirty and on a noncanonical branch, so it was preserved without overwrite; remaining internal requirements keep the code status PARTIAL.",
+      "next_action": "Resume the P0/P1 gaps listed in continuation.next_action from integrated source 44676a99d616827c7b446acceae31e0ffb8def84; first verify and apply additive migration 0416 on the configured development database through the existing migration authority, then continue Mission Control event replay and browser acceptance.",
+      "rationale": "This is a partial source integration. Focused tests and schema metadata checks pass, but no authenticated hosted browser, deployed UI, dev migration postcondition or genuine SPEC-224 live Runner execution was observed. Preserve unresolved requirements and do not mark overall Spec acceptance.",
       "residual_requirements": [
         "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
         "complete Mission Control push/integration and task/provider identity evidence",
@@ -1251,7 +1251,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T09:41:47.769498Z",
+  "updated_at": "2026-10-29T09:50:34.466210Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

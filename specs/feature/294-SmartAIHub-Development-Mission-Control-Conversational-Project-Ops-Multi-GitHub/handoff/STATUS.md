@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 504 unresolved of 504
-- Next action: Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.
-- Manifest generation: 92
+- Next action: Resume the P0/P1 gaps listed in continuation.next_action from integrated source 44676a99d616827c7b446acceae31e0ffb8def84; first verify and apply additive migration 0416 on the configured development database through the existing migration authority, then continue Mission Control event replay and browser acceptance.
+- Manifest generation: 93
 
 ## Source-declared status and relationship claims
 

@@ -19,8 +19,10 @@
   ],
   "sections_state": {
     "event-projection": {
-      "status": "in_progress",
-      "next_action": "Complete authorized cross-surface Thread Overview and durable replay review; then integrate only task-owned paths and record exact canonical evidence."
+      "status": "checkpointed",
+      "next_action": "Implement durable shared event replay/gap recovery and Mission Control Thread links from the canonical read model; then apply development migration 0416 and perform authenticated browser acceptance.",
+      "checkpoint_sha": "44676a99d616827c7b446acceae31e0ffb8def84",
+      "merged_main_sha": "44676a99d616827c7b446acceae31e0ffb8def84"
     }
   },
   "pre_commit": {
@@ -32,13 +34,15 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-29T08:23:20.751694+00:00",
-  "generation": 4,
-  "updated_at": "2026-10-29T09:41:38.497026+00:00",
+  "generation": 5,
+  "updated_at": "2026-10-29T09:50:43.767023+00:00",
   "progress": {
     "active_section": "event-projection",
-    "next_action": "Complete authorized cross-surface Thread Overview and durable replay review; then integrate only task-owned paths and record exact canonical evidence.",
+    "next_action": "Implement durable shared event replay/gap recovery and Mission Control Thread links from the canonical read model; then apply development migration 0416 and perform authenticated browser acceptance.",
     "gaps": [
-      "Mission Control has no web Thread Overview or shared multi-source replay/gap recovery in this slice."
-    ]
+      "Mission Control has no web Thread Overview or shared multi-source replay/gap recovery in this slice.",
+      "Mission Control Thread UI and durable multi-source replay/gap recovery remain unimplemented; hosted development UI and genuine SPEC-224 live Child 1/2 acceptance remain unverified."
+    ],
+    "merged_main_sha": "44676a99d616827c7b446acceae31e0ffb8def84"
   }
 }
