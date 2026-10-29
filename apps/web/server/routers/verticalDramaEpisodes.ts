@@ -1418,8 +1418,20 @@ async function loadEnhancedShotContext(input: {
     });
   }
 
-  // If generic "character" or "character-1" is used, resolve to main protagonist if not yet mapped
-  if (!speakerNameMap.has("character")) {
+  // Legacy generic speaker keys used to default to the series protagonist.
+  // A current-frame user binding is more specific: when the user has mapped
+  // that generic label to a detected person, do not let this compatibility
+  // fallback attach the temporary speaker to the protagonist.
+  const hasBoundGenericSpeaker = enhancedDialogueSpeakerAliases.some(aliases =>
+    aliases.some(alias =>
+      typeof alias === "string" &&
+      /^(?:character|character-1)$/i.test(alias.trim()) &&
+      Boolean(
+        findVerticalDramaSpeakerVisualBinding(speakerVisualBindings, ...aliases)
+      )
+    )
+  );
+  if (!speakerNameMap.has("character") && !hasBoundGenericSpeaker) {
     const mainChar =
       rosterRows.find(
         r =>
@@ -28594,15 +28606,40 @@ export const verticalDramaEpisodesRouter = router({
             )
             .map(characterKey => ({ characterKey })),
         ];
+      const shotSpeakerVisualBindings =
+        getCurrentVerticalDramaSpeakerVisualBindings(
+          frame?.speakerVisualBindings,
+          activeVideoAnchorAssetId
+        );
       // Canonical Overview dialogue may use a display name. Normalize it to a
       // stable roster key before any speaker-switch decision, portrait lookup,
-      // prompt generation, or persistence. Unknown/ambiguous labels are a
-      // correctness failure, never a reason to spend another LLM credit.
+      // prompt generation, or persistence. A user-confirmed detected-person
+      // binding takes precedence and receives a shot-only identity key, so a
+      // one-shot extra is never forced onto a similarly named lead character.
       const normalizeShotDialogueLines = <T extends { characterKey?: string }>(
         lines: readonly T[]
       ): T[] =>
         lines.map(line => {
           if (!line.characterKey) return line;
+          const speakerAliases = line as T & {
+            speaker?: string;
+            speakerHint?: string;
+          };
+          const localBinding = findVerticalDramaSpeakerVisualBinding(
+            shotSpeakerVisualBindings,
+            line.characterKey,
+            speakerAliases.speaker,
+            speakerAliases.speakerHint,
+            shotVideoCharacterNameByKey.get(line.characterKey)
+          );
+          if (localBinding) {
+            const characterKey = `shot-local-speaker-${localBinding.id}`;
+            shotVideoCharacterNameByKey.set(
+              characterKey,
+              localBinding.speakerLabel
+            );
+            return { ...line, characterKey };
+          }
           const resolution = resolveVerticalDramaSpeakerIdentity(
             line.characterKey,
             shotVideoCharacterCandidates
@@ -28619,11 +28656,6 @@ export const verticalDramaEpisodesRouter = router({
           return { ...line, characterKey: resolution.characterKey };
         });
       dialogueLines = normalizeShotDialogueLines(dialogueLines);
-      const shotSpeakerVisualBindings =
-        getCurrentVerticalDramaSpeakerVisualBindings(
-          frame?.speakerVisualBindings,
-          activeVideoAnchorAssetId
-        );
       const dialogueSpeakersHaveDetectedBindings =
         hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
           shotSpeakerVisualBindings,
