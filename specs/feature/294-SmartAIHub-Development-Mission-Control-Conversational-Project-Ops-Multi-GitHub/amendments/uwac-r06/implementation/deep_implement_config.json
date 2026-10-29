@@ -25,9 +25,11 @@
       "merged_main_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
     },
     "section-03-unified-experience": {
-      "status": "in_progress",
-      "next_action": "After source integration, repair the isolated authenticated-UAT server startup, verify hosted authenticated 500s with request correlation, then continue global project/thread replay gaps and SPEC-224 live receipt acceptance.",
-      "review_file": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/review-loops-20261029.md"
+      "status": "checkpointed",
+      "next_action": "Resolve the isolated authenticated-UAT server named-export startup error, then use authenticated request correlation to root-cause hosted chat.getMessages and workerJobs.observability 500s; continue global project/thread replay and SPEC-224 genuine two-child live acceptance.",
+      "review_file": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/review-loops-20261029.md",
+      "checkpoint_sha": "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c",
+      "merged_main_sha": "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c"
     }
   },
   "pre_commit": {
@@ -39,14 +41,14 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-29T08:23:20.751694+00:00",
-  "generation": 9,
-  "updated_at": "2026-10-29T13:32:51.330984+00:00",
+  "generation": 10,
+  "updated_at": "2026-10-29T13:36:06.006446+00:00",
   "progress": {
     "active_section": "section-03-unified-experience",
-    "next_action": "After source integration, repair the isolated authenticated-UAT server startup, verify hosted authenticated 500s with request correlation, then continue global project/thread replay gaps and SPEC-224 live receipt acceptance.",
+    "next_action": "Resolve the isolated authenticated-UAT server named-export startup error, then use authenticated request correlation to root-cause hosted chat.getMessages and workerJobs.observability 500s; continue global project/thread replay and SPEC-224 genuine two-child live acceptance.",
     "gaps": [
       "Global project/thread overview across conversations and sources plus immutable multi-source replay/gap recovery remain open; current Task Observability developer view correlates Jobs present in the selected task snapshot only. Hosted authenticated UI/development-runtime verification and real SPEC-224 Child 1/2 live acceptance remain unverified."
     ],
-    "merged_main_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176"
+    "merged_main_sha": "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c"
   }
 }

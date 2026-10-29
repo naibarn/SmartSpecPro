@@ -3,15 +3,15 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `9`
-- Updated (UTC): `2026-10-29T13:32:51.330984+00:00`
+- State generation: `10`
+- Updated (UTC): `2026-10-29T13:36:06.006446+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `a073f3d017cb6c6d0ac9df848c332ba826e39176`
+- Latest recorded merged Main SHA: `e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-03-unified-experience`
-- Next action: After source integration, repair the isolated authenticated-UAT server startup, verify hosted authenticated 500s with request correlation, then continue global project/thread replay gaps and SPEC-224 live receipt acceptance.
+- Next action: Resolve the isolated authenticated-UAT server named-export startup error, then use authenticated request correlation to root-cause hosted chat.getMessages and workerJobs.observability 500s; continue global project/thread replay and SPEC-224 genuine two-child live acceptance.
 
 ## Sections
 
@@ -19,7 +19,7 @@ on resume, reconcile recorded SHA values with Git/PR state.
 | --- | --- | --- | --- | --- | --- | --- |
 | section-01-work-profiles | pending | — | — | — | — | — |
 | section-02-event-projection | pending | — | — | — | — | — |
-| section-03-unified-experience | in_progress | — | — | — | — | After source integration, repair the isolated authenticated-UAT server startup, verify hosted authenticated 500s with request correlation, then continue global project/thread replay gaps and SPEC-224 live receipt acceptance. |
+| section-03-unified-experience | checkpointed | — | — | e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c | e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c | Resolve the isolated authenticated-UAT server named-export startup error, then use authenticated request correlation to root-cause hosted chat.getMessages and workerJobs.observability 500s; continue global project/thread replay and SPEC-224 genuine two-child live acceptance. |
 | section-04-skill-invocation | pending | — | — | — | — | — |
 | section-05-skill-authoring | pending | — | — | — | — | — |
 | section-06-delegation-controls | pending | — | — | — | — | — |

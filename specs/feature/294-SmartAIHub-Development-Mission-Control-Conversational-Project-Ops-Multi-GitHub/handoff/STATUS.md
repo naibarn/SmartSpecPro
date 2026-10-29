@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 504 unresolved of 504
-- Next action: Continue from integrated a073f3d017cb6c6d0ac9df848c332ba826e39176: finish the global project/thread overview and immutable multi-source replay/gap recovery on the existing authorized projections, then verify hosted authenticated UI and deployed runtime provenance. Preserve full Inspector/result return and genuine SPEC-224 Child 1/2 Runner receipts, settlement and Independent Final Verify as open acceptance.
-- Manifest generation: 96
+- Next action: Continue SPEC-294 WP33 from integrated e74cf6e30: resolve the isolated authenticated-UAT web startup export error, run authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps and return to SPEC-224 genuine Child 1/2 live acceptance. Do not change lifecycle to complete from this partial UI slice.
+- Manifest generation: 98
 
 ## Source-declared status and relationship claims
 

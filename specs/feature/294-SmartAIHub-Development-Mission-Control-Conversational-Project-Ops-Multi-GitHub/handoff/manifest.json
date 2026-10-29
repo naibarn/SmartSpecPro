@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
+    "expected_canonical_sha": "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Continue the remaining global project/thread overview and immutable multi-source replay/gap recovery through the existing authorized projections; then verify hosted authenticated UI and deployment provenance. Keep full Inspector/result return and real SPEC-224 Child 1/2 receipts, settlement and Independent Final Verify open.",
+    "next_action": "Continue SPEC-294 WP33 from integrated e74cf6e30: resolve the isolated authenticated-UAT web startup export error, run authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps and return to SPEC-224 genuine Child 1/2 live acceptance. Do not change lifecycle to complete from this partial UI slice.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Integrated source a073f3d017cb6c6d0ac9df848c332ba826e39176. Evidence: handoff/evidence/unified-thread-overview-followup-20261029.md; 24 documented cohesion passes; focused Vitest 10 files/84 tests passed including disposable PostgreSQL. Chat and Task Control share bounded durable same-Job harness replay; Task Observability developer view groups authorized Jobs by Conversation/Thread and exact links start a fresh snapshot. Authenticated hosted browser, deployed runtime provenance, global cross-source overview/replay gaps, complete Inspector/result return, and genuine SPEC-224 Child 1/2 live acceptance remain open.",
+    "resume_point": "Integrated source e74cf6e30. This slice improves global thread recency, session/thread labels, Runner facts and Simple-mode disclosure, catalog-backed single-Harness explanation, and Task Control observation retry. Evidence: amendments/uwac-r06/implementation/review-loops-20261029.md (10 review passes); focused Vitest 4 files/55 tests passed; chat locale keys 379/379. Authenticated Playwright stopped before browser assertions because the isolated web server reports that ./_core/env does not provide named export ENV. Reported hosted chat.getMessages and workerJobs.observability 500s remain unroot-caused; global project/thread replay and true SPEC-224 Child 1/2 receipts plus settlement/Independent Final Verify remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -102,7 +102,7 @@
       "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
     ],
-    "next_action": "Continue from integrated a073f3d017cb6c6d0ac9df848c332ba826e39176: finish the global project/thread overview and immutable multi-source replay/gap recovery on the existing authorized projections, then verify hosted authenticated UI and deployed runtime provenance. Preserve full Inspector/result return and genuine SPEC-224 Child 1/2 Runner receipts, settlement and Independent Final Verify as open acceptance.",
+    "next_action": "Continue SPEC-294 WP33 from integrated e74cf6e30: resolve the isolated authenticated-UAT web startup export error, run authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps and return to SPEC-224 genuine Child 1/2 live acceptance. Do not change lifecycle to complete from this partial UI slice.",
     "rationale": "The integrated follow-up closes same-Job Chat/Task Control durable harness replay, adds authorized page-scoped Thread-to-Job correlation and fixes stale snapshot navigation and mismatched-owner Thread title disclosure. Cross-source Mission Control scope, hosted runtime verification and live SPEC-224 acceptance remain incomplete.",
     "residual_requirements": [
       "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 96,
+  "generation": 98,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -262,9 +262,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a073f3d017cb6c6d0ac9df848c332ba826e39176",
+    "canonical_sha": "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c",
     "integrated": true,
-    "integrated_at": "2026-10-29T10:21:06Z"
+    "integrated_at": "2026-10-29T13:35:17Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -432,7 +432,7 @@
         "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
       ],
-      "next_action": "Continue from integrated a073f3d017cb6c6d0ac9df848c332ba826e39176: finish the global project/thread overview and immutable multi-source replay/gap recovery on the existing authorized projections, then verify hosted authenticated UI and deployed runtime provenance. Preserve full Inspector/result return and genuine SPEC-224 Child 1/2 Runner receipts, settlement and Independent Final Verify as open acceptance.",
+      "next_action": "Continue SPEC-294 WP33 from integrated e74cf6e30: resolve the isolated authenticated-UAT web startup export error, run authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps and return to SPEC-224 genuine Child 1/2 live acceptance. Do not change lifecycle to complete from this partial UI slice.",
       "rationale": "The integrated follow-up closes same-Job Chat/Task Control durable harness replay, adds authorized page-scoped Thread-to-Job correlation and fixes stale snapshot navigation and mismatched-owner Thread title disclosure. Cross-source Mission Control scope, hosted runtime verification and live SPEC-224 acceptance remain incomplete.",
       "residual_requirements": [
         "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
@@ -1370,7 +1370,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T10:25:53.814674Z",
+  "updated_at": "2026-10-29T13:36:42.762623Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
