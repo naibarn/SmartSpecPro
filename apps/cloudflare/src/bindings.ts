@@ -4,7 +4,6 @@ import { validateApplicationHttpProfilePair, type ApplicationHttpProfile } from 
 import { REQUIRED_BINDING_NAMES, type CloudflareEnvironment, type RequiredBindingName } from "./contracts";
 
 const APPLICATION_HTTP_ORIGINS = {
-  staging: "https://staging.smartaihub.app",
   production: "https://smartaihub.app",
 } as const;
 
@@ -76,9 +75,15 @@ function inspectApplicationIngressReadiness(env: CloudflareEnvironment): Applica
   const token = env.AUTH_ORIGIN_TOKEN?.trim() ?? "";
   if (token.length < 32 || token.length > 4096 || !/^[\x21-\x7e]+$/.test(token)) missing.push("AUTH_ORIGIN_TOKEN");
   const allowedOrigins = parseCloudflarePublicOrigins(env.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS);
-  const expectedOrigin = environment === "staging" || environment === "production"
-    ? APPLICATION_HTTP_ORIGINS[environment] : null;
-  if (!expectedOrigin || !allowedOrigins?.includes(expectedOrigin)) missing.push("AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS");
+  // Staging deployment binds the exact Worker-specific workers.dev origin after
+  // resolving the account subdomain. Requiring a fixed staging.smartaihub.app
+  // hostname here contradicted that provider-verified deployment contract and
+  // made a valid isolated staging origin appear unready. Requests still require
+  // an exact origin match against this parsed allowlist in the ingress handler.
+  const originConfigured = environment === "production"
+    ? allowedOrigins?.includes(APPLICATION_HTTP_ORIGINS.production)
+    : environment === "staging" ? Boolean(allowedOrigins?.length) : false;
+  if (!originConfigured) missing.push("AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS");
   const uniqueMissing = [...new Set(missing)];
   return { enabled: env.CLOUDFLARE_APPLICATION_HTTP_TRAFFIC === expectedTraffic && expectedTraffic !== null,
     ready: uniqueMissing.length === 0, missing: uniqueMissing };
