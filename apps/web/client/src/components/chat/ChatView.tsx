@@ -988,11 +988,11 @@ export function ChatView({
   }, [conversationId, threadId, messageScopeKey]);
 
   // Fetch messages
-  const { data: messagesData, isLoading: loadingMessages } =
-    trpc.chat.getMessages.useQuery(
-      { conversationId: conversationId!, threadId, limit: 100 },
-      { enabled: !!conversationId }
-    );
+  const messagesQuery = trpc.chat.getMessages.useQuery(
+    { conversationId: conversationId!, threadId, limit: 100 },
+    { enabled: !!conversationId }
+  );
+  const { data: messagesData, isLoading: loadingMessages } = messagesQuery;
   const chatAutoModelSelectionEnabled = useTenantFeatureFlag(
     "chatAutoModelSelection"
   );
@@ -6158,11 +6158,30 @@ export function ChatView({
               </Button>
             </div>
           )}
+          {messagesQuery.error ? (
+            <div
+              role="alert"
+              className="mx-auto flex w-full max-w-3xl flex-wrap items-center justify-between gap-3 rounded-[var(--radius-element)] border border-destructive/30 bg-destructive/5 p-3 text-sm"
+            >
+              <p>{t("messagesUnavailable")}</p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void messagesQuery.refetch()}
+                disabled={messagesQuery.isFetching}
+              >
+                {messagesQuery.isFetching
+                  ? t("loadingMessagesRetry")
+                  : t("retryLoadMessages")}
+              </Button>
+            </div>
+          ) : null}
           {loadingMessages ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : messages.length === 0 && !streamingContent ? (
+          ) : messagesQuery.error && !messagesData ? null : messages.length === 0 && !streamingContent ? (
             <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-[var(--radius-page)] border border-dashed border-[var(--color-border)] bg-[var(--color-background-surface)] px-4 py-10 text-center shadow-[var(--shadow-low)] sm:py-16">
               <h3 className="text-lg font-medium">Start a conversation</h3>
               <p className="text-sm text-muted-foreground">
