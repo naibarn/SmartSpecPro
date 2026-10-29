@@ -1540,7 +1540,13 @@ impl RotatingControlTransport {
                 Ok(changed)
             }
             Err(error) => {
-                self.last_failure_code = Some(transport_error_code(error).to_owned());
+                if !self
+                    .last_failure_code
+                    .as_deref()
+                    .is_some_and(|code| code.starts_with("RUNNER_REFRESH_"))
+                {
+                    self.last_failure_code = Some(transport_error_code(error).to_owned());
+                }
                 self.last_failure_at = Some(current_time_iso());
                 self.publish_runtime_diagnostics();
                 Err(error)
@@ -1569,9 +1575,23 @@ impl RotatingControlTransport {
                 std::thread::sleep(Duration::from_millis(20));
             }
         }
-        let latest = latest.ok_or(TransportError::CredentialStoreUnavailable)?;
+        let mut latest = latest.ok_or(TransportError::CredentialStoreUnavailable)?;
         if !same_stored_connection_identity(binding, &latest) {
             return Err(TransportError::CredentialBindingMismatch);
+        }
+        if !crate::connection::token_valid_for(&latest.control_token, 60) {
+            latest = match crate::connection::load_or_refresh_data_root(data_root) {
+                Ok(Some(refreshed)) => refreshed,
+                Ok(None) => return Err(TransportError::CredentialStoreUnavailable),
+                Err(error) => {
+                    self.last_failure_code =
+                        Some(crate::connection::safe_refresh_error_code(&error));
+                    return Err(TransportError::CredentialInvalid);
+                }
+            };
+            if !same_stored_connection_identity(binding, &latest) {
+                return Err(TransportError::CredentialBindingMismatch);
+            }
         }
         if latest.control_token == self.current_token {
             return Ok(false);
@@ -2060,9 +2080,15 @@ fn run_live_control_loop_inner(
         if CAPABILITY_REFRESH_REQUESTED.swap(false, Ordering::AcqRel) {
             force_capability_refresh = true;
         }
-        let credentials_changed = transport
-            .refresh_credentials_if_changed()
-            .map_err(|error| transport_error_code(error).to_owned())?;
+        let credentials_changed = match transport.refresh_credentials_if_changed() {
+            Ok(changed) => changed,
+            Err(error) => {
+                return Err(transport
+                    .last_failure_code
+                    .clone()
+                    .unwrap_or_else(|| transport_error_code(error).to_owned()));
+            }
+        };
         if credentials_changed || transport.credential_revision != last_seen_credential_revision {
             force_capability_refresh = true;
             last_seen_credential_revision = transport.credential_revision;
@@ -3658,6 +3684,19 @@ mod rotating_transport_tests {
         )
     }
 
+    fn token_expiring_soon(jti: &str, session: &str, tenant: &str) -> String {
+        let claims = json!({
+            "exp": SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 10,
+            "jti": jti,
+            "tenantId": tenant,
+            "runnerSessionId": session
+        });
+        format!(
+            "e30.{}.test-signature",
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(claims.to_string())
+        )
+    }
+
     fn connection(token: String) -> crate::connection::StoredRunnerConnection {
         let proof =
             crate::device_proof::generate_device_proof_material(Some("device-rotation-test"))
@@ -4059,6 +4098,104 @@ mod rotating_transport_tests {
             .credential_diagnostics(None)
             .to_string()
             .contains(&token_b));
+    }
+
+    #[test]
+    fn active_loop_refreshes_near_expiry_credentials_and_persists_rotation() {
+        use std::io::{Read, Write};
+
+        let root = tempfile::tempdir().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let server_origin = format!("http://{}", listener.local_addr().unwrap());
+        let old_access = token_expiring_soon(
+            "access-old",
+            "session-rotation-test",
+            "tenant-rotation-test",
+        );
+        let old_refresh = token_expiring_soon(
+            "refresh-old",
+            "session-rotation-test",
+            "tenant-rotation-test",
+        );
+        let new_access = token("access-new");
+        let new_refresh = token("refresh-new");
+        let response_body = json!({
+            "controlToken": new_access.clone(),
+            "refreshToken": new_refresh.clone(),
+            "runnerSessionId": "session-rotation-test"
+        })
+        .to_string();
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let mut request = Vec::new();
+            let mut chunk = [0; 1024];
+            loop {
+                let read = stream.read(&mut chunk).unwrap();
+                if read == 0 {
+                    break;
+                }
+                request.extend_from_slice(&chunk[..read]);
+                let text = String::from_utf8_lossy(&request);
+                let Some((headers, body)) = text.split_once("\r\n\r\n") else {
+                    continue;
+                };
+                let expected = headers
+                    .lines()
+                    .find_map(|line| {
+                        let (name, value) = line.split_once(':')?;
+                        name.eq_ignore_ascii_case("content-length")
+                            .then(|| value.trim().parse::<usize>().ok())
+                            .flatten()
+                    })
+                    .unwrap_or(0);
+                if body.len() >= expected {
+                    break;
+                }
+            }
+            let request = String::from_utf8_lossy(&request);
+            assert!(request
+                .starts_with("POST /api/runners/runner-rotation-test/access/refresh HTTP/1.1"));
+            let reply = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n{}",
+                response_body.len(),
+                response_body
+            );
+            stream.write_all(reply.as_bytes()).unwrap();
+        });
+
+        let mut persisted = connection(old_access.clone());
+        persisted.server_url = server_origin.clone();
+        persisted.control_token = old_access.clone();
+        persisted.refresh_token = old_refresh;
+        persist(root.path(), &persisted);
+        let native =
+            NativeControlTransport::new(old_access.clone(), Duration::from_secs(1)).unwrap();
+        let mut transport = RotatingControlTransport::new(
+            native,
+            Some(&persisted),
+            root.path().to_str().unwrap(),
+            &old_access,
+        );
+
+        assert_eq!(transport.refresh_credentials_if_changed(), Ok(true));
+        server.join().unwrap();
+        assert_eq!(transport.access_token(), new_access);
+        assert_eq!(transport.credential_revision, 2);
+        assert_eq!(
+            crate::connection::load_connection(root.path().to_str().unwrap())
+                .unwrap()
+                .unwrap()
+                .refresh_token,
+            new_refresh
+        );
+        assert!(transport.last_rotation_at.is_some());
+        assert!(!transport
+            .credential_diagnostics(None)
+            .to_string()
+            .contains("private_key"));
     }
 
     #[test]

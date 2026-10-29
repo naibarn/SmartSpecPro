@@ -306,8 +306,8 @@ mod tests {
     use super::{
         connect_http_rejection_code, load_connection, load_or_refresh, map_connect_request_error,
         request_json_with_agent, safe_connect_error_code, safe_http_rejection_code,
-        safe_refresh_error_code, save_connection,
-        validate_start_pairing_response, StartPairingResponse, StoredRunnerConnection,
+        safe_refresh_error_code, save_connection, validate_start_pairing_response,
+        StartPairingResponse, StoredRunnerConnection,
     };
     use crate::{config::RunnerConfig, device_proof::generate_device_proof_material};
     use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -447,9 +447,8 @@ mod tests {
             let mut chunk = [0; 1024];
             let mut expected_request_len = None;
             loop {
-                if let Some(header_end) = request
-                    .windows(4)
-                    .position(|window| window == b"\r\n\r\n")
+                if let Some(header_end) =
+                    request.windows(4).position(|window| window == b"\r\n\r\n")
                 {
                     let content_length = String::from_utf8_lossy(&request[..header_end])
                         .lines()
@@ -529,8 +528,14 @@ mod tests {
         let path = "/api/runners/runner-123/access/refresh";
         for (server_code, expected) in [
             ("runner_auth_invalid", "RUNNER_REFRESH_CREDENTIAL_REJECTED"),
-            ("runner_refresh_expired", "RUNNER_REFRESH_CREDENTIAL_EXPIRED"),
-            ("runner_refresh_revoked", "RUNNER_REFRESH_CREDENTIAL_REVOKED"),
+            (
+                "runner_refresh_expired",
+                "RUNNER_REFRESH_CREDENTIAL_EXPIRED",
+            ),
+            (
+                "runner_refresh_revoked",
+                "RUNNER_REFRESH_CREDENTIAL_REVOKED",
+            ),
             (
                 "runner_refresh_signature_invalid",
                 "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID",
@@ -545,7 +550,10 @@ mod tests {
             ),
             ("runner_session_mismatch", "RUNNER_REFRESH_SESSION_MISMATCH"),
             ("runner_revoked", "RUNNER_REFRESH_RUNNER_REVOKED"),
-            ("RUNNER_NOT_ENROLLED", "RUNNER_REFRESH_RUNNER_OR_TENANT_NOT_ENROLLED"),
+            (
+                "RUNNER_NOT_ENROLLED",
+                "RUNNER_REFRESH_RUNNER_OR_TENANT_NOT_ENROLLED",
+            ),
             ("RUNNER_SESSION_STALE", "RUNNER_REFRESH_SESSION_STALE"),
         ] {
             let body = format!(
@@ -736,7 +744,16 @@ mod tests {
 }
 
 pub fn load_or_refresh(config: &RunnerConfig) -> Result<Option<StoredRunnerConnection>, String> {
-    let Some(mut connection) = load_connection(&config.data_root)? else {
+    load_or_refresh_data_root(&config.data_root)
+}
+
+/// Revalidate and rotate the persisted local connection when its access token
+/// is near expiry. The active control loop uses this same path as startup and
+/// explicit rescan so a long-running Runner does not keep an expired bearer.
+pub fn load_or_refresh_data_root(
+    data_root: &str,
+) -> Result<Option<StoredRunnerConnection>, String> {
+    let Some(mut connection) = load_connection(data_root)? else {
         return Ok(None);
     };
     if token_valid_for(&connection.control_token, 60) {
@@ -771,7 +788,7 @@ pub fn load_or_refresh(config: &RunnerConfig) -> Result<Option<StoredRunnerConne
     if let Some(runner_session_id) = response.runner_session_id {
         connection.runner_session_id = Some(runner_session_id);
     }
-    save_connection(&config.data_root, &connection)?;
+    save_connection(data_root, &connection)?;
     Ok(Some(connection))
 }
 
@@ -1061,9 +1078,7 @@ fn safe_http_rejection_code(path: &str, status: u16, body: &[u8]) -> String {
             Some("runner_session_mismatch") => Some("RUNNER_REFRESH_SESSION_MISMATCH"),
             Some("runner_revoked") => Some("RUNNER_REFRESH_RUNNER_REVOKED"),
             Some("RUNNER_REVOKED") => Some("RUNNER_REFRESH_RUNNER_REVOKED"),
-            Some("RUNNER_NOT_ENROLLED") => {
-                Some("RUNNER_REFRESH_RUNNER_OR_TENANT_NOT_ENROLLED")
-            }
+            Some("RUNNER_NOT_ENROLLED") => Some("RUNNER_REFRESH_RUNNER_OR_TENANT_NOT_ENROLLED"),
             Some("RUNNER_SESSION_STALE") => Some("RUNNER_REFRESH_SESSION_STALE"),
             Some("runner_refresh_state_unavailable") => {
                 Some("RUNNER_REFRESH_SERVER_STATE_UNAVAILABLE")
