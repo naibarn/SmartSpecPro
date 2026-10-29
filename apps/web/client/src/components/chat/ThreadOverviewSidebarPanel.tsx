@@ -13,6 +13,34 @@ const FILTER_STATUSES = ["", ...OVERVIEW_GROUPS] as const;
 const STATUS_ORDER = new Map(OVERVIEW_GROUPS.map((value, index) => [value, index]));
 
 type ThreadStatus = typeof FILTER_STATUSES[number];
+type ThreadGroupItem = { lastActivityAt: string };
+
+export function sortThreadGroupsByRecentActivity<T extends ThreadGroupItem>(
+  groups: Array<[string, Map<string | null, T[]>]>,
+) {
+  const latestActivity = (projects: Map<string | null, T[]>) => {
+    let latest = Number.NEGATIVE_INFINITY;
+    for (const threads of projects.values()) {
+      for (const thread of threads) {
+        const activity = Date.parse(thread.lastActivityAt);
+        if (Number.isFinite(activity)) latest = Math.max(latest, activity);
+      }
+    }
+    return latest;
+  };
+
+  return [...groups].sort(([leftStatus, leftProjects], [rightStatus, rightProjects]) => {
+    const leftActivity = latestActivity(leftProjects);
+    const rightActivity = latestActivity(rightProjects);
+    if (leftActivity !== rightActivity) {
+      if (!Number.isFinite(leftActivity)) return Number.isFinite(rightActivity) ? 1 : 0;
+      if (!Number.isFinite(rightActivity)) return -1;
+      return rightActivity - leftActivity;
+    }
+    return (STATUS_ORDER.get(leftStatus as typeof OVERVIEW_GROUPS[number]) ?? Number.MAX_SAFE_INTEGER)
+      - (STATUS_ORDER.get(rightStatus as typeof OVERVIEW_GROUPS[number]) ?? Number.MAX_SAFE_INTEGER);
+  });
+}
 
 export function ThreadOverviewSidebarPanel({
   onOpenThread,
@@ -49,10 +77,11 @@ export function ThreadOverviewSidebarPanel({
       statusItems.set(projectKey, projectItems);
       groups.set(item.status, statusItems);
     }
-    return [...groups.entries()].sort(([left], [right]) => (STATUS_ORDER.get(left as typeof OVERVIEW_GROUPS[number]) ?? Number.MAX_SAFE_INTEGER) - (STATUS_ORDER.get(right as typeof OVERVIEW_GROUPS[number]) ?? Number.MAX_SAFE_INTEGER));
+    return sortThreadGroupsByRecentActivity([...groups.entries()]);
   }, [items]);
-  // The server orders this cursor by verified latest activity. Keep that
-  // single ordering across statuses so recently active work is always first.
+  // The server orders the cursor by verified latest activity. Order status
+  // groups by their newest thread too, so an active group cannot be buried
+  // below an older group just because of a fixed status priority.
   const formatTime = (value: string) => {
     const date = new Date(value);
     return Number.isFinite(date.getTime())

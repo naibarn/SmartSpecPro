@@ -99,7 +99,7 @@
   "threads.overviewHint": "เธรดคือพื้นที่ย่อยของงานภายในแชต เลือกเซสชันแชตเพื่อกลับไปยังบทสนทนาหลัก",
   "threads.projectUnlinked": "แชทที่ยังไม่ได้ผูกกับโปรเจกต์",
   "threads.projectThreads": "เธรดของ {{project}}",
-  "threads.recentActivityOrder": "เธรดงานจัดกลุ่มตามสถานะ และเรียงกิจกรรมล่าสุดก่อนภายในแต่ละกลุ่ม",
+  "threads.recentActivityOrder": "เธรดงานจัดกลุ่มตามสถานะ โดยกลุ่มที่มีกิจกรรมล่าสุดจะแสดงก่อน",
   "threads.statusFilter": "กรองตามสถานะ",
   "threads.allStatuses": "ทุกสถานะ",
   "threads.overviewUnavailable": "โหลดรายการเธรดไม่ได้ ตรวจสอบสิทธิ์แล้วลองอีกครั้ง",

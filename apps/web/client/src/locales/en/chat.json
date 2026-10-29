@@ -99,7 +99,7 @@
   "threads.overviewHint": "A thread is a focused work area inside a chat. Choose Chat sessions to return to the full conversation.",
   "threads.projectUnlinked": "Chats without a linked project",
   "threads.projectThreads": "{{project}} threads",
-  "threads.recentActivityOrder": "Work threads grouped by status, newest activity first within each group",
+  "threads.recentActivityOrder": "Work threads grouped by status, with the most recently active group first",
   "threads.statusFilter": "Filter by status",
   "threads.allStatuses": "All statuses",
   "threads.overviewUnavailable": "Threads could not be loaded. Check your access and try again.",
