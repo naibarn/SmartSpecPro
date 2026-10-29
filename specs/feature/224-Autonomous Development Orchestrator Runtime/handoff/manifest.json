@@ -1093,11 +1093,11 @@
     "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
-    "next_action": "On authenticated aimarkethubs.com Task Control, select the existing Debian Runner and authorized Platform Engineering workspace, choose development-from-prompt, set the bounded scope to apps/runner-app/tests/spec224-live-pilot/**, and press Start. Approve the actual resulting Goal Grant in the existing Approval Authority. Then resume that durable Run; refresh the snapshot and recompute Source Admission immediately before fenced Writer Lease acquisition.",
+    "next_action": "Refresh Task Control on aimarkethubs.com. In the authorized Platform Engineering workspace choose an explicit model from the fresh Runner catalog (or keep Auto), enter the bounded scope apps/runner-app/tests/spec224-live-pilot/**, and press Start. Approve the resulting real Goal Grant through Approval Authority. Resume that durable Run and verify fenced lease, dispatch, Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify.",
     "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At 2026-10-29T01:10:14Z the same Runner/session is online/trusted and its applied snapshot is current through 01:15:14Z; its Codex catalog has eight discovered models. Focused API projection/UI tests passed 79/79. Read-only smartspec_dev queries found zero SPEC-224 Goal Grants and zero SPEC-224/development-run jobs, so no Run or child execution exists to resume. Wait for the owner Start and approval, then resume the resulting durable Run.",
-    "waiting_predicate": "A real Goal Start and approved unrevoked/unexpired Goal Grant, with its durable DevelopmentRun and canonical Job/Attempt, appear in smartspec_dev. Before dispatch the same trusted Runner must have a fresh applied ACK, and Source Admission for apps/runner-app/tests/spec224-live-pilot/** must pass immediately before the existing fenced Writer Lease is claimed. Authenticated Task Control dropdown selection has not yet been directly observed from this host."
+    "resume_point": "At source 39560ef7d579625b377d0304a55e6b64765c0f95, Simple Mode now renders the Runner-catalog-backed model selector and Start preserves explicit model selection; focused component tests passed 24/24 and the public development host served the updated module. Authenticated live model selection, Goal Start/approval, and genuine two-phase execution remain open.",
+    "waiting_predicate": "Authenticated owner selects an authorized Runner-catalog model or Auto, starts the bounded Goal in Task Control, and approves its real unrevoked/unexpired Grant. The durable Run and Job/Attempt then appear in smartspec_dev; before dispatch, refresh the Runner ACK and revalidate bounded Source Admission immediately before the existing fenced Writer Lease."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1268,7 +1268,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 252,
+  "generation": 253,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -4018,7 +4018,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T01:13:11.689219Z",
+  "updated_at": "2026-10-29T01:21:21.255131Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4525,6 +4525,14 @@
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-modelcatalog-and-goal-observation-20261029.md",
         "scope": "Live read-only smartspec_dev snapshot confirms the unchanged trusted Debian Runner, current Codex model catalog on toolInventory/codex.v1, and active authorized PLATFORM_ENGINEERING workspace binding. SPEC-224 Goal Grants and worker jobs are absent. Focused projection/UI regression: 3 files, 79/79 passed. Authenticated live Task Control selection and live execution remain unverified.",
         "source_sha": "f46cf76ed4237f0bbb282cd41d4a7a1aa97e2a07",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_SIMPLE_MODE_MODEL_SELECTION_REPAIRED_AND_DEV_SERVED",
+        "observed_at": "2026-10-29T01:21:12Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-simple-mode-model-selection-fix-20261029.md",
+        "scope": "Fixed Simple Mode hiding the model selector and forcing Auto at Start. Focused component suite passed 24/24. Public aimarkethubs.com served the current dev source module through its port-3100 tunnel. Authenticated live dropdown interaction and Goal execution remain unverified; production service was not changed.",
+        "source_sha": "39560ef7d579625b377d0304a55e6b64765c0f95",
         "status": "PARTIAL"
       }
     ],
