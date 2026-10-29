@@ -15,6 +15,7 @@ import { throwRegistrationDenied } from "./services/authRegistrationPolicy";
 import { ensureUserOpenId } from "./services/userIdentity";
 import { systemRouter } from "./_core/systemRouter";
 import { TRPCError } from "@trpc/server";
+import { ENV } from "./_core/env.ts";
 import {
   publicProcedure,
   protectedProcedure,
@@ -1345,7 +1346,6 @@ const authRouter = router({
     .mutation(async ({ input, ctx }) => {
       const { getUserByEmail, updateUserRole } = await import("./db");
       const { sdk } = await import("./_core/sdk");
-      const { ENV } = await import("./_core/env");
       const bcrypt = await import("bcrypt");
 
       const user = await getUserByEmail(input.email);
