@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f1a91b797c9b356b5415efc7d403340741b59d6f",
+    "expected_canonical_sha": "84a427cce7e5df82bf96a5bbaf220e352db11517",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Refresh the configured local authenticated-UAT credential through the existing development account recovery path, then rerun pnpm run dev:web:verify and authenticated Chat/Task Control acceptance. The Chat activity panel now preserves a successfully loaded Job status when detail loading fails and retries only the failed read (e0e98fba226e41e19935d395b7e4e1037e901229; evidence: handoff/evidence/chat-task-detail-error-isolation-20261029.md). Correlate hosted chat.getMessages/workerJobs.observability 500s only with authenticated runtime evidence; continue source-linked multi-producer replay/gap recovery, cross-host Mission/Agent session correlation, and SPEC-224 genuine live acceptance.",
+    "next_action": "Refresh the configured local authenticated-UAT credential through the existing development account recovery path, then rerun pnpm run dev:web:verify and authenticated Chat/Task Control acceptance. Chat now keeps task status visible and retries a failed task-detail read independently (e0e98fba226e41e19935d395b7e4e1037e901229), and the selected-conversation Thread list exposes its own retry (955dc0bc598313df03ed4ae38e5456629117cad5); evidence is recorded in handoff/evidence/chat-task-detail-error-isolation-20261029.md and handoff/evidence/chat-conversation-thread-retry-20261029.md. Correlate hosted 500s using authenticated runtime evidence; continue cross-source replay/gap recovery, cross-host Mission/Agent Session graph, and SPEC-224 genuine live acceptance.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "At integrated source f1a91b797c9b356b5415efc7d403340741b59d6f, Chat transcript reads and execution-status failures have explicit retry behavior; the execution-status panel separates Job-list and Job-detail failures and preserves status if only detail fails. Focused UI regression passed 23/23 across Chat/Task Control files. Development browser verification is still blocked because the configured verifier credential does not match the enabled smartspec_dev Admin password. Refresh that local credential through owner access or normal dev recovery, then run authenticated acceptance. Hosted 500 root cause remains unverified; global immutable replay/gap recovery, cross-host Agent/Session correlation, and actual SPEC-224 two-child Runner receipts, settlement, automatic continuation and independent Final Verify remain open.",
+    "resume_point": "At integrated source 84a427cce7e5df82bf96a5bbaf220e352db11517, Chat transcript and task activity failures have targeted recovery. A failed task detail no longer hides the loaded status, and a failed selected-conversation Thread read has a scoped retry. Focused UI regression tests passed for both changes. Authenticated development browser verification remains blocked because the configured verifier credential does not match the enabled smartspec_dev Admin password. Refresh the local verifier credential through owner access or normal account recovery, then run authenticated acceptance. Hosted chat.getMessages/workerJobs.observability 500 causes remain unverified; cross-source event replay/gap recovery, cross-host Agent/Session correlation, and SPEC-224 real two-phase Runner receipts, settlement, automatic continuation and independent Final Verify remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 118,
+  "generation": 119,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -268,9 +268,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f1a91b797c9b356b5415efc7d403340741b59d6f",
+    "canonical_sha": "84a427cce7e5df82bf96a5bbaf220e352db11517",
     "integrated": true,
-    "integrated_at": "2026-10-29T22:40:00+07:00"
+    "integrated_at": "2026-10-29T22:53:00+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1386,7 +1386,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T15:44:13.954523Z",
+  "updated_at": "2026-10-29T15:52:15.201116Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
