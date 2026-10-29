@@ -695,6 +695,23 @@ describe("AdminDeploymentTargets", () => {
     vi.unstubAllGlobals();
   });
 
+  it("shows the sanitized failing stage when lease renewal preflight cannot complete", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingRuntime = { status: "READY", checkedAt: "2026-10-29T00:00:00.000Z", activation: "disabled", missing: [], reason: null };
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_EXPIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = { status: "EXPIRED", configurationRef: `cf-origin:${"a".repeat(64)}`,
+      descriptor: { nativeResources: { privateDatabase: { provisionJobId: "11111111-1111-4111-8111-111111111111" } } } };
+    mocks.stagingDatabaseRenewal = { ready: false, reason: "PRIVATE_DATABASE_RENEWAL_PREFLIGHT_FAILED",
+      failureStage: "CLOUDFLARE_PROVIDER_READBACK", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText("CLOUDFLARE_PROVIDER_READBACK")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Authorize and renew the existing Staging database lease" })).not.toBeInTheDocument();
+    expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
+  });
+
   it("does not offer a second lease renewal while the canonical renewal Job already exists", async () => {
     const user = userEvent.setup();
     const configurationRef = `cf-origin:${"a".repeat(64)}`;

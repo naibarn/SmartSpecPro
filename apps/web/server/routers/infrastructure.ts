@@ -690,7 +690,10 @@ export const infrastructureRouter = router({
       try { return await getCloudflarePrivateDatabaseRenewalPreflight(db, { identity: { tenantId, projectId: input.projectId,
         provider: "cloudflare", environment: "staging" }, configurationRef: input.configurationRef, actorUserId: ctx.user.id }); }
       catch (error) { return { ready: false, reason: error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
-        ? error.message : "PRIVATE_DATABASE_RENEWAL_PREFLIGHT_UNAVAILABLE", checkedAt: new Date().toISOString(),
+        ? error.message : "PRIVATE_DATABASE_RENEWAL_PREFLIGHT_FAILED",
+        failureStage: typeof (error as { preflightStage?: unknown })?.preflightStage === "string"
+          ? (error as { preflightStage: string }).preflightStage : "PREFLIGHT_REQUEST",
+        checkedAt: new Date().toISOString(),
         configurationRef: input.configurationRef, configurationDigest: input.configurationRef.slice("cf-origin:".length), accountRef: null,
         plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null }; }
     }),
