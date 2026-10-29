@@ -123,14 +123,17 @@ describe("spec224 workspace Spec Set", () => {
     await expect(service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Add a focused service behavior", writeScope: scope })).rejects.toMatchObject({ code: "WORKSPACE_SOURCE_ADMISSION_SCOPE_CONFLICT" });
   });
 
-  it("requires a bounded prompt scope for Platform Engineering", async () => {
+  it("defaults prompt development to exclude-risky workspace access", async () => {
     const store = memoryStore();
     store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, dirtyPaths: [], contentFingerprint: "c".repeat(64) }];
     const service = createSpec224WorkspaceSpecSetService(store);
     await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
     const prepared = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
-    expect(prepared.runnableWorkPackageIds).toEqual([]);
-    expect(prepared.workPackages[0].blockers).toContain("PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED");
+    expect(prepared.runnableWorkPackageIds).toEqual(["prompt"]);
+    expect(prepared.workPackages[0].sourceAdmission?.status).toBe("SAFE_CLEAN");
+    const runInput = await service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Change a small utility" });
+    expect(runInput.allowedWriteSet).toEqual(["**"]);
+    expect(runInput.workspaceAccessMode).toBe("exclude_risky");
   });
 
   it("accepts bounded Markdown and JSON artifacts deterministically", async () => {

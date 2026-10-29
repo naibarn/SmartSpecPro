@@ -379,7 +379,7 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_REQUIRED")));
   });
 
-  it("preselects the authorized Platform workspace and lets scoped preflight handle dirty files", async () => {
+  it("preselects the authorized Platform workspace and exposes workspace-level access controls", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
     mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: true, convergenceState: "NOT_REPORTED", convergenceCanonicalSha: null }];
@@ -387,7 +387,8 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(screen.getByLabelText("1. เลือก Runner")).toHaveValue("runner-test"));
     expect(screen.getByLabelText("2. เลือก Project Workspace")).toHaveValue('["runner-test","workspace-test"]');
     expect(screen.getByRole("heading", { name: "พัฒนาระบบ SmartAIHub" })).toBeInTheDocument();
-    expect(screen.getByText(/เปลี่ยนเป็น Developer view เพื่อกำหนด scope/)).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /อนุญาตทุกไฟล์ ยกเว้นรายการเสี่ยง/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /ขออนุญาตก่อนแก้แต่ละรายการ/ })).toBeDisabled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByText(/runner-test|workspace-test/)).not.toBeInTheDocument();
   });
@@ -417,7 +418,7 @@ describe("Core goal readiness feedback", () => {
     }));
   });
 
-  it("requires a bounded Platform write scope and sends it with one-click prompt Start", async () => {
+  it("starts Platform prompt work with the selected workspace-level permission", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };
     mocks.workspaces = [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "SmartAIHub Platform Engineering", canonicalProjectTitle: "SmartAIHub Platform Engineering", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() }];
@@ -425,15 +426,16 @@ describe("Core goal readiness feedback", () => {
     const createConversation = vi.fn().mockResolvedValue(48);
     render(<Spec224WorkspacePanel conversationId={null} simpleMode onCreateConversation={createConversation} />);
     fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Create bounded tests" } });
-    expect(screen.getByRole("button", { name: "เริ่มพัฒนา" })).toBeDisabled();
-    fireEvent.change(screen.getByLabelText("ขอบเขตไฟล์ที่อนุญาต"), { target: { value: "apps/runner-app/tests/spec224-live-pilot/**" } });
+    expect(screen.getByRole("button", { name: "เริ่มพัฒนา" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("radio", { name: /อนุญาตทุกไฟล์ใน Workspace/ }));
     fireEvent.click(screen.getByRole("button", { name: "เริ่มพัฒนา" }));
+    await waitFor(() => expect(mocks.prepare).toHaveBeenCalledWith(expect.objectContaining({ conversationId: 48, mode: "prompt", workspaceAccessMode: "workspace" })));
     await waitFor(() => expect(mocks.start).toHaveBeenCalledTimes(1));
     expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
       conversationId: 48,
       mode: "prompt",
       prompt: "Create bounded tests",
-      writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"],
+      workspaceAccessMode: "workspace",
     }));
   });
 

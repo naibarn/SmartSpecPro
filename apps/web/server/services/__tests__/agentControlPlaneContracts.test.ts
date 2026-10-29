@@ -117,6 +117,13 @@ describe("Feature 200 Agent control-plane contracts", () => {
     expect(() => validateAgentTaskManifest({ ...manifest, spec224Execution: { ...execution, allowedWriteSet: ["../outside.ts"] } })).toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
   });
 
+  it("preserves a workspace-level access mode in the immutable Runner manifest", () => {
+    const execution = { sourceFingerprint: "b".repeat(64), mode: "prompt", allowedWriteSet: ["**"], workspaceAccessMode: "exclude_risky" };
+    expect(validateAgentTaskManifest({ ...manifest, spec224Execution: execution })).toMatchObject({ spec224Execution: execution });
+    expect(() => validateAgentTaskManifest({ ...manifest, spec224Execution: { ...execution, workspaceAccessMode: "ask_each" } }))
+      .toThrowError(expect.objectContaining({ code: "AGENT_CONTRACT_INVALID" }));
+  });
+
   it("deduplicates normalized events and creates one canonical Job handoff", () => {
     expect(
       acceptAgentEvent(1, {

@@ -184,7 +184,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const [selected, setSelected] = useState("");
   const [selectedRunnerId, setSelectedRunnerId] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [writeScopeText, setWriteScopeText] = useState("");
+  const [workspaceAccessMode, setWorkspaceAccessMode] = useState<"workspace" | "exclude_risky">("exclude_risky");
   const [visualReferences, setVisualReferences] = useState<ImageReferenceDraft[]>([]);
   const [similarityMode, setSimilarityMode] = useState<"inspired" | "close" | "high_fidelity">("close");
   const [targetDevices, setTargetDevices] = useState<Array<"mobile" | "tablet" | "desktop">>(["mobile", "desktop"]);
@@ -322,12 +322,11 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     : "";
   const boundIsListed = workspaces.some(item => selectionKey(item) === boundKey);
   const effectivePrompt = prompt.trim();
-  const proposedWriteScope = [...new Set(writeScopeText.split(/\r?\n/).map(path => path.trim()).filter(Boolean))];
   const canonicalHandoff = effectiveSpecSource === "catalog" ? featureSpecContextQuery.data?.handoff : undefined;
   const nextReadyWorkunit = canonicalHandoff?.status === "CURRENT" ? canonicalHandoff.nextReadyWorkunit : null;
   const isNextReadyPackage = (workPackage: { id: string; externalId: string }) => Boolean(nextReadyWorkunit && (workPackage.id === nextReadyWorkunit || workPackage.externalId === nextReadyWorkunit));
   const canCreateConversation = developmentInputMode === "prompt"
-    ? Boolean(effectivePrompt) && (!isPlatformWorkspace || mode !== "prompt" || proposedWriteScope.length > 0)
+    ? Boolean(effectivePrompt)
     : (developmentInputMode !== "spec_prompt" || Boolean(effectivePrompt)) && (effectiveSpecSource === "catalog"
       ? Boolean(platformWorkspaceSelected && selectedFeatureSpec) && (!platformWorkspace || featureSpecContextQuery.data?.handoff.status === "CURRENT")
       : pendingSpecFiles.length > 0);
@@ -432,7 +431,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
           setPendingSpecFiles([]);
         }
       }
-      const result = await prepareMutation.mutateAsync({ conversationId: nextConversationId, mode, ...(mode === "prompt" ? { prompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {}), ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}) });
+      const result = await prepareMutation.mutateAsync({ conversationId: nextConversationId, mode, ...(mode === "prompt" ? { prompt, ...(requestKind === "development" ? { workspaceAccessMode } : {}) } : {}), ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}) });
       setPreparation(result);
       const runnable = result.runnableWorkPackageIds.filter(id => {
         const item = result.workPackages?.find(workPackage => workPackage.id === id);
@@ -522,7 +521,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       const result = await prepareMutation.mutateAsync({
         conversationId,
         mode,
-        ...(mode === "prompt" ? { prompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {}),
+        ...(mode === "prompt" ? { prompt, ...(requestKind === "development" ? { workspaceAccessMode } : {}) } : {}),
         ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
       });
       setPreparation(result);
@@ -537,7 +536,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     if (!targetConversationId || !targetPreparation || startInFlight.current) return;
     const packageSourceAdmission = targetPreparation.workPackages?.find(item => item.id === workPackageId)?.sourceAdmission;
     if (!platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY"].includes(packageSourceAdmission?.status ?? "BLOCKED"))) {
-      toast.error("ขอบเขตไฟล์ชนกับการเปลี่ยนแปลงเดิม หรือหลักฐาน source/scope ยังไม่ครบ โปรดเลือกขอบเขตที่ปลอดภัยและตรวจผล preflight ก่อนเริ่ม");
+      toast.error("Workspace มีการเปลี่ยนแปลงหรือหลักฐาน source ยังไม่ครบ โปรดโหลด snapshot ล่าสุดและตรวจผล preflight ก่อนเริ่ม");
       return;
     }
     if (budgetCapMinorUnits < 1 || budgetCapMinorUnits > 10_000_000) {
@@ -563,7 +562,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       toast.error("Runner หรือ Codex model readiness ยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
-    const key = `${targetConversationId}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
+    const key = `${targetConversationId}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${workspaceAccessMode}:${budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     startInFlight.current = true;
@@ -572,7 +571,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
         conversationId: targetConversationId,
         mode,
         factoryMode: requestKind === "mini_app",
-        ...(mode === "prompt" ? { prompt: effectivePrompt, ...(isPlatformWorkspace ? { writeScope: proposedWriteScope } : {}) } : {
+        ...(mode === "prompt" ? { prompt: effectivePrompt, ...(requestKind === "development" ? { workspaceAccessMode } : {}) } : {
           // Start the immutable revision shown in this preparation. Another
           // Chat section may append a newer SpecSet while this preview is open.
           specSetRevision: targetPreparation.planRevision,
@@ -924,14 +923,24 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
             ) : null}
             <>
           {mode === "prompt" ? <Textarea id="spec224-development-inputs" aria-label={requestKind === "mini_app" ? "Mini App requirements" : "Spec 224 prompt"} value={prompt} onChange={event => { setPrompt(event.target.value); setPreparation(null); }} placeholder={requestKind === "mini_app" ? "อธิบายหน้าจอ ข้อมูล และพฤติกรรมของ Mini App ที่ต้องการ" : "อธิบายงานพัฒนาที่ต้องการ โดยจำกัดตาม Workspace และสิทธิ์ Goal ที่ได้รับอนุมัติ"} maxLength={requestKind === "mini_app" ? 3600 : 4000} className="min-h-20 resize-y text-sm" /> : null}
-              {isPlatformWorkspace && mode === "prompt" && requestKind === "development" ? (
-                <section className="mt-3" aria-label="ขอบเขตการแก้ไข">
-                  <label className="block text-xs font-medium" htmlFor="spec224-write-scope">ขอบเขตไฟล์ที่อนุญาต</label>
-                  <Textarea id="spec224-write-scope" aria-label="ขอบเขตไฟล์ที่อนุญาต" value={writeScopeText} onChange={event => { setWriteScopeText(event.target.value); setPreparation(null); }} placeholder="ระบุ path หรือ glob ที่อนุญาต หนึ่งรายการต่อบรรทัด" className="mt-1 min-h-16 resize-y text-sm" />
-                  <p className="mt-1 text-xs text-[var(--color-text-secondary)]">ระบุเฉพาะไฟล์ที่งานนี้แก้ได้ ขอบเขตว่างหรือกว้างเกินไปจะเริ่มไม่ได้</p>
-                </section>
+              {mode === "prompt" && requestKind === "development" ? (
+                <fieldset className="mt-3 space-y-2 rounded-md border border-[var(--color-border)] p-3" aria-label="สิทธิ์การแก้ไขใน Workspace">
+                  <legend className="px-1 text-xs font-medium">สิทธิ์การแก้ไขใน Workspace</legend>
+                  <label className="flex items-start gap-2 text-xs">
+                    <input type="radio" name="spec224-workspace-access" value="workspace" checked={workspaceAccessMode === "workspace"} onChange={() => { setWorkspaceAccessMode("workspace"); setPreparation(null); }} />
+                    <p><strong>อนุญาตทุกไฟล์ใน Workspace</strong><br />งานยังถูกจำกัดอยู่ใน Workspace ที่เลือก และต้องผ่าน Goal Grant, Budget และ Writer Lease</p>
+                  </label>
+                  <label className="flex items-start gap-2 text-xs">
+                    <input type="radio" name="spec224-workspace-access" value="exclude_risky" checked={workspaceAccessMode === "exclude_risky"} onChange={() => { setWorkspaceAccessMode("exclude_risky"); setPreparation(null); }} />
+                    <p><strong>อนุญาตทุกไฟล์ ยกเว้นรายการเสี่ยง (ค่าเริ่มต้น)</strong><br />Runner ปฏิเสธการเขียนไฟล์ environment, credential/secret, private key/certificate และ deployment/infrastructure ตามกฎของ Runner</p>
+                  </label>
+                  <label className="flex items-start gap-2 text-xs text-[var(--color-text-secondary)]">
+                    <input type="radio" name="spec224-workspace-access" disabled aria-label="ขออนุญาตก่อนแก้แต่ละรายการ ยังไม่พร้อม" />
+                    <p><strong>ขออนุญาตก่อนแก้แต่ละรายการ</strong><br />ยังไม่เปิดให้เลือก: ต้องมีขั้นตอนพักงาน อนุมัติ diff และกู้คืนหลัง restart ที่ Runner รองรับก่อน</p>
+                  </label>
+                  <p className="text-xs text-[var(--color-text-secondary)]">ไม่ต้องระบุ path เอง การเปลี่ยนแปลงใน Workspace ใช้ candidate แยกและ Writer Lease เพื่อป้องกันงานเขียนทับกัน; งานที่ scope ชนกันจะไม่เขียนพร้อมกัน</p>
+                </fieldset>
               ) : null}
-              {isPlatformWorkspace && mode === "prompt" && requestKind === "development" && simpleMode ? <p className="text-xs text-muted-foreground">งานพัฒนา Platform ต้องระบุขอบเขตไฟล์ที่แน่นอน โปรดเปลี่ยนเป็น Developer view เพื่อกำหนด scope ก่อนเตรียมงาน</p> : null}
               {requestKind === "mini_app" && mode === "prompt" ? (
                 <p className="text-xs text-muted-foreground">
                   การสร้างและทดสอบ Preview ไม่ต้องใช้ Windows Runner หรือ GitHub ส่วน GitHub จะใช้เก็บ source ใน repo ส่วนตัวหลังมี artifact แล้ว หากยังไม่มี provider สำหรับสร้างแอป ให้ตั้งค่าได้ที่ <a className="underline" href="/settings?tab=localAi">Settings → Local AI</a>

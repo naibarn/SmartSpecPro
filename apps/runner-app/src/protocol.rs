@@ -159,6 +159,7 @@ impl RunnerJobCommand {
                 "sourceSnapshotRevision",
                 "sourceSha",
                 "executionLease",
+                "workspaceAccessMode",
             ];
             if object
                 .keys()
@@ -179,6 +180,9 @@ impl RunnerJobCommand {
                     policy.get("mode").and_then(Value::as_str),
                     Some("prompt" | "work_package")
                 )
+                || policy.get("workspaceAccessMode").is_some_and(|mode| {
+                    !matches!(mode.as_str(), Some("workspace" | "exclude_risky"))
+                })
             {
                 return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
             }
@@ -204,6 +208,14 @@ impl RunnerJobCommand {
                                 || matches!(byte, b'*' | b'?' | b'.' | b'_' | b'-' | b'/')
                         })
                 })
+            {
+                return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+            }
+            if policy
+                .get("workspaceAccessMode")
+                .is_some_and(|_| paths.len() != 1 || paths[0].as_str() != Some("**"))
+                || (policy.get("workspaceAccessMode").is_none()
+                    && paths.iter().any(|path| path.as_str() == Some("**")))
             {
                 return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
             }
@@ -766,6 +778,20 @@ mod tests {
             payload: serde_json::json!({"taskId":"task-1", "spec224Execution":{"sourceFingerprint":"a".repeat(64),"mode":"work_package","allowedWriteSet":["apps/web/server/auth.ts"]}}),
         };
         assert!(command.validate().is_ok());
+        command.payload["spec224Execution"]["workspaceAccessMode"] =
+            serde_json::json!("exclude_risky");
+        command.payload["spec224Execution"]["allowedWriteSet"] = serde_json::json!(["**"]);
+        assert!(command.validate().is_ok());
+        command.payload["spec224Execution"]["allowedWriteSet"] =
+            serde_json::json!(["src/feature.js"]);
+        assert_eq!(
+            command.validate().unwrap_err(),
+            "SPEC224_EXECUTION_POLICY_INVALID"
+        );
+        command.payload["spec224Execution"]
+            .as_object_mut()
+            .unwrap()
+            .remove("workspaceAccessMode");
         command.payload["spec224Execution"]["allowedWriteSet"] = serde_json::json!(["../escape"]);
         assert_eq!(
             command.validate().unwrap_err(),

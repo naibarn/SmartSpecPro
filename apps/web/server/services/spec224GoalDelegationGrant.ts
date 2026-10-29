@@ -42,6 +42,7 @@ export type Spec224GoalGrantScope = {
   sourceSha: string;
   allowedActions: string[];
   writeScope: string[];
+  workspaceAccessMode?: "workspace" | "exclude_risky";
   capabilities: string[];
   budgetLimitMinorUnits: number;
   currency: string;
@@ -80,6 +81,8 @@ export function buildSpec224GoalGrantApprovalPayload(
     !Array.isArray(scope.writeScope) ||
     scope.writeScope.length === 0 ||
     scope.writeScope.some(path => typeof path !== "string" || !isSafeGlob(path)) ||
+    (scope.workspaceAccessMode !== undefined && scope.workspaceAccessMode !== "workspace" && scope.workspaceAccessMode !== "exclude_risky") ||
+    (scope.workspaceAccessMode ? scope.writeScope.length !== 1 || scope.writeScope[0] !== "**" : scope.writeScope.includes("**")) ||
     !Array.isArray(scope.capabilities) ||
     scope.capabilities.length === 0 ||
     scope.capabilities.some(capability => !isText(capability, 160)) ||
@@ -116,6 +119,7 @@ export function buildSpec224GoalGrantApprovalPayload(
     ...scope,
     allowedActions: [...scope.allowedActions].sort(),
     writeScope: [...scope.writeScope].sort(),
+    ...(scope.workspaceAccessMode ? { workspaceAccessMode: scope.workspaceAccessMode } : {}),
     capabilities: [...scope.capabilities].sort(),
     currency: scope.currency.toUpperCase(),
   };
@@ -285,6 +289,10 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
       path => typeof path === "string" && isSafeGlob(path)
     ) ||
     new Set(payload.writeScope).size !== payload.writeScope.length ||
+    (payload.workspaceAccessMode !== undefined && payload.workspaceAccessMode !== "workspace" && payload.workspaceAccessMode !== "exclude_risky") ||
+    (payload.workspaceAccessMode !== undefined
+      ? payload.writeScope.length !== 1 || payload.writeScope[0] !== "**"
+      : payload.writeScope.includes("**")) ||
     !Array.isArray(payload.capabilities) ||
     payload.capabilities.length > 128 ||
     !payload.capabilities.every(capability => isText(capability, 160)) ||
@@ -332,6 +340,8 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
     sourceSha: payload.sourceSha,
     allowedActions: payload.allowedActions as string[],
     writeScope: payload.writeScope as string[],
+    workspaceAccessMode: payload.workspaceAccessMode === "workspace" || payload.workspaceAccessMode === "exclude_risky"
+      ? payload.workspaceAccessMode : "bounded_scope",
     capabilities: payload.capabilities as string[],
     budgetLimitMinorUnits: payload.budgetLimitMinorUnits as number,
     currency: (payload.currency as string).toUpperCase(),
@@ -461,6 +471,7 @@ export function evaluateSpec224GoalDelegation(
     workspaceId: grant.workspaceId,
     repositoryRef: grant.repositoryRef,
     sourceSha: grant.sourceSha,
+    workspaceAccessMode: grant.workspaceAccessMode,
     action: child.action,
     changedPaths: [...child.changedPaths].sort(),
     ...(child.allowedWriteSet ? { allowedWriteSet: [...child.allowedWriteSet].sort() } : {}),

@@ -575,7 +575,10 @@ def acquire_execution_lease(repo: Path, policy_path: Path | None, *, workspace_i
     try: deadline_epoch = datetime.fromisoformat(authorization_deadline.replace("Z", "+00:00")).timestamp()
     except (ValueError, TypeError): raise WorkspaceAuthorityError("EXECUTION_AUTHORIZATION_DEADLINE_INVALID")
     if deadline_epoch <= time.time(): raise WorkspaceAuthorityError("EXECUTION_AUTHORIZATION_DEADLINE_EXPIRED")
-    if not allowed_write_set or len(allowed_write_set) > 128 or any(not _valid_execution_path(p) or p in {"*", "**", "**/*"} for p in allowed_write_set):
+    # `**` is the explicit workspace-wide policy. It remains safe because an
+    # ACTIVE lease for it conflicts with every other scope and is checked again
+    # at Runner apply time. Single-component and zero-depth broad globs stay out.
+    if not allowed_write_set or len(allowed_write_set) > 128 or any(not _valid_execution_path(p) or p in {"*", "**/*"} for p in allowed_write_set):
         raise WorkspaceAuthorityError("EXECUTION_WRITE_SCOPE_INVALID")
     if len(dirty_paths) > 4096 or any(not _valid_execution_path(p) for p in dirty_paths):
         raise WorkspaceAuthorityError("EXECUTION_DIRTY_PATHS_UNKNOWN")

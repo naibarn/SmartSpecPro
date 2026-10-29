@@ -20,6 +20,7 @@ pub struct Candidate {
     pub root: PathBuf,
     baseline: BTreeMap<String, Option<String>>,
     allowed: Vec<String>,
+    workspace_access_mode: String,
     manifest_path: PathBuf,
     run_workspace_id: Option<String>,
     registry_config: Option<crate::config::RunnerConfig>,
@@ -49,6 +50,12 @@ struct CandidateManifest {
     original: String,
     baseline: BTreeMap<String, Option<String>>,
     allowed: Vec<String>,
+    #[serde(default = "default_workspace_access_mode")]
+    workspace_access_mode: String,
+}
+
+fn default_workspace_access_mode() -> String {
+    "workspace".into()
 }
 
 #[derive(Serialize, Deserialize)]
@@ -81,6 +88,7 @@ pub fn create_for_command(
             "sourceSnapshotRevision",
             "sourceSha",
             "executionLease",
+            "workspaceAccessMode",
         ]
         .contains(&key.as_str())
     }) || !["mode", "sourceFingerprint", "allowedWriteSet"]
@@ -114,6 +122,18 @@ pub fn create_for_command(
                 .ok_or_else(|| "SPEC224_EXECUTION_POLICY_INVALID".to_string())
         })
         .collect::<Result<Vec<_>, _>>()?;
+    let access_mode = policy
+        .get("workspaceAccessMode")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("workspace");
+    if !matches!(access_mode, "workspace" | "exclude_risky") {
+        return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+    }
+    if policy.get("workspaceAccessMode").is_some()
+        && policy.get("allowedWriteSet") != Some(&serde_json::json!(["**"]))
+    {
+        return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+    }
     let execution_lease = parse_execution_lease(policy, command, &allowed)?;
     let platform_scope = policy
         .get("platformScope")
@@ -129,12 +149,13 @@ pub fn create_for_command(
             .as_deref()
             .ok_or_else(|| "RUNNER_WORKSPACE_REFERENCE_REQUIRED".to_string())?,
     )?;
-    let mut candidate = Candidate::create(
+    let mut candidate = Candidate::create_with_access_mode(
         &workspace,
         Path::new(&config.data_root),
         &command.command_id,
         fingerprint,
         allowed,
+        access_mode,
     )?;
     candidate.execution_lease = execution_lease;
     let run_workspace = crate::workspace_registry::register_run_workspace(
@@ -303,6 +324,7 @@ fn persist_candidate_manifest(
     original: &Path,
     baseline: &BTreeMap<String, Option<String>>,
     allowed: &[String],
+    workspace_access_mode: &str,
 ) -> Result<PathBuf, String> {
     let directory = data_root.join("spec224-candidate-manifests");
     fs::create_dir_all(&directory).map_err(|_| "SPEC224_CANDIDATE_MANIFEST_CREATE_FAILED")?;
@@ -326,6 +348,7 @@ fn persist_candidate_manifest(
         original: original.to_string_lossy().into_owned(),
         baseline: baseline.clone(),
         allowed: allowed.to_vec(),
+        workspace_access_mode: workspace_access_mode.to_owned(),
     };
     let bytes =
         serde_json::to_vec(&manifest).map_err(|_| "SPEC224_CANDIDATE_MANIFEST_CREATE_FAILED")?;
@@ -359,6 +382,53 @@ fn allowed(path: &str, set: &[String]) -> bool {
     })
 }
 
+fn risky_path(path: &str) -> bool {
+    let normalized = path.to_ascii_lowercase();
+    let components = normalized.split('/').collect::<Vec<_>>();
+    let file = components.last().copied().unwrap_or_default();
+    file.starts_with(".env")
+        || [
+            "secret",
+            "credential",
+            "private-key",
+            "private_key",
+            "privatekey",
+            "id_rsa",
+            "id_ed25519",
+        ]
+        .iter()
+        .any(|marker| file.contains(marker))
+        || [
+            ".ssh",
+            ".aws",
+            ".azure",
+            ".gcloud",
+            "secret",
+            "secrets",
+            "credential",
+            "credentials",
+            "deploy",
+            "deployment",
+            "deployments",
+            "infra",
+            "infrastructure",
+            "terraform",
+            "k8s",
+            "kubernetes",
+            "helm",
+            "ansible",
+            "pulumi",
+            "cloudformation",
+        ]
+        .iter()
+        .any(|blocked| components.contains(blocked))
+        || [
+            ".pem", ".key", ".p12", ".pfx", ".crt", ".cer", ".der", ".p7b", ".p7c", ".p8",
+        ]
+        .iter()
+        .any(|extension| file.ends_with(extension))
+}
+
 impl Candidate {
     pub fn mark_lifecycle(&self, lifecycle: &str) {
         if let (Some(config), Some(workspace_id)) = (&self.registry_config, &self.run_workspace_id)
@@ -386,6 +456,27 @@ impl Candidate {
         expected: &str,
         allowed_write_set: Vec<String>,
     ) -> Result<Self, String> {
+        Self::create_with_access_mode(
+            original,
+            data_root,
+            run_id,
+            expected,
+            allowed_write_set,
+            "workspace",
+        )
+    }
+
+    fn create_with_access_mode(
+        original: &Path,
+        data_root: &Path,
+        run_id: &str,
+        expected: &str,
+        allowed_write_set: Vec<String>,
+        workspace_access_mode: &str,
+    ) -> Result<Self, String> {
+        if !matches!(workspace_access_mode, "workspace" | "exclude_risky") {
+            return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+        }
         if allowed_write_set.is_empty()
             || allowed_write_set.len() > 256
             || allowed_write_set
@@ -437,6 +528,7 @@ impl Candidate {
             &original,
             &baseline,
             &allowed_write_set,
+            workspace_access_mode,
         ) {
             Ok(path) => path,
             Err(error) => {
@@ -449,6 +541,7 @@ impl Candidate {
             root,
             baseline,
             allowed: allowed_write_set,
+            workspace_access_mode: workspace_access_mode.to_owned(),
             manifest_path,
             run_workspace_id: None,
             registry_config: None,
@@ -477,6 +570,18 @@ impl Candidate {
                     .ok_or("SPEC224_EXECUTION_POLICY_INVALID")
             })
             .collect::<Result<Vec<_>, _>>()?;
+        let access_mode = policy
+            .get("workspaceAccessMode")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("workspace");
+        if !matches!(access_mode, "workspace" | "exclude_risky") {
+            return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+        }
+        if policy.get("workspaceAccessMode").is_some()
+            && policy.get("allowedWriteSet") != Some(&serde_json::json!(["**"]))
+        {
+            return Err("SPEC224_EXECUTION_POLICY_INVALID".into());
+        }
         let execution_lease = parse_execution_lease(policy, command, &allowed)?;
         if policy
             .get("platformScope")
@@ -562,6 +667,7 @@ impl Candidate {
         if manifest.schema_version != 1
             || manifest.original != original.to_string_lossy()
             || manifest.allowed != allowed
+            || manifest.workspace_access_mode != access_mode
             || manifest.baseline.len() > MAX_FILES
             || manifest.baseline.iter().any(|(path, hash)| {
                 !safe_relative(path)
@@ -577,6 +683,7 @@ impl Candidate {
             root: canonical_root,
             baseline: manifest.baseline,
             allowed: manifest.allowed,
+            workspace_access_mode: manifest.workspace_access_mode,
             manifest_path,
             run_workspace_id: None,
             registry_config: None,
@@ -650,6 +757,9 @@ impl Candidate {
             let before = self.baseline.get(&path).cloned().unwrap_or(None);
             let after = file_hash(&self.root.join(&path))?;
             if before != after {
+                if self.workspace_access_mode == "exclude_risky" && risky_path(&path) {
+                    return Err("SPEC224_RISKY_PATH_WRITE_BLOCKED".into());
+                }
                 if !allowed(&path, &self.allowed) {
                     return Err("SPEC224_WRITE_SET_VIOLATION".into());
                 }
@@ -978,6 +1088,32 @@ mod tests {
             fs::read_to_string(workspace.join("src.txt")).unwrap(),
             "candidate"
         );
+    }
+
+    #[test]
+    fn excludes_risky_workspace_paths_before_applying_any_candidate_delta() {
+        let (_temp, workspace, data, fingerprint) = fixture();
+        let candidate = Candidate::create_with_access_mode(
+            &workspace,
+            &data,
+            "run-exclude-risky",
+            &fingerprint,
+            vec!["**".into()],
+            "exclude_risky",
+        )
+        .unwrap();
+        fs::write(candidate.root.join("src.txt"), "candidate").unwrap();
+        fs::write(candidate.root.join(".env.local"), "TOKEN=not-a-real-secret").unwrap();
+
+        assert_eq!(
+            candidate.apply().unwrap_err(),
+            "SPEC224_RISKY_PATH_WRITE_BLOCKED"
+        );
+        assert_eq!(
+            fs::read_to_string(workspace.join("src.txt")).unwrap(),
+            "base"
+        );
+        assert!(!workspace.join(".env.local").exists());
     }
 
     #[test]

@@ -14,7 +14,7 @@ function validRepoPath(value: string): boolean {
 
 function finiteScope(paths: unknown): paths is string[] {
   return Array.isArray(paths) && paths.length > 0 && paths.length <= 128 && paths.every(path =>
-    typeof path === "string" && validRepoPath(path) && path !== "**" && path !== "**/*" && path !== "*" && path.length <= 512
+    typeof path === "string" && (path === "**" || (validRepoPath(path) && path !== "**/*" && path !== "*")) && path.length <= 512
   );
 }
 

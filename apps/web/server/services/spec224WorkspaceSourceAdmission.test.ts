@@ -28,9 +28,10 @@ describe("SPEC-224 source-scoped workspace admission", () => {
     });
   });
 
-  it("fails closed for missing path evidence, broad prompt scopes, and stale fingerprints", () => {
+  it("fails closed for missing path evidence and stale fingerprints while permitting explicit workspace access", () => {
     expect(evaluateSpec224WorkspaceSourceAdmission({ ...source, dirtyPaths: null, allowedWriteSet: ["apps/web/**"] }).code).toBe("DIRTY_PATHS_UNKNOWN");
-    expect(evaluateSpec224WorkspaceSourceAdmission({ ...source, allowedWriteSet: ["**"] }).code).toBe("WRITE_SCOPE_UNBOUNDED");
+    expect(evaluateSpec224WorkspaceSourceAdmission({ ...source, allowedWriteSet: ["**"] })).toMatchObject({ status: "BLOCKED", code: "SCOPE_CONFLICT" });
+    expect(evaluateSpec224WorkspaceSourceAdmission({ ...source, dirty: false, dirtyPaths: [], allowedWriteSet: ["**"] }).status).toBe("SAFE_CLEAN");
     expect(evaluateSpec224WorkspaceSourceAdmission({ ...source, expectedFingerprint: "c".repeat(64), allowedWriteSet: ["apps/web/**"] }).code).toBe("SOURCE_CHANGED");
   });
 

@@ -1586,6 +1586,25 @@ class WorkspaceAuthorityTests(unittest.TestCase):
         self.assertEqual(outcomes.count("ACTIVE"), 1)
         self.assertEqual(outcomes.count("EXECUTION_SCOPE_LEASE_CONFLICT"), 1)
 
+    def test_spec224_workspace_wide_lease_serializes_against_every_task_scope(self) -> None:
+        workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
+        whole_workspace = self._execution_claim(
+            workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+            dirty_paths=dirty_paths, scope=["**"], key="workspace-wide:attempt-1",
+        )
+        with self.assertRaisesRegex(authority.WorkspaceAuthorityError, "EXECUTION_SCOPE_LEASE_CONFLICT"):
+            self._execution_claim(
+                workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,
+                dirty_paths=dirty_paths, scope=["apps/web/client/pilot/**"], key="nested-task:attempt-1",
+            )
+        released = authority.release_execution_lease(
+            self.canonical, lease_id=whole_workspace["leaseId"],
+            fencing_generation=whole_workspace["fencingGeneration"], terminal_ref="workspace-wide-receipt",
+            workspace_id=workspace_id, run_id="run-a", job_id="job-a", attempt_id="attempt-a",
+            tenant_id="tenant-a", actor_id="42",
+        )
+        self.assertEqual(released["status"], "RELEASED")
+
     def test_spec224_execution_lease_renew_expiry_fencing_and_duplicate_release(self) -> None:
         workspace_id, source_sha, fingerprint, dirty_paths = self._execution_workspace()
         lease = self._execution_claim(workspace_id=workspace_id, source_sha=source_sha, fingerprint=fingerprint,

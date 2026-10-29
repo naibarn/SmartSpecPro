@@ -689,6 +689,7 @@ export const spec226DevelopmentControlRouter = router({
       mode: z.enum(["prompt", "spec_set"]),
       prompt: z.string().max(4_000).optional(),
       writeScope: z.array(z.string().trim().min(1).max(512)).max(128).optional(),
+      workspaceAccessMode: z.enum(["workspace", "exclude_risky"]).optional(),
       additionalInstructions: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
     }).superRefine((input, refinement) => {
@@ -914,6 +915,7 @@ export const spec226DevelopmentControlRouter = router({
       appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/).optional(),
       prompt: z.string().max(4_000).optional(),
       writeScope: z.array(z.string().trim().min(1).max(512)).max(128).optional(),
+      workspaceAccessMode: z.enum(["workspace", "exclude_risky"]).optional(),
       additionalInstructions: z.string().max(4_000).optional(),
       specSetRevision: z.number().int().positive().optional(),
       workPackageId: z.string().trim().min(1).max(160).optional(),
@@ -1106,6 +1108,7 @@ export const spec226DevelopmentControlRouter = router({
         const requestDigest = createHash("sha256").update(JSON.stringify({
           conversationId: input.conversationId, mode: input.mode, prompt: input.prompt ?? null,
           writeScope: input.writeScope ?? null,
+          workspaceAccessMode: input.workspaceAccessMode ?? null,
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           specSetRevision: input.specSetRevision ?? null, workPackageId: input.workPackageId ?? null,
           provider: input.provider ?? "codex", visualReferences: input.visualReferences ?? [],
@@ -1144,6 +1147,7 @@ export const spec226DevelopmentControlRouter = router({
           mode: input.mode,
           ...(input.prompt === undefined ? {} : { prompt: input.prompt }),
           ...(input.writeScope === undefined ? {} : { writeScope: input.writeScope }),
+          ...(input.workspaceAccessMode === undefined ? {} : { workspaceAccessMode: input.workspaceAccessMode }),
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
           ...(input.specSetRevision === undefined ? {} : { specSetRevision: input.specSetRevision }),
           ...(input.workPackageId === undefined ? {} : { workPackageId: input.workPackageId }),
@@ -1262,6 +1266,7 @@ export const spec226DevelopmentControlRouter = router({
           workPackageExternalId: prepared.workPackageExternalId ?? null,
           executionMode: prepared.workPackageId ? "work_package" : "prompt",
           allowedWriteSet: prepared.allowedWriteSet,
+          workspaceAccessMode: prepared.workspaceAccessMode,
           visualReferenceIds: visualInputs.manifest.references.map((reference) => reference.id),
           modelSelection,
         };
@@ -1278,6 +1283,8 @@ export const spec226DevelopmentControlRouter = router({
           sourceSha: sourceShaForGrant,
           allowedActions: ["discover", "plan", "implement", "build", "review", "repair", "test", "verify"],
           writeScope: prepared.allowedWriteSet,
+          ...(prepared.workspaceAccessMode === "workspace" || prepared.workspaceAccessMode === "exclude_risky"
+            ? { workspaceAccessMode: prepared.workspaceAccessMode } : {}),
           capabilities: ["agent.external_task"],
           budgetLimitMinorUnits: input.budgetCapMinorUnits ?? 100,
           currency: "USD",
@@ -1351,6 +1358,8 @@ export const spec226DevelopmentControlRouter = router({
               sourceFingerprint: prepared.runner.contentFingerprint,
               mode: prepared.workPackageId ? "work_package" : "prompt",
               allowedWriteSet: prepared.allowedWriteSet,
+              ...(prepared.workspaceAccessMode === "workspace" || prepared.workspaceAccessMode === "exclude_risky"
+                ? { workspaceAccessMode: prepared.workspaceAccessMode } : {}),
             },
             spec224ModelSelection: modelSelection,
           },

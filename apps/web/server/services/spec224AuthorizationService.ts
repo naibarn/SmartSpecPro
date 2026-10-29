@@ -891,6 +891,8 @@ export function createSpec224AuthorizationService() {
       const rootRun = asRecord(root[0]?.inputJson?.spec224Run);
       const childManifest = asRecord(child[0]?.inputJson?.manifest);
       const childRun = asRecord(child[0]?.inputJson?.spec224Run);
+      const rootExecution = asRecord(rootManifest?.spec224Execution);
+      const childExecution = asRecord(childManifest?.spec224Execution);
       const workspace = asRecord(run.metadata?.spec224Workspace);
       const execution = asRecord(run.metadata?.spec224Execution);
       const source = /^git:([a-f0-9]{40}|[a-f0-9]{64})$/i.exec(run.baseRevision)?.[1];
@@ -904,6 +906,9 @@ export function createSpec224AuthorizationService() {
         rootRun.runId !== run.runId || rootRun.repositoryRef !== run.repositoryRef || rootRun.baseRevision !== run.baseRevision || rootRun.workspaceId !== run.workspaceId ||
         asRecord(rootRun.metadata)?.spec224BudgetCapMinorUnits !== amount ||
         rootManifest.provider !== grant.provider || childManifest.provider !== grant.provider ||
+        (execution?.workspaceAccessMode !== undefined && execution.workspaceAccessMode !== grant.workspaceAccessMode) ||
+        (execution?.workspaceAccessMode !== undefined && rootExecution?.workspaceAccessMode !== execution.workspaceAccessMode) ||
+        (execution?.workspaceAccessMode !== undefined && childExecution?.workspaceAccessMode !== execution.workspaceAccessMode) ||
         rootManifest.runtime !== childManifest.runtime || rootManifest.goalId !== run.goalId || childManifest.goalId !== run.goalId ||
         childManifest.workspaceId !== run.workspaceId || typeof workspace?.runnerId !== "string" ||
         !source || !action || !Array.isArray(paths) || !paths.every(p => typeof p === "string") ||

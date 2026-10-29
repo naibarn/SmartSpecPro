@@ -63,6 +63,7 @@ export type AgentTaskManifest = {
     sourceFingerprint: string;
     mode: "prompt" | "work_package";
     allowedWriteSet: string[];
+    workspaceAccessMode?: "workspace" | "exclude_risky";
     platformScope?: boolean;
     sourceSnapshotRevision?: string;
     sourceSha?: string;
@@ -235,7 +236,7 @@ export function validateAgentTaskManifest(
     if (!raw.spec224Execution || Array.isArray(raw.spec224Execution) || typeof raw.spec224Execution !== "object") invalid("spec224Execution is invalid");
     const execution = raw.spec224Execution as Record<string, unknown>;
     const executionKeys = Object.keys(execution).sort();
-    const permittedExecutionKeys = ["allowedWriteSet", "mode", "platformScope", "sourceFingerprint", "sourceSha", "sourceSnapshotRevision"];
+    const permittedExecutionKeys = ["allowedWriteSet", "mode", "platformScope", "sourceFingerprint", "sourceSha", "sourceSnapshotRevision", "workspaceAccessMode"];
     if (executionKeys.some(key => !permittedExecutionKeys.includes(key)) ||
       !["allowedWriteSet", "mode", "sourceFingerprint"].every(key => executionKeys.includes(key)) ||
       typeof execution.sourceFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(execution.sourceFingerprint) ||
@@ -244,6 +245,9 @@ export function validateAgentTaskManifest(
       (execution.platformScope !== undefined && typeof execution.platformScope !== "boolean") ||
       (execution.sourceSnapshotRevision !== undefined && (typeof execution.sourceSnapshotRevision !== "string" || execution.sourceSnapshotRevision.length < 1 || execution.sourceSnapshotRevision.length > 160)) ||
       (execution.sourceSha !== undefined && (typeof execution.sourceSha !== "string" || !/^[a-f0-9]{40,64}$/i.test(execution.sourceSha))) ||
+      (execution.workspaceAccessMode !== undefined && !["workspace", "exclude_risky"].includes(String(execution.workspaceAccessMode))) ||
+      (execution.workspaceAccessMode !== undefined && (execution.allowedWriteSet.length !== 1 || execution.allowedWriteSet[0] !== "**")) ||
+      (execution.workspaceAccessMode === undefined && execution.allowedWriteSet.includes("**")) ||
       (execution.platformScope === true && (!execution.sourceSnapshotRevision || !execution.sourceSha))) invalid("spec224Execution is invalid");
     const allowedWriteSet = execution.allowedWriteSet.map((value) => {
       if (typeof value !== "string" || value.length > 240 || value.startsWith("/") || value.includes("\\") || value.split("/").some(part => !part || part === "." || part === "..") || !/^[A-Za-z0-9*?._/-]+$/.test(value)) invalid("spec224Execution is invalid");
@@ -254,6 +258,7 @@ export function validateAgentTaskManifest(
       sourceFingerprint: execution.sourceFingerprint,
       mode: execution.mode as "prompt" | "work_package",
       allowedWriteSet,
+      ...(typeof execution.workspaceAccessMode === "string" ? { workspaceAccessMode: execution.workspaceAccessMode as "workspace" | "exclude_risky" } : {}),
       ...(typeof execution.platformScope === "boolean" ? { platformScope: execution.platformScope } : {}),
       ...(typeof execution.sourceSnapshotRevision === "string" ? { sourceSnapshotRevision: execution.sourceSnapshotRevision } : {}),
       ...(typeof execution.sourceSha === "string" ? { sourceSha: execution.sourceSha } : {}),

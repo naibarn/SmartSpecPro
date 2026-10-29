@@ -12,6 +12,7 @@ import {
 import { getDb } from "../db";
 import { compileSpec224IncrementalSpecSet } from "./spec224IncrementalSpecCompiler";
 import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
+import { resolveSpec224WorkspaceWritePolicy, type Spec224WorkspaceAccessMode } from "./spec224WorkspaceAccessPolicy";
 import { SPEC224_RUNNER_INPUT_MAX_BYTES } from "./spec224RunnerInputStaging";
 import {
   isRunnerWorkspaceConvergenceState,
@@ -292,7 +293,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
       }
     },
-    async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; additionalInstructions?: string; specSetRevision?: number; writeScope?: string[] }) {
+    async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; additionalInstructions?: string; specSetRevision?: number; writeScope?: string[]; workspaceAccessMode?: Spec224WorkspaceAccessMode }) {
       const { binding } = await requireCurrentBinding(input);
       if (input.mode === "prompt") {
         if (input.additionalInstructions) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC");
@@ -300,11 +301,14 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
         const current = (await store.listTrustedWorkspaces(input)).find(item => item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId);
         const blockers = current?.gitHead && current.contentFingerprint ? [] : ["WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE"];
+        const workspaceAccessMode = input.workspaceAccessMode ?? (input.writeScope ? undefined : "exclude_risky");
+        const accessPolicy = workspaceAccessMode ? resolveSpec224WorkspaceWritePolicy(workspaceAccessMode) : null;
+        const allowedWriteSet = accessPolicy?.allowedWriteSet ?? input.writeScope;
         const sourceAdmission = current?.scope === "PLATFORM_ENGINEERING"
-          ? evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet: input.writeScope })
+          ? evaluateSpec224WorkspaceSourceAdmission({ gitHead: current.gitHead, contentFingerprint: current.contentFingerprint, snapshotRevision: current.snapshotRevision, dirty: current.dirty, dirtyPaths: current.dirtyPaths, allowedWriteSet })
           : null;
         if (sourceAdmission?.status === "BLOCKED") blockers.push(sourceAdmission.code === "WRITE_SCOPE_UNBOUNDED" ? "PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED" : `WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
-        const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode, gitHead: current?.gitHead ?? null, snapshotRevision: current?.snapshotRevision ?? null, prompt, writeScope: input.writeScope ?? null }));
+        const contextPackHash = sha(canonicalJson({ conversationId: input.conversationId, workspaceId: binding.workspaceId, mode: input.mode, gitHead: current?.gitHead ?? null, snapshotRevision: current?.snapshotRevision ?? null, prompt, writeScope: allowedWriteSet, workspaceAccessMode }));
         const workPackages = [{ id: "prompt", externalId: "prompt", readiness: blockers.length ? "BLOCKED" as const : "READY" as const, blockers, ...(sourceAdmission ? { sourceAdmission } : {}) }];
         return { workspace: binding, planId: `plan:${contextPackHash.slice(0, 40)}`, planRevision: binding.revision, contextPackHash, workPackages, requirementCount: 0, runnableWorkPackageIds: blockers.length ? [] : ["prompt"], blockers };
       }
@@ -350,6 +354,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       mode: "prompt" | "spec_set";
       prompt?: string;
       writeScope?: string[];
+      workspaceAccessMode?: Spec224WorkspaceAccessMode;
       additionalInstructions?: string;
       specSetRevision?: number;
       workPackageId?: string;
@@ -364,7 +369,9 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         if (input.additionalInstructions) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC");
         const prompt = input.prompt;
         if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
-        const allowedWriteSet = workspace.scope === "PLATFORM_ENGINEERING" ? input.writeScope : ["**"];
+        const workspaceAccessMode = input.workspaceAccessMode ?? (input.writeScope ? undefined : "exclude_risky");
+        const accessPolicy = workspaceAccessMode ? resolveSpec224WorkspaceWritePolicy(workspaceAccessMode) : null;
+        const allowedWriteSet = accessPolicy?.allowedWriteSet ?? (workspace.scope === "PLATFORM_ENGINEERING" ? input.writeScope : ["**"]);
         if (workspace.scope === "PLATFORM_ENGINEERING") {
           const sourceAdmission = evaluateSpec224WorkspaceSourceAdmission({ gitHead: workspace.gitHead, contentFingerprint: workspace.contentFingerprint, snapshotRevision: workspace.snapshotRevision, dirty: workspace.dirty, dirtyPaths: workspace.dirtyPaths, allowedWriteSet });
           if (sourceAdmission.status === "BLOCKED") fail(`WORKSPACE_SOURCE_ADMISSION_${sourceAdmission.code}`);
@@ -376,6 +383,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
           snapshotRevision: workspace.snapshotRevision,
           prompt,
           writeScope: allowedWriteSet,
+          workspaceAccessMode: workspaceAccessMode ?? null,
         }));
         return {
           workspace: binding,
@@ -390,6 +398,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
           workPackageId: null,
           workPackageExternalId: null,
           allowedWriteSet: [...(allowedWriteSet ?? ["**"])],
+          workspaceAccessMode: workspaceAccessMode ?? "bounded_scope",
           inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from(prompt, "utf8").toString("base64") }],
         };
       }

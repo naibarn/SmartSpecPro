@@ -193,7 +193,7 @@ describe("spec226DevelopmentControlRouter", () => {
   it("resumes authorization for the same Start key without restaging a changing heartbeat snapshot", async () => {
     const input = { conversationId: 8, mode: "prompt", prompt: "Small scoped change", idempotencyKey: "repeat-same-owner-goal-key",
       budgetCapMinorUnits: 100, provider: "codex", modelSelection: { policy: "auto" }, visualReferences: [], visualFiles: [], designPreferences: {} };
-    const digest = createHash("sha256").update(JSON.stringify({ conversationId: 8, mode: "prompt", prompt: input.prompt, writeScope: null,
+    const digest = createHash("sha256").update(JSON.stringify({ conversationId: 8, mode: "prompt", prompt: input.prompt, writeScope: null, workspaceAccessMode: null,
       specSetRevision: null, workPackageId: null, provider: "codex", visualReferences: [], visualFiles: [], designPreferences: {},
       modelSelection: { policy: "auto" }, budgetCapMinorUnits: 100 })).digest("hex");
     const runId = `run-${createHash("sha256").update(`${CTX.tenantId}:${CTX.user.id}:${input.idempotencyKey}`).digest("hex").slice(0, 40)}`;
@@ -687,6 +687,7 @@ describe("spec226DevelopmentControlRouter", () => {
       specSetRevision: null,
       workPackageId: null,
       allowedWriteSet: ["**"],
+      workspaceAccessMode: "exclude_risky",
       inputFiles: [{ path: "prompt.md", contentBase64: Buffer.from("private request").toString("base64") }],
     });
     mocks.runnerInputStaging.preStageRunnerInput.mockResolvedValueOnce({
@@ -736,7 +737,7 @@ describe("spec226DevelopmentControlRouter", () => {
         workPackageId: "prompt",
         metadata: expect.objectContaining({
           spec224Input: expect.objectContaining({ inputSourceRef: "spec224-source:run-1" }),
-          spec224Execution: { platformScope: false, sourceSnapshotRevision: "snap-1", sourceSha: "a".repeat(40), sourceFingerprint: "d".repeat(64), mode: "prompt", allowedWriteSet: ["**"] },
+        spec224Execution: { platformScope: false, sourceSnapshotRevision: "snap-1", sourceSha: "a".repeat(40), sourceFingerprint: "d".repeat(64), mode: "prompt", allowedWriteSet: ["**"], workspaceAccessMode: "exclude_risky" },
         }),
       }),
     }));
@@ -750,7 +751,7 @@ describe("spec226DevelopmentControlRouter", () => {
       tenantId: CTX.tenantId,
       projectId: "project-a",
       goalId: expect.stringMatching(/^[0-9a-f-]{36}$/),
-      payload: expect.objectContaining({ kind: "spec224_goal_delegation_grant", goalId: expect.stringMatching(/^[0-9a-f-]{36}$/), provider: "codex" }),
+      payload: expect.objectContaining({ kind: "spec224_goal_delegation_grant", goalId: expect.stringMatching(/^[0-9a-f-]{36}$/), provider: "codex", writeScope: ["**"], workspaceAccessMode: "exclude_risky" }),
     }));
     expect(JSON.stringify(mocks.auditLog.mock.calls)).not.toContain("private request");
   });

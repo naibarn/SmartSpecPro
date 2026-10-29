@@ -103,10 +103,19 @@ describe("SPEC-224 Goal delegation contract", () => {
     expect(() =>
       buildSpec224GoalGrantApprovalPayload({ ...scope, writeScope: ["../**"] })
     ).toThrow("SPEC224_GOAL_GRANT_SCOPE_INVALID");
+    expect(buildSpec224GoalGrantApprovalPayload({ ...scope, writeScope: ["**"], workspaceAccessMode: "exclude_risky" }))
+      .toMatchObject({ workspaceAccessMode: "exclude_risky", writeScope: ["**"] });
+    expect(buildSpec224GoalGrantApprovalPayload({ ...scope, writeScope: ["**"], workspaceAccessMode: "workspace" }))
+      .toMatchObject({ writeScope: ["**"], workspaceAccessMode: "workspace" });
+    expect(() => buildSpec224GoalGrantApprovalPayload({ ...scope, writeScope: ["**"] }))
+      .toThrow("SPEC224_GOAL_GRANT_SCOPE_INVALID");
   });
 
   it("derives an attempt-scoped child binding from an approved authority record", () => {
-    expect(evaluateSpec224GoalDelegation(baseInput())).toMatchObject({
+    const input = baseInput();
+    input.authority.payload.workspaceAccessMode = "exclude_risky";
+    input.authority.payload.writeScope = ["**"];
+    expect(evaluateSpec224GoalDelegation(input)).toMatchObject({
       status: "READY_FOR_DELEGATION",
       binding: {
         grantRef: "grant-1",
@@ -117,6 +126,7 @@ describe("SPEC-224 Goal delegation contract", () => {
         workerJobId: "job-1",
         attemptId: "attempt-1",
         sourceSha: "a".repeat(40),
+        workspaceAccessMode: "exclude_risky",
         budgetReservationRef: "hold-1",
         budgetCapMinorUnits: 100,
         currency: "USD",
