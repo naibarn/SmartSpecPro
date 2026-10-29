@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, asc, desc, eq, gt, inArray, lte, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lte, lt, or, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import {
@@ -7,6 +7,7 @@ import {
   runnerExecutionSessions,
   runnerExecutionSessionEvents,
   conversations,
+  conversationThreads,
   workerJobEvents,
   workerJobAttempts,
   workerJobProviderReservations,
@@ -36,7 +37,7 @@ export class TaskObservabilityError extends Error {
 }
 
 type Scope = { tenantId: string; userId: number; isAdmin?: boolean };
-type CursorPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; projectId: string | null; specId: string | null; conversationId: number | null; asOf: string; beforeAt: string; beforeId: string; exp: number };
+type CursorPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; projectId: string | null; specId: string | null; conversationId: number | null; threadId: string | null; threadFilter?: boolean; asOf: string; beforeAt: string; beforeId: string; exp: number };
 type ProjectionSnapshotPayload = { v: 1; tenantId: string; userId: number; isAdmin: boolean; asOf: string; exp: number };
 
 function assertScope(scope: Scope): void {
@@ -79,7 +80,7 @@ export function decodeProjectionSnapshotToken(token: string, scope: Scope): Proj
   return payload;
 }
 
-function decodeCursor(token: string, scope: Scope, filters: { projectId?: string; specId?: string; conversationId?: number }): CursorPayload {
+function decodeCursor(token: string, scope: Scope, filters: { projectId?: string; specId?: string; conversationId?: number; threadId?: string | null }): CursorPayload {
   const [body, signature, extra] = token.split(".");
   if (!body || !signature || extra) throw new TaskObservabilityError("SNAPSHOT_INVALID");
   const expected = sign(body);
@@ -89,8 +90,10 @@ function decodeCursor(token: string, scope: Scope, filters: { projectId?: string
   let payload: CursorPayload;
   try { payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as CursorPayload; }
   catch { throw new TaskObservabilityError("SNAPSHOT_INVALID"); }
+  const legacyMainCursor = payload.threadId === undefined && filters.threadId === undefined;
   if (payload.v !== 1 || payload.tenantId !== scope.tenantId || payload.userId !== scope.userId || payload.isAdmin !== Boolean(scope.isAdmin) ||
-      payload.projectId !== (filters.projectId ?? null) || payload.specId !== (filters.specId ?? null) || payload.conversationId !== (filters.conversationId ?? null)) {
+      payload.projectId !== (filters.projectId ?? null) || payload.specId !== (filters.specId ?? null) || payload.conversationId !== (filters.conversationId ?? null) ||
+      (!legacyMainCursor && payload.threadId !== (filters.threadId ?? null)) || Boolean(payload.threadFilter) !== (filters.threadId !== undefined)) {
     throw new TaskObservabilityError("SNAPSHOT_INVALID");
   }
   if (!Number.isSafeInteger(payload.exp) || payload.exp <= Date.now()) throw new TaskObservabilityError("SNAPSHOT_EXPIRED");
@@ -618,8 +621,9 @@ export async function getTaskHarnessOutputEvents(input: {
   };
 }
 
-export async function listTaskObservability(input: { scope: Scope; cursor?: string | null; projectionToken?: string; projectId?: string; specId?: string; conversationId?: number }) {
+export async function listTaskObservability(input: { scope: Scope; cursor?: string | null; projectionToken?: string; projectId?: string; specId?: string; conversationId?: number; threadId?: string | null }) {
   assertScope(input.scope);
+  if (input.threadId !== undefined && !input.conversationId) throw new TaskObservabilityError("SCOPE_REQUIRED");
   getDb();
   const cursor = input.cursor ? decodeCursor(input.cursor, input.scope, input) : null;
   const snapshot = input.projectionToken ? decodeProjectionSnapshotToken(input.projectionToken, input.scope) : null;
@@ -631,7 +635,31 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
   if (!input.scope.isAdmin) predicates.push(eq(workerJobs.requestedByUserId, input.scope.userId));
   if (input.projectId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'projectId', ${workerJobs.progressJson}->'spec224'->>'projectId') = ${input.projectId}`);
   if (input.specId) predicates.push(sql`COALESCE(${workerJobs.inputJson}->>'specId', ${workerJobs.progressJson}->'spec224'->>'specId') = ${input.specId}`);
-  if (input.conversationId) predicates.push(sql`${workerJobs.inputJson}->>'conversationId' = ${String(input.conversationId)}`);
+  if (input.conversationId) {
+    const conversationPredicates = [
+      eq(conversations.id, input.conversationId),
+      or(isNull(conversations.tenantId), eq(conversations.tenantId, input.scope.tenantId))!,
+      ...(input.scope.isAdmin ? [] : [eq(conversations.userId, input.scope.userId)]),
+    ];
+    const [authorizedConversation] = await db.select({ id: conversations.id, userId: conversations.userId }).from(conversations)
+      .where(and(...conversationPredicates)).limit(1);
+    if (!authorizedConversation) throw new TaskObservabilityError("TASK_NOT_FOUND");
+    const authorizedThreads = await db.select({ id: conversationThreads.id }).from(conversationThreads)
+      .where(and(
+        eq(conversationThreads.conversationId, input.conversationId),
+        eq(conversationThreads.ownerUserId, authorizedConversation.userId),
+        or(isNull(conversationThreads.tenantId), eq(conversationThreads.tenantId, input.scope.tenantId))!,
+      ));
+    if (input.threadId && !authorizedThreads.some(thread => thread.id === input.threadId)) {
+      throw new TaskObservabilityError("TASK_NOT_FOUND");
+    }
+    const conversationJobs = [
+      and(isNull(workerJobs.threadId), sql`${workerJobs.inputJson}->>'conversationId' = ${String(input.conversationId)}`),
+      ...(authorizedThreads.length ? [inArray(workerJobs.threadId, authorizedThreads.map(thread => thread.id))] : []),
+    ].filter(Boolean);
+    predicates.push(or(...conversationJobs)!);
+  }
+  if (input.threadId !== undefined) predicates.push(input.threadId === null ? isNull(workerJobs.threadId) : eq(workerJobs.threadId, input.threadId));
   if (cursor) predicates.push(or(lt(workerJobs.createdAt, new Date(cursor.beforeAt)), and(eq(workerJobs.createdAt, new Date(cursor.beforeAt)), lt(workerJobs.id, cursor.beforeId))!));
   const rows = await db.select({
     id: workerJobs.id,
@@ -643,6 +671,7 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
     heartbeatAt: workerJobs.heartbeatAt,
     createdAt: workerJobs.createdAt,
     workerId: workerJobs.workerId,
+    threadId: workerJobs.threadId,
     operatorReviewRequired: workerJobs.operatorReviewRequired,
     operatorReviewReason: workerJobs.operatorReviewReason,
     nextRetryAt: workerJobs.nextRetryAt,
@@ -658,6 +687,49 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
     .orderBy(desc(runnerExecutionSessions.generation)) : [];
   const runnerByJob = new Map<string, typeof runnerSessions[number]>();
   for (const session of runnerSessions) if (session.workerJobId && !runnerByJob.has(session.workerJobId)) runnerByJob.set(session.workerJobId, session);
+  const threadIds = [...new Set(page.flatMap(job => job.threadId ? [job.threadId] : []))];
+  const threadRows = threadIds.length ? await db.select({
+    id: conversationThreads.id,
+    conversationId: conversationThreads.conversationId,
+    ownerUserId: conversationThreads.ownerUserId,
+  }).from(conversationThreads).where(and(
+    inArray(conversationThreads.id, threadIds),
+    or(isNull(conversationThreads.tenantId), eq(conversationThreads.tenantId, input.scope.tenantId))!,
+    ...(input.scope.isAdmin ? [] : [eq(conversationThreads.ownerUserId, input.scope.userId)]),
+  )) : [];
+  const threadById = new Map(threadRows.map(thread => [thread.id, thread]));
+  const conversationCandidates = page.map(job => {
+    const metadata = objectValue(job.inputJson);
+    const rawConversationId = metadata?.conversationId;
+    const inputConversationId = typeof rawConversationId === "number" && Number.isSafeInteger(rawConversationId) && rawConversationId > 0
+      ? rawConversationId
+      : typeof rawConversationId === "string" && /^[1-9]\d*$/.test(rawConversationId) && Number.isSafeInteger(Number(rawConversationId))
+        ? Number(rawConversationId)
+        : null;
+    const linkedThread = job.threadId ? threadById.get(job.threadId) : undefined;
+    const linkedConversationId = job.threadId && linkedThread?.ownerUserId === job.requestedByUserId
+      ? linkedThread.conversationId
+      : null;
+    return {
+      jobId: job.id,
+      ownerUserId: job.requestedByUserId,
+      conversationId: job.threadId
+        ? (linkedConversationId && (!inputConversationId || linkedConversationId === inputConversationId) ? linkedConversationId : null)
+        : inputConversationId,
+    };
+  });
+  const conversationIds = [...new Set(conversationCandidates.flatMap(candidate => candidate.conversationId ? [candidate.conversationId] : []))];
+  const conversationRows = conversationIds.length ? await db.select({ id: conversations.id, userId: conversations.userId }).from(conversations).where(and(
+    inArray(conversations.id, conversationIds),
+    or(isNull(conversations.tenantId), eq(conversations.tenantId, input.scope.tenantId))!,
+    ...(input.scope.isAdmin ? [] : [eq(conversations.userId, input.scope.userId)]),
+  )) : [];
+  const conversationOwnerById = new Map(conversationRows.map(conversation => [conversation.id, conversation.userId]));
+  const authorizedConversationByJob = new Map(conversationCandidates.flatMap(candidate =>
+    candidate.conversationId && conversationOwnerById.get(candidate.conversationId) === candidate.ownerUserId
+      ? [[candidate.jobId, candidate.conversationId] as const]
+      : [],
+  ));
   const items = page.map((job) => {
     const progress = objectValue(job.progressJson);
     const inputMetadata = objectValue(job.inputJson);
@@ -675,6 +747,8 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
       heartbeatAt: asIso(job.heartbeatAt),
       createdAt: job.createdAt.toISOString(),
       workerId: job.workerId,
+      threadId: job.threadId,
+      conversationId: authorizedConversationByJob.get(job.id) ?? null,
       runnerId: runnerByJob.get(job.id)?.runnerId ?? null,
       runnerSessionState: runnerByJob.get(job.id)?.state ?? null,
       projectId,
@@ -689,7 +763,7 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
     scope: input.scope.isAdmin ? "tenant_fleet" as const : "owner" as const,
     snapshot: { asOf, expiresAt: new Date(expiresAtMs).toISOString(), projectionToken, consistency: "created_at_watermark_live_state" as const },
     items,
-    nextCursor: hasMore && last ? encodeCursor({ v: 1, tenantId: input.scope.tenantId, userId: input.scope.userId, isAdmin: Boolean(input.scope.isAdmin), projectId: input.projectId ?? null, specId: input.specId ?? null, conversationId: input.conversationId ?? null, asOf, beforeAt: last.createdAt.toISOString(), beforeId: last.id, exp: expiresAtMs }) : null,
+    nextCursor: hasMore && last ? encodeCursor({ v: 1, tenantId: input.scope.tenantId, userId: input.scope.userId, isAdmin: Boolean(input.scope.isAdmin), projectId: input.projectId ?? null, specId: input.specId ?? null, conversationId: input.conversationId ?? null, threadId: input.threadId ?? null, threadFilter: input.threadId !== undefined, asOf, beforeAt: last.createdAt.toISOString(), beforeId: last.id, exp: expiresAtMs }) : null,
   };
 }
 

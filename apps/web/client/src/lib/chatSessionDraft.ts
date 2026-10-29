@@ -4,13 +4,17 @@ export interface ChatSessionDraftIdentity {
   tenantId?: string | number | null;
   userId?: string | number | null;
   conversationId?: string | number | null;
+  threadId?: string | null;
 }
 
 /** Keep unsent text isolated by tenant, account, and conversation in this tab. */
 export function chatSessionDraftKey(identity: ChatSessionDraftIdentity): string | null {
   const values = [identity.tenantId, identity.userId, identity.conversationId];
   if (values.some(value => value == null || String(value).trim() === "")) return null;
-  return `smarthub:chat-draft:v1:${values.map(value => encodeURIComponent(String(value))).join(":")}`;
+  const scope = values.map(value => encodeURIComponent(String(value)));
+  // Preserve the pre-thread key for the main chat so existing drafts remain available.
+  if (identity.threadId) scope.push(encodeURIComponent(identity.threadId));
+  return `smarthub:chat-draft:v1:${scope.join(":")}`;
 }
 
 function sessionStorageOrNull(): Storage | null {
@@ -51,6 +55,7 @@ export function useChatSessionDraft(identity: ChatSessionDraftIdentity) {
     identity.tenantId,
     identity.userId,
     identity.conversationId,
+    identity.threadId,
   ]);
   const [draft, setDraft] = useState("");
   const activeKeyRef = useRef<string | null>(null);

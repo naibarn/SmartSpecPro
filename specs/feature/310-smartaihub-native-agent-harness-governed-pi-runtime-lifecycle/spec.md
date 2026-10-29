@@ -873,4 +873,16 @@ Respect SPEC-224 E2E as current priority and preserve protected main.
 Mark Real Windows/Cloud/UAT gates UNVERIFIED unless actually observed.
 ```
 
+## Proposed integration note — Chat Thread and native harness session
+
+The [Unified Thread Overview contract](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-thread-overview-r01.md)
+may correlate an authorized user-facing Conversation/Thread with a SPEC-310
+harness-native session through existing canonical Job/Run metadata. These are
+distinct identities: Thread selection MUST NOT imply provider session resume,
+steering, interruption or continuity. The adapter MUST report only the
+capabilities and model/Runner facts it actually discovers; unsupported
+operations remain unavailable. This note is proposed cross-SPEC alignment only
+and does not promote this draft's lifecycle status, add a session store, or
+change SPEC-224 execution ownership.
+
 **Verification limitation:** Repository code/spec excerpts were inspected in the planning session (SPEC-205/210/224/269/278/279/284/292/293/294). The existence of a proposed type or UX operation is not evidence of a deployed API, database migration or functional product. SPEC-310 number remains user-assigned and subject to G0 checks against all branches, PRs, worktrees and reservations. This file is an additive proposal, not an implementation or release record.

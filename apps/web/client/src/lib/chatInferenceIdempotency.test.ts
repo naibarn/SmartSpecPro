@@ -32,6 +32,9 @@ describe("chat inference idempotency key", () => {
         selection: { mode: "auto-provider", providerId: 7 },
       })
     ).resolves.not.toBe(key);
+    await expect(
+      createChatInferenceIdempotencyKey({ ...base, threadId: "thread-1" })
+    ).resolves.not.toBe(key);
   });
 
   it("keeps the output bounded for long model identifiers", async () => {

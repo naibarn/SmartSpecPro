@@ -1,0 +1,44 @@
+{
+  "plugin_root": "/mnt/SmartSpecDev/projects/SmartSpecPro/skills/deep-implement",
+  "sections_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections",
+  "target_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "state_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation",
+  "git_root": "/mnt/SmartSpecDev/projects/SmartSpecPro",
+  "commit_style": "conventional",
+  "test_command": "uv run pytest",
+  "sections": [
+    "section-01-work-profiles",
+    "section-02-event-projection",
+    "section-03-unified-experience",
+    "section-04-skill-invocation",
+    "section-05-skill-authoring",
+    "section-06-delegation-controls",
+    "section-07-artifact-evidence",
+    "section-08-development-source-release",
+    "section-09-cross-boundary-acceptance"
+  ],
+  "sections_state": {
+    "event-projection": {
+      "status": "in_progress",
+      "next_action": "Complete authorized cross-surface Thread Overview and durable replay review; then integrate only task-owned paths and record exact canonical evidence."
+    }
+  },
+  "pre_commit": {
+    "present": false,
+    "type": "none",
+    "config_file": null,
+    "native_hook": null,
+    "may_modify_files": false,
+    "detected_formatters": []
+  },
+  "created_at": "2026-10-29T08:23:20.751694+00:00",
+  "generation": 4,
+  "updated_at": "2026-10-29T09:41:38.497026+00:00",
+  "progress": {
+    "active_section": "event-projection",
+    "next_action": "Complete authorized cross-surface Thread Overview and durable replay review; then integrate only task-owned paths and record exact canonical evidence.",
+    "gaps": [
+      "Mission Control has no web Thread Overview or shared multi-source replay/gap recovery in this slice."
+    ]
+  }
+}

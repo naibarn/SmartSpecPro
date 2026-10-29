@@ -45,15 +45,15 @@ function activityLabel(type: string, t: (key: string) => string): string {
   return t("taskControl.activityRecorded");
 }
 
-function taskControlHref(conversationId: number): string {
-  return `/chat?panel=control-plane&view=full&c=${conversationId}`;
+function taskControlHref(conversationId: number, threadId?: string | null): string {
+  return `/chat?panel=control-plane&view=full&c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`;
 }
 
 /** Safe lifecycle summary for Chat; detailed harness output stays in authorized Task Control. */
-export function ConversationExecutionActivity({ conversationId }: { conversationId: number | null }) {
+export function ConversationExecutionActivity({ conversationId, threadId = null }: { conversationId: number | null; threadId?: string | null }) {
   const { t, locale } = useScopedTranslation("chat");
   const query = trpc.workerJobs.observability.useQuery(
-    conversationId ? { conversationId } : {},
+    conversationId ? { conversationId, threadId } : {},
     {
       enabled: Boolean(conversationId),
       staleTime: 15_000,
@@ -144,7 +144,7 @@ export function ConversationExecutionActivity({ conversationId }: { conversation
         </p>
       ) : null}
       <Button asChild variant="link" className="mt-1 h-auto px-0 py-1 text-sm">
-        <a href={taskControlHref(conversationId)}>{t("chat.executionOpenTaskControl")}</a>
+        <a href={taskControlHref(conversationId, threadId)}>{t("chat.executionOpenTaskControl")}</a>
       </Button>
       <Button
         type="button"

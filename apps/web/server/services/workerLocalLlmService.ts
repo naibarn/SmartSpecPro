@@ -13,6 +13,7 @@ import { getDb } from "../db";
 import { workerLlmInventorySync, workerLlmModels, workers } from "../../drizzle/schema";
 import { workerJobs, groupMembers, userGroups } from "../../drizzle/schema";
 import { getTenantFeatureFlags } from "./tenantFeatureFlagService";
+import { assertConversationThreadScope } from "./conversationThreadService";
 
 export const WORKER_LLM_STALE_AFTER_MS = 2 * 60 * 1000;
 
@@ -327,6 +328,8 @@ export async function syncWorkerLlmInventory(input: {
 export async function queueWorkerLlmInvoke(input: {
   tenantId: string;
   userId: number;
+  conversationId?: number;
+  threadId?: string;
   modelRef: string;
   messages: Array<{ role?: string; content?: unknown }>;
   stream: boolean;
@@ -335,6 +338,19 @@ export async function queueWorkerLlmInvoke(input: {
   extraBodyParams?: Record<string, unknown>;
   idempotencyKey?: string;
 }) {
+  if (input.threadId) {
+    if (!input.conversationId) throw new WorkerLocalLlmError("worker_not_found", "Chat thread is unavailable", 404);
+    try {
+      await assertConversationThreadScope({
+        conversationId: input.conversationId,
+        userId: input.userId,
+        tenantId: input.tenantId,
+        threadId: input.threadId,
+      });
+    } catch {
+      throw new WorkerLocalLlmError("worker_not_found", "Chat thread is unavailable", 404);
+    }
+  }
   const featureFlags = await getTenantFeatureFlags(input.tenantId);
   if (!featureFlags.workerLocalLlmModels) {
     throw new WorkerLocalLlmError("worker_not_found", "Worker Local LLM is disabled for this tenant", 404);
@@ -403,6 +419,7 @@ export async function queueWorkerLlmInvoke(input: {
   if (existing[0]) return { created: false, job: existing[0] };
   const [job] = await db.insert(workerJobs).values(withSafeWorkerJobDeadline({
     tenantId: input.tenantId,
+    threadId: input.threadId ?? null,
     workerId: row.workerId,
     runtimeType: row.workerRuntimeType,
     requestedByUserId: input.userId,

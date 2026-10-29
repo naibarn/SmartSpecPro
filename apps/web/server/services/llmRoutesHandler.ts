@@ -36,6 +36,7 @@ interface HandlerParams {
   userId: number;
   tenantId: string;
   conversationId?: number;
+  threadId?: string;
   preferredProvider?: number;
   modelSelection?: unknown;
   modelSelectionContext?: unknown;
@@ -115,6 +116,7 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
     userId,
     tenantId,
     conversationId,
+    threadId,
     preferredProvider,
     modelSelection,
     modelSelectionContext,
@@ -146,6 +148,7 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
       tenantId,
       userId,
       idempotencyKey: params.idempotencyKey,
+      threadId,
     });
     if (savedMessage) {
       replaySavedAssistantJson(res, savedMessage);
@@ -266,6 +269,7 @@ export async function handleChatWithRouter(params: HandlerParams): Promise<void>
     userId,
     tenantId,
     conversationId,
+    threadId,
     preferredProvider: resolvedSelection.preferredProviderId,
     strictProviderPin: resolvedSelection.strictProviderPin,
   });
@@ -383,6 +387,7 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
     userId,
     tenantId,
     conversationId,
+    threadId,
     preferredProvider,
     modelSelection,
     modelSelectionContext,
@@ -418,6 +423,7 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
       tenantId,
       userId,
       idempotencyKey: params.idempotencyKey,
+      threadId,
     });
     if (savedMessage) {
       replaySavedAssistantSse(res, savedMessage);
@@ -499,6 +505,7 @@ export async function handleStreamWithRouter(params: HandlerParams): Promise<voi
             const persisted = await createInferenceAssistantMessageOnce({
               message: {
                 conversationId,
+                ...(threadId ? { threadId } : {}),
                 role: "assistant",
                 content: assistantText,
                 inputTokens: execution.receipt.usage?.input ?? 0,

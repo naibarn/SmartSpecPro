@@ -91,8 +91,8 @@ type Spec224TaskDraft = {
   reasoningEffort: string;
 };
 
-function taskDraftStorageKey(userId: string, tenantId: string | null | undefined, conversationId: number | null): string {
-  return `spec224-task-draft:v1:${encodeURIComponent(tenantId ?? "personal")}:${encodeURIComponent(userId)}:${conversationId ?? "new"}`;
+function taskDraftStorageKey(userId: string, tenantId: string | null | undefined, conversationId: number | null, threadId?: string | null): string {
+  return `spec224-task-draft:v1:${encodeURIComponent(tenantId ?? "personal")}:${encodeURIComponent(userId)}:${conversationId ?? "new"}:${threadId ?? "main"}`;
 }
 
 function readTaskDraft(key: string): Partial<Spec224TaskDraft> | null {
@@ -219,15 +219,16 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCreateConversation }: {
+export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation }: {
   conversationId: number | null;
+  threadId?: string | null;
   simpleMode?: boolean;
   onCreateConversation?: (title: string) => Promise<number>;
 }) {
   const { user } = useAuth();
   const trpcUtils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
-  const draftKey = user?.id ? taskDraftStorageKey(user.id, user.currentTenantId, conversationId) : null;
+  const draftKey = user?.id ? taskDraftStorageKey(user.id, user.currentTenantId, conversationId, threadId) : null;
   const draftOwnerKey = user?.id ? `${user.currentTenantId ?? "personal"}:${user.id}` : null;
   const previousDraftOwnerKey = useRef<string | null>(null);
   const restoringTaskDraft = useRef(false);
@@ -698,13 +699,14 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       toast.error("Runner หรือ model readiness ของ Harness ที่เลือกยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
-    const key = `${targetConversationId}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${workspaceAccessMode}:${budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
+    const key = `${targetConversationId}:${threadId ?? "main"}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${workspaceAccessMode}:${budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     startInFlight.current = true;
     try {
       const result = await startMutation.mutateAsync({
         conversationId: targetConversationId,
+        ...(threadId ? { threadId } : {}),
         mode,
         factoryMode: requestKind === "mini_app",
         ...(mode === "prompt" ? { prompt: effectivePrompt, ...(requestKind === "development" ? { workspaceAccessMode } : {}) } : {

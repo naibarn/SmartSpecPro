@@ -2815,6 +2815,13 @@
       "when": 1793145600000,
       "tag": "0415_spec293_canonical_project_workspace_bindings",
       "breakpoints": true
+    },
+    {
+      "idx": 416,
+      "version": "7",
+      "when": 1793221200000,
+      "tag": "0416_unified_chat_thread_overview",
+      "breakpoints": true
     }
   ]
 }

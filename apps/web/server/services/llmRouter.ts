@@ -55,6 +55,7 @@ export type ExecuteResult =
  */
 export function makeWorkerLlmIdempotencyKey(input: {
   conversationId?: number;
+  threadId?: string;
   model: string;
   messages: Message[];
   stream: boolean;
@@ -65,6 +66,7 @@ export function makeWorkerLlmIdempotencyKey(input: {
   if (input.conversationId == null) return undefined;
   const digest = crypto.createHash("sha256").update(JSON.stringify({
     conversationId: input.conversationId,
+    ...(input.threadId ? { threadId: input.threadId } : {}),
     model: input.model,
     messages: input.messages,
     stream: input.stream,
@@ -873,6 +875,7 @@ export async function executeWithFallback(params: {
   userId: number;
   tenantId?: string;
   conversationId?: number;
+  threadId?: string;
   preferredProvider?: number;
   strictProviderPin?: boolean;
   /** Exact immutable upstream model ID required by a Spec 231 deployment plan. */
@@ -928,6 +931,8 @@ export async function executeWithFallback(params: {
       const queued = await queueWorkerLlmInvoke({
         tenantId: params.tenantId,
         userId: params.userId,
+        conversationId: params.conversationId,
+        threadId: params.threadId,
         modelRef: params.model,
         messages: params.messages,
         stream: params.stream,

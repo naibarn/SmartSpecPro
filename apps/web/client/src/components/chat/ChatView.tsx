@@ -765,6 +765,7 @@ interface Attachment {
 
 interface ChatViewProps {
   conversationId: number | null;
+  threadId?: string | null;
   density?: "default" | "compact";
   showExecutionActivity?: boolean;
   composerPrompt?: { id: number; text: string } | null;
@@ -789,6 +790,7 @@ type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
 
 export function ChatView({
   conversationId,
+  threadId = null,
   density = "default",
   showExecutionActivity = true,
   composerPrompt,
@@ -837,6 +839,7 @@ export function ChatView({
   // Track when we last added a local message to prevent useEffect from overwriting
   const lastLocalAddTime = useRef<number>(0);
   const lastLocalAddConversationId = useRef<number | null>(conversationId);
+  const lastLocalAddThreadId = useRef<string | null>(threadId);
   const voiceAutoFallbackNoticeShown = useRef(false);
   const voiceLocalRuntimeFallbackNoticeShown = useRef(false);
   const activeLocalReplyAbortControllerRef = useRef<AbortController | null>(
@@ -851,18 +854,20 @@ export function ChatView({
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
   const messagesScrollRef = useRef<HTMLDivElement>(null);
-  const loadedOlderMessagesRef = useRef(new Map<number, Message[]>());
-  const olderMessagesAvailableRef = useRef(new Map<number, boolean>());
+  const loadedOlderMessagesRef = useRef(new Map<string, Message[]>());
+  const olderMessagesAvailableRef = useRef(new Map<string, boolean>());
   const pendingScrollRestoreRef = useRef<{
     scrollTop: number;
     scrollHeight: number;
   } | null>(null);
   const skipNextAutoScrollRef = useRef(false);
   const { user } = useAuth();
+  const messageScopeKey = conversationId ? `${conversationId}:${threadId ?? "main"}` : "";
   const [input, setInput] = useChatSessionDraft({
       tenantId: user?.currentTenantId,
       userId: user?.id,
       conversationId,
+      threadId,
     });
   const ocrOnlyModeStorageKey = useMemo(() => {
     const tenantId =
@@ -927,7 +932,7 @@ export function ChatView({
           sourceId: conversationId ? String(conversationId) : undefined,
           returnContext: conversationId
             ? {
-                path: `/chat?c=${conversationId}&browserSessionId=${encodeURIComponent(artifact.sessionId)}`,
+                path: `/chat?c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}&browserSessionId=${encodeURIComponent(artifact.sessionId)}`,
                 label: "Return to Chat",
               }
             : undefined,
@@ -935,15 +940,16 @@ export function ChatView({
       );
       window.location.href = path;
     },
-    [conversationId]
+    [conversationId, threadId]
   );
 
   const markLocalAdd = useCallback(
     (targetConversationId: number | null | undefined = conversationId) => {
       lastLocalAddTime.current = Date.now();
       lastLocalAddConversationId.current = targetConversationId ?? null;
+      lastLocalAddThreadId.current = threadId;
     },
-    [conversationId]
+    [conversationId, threadId]
   );
 
   const cancelActiveLocalReply = useCallback(() => {
@@ -964,26 +970,27 @@ export function ChatView({
     activeLocalReplyAbortControllerRef.current = null;
     lastLocalAddTime.current = 0;
     lastLocalAddConversationId.current = null;
+    lastLocalAddThreadId.current = null;
     setMessages(
-      conversationId
-        ? loadedOlderMessagesRef.current.get(conversationId) ?? []
+      messageScopeKey
+        ? loadedOlderMessagesRef.current.get(messageScopeKey) ?? []
         : []
     );
     setCanLoadOlderMessages(
-      conversationId
-        ? olderMessagesAvailableRef.current.get(conversationId) ?? false
+      messageScopeKey
+        ? olderMessagesAvailableRef.current.get(messageScopeKey) ?? false
         : false
     );
     pendingScrollRestoreRef.current = null;
     setStreamingContent("");
     setIsStreaming(false);
     setActiveLocalReplyKind(null);
-  }, [conversationId]);
+  }, [conversationId, threadId, messageScopeKey]);
 
   // Fetch messages
   const { data: messagesData, isLoading: loadingMessages } =
     trpc.chat.getMessages.useQuery(
-      { conversationId: conversationId!, limit: 100 },
+      { conversationId: conversationId!, threadId, limit: 100 },
       { enabled: !!conversationId }
     );
   const chatAutoModelSelectionEnabled = useTenantFeatureFlag(
@@ -1656,8 +1663,13 @@ export function ChatView({
   const sessionRuntimeControlDisabled =
     isStreaming || updateConversationMutation.isPending || !!fallbackRequest;
   // saveAssistantMessage for non-streaming flows (presentation, scheduling, etc.)
-  const saveAssistantMessageMutation =
+  const rawSaveAssistantMessageMutation =
     trpc.chat.saveAssistantMessage.useMutation();
+  const persistAssistantMessage = useCallback(
+    (input: Parameters<typeof rawSaveAssistantMessageMutation.mutateAsync>[0]) =>
+      rawSaveAssistantMessageMutation.mutateAsync({ ...input, threadId }),
+    [rawSaveAssistantMessageMutation.mutateAsync, threadId],
+  );
   const processMemoryMutation = trpc.memory.processMemory.useMutation();
   const markAllNotificationsReadMutation =
     trpc.scheduledMessages.markAllRead.useMutation({
@@ -3026,8 +3038,7 @@ export function ChatView({
 
       // Save to database so it persists across page reloads
       if (conversationId) {
-        saveAssistantMessageMutation
-          .mutateAsync({
+        persistAssistantMessage({
             conversationId,
             content: completionContent,
             skillUsed: "auto-draft-presentation",
@@ -3075,7 +3086,7 @@ export function ChatView({
     presentationProgressQuery.data,
     pendingPresentationTask,
     conversationId,
-    saveAssistantMessageMutation,
+    persistAssistantMessage,
   ]);
 
   // Lightbox state for viewing images
@@ -3250,7 +3261,7 @@ export function ChatView({
         lastLocalAddConversationId: lastLocalAddConversationId.current,
         lastLocalAddAt: lastLocalAddTime.current,
       });
-      if (shouldPreserveCurrentConversation) {
+      if (shouldPreserveCurrentConversation && lastLocalAddThreadId.current === threadId) {
         console.log("[ChatView] Skipping sync - recently added local message", {
           timeSinceLocalAdd,
           messagesDataLength: messagesData.length,
@@ -3262,25 +3273,25 @@ export function ChatView({
         serverLength: messagesData.length,
       });
       const serverMessages = messagesData as Message[];
-      const olderMessages = conversationId
-        ? loadedOlderMessagesRef.current.get(conversationId) ?? []
+      const olderMessages = messageScopeKey
+        ? loadedOlderMessagesRef.current.get(messageScopeKey) ?? []
         : [];
       setMessages(mergeChatMessages(olderMessages, serverMessages));
 
-      if (conversationId) {
+      if (messageScopeKey) {
         const hasOlderMessages = olderMessagesAvailableRef.current.has(
-          conversationId
+          messageScopeKey
         )
-          ? olderMessagesAvailableRef.current.get(conversationId) === true
+          ? olderMessagesAvailableRef.current.get(messageScopeKey) === true
           : serverMessages.length === 100;
         olderMessagesAvailableRef.current.set(
-          conversationId,
+          messageScopeKey,
           hasOlderMessages
         );
         setCanLoadOlderMessages(hasOlderMessages);
       }
     }
-  }, [conversationId, messagesData]);
+  }, [conversationId, threadId, messageScopeKey, messagesData]);
 
   const loadOlderMessages = useCallback(async () => {
     if (
@@ -3305,26 +3316,24 @@ export function ChatView({
     try {
       const olderPage = (await utils.chat.getMessages.fetch({
         conversationId,
+        threadId,
         limit: 100,
         beforeId: firstMessage.id,
       })) as Message[];
       if (olderPage.length === 0) {
         pendingScrollRestoreRef.current = null;
-        olderMessagesAvailableRef.current.set(conversationId, false);
+        olderMessagesAvailableRef.current.set(messageScopeKey, false);
         setCanLoadOlderMessages(false);
         return;
       }
 
       const allOlderMessages = mergeChatMessages(
-        loadedOlderMessagesRef.current.get(conversationId) ?? [],
+        loadedOlderMessagesRef.current.get(messageScopeKey) ?? [],
         olderPage
       );
-      loadedOlderMessagesRef.current.set(conversationId, allOlderMessages);
+      loadedOlderMessagesRef.current.set(messageScopeKey, allOlderMessages);
       const hasMoreOlderMessages = olderPage.length === 100;
-      olderMessagesAvailableRef.current.set(
-        conversationId,
-        hasMoreOlderMessages
-      );
+      olderMessagesAvailableRef.current.set(messageScopeKey, hasMoreOlderMessages);
       setCanLoadOlderMessages(hasMoreOlderMessages);
       setMessages(current => mergeChatMessages(olderPage, current));
     } catch (error) {
@@ -3799,6 +3808,7 @@ export function ChatView({
       messages: apiMessages,
       stream: true,
       conversationId,
+      threadId,
       skillUsed,
     };
     if (parsedSelection) {
@@ -3813,6 +3823,7 @@ export function ChatView({
     }
     const idempotencyKey = await createChatInferenceIdempotencyKey({
       conversationId,
+      threadId,
       userMessageId: userMessage.id,
       selection: parsedSelection,
     });
@@ -4184,6 +4195,7 @@ export function ChatView({
     // Save user message
     const userMessage = await sendMessageMutation.mutateAsync({
       conversationId,
+      threadId,
       content: typeof content === "string" ? content : JSON.stringify(content),
       attachments: messageAttachments.map(attachment => ({
         type: attachment.fileType.startsWith("image/")
@@ -4677,8 +4689,7 @@ export function ChatView({
             setPendingSchedule(scheduleParsed);
             const schedContent = `I detected a scheduled presentation request. Please confirm the schedule below.`;
             const schedSaved = conversationId
-              ? await saveAssistantMessageMutation
-                  .mutateAsync({
+              ? await persistAssistantMessage({
                     conversationId,
                     content: schedContent,
                     skillUsed: "chat-alert",
@@ -4777,8 +4788,7 @@ export function ChatView({
         // User provided trigger phrase but no meaningful topic
         const promptContent =
           'Please provide a topic for your presentation.\n\nExamples:\n- "สร้าง presentation เรื่อง Digital Marketing จำนวน 5 สไลด์"\n- "สร้าง presentation เรื่อง AI 10 slides ขนาด 16:9 ภาษาอังกฤษ"\n- "create presentation about AI in Healthcare 9:16 portrait"';
-        const saved = await saveAssistantMessageMutation
-          .mutateAsync({
+        const saved = await persistAssistantMessage({
             conversationId: conversationId!,
             content: promptContent,
           })
@@ -4837,8 +4847,7 @@ export function ChatView({
         ].join("\n");
 
         // Save to database so it persists across page reloads
-        const saved = await saveAssistantMessageMutation
-          .mutateAsync({
+        const saved = await persistAssistantMessage({
             conversationId: conversationId!,
             content: responseContent,
             skillUsed: "auto-draft-presentation",
@@ -4882,8 +4891,7 @@ export function ChatView({
           : `Could not create presentation: ${errMsg}`;
 
         // Save error message to database too
-        const saved = await saveAssistantMessageMutation
-          .mutateAsync({
+        const saved = await persistAssistantMessage({
             conversationId: conversationId!,
             content: errorContent,
             error: errMsg,
@@ -4926,8 +4934,7 @@ export function ChatView({
           // Add assistant message about the schedule and persist it
           const alertContent = `I detected a scheduling request. Please confirm the details below.`;
           const alertSaved = conversationId
-            ? await saveAssistantMessageMutation
-                .mutateAsync({
+            ? await persistAssistantMessage({
                   conversationId,
                   content: alertContent,
                   skillUsed: "chat-alert",
@@ -5032,8 +5039,7 @@ export function ChatView({
             .filter(Boolean)
             .join("\n\n");
 
-      const saved = await saveAssistantMessageMutation
-        .mutateAsync({
+      const saved = await persistAssistantMessage({
           conversationId: conversationId!,
           content: ocrContent,
           runtimeMetadata: {
@@ -5106,8 +5112,7 @@ export function ChatView({
     if (shouldFailClosedForGeneralLocalOnly && !canAttemptLocalGeneralReply) {
       const localOnlyMessage =
         "Local-only mode is enabled for chat, but this request cannot run through the current local text path. Remove attachments/library context, prepare a compatible local model, configure a local API backend, or switch back to auto / prefer_local.";
-      const saved = await saveAssistantMessageMutation
-        .mutateAsync({
+      const saved = await persistAssistantMessage({
           conversationId: conversationId!,
           content: localOnlyMessage,
           error: "local_only_general_chat_blocked",
@@ -5188,8 +5193,7 @@ export function ChatView({
       }
 
       if (localReply) {
-        const saved = await saveAssistantMessageMutation
-          .mutateAsync({
+        const saved = await persistAssistantMessage({
             conversationId: conversationId!,
             content: localReply.text,
             modelUsed: localReply.profileId,
@@ -5239,8 +5243,7 @@ export function ChatView({
       if (shouldFailClosedForGeneralLocalOnly) {
         const localOnlyMessage =
           buildLocalRuntimeFailureMessage(localReplyFailure);
-        const saved = await saveAssistantMessageMutation
-          .mutateAsync({
+        const saved = await persistAssistantMessage({
             conversationId: conversationId!,
             content: localOnlyMessage,
             error: "local_gemma4_general_reply_unavailable",
@@ -6565,6 +6568,7 @@ export function ChatView({
                         messages: fallbackRequest.originalMessages,
                         stream: true,
                         conversationId,
+                        threadId,
                         preferredProvider: providerId,
                       };
                       if (parsedSelection) {
@@ -6573,6 +6577,7 @@ export function ChatView({
                       const idempotencyKey =
                         await createChatInferenceIdempotencyKey({
                           conversationId,
+                          threadId,
                           userMessageId: lastUserMsg.id,
                           selection: parsedSelection,
                         });
@@ -6713,7 +6718,7 @@ export function ChatView({
             </>
           )}
           {showExecutionActivity ? (
-            <ConversationExecutionActivity conversationId={conversationId} />
+            <ConversationExecutionActivity conversationId={conversationId} threadId={threadId} />
           ) : null}
           <div ref={bottomRef} />
         </div>

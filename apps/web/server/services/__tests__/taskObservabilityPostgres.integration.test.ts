@@ -3,7 +3,7 @@ import { access } from "node:fs/promises";
 import postgres from "postgres";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  economicEvents, llmInferenceAttempts, llmInferencePlans, runnerExecutionSessions,
+  conversationThreads, conversations, economicEvents, llmInferenceAttempts, llmInferencePlans, runnerExecutionSessions,
   runnerExecutionSessionEvents, runnerNodes,
 } from "../../../drizzle/schema";
 import { closeDb, getDb } from "../../db";
@@ -21,6 +21,17 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
   const priorEnv = Object.fromEntries(["DATABASE_URL", "PGHOST", "PGPORT", "PGUSER", "PGPASSWORD"].map(key => [key, process.env[key]]));
   const owner = { tenantId: "read-tenant-a", userId: 7 };
   const projectId = "read-prerequisite-project";
+  const conversationId = 451;
+  const foreignConversationId = 452;
+  const legacyTenantlessConversationId = 453;
+  const threadId = randomUUID();
+  const foreignThreadId = randomUUID();
+  const legacyConversationThreadId = randomUUID();
+  const threadJobId = randomUUID();
+  const legacyConversationJobId = randomUUID();
+  const foreignConversationJobId = randomUUID();
+  const mismatchedThreadJobId = randomUUID();
+  const legacyTenantlessConversationJobId = randomUUID();
   const ids = Array.from({ length: 30 }, () => randomUUID());
   const foreignUserId = randomUUID();
   const foreignTenantId = randomUUID();
@@ -34,9 +45,19 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
     writer = postgres(fixture.databaseUrl, { max: 1, connect_timeout: 3 });
     await writer.unsafe("CREATE EXTENSION IF NOT EXISTS pgcrypto");
     await installSpec277AutoTeamRuntimeSchema(writer, [
+      conversations, conversationThreads,
       runnerNodes, runnerExecutionSessions, runnerExecutionSessionEvents,
       llmInferencePlans, llmInferenceAttempts, economicEvents,
     ]);
+    await writer`INSERT INTO conversations (id, "userId", "tenantId", title) VALUES
+      (${conversationId}, ${owner.userId}, ${owner.tenantId}, 'Authorized thread conversation'),
+      (${foreignConversationId}, 8, ${owner.tenantId}, 'Foreign thread conversation'),
+      (${legacyTenantlessConversationId}, ${owner.userId}, null, 'Legacy tenantless conversation')`;
+    await writer`INSERT INTO conversation_threads
+      (id, conversation_id, tenant_id, owner_user_id, title, idempotency_key) VALUES
+      (${threadId}, ${conversationId}, ${owner.tenantId}, ${owner.userId}, 'Child task', 'child-thread-idempotency'),
+      (${foreignThreadId}, ${foreignConversationId}, ${owner.tenantId}, 8, 'Foreign child task', 'foreign-thread-idempotency'),
+      (${legacyConversationThreadId}, ${legacyTenantlessConversationId}, null, ${owner.userId}, 'Legacy child task', 'legacy-child-thread-idempotency')`;
     for (const [index, id] of [...ids, foreignUserId, foreignTenantId].entries()) {
       await writer.unsafe(`INSERT INTO worker_jobs
         (id, "tenantId", "requestedByUserId", "runtimeType", "jobType", status,
@@ -46,6 +67,18 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
         id === foreignUserId ? 8 : owner.userId, { projectId, specId: "224" },
         new Date(Date.now() - 60_000 - index * 1000).toISOString()]);
     }
+    await writer`INSERT INTO worker_jobs
+      (id, "tenantId", "requestedByUserId", "runtimeType", "jobType", status,
+       "executionClass", "contractVersion", "inputJson") VALUES
+      (${threadJobId}, ${owner.tenantId}, ${owner.userId}, 'node_job_worker', 'test.thread_linked', 'queued', 'long', 'test-only', ${{ projectId: "conversation-thread-project" }}),
+      (${legacyConversationJobId}, ${owner.tenantId}, ${owner.userId}, 'node_job_worker', 'test.legacy_conversation', 'queued', 'long', 'test-only', ${{ conversationId }}),
+      (${foreignConversationJobId}, ${owner.tenantId}, ${owner.userId}, 'node_job_worker', 'test.foreign_thread', 'queued', 'long', 'test-only', ${{ projectId: "conversation-thread-project" }}),
+      (${mismatchedThreadJobId}, ${owner.tenantId}, ${owner.userId}, 'node_job_worker', 'test.mismatched_thread', 'queued', 'long', 'test-only', ${{ conversationId }}),
+      (${legacyTenantlessConversationJobId}, ${owner.tenantId}, ${owner.userId}, 'node_job_worker', 'test.legacy_tenantless_thread', 'queued', 'long', 'test-only', ${{ projectId: "legacy-thread-project" }})`;
+    await writer`UPDATE worker_jobs SET thread_id=${threadId} WHERE id=${threadJobId}`;
+    await writer`UPDATE worker_jobs SET thread_id=${foreignThreadId} WHERE id=${foreignConversationJobId}`;
+    await writer`UPDATE worker_jobs SET thread_id=${foreignThreadId} WHERE id=${mismatchedThreadJobId}`;
+    await writer`UPDATE worker_jobs SET thread_id=${legacyConversationThreadId} WHERE id=${legacyTenantlessConversationJobId}`;
     // Existing writer connection seeds/reassigns fixture rows. Every connection
     // opened by the real read service is enforced read-only by PostgreSQL.
     await writer.unsafe(`ALTER ROLE "${fixture.username}" SET default_transaction_read_only = on`);
@@ -105,6 +138,30 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
     }
     await expect(getTaskObservabilityDetail({ scope: { ...owner, isAdmin: true }, jobId: foreignTenantId }))
       .rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+  });
+
+  it("projects legacy and child-thread jobs into the authorized conversation without leaking another conversation", async () => {
+    const page = await listTaskObservability({ scope: owner, conversationId });
+    expect(page.items.map(item => item.id)).toContain(threadJobId);
+    expect(page.items.map(item => item.id)).toContain(legacyConversationJobId);
+    expect(page.items.map(item => item.id)).not.toContain(mismatchedThreadJobId);
+    expect(page.items).toHaveLength(2);
+    expect(page.items.find(item => item.id === threadJobId)?.threadId).toBe(threadId);
+    expect(page.items.find(item => item.id === threadJobId)?.conversationId).toBe(conversationId);
+    expect(page.items.find(item => item.id === legacyConversationJobId)?.conversationId).toBe(conversationId);
+    const mainThread = await listTaskObservability({ scope: owner, conversationId, threadId: null });
+    expect(mainThread.items.map(item => item.id)).toEqual([legacyConversationJobId]);
+    await expect(listTaskObservability({ scope: owner, conversationId: foreignConversationId }))
+      .rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+    await expect(listTaskObservability({ scope: owner, conversationId, threadId: foreignThreadId }))
+      .rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+    await expect(listTaskObservability({ scope: owner, threadId }))
+      .rejects.toMatchObject({ code: "SCOPE_REQUIRED" });
+    await expect(listTaskObservability({ scope: owner, threadId: null }))
+      .rejects.toMatchObject({ code: "SCOPE_REQUIRED" });
+    const legacyTenantless = await listTaskObservability({ scope: owner, conversationId: legacyTenantlessConversationId });
+    expect(legacyTenantless.items.map(item => item.id)).toEqual([legacyTenantlessConversationJobId]);
+    expect(legacyTenantless.items[0]?.conversationId).toBe(legacyTenantlessConversationId);
   });
 
   it("rechecks persisted ownership instead of restoring access from an older snapshot", async () => {

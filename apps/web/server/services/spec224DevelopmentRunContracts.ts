@@ -682,6 +682,8 @@ export function buildDevelopmentHarnessJob(input: {
   const spec224Input = input.run.metadata?.spec224Input;
   const spec224Execution = input.run.metadata?.spec224Execution;
   const spec224ModelSelection = input.run.metadata?.spec224ModelSelection;
+  const rawConversationId = input.run.metadata?.conversationId;
+  const rawChatThreadId = input.run.metadata?.chatThreadId;
   const manifest: AgentTaskManifest = {
     taskId: input.run.runId,
     tenantId: input.run.tenantId,
@@ -710,7 +712,20 @@ export function buildDevelopmentHarnessJob(input: {
       : {}),
     ...(input.policyBinding ? { policyBinding: input.policyBinding } : {}),
   };
-  return { manifest, definition: buildAgentJobDefinition(manifest) };
+  const definition = buildAgentJobDefinition(manifest);
+  return {
+    manifest,
+    definition: {
+      ...definition,
+      input: {
+        ...definition.input,
+        ...(typeof rawConversationId === "number" && Number.isSafeInteger(rawConversationId) && rawConversationId > 0
+          ? { conversationId: rawConversationId }
+          : {}),
+        ...(typeof rawChatThreadId === "string" ? { chatThreadId: rawChatThreadId } : {}),
+      },
+    },
+  };
 }
 
 export async function enqueueDevelopmentHarnessJob(input: {

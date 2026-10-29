@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
@@ -96,6 +96,7 @@ export default function Chat() {
   const [selectedConversationId, setSelectedConversationId] = useState<
     number | null
   >(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(
     () => window.innerWidth >= 1024
   );
@@ -131,10 +132,31 @@ export default function Chat() {
   >(null);
 
   const utils = trpc.useUtils();
+  const touchConversationThreadMutation = trpc.chat.touchConversationThread.useMutation({
+    onSuccess: (_result, variables) => {
+      utils.chat.listConversations.invalidate();
+      utils.chat.listConversationThreads.invalidate({ conversationId: variables.conversationId });
+    },
+  });
+  const lastTouchedChatScope = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !selectedConversationId) {
+      if (!selectedConversationId) lastTouchedChatScope.current = null;
+      return;
+    }
+    const scopeKey = `${selectedConversationId}:${selectedThreadId ?? "main"}`;
+    if (lastTouchedChatScope.current === scopeKey) return;
+    lastTouchedChatScope.current = scopeKey;
+    touchConversationThreadMutation.mutate({
+      conversationId: selectedConversationId,
+      threadId: selectedThreadId,
+    });
+  }, [isAuthenticated, selectedConversationId, selectedThreadId, touchConversationThreadMutation.mutate]);
 
   // Fetch messages to extract artifacts
   const { data: messagesData } = trpc.chat.getMessages.useQuery(
-    { conversationId: selectedConversationId!, limit: 100 },
+    { conversationId: selectedConversationId!, threadId: selectedThreadId, limit: 100 },
     { enabled: !!selectedConversationId }
   );
   const createLiveBrowserSessionMutation =
@@ -164,12 +186,11 @@ export default function Chat() {
 
     await saveAssistantMessageMutation.mutateAsync({
       conversationId: selectedConversationId,
+      threadId: selectedThreadId,
       content: message.content,
       artifacts: message.artifacts,
     });
-    utils.chat.getMessages.invalidate({
-      conversationId: selectedConversationId,
-    });
+    utils.chat.getMessages.invalidate({ conversationId: selectedConversationId, threadId: selectedThreadId });
   };
 
   const browserSessionArtifacts = useMemo(
@@ -237,12 +258,14 @@ export default function Chat() {
 
     const alertId = params.get("alertId");
     const conversationId = params.get("c");
+    const threadId = params.get("t");
     const browserSessionId = params.get("browserSessionId");
 
     if (panel === "control-plane" && view === "full") {
       setFullControlPlane(true);
       setRightPanel("control-plane");
       setSelectedConversationId(conversationId ? Number(conversationId) : null);
+      setSelectedThreadId(threadId);
       return;
     }
 
@@ -250,10 +273,10 @@ export default function Chat() {
 
     if (conversationId) {
       setSelectedConversationId(Number(conversationId));
+      setSelectedThreadId(threadId);
       if (browserSessionId) {
         setReturnBrowserSessionId(browserSessionId);
       }
-      window.history.replaceState({}, "", "/chat");
     } else if (dm) {
       setInitialDmUserId(Number(dm));
       setInitialDmUserName(dmName || "User");
@@ -285,7 +308,7 @@ export default function Chat() {
       originLabel: t("chat.browserSession"),
       sourceId: String(conversationId),
       returnContext: {
-        path: `/chat?c=${conversationId}&browserSessionId=${encodeURIComponent(sessionId)}`,
+        path: `/chat?c=${conversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}&browserSessionId=${encodeURIComponent(sessionId)}`,
         label: t("chat.browserSession.returnLabel"),
       },
     };
@@ -414,6 +437,7 @@ export default function Chat() {
   const createControlPlaneTaskConversation = async (title: string) => {
     const result = await createConversationWithDefaultModel(title);
     setSelectedConversationId(result.id);
+    setSelectedThreadId(null);
     setFullControlPlane(true);
     setRightPanel("control-plane");
     setLocation(`/chat?panel=control-plane&view=full&c=${result.id}`);
@@ -425,12 +449,22 @@ export default function Chat() {
     options?: { closeSidebar?: boolean }
   ) => {
     setSelectedConversationId(conversationId);
+    setSelectedThreadId(null);
     setChatPromptRequest(null);
     setRightPanel("none");
     setLocation(`/chat?c=${conversationId}`);
     if (options?.closeSidebar ?? window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
+  };
+
+  const activateThread = (conversationId: number, threadId: string | null) => {
+    setSelectedConversationId(conversationId);
+    setSelectedThreadId(threadId);
+    setChatPromptRequest(null);
+    setRightPanel("none");
+    setLocation(`/chat?c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`);
+    if (window.innerWidth < 1024) setSidebarOpen(false);
   };
 
   const ensureConversationId = async () => {
@@ -709,6 +743,7 @@ export default function Chat() {
     }
 
     setSelectedConversationId(result.id);
+    setSelectedThreadId(null);
     setLocation(`/chat?c=${result.id}`);
     // Open Memory panel so user can see the carried-over context
     setRightPanel("memory");
@@ -903,6 +938,8 @@ export default function Chat() {
         >
           <ChatSidebar
             selectedConversationId={selectedConversationId}
+            selectedThreadId={selectedThreadId}
+            onSelectThread={activateThread}
             onSelectConversation={id => {
               activateConversation(id, { closeSidebar: true });
               setSidebarOpen(false);
@@ -923,6 +960,8 @@ export default function Chat() {
           {sidebarOpen && (
             <ChatSidebar
               selectedConversationId={selectedConversationId}
+              selectedThreadId={selectedThreadId}
+              onSelectThread={activateThread}
               onSelectConversation={id =>
                 activateConversation(id, { closeSidebar: false })
               }
@@ -1071,6 +1110,7 @@ export default function Chat() {
               <div className="min-h-0 flex-1 overflow-hidden">
                 <ChatView
                   conversationId={selectedConversationId}
+                  threadId={selectedThreadId}
                   showExecutionActivity={!fullControlPlane && rightPanel !== "control-plane"}
                   onTitleUpdate={handleTitleUpdate}
                   browserSessionSuggestion={browserSessionSuggestion}
@@ -1221,13 +1261,14 @@ export default function Chat() {
           {rightPanel === "control-plane" && (
             <UniversalControlPlanePanel
               conversationId={selectedConversationId}
+              threadId={selectedThreadId}
               fullPage={fullControlPlane}
               onCreateConversation={createControlPlaneTaskConversation}
               onClose={() => {
                 if (fullControlPlane) {
                   setFullControlPlane(false);
                   setRightPanel("none");
-                  setLocation(selectedConversationId ? `/chat?c=${selectedConversationId}` : "/chat");
+                  setLocation(selectedConversationId ? `/chat?c=${selectedConversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}` : "/chat");
                 } else {
                   setRightPanel("none");
                 }
@@ -1240,6 +1281,7 @@ export default function Chat() {
             <SchedulePanel
               onNavigateToChat={id => {
                 setSelectedConversationId(id);
+                setSelectedThreadId(null);
                 setRightPanel("none");
               }}
               initialDmUserId={initialDmUserId}

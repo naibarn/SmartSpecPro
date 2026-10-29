@@ -6280,3 +6280,16 @@ Additive normative scope: [SAH-UWAC R0.6](../294-SmartAIHub-Development-Mission-
 - REQ-198-UWAC-02: Chat task tracking and conversions MUST consume canonical work/projection references and current permissions; agent commands MUST use SPEC-279 and user/client actions their existing SPEC-226/220 domain authority. Duplicate submissions MUST reuse canonical idempotency; no client-supplied tenant/context elevation or new Chat execution engine.
 
 Acceptance coverage: `UW-01 UW-02 UW-05 UW-25 UW-28 UW-29` in the shared scenario catalog. Execute the relevant positive, negative and recovery cases against an authorized target; attach source/revision, environment, policy scope, observed result, evidence references and timestamp through the existing HandOff. All newly specified behavior remains OPEN/UNVERIFIED until its own evidence is recorded; previous live blockers and accepted evidence retain their scope.
+
+# 2026-10-29 — Conversation Thread navigation and grounded work links
+
+This additive Chat contract adopts the shared [Unified Thread Overview contract](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-thread-overview-r01.md). Chat owns conversation/thread navigation and messages; it consumes canonical Job/Run status and evidence. A Thread is not an execution identity or a new work ledger.
+
+- REQ-198-THR-01: The existing Chat MUST preserve a legacy/main conversation and allow an authorized user to create, reopen and continue a persisted child Thread within that Conversation. Selecting or closing a Thread MUST NOT create, cancel or duplicate a Job/Run. Drafts, messages, idempotency and deep links MUST remain scoped to the selected tenant, user, Conversation and Thread.
+- REQ-198-THR-02: Chat MUST present only source-backed execution status and link to the exact canonical work item. It MUST not infer that text, an assistant response, process exit or nonempty metadata is a verified result; unavailable or unverified evidence remains explicit.
+
+Focused acceptance covers legacy conversation reads, child-thread create/reopen, duplicate submission, tenant isolation, exact Task Control navigation and grounded result evidence. Global project grouping and a full Thread Inspector remain separate UI acceptance items.
+
+## 2026-10-29 — Cross-session Thread navigation implementation slice
+
+The existing Chat sidebar now has additive Sessions/Threads navigation. Threads reads are owner/tenant scoped across the caller's non-trashed conversations, use a signed filter-bound keyset cursor, derive status from the latest canonical Job, and reopen the exact source conversation/thread. A row with a current linked Job can deep-link to the existing Task Control monitor with conversation/thread filters. This is not acceptance of the full Project/Agent/Device overview: global project grouping, harness/runner filtering, the multi-pane Inspector, final result delivery into the main transcript, and Mission Control parity remain open.

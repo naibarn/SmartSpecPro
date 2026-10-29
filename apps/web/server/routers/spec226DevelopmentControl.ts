@@ -48,6 +48,7 @@ import { buildSpec224GoalGrantApprovalPayload, requestSpec224GoalGrantApproval }
 import { resolveSpec224ModelSelection } from "../services/spec224ModelSelection";
 import { db, getDb } from "../db";
 import { readSpec224GoalBudgetStatus } from "../services/economicProvisioningService";
+import { assertConversationThreadScope, ConversationThreadError, touchConversationThread } from "../services/conversationThreadService";
 
 const developmentRunService = createDevelopmentRunService(
   defaultDevelopmentRunPersistenceAdapter
@@ -910,6 +911,7 @@ export const spec226DevelopmentControlRouter = router({
   startWorkspaceRun: protectedProcedure
     .input(z.object({
       conversationId: z.number().int().positive(),
+      threadId: z.string().uuid().optional(),
       mode: z.enum(["prompt", "spec_set"]),
       factoryMode: z.boolean().default(false),
       appId: z.string().trim().regex(/^app_[A-Za-z0-9_-]{1,120}$/).optional(),
@@ -951,12 +953,32 @@ export const spec226DevelopmentControlRouter = router({
       const scope = requireScope(ctx);
       const traceId = auditLogger.createTrace();
       const runDigest = createHash("sha256")
-        .update(`${scope.tenantId}:${scope.actorId}:${input.idempotencyKey}`, "utf8")
+        .update(input.threadId
+          ? `${scope.tenantId}:${scope.actorId}:${input.threadId}:${input.idempotencyKey}`
+          : `${scope.tenantId}:${scope.actorId}:${input.idempotencyKey}`, "utf8")
         .digest("hex")
         .slice(0, 40);
       const runId = `run-${runDigest}`;
       const goalId = `${runDigest.slice(0, 8)}-${runDigest.slice(8, 12)}-4${runDigest.slice(13, 16)}-a${runDigest.slice(17, 20)}-${runDigest.slice(20, 32)}`;
       try {
+        if (input.threadId) {
+          try {
+            await assertConversationThreadScope({
+              conversationId: input.conversationId,
+              threadId: input.threadId,
+              userId: scope.actorId,
+              tenantId: scope.tenantId,
+            });
+          } catch (error) {
+            if (error instanceof ConversationThreadError) {
+              throw new TRPCError({
+                code: error.code === "THREAD_SCOPE_MISMATCH" ? "FORBIDDEN" : "NOT_FOUND",
+                message: error.code,
+              });
+            }
+            throw error;
+          }
+        }
         if (input.factoryMode) {
           if (input.mode !== "prompt" || !input.prompt?.trim()) throw new Error("PERSONAL_MINIAPP_PROMPT_REQUIRED");
           const factoryPipeline = loadMiniAppFactoryPipeline();
@@ -1024,6 +1046,7 @@ export const spec226DevelopmentControlRouter = router({
             metadata: {
               [MINI_APP_FACTORY_STATE_KEY]: factoryState,
               conversationId: input.conversationId,
+              ...(input.threadId ? { chatThreadId: input.threadId } : {}),
               ...(previousFactory?.runId ? { miniAppPreviousRunId: previousFactory.runId } : {}),
             },
           });
@@ -1077,6 +1100,7 @@ export const spec226DevelopmentControlRouter = router({
             userId: scope.actorId,
             metadata: { runId, jobId: firstStage.jobId, status: firstStage.state, profile: "PERSONAL_MINIAPP", appId: miniAppIdentity.appId, ...(stageEnqueueFailureCode ? { stageEnqueueFailureCode } : {}) },
           });
+          if (input.threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId: input.threadId });
           return {
             runId,
             jobId: firstStage.jobId,
@@ -1109,6 +1133,7 @@ export const spec226DevelopmentControlRouter = router({
         const harnessAdapterId = provider === "codex" ? "codex.v1" : "microsoft-copilot.v1";
         const requestDigest = createHash("sha256").update(JSON.stringify({
           conversationId: input.conversationId, mode: input.mode, prompt: input.prompt ?? null,
+          ...(input.threadId ? { chatThreadId: input.threadId } : {}),
           writeScope: input.writeScope ?? null,
           workspaceAccessMode: input.workspaceAccessMode ?? null,
           ...(input.additionalInstructions === undefined ? {} : { additionalInstructions: input.additionalInstructions }),
@@ -1135,6 +1160,7 @@ export const spec226DevelopmentControlRouter = router({
               runnerId: binding.workspace.runnerId, budgetCapMinorUnits: input.budgetCapMinorUnits });
           const source = existing.run.metadata?.spec224Input as { inputDigest: string };
           const workspace = existing.run.metadata?.spec224Workspace as { specSetRevision: number | null; workPackageId: string | null };
+          if (input.threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId: input.threadId });
           return { runId, jobId: existing.run.workerJobId, state: existing.run.state,
             dispatchStatus: ["READY_FOR_LIVE", "READY_FOR_DELEGATION"].includes(authorization.status) ? "ENQUEUED" as const
               : ["GOAL_APPROVAL_PENDING", "APPROVAL_REQUIRED", "BUDGET_REQUIRED"].includes(authorization.status) ? "PENDING_AUTHORIZATION" as const : "BLOCKED" as const,
@@ -1348,6 +1374,8 @@ export const spec226DevelopmentControlRouter = router({
               },
             } : {}),
             spec224Workspace: runContext,
+            conversationId: input.conversationId,
+            ...(input.threadId ? { chatThreadId: input.threadId } : {}),
             spec224Input: {
               inputSourceRef: stagedSource.inputSourceRef,
               inputDigest: stagedSource.inputDigest,
@@ -1419,6 +1447,7 @@ export const spec226DevelopmentControlRouter = router({
             ...(factoryStageDocument ? { factoryStageRunId: runId, factoryStageId: firstFactoryStage?.id } : {}),
           },
         });
+        if (input.threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId: input.threadId });
         return {
           runId,
           jobId: created.jobRef.jobId,
@@ -1495,6 +1524,8 @@ export const spec226DevelopmentControlRouter = router({
             reasons: "authorization" in goalAdmission ? goalAdmission.authorization.reasons : [],
             workspaceId: record.run.workspaceId, budgetCapMinorUnits: input.budgetCapMinorUnits },
         });
+        const threadId = typeof record.run.metadata?.chatThreadId === "string" ? record.run.metadata.chatThreadId : null;
+        if (threadId) await touchConversationThread({ ...scope, conversationId: input.conversationId, threadId });
         return { runId: input.runId, jobId: record.run.workerJobId, state: record.run.state,
           dispatchStatus, authorization: goalAdmission, goalAdmissionStatus: goalAdmission.status, resumedExistingRun: true };
       } catch (error) {

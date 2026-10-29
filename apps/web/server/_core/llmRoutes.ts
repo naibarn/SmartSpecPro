@@ -2317,7 +2317,8 @@ async function proxyChatWithCredits(
   mode: "stream" | "json",
   userId: number,
   conversationId?: number,
-  skillUsed?: string
+  skillUsed?: string,
+  threadId?: string,
 ) {
   debugLog("LLM", "proxyChatWithCredits called", { mode, userId, conversationId, skillUsed });
   const requestStartedAt = Date.now();
@@ -2821,6 +2822,7 @@ async function proxyChatWithCredits(
 
             await createMessage({
               conversationId,
+              threadId,
               role: "assistant",
               content: fullContent,
               inputTokens,
@@ -3477,6 +3479,30 @@ function estimateDelegatedChatCredits(
   );
 }
 
+async function resolveAuthorizedThreadId(
+  req: Request,
+  conversationId: number | undefined,
+  userId: number,
+): Promise<string | undefined> {
+  const rawThreadId = req.body?.threadId;
+  if (rawThreadId == null || rawThreadId === "") return undefined;
+  if (
+    typeof rawThreadId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawThreadId) ||
+    !conversationId
+  ) {
+    throw new Error("CHAT_THREAD_SCOPE_INVALID");
+  }
+  const { assertConversationThreadScope } = await import("../services/conversationThreadService");
+  await assertConversationThreadScope({
+    conversationId,
+    userId,
+    tenantId: String((req as any).tenantId || "default"),
+    threadId: rawThreadId,
+  });
+  return rawThreadId;
+}
+
 export function registerLLMRoutes(app: Express) {
   const handleManagedMediaDownload = async (req: Request, res: Response) => {
     try {
@@ -3781,6 +3807,13 @@ export function registerLLMRoutes(app: Express) {
       // Extract conversationId and skillUsed from request body for server-side message saving
       const conversationId = req.body?.conversationId ? Number(req.body.conversationId) : undefined;
       const skillUsed = req.body?.skillUsed;
+      let threadId: string | undefined;
+      try {
+        if (authenticatedUserId) threadId = await resolveAuthorizedThreadId(req, conversationId, authenticatedUserId);
+      } catch {
+        res.status(404).json({ error: { code: "CHAT_THREAD_NOT_FOUND", message: "Chat thread is unavailable" } });
+        return;
+      }
 
       debugLog("LLM", "Stream request", { conversationId, skillUsed, userId: authenticatedUserId });
 
@@ -3795,6 +3828,7 @@ export function registerLLMRoutes(app: Express) {
             tenantId: (req as any).tenantId || "default",
             userId: authenticatedUserId,
             idempotencyKey: chatIdempotencyKey,
+            threadId,
           });
           if (savedMessage) {
             replaySavedAssistantSse(res, savedMessage);
@@ -3991,6 +4025,7 @@ export function registerLLMRoutes(app: Express) {
             userId: check.userId,
             tenantId: (req as any).tenantId || "default",
             conversationId,
+            threadId,
             preferredProvider: req.body?.preferredProvider
               ? Number(req.body.preferredProvider)
               : undefined,
@@ -4004,7 +4039,7 @@ export function registerLLMRoutes(app: Express) {
           });
           return;
         }
-        await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed);
+        await proxyChatWithCredits(req, res, "stream", check.userId, conversationId, skillUsed, threadId);
       } catch (err: any) {
         if (err instanceof DelegatedWorkerPlatformError) {
           respondDelegatedWorkerPlatformError(res, err);
@@ -4301,6 +4336,12 @@ export function registerLLMRoutes(app: Express) {
         if (!conversation) {
           return res.status(404).json({ error: { message: "Conversation not found" } });
         }
+        let authorizedThreadId: string | undefined;
+        try {
+          authorizedThreadId = await resolveAuthorizedThreadId(req, conversationId, userId);
+        } catch {
+          return res.status(404).json({ error: { code: "CHAT_THREAD_NOT_FOUND", message: "Chat thread is unavailable" } });
+        }
 
         const effectiveModel = modelUsed || conversation.model || undefined;
         const creditsUsed = calculateCreditsForLLM(inputTokens || 0, outputTokens || 0, effectiveModel);
@@ -4310,6 +4351,7 @@ export function registerLLMRoutes(app: Express) {
 
         const message = await createMessage({
           conversationId,
+          ...(authorizedThreadId ? { threadId: authorizedThreadId } : {}),
           role: "assistant",
           content,
           inputTokens: inputTokens || 0,
@@ -4383,6 +4425,12 @@ export function registerLLMRoutes(app: Express) {
           debugLog("Chat API", "Conversation not found");
           return res.status(404).json({ error: { message: "Conversation not found" } });
         }
+        let authorizedThreadId: string | undefined;
+        try {
+          authorizedThreadId = await resolveAuthorizedThreadId(req, Number(conversationId), userId);
+        } catch {
+          return res.status(404).json({ error: { code: "CHAT_THREAD_NOT_FOUND", message: "Chat thread is unavailable" } });
+        }
 
         // Calculate credits for tracking (use actual model for accurate cost)
         const effectiveModel = modelUsed || conversation.model || undefined;
@@ -4396,6 +4444,7 @@ export function registerLLMRoutes(app: Express) {
         // Create assistant message
         const message = await createMessage({
           conversationId,
+          ...(authorizedThreadId ? { threadId: authorizedThreadId } : {}),
           role: "assistant",
           content,
           inputTokens: inputTokens || 0,
@@ -4452,13 +4501,23 @@ export function registerLLMRoutes(app: Express) {
       const check = await guardWithCredits(req, res);
       if (!check.ok) return;
 
+      const conversationId = req.body?.conversationId ? Number(req.body.conversationId) : undefined;
+      let threadId: string | undefined;
+      try {
+        threadId = await resolveAuthorizedThreadId(req, conversationId, check.userId);
+      } catch {
+        res.status(404).json({ error: { code: "CHAT_THREAD_NOT_FOUND", message: "Chat thread is unavailable" } });
+        return;
+      }
+
       try {
         await handleChatWithRouter({
           model: req.body?.model,
           messages: req.body?.messages || [],
           userId: check.userId,
           tenantId: (req as any).tenantId || "default",
-          conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
+          conversationId,
+          threadId,
           preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
           modelSelection: req.body?.modelSelection,
           modelSelectionContext: req.body?.modelSelectionContext,
@@ -4518,6 +4577,18 @@ export function registerLLMRoutes(app: Express) {
       const check = await guardWithCredits(req, res);
       if (!check.ok) return;
 
+      let threadId: string | undefined;
+      try {
+        threadId = await resolveAuthorizedThreadId(
+          req,
+          req.body?.conversationId ? Number(req.body.conversationId) : undefined,
+          check.userId,
+        );
+      } catch {
+        res.status(404).json({ error: { code: "CHAT_THREAD_NOT_FOUND", message: "Chat thread is unavailable" } });
+        return;
+      }
+
       try {
         await handleStreamWithRouter({
           model: req.body?.model,
@@ -4525,6 +4596,7 @@ export function registerLLMRoutes(app: Express) {
           userId: check.userId,
           tenantId: (req as any).tenantId || "default",
           conversationId: req.body?.conversationId ? Number(req.body.conversationId) : undefined,
+          threadId,
           preferredProvider: req.body?.preferredProvider ? Number(req.body.preferredProvider) : undefined,
           modelSelection: req.body?.modelSelection,
           modelSelectionContext: req.body?.modelSelectionContext,

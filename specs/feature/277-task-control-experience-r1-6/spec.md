@@ -3610,3 +3610,17 @@ Simple/User mode MUST omit platform-engineering repository identities, repositor
 ## Work-first primary route completion — 2026-10-27
 
 - REQ-277-UWAC-03: The existing `/chat?panel=control-plane&view=full` route MUST present the current authorized Work Context, attention and next actions, running and waiting work, recently completed work, observed activity and source-backed verified deliverables before contextual development configuration. A single clear entry MUST start or continue work. CHAT, WORK, SKILLS and DEVELOP MUST use their existing authorities; ordinary chat and non-Git work MUST NOT create a DevelopmentRun. Simple and Developer views MUST preserve the same scoped execution facts and MUST NOT mutate work when switched. Simple view MUST omit technical identifiers and protected diagnostics; unavailable goals, activity or verification MUST remain explicitly unknown.
+
+## 2026-10-29 — Unified Thread Overview integration
+
+Task Control consumes the additive [Unified Thread Overview contract](../294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/unified-thread-overview-r01.md). It remains the owner of exact Job/Run/Attempt inspection and operational actions; a Chat Thread is an origin/navigation reference, not a control-plane identity.
+
+- REQ-277-THR-01: When an authorized canonical Job is bound to a Chat conversation/thread, the Task Control projection MUST return the verified originating conversation and thread references and MUST link back to that exact Chat context. Legacy conversation jobs without a persisted thread remain linkable to the main conversation only after current owner and tenant validation.
+- REQ-277-THR-02: Conversation/thread filters MUST be enforced server-side, reauthorize current ownership on every page, and bind pagination cursors to tenant, principal, conversation, thread and other filters. Unmatched or conflicting job/thread/conversation identities MUST be omitted or rejected; expired or mismatched cursors MUST fail closed.
+- REQ-277-THR-03: Thread labels are display projections of canonical Job state. Missing result/evidence, freshness or supported action MUST remain UNKNOWN/STALE/UNAVAILABLE; Task Control MUST NOT treat arbitrary metadata, process exit or a thread label as proof of completion or reviewable output.
+
+This slice's acceptance is limited to the authenticated Task Control read model, exact Chat backlink and focused SQL/UI regressions. Full global Thread Overview, Mission Control UI parity, immutable multi-source replay, hosted/browser acceptance and live SPEC-224 execution remain independently open until evidenced through the canonical handoff.
+
+## 2026-10-29 — Chat Thread overview backlink
+
+Chat now offers a cross-conversation Thread navigation view backed by its owner/tenant-scoped read API, and links a Thread with a current Job to the existing `/agent-monitor` Task Control view using the exact conversation/thread scope. Task Control remains authoritative for Job/Run/Attempt evidence and revalidates scope on read. This does not add a Task Control global Thread directory or change its approval, lease, budget, or execution actions; those remain separate open acceptance.

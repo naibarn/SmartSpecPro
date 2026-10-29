@@ -4075,3 +4075,17 @@ Mission Control and Chat projections MUST preserve SPEC-293 ownership provenance
 ## Live Work observation completion — 2026-10-27
 
 - REQ-294-UWAC-03: The existing authorized Work observation contract MUST provide source-linked activity for jobs, attempts, sessions and supported harnesses, with deterministic ordering and deduplication, bounded durable replay after reconnect, observation time, freshness and coverage. Process/session liveness, job status, progress, stop/blocker reasons and verified outputs MUST remain distinct. Missing producer fields or evidence MUST be reported as unknown or unavailable; observation failures MUST NOT alter or interrupt execution. Explicit provider selection MUST be shown as selected or unavailable without inventing a successful substitution.
+
+## 2026-10-29 — Unified Thread Overview correlation
+
+Additive correlation requirements are defined in [Unified Thread Overview R01](amendments/unified-thread-overview-r01.md). SPEC-294 owns cross-project/agent/host correlation and the Mission Control consumer; it does not acquire Chat message ownership or Job/Run execution authority.
+
+- REQ-294-THR-01: The Mission Control projection SHOULD correlate a verified conversation/thread reference with the same canonical Job/Run/Attempt identity used by Chat and Task Control, preserving project, host, agent, harness, model, Runner, workspace, source-health, as-of and evidence provenance when those facts are authorized and available.
+- REQ-294-THR-02: Cross-project thread listing, grouping, filters and pagination MUST reuse the existing authorization-scoped Mission/Task projection and its snapshot/cursor contract. It MUST NOT introduce a separate mission scheduler, Job ledger, event store, approval authority or mutable thread status.
+- REQ-294-THR-03: Mission Control MUST preserve current tenant/project authorization when following Chat and Task Control deep links. Unknown host/provider/session identity and missing replay/evidence remain explicitly unknown or unavailable; a correlated display row is not evidence that a runtime is deployed or a Goal completed.
+
+This amendment documents the cross-surface contract; it does not close the currently absent global Mission Control Thread Overview UI, immutable cross-source replay, hosted browser parity or real SPEC-224 live execution. Those acceptance items remain OPEN/UNVERIFIED in the canonical handoff.
+
+## 2026-10-29 — Chat cross-session Thread projection consumer
+
+Chat's sidebar now consumes an owner/tenant-scoped, signed-cursor Thread overview across that owner's conversations and derives status from canonical Job state. Linked Jobs navigate to the existing Task Control projection using the same conversation/thread identity. This is a Chat consumer and does not implement Mission Control's cross-project/agent/host projection or event replay; those Mission Control requirements remain OPEN and must continue to use SPEC-294's authorized projection contract.

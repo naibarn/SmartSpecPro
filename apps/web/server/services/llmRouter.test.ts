@@ -91,6 +91,19 @@ describe("Worker Local LLM idempotency", () => {
     expect(second).toMatch(/^conversation:42:/);
     expect(second).not.toBe(first);
   });
+
+  it("keeps main-chat identity stable while isolating child-thread submissions", () => {
+    const base = {
+      conversationId: 42,
+      model: "wllm_12345678",
+      stream: false,
+      messages: [{ role: "user", content: "same request" }],
+    } as const;
+    const main = makeWorkerLlmIdempotencyKey(base);
+    const child = makeWorkerLlmIdempotencyKey({ ...base, threadId: "8b72ea6d-6b75-4922-9b75-c633762a4c11" });
+    expect(makeWorkerLlmIdempotencyKey({ ...base, threadId: undefined })).toBe(main);
+    expect(child).not.toBe(main);
+  });
 });
 
 function mockProviderRows(rows: any[]) {

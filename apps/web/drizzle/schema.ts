@@ -3076,6 +3076,49 @@ export const conversations = pgTable(
 export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = typeof conversations.$inferInsert;
 
+/** Durable chat work threads within a conversation. Legacy messages remain on
+ * the conversation's implicit main thread until explicitly associated. */
+export const conversationThreads = pgTable(
+  "conversation_threads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    conversationId: integer("conversation_id")
+      .notNull()
+      .references(() => conversations.id, { onDelete: "cascade" }),
+    tenantId: varchar("tenant_id", { length: 36 })
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    ownerUserId: integer("owner_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentThreadId: uuid("parent_thread_id"),
+    title: varchar("title", { length: 160 }).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 160 }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  t => [
+    uniqueIndex("conversation_threads_owner_idempotency_unique").on(
+      t.conversationId,
+      t.ownerUserId,
+      t.idempotencyKey,
+    ),
+    index("conversation_threads_activity_idx").on(
+      t.conversationId,
+      t.lastActivityAt,
+    ),
+    foreignKey({ columns: [t.parentThreadId], foreignColumns: [t.id] })
+      .onDelete("set null"),
+    check("conversation_threads_parent_not_self_check", sql`${t.parentThreadId} IS NULL OR ${t.parentThreadId} <> ${t.id}`),
+  ],
+);
+
+export type ConversationThread = typeof conversationThreads.$inferSelect;
+export type InsertConversationThread = typeof conversationThreads.$inferInsert;
+
 /**
  * Chat Messages - Individual messages within a conversation
  * Supports multi-modal content (text, images, videos) and artifacts
@@ -3089,6 +3132,11 @@ export const messages = pgTable(
     conversationId: integer("conversationId")
       .notNull()
       .references(() => conversations.id, { onDelete: "cascade" }),
+
+    /** Null denotes the legacy/main conversation thread. */
+    threadId: uuid("thread_id").references(() => conversationThreads.id, {
+      onDelete: "set null",
+    }),
 
     /** Message role: user, assistant, or system */
     role: messageRoleEnum("role").notNull(),
@@ -3193,6 +3241,7 @@ export const messages = pgTable(
       .notNull(),
   },
   t => [
+    index("messages_thread_id_idx").on(t.threadId),
     index("messages_created_at_idx").on(t.createdAt),
     index("messages_conversation_created_idx").on(
       t.conversationId,
@@ -17022,6 +17071,10 @@ export const workerJobs = pgTable(
     workerSeriesBindingRevision: integer("workerSeriesBindingRevision"),
     runtimeType: workerRuntimeTypeEnum("runtimeType").notNull(),
     workflowRunId: varchar("workflowRunId", { length: 36 }),
+    /** Canonical chat thread association when the job was started from Chat. */
+    threadId: uuid("thread_id").references(() => conversationThreads.id, {
+      onDelete: "set null",
+    }),
     requestedByUserId: integer("requestedByUserId").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -17109,6 +17162,7 @@ export const workerJobs = pgTable(
       t.priority
     ),
     index("worker_jobs_worker_status_idx").on(t.workerId, t.status),
+    index("worker_jobs_thread_created_idx").on(t.threadId, t.createdAt, t.id),
     index("worker_jobs_lease_expires_idx").on(t.leaseExpiresAt),
     index("worker_jobs_due_retry_idx").on(t.status, t.nextRetryAt),
     index("worker_jobs_admission_tenant_class_status_idx")

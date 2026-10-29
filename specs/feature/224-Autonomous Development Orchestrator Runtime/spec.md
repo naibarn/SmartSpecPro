@@ -17451,3 +17451,16 @@ second approval authority, job ledger, identity, or secret store.
 - [ ] Production migration acceptance proves the actual database receipt/schema,
   authenticated RPCs, Runner, Workspace Binding, and live UI separately; local
   or synthetic checks are never presented as production E2E evidence.
+
+## 2026-10-29 — Chat Thread origin correlation (additive)
+
+SPEC-224 may carry the authenticated originating `conversationId` and optional
+`chatThreadId` through existing DevelopmentRun and canonical worker-job
+metadata so Chat, Task Control and Mission Control can return to the same work.
+This is only correlation/navigation metadata: it MUST NOT change Goal Grant,
+Budget, phase, Child Job/Attempt, Writer Lease/Fencing, Outbox, receipt,
+settlement, recovery or Independent Final Verify semantics. A Chat Thread is
+not a DevelopmentRun, execution lease, harness session or authorization grant.
+The identity MUST be resolved against the authenticated owner, tenant and
+conversation on every read/write path; absent/legacy bindings remain absent and
+must not be guessed. Existing SPEC-224 live acceptance remains a separate gate.

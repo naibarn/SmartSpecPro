@@ -5,6 +5,7 @@ type ChatInferenceSelection =
 
 export async function createChatInferenceIdempotencyKey(input: {
   conversationId: string | number;
+  threadId?: string | null;
   userMessageId: string | number;
   selection: ChatInferenceSelection | null;
 }): Promise<string | null> {
@@ -28,6 +29,7 @@ export async function createChatInferenceIdempotencyKey(input: {
   const payload = JSON.stringify({
     contract: "SAH-CHAT-INFERENCE-IDEMPOTENCY-1",
     conversationId: String(input.conversationId),
+    ...(input.threadId ? { threadId: input.threadId } : {}),
     userMessageId: String(input.userMessageId),
     selection: stableSelection,
   });

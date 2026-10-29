@@ -30,6 +30,7 @@ import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 
 export interface UniversalControlPlanePanelProps {
   conversationId: number | null;
+  threadId?: string | null;
   onClose: () => void;
   onOpenPrompt: (prompt: string) => void;
   onCreateConversation?: (title: string) => Promise<number>;
@@ -320,6 +321,7 @@ function SummaryMetric({
 
 export function UniversalControlPlanePanel({
   conversationId,
+  threadId = null,
   onClose,
   onOpenPrompt,
   onCreateConversation,
@@ -357,7 +359,7 @@ export function UniversalControlPlanePanel({
   const [developerEventsJobId, setDeveloperEventsJobId] = useState<string | null>(null);
   const trpcUtils = trpc.useUtils();
   const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
-    conversationId ? { conversationId } : {},
+    conversationId ? { conversationId, threadId } : {},
     { enabled: Boolean(conversationId) || fullPage, staleTime: 15_000, refetchInterval: 15_000, refetchIntervalInBackground: false, retry: false }
   );
   const taskProjectionToken = taskObservabilityQuery.data?.snapshot.projectionToken;
@@ -410,6 +412,7 @@ export function UniversalControlPlanePanel({
   }, [developerExecutionEventsQuery.data, latestConversationJob?.id, developerEventCursor]);
   const taskMonitorParams = new URLSearchParams();
   if (conversationId) taskMonitorParams.set("conversationId", String(conversationId));
+  if (conversationId) taskMonitorParams.set("threadId", threadId ?? "main");
   if (taskProjectionToken) taskMonitorParams.set("projectionToken", taskProjectionToken);
   const taskMonitorHref = conversationId || fullPage ? `/agent-monitor${taskMonitorParams.size ? `?${taskMonitorParams}` : ""}` : "";
   const summaryQuery = trpc.workerJobs.dashboardSummary.useQuery(undefined, {
@@ -894,7 +897,7 @@ export function UniversalControlPlanePanel({
           </Button>
           {!fullPage ? (
             <Link
-              href={`/chat?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}`}
+              href={`/chat?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm hover:bg-accent"
@@ -974,7 +977,8 @@ export function UniversalControlPlanePanel({
 
       <section className="px-4 pb-24 pt-4">
         <Spec224WorkspacePanel
-          conversationId={conversationId}
+              conversationId={conversationId}
+              threadId={threadId}
           simpleMode={fullPage && runnerViewMode === "simple"}
           onCreateConversation={onCreateConversation}
         />

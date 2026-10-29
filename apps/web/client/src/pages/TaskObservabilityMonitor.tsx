@@ -9,6 +9,7 @@ import { Section } from "@astryxdesign/core/Section";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
+import { Link } from "@astryxdesign/core/Link";
 import { trpc } from "@/lib/trpc";
 import { TaskAcceptanceEvidence } from "@/components/task-control/TaskAcceptanceEvidence";
 import { formatVerifiedPercentLabel } from "@shared/taskAcceptanceProjection";
@@ -18,6 +19,11 @@ const tokenLabel = (value: number | null): string => value === null ? "Unknown" 
 const simpleStatusLabels: Record<string, string> = { running: "In progress", queued: "Waiting to start", completed: "Completed", failed: "Needs attention", cancelled: "Cancelled", waiting_approval: "Waiting for your review", retry_scheduled: "Retry scheduled" };
 const simpleStatusLabel = (status: string): string => simpleStatusLabels[status] ?? status.replaceAll("_", " ");
 const simpleStepLabel = (step: string | null): string => step ? step.toLowerCase().replaceAll("_", " ") : "Not reported";
+const chatHref = (conversationId: number, threadId: string | null): string => {
+  const params = new URLSearchParams({ c: String(conversationId) });
+  if (threadId) params.set("t", threadId);
+  return `/chat?${params.toString()}`;
+};
 
 export default function TaskObservabilityMonitor() {
   const [mode, setMode] = useState("simple");
@@ -30,10 +36,13 @@ export default function TaskObservabilityMonitor() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const conversationCandidate = Number(new URLSearchParams(window.location.search).get("conversationId"));
   const conversationId = Number.isSafeInteger(conversationCandidate) && conversationCandidate > 0 ? conversationCandidate : undefined;
+  const threadScopeParam = new URLSearchParams(window.location.search).get("threadId");
+  const threadId = threadScopeParam === "main" ? null : threadScopeParam;
   const query = trpc.workerJobs.observability.useQuery({
     cursor,
     ...(projectionToken ? { projectionToken } : {}),
     ...(conversationId ? { conversationId } : {}),
+    ...(threadScopeParam !== null ? { threadId } : {}),
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
   }, { staleTime: 15_000, refetchInterval: 15_000, retry: false });
@@ -74,6 +83,9 @@ export default function TaskObservabilityMonitor() {
               <Button label={`Task ${index + 1} · ${simpleStatusLabel(item.status)}`} variant={selected?.id === item.id ? "primary" : "secondary"} onClick={() => setSelectedId(item.id)} />
               {item.operatorAttention.required ? <Badge variant="warning" label="Action needed" /> : null}
               <Text type="supporting">Current step: {simpleStepLabel(item.stage)}</Text>
+              {item.conversationId ? <Link href={chatHref(item.conversationId, item.threadId)} isStandalone>
+                {item.threadId ? "Open in Chat thread" : "Open conversation in Chat"}
+              </Link> : null}
             </HStack>
           ))}
         </VStack>
@@ -91,7 +103,7 @@ export default function TaskObservabilityMonitor() {
       {mode === "developer" ? <Section>
         <VStack gap={3}>
           <Heading level={2}>{conversationId ? `Chat ${conversationId} evidence` : query.data?.scope === "tenant_fleet" ? "Tenant fleet and project scope" : "My tasks and project scope"}</Heading>
-          {conversationId ? <Text type="supporting">Conversation scope is bound by the authenticated read API to the conversation owner and current tenant.</Text> : null}
+          {conversationId ? <Text type="supporting">{threadId ? "Thread and conversation scope are bound by the authenticated read API to the conversation owner and current tenant." : "Conversation scope is bound by the authenticated read API to the conversation owner and current tenant."}</Text> : null}
           <HStack gap={2} wrap="wrap">
             <TextInput label="Project ID" value={projectDraft} onChange={setProjectDraft} placeholder="Canonical project ID" />
             <TextInput label="SPEC ID" value={specDraft} onChange={setSpecDraft} placeholder="SPEC-###" />
@@ -115,6 +127,9 @@ export default function TaskObservabilityMonitor() {
                 <Text type="supporting">{item.stage ?? "stage unknown"} · attempt {item.attempt}/{item.maxAttempts}</Text>
                 <Text type="supporting">Worker {item.workerId ?? "unassigned"}</Text>
                 {query.data?.scope === "tenant_fleet" ? <Text type="supporting">Owner {item.ownerUserId}</Text> : null}
+                {item.conversationId ? <Link href={chatHref(item.conversationId, item.threadId)} isStandalone>
+                  {item.threadId ? "Open in Chat thread" : "Open conversation in Chat"}
+                </Link> : null}
               </HStack>
             ))}
           </VStack>

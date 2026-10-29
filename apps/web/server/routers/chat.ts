@@ -129,6 +129,14 @@ import {
 import { executeChatRuntimeTurn } from "../services/agentRuntime/chatRuntimeOrchestrator";
 import { recordContextEngineMetric } from "../services/monitoringService";
 import {
+  assertConversationThreadScope,
+  createConversationThread,
+  listRecentConversationThreads,
+  listConversationThreads,
+  touchConversationThread,
+  ConversationThreadError,
+} from "../services/conversationThreadService";
+import {
   getModelsByTypeAsync,
   mapToApiModelId,
 } from "../services/modelRegistry";
@@ -139,6 +147,23 @@ import {
 import { resolveExternalMediaReferenceUrls } from "../services/mediaGenerationService";
 import type { UnifiedExecutionResult } from "../services/executors/types";
 import { presentCustomerError } from "../../shared/projectIdentityPresentation";
+
+function chatTenantId(ctx: { tenantId?: string | null; user: { currentTenantId?: number | null } }): string {
+  return ctx.tenantId ?? String(ctx.user.currentTenantId ?? "default");
+}
+
+function mapConversationThreadError(error: unknown): never {
+  if (error instanceof ConversationThreadError) {
+    throw new TRPCError({
+      code: error.code === "THREAD_SCOPE_MISMATCH" ? "FORBIDDEN"
+        : error.code === "THREAD_IDEMPOTENCY_CONFLICT" ? "CONFLICT"
+          : error.code === "THREAD_CURSOR_INVALID" || error.code === "THREAD_CURSOR_EXPIRED" ? "PRECONDITION_FAILED"
+            : "NOT_FOUND",
+      message: error.code,
+    });
+  }
+  throw error;
+}
 
 type SmartCharacterPromptValidation = ReturnType<
   typeof validateSmartCharacterPromptOutput
@@ -1308,6 +1333,59 @@ export const chatRouter = router({
     return { deletedCount: count };
   }),
 
+  /** Durable thread navigation for one existing conversation. */
+  listConversationThreads: protectedProcedure
+    .input(z.object({ conversationId: z.number().int().positive() }).strict())
+    .query(async ({ ctx, input }) => {
+      try {
+        return await listConversationThreads({
+          conversationId: input.conversationId,
+          userId: ctx.user.id,
+          tenantId: chatTenantId(ctx),
+        });
+      } catch (error) {
+        return mapConversationThreadError(error);
+      }
+    }),
+
+  touchConversationThread: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      threadId: z.string().uuid().nullable().optional(),
+    }).strict())
+    .mutation(async ({ ctx, input }) => {
+      try {
+        await touchConversationThread({
+          conversationId: input.conversationId,
+          ...(input.threadId !== undefined ? { threadId: input.threadId } : {}),
+          userId: ctx.user.id,
+          tenantId: chatTenantId(ctx),
+        });
+        return { touched: true };
+      } catch (error) {
+        return mapConversationThreadError(error);
+      }
+    }),
+
+  createConversationThread: protectedProcedure
+    .input(z.object({
+      conversationId: z.number().int().positive(),
+      title: z.string().trim().min(1).max(160).optional(),
+      parentThreadId: z.string().uuid().optional(),
+      idempotencyKey: z.string().trim().min(16).max(160),
+    }).strict())
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await createConversationThread({
+          ...input,
+          userId: ctx.user.id,
+          tenantId: chatTenantId(ctx),
+        });
+      } catch (error) {
+        return mapConversationThreadError(error);
+      }
+    }),
+
   // ==================== Messages ====================
 
   /**
@@ -1320,6 +1398,7 @@ export const chatRouter = router({
         limit: z.number().min(1).max(100).default(50),
         offset: z.number().min(0).default(0),
         beforeId: z.number().optional(),
+        threadId: z.string().uuid().nullable().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
@@ -1335,10 +1414,24 @@ export const chatRouter = router({
         });
       }
 
+      if (input.threadId) {
+        try {
+          await assertConversationThreadScope({
+            conversationId: input.conversationId,
+            threadId: input.threadId,
+            userId: ctx.user.id,
+            tenantId: chatTenantId(ctx),
+          });
+        } catch (error) {
+          mapConversationThreadError(error);
+        }
+      }
+
       const messages = await getMessages(input.conversationId, {
         limit: input.limit,
         offset: input.offset,
         beforeId: input.beforeId,
+        ...(input.threadId !== undefined ? { threadId: input.threadId } : {}),
       });
 
       return messages.map(m => ({
@@ -1397,6 +1490,7 @@ export const chatRouter = router({
     .input(
       z.object({
         conversationId: z.number(),
+        threadId: z.string().uuid().nullable().optional(),
         content: z.string().min(1).max(100000),
         attachments: z.array(attachmentSchema).optional(),
       })
@@ -1412,6 +1506,18 @@ export const chatRouter = router({
           code: "NOT_FOUND",
           message: "Conversation not found",
         });
+      }
+      if (input.threadId) {
+        try {
+          await assertConversationThreadScope({
+            conversationId: input.conversationId,
+            threadId: input.threadId,
+            userId: ctx.user.id,
+            tenantId: chatTenantId(ctx),
+          });
+        } catch (error) {
+          mapConversationThreadError(error);
+        }
       }
 
       // Check credits (estimate based on input)
@@ -1442,6 +1548,7 @@ export const chatRouter = router({
       // Create user message
       const userMessage = await createMessage({
         conversationId: input.conversationId,
+        ...(input.threadId ? { threadId: input.threadId } : {}),
         role: "user",
         content: input.content,
         attachments: input.attachments || [],
@@ -1569,6 +1676,7 @@ export const chatRouter = router({
     .input(
       z.object({
         conversationId: z.number(),
+        threadId: z.string().uuid().nullable().optional(),
         content: z.string(),
         inputTokens: z.number().default(0),
         outputTokens: z.number().default(0),
@@ -1601,6 +1709,18 @@ export const chatRouter = router({
           message: "Conversation not found",
         });
       }
+      if (input.threadId) {
+        try {
+          await assertConversationThreadScope({
+            conversationId: input.conversationId,
+            threadId: input.threadId,
+            userId: ctx.user.id,
+            tenantId: chatTenantId(ctx),
+          });
+        } catch (error) {
+          mapConversationThreadError(error);
+        }
+      }
       debugLog("Chat", "Found conversation", {
         id: conversation.id,
         title: conversation.title,
@@ -1627,6 +1747,7 @@ export const chatRouter = router({
         await import("../services/localAiRuntimeMetadata");
       const message = await createMessage({
         conversationId: input.conversationId,
+        ...(input.threadId ? { threadId: input.threadId } : {}),
         role: "assistant",
         content: input.content,
         inputTokens: input.inputTokens,
@@ -1938,6 +2059,27 @@ export const chatRouter = router({
   getSlashCommands: protectedProcedure.query(async ({ ctx }) => {
     return _getSlashCommands(ctx.user.id);
   }),
+
+  /** Cross-conversation, owner-scoped Thread navigation; status is job-derived. */
+  listRecentConversationThreads: protectedProcedure
+    .input(z.object({
+      cursor: z.string().trim().max(2048).nullable().optional(),
+      limit: z.number().int().min(1).max(50).default(30),
+      search: z.string().trim().max(100).optional(),
+      projectId: z.string().trim().min(1).max(100).optional(),
+      status: z.enum(["WORKING", "WAITING_ON_YOU", "READY_FOR_REVIEW", "LANDING", "IDLE", "RESOLVED", "UNKNOWN", "STALE", "UNAVAILABLE", "ERROR"]).optional(),
+    }).strict())
+    .query(async ({ ctx, input }) => {
+      try {
+        return await listRecentConversationThreads({
+          ...input,
+          userId: ctx.user.id,
+          tenantId: chatTenantId(ctx),
+        });
+      } catch (error) {
+        return mapConversationThreadError(error);
+      }
+    }),
 
   /**
    * Get a single skill by ID

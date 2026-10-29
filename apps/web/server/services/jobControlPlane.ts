@@ -1369,6 +1369,9 @@ export async function createCanonicalJobInTransaction(input: {
       priority: normalizedDefinition.priority ?? 0,
       capabilityRequirementsJson:
         normalizedDefinition.requiredCapabilities ?? {},
+      threadId: typeof normalizedDefinition.input?.chatThreadId === "string"
+        ? normalizedDefinition.input.chatThreadId
+        : null,
       inputJson: normalizedDefinition.input,
       retryPolicyJson: normalizedDefinition.retryPolicy,
       timeoutPolicyJson: normalizedDefinition.timeoutPolicy,
@@ -2918,6 +2921,9 @@ export function createJobControlPlane(
             priority: normalizedDefinition.priority ?? 0,
             capabilityRequirementsJson:
               normalizedDefinition.requiredCapabilities ?? {},
+            threadId: typeof normalizedDefinition.input?.chatThreadId === "string"
+              ? normalizedDefinition.input.chatThreadId
+              : null,
             inputJson: normalizedDefinition.input,
             retryPolicyJson: normalizedDefinition.retryPolicy,
             timeoutPolicyJson: normalizedDefinition.timeoutPolicy,

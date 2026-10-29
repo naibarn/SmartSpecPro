@@ -241,6 +241,33 @@ export async function createControlPlaneJob(
       ),
     idempotencyKey,
   };
+  const chatThreadId =
+    canonicalDefinition.input && typeof canonicalDefinition.input === "object" &&
+    !Array.isArray(canonicalDefinition.input) &&
+    typeof (canonicalDefinition.input as Record<string, unknown>).chatThreadId === "string"
+      ? String((canonicalDefinition.input as Record<string, unknown>).chatThreadId)
+      : null;
+  if (chatThreadId) {
+    const conversationId = (canonicalDefinition.input as Record<string, unknown>).conversationId;
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(chatThreadId) ||
+      typeof conversationId !== "number" || !Number.isSafeInteger(conversationId) || conversationId <= 0 ||
+      context.actorType === "system" || !canonicalDefinition.requestedByUserId
+    ) {
+      throw new JobControlPlaneError("JOB_CHAT_THREAD_BINDING_INVALID", "Chat thread binding is invalid");
+    }
+    const { assertConversationThreadScope } = await import("./conversationThreadService");
+    try {
+      await assertConversationThreadScope({
+        tenantId,
+        userId: canonicalDefinition.requestedByUserId,
+        conversationId: Number(conversationId),
+        threadId: chatThreadId,
+      });
+    } catch {
+      throw new JobControlPlaneError("JOB_CHAT_THREAD_SCOPE_MISMATCH", "Chat thread is outside the job owner scope");
+    }
+  }
   return (input.controlPlane ?? createJobControlPlane()).create(
     canonicalDefinition,
     {

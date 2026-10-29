@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,10 +40,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConversationScopeBadge } from "./ConversationScopeBadge";
+import { ThreadOverviewSidebarPanel } from "./ThreadOverviewSidebarPanel";
 
 interface ChatSidebarProps {
   selectedConversationId: number | null;
+  selectedThreadId?: string | null;
   onSelectConversation: (id: number) => void;
+  onSelectThread?: (conversationId: number, threadId: string | null) => void;
   onNewChat: () => void;
   onNewPersonalChat?: () => void;
   onOpenTeamRoom?: (roomId: string) => void;
@@ -51,7 +54,9 @@ interface ChatSidebarProps {
 
 export function ChatSidebar({
   selectedConversationId,
+  selectedThreadId = null,
   onSelectConversation,
+  onSelectThread,
   onNewChat,
   onNewPersonalChat,
   onOpenTeamRoom,
@@ -73,9 +78,44 @@ export function ChatSidebar({
 
   // Trash view
   const [showTrash, setShowTrash] = useState(false);
+  const [sidebarView, setSidebarView] = useState<"sessions" | "threads">("sessions");
   const [emptyTrashDialogOpen, setEmptyTrashDialogOpen] = useState(false);
+  const createThreadIdempotencyKey = useRef<{ scope: string; key: string } | null>(null);
 
   const utils = trpc.useUtils();
+
+  const threadsQuery = trpc.chat.listConversationThreads.useQuery(
+    { conversationId: selectedConversationId ?? 0 },
+    { enabled: Boolean(selectedConversationId), staleTime: 10_000, refetchInterval: 20_000, refetchIntervalInBackground: false },
+  );
+  const createThreadMutation = trpc.chat.createConversationThread.useMutation({
+    onSuccess: async (result, variables) => {
+      const storageKey = `chat-thread-create:${variables.conversationId}:${variables.parentThreadId ?? "main"}`;
+      if (createThreadIdempotencyKey.current?.scope === storageKey) createThreadIdempotencyKey.current = null;
+      try { window.sessionStorage.removeItem(storageKey); } catch { /* Storage may be unavailable in private contexts. */ }
+      await utils.chat.listConversationThreads.invalidate({ conversationId: variables.conversationId });
+      if (selectedConversationId === variables.conversationId) onSelectThread?.(variables.conversationId, result.thread.threadId);
+    },
+  });
+
+  const createThread = () => {
+    if (!selectedConversationId || createThreadMutation.isPending) return;
+    const storageKey = `chat-thread-create:${selectedConversationId}:${selectedThreadId ?? "main"}`;
+    let idempotencyKey = createThreadIdempotencyKey.current?.scope === storageKey
+      ? createThreadIdempotencyKey.current.key
+      : null;
+    if (!idempotencyKey) {
+      try { idempotencyKey = window.sessionStorage.getItem(storageKey); } catch { /* Storage may be unavailable in private contexts. */ }
+    }
+    if (!idempotencyKey) idempotencyKey = globalThis.crypto?.randomUUID?.() ?? `thread-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    createThreadIdempotencyKey.current = { scope: storageKey, key: idempotencyKey };
+    try { window.sessionStorage.setItem(storageKey, idempotencyKey); } catch { /* The mutation remains protected by its in-memory idempotency key. */ }
+    createThreadMutation.mutate({
+      conversationId: selectedConversationId,
+      idempotencyKey,
+      ...(selectedThreadId ? { parentThreadId: selectedThreadId } : {}),
+    });
+  };
 
   const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
     trpc.chat.listConversations.useInfiniteQuery(
@@ -475,10 +515,25 @@ export function ChatSidebar({
             className="pl-8"
           />
         </div>
+        <div className="mt-2 grid grid-cols-2 gap-1" role="group" aria-label={t("sidebar.navigationView")}>
+          <Button type="button" size="sm" variant={sidebarView === "sessions" ? "secondary" : "ghost"} aria-pressed={sidebarView === "sessions"} onClick={() => setSidebarView("sessions")}>
+            {t("sidebar.sessionsView")}
+          </Button>
+          <Button type="button" size="sm" variant={sidebarView === "threads" ? "secondary" : "ghost"} aria-pressed={sidebarView === "threads"} onClick={() => setSidebarView("threads")}>
+            {t("sidebar.threadsView")}
+          </Button>
+        </div>
       </div>
 
       {/* Conversation List */}
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {sidebarView === "threads" && !showTrash ? (
+        <ScrollArea className="min-h-0 flex-1">
+          <ThreadOverviewSidebarPanel search={search} onOpenThread={(conversationId, threadId) => {
+            onSelectThread?.(conversationId, threadId);
+            if (!onSelectThread) onSelectConversation(conversationId);
+          }} />
+        </ScrollArea>
+      ) : <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="p-2">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
@@ -651,7 +706,37 @@ export function ChatSidebar({
             </Button>
           )}
         </div>
-      </div>
+        {selectedConversationId ? (
+          <section className="border-t border-[var(--color-border)] px-3 py-3" aria-label={t("threads.title")}>
+            <header className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-xs font-semibold text-[var(--color-text-secondary)]">{t("threads.title")}</h3>
+              {onSelectThread ? (
+                <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={createThread} disabled={createThreadMutation.isPending}>
+                  {createThreadMutation.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <MessageSquarePlus className="mr-1 h-3 w-3" />}
+                  {t("threads.new")}
+                </Button>
+              ) : null}
+            </header>
+            {threadsQuery.error ? <p className="text-xs text-muted-foreground" role="status">{t("threads.unavailable")}</p> : null}
+            {threadsQuery.isLoading ? <p className="text-xs text-muted-foreground" role="status">{t("threads.loading")}</p> : null}
+            <ol className="space-y-1">
+              {(threadsQuery.data?.threads ?? []).map(thread => (
+                <li key={thread.threadId ?? "main"}>
+                  <button
+                    type="button"
+                    aria-current={selectedThreadId === thread.threadId ? "page" : undefined}
+                    onClick={() => onSelectThread?.(selectedConversationId, thread.threadId)}
+                    className={cn("flex min-h-9 w-full items-center justify-between gap-2 rounded-[var(--radius-element)] px-2 py-1 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", selectedThreadId === thread.threadId ? "bg-[var(--color-accent-muted)] text-[var(--color-text-accent)]" : "hover:bg-[var(--color-overlay-hover)]")}
+                  >
+                    <span className="min-w-0 truncate">{thread.threadId ? thread.title : t("threads.main")}</span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">{t(`threads.status.${thread.status}`)}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ) : null}
+      </div>}
 
       {/* Team Rooms Section */}
       {onOpenTeamRoom && (

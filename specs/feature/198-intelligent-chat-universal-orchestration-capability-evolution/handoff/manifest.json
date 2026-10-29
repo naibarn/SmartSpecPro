@@ -87,7 +87,7 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62"
+    "expected_spec_digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3"
   },
   "continuation": {
     "next_action": "UWAC R0.6 delta resume: specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/resume-existing-work.md#per-owner-continuation (SPEC-198, WP33/WP34/WP35). Reuse existing source/section state and valid evidence; do not restart the old plan. Reuse current Chat/launcher/intent and canonical Skill job entry; map only missing explicit Chat-to-Work/Skill/Develop conversions and common context/projection links. Recheck current call sites before editing.",
@@ -266,13 +266,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 13,
+  "generation": 15,
   "identity": {
     "canonical_path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
-    "digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+    "digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-20T23:27:53.028890Z",
+      "last_evidence_at": "2026-10-29T09:41:47.774949Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-17T15:42:23+07:00",
       "spec_last_changed_at": "2026-09-17T22:49:43+07:00"
@@ -599,10 +599,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-20T23:27:53.028890Z",
+    "reconciled_at": "2026-10-29T09:41:47.774949Z",
     "sources": [
       {
-        "digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+        "digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
       },
@@ -763,7 +763,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
-        "source_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+        "source_digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
         "value": "Implementation-ready target specification"
       }
     ],
@@ -872,14 +872,14 @@
         "excerpt": "**Status:** Implementation-ready target specification",
         "line": 5,
         "source": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
-        "source_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+        "source_digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
         "value": "Implementation-ready target specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+        "digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
       },
@@ -960,11 +960,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 401,
-    "unresolved": 401
+    "total": 403,
+    "unresolved": 403
   },
   "schema_version": 1,
-  "updated_at": "2026-10-20T23:39:54.889956Z",
+  "updated_at": "2026-10-29T09:41:47.774949Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

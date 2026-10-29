@@ -29,7 +29,7 @@ function renderMonitor(mode: "simple" | "developer" = "simple") {
   return result;
 }
 
-const job = { id: "job-1", jobType: "spec224.development", status: "running", stage: "IMPLEMENT", attempt: 1, maxAttempts: 2, heartbeatAt: null, createdAt: "2026-10-17T00:00:00Z", workerId: null, runnerId: "runner-1", runnerSessionState: "running", projectId: null, specId: null, identityBinding: { status: "UNKNOWN", source: null }, operatorAttention: { required: false, reason: null }, recovery: { nextRetryAt: null, retryEligible: false } };
+const job = { id: "job-1", jobType: "spec224.development", status: "running", stage: "IMPLEMENT", attempt: 1, maxAttempts: 2, heartbeatAt: null, createdAt: "2026-10-17T00:00:00Z", workerId: null, runnerId: "runner-1", runnerSessionState: "running", conversationId: 451, threadId: "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1", projectId: null, specId: null, identityBinding: { status: "UNKNOWN", source: null }, operatorAttention: { required: false, reason: null }, recovery: { nextRetryAt: null, retryEligible: false } };
 
 beforeEach(() => {
   listQuery.current = { data: { scope: "owner", items: [job], snapshot: { asOf: "2026-10-17T00:00:00Z", expiresAt: "2026-10-17T00:10:00Z", projectionToken: "shared.snapshot-token" }, nextCursor: null }, isLoading: false, error: null, refetch: vi.fn() };
@@ -62,6 +62,14 @@ describe("TaskObservabilityMonitor", () => {
     expect(screen.getByText("Action needed: Please review this task.")).toBeTruthy();
     expect(screen.getByText("No final deliverable references are recorded in this task view.")).toBeTruthy();
     expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
+  });
+
+  it("opens the originating Chat thread from the same task in both Task Control views", () => {
+    renderMonitor();
+    const href = "/chat?c=451&t=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1";
+    expect(screen.getByRole("link", { name: "Open in Chat thread" })).toHaveAttribute("href", href);
+    fireEvent.click(screen.getByText("Developer"));
+    expect(screen.getByRole("link", { name: "Open in Chat thread" })).toHaveAttribute("href", href);
   });
 
   it("switches to developer evidence while retaining the same selected task", () => {

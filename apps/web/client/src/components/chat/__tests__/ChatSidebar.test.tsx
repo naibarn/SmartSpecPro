@@ -13,9 +13,14 @@ const mocks = vi.hoisted(() => {
       chat: {
         listConversations: { invalidate: noop },
         listTrashedConversations: { invalidate: noop },
+        listConversationThreads: { invalidate: vi.fn() },
       },
     })),
     mockListConversationsQuery: vi.fn(),
+    mockListThreadsQuery: vi.fn(),
+    mockRecentThreadsQuery: vi.fn(),
+    mockCreateThreadMutation: vi.fn(),
+    mockCreateThreadOptions: vi.fn(),
     mockFetchNextPage: vi.fn(),
     mockListTrashedConversationsQuery: vi.fn(),
     mockMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
@@ -27,6 +32,9 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
     t: (key: string, params?: Record<string, string | number>) => {
       const map: Record<string, string> = {
         "sidebar.title": "Chats",
+        "sidebar.navigationView": "Chat navigation view",
+        "sidebar.sessionsView": "Sessions",
+        "sidebar.threadsView": "Threads overview",
         "sidebar.startHere": "Start here",
         "sidebar.startHint": "New Chat starts a normal conversation. Personal Chat is locked to you and is best for receipts, bills, and private notes.",
         "sidebar.search": "Search chats...",
@@ -44,6 +52,31 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "startNewChat": "Start New Chat",
         "startPersonalChat": "Start Personal Chat",
         "sidebar.personalChatHint": "Personal chats stay private to you.",
+        "threads.title": "Threads",
+        "threads.main": "Main conversation",
+        "threads.new": "New task thread",
+        "threads.status.WORKING": "Working",
+        "threads.overviewTitle": "Thread overview",
+        "threads.overviewDescription": "Recent work threads",
+        "threads.statusFilter": "Filter by status",
+        "threads.allStatuses": "All statuses",
+        "threads.status.IDLE": "Idle",
+        "threads.status.WAITING_ON_YOU": "Waiting on you",
+        "threads.status.READY_FOR_REVIEW": "Review",
+        "threads.status.LANDING": "Landing",
+        "threads.status.RESOLVED": "Resolved",
+        "threads.status.UNKNOWN": "Unknown",
+        "threads.status.STALE": "Stale",
+        "threads.status.UNAVAILABLE": "Unavailable",
+        "threads.status.ERROR": "Failed",
+        "threads.loading": "Loading threads…",
+        "threads.overviewUnavailable": "Thread overview unavailable",
+        "threads.overviewEmpty": "No work threads",
+        "threads.openThread": `Open ${params?.thread ?? ""} in ${params?.conversation ?? ""}`,
+        "threads.timeUnknown": "Time unavailable",
+        "threads.openTaskControl": "Open Task Control",
+        "threads.loadingMore": "Loading more…",
+        "threads.loadMore": "Load more threads",
       };
       return map[key] ?? key;
     },
@@ -55,6 +88,12 @@ vi.mock("@/lib/trpc", () => ({
     useUtils: mocks.mockUseUtils,
     chat: {
       listConversations: { useInfiniteQuery: mocks.mockListConversationsQuery },
+      listConversationThreads: { useQuery: mocks.mockListThreadsQuery },
+      listRecentConversationThreads: { useInfiniteQuery: mocks.mockRecentThreadsQuery },
+      createConversationThread: { useMutation: (options: unknown) => {
+        mocks.mockCreateThreadOptions(options);
+        return { mutate: mocks.mockCreateThreadMutation, isPending: false };
+      } },
       listTrashedConversations: { useQuery: mocks.mockListTrashedConversationsQuery },
       deleteConversation: { useMutation: () => mocks.mockMutation() },
       updateConversation: { useMutation: () => mocks.mockMutation() },
@@ -98,6 +137,22 @@ describe("ChatSidebar", () => {
     mocks.mockListTrashedConversationsQuery.mockReturnValue({
       data: { conversations: [] },
       isLoading: false,
+    });
+    mocks.mockListThreadsQuery.mockReturnValue({
+      data: { threads: [
+        { threadId: null, title: "Main chat", status: "IDLE" },
+        { threadId: "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1", title: "SPEC-224 Pilot", status: "WORKING" },
+      ] },
+      isLoading: false,
+      error: null,
+    });
+    mocks.mockRecentThreadsQuery.mockReturnValue({
+      data: { pages: [{ items: [], nextCursor: null }] },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
     });
   });
 
@@ -170,5 +225,55 @@ describe("ChatSidebar", () => {
 
     expect(onSelectConversation).toHaveBeenCalledWith(12);
     expect(mocks.mockFetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows persisted threads, opens the exact thread, and reuses a create idempotency key on retry", () => {
+    const onSelectThread = vi.fn();
+    render(
+      <ChatSidebar
+        selectedConversationId={12}
+        onSelectConversation={vi.fn()}
+        onSelectThread={onSelectThread}
+        onNewChat={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Threads" })).toBeInTheDocument();
+    const threadButton = screen.getByText("SPEC-224 Pilot").closest("button");
+    expect(threadButton).not.toBeNull();
+    fireEvent.click(threadButton!);
+    expect(onSelectThread).toHaveBeenCalledWith(12, "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1");
+
+    fireEvent.click(screen.getByRole("button", { name: "New task thread" }));
+    fireEvent.click(screen.getByRole("button", { name: "New task thread" }));
+    expect(mocks.mockCreateThreadMutation).toHaveBeenCalledTimes(2);
+    expect(mocks.mockCreateThreadMutation.mock.calls[0]?.[0]).toEqual(mocks.mockCreateThreadMutation.mock.calls[1]?.[0]);
+    expect(mocks.mockCreateThreadMutation.mock.calls[0]?.[0]).toMatchObject({ conversationId: 12 });
+  });
+
+  it("opens a thread from the cross-session overview in its original conversation", () => {
+    const onSelectThread = vi.fn();
+    mocks.mockRecentThreadsQuery.mockReturnValue({
+      data: { pages: [{ items: [{
+        threadId: "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1",
+        title: "SPEC-224 Phase 2",
+        parentThreadId: null,
+        status: "WORKING",
+        lastActivityAt: "2026-10-29T10:00:00.000Z",
+        conversationId: 42,
+        conversationTitle: "SPEC-224 Pilot",
+        latestJob: { jobId: "job-42", status: "running", statusReason: null, hasReviewableEvidence: false, createdAt: "2026-10-29T10:00:00.000Z", heartbeatAt: "2026-10-29T10:00:00.000Z" },
+      }], nextCursor: null }] },
+      isLoading: false,
+      error: null,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    });
+    render(<ChatSidebar selectedConversationId={12} onSelectConversation={vi.fn()} onSelectThread={onSelectThread} onNewChat={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Threads overview" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open SPEC-224 Phase 2 in SPEC-224 Pilot" }));
+    expect(onSelectThread).toHaveBeenCalledWith(42, "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1");
+    expect(screen.getByRole("link", { name: "Open Task Control" })).toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1");
   });
 });

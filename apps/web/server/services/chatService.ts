@@ -7,6 +7,7 @@ import { eq, desc, asc, and, sql, or, inArray, lt, gte, SQL, ilike, isNull, isNo
 import { getDb } from "../db";
 import {
   conversations,
+  conversationThreads,
   messages,
   llmInferenceChatResponseDeliveries,
   llmInferenceAttempts,
@@ -468,6 +469,17 @@ export async function createMessage(data: InsertMessage): Promise<Message> {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
 
+  if (data.threadId) {
+    const [thread] = await db.select({ id: conversationThreads.id })
+      .from(conversationThreads)
+      .where(and(
+        eq(conversationThreads.id, data.threadId),
+        eq(conversationThreads.conversationId, data.conversationId),
+      ))
+      .limit(1);
+    if (!thread) throw new Error("CHAT_THREAD_CONVERSATION_MISMATCH");
+  }
+
   const [message] = await db.insert(messages).values(data).returning();
 
   // Update conversation message count and updatedAt
@@ -479,6 +491,12 @@ export async function createMessage(data: InsertMessage): Promise<Message> {
     })
     .where(eq(conversations.id, data.conversationId));
 
+  if (data.threadId) {
+    await db.update(conversationThreads)
+      .set({ lastActivityAt: sql`greatest(${conversationThreads.lastActivityAt}, now())` })
+      .where(eq(conversationThreads.id, data.threadId));
+  }
+
   return message;
 }
 
@@ -486,6 +504,7 @@ function hashInferenceMessageIdempotencyKey(input: {
   tenantId: string;
   userId: number;
   idempotencyKey: string;
+  threadId?: string | null;
 }): string {
   return createHash("sha256")
     .update(JSON.stringify([
@@ -493,6 +512,7 @@ function hashInferenceMessageIdempotencyKey(input: {
       input.tenantId,
       input.userId,
       input.idempotencyKey,
+      ...(input.threadId ? [input.threadId] : []),
     ]))
     .digest("hex");
 }
@@ -520,9 +540,11 @@ export async function findInferenceAssistantMessage(input: {
   tenantId: string;
   userId: number;
   idempotencyKey: string;
+  threadId?: string | null;
 }): Promise<InferenceAssistantMessageReceipt | null> {
   const db = getDb();
   const inferenceIdempotencyHash = hashInferenceMessageIdempotencyKey(input);
+  const threadCondition = input.threadId ? eq(messages.threadId, input.threadId) : isNull(messages.threadId);
   const [message] = await db
     .select({
       id: messages.id,
@@ -541,6 +563,7 @@ export async function findInferenceAssistantMessage(input: {
       eq(messages.inferenceIdempotencyHash, inferenceIdempotencyHash),
       eq(conversations.userId, input.userId),
       inferenceConversationTenantScope(input.tenantId),
+      threadCondition,
       eq(messages.role, "assistant"),
     ))
     .limit(1);
@@ -555,10 +578,24 @@ export async function createInferenceAssistantMessageOnce(input: {
   idempotencyKey: string;
 }): Promise<{ message: InferenceAssistantMessageReceipt; created: boolean }> {
   const db = getDb();
-  const inferenceIdempotencyHash = hashInferenceMessageIdempotencyKey(input);
+  const inferenceIdempotencyHash = hashInferenceMessageIdempotencyKey({
+    ...input,
+    threadId: input.message.threadId,
+  });
   const creditsUsed = Number(input.message.creditsUsed ?? 0);
 
   return db.transaction(async tx => {
+    if (input.message.threadId) {
+      const [thread] = await tx.select({ id: conversationThreads.id })
+        .from(conversationThreads)
+        .where(and(
+          eq(conversationThreads.id, input.message.threadId),
+          eq(conversationThreads.conversationId, input.message.conversationId),
+          eq(conversationThreads.ownerUserId, input.userId),
+        ))
+        .limit(1);
+      if (!thread) throw new Error("CHAT_THREAD_CONVERSATION_MISMATCH");
+    }
     const [inserted] = await tx
       .insert(messages)
       .values({
@@ -595,6 +632,11 @@ export async function createInferenceAssistantMessageOnce(input: {
       if (!updatedConversation) {
         throw new Error("Conversation scope changed before inference message persistence");
       }
+      if (input.message.threadId) {
+        await tx.update(conversationThreads)
+          .set({ lastActivityAt: sql`greatest(${conversationThreads.lastActivityAt}, now())` })
+          .where(eq(conversationThreads.id, input.message.threadId));
+      }
       return { message: inserted, created: true };
     }
 
@@ -609,6 +651,7 @@ export async function createInferenceAssistantMessageOnce(input: {
         creditsUsed: messages.creditsUsed,
         modelUsed: messages.modelUsed,
         runtimeMetadata: messages.runtimeMetadata,
+        threadId: messages.threadId,
       })
       .from(messages)
       .where(eq(messages.inferenceIdempotencyHash, inferenceIdempotencyHash))
@@ -616,7 +659,8 @@ export async function createInferenceAssistantMessageOnce(input: {
     if (
       !existing ||
       existing.role !== "assistant" ||
-      existing.conversationId !== input.message.conversationId
+      existing.conversationId !== input.message.conversationId ||
+      existing.threadId !== (input.message.threadId ?? null)
     ) {
       throw new Error("Inference message idempotency key scope conflict");
     }
@@ -842,6 +886,7 @@ export async function getMessages(
     offset?: number;
     beforeId?: number;
     afterId?: number;
+    threadId?: string | null;
   } = {}
 ): Promise<Message[]> {
   const db = await getDb();
@@ -855,6 +900,11 @@ export async function getMessages(
 
   if (options.afterId) {
     conditions.push(sql`${messages.id} > ${options.afterId}`);
+  }
+  if (options.threadId === null) {
+    conditions.push(isNull(messages.threadId));
+  } else if (options.threadId) {
+    conditions.push(eq(messages.threadId, options.threadId));
   }
 
   // Bounded history reads open at the newest messages. beforeId walks back

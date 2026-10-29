@@ -28,6 +28,15 @@ describe("chat session drafts", () => {
     expect(chatSessionDraftKey({ userId: 7, conversationId: 21 })).toBeNull();
   });
 
+  it("isolates child thread drafts while preserving the legacy main-chat key", () => {
+    const mainKey = chatSessionDraftKey({ tenantId: "tenant-a", userId: 7, conversationId: 21 });
+    const explicitMainKey = chatSessionDraftKey({ tenantId: "tenant-a", userId: 7, conversationId: 21, threadId: null });
+    const firstThread = chatSessionDraftKey({ tenantId: "tenant-a", userId: 7, conversationId: 21, threadId: "thread-1" });
+    const secondThread = chatSessionDraftKey({ tenantId: "tenant-a", userId: 7, conversationId: 21, threadId: "thread-2" });
+    expect(explicitMainKey).toBe(mainKey);
+    expect(new Set([mainKey, firstThread, secondThread]).size).toBe(3);
+  });
+
   it("restores the exact draft and removes it after the composer is cleared", () => {
     const storage = memoryStorage();
     const key = chatSessionDraftKey({ tenantId: "tenant-a", userId: 7, conversationId: 21 });
