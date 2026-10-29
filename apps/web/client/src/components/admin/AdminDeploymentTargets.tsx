@@ -1885,6 +1885,10 @@ export default function AdminDeploymentTargets() {
                         <p><strong>{text("Database lease renewal", "ต่ออายุ lease ฐานข้อมูล")}</strong> · {renewal.ready ? text("READY", "พร้อมอนุมัติ") : renewal.reason}</p>
                         {!renewal.ready && renewal.failureStage ? <p role="status">{text("Blocking stage", "ขั้นตอนที่ติดปัญหา")}: <code>{renewal.failureStage}</code></p> : null}
                         {!renewal.ready && renewal.failureDetail ? <p role="status">{text("Read-only diagnostic (field and check only)", "รายละเอียดตรวจสอบแบบอ่านอย่างเดียว (แสดงเฉพาะ field และผลตรวจ)")}: <code>{renewal.failureDetail}</code></p> : null}
+                        {renewal.reason === "CANONICAL_JOB_SCHEMA_NOT_READY" ? <p role="alert"><code>0416_unified_chat_thread_overview</code> · {text(
+                          "The canonical Job database schema is not installed yet. No renewal policy, grant, or Job was created. Do not retry until the existing authorized migration is applied, then run the read-only recheck.",
+                          "ฐานข้อมูล Job กลางยังไม่มี schema ที่จำเป็น จึงยังไม่ได้สร้าง policy, grant หรือ Job ห้ามกดซ้ำจนกว่าจะใช้ migration เดิมที่ได้รับอนุญาต แล้วจึงตรวจซ้ำแบบอ่านอย่างเดียว",
+                        )}</p> : null}
                         {plan ? <>
                           <p>{text("Existing scope", "ขอบเขต resource เดิม")}: <code>{plan.sourcePlan.namespace}</code> · <code>{plan.sourceProvisionJobId}</code></p>
                           <details>

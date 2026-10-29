@@ -2,6 +2,13 @@ const SAFE_APPROVAL_CODE = /^[A-Z][A-Z0-9_]{5,119}$/;
 const SAFE_FIELD_SEGMENT = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
 export type CloudflareApprovalFailureStage = "POLICY_LOOKUP" | "POLICY_CREATE" | "GRANT_CREATE";
 
+/** Successful approval lookups may legitimately return JSON null when no reusable policy exists. */
+export function cloudflareApprovalResponseObject(value: unknown): Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
 /** Return actionable validation locations without reflecting values or messages. */
 export function cloudflareApprovalFailureCode(
   body: unknown,

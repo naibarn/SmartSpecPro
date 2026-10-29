@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { cloudflareApprovalFailureCode } from "./cloudflareApprovalFailure";
+import { cloudflareApprovalFailureCode, cloudflareApprovalResponseObject } from "./cloudflareApprovalFailure";
+
+describe("cloudflareApprovalResponseObject", () => {
+  it("normalizes a successful JSON null lookup to an empty object", () => {
+    expect(cloudflareApprovalResponseObject(null)).toEqual({});
+  });
+
+  it("rejects arrays and primitives while preserving object responses", () => {
+    expect(cloudflareApprovalResponseObject([])).toEqual({});
+    expect(cloudflareApprovalResponseObject("invalid")).toEqual({});
+    expect(cloudflareApprovalResponseObject({ policyId: "policy-id" })).toEqual({ policyId: "policy-id" });
+  });
+});
 
 describe("cloudflareApprovalFailureCode", () => {
   it("preserves a safe backend error code", () => {

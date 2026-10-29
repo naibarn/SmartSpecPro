@@ -9,7 +9,7 @@ import { createCloudflareNativeProvisionRuntime } from "./cloudflareNativeProvis
 import { assertPrivateDatabaseProvisionReceipt, verifyPrivateDatabaseProviderResources, type PrivateDatabaseBinding } from "./cloudflarePrivateDatabaseBinding";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 import { privateDatabaseRenewalPlanDigest, privateDatabaseRenewalPlanSchema,
-  privateDatabaseRole,
+  canonicalJobAdmissionSchemaReady, privateDatabaseRole,
   PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, type PrivateDatabaseRenewalPlan } from "./cloudflarePrivateDatabaseContract";
 
 export type PrivateDatabaseRenewalIdentity = DeploymentTargetIdentity & { provider: "cloudflare"; environment: "staging" };
@@ -94,6 +94,17 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
   if (target.status !== "CONFIGURED" || target.target.deploymentTargetId !== "smartspec-cloudflare-staging"
     || target.target.workerRef !== "smartspec-cloudflare-staging" || target.target.containerApplicationRef
     || target.target.accountRef !== config.descriptor.accountRef) return result({ ...base, ready: false, reason: "STAGING_TARGET_AUTHORITY_CONFLICT", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
+
+  const [jobSchema] = await atStage("CANONICAL_JOB_SCHEMA_READBACK", () => db.execute(sql`SELECT
+    to_regclass('public.conversation_threads') IS NOT NULL AS conversation_threads,
+    EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+      AND table_name = 'worker_jobs' AND column_name = 'thread_id') AS worker_job_thread_id`));
+  const jobSchemaRow = jobSchema as unknown as { conversation_threads?: boolean; worker_job_thread_id?: boolean } | undefined;
+  if (!canonicalJobAdmissionSchemaReady(jobSchemaRow && { conversationThreads: jobSchemaRow.conversation_threads,
+    workerJobThreadId: jobSchemaRow.worker_job_thread_id })) {
+    return result({ ...base, ready: false, reason: "CANONICAL_JOB_SCHEMA_NOT_READY", failureStage: "CANONICAL_JOB_SCHEMA_READBACK",
+      failureDetail: "worker_jobs.thread_id (missing)", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
+  }
 
   const leaseExpiresAt = stagingPrivateDatabaseRenewalLeaseExpiresAt(now);
   const authorizationExpiresAt = new Date(now + 10 * 60_000).toISOString();

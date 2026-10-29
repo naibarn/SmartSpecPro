@@ -106,7 +106,7 @@ import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE
   createProductionDatabaseGrant, newProductionDatabaseJobId, readCloudflareProductionDatabaseGrant, revokeCloudflareProductionDatabaseGrant,
   renewCloudflareProductionDatabaseGrant, saveCloudflareProductionDatabaseGrant } from "../services/cloudflareProductionDatabaseExecutor";
 import { productionDatabaseResourcePlanDigest, productionDatabaseResourcePlanSchema } from "../services/cloudflareProductionDatabaseProvision";
-import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
+import { cloudflareApprovalFailureCode, cloudflareApprovalResponseObject } from "../services/cloudflareApprovalFailure";
 import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalPlanSchema, privateDatabaseRenewalPlanDigest } from "../services/cloudflarePrivateDatabaseContract";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
@@ -721,12 +721,14 @@ export const infrastructureRouter = router({
       const runtime = await getAppRuntimeConfig();
       if (!runtime.pythonBackendUrl) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "APPROVAL_AUTHORITY_UNAVAILABLE" });
       const headers = { Authorization: `Bearer ${ctx.userToken}`, Accept: "application/json", "Content-Type": "application/json" };
+      let approvalStage = "POLICY_LOOKUP";
       const post = async (path: string, body: Record<string, unknown>, stage: string) => {
+        approvalStage = stage;
         const response = await fetch(`${runtime.pythonBackendUrl}${path}`, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(20_000) });
-        const value = await response.json().catch(() => ({})) as Record<string, unknown>;
+        const payload = await response.json().catch(() => ({})) as unknown;
         if (!response.ok) throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : response.status === 422 ? "BAD_REQUEST" : "BAD_GATEWAY",
-          message: cloudflareApprovalFailureCode(value, response.status, stage) });
-        return value;
+          message: cloudflareApprovalFailureCode(payload, response.status, stage) });
+        return cloudflareApprovalResponseObject(payload);
       };
       const operationId = stableOperationUuid(`cloudflare-private-database-renewal:${preflight.planDigest}`);
       const grantExpiresAt = preflight.plan.authorizationExpiresAt;
@@ -751,6 +753,7 @@ export const infrastructureRouter = router({
         }, "GRANT_CREATE");
         grantRef = typeof grant.id === "string" ? grant.id : null;
         if (!grantRef || grant.status !== "approved") throw new Error("STAGING_GRANT_NOT_APPROVED");
+        approvalStage = "JOB_ADMISSION";
         jobCreationStarted = true;
         const job = await createControlPlaneJob({ context: { tenantId, actorType: "user", actorId: ctx.user.id,
           authorizationScope: "infrastructure.cloudflare_staging_private_database_renewal", correlationId: ctx.req.requestId ?? operationId,
@@ -775,8 +778,13 @@ export const infrastructureRouter = router({
             { method: "POST", headers, signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
         }
         if (error instanceof TRPCError) throw error;
-        throw new TRPCError({ code: "BAD_GATEWAY", message: error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
-          ? error.message : "PRIVATE_DATABASE_RENEWAL_QUEUE_FAILED" });
+        const safeFailure = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+          ? error.message : `PRIVATE_DATABASE_RENEWAL_${approvalStage}_FAILED`;
+        auditLogger.log({ eventType: "cloudflare_staging_private_database_renewal_failed", userId: ctx.user.id,
+          requestType: "cloudflare_staging_private_database_renewal", statusCode: 502,
+          responsePayload: { tenantId, projectId: input.projectId, configurationRef: input.configurationRef,
+            planDigest: preflight.planDigest, failureStage: approvalStage, failureCode: safeFailure, jobCreationStarted } });
+        throw new TRPCError({ code: "BAD_GATEWAY", message: safeFailure });
       }
     }),
 

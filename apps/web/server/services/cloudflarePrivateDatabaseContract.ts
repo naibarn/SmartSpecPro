@@ -7,6 +7,10 @@ export const PRIVATE_DATABASE_JOB = "cloudflare.staging.private_database.provisi
 export const PRIVATE_DATABASE_GRANT = "cloudflare.staging-private-database-provision-grant.v1";
 export const PRIVATE_DATABASE_RENEWAL_CONTRACT = "cloudflare-staging-private-db-renewal-v1";
 export const PRIVATE_DATABASE_RENEWAL_JOB = "cloudflare.staging.private_database.renew_lease";
+
+export function canonicalJobAdmissionSchemaReady(row: { conversationThreads?: boolean; workerJobThreadId?: boolean } | undefined): boolean {
+  return row?.conversationThreads === true && row.workerJobThreadId === true;
+}
 export const PRIVATE_DATABASE_RENEWAL_GRANT = "cloudflare.staging-private-database-renewal-grant.v1";
 export const privateDatabaseResourceIdSchema = z.string().regex(/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
 export const privateDatabaseResourceIdsSchema = z.object({

@@ -6,7 +6,8 @@ import { join } from "node:path";
 import { X509Certificate } from "node:crypto";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB,
-  certificateDigest, privateDatabaseGrantSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
+  canonicalJobAdmissionSchemaReady, certificateDigest, privateDatabaseGrantSchema, privateDatabasePlanDigest,
+  privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail,
   stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
@@ -74,6 +75,11 @@ function fixture() {
 }
 
 describe("private PostgreSQL staging provisioning", () => {
+  it("requires both canonical chat and Job schema objects before renewal admission", () => {
+    expect(canonicalJobAdmissionSchemaReady({ conversationThreads: true, workerJobThreadId: true })).toBe(true);
+    expect(canonicalJobAdmissionSchemaReady({ conversationThreads: true, workerJobThreadId: false })).toBe(false);
+    expect(canonicalJobAdmissionSchemaReady(undefined)).toBe(false);
+  });
   it("uses the same provider ID formats for stored bindings and renewal plans", () => {
     const resources = { hyperdriveId: "e".repeat(32), caId: "f".repeat(32),
       accessApplicationId: "33333333-3333-4333-8333-333333333333", accessPolicyId: "44444444-4444-4444-8444-444444444444",
