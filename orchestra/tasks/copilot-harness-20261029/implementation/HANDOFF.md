@@ -3,24 +3,24 @@
 Generated from `deep_implement_config.json`. Read this at any time;
 on resume, reconcile recorded SHA values with Git/PR state.
 
-- State generation: `9`
-- Updated (UTC): `2026-10-29T07:19:07.482427+00:00`
+- State generation: `13`
+- Updated (UTC): `2026-10-29T07:21:18.152172+00:00`
 - Sections source: `/mnt/SmartSpecDev/projects/SmartSpecPro/orchestra/tasks/copilot-harness-20261029/sections`
 - Target checkout: `/mnt/SmartSpecDev/projects/SmartSpecPro`
 - Worktree: `/mnt/SmartSpecDev/projects/SmartSpecPro`
-- Latest recorded merged Main SHA: `023bf0d242e0efb9c51f5a31cdb33e168447b014`
+- Latest recorded merged Main SHA: `1ad03ab3abf70a5232738d4f004a84e0932851ee`
 - Outcome: `NOT_ACCEPTED`
 - Active section: `section-04-verification-handoff`
-- Next action: Run authorized live E2E after installing Copilot CLI and provisioning tenant-scoped auth; complete remaining permission-resume and Gateway tests.
+- Next action: After scoped auth/Gateway and approval work, run Windows/Linux live E2E; complete pinned-SDK resume tests and canonical SPEC governance reconciliation.
 
 ## Sections
 
 | Section | Stage | Owner/session | Worktree | Local checkpoint | Merged Main | Next action |
 | --- | --- | --- | --- | --- | --- | --- |
-| section-01-runner-copilot-adapter | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | Keep shared-runner dispatch gated until tenant/user-scoped Copilot OAuth credentials and Gateway BYOK routing are implemented; then add SDK resume/cancel and approval-pending continuation tests. |
-| section-02-canonical-dispatch | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | Add tenant/user-scoped Copilot credential binding, Gateway BYOK routing and approval-pending continuation before enabling this provider on shared Runners. |
-| section-03-task-control-selection | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | Task Control can list live Runner models and dispatch Copilot; keep live availability unavailable until scoped auth and Gateway policies are wired and verified. |
-| section-04-verification-handoff | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | Run authorized live E2E after installing Copilot CLI and provisioning tenant-scoped auth; complete remaining permission-resume and Gateway tests. |
+| section-01-runner-copilot-adapter | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 1ad03ab3abf70a5232738d4f004a84e0932851ee | Before shared-tenant rollout, bind COPILOT_HOME to the authenticated tenant/user and add SDK resume_session with duplicate-prompt protection; then wire user-visible approval pause/resume. |
+| section-02-canonical-dispatch | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 1ad03ab3abf70a5232738d4f004a84e0932851ee | Implement scoped GitHub OAuth or SmartAIHub Gateway BYOK credential delivery, then enable shared-runner dispatch only after tenant/user isolation evidence passes. |
+| section-03-task-control-selection | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 1ad03ab3abf70a5232738d4f004a84e0932851ee | UI selection and dispatch are implemented when Runner readiness is advertised; verify authorized credentials and tenant/user scope before shared-runner rollout. |
+| section-04-verification-handoff | checkpointed | — | — | 023bf0d242e0efb9c51f5a31cdb33e168447b014 | 1ad03ab3abf70a5232738d4f004a84e0932851ee | After scoped auth/Gateway and approval work, run Windows/Linux live E2E; complete pinned-SDK resume tests and canonical SPEC governance reconciliation. |
 
 ## Open gaps / blockers (not automatic merge blockers)
 
