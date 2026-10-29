@@ -1089,14 +1089,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6",
+    "expected_canonical_sha": "16b0bdd61c6ed61bde2786b6439eb3947adc5990",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "On Task Control, choose the authorized Runner and registered Workspace, then choose Auto or the Codex Harness and Auto or an explicit model from the fresh Runner catalog. Enter the bounded scope apps/runner-app/tests/spec224-live-pilot/**, start the Goal, and approve its actual Grant through Approval Authority. Continue the durable Run through genuine Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify.",
+    "next_action": "The local Mission Control overview UAT passes, and the historical hosted thread-schema errors are currently clear by read-only evidence: active smartspec database has migration 0416 and required objects; active web PID 3897349 restarted at 23:17 with no matching subsequent journal errors. SPEC-224 live execution is still not started: read-only smartspec_dev inspection for tenant-001 found no approval_requests or worker_jobs. Use the existing authenticated Task Control to start the bounded Goal in apps/runner-app/tests/spec224-live-pilot/** and complete its real Goal Grant flow; then trace Child 1 receipt/settlement, automatic Child 2, and Independent Final Verify. Do not create database grants or synthetic receipts. Fresh hosted authenticated UI acceptance and SPEC-294 cross-host event replay/Agent graph remain separate open work.",
     "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At integrated source 3677fca92b9b5cf8afa490cc42a927cb5b986aa6, Runner and Workspace selection remain available in both modes; Harness and Model selection now also work in Simple and Developer modes. Auto is the default, while Start carries an explicitly selected Codex provider/model. Focused component tests passed 24/24. Authenticated live selection, Goal approval, and genuine two-phase execution remain unverified.",
+    "resume_point": "Canonical source `16b0bdd61c6ed61bde2786b6439eb3947adc5990`. Runner/Codex installation, Workspace Registry, Task Control model selection, local authenticated Mission Control UAT, and migration 0416 are not current blockers. Hosted schema errors were historical under an older service PID; current active DB schema+ledger verify migration 0416 and the active service has no matching subsequent error logs in the inspected window, but authenticated hosted browser acceptance is not proven. smartspec_dev / tenant-001 has zero approval_requests and worker_jobs, so no real Goal/Run/Job exists to resume. Resume from actual Task Control Start and Goal Grant approval, then verify genuine Child 1/2 receipts, settlement, autonomous continuation, and Independent Final Verify.",
     "waiting_predicate": "A real authenticated Task Control session exposes an authorized Runner and Workspace with a fresh account-bound Codex catalog; the user starts the bounded Goal and the existing Approval Authority persists the actual Grant. The durable Run/Job then proceeds through current Source Admission, fenced Writer Lease, genuine receipts and settlement, automatic Child 2, and independent Final Verify."
   },
   "continuation_assessment": {
@@ -1268,13 +1268,13 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 255,
+  "generation": 257,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-29T09:28:20.256901Z",
+      "last_evidence_at": "2026-10-29T16:43:52.766793Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-26T09:26:48+07:00",
       "spec_last_changed_at": "2026-10-04T09:53:19+07:00"
@@ -1500,7 +1500,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6",
+    "canonical_sha": "16b0bdd61c6ed61bde2786b6439eb3947adc5990",
     "integrated": true,
     "integrated_at": "2026-10-29T07:41:30+07:00",
     "pull_request": null,
@@ -3764,7 +3764,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-29T09:28:20.256901Z",
+    "reconciled_at": "2026-10-29T16:43:52.766793Z",
     "sources": [
       {
         "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -4018,7 +4018,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T09:28:20.256901Z",
+  "updated_at": "2026-10-29T16:43:52.766793Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
