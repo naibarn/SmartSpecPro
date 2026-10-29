@@ -1,5 +1,13 @@
 # Cloudflare Delegated Staging Deployment Handoff
 
+## Expired Staging configuration and disabled preparation action — 2026-10-29
+
+- The live Admin's “Prepare Staging” action is intentionally disabled when the target's immutable origin configuration is `EXPIRED`; the existing activation mutation also rejects expired configurations. This is not a browser-click failure and must not be “fixed” by enabling the old mutation or changing an expiry timestamp.
+- The expired configuration references an expired private-database plan/role lease and a `namespace-only` Node/Python profile. A fresh staging candidate therefore needs a new verified private-database lease receipt and new immutable configuration; the current origin-provision workflow is not a renewal operation and must not be replayed because it can create duplicate Cloudflare resources.
+- UI checkpoint on `0eb765efdccb13090a06bc5550e2e82eab71cc49`: the expired state now explains the exact block, marks the preparation control as disabled, and offers a read-only recheck for target/config/preflight/runtime. It cannot create jobs or mutate Cloudflare. Focused test: `pnpm --filter @smartspec/web exec vitest run client/src/components/admin/AdminDeploymentTargets.test.tsx` — 1 file / 59 tests passed. This source is not a production release, so the public Admin remains unchanged until the approved Linux release workflow publishes it.
+- Next executable engineering slice: implement a narrowly scoped, owner-authorized renewal of the existing staging DB role lease and receipt that reuses the exact verified Tunnel/Hyperdrive/Access/DNS IDs, then compose a fresh complete Node/Python profile from valid image receipts and staging-only secrets. Reconcile provider identity before any write; preserve old immutable records. Do not queue deployment until that candidate is verified. No Owner renewal operation is currently exposed by the Admin, and no renewal Job/receipt was created in this turn.
+- Existing verified resource identities and images remain as recorded in the prior checkpoints; no Cloudflare resource, DB role, Worker, route or traffic was changed in this turn. Production still uses the Linux runtime.
+
 ## Production cutover live blocker recheck — 2026-10-25
 
 - Read-only live probe of `https://runtime.smartaihub.app/readyz` returned HTTP 503 with `activation=disabled`; required bindings `HYPERDRIVE`, `JOB_QUEUE`, `JOB_WORKFLOW`, `JOB_CONTAINERS`, `WORKER_APP`, `MEDIA_BUCKET`, and `VECTOR_INDEX` are absent. This is a real Worker readiness response, not Cloudflare Access denial.

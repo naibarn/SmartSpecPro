@@ -609,6 +609,13 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
     expect(await screen.findByText("STAGING_ORIGIN_CONFIGURATION_EXPIRED")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Prepare Staging with saved secrets" })).toBeDisabled();
+    expect(screen.getByText(/Prepare Staging is intentionally disabled/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Recheck Staging configuration (read-only)" }));
+    expect(mocks.refetchStagingOriginConfiguration).toHaveBeenCalled();
+    expect(mocks.refetchStagingPreflight).toHaveBeenCalled();
+    expect(mocks.refetchStagingRuntimeReadiness).toHaveBeenCalled();
+    expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
+    expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
 
     mocks.originConfiguration = {
       status: "STORED",

@@ -1756,7 +1756,17 @@ export default function AdminDeploymentTargets() {
                   )}</p>
                   {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
                     <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
-                  {stagingOriginConfiguration.data?.status === "EXPIRED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_EXPIRED</code> · {text("Replace the expired immutable configuration through the authorized origin-configuration workflow.", "ให้บันทึก immutable configuration ชุดใหม่ผ่านขั้นตอน origin-configuration ที่ได้รับอนุญาต")}</p> : null}
+                  {stagingOriginConfiguration.data?.status === "EXPIRED" ? <VStack gap={1} role="alert" aria-label={text("Staging preparation is blocked", "หยุดการเตรียม Staging") }>
+                    <p><strong><code>STAGING_ORIGIN_CONFIGURATION_EXPIRED</code></strong></p>
+                    <p id="staging-expired-config-help">{text(
+                      "Prepare Staging is intentionally disabled: this immutable configuration and its private-database lease have expired. A fresh, verified database receipt and new configuration version are required before profile activation. Rechecking below is read-only and will not create a job or change Cloudflare resources.",
+                      "ปุ่มเตรียม Staging ถูกปิดโดยตั้งใจ เพราะ immutable configuration และ lease ของฐานข้อมูล private หมดอายุแล้ว ต้องมี receipt ฐานข้อมูลชุดใหม่ที่ตรวจสอบแล้วและ configuration version ใหม่ก่อน จึงจะ activate profile ได้ ปุ่มตรวจซ้ำด้านล่างเป็นการอ่านอย่างเดียว ไม่สร้าง job และไม่เปลี่ยนทรัพยากร Cloudflare",
+                    )}</p>
+                    <Button type="button" variant="outline" size="sm" disabled={stagingOriginConfiguration.isFetching || stagingDeployPreflight.isFetching || stagingRuntimeReadiness.isFetching}
+                      onClick={() => void Promise.all([refreshTargets(), stagingOriginConfiguration.refetch(), stagingDeployPreflight.refetch(), stagingRuntimeReadiness.refetch()])}>
+                      {text("Recheck Staging configuration (read-only)", "ตรวจ config Staging ซ้ำ (อ่านอย่างเดียว)")}
+                    </Button>
+                  </VStack> : null}
                   {stagingOriginConfiguration.data?.status === "REVOKED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_REVOKED</code> · {text("Save a new authorized immutable configuration before activation.", "บันทึก immutable configuration ชุดใหม่ที่ได้รับอนุญาตก่อน activate")}</p> : null}
                   {stagingOriginConfiguration.data && !stagingOriginConfiguration.data.descriptor.nativeResources?.privateDatabase ? <p role="alert"><code>STAGING_PRIVATE_DATABASE_BINDING_REQUIRED</code> · {text("The stored configuration has no verified private database receipt. Complete the authorized database binding workflow before activation.", "config ไม่มี receipt ของ private database ที่ตรวจสอบแล้ว ให้ทำขั้นตอนผูก database ที่ได้รับอนุญาตก่อน activate")}</p> : null}
                   {secretsMissing ? <VStack gap={2}>
@@ -1789,7 +1799,9 @@ export default function AdminDeploymentTargets() {
                     "มี secret ภายในที่บันทึกไว้อย่างปลอดภัยแล้ว ระบบจะใช้ค่าเดิมโดยไม่สร้างใหม่",
                   )}</p>}
                   {stagingOriginConfiguration.isError ? <p role="alert"><code>{activationBlocker && activationBlocker.startsWith("STAGING_") ? activationBlocker : "STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE"}</code> · {text("Stored configuration or its resource receipts could not be verified. Use the authorized origin-configuration repair path, then refresh this registry.", "ตรวจสอบ config หรือ resource receipt ที่บันทึกไว้ไม่สำเร็จ ให้ใช้ขั้นตอนซ่อม origin-configuration ที่ได้รับอนุญาต แล้วรีเฟรช registry")}</p> : null}
-                  <Button type="button" disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
+                  <Button type="button" aria-describedby={config?.status === "EXPIRED" ? "staging-expired-config-help" : undefined}
+                    variant={config?.status === "EXPIRED" ? "outline" : "default"}
+                    disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
                     (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}
                     onClick={() => activateStagingProfile.mutate({ tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: configRef,
