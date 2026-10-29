@@ -158,7 +158,10 @@ import {
 import type { VerticalDramaEpisodeStoryPlanView } from "@/lib/verticalDramaEpisodeStoryPlan";
 import type { VerticalDramaDialogueAudioPlan } from "@shared/verticalDramaSeries/audio";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
-import type { VerticalDramaSpeakerVisualBinding } from "@shared/verticalDramaSeries/speakerVisualBinding";
+import type {
+  VerticalDramaDetectedShotPerson,
+  VerticalDramaSpeakerVisualBinding,
+} from "@shared/verticalDramaSeries/speakerVisualBinding";
 import type {
   RunResult,
   VerticalDramaPipelineStage,
@@ -588,6 +591,15 @@ export interface VerticalDramaStoryboardPanelData {
     bindings: VerticalDramaSpeakerVisualBinding[]
   ) => void;
   savingShotSpeakerVisualBindingsForShot?: number | null;
+  onDetectShotSpeakerPeople?: (shotNumber: number) => void;
+  detectingShotSpeakerPeopleForShot?: number | null;
+  detectedShotSpeakerPeopleByShot?: Record<
+    number,
+    {
+      sourceMediaAssetId: string;
+      people: VerticalDramaDetectedShotPerson[];
+    }
+  >;
   /** Convert a physical scene + Caller assignment into closed-door dialogue. */
   onSetShotBarrierDialogue?: (
     shotNumber: number,
@@ -1806,6 +1818,15 @@ export function VerticalDramaEpisodeWorkspace({
           }
           savingShotSpeakerVisualBindingsForShot={
             storyboardPanel?.savingShotSpeakerVisualBindingsForShot
+          }
+          onDetectShotSpeakerPeople={
+            storyboardPanel?.onDetectShotSpeakerPeople
+          }
+          detectingShotSpeakerPeopleForShot={
+            storyboardPanel?.detectingShotSpeakerPeopleForShot
+          }
+          detectedShotSpeakerPeopleByShot={
+            storyboardPanel?.detectedShotSpeakerPeopleByShot
           }
           onSetShotBarrierDialogue={storyboardPanel?.onSetShotBarrierDialogue}
           onSetShotViewMode={storyboardPanel?.onSetShotViewMode}
