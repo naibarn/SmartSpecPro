@@ -29,10 +29,41 @@ reopening and reloading a persisted child thread restored its own transcript.
 ## Remaining boundaries
 
 This confirms the current local source works through the tested Task/Mission
-Control overview. It does not identify the hosted HTTP 500 root cause or prove
-which source revision the hosted service serves; that requires the matching
-authenticated hosted request trace and immutable serving identity. SPEC-294's
-global cross-host Thread/Agent graph and immutable multi-source replay/gap
-recovery are not implemented by this UAT. SPEC-224 still needs an actual
-owner-authorized Goal, real Child 1/2 Runner receipts, settlement, automatic
-continuation, and Independent Final Verify.
+Control overview. This local UAT alone does not prove hosted authenticated
+acceptance. SPEC-294's global cross-host Thread/Agent graph and immutable
+multi-source replay/gap recovery are not implemented by this UAT. SPEC-224
+still needs an actual owner-authorized Goal, real Child 1/2 Runner receipts,
+settlement, automatic continuation, and Independent Final Verify.
+
+## Hosted runtime follow-up (read-only, 2026-10-29)
+
+Follow-up inspection of the Linux web service and its database found:
+
+- The active `smartspec-web.service` release manifest identifies source
+  revision `39141c9dc2b9a1c4b72119bebbc94f67c2c54f15` and artifact digest
+  `sha256:b2cf493fd8e6094530089b93e8fec1588a89e2fdd257ced85c76532b60eddaa5`.
+  Its frontend and backend source revisions match. This source is an ancestor of
+  `origin/main` at `4569bf8ef967a7c0659b608e54ef2af1875b05bf`; the intervening
+  changes are tests and handoff evidence, not runtime code.
+- The service journal contains historical `chat.getMessages` failures with
+  PostgreSQL `column "thread_id" does not exist` and
+  `workerJobs.observability` failures with `relation "conversation_threads"
+  does not exist` (last matching records observed at 19:41 +07, under an older
+  service PID). The exact migration that supplies these objects is
+  `apps/web/drizzle/0416_unified_chat_thread_overview.sql`.
+- A read-only connection using the currently active web process's database
+  configuration reports database `smartspec`; `conversation_threads`,
+  `messages.thread_id`, and `worker_jobs.thread_id` exist, and the migration
+  ledger contains the SHA-256 for migration 0416. The active web process started
+  at 23:17:54 +07; no matching schema errors were found after that start in the
+  inspected journal window.
+- This supports that the observed schema failure is no longer present in the
+  current database/service pair. It does not prove the old PID used the same
+  database target, nor does it substitute for a fresh authenticated browser
+  request against the hosted account. No production database or service was
+  changed during this inspection.
+
+The hosted schema boundary is therefore **currently clear by direct read-only
+schema/ledger evidence**, while authenticated hosted UI acceptance remains
+unverified. Do not treat the historical 500s as a current failure without a
+fresh correlated request.

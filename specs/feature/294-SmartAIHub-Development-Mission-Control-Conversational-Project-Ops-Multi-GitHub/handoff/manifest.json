@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "40aca3d847b293d05a5032daf6124b8369ac3153",
+    "expected_canonical_sha": "4569bf8ef967a7c0659b608e54ef2af1875b05bf",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Refresh the configured local authenticated-UAT credential through normal development account recovery, then rerun pnpm run dev:web:verify and authenticated Chat/Task Control acceptance. Chat now preserves the last authorized task status during transient refresh errors with an as-of timestamp, hides it after explicit authorization denial, and exposes focused retry for task details and selected-conversation Threads. Evidence: chat-task-detail-error-isolation-20261029.md, chat-conversation-thread-retry-20261029.md, chat-stale-status-during-retry-20261029.md. Correlate hosted 500s using authenticated runtime evidence; continue cross-source event replay/gap recovery, cross-host Mission/Agent Session graph, and SPEC-224 genuine live acceptance.",
+    "next_action": "Hosted schema errors have a historical cause and are currently clear: the old service PID logged missing conversation_threads/messages.thread_id at 19:41 +07; the active smartspec-web release is source 39141c9dc2b9a1c4b72119bebbc94f67c2c54f15 with artifact sha256:b2cf493fd8e6094530089b93e8fec1588a89e2fdd257ced85c76532b60eddaa5, the active smartspec database now has migration 0416 and all three thread schema objects, and PID 3897349 started at 23:17 with no matching subsequent errors in inspected journal. This does not replace authenticated hosted browser acceptance. Next: capture a fresh authenticated request result; if clean, continue SPEC-294 global cross-host Mission/Agent graph and immutable multi-source replay/gap recovery. For SPEC-224, first locate a real owner-authorized Goal in the correct tenant/runtime; current read-only tenant-001 smartspec_dev inspection has no approval_requests or worker_jobs, so live Child 1/2 receipts, settlement and Final Verify cannot yet be produced.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "At integrated source 6587cda2b8a88284b0df7591c77805fa82519701, Chat task activity preserves previously authorized status during transient read errors and labels its as-of timestamp; cached data is dropped after explicit authorization denial. Both task-detail and selected-conversation Thread failures have scoped retry actions. Focused Chat/Thread/Task Control regression passed, including 36 tests for stale-state handling. Authenticated development browser verification remains blocked because the configured verifier credential does not match the enabled smartspec_dev Admin password. Refresh it through normal dev account recovery, then run authenticated acceptance. Hosted chat.getMessages/workerJobs.observability 500 causes remain unverified; cross-source replay/gap recovery, cross-host Agent/Session correlation, and SPEC-224 real two-phase receipts, settlement, automatic continuation and independent Final Verify remain open.",
+    "resume_point": "Integrated source is 4569bf8ef967a7c0659b608e54ef2af1875b05bf. Local authenticated development UAT of Mission Control overview passed at 40aca3d847b293d05a5032daf6124b8369ac3153 (1/1, desktop/tablet/mobile); exact child-thread transcript restore UAT is recorded separately. Hosted schema investigation: active release source 39141c9dc2b9a1c4b72119bebbc94f67c2c54f15/artifact sha256:b2cf493fd8e6094530089b93e8fec1588a89e2fdd257ced85c76532b60eddaa5; historical old-PID errors at 19:41 +07 were missing thread schema; active smartspec DB now has 0416 ledger hash and required objects; active PID 3897349 started 23:17 and no matching errors observed afterward. Fresh authenticated hosted UAT remains open. Current dev tenant-001 has no approval request or worker job; do not claim live SPEC-224. Continue global cross-host Mission/Agent graph and immutable multi-source replay/gap recovery, then real authorized SPEC-224 execution.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,13 +139,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 122,
+  "generation": 124,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-29T09:41:47.769498Z",
+      "last_evidence_at": "2026-10-29T16:42:45.114793Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -268,7 +268,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "40aca3d847b293d05a5032daf6124b8369ac3153",
+    "canonical_sha": "4569bf8ef967a7c0659b608e54ef2af1875b05bf",
     "integrated": true,
     "integrated_at": "2026-10-29T23:00:00+07:00"
   },
@@ -1165,7 +1165,7 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-29T09:41:47.769498Z",
+    "reconciled_at": "2026-10-29T16:42:45.114793Z",
     "sources": [
       {
         "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -1188,19 +1188,24 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/.deep_implement_state.lock"
       },
       {
-        "digest": "6fbc0fc84e381de907e8db643f2469190c4d9a978e3209f6f586ba36789aaa2e",
+        "digest": "c7bcf20b3151e9f8c6f3e26931dec773ed3c588c8183c00be7d204b41d817b51",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/HANDOFF.md"
       },
       {
-        "digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
+        "digest": "a97ef483c382d64729445ae2adb1f60fc0584acc1dc3701ecea6bb6c52ecff06",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json"
       },
       {
-        "digest": "ec942614f99f6d9fe22d904647aff762df2c73f64f66bd483f25aa47a1936654",
+        "digest": "3adbe74be349b8aef9585278a0b0b6cb67025c646351097c500d5d3a5eae481e",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "7b20868c1ea8978ab597da583de5e108d8721b5d0e900121d5f4cd7f5d258d32",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/review-loops-20261029.md"
       },
       {
         "digest": "e723edbc3527bb15612453cf4e8f2fa5536c5a19637dffdc5cfc363ddfd95fa7",
@@ -1218,7 +1223,7 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-02-event-projection.md"
       },
       {
-        "digest": "7141879d25bdb5fb73f596899df2301c439b9f03a1271a41ac49de2e8f5d1424",
+        "digest": "f5f4d81ca053f3e6f34cf677249ca8e7daf90a6d73060b1e156a09a0468c9233",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-03-unified-experience.md"
       },
@@ -1258,13 +1263,27 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.event-projection: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.event-projection: checkpointed; commit_hash=missing",
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": null,
         "section": "event-projection",
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json",
-        "source_digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
-        "value": "in_progress"
+        "source_digest": "a97ef483c382d64729445ae2adb1f60fc0584acc1dc3701ecea6bb6c52ecff06",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-unified-experience: checkpointed; commit_hash=missing",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": null,
+        "section": "section-03-unified-experience",
+        "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json",
+        "source_digest": "a97ef483c382d64729445ae2adb1f60fc0584acc1dc3701ecea6bb6c52ecff06",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -1304,12 +1323,25 @@
         "commit_hash": null,
         "commit_hash_length": 0,
         "confidence": "LOW",
-        "excerpt": "sections_state.event-projection: in_progress; commit_hash=missing",
+        "excerpt": "sections_state.event-projection: checkpointed; commit_hash=missing",
         "line": null,
         "section": "event-projection",
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json",
-        "source_digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
-        "value": "in_progress"
+        "source_digest": "a97ef483c382d64729445ae2adb1f60fc0584acc1dc3701ecea6bb6c52ecff06",
+        "value": "checkpointed"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "SECTION_STATUS_ASSERTION",
+        "commit_hash": null,
+        "commit_hash_length": 0,
+        "confidence": "LOW",
+        "excerpt": "sections_state.section-03-unified-experience: checkpointed; commit_hash=missing",
+        "line": null,
+        "section": "section-03-unified-experience",
+        "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json",
+        "source_digest": "a97ef483c382d64729445ae2adb1f60fc0584acc1dc3701ecea6bb6c52ecff06",
+        "value": "checkpointed"
       },
       {
         "authority": "AUTHOR_ASSERTION_CANDIDATE",
@@ -1345,19 +1377,24 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/.deep_implement_state.lock"
       },
       {
-        "digest": "6fbc0fc84e381de907e8db643f2469190c4d9a978e3209f6f586ba36789aaa2e",
+        "digest": "c7bcf20b3151e9f8c6f3e26931dec773ed3c588c8183c00be7d204b41d817b51",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/HANDOFF.md"
       },
       {
-        "digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
+        "digest": "a97ef483c382d64729445ae2adb1f60fc0584acc1dc3701ecea6bb6c52ecff06",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json"
       },
       {
-        "digest": "ec942614f99f6d9fe22d904647aff762df2c73f64f66bd483f25aa47a1936654",
+        "digest": "3adbe74be349b8aef9585278a0b0b6cb67025c646351097c500d5d3a5eae481e",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/handoff_history.jsonl"
+      },
+      {
+        "digest": "7b20868c1ea8978ab597da583de5e108d8721b5d0e900121d5f4cd7f5d258d32",
+        "kind": "SUPPORTING_ARTIFACT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/review-loops-20261029.md"
       },
       {
         "digest": "e723edbc3527bb15612453cf4e8f2fa5536c5a19637dffdc5cfc363ddfd95fa7",
@@ -1375,7 +1412,7 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-02-event-projection.md"
       },
       {
-        "digest": "7141879d25bdb5fb73f596899df2301c439b9f03a1271a41ac49de2e8f5d1424",
+        "digest": "f5f4d81ca053f3e6f34cf677249ca8e7daf90a6d73060b1e156a09a0468c9233",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/sections/section-03-unified-experience.md"
       },
@@ -1425,7 +1462,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T16:35:34.992668Z",
+  "updated_at": "2026-10-29T16:42:45.114793Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
