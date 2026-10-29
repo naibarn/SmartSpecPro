@@ -29,6 +29,15 @@ describe("Feature 195 PostgreSQL node worker admission", () => {
       "cloudflare-staging-deploy-v1",
     )).toBeDefined();
   });
+  it("admits the exact owner-authorized Staging database lease renewal job", () => {
+    const jobType = "cloudflare.staging.private_database.renew_lease";
+    expect(isPostgresNodeJobType(jobType)).toBe(true);
+    expect(defaultJobExecutorRegistry.resolve(
+      jobType,
+      "cloudflare-staging-private-db-renewal-v1",
+    )).toBeDefined();
+    expect(defaultJobExecutorRegistry.resolve(jobType, "feature-186-v1")).toBeUndefined();
+  });
   it("admits the registered Production Queue preparation executor", () => {
     expect(isPostgresNodeJobType("cloudflare.production.queue.provision")).toBe(true);
     expect(defaultJobExecutorRegistry.resolve(

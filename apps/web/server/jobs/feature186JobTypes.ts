@@ -62,6 +62,10 @@ export const POSTGRES_NODE_JOB_TYPES = new Set([
   // Staging deployment authority is still enforced by the registered
   // executor's exact owner grant, target, artifact and rollback checks.
   "cloudflare.staging.deploy",
+  // Existing Staging database lease renewal is an owner-authorized,
+  // canonical provider operation. The registered executor revalidates its
+  // grant and resource binding before performing the renewal.
+  "cloudflare.staging.private_database.renew_lease",
   "cloudflare.staging.http.image.provision",
   "cloudflare.production.deploy",
   // Production Queue preparation is a narrowly scoped, canonical provider
