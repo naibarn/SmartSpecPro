@@ -17,9 +17,11 @@ export function validateNativeBindingScope(value: CloudflareNativeBindingDescrip
   tenantId: string; projectId: string; expiresAt: string;
 }, now = Date.now()) {
   const descriptor = cloudflareNativeBindingDescriptorSchema.parse(value);
-  if (descriptor.plan.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId)
-    || Date.parse(descriptor.plan.configurationExpiresAt) <= now
-    || Date.parse(descriptor.plan.configurationExpiresAt) < Date.parse(scope.expiresAt))
+  // The immutable native provisioning authorization is historical evidence;
+  // its grant expiry does not expire already-created Queue/R2/Vectorize IDs.
+  // The active configuration expiry and the separately leased DB binding are
+  // enforced below, while the original provision receipt remains mandatory.
+  if (descriptor.plan.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId))
     denied("CLOUDFLARE_NATIVE_BINDING_SCOPE_DENIED");
   if (descriptor.privateDatabase) validatePrivateDatabaseBinding(descriptor.privateDatabase, scope, now);
   return descriptor;
@@ -83,7 +85,7 @@ export async function verifyNativeProviderResources(input: {
   descriptor: CloudflareNativeBindingDescriptor; accountRef: string; token: string; fetchImpl?: typeof fetch;
 }) {
   const descriptor = cloudflareNativeBindingDescriptorSchema.parse(input.descriptor);
-  if (!/^[a-f0-9]{32}$/.test(input.accountRef) || Date.parse(descriptor.plan.configurationExpiresAt) <= Date.now())
+  if (!/^[a-f0-9]{32}$/.test(input.accountRef))
     denied("CLOUDFLARE_NATIVE_BINDING_SCOPE_DENIED");
   const names = nativeResourceNames(descriptor.plan);
   const get = async (path: string) => {
@@ -108,7 +110,8 @@ export async function verifyNativeProviderResources(input: {
     || !Array.isArray(metadata?.metadataIndexes) || !["tenantId", "sourceJobId"].every(field => metadata.metadataIndexes
       .some((item: any) => item.propertyName === field && ["string", "String"].includes(item.indexType))))
     denied("CLOUDFLARE_NATIVE_PROVIDER_RESOURCE_DRIFT");
-  if (descriptor.privateDatabase) await verifyPrivateDatabaseProviderResources({ ...input, descriptor: descriptor.privateDatabase });
+  if (descriptor.privateDatabase) await verifyPrivateDatabaseProviderResources({ ...input, descriptor: descriptor.privateDatabase,
+    ...(descriptor.privateDatabase.leaseRenewal ? { effectiveLeaseExpiresAt: descriptor.privateDatabase.leaseRenewal.leaseExpiresAt } : {}) });
   if (descriptor.plan.workflow) {
     const workflow = await get(`/workflows/${names.workflow}`);
     if (workflow?.id !== descriptor.workflowId || workflow.name !== names.workflow || workflow.script_name !== "smartspec-cloudflare-staging" ||

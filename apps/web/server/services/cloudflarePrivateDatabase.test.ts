@@ -5,12 +5,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { X509Certificate } from "node:crypto";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
-import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB, certificateDigest,
-  privateDatabaseGrantSchema, privateDatabasePlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
+import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB,
+  certificateDigest, privateDatabaseGrantSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { validateJobDefinition } from "./jobCanonicalization";
-import { assertPrivateDatabaseProvisionReceipt, validatePrivateDatabaseBinding, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
+import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt, validatePrivateDatabaseBinding,
+  verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
 import { assertNativeWorkerBindings, nativeWorkerBindings } from "./cloudflareNativeBindingDescriptor";
 import { nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
 import { PUBLIC_RUNNER_RELEASE_PREDICATE as backendPredicate, PUBLIC_RUNNER_RELEASE_SELECT as backendSelect,
@@ -69,6 +70,44 @@ function fixture() {
 }
 
 describe("private PostgreSQL staging provisioning", () => {
+  it("matches the Python approval service's immutable renewal plan digest", () => {
+    const sourcePlan = { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app" as const,
+      zoneId: "b".repeat(32), tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub",
+      caSha256: "c".repeat(64), connectionLimit: 5 as const, configurationExpiresAt: "2026-10-01T00:00:00.000Z" };
+    expect(privateDatabaseRenewalPlanDigest({ configurationRef: `cf-origin:${"a".repeat(64)}`, configurationDigest: "a".repeat(64),
+      sourceProvisionJobId: "11111111-1111-4111-8111-111111111111", sourcePlan, sourcePlanDigest: "f1e7c560cdb582fed16f5c75631adc2184f2576a5e33e65d18bf2c08752831a5",
+      resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: "33333333-3333-4333-8333-333333333333",
+        accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" }))
+      .toBe("9762e7eff4eeaf7f6602d4765ef6d7d8ed3b7a8fc8fa199be0782e25ba12f3e4");
+  });
+
+  it("verifies the renewal receipt against the exact immutable job plan and original resource IDs", async () => {
+    const f = fixture(), configurationDigest = "a".repeat(64), configurationRef = `cf-origin:${configurationDigest}`;
+    const descriptor = { provisionJobId: f.grant.jobId, plan: f.grant.plan, planDigest: f.grant.planDigest,
+      hyperdriveId: "e".repeat(32), caId: "c".repeat(32), accessApplicationId: "44444444-4444-4444-8444-444444444444",
+      accessPolicyId: "66666666-6666-4666-8666-666666666666", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "d".repeat(32) };
+    const plan = { configurationRef, configurationDigest, sourceProvisionJobId: descriptor.provisionJobId,
+      sourcePlan: descriptor.plan, sourcePlanDigest: descriptor.planDigest,
+      resources: { hyperdriveId: descriptor.hyperdriveId, caId: descriptor.caId, accessApplicationId: descriptor.accessApplicationId,
+        accessPolicyId: descriptor.accessPolicyId, serviceTokenId: descriptor.serviceTokenId, dnsRecordId: descriptor.dnsRecordId },
+      leaseExpiresAt: new Date(Date.now() + 2 * 86_400_000).toISOString(), authorizationExpiresAt: new Date(Date.now() + 60_000).toISOString() };
+    const planDigest = privateDatabaseRenewalPlanDigest(plan), renewalJobId = "77777777-7777-4777-8777-777777777777";
+    const renewed = { ...descriptor, leaseRenewal: { jobId: renewalJobId, leaseExpiresAt: plan.leaseExpiresAt, planDigest,
+      sourceConfigurationRef: configurationRef, sourceConfigurationDigest: configurationDigest } };
+    const receipt = { id: renewalJobId, tenantId: f.grant.tenantId, requestedByUserId: f.grant.requesterUserId,
+      jobType: PRIVATE_DATABASE_RENEWAL_JOB, contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, status: "succeeded", operatorReviewRequired: false,
+      inputJson: { contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, grantRef: "88888888-8888-4888-8888-888888888888",
+        projectId: f.grant.projectId, configurationRef, planDigest, plan },
+      outputJson: { status: "verified", configurationRef, configurationDigest, sourceProvisionJobId: descriptor.provisionJobId,
+        sourcePlanDigest: descriptor.planDigest, planDigest, resourceIds: plan.resources, leaseExpiresAt: plan.leaseExpiresAt,
+        providerResourcesVerified: true, databaseRoleReadbackVerified: true } };
+    expect(() => assertPrivateDatabaseRenewalReceipt(renewed, receipt, { tenantId: f.grant.tenantId,
+      projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId })).not.toThrow();
+    expect(() => assertPrivateDatabaseRenewalReceipt(renewed, { ...receipt, inputJson: { ...receipt.inputJson, configurationRef: `cf-origin:${"b".repeat(64)}` } },
+      { tenantId: f.grant.tenantId, projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId })).toThrow("RENEWAL_RECEIPT_DENIED");
+  });
+
   it("keeps the standalone runtime public release SQL contract aligned with shared Cloudflare readers", () => {
     expect([backendSelect, backendPredicate, backendView("smartspec-staging-aaaaaaaaaaaa")])
       .toEqual([sharedSelect, sharedPredicate, sharedView("smartspec-staging-aaaaaaaaaaaa")]);
@@ -307,5 +346,12 @@ describe("immutable private database binding authority", () => {
     expect(f.fetchImpl.mock.calls.every(([, init]) => !init.method || init.method === "GET")).toBe(true);
     f.resources.hyperdrive.mtls.sslmode = "require";
     await expect(verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token, fetchImpl: f.input.fetchImpl })).rejects.toThrow("RESOURCE_DRIFT");
+  });
+  it("requires the existing database CA certificate to remain valid through the renewed lease", async () => {
+    const f = await bindingFixture();
+    f.resources.token.expires_at = new Date(Date.now() + 40 * 86_400_000).toISOString();
+    await expect(verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token,
+      fetchImpl: f.input.fetchImpl, effectiveLeaseExpiresAt: new Date(Date.now() + 3 * 86_400_000).toISOString() }))
+      .rejects.toThrow("PRIVATE_DATABASE_PROVIDER_RESOURCE_DRIFT");
   });
 });

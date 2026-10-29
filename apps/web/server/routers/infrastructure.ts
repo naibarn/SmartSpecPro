@@ -73,7 +73,9 @@ import {
 } from "../services/cloudflareCredentialCenter";
 import { auditLogger } from "../services/auditLogger";
 import { cloudflareOriginSettingsSchema, cloudflareOriginSecretsSchema, saveCloudflareOriginConfiguration,
-  getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration, activateCloudflareStagingQueueProfile } from "../services/cloudflareOriginConfiguration";
+  getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration, activateCloudflareStagingQueueProfile,
+  saveCloudflareStagingConfigurationAfterDatabaseRenewal } from "../services/cloudflareOriginConfiguration";
+import { getCloudflarePrivateDatabaseRenewalPreflight } from "../services/cloudflarePrivateDatabaseRenewal";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
@@ -105,6 +107,7 @@ import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT, CLOUDFLARE_PRODUCTION_DATABASE
   renewCloudflareProductionDatabaseGrant, saveCloudflareProductionDatabaseGrant } from "../services/cloudflareProductionDatabaseExecutor";
 import { productionDatabaseResourcePlanDigest, productionDatabaseResourcePlanSchema } from "../services/cloudflareProductionDatabaseProvision";
 import { cloudflareApprovalFailureCode } from "../services/cloudflareApprovalFailure";
+import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalPlanSchema, privateDatabaseRenewalPlanDigest } from "../services/cloudflarePrivateDatabaseContract";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
 import { findVerifiedStagingRollbackBaseline } from "../services/cloudflareStagingRollbackBaseline";
@@ -526,6 +529,14 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
     baseline: null, configurationRef, configurationDigest, accountRef: target.accountRef };
 }
 
+function stableOperationUuid(value: string) {
+  const bytes = Buffer.from(createHash("sha256").update(value).digest("hex").slice(0, 32), "hex");
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export const infrastructureRouter = router({
   listDeploymentTargetProjects: exactAdminProcedure
     .input(z.object({ tenantId: deploymentTenantIdSchema }))
@@ -666,6 +677,122 @@ export const infrastructureRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
       return getCloudflareStagingPreflight(db, input);
+    }),
+
+  getCloudflareStagingPrivateDatabaseRenewalPreflight: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging"),
+      configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/) }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match staging target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      try { return await getCloudflarePrivateDatabaseRenewalPreflight(db, { identity: { tenantId, projectId: input.projectId,
+        provider: "cloudflare", environment: "staging" }, configurationRef: input.configurationRef, actorUserId: ctx.user.id }); }
+      catch (error) { return { ready: false, reason: error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+        ? error.message : "PRIVATE_DATABASE_RENEWAL_PREFLIGHT_UNAVAILABLE", checkedAt: new Date().toISOString(),
+        configurationRef: input.configurationRef, configurationDigest: input.configurationRef.slice("cf-origin:".length), accountRef: null,
+        plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null }; }
+    }),
+
+  queueCloudflareStagingPrivateDatabaseRenewal: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging"),
+      configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), planDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id || !ctx.userToken) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated staging Owner session required" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      let preflight;
+      try { preflight = await getCloudflarePrivateDatabaseRenewalPreflight(db, { identity: { tenantId, projectId: input.projectId,
+        provider: "cloudflare", environment: "staging" }, configurationRef: input.configurationRef, actorUserId: ctx.user.id }); }
+      catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+        ? error.message : "PRIVATE_DATABASE_RENEWAL_PREFLIGHT_UNAVAILABLE" }); }
+      if (!preflight.ready || !preflight.plan || !preflight.planDigest) throw new TRPCError({ code: "PRECONDITION_FAILED", message: preflight.reason ?? "PRIVATE_DATABASE_RENEWAL_NOT_READY" });
+      if (preflight.planDigest !== input.planDigest) throw new TRPCError({ code: "CONFLICT", message: "PRIVATE_DATABASE_RENEWAL_PLAN_CHANGED" });
+      if (Date.parse(preflight.plan.authorizationExpiresAt) <= Date.now()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRIVATE_DATABASE_RENEWAL_PLAN_EXPIRED" });
+      const executorId = process.env.CLOUDFLARE_STAGING_EXECUTOR_ID?.trim();
+      if (!executorId || !/^cf-staging-executor:[a-z0-9][a-z0-9._-]{2,119}$/.test(executorId)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "STAGING_EXECUTOR_NOT_CONFIGURED" });
+      const runtime = await getAppRuntimeConfig();
+      if (!runtime.pythonBackendUrl) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "APPROVAL_AUTHORITY_UNAVAILABLE" });
+      const headers = { Authorization: `Bearer ${ctx.userToken}`, Accept: "application/json", "Content-Type": "application/json" };
+      const post = async (path: string, body: Record<string, unknown>, stage: string) => {
+        const response = await fetch(`${runtime.pythonBackendUrl}${path}`, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(20_000) });
+        const value = await response.json().catch(() => ({})) as Record<string, unknown>;
+        if (!response.ok) throw new TRPCError({ code: response.status === 403 ? "FORBIDDEN" : response.status === 422 ? "BAD_REQUEST" : "BAD_GATEWAY",
+          message: cloudflareApprovalFailureCode(value, response.status, stage) });
+        return value;
+      };
+      const operationId = stableOperationUuid(`cloudflare-private-database-renewal:${preflight.planDigest}`);
+      const grantExpiresAt = preflight.plan.authorizationExpiresAt;
+      const policyExpiresAt = new Date(Date.parse(grantExpiresAt) + 3 * 60 * 60_000).toISOString();
+      let policyId: string | null = null, grantRef: string | null = null, policyCreated = false, jobCreationStarted = false;
+      try {
+        const campaign = { contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, accountRef: preflight.accountRef,
+          executorId, actorUserId: ctx.user.id, targetId: CLOUDFLARE_STAGING_TARGET_ID, environment: "staging",
+          plan: preflight.plan, planDigest: preflight.planDigest, maxOperations: 1, expiresAt: policyExpiresAt };
+        if (!campaign.accountRef) throw new Error("STAGING_ACCOUNT_NOT_CONFIGURED");
+        const reusable = await post("/api/v1/approvals/cloudflare-staging-policies/lookup", { projectId: input.projectId, definition: campaign }, "POLICY_LOOKUP");
+        policyId = typeof reusable.policyId === "string" ? reusable.policyId : null;
+        if (!policyId) {
+          const policy = await post("/api/v1/approvals/cloudflare-staging-policies", { projectId: input.projectId, definition: campaign }, "POLICY_CREATE");
+          policyId = typeof policy.policyId === "string" ? policy.policyId : null; policyCreated = true;
+        }
+        if (!policyId) throw new Error("STAGING_POLICY_CREATE_FAILED");
+        const grant = await post("/api/v1/approvals/cloudflare-staging-private-database-renewal-grants/policy", {
+          idempotencyKey: `cf-staging-private-db-renewal:${preflight.planDigest}`, policyId, jobId: operationId,
+          projectId: input.projectId, executorId, accountRef: campaign.accountRef, plan: preflight.plan, planDigest: preflight.planDigest,
+          expiresAt: grantExpiresAt,
+        }, "GRANT_CREATE");
+        grantRef = typeof grant.id === "string" ? grant.id : null;
+        if (!grantRef || grant.status !== "approved") throw new Error("STAGING_GRANT_NOT_APPROVED");
+        jobCreationStarted = true;
+        const job = await createControlPlaneJob({ context: { tenantId, actorType: "user", actorId: ctx.user.id,
+          authorizationScope: "infrastructure.cloudflare_staging_private_database_renewal", correlationId: ctx.req.requestId ?? operationId,
+          idempotencyKey: `cloudflare-staging-private-db-renewal:${preflight.planDigest}` },
+          definition: { contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, jobType: PRIVATE_DATABASE_RENEWAL_JOB, executionClass: "long", priority: 50,
+            input: { contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, grantRef, projectId: input.projectId,
+              configurationRef: input.configurationRef, planDigest: preflight.planDigest, plan: preflight.plan },
+            idempotencyKey: `cloudflare-staging-private-db-renewal:${preflight.planDigest}`,
+            activeDedupeKey: `cloudflare-staging-private-db-renewal:${input.configurationRef}`,
+            retryPolicy: CLOUDFLARE_STAGING_RETRY_POLICY,
+            timeoutPolicy: { softTimeoutMs: 60_000, hardTimeoutMs: 10 * 60_000 } }, createOptions: { runtimeType: "node_job_worker" } });
+        auditLogger.log({ eventType: "cloudflare_staging_private_database_renewal_queued", userId: ctx.user.id,
+          requestType: "cloudflare_staging_private_database_renewal", responsePayload: { tenantId, projectId: input.projectId,
+            jobId: job.jobId, grantRef, configurationRef: input.configurationRef, planDigest: preflight.planDigest }, statusCode: 202 });
+        return { jobId: job.jobId, grantRef, policyId, status: "queued" as const, planDigest: preflight.planDigest,
+          leaseExpiresAt: preflight.leaseExpiresAt };
+      } catch (error) {
+        if (!jobCreationStarted) {
+          if (grantRef) await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/cloudflare-staging-grants/${encodeURIComponent(grantRef)}/revoke`,
+            { method: "POST", headers, body: JSON.stringify({ reason: "Canonical private database renewal job creation did not start" }), signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
+          if (policyCreated && policyId) await fetch(`${runtime.pythonBackendUrl}/api/v1/approvals/cloudflare-staging-policies/${encodeURIComponent(policyId)}/revoke`,
+            { method: "POST", headers, signal: AbortSignal.timeout(10_000) }).catch(() => undefined);
+        }
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "BAD_GATEWAY", message: error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+          ? error.message : "PRIVATE_DATABASE_RENEWAL_QUEUE_FAILED" });
+      }
+    }),
+
+  finalizeCloudflareStagingPrivateDatabaseRenewal: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging"),
+      configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), renewalJobId: z.string().uuid() }).strict())
+    .mutation(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId || !ctx.user?.id) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated staging Owner session required" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      try {
+        const result = await saveCloudflareStagingConfigurationAfterDatabaseRenewal(db, { identity: { tenantId, projectId: input.projectId,
+          provider: "cloudflare", environment: "staging" }, configurationRef: input.configurationRef,
+          renewalJobId: input.renewalJobId, actorUserId: ctx.user.id });
+        auditLogger.log({ eventType: "cloudflare_staging_configuration_renewed", userId: ctx.user.id,
+          requestType: "cloudflare_staging_configuration_renewal_finalize", responsePayload: { tenantId, projectId: input.projectId,
+            previousConfigurationRef: input.configurationRef, configurationRef: result.configurationRef }, statusCode: 200 });
+        return result;
+      } catch (error) { throw new TRPCError({ code: "PRECONDITION_FAILED", message: error instanceof Error && /^[A-Z0-9_]+$/.test(error.message)
+        ? error.message : "PRIVATE_DATABASE_RENEWAL_FINALIZE_FAILED" }); }
     }),
 
   getCloudflareStagingRuntimeReadiness: exactAdminProcedure

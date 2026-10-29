@@ -2,7 +2,8 @@ import { publicRunnerReleaseView } from "./cloudflarePublicReleases";
 import { X509Certificate } from "node:crypto";
 import { z } from "zod";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, certificateDigest, privateDatabaseJobSchema,
-  privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseResourceDigest, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
+  PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalJobSchema, privateDatabaseRenewalReceiptSchema,
+  privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, privateDatabaseResourceDigest, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 
@@ -10,6 +11,8 @@ const id = z.string().regex(/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-
 export const privateDatabaseBindingSchema = z.object({
   provisionJobId: z.string().uuid(), plan: privateDatabasePlanSchema, planDigest: z.string().regex(/^[a-f0-9]{64}$/),
   hyperdriveId: id, caId: id, accessApplicationId: id, accessPolicyId: id, serviceTokenId: id, dnsRecordId: id,
+  leaseRenewal: z.object({ jobId: z.string().uuid(), leaseExpiresAt: z.string().datetime({ offset: true }), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    sourceConfigurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), sourceConfigurationDigest: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional(),
 }).strict().refine(value => value.planDigest === privateDatabasePlanDigest(value.plan));
 export type PrivateDatabaseBinding = z.infer<typeof privateDatabaseBindingSchema>;
 const ids = ["hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId"] as const;
@@ -17,10 +20,36 @@ function denied(code: string): never { throw Object.assign(new Error(code), { di
 
 export function validatePrivateDatabaseBinding(value: PrivateDatabaseBinding, scope: { tenantId: string; projectId: string; expiresAt: string }, now = Date.now()) {
   const descriptor = privateDatabaseBindingSchema.parse(value);
+  const leaseExpiresAt = descriptor.leaseRenewal?.leaseExpiresAt ?? descriptor.plan.configurationExpiresAt;
   if (descriptor.plan.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId)
-    || Date.parse(descriptor.plan.configurationExpiresAt) <= now || Date.parse(descriptor.plan.configurationExpiresAt) < Date.parse(scope.expiresAt))
+    || (descriptor.leaseRenewal && (descriptor.leaseRenewal.planDigest !== descriptor.planDigest
+      || !Number.isFinite(Date.parse(leaseExpiresAt)) || Date.parse(leaseExpiresAt) <= now))
+    || Date.parse(leaseExpiresAt) < Date.parse(scope.expiresAt)
+    || (!descriptor.leaseRenewal && Date.parse(leaseExpiresAt) <= now))
     denied("PRIVATE_DATABASE_BINDING_SCOPE_DENIED");
   return descriptor;
+}
+
+export function assertPrivateDatabaseRenewalReceipt(value: PrivateDatabaseBinding, receipt: {
+  id: string; tenantId: string; requestedByUserId: number | null; jobType: string; contractVersion: string;
+  status: string; operatorReviewRequired: boolean; inputJson: unknown; outputJson: unknown;
+}, scope: { tenantId: string; projectId: string; actorUserId: number }) {
+  const descriptor = privateDatabaseBindingSchema.parse(value), renewal = descriptor.leaseRenewal;
+  const input = privateDatabaseRenewalJobSchema.safeParse(receipt.inputJson);
+  const output = privateDatabaseRenewalReceiptSchema.safeParse(receipt.outputJson);
+  if (!renewal || !receipt || receipt.id !== renewal.jobId || receipt.tenantId !== scope.tenantId
+    || receipt.requestedByUserId !== scope.actorUserId || receipt.jobType !== PRIVATE_DATABASE_RENEWAL_JOB
+    || receipt.contractVersion !== PRIVATE_DATABASE_RENEWAL_CONTRACT || receipt.status !== "succeeded" || receipt.operatorReviewRequired
+    || !input.success || input.data.planDigest !== renewal.planDigest || input.data.projectId !== scope.projectId
+    || input.data.configurationRef !== renewal.sourceConfigurationRef || privateDatabaseRenewalPlanDigest(input.data.plan) !== renewal.planDigest
+    || input.data.plan.configurationDigest !== renewal.sourceConfigurationDigest || input.data.plan.sourceProvisionJobId !== descriptor.provisionJobId
+    || input.data.plan.sourcePlanDigest !== descriptor.planDigest || input.data.plan.leaseExpiresAt !== renewal.leaseExpiresAt
+    || Object.entries(input.data.plan.resources).some(([key, id]) => (descriptor as any)[key] !== id)
+    || !output.success || output.data.planDigest !== renewal.planDigest || output.data.configurationRef !== renewal.sourceConfigurationRef
+    || output.data.configurationDigest !== renewal.sourceConfigurationDigest || output.data.sourceProvisionJobId !== descriptor.provisionJobId
+    || output.data.sourcePlanDigest !== descriptor.planDigest || output.data.leaseExpiresAt !== renewal.leaseExpiresAt
+    || Object.entries(output.data.resourceIds).some(([key, id]) => (descriptor as any)[key] !== id))
+    denied("PRIVATE_DATABASE_RENEWAL_RECEIPT_DENIED");
 }
 
 export function assertPrivateDatabaseProvisionReceipt(value: PrivateDatabaseBinding, receipt: {
@@ -63,10 +92,12 @@ checkpoint?: { jobId: string; actorUserId: number; state: unknown }) {
 
 /** Verify the dedicated provider resources, never just a matching annotation. */
 export async function verifyPrivateDatabaseProviderResources(input: {
-  descriptor: PrivateDatabaseBinding; accountRef: string; token: string; fetchImpl?: typeof fetch;
+  descriptor: PrivateDatabaseBinding; accountRef: string; token: string; fetchImpl?: typeof fetch; effectiveLeaseExpiresAt?: string;
 }) {
   const d = privateDatabaseBindingSchema.parse(input.descriptor), p = d.plan;
-  if (!/^[a-f0-9]{32}$/.test(input.accountRef) || Date.parse(p.configurationExpiresAt) <= Date.now()) denied("PRIVATE_DATABASE_BINDING_SCOPE_DENIED");
+  const effectiveExpiry = input.effectiveLeaseExpiresAt ?? p.configurationExpiresAt;
+  if (!/^[a-f0-9]{32}$/.test(input.accountRef) || !Number.isFinite(Date.parse(effectiveExpiry)) || Date.parse(effectiveExpiry) <= Date.now()
+    || (!input.effectiveLeaseExpiresAt && Date.parse(p.configurationExpiresAt) <= Date.now())) denied("PRIVATE_DATABASE_BINDING_SCOPE_DENIED");
   const fetchImpl = input.fetchImpl ?? fetch, account = `/accounts/${input.accountRef}`;
   const marker = `${p.namespace}-database-${privateDatabaseResourceDigest(p).slice(0, 12)}`;
   async function get(path: string): Promise<any> {
@@ -86,15 +117,20 @@ export async function verifyPrivateDatabaseProviderResources(input: {
     get(`${account}/access/service_tokens/${d.serviceTokenId}`), get(`/zones/${p.zoneId}/dns_records/${d.dnsRecordId}`),
     get(`${account}/cfd_tunnel/${p.tunnelId}`), get(`/zones/${p.zoneId}`),
   ]);
-  let caDigest: string | undefined;
-  try { caDigest = certificateDigest(new X509Certificate(ca?.certificates).raw); } catch {}
+  let caDigest: string | undefined, caValidTo: number | undefined;
+  try {
+    const certificate = new X509Certificate(ca?.certificates);
+    caDigest = certificateDigest(certificate.raw);
+    caValidTo = Date.parse(certificate.validTo);
+  } catch {}
   if (hyperdrive?.id !== d.hyperdriveId || hyperdrive.name !== marker || hyperdrive.origin?.host !== p.hostname
     || hyperdrive.origin?.database !== p.databaseName || hyperdrive.origin?.user !== privateDatabaseRole(p.namespace)
     || hyperdrive.origin?.access_client_id !== token?.client_id || !token?.client_id || hyperdrive.caching?.disabled !== true
     || hyperdrive.mtls?.sslmode !== "verify-full" || hyperdrive.mtls?.ca_certificate_id !== d.caId || hyperdrive.origin_connection_limit !== 5
     || ca?.id !== d.caId || ca.name !== marker || ca.ca !== true || caDigest !== p.caSha256
+    || !Number.isFinite(caValidTo) || caValidTo! <= Date.parse(effectiveExpiry)
     || app?.id !== d.accessApplicationId || app.domain !== p.hostname || app.name !== marker || app.type !== "self_hosted"
-    || token?.id !== d.serviceTokenId || token.name !== marker || !Number.isFinite(Date.parse(token.expires_at)) || Date.parse(token.expires_at) < Date.parse(p.configurationExpiresAt)
+    || token?.id !== d.serviceTokenId || token.name !== marker || !Number.isFinite(Date.parse(token.expires_at)) || Date.parse(token.expires_at) < Date.parse(effectiveExpiry)
     || !Array.isArray(policies) || policies.length !== 1 || policies[0].id !== d.accessPolicyId || policies[0].name !== marker
     || policies[0].decision !== "non_identity" || JSON.stringify(policies[0].include) !== JSON.stringify([{ service_token: { token_id: d.serviceTokenId } }])
     || policies[0].exclude?.length || policies[0].require?.length

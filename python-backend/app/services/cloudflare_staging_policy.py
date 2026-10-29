@@ -18,14 +18,17 @@ from app.services.cloudflare_origin_provision_contract import (CONTRACT as PROVI
 from app.services.cloudflare_native_provision_contract import (CONTRACT as NATIVE_CONTRACT, POLICY_SCHEMA as NATIVE_SCHEMA,
     GRANT_SCHEMA as NATIVE_GRANT, validate_plan as validate_native_plan, namespace as native_namespace)
 from app.services.cloudflare_private_database_contract import (CONTRACT as DATABASE_CONTRACT, POLICY_SCHEMA as DATABASE_SCHEMA,
-    GRANT_SCHEMA as DATABASE_GRANT, validate_plan as validate_database_plan)
+    GRANT_SCHEMA as DATABASE_GRANT, validate_plan as validate_database_plan,
+    RENEWAL_CONTRACT as DATABASE_RENEWAL_CONTRACT, RENEWAL_POLICY_SCHEMA as DATABASE_RENEWAL_SCHEMA,
+    RENEWAL_GRANT_SCHEMA as DATABASE_RENEWAL_GRANT, validate_renewal_plan as validate_database_renewal_plan)
 from app.services.cloudflare_http_image_provision_contract import (CONTRACT as HTTP_IMAGE_CONTRACT, POLICY_SCHEMA as HTTP_IMAGE_SCHEMA,
     GRANT_SCHEMA as HTTP_IMAGE_GRANT, validate_plan as validate_http_image_plan)
 
 PROVISION_CONTRACTS = {PROVISION_CONTRACT: (PROVISION_SCHEMA, validate_plan), NATIVE_CONTRACT: (NATIVE_SCHEMA, validate_native_plan),
-    DATABASE_CONTRACT: (DATABASE_SCHEMA, validate_database_plan), HTTP_IMAGE_CONTRACT: (HTTP_IMAGE_SCHEMA, validate_http_image_plan)}
+    DATABASE_CONTRACT: (DATABASE_SCHEMA, validate_database_plan), HTTP_IMAGE_CONTRACT: (HTTP_IMAGE_SCHEMA, validate_http_image_plan),
+    DATABASE_RENEWAL_CONTRACT: (DATABASE_RENEWAL_SCHEMA, validate_database_renewal_plan)}
 PROVISION_GRANTS = {PROVISION_GRANT: PROVISION_CONTRACT, NATIVE_GRANT: NATIVE_CONTRACT, DATABASE_GRANT: DATABASE_CONTRACT,
-    HTTP_IMAGE_GRANT: HTTP_IMAGE_CONTRACT}
+    HTTP_IMAGE_GRANT: HTTP_IMAGE_CONTRACT, DATABASE_RENEWAL_GRANT: DATABASE_RENEWAL_CONTRACT}
 
 SCHEMA = "cloudflare.staging-policy.v1"
 ORIGIN_SCHEMA = "cloudflare.staging-origin-policy.v2"
@@ -67,11 +70,16 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
         raise ValueError("CLOUDFLARE_STAGING_POLICY_BUDGET_INVALID")
     if provision:
         plan = PROVISION_CONTRACTS[value["contractVersion"]][1](value["plan"])
-        expiry = datetime.fromisoformat(plan["configurationExpiresAt"].replace("Z", "+00:00"))
+        expiry_key = "leaseExpiresAt" if value["contractVersion"] == DATABASE_RENEWAL_CONTRACT else "configurationExpiresAt"
+        expiry = datetime.fromisoformat(plan[expiry_key].replace("Z", "+00:00"))
         if value["maxOperations"] != 1 or value["planDigest"] != plan_digest(plan) or not now < expiry <= now + timedelta(days=30):
             raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_POLICY_INVALID")
         if value["contractVersion"] == HTTP_IMAGE_CONTRACT and expiry > now + timedelta(hours=1):
             raise ValueError("CLOUDFLARE_HTTP_IMAGE_POLICY_EXPIRY_INVALID")
+        if value["contractVersion"] == DATABASE_RENEWAL_CONTRACT:
+            auth_expiry = datetime.fromisoformat(plan["authorizationExpiresAt"].replace("Z", "+00:00"))
+            if not now < auth_expiry <= now + timedelta(minutes=15):
+                raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_AUTHORIZATION_EXPIRED")
     artifacts = [] if provision else value["releases"] if origin else value["artifacts"]
     if not provision and (not isinstance(artifacts, list) or not 1 <= len(artifacts) <= 2):
         raise ValueError("CLOUDFLARE_STAGING_POLICY_ARTIFACT_INVALID")
@@ -127,7 +135,8 @@ class CloudflareStagingPolicyAuthority:
             'AND r.profile = \'cloudflare_staging_executor\' AND r."snapshotExpiresAt" >= :expiry'
         ), {"tenant": tenant_id, "project": project_id, "executor": policy["executorId"], "account": policy["accountRef"],
             "target": TARGET, "principal": f"user:{policy['actorUserId']}", "actor": policy["actorUserId"], "expiry": expires_at})
-        if policy.get("contractVersion") in (NATIVE_CONTRACT, DATABASE_CONTRACT, HTTP_IMAGE_CONTRACT) and policy["plan"]["namespace"] != native_namespace(tenant_id, project_id):
+        namespace_value = policy.get("plan", {}).get("namespace") or policy.get("plan", {}).get("sourcePlan", {}).get("namespace")
+        if policy.get("contractVersion") in (NATIVE_CONTRACT, DATABASE_CONTRACT, HTTP_IMAGE_CONTRACT, DATABASE_RENEWAL_CONTRACT) and namespace_value != native_namespace(tenant_id, project_id):
             raise PermissionError("CLOUDFLARE_NATIVE_PROVISION_SCOPE_DENIED")
         binding = result.mappings().first()
         if binding is None:
@@ -171,7 +180,9 @@ class CloudflareStagingPolicyAuthority:
         await self._require_cloudflare_policy_owner(tenant_id, actor_id)
         now = datetime.now(timezone.utc)
         requested = validate_staging_policy(definition, now)
-        if requested.get("contractVersion") != ORIGIN_CONTRACT or requested["actorUserId"] != actor_id:
+        if requested.get("contractVersion") not in PROVISION_CONTRACTS and requested.get("contractVersion") != ORIGIN_CONTRACT:
+            raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
+        if requested["actorUserId"] != actor_id:
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
         result = await self.db.execute(select(ApprovalRule).where(
             ApprovalRule.tenant_id == tenant_id, ApprovalRule.project_id == project_id,
@@ -186,17 +197,23 @@ class CloudflareStagingPolicyAuthority:
         prior_requests = requests_result.scalars().all()
         for rule in rules:
             conditions = rule.conditions if isinstance(rule.conditions, dict) else {}
-            if conditions.get("schemaVersion") != ORIGIN_SCHEMA or conditions.get("ownerUserId") != actor_id:
+            expected_schema = PROVISION_CONTRACTS[requested["contractVersion"]][0] if requested.get("contractVersion") in PROVISION_CONTRACTS else ORIGIN_SCHEMA
+            if conditions.get("schemaVersion") != expected_schema or conditions.get("ownerUserId") != actor_id:
                 continue
             try:
                 existing = validate_staging_policy(conditions.get("definition"), now)
             except ValueError:
                 continue
-            if (conditions.get("version") != _version(existing) or existing.get("contractVersion") != ORIGIN_CONTRACT
-                or any(existing[key] != requested[key] for key in ("accountRef", "executorId", "actorUserId", "targetId", "environment", "releases", "maxOperations"))
+            compare_keys = ("accountRef", "executorId", "actorUserId", "targetId", "environment", "maxOperations")
+            if requested.get("contractVersion") == ORIGIN_CONTRACT:
+                compare_keys += ("releases",)
+            else:
+                compare_keys += ("contractVersion", "plan", "planDigest")
+            if (conditions.get("version") != _version(existing) or existing.get("contractVersion") != requested.get("contractVersion")
+                or any(existing[key] != requested[key] for key in compare_keys)
                 or existing.get("allowBootstrap", False) != requested.get("allowBootstrap", False)):
                 continue
-            active_ref = next((release["configurationRef"] for release in requested["releases"] if release["configurationRef"]), None)
+            active_ref = next((release["configurationRef"] for release in requested.get("releases", []) if release["configurationRef"]), None)
             try:
                 expiry = datetime.fromisoformat(existing["expiresAt"].replace("Z", "+00:00"))
                 await self._check_cloudflare_policy_bindings(tenant_id, project_id, existing, expiry, active_origin_ref=active_ref)
@@ -252,7 +269,8 @@ class CloudflareStagingPolicyAuthority:
             or (origin and policy.get("allowBootstrap", False) and grant["actions"] != ["bootstrap"])
             or (grant["actions"] == ["bootstrap"] and not policy["allowBootstrap"])):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
-        if provision and (grant["actions"] != ["provision"] or grant["plan"] != policy["plan"] or grant["planDigest"] != policy["planDigest"]):
+        expected_action = "renew_lease" if policy.get("contractVersion") == DATABASE_RENEWAL_CONTRACT else "provision"
+        if provision and (grant["actions"] != [expected_action] or grant["plan"] != policy["plan"] or grant["planDigest"] != policy["planDigest"]):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_SCOPE_DENIED")
         for prefix in (() if provision else ("", "rollback")):
             if prefix and grant["actions"] == ["bootstrap"]:
@@ -268,6 +286,11 @@ class CloudflareStagingPolicyAuthority:
         expiry = datetime.fromisoformat(grant["expiresAt"].replace("Z", "+00:00"))
         if expiry > datetime.fromisoformat(policy["expiresAt"].replace("Z", "+00:00")):
             raise PermissionError("CLOUDFLARE_STAGING_POLICY_EXPIRY_DENIED")
+        if policy.get("contractVersion") == DATABASE_RENEWAL_CONTRACT and (
+            expiry > datetime.fromisoformat(policy["plan"]["authorizationExpiresAt"].replace("Z", "+00:00"))
+            or expiry <= current
+        ):
+            raise PermissionError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_AUTHORIZATION_EXPIRED")
         if origin:
             await self._check_cloudflare_policy_bindings(grant["tenantId"], grant["projectId"], policy, expiry, active_origin_ref=grant["configurationRef"])
         else:

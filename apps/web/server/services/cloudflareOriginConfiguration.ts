@@ -4,7 +4,8 @@ import { z } from "zod";
 import type { DrizzleDB } from "../db";
 import { providerDeploymentTargets, systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
-import { assertPrivateDatabaseProvisionReceipt } from "./cloudflarePrivateDatabaseBinding";
+import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt } from "./cloudflarePrivateDatabaseBinding";
+import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB } from "./cloudflarePrivateDatabaseContract";
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
@@ -76,6 +77,14 @@ async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: De
       catch { denied(); }
     }
     assertPrivateDatabaseProvisionReceipt(privateDatabase, databaseReceipt, { ...descriptor, actorUserId }, checkpoint);
+    if (privateDatabase.leaseRenewal) {
+      const [renewalReceipt] = await db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
+        jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
+        operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+        .from(workerJobs).where(eq(workerJobs.id, privateDatabase.leaseRenewal.jobId)).limit(1);
+      if (!renewalReceipt || renewalReceipt.jobType !== PRIVATE_DATABASE_RENEWAL_JOB || renewalReceipt.contractVersion !== PRIVATE_DATABASE_RENEWAL_CONTRACT) denied();
+      assertPrivateDatabaseRenewalReceipt(privateDatabase, renewalReceipt, { ...descriptor, actorUserId });
+    }
   }
 }
 
@@ -192,6 +201,70 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
       .returning({ id: providerDeploymentTargets.id });
     if (rebound.length !== 1) denied();
     return { status: "STORED_AND_BOUND" as const, configurationRef, configurationDigest: digest(descriptor), descriptor,
+      deploymentAuthorized: false as const };
+  });
+}
+
+/** Bind a new immutable staging config to a verified lease-renewal receipt. */
+export async function saveCloudflareStagingConfigurationAfterDatabaseRenewal(db: DrizzleDB, input: {
+  identity: DeploymentTargetIdentity; configurationRef: string; renewalJobId: string; actorUserId: number;
+}) {
+  if (input.identity.provider !== "cloudflare" || input.identity.environment !== "staging" || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0) denied();
+  return db.transaction(async tx => {
+    const targets = await tx.select().from(providerDeploymentTargets).where(and(
+      eq(providerDeploymentTargets.tenantId, input.identity.tenantId), eq(providerDeploymentTargets.projectId, input.identity.projectId),
+      eq(providerDeploymentTargets.environment, "staging"), eq(providerDeploymentTargets.provider, "cloudflare"), eq(providerDeploymentTargets.enabled, true),
+    )).for("update");
+    const target = targets[0];
+    if (targets.length !== 1 || !target || target.runtimePolicy !== input.configurationRef || target.deploymentTargetId !== "smartspec-cloudflare-staging"
+      || target.workerRef !== "smartspec-cloudflare-staging" || target.containerApplicationRef || authorizeDeploymentTarget({ target,
+        callerTenantId: input.identity.tenantId, projectId: input.identity.projectId, environment: "staging", provider: "cloudflare" }) !== "AUTHORIZED") denied();
+    const { stored } = await readVersion(tx as DrizzleDB, input.identity, input.configurationRef);
+    if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) > Date.now()) denied();
+    const sourceBinding = stored.descriptor.nativeResources?.privateDatabase;
+    if (!sourceBinding || sourceBinding.leaseRenewal) throw new Error("PRIVATE_DATABASE_RENEWAL_SOURCE_BINDING_INVALID");
+    const [job] = await tx.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
+      jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
+      operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
+      .from(workerJobs).where(eq(workerJobs.id, input.renewalJobId)).limit(1);
+    const output = job?.outputJson as Record<string, unknown> | null;
+    if (!job || job.tenantId !== input.identity.tenantId || job.requestedByUserId !== input.actorUserId
+      || job.jobType !== PRIVATE_DATABASE_RENEWAL_JOB || job.contractVersion !== PRIVATE_DATABASE_RENEWAL_CONTRACT
+      || job.status !== "succeeded" || job.operatorReviewRequired || output?.status !== "verified"
+      || output.configurationRef !== input.configurationRef || output.configurationDigest !== digest(stored.descriptor)
+      || typeof output.leaseExpiresAt !== "string" || Date.parse(output.leaseExpiresAt) <= Date.now()) throw new Error("PRIVATE_DATABASE_RENEWAL_JOB_NOT_VERIFIED");
+    const renewal = { jobId: input.renewalJobId, leaseExpiresAt: output.leaseExpiresAt as string,
+      planDigest: output.planDigest as string, sourceConfigurationRef: input.configurationRef,
+      sourceConfigurationDigest: digest(stored.descriptor) };
+    const nativeResources = { ...stored.descriptor.nativeResources, privateDatabase: { ...sourceBinding, leaseRenewal: renewal } };
+    const settings = cloudflareOriginSettingsSchema.parse({
+      origin: stored.descriptor.origin, allowedPublicOrigins: stored.descriptor.allowedPublicOrigins,
+      accessApplicationId: stored.descriptor.accessApplicationId, accessTeamName: stored.descriptor.accessTeamName,
+      accessAudience: stored.descriptor.accessAudience, expiresAt: output.leaseExpiresAt,
+      nativeResources, ...(stored.descriptor.workflowExecution ? { workflowExecution: stored.descriptor.workflowExecution } : {}),
+      ...(stored.descriptor.jobTransport ? { jobTransport: stored.descriptor.jobTransport } : {}),
+      ...(stored.descriptor.workflowDatabase ? { workflowDatabase: stored.descriptor.workflowDatabase } : {}),
+      ...(stored.descriptor.runnerReleaseCatalog ? { runnerReleaseCatalog: stored.descriptor.runnerReleaseCatalog } : {}),
+      ...(stored.descriptor.retentionSchedule ? { retentionSchedule: stored.descriptor.retentionSchedule } : {}),
+      ...(stored.descriptor.mediaProbe ? { mediaProbe: stored.descriptor.mediaProbe } : {}),
+      ...(stored.descriptor.applicationHttp ? { applicationHttp: stored.descriptor.applicationHttp } : {}),
+      ...(stored.descriptor.applicationHttpPhase ? { applicationHttpPhase: stored.descriptor.applicationHttpPhase } : {}),
+    });
+    assertCloudflareWorkflowConfiguration(settings, stored.secrets);
+    const descriptor = descriptorSchema.parse({ ...settings, schemaVersion: "cloudflare.origin-configuration.v1", versionId: randomUUID(),
+      ...input.identity, accountRef: target.accountRef, targetId: "smartspec-cloudflare-staging" });
+    await verifyNativeReceipt(tx as DrizzleDB, descriptor, input.actorUserId);
+    const configurationRef = reference(descriptor);
+    const existing = await tx.select({ id: systemSettings.id }).from(systemSettings)
+      .where(and(eq(systemSettings.category, category), eq(systemSettings.key, configurationRef))).limit(1);
+    if (existing.length) denied();
+    await tx.insert(systemSettings).values({ category, key: configurationRef, isSensitive: true,
+      value: encrypt(JSON.stringify({ descriptor, secrets: stored.secrets, revokedAt: null })), valueJson: null,
+      updatedBy: input.actorUserId, description: "Immutable staging configuration bound to verified private database lease renewal" });
+    const rebound = await tx.update(providerDeploymentTargets).set({ runtimePolicy: configurationRef, updatedBy: input.actorUserId, updatedAt: new Date() })
+      .where(and(eq(providerDeploymentTargets.id, target.id), eq(providerDeploymentTargets.runtimePolicy, input.configurationRef))).returning({ id: providerDeploymentTargets.id });
+    if (rebound.length !== 1) denied();
+    return { status: "STORED" as const, configurationRef, configurationDigest: digest(descriptor), descriptor,
       deploymentAuthorized: false as const };
   });
 }

@@ -1,6 +1,6 @@
 import { ORIGIN_PROVISION_CONTRACT, originProvisionAuthoritySchema, type OriginProvisionAuthority } from "./cloudflareOriginProvisionContract";
 import { NATIVE_PROVISION_CONTRACT } from "./cloudflareNativeProvisionContract";
-import { PRIVATE_DATABASE_CONTRACT } from "./cloudflarePrivateDatabaseContract";
+import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_RENEWAL_CONTRACT } from "./cloudflarePrivateDatabaseContract";
 import { HTTP_IMAGE_PROVISION_CONTRACT } from "./cloudflareHttpImageProvisionContract";
 import crypto from "crypto";
 import { CLOUDFLARE_STAGING_ORIGIN_CONTRACT, cloudflareStagingOriginAuthoritySchema, type CloudflareStagingOriginAuthority } from "./cloudflareStagingOriginContract";
@@ -54,12 +54,12 @@ export type CloudflareStagingExecutorAttemptBinding = {
   tenantId: string;
   target: typeof CLOUDFLARE_STAGING_EXECUTOR_TARGET;
   artifactSha256: string;
-  action: "deploy" | "rollback" | "bootstrap" | "provision";
+  action: "deploy" | "rollback" | "bootstrap" | "provision" | "renew_lease";
   idempotencyKey: string;
   /** v2 authority is signed in full; it never follows from executor identity. */
   originAuthority?: CloudflareStagingOriginAuthority;
   provisionAuthority?: OriginProvisionAuthority;
-  provisionContract?: typeof ORIGIN_PROVISION_CONTRACT | typeof NATIVE_PROVISION_CONTRACT | typeof PRIVATE_DATABASE_CONTRACT | typeof HTTP_IMAGE_PROVISION_CONTRACT;
+  provisionContract?: typeof ORIGIN_PROVISION_CONTRACT | typeof NATIVE_PROVISION_CONTRACT | typeof PRIVATE_DATABASE_CONTRACT | typeof PRIVATE_DATABASE_RENEWAL_CONTRACT | typeof HTTP_IMAGE_PROVISION_CONTRACT;
 };
 
 /** Canonical bytes the registered Ed25519 executor must sign for each operation. */
@@ -89,11 +89,11 @@ function stableJson(value: unknown): string {
 }
 
 function attemptBody(binding: CloudflareStagingExecutorAttemptBinding) {
-  const provision = binding.action === "provision";
+  const provision = binding.action === "provision" || binding.action === "renew_lease";
   const parsedProvision = originProvisionAuthoritySchema.safeParse(binding.provisionAuthority);
   if (provision !== (binding.provisionAuthority !== undefined) || (provision &&
       (!parsedProvision.success || parsedProvision.data.planDigest !== binding.artifactSha256 || binding.originAuthority !== undefined))
-      || (binding.provisionContract !== undefined && (!provision || ![ORIGIN_PROVISION_CONTRACT, NATIVE_PROVISION_CONTRACT, PRIVATE_DATABASE_CONTRACT, HTTP_IMAGE_PROVISION_CONTRACT].includes(binding.provisionContract)))) {
+      || (binding.provisionContract !== undefined && (!provision || ![ORIGIN_PROVISION_CONTRACT, NATIVE_PROVISION_CONTRACT, PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_RENEWAL_CONTRACT, HTTP_IMAGE_PROVISION_CONTRACT].includes(binding.provisionContract)))) {
     throw new CloudflareStagingExecutorIdentityError("executor_attempt_binding_invalid");
   }
   let originAuthority: CloudflareStagingOriginAuthority | undefined;
@@ -134,7 +134,7 @@ export async function createCloudflareStagingExecutorProof(
     !binding.tenantId.trim() ||
     !binding.idempotencyKey.trim() ||
     !/^[a-f0-9]{64}$/i.test(binding.artifactSha256) ||
-    (binding.action !== "deploy" && binding.action !== "rollback" && binding.action !== "bootstrap" && binding.action !== "provision")
+    (binding.action !== "deploy" && binding.action !== "rollback" && binding.action !== "bootstrap" && binding.action !== "provision" && binding.action !== "renew_lease")
   )
     throw new CloudflareStagingExecutorIdentityError(
       "executor_attempt_binding_invalid"

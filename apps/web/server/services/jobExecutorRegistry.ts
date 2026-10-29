@@ -5,8 +5,9 @@ import { createHttpRuntimeExecutor } from "./cloudflareHttpRuntimeExecutor";
 import { createHttpCandidateExecutor } from "./cloudflareHttpCandidateExecutor";
 import { createCloudflareProductionIngressExecutor } from "./cloudflareProductionIngressExecutor";
 import { NATIVE_PROVISION_CONTRACT, NATIVE_PROVISION_JOB } from "./cloudflareNativeProvisionContract";
-import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB } from "./cloudflarePrivateDatabaseContract";
+import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB } from "./cloudflarePrivateDatabaseContract";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
+import { createCloudflarePrivateDatabaseRenewalExecutor } from "./cloudflarePrivateDatabaseRenewalExecutor";
 import { createCloudflareNativeProvisionExecutor } from "./cloudflareNativeProvisionExecutor";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { createCloudflareHttpImageProvisionExecutor } from "./cloudflareHttpImageProvisionExecutor";
@@ -463,6 +464,12 @@ defaultJobExecutorRegistry.register({
   jobType: PRIVATE_DATABASE_JOB, executionClass: "long",
   contractVersions: new Set([PRIVATE_DATABASE_CONTRACT]),
   executor: createCloudflarePrivateDatabaseExecutor(),
+});
+
+defaultJobExecutorRegistry.register({
+  jobType: PRIVATE_DATABASE_RENEWAL_JOB, executionClass: "long",
+  contractVersions: new Set([PRIVATE_DATABASE_RENEWAL_CONTRACT]),
+  executor: createCloudflarePrivateDatabaseRenewalExecutor(),
 });
 
 defaultJobExecutorRegistry.register({

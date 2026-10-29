@@ -30,6 +30,7 @@ from app.models.user import Role, User
 from app.services.cloudflare_origin_provision_contract import GRANT_SCHEMA as PROVISION_GRANT, normalize_grant as normalize_provision_grant
 from app.services.cloudflare_native_provision_contract import GRANT_SCHEMA as NATIVE_GRANT, normalize_grant as normalize_native_grant
 from app.services.cloudflare_private_database_contract import GRANT_SCHEMA as DATABASE_GRANT, normalize_grant as normalize_database_grant
+from app.services.cloudflare_private_database_contract import RENEWAL_GRANT_SCHEMA as DATABASE_RENEWAL_GRANT, normalize_renewal_grant as normalize_database_renewal_grant
 from app.services.cloudflare_http_image_provision_contract import GRANT_SCHEMA as HTTP_IMAGE_GRANT, normalize_grant as normalize_http_image_grant
 from app.services.cloudflare_staging_policy import CloudflareStagingPolicyAuthority, ORIGIN_GRANT, validate_origin_configuration_pair
 from app.services.spec224_development_policy import (
@@ -337,6 +338,8 @@ def normalize_cloudflare_staging_grant_payload(value: dict) -> dict:
         return normalize_native_grant(value)
     if value.get("schemaVersion") == DATABASE_GRANT:
         return normalize_database_grant(value)
+    if value.get("schemaVersion") == DATABASE_RENEWAL_GRANT:
+        return normalize_database_renewal_grant(value)
     if value.get("schemaVersion") == HTTP_IMAGE_GRANT:
         return normalize_http_image_grant(value)
     if value.get("schemaVersion") == PROVISION_GRANT:

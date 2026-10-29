@@ -1668,6 +1668,32 @@ async def create_cloudflare_private_database_grant(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
+@router.post("/cloudflare-staging-private-database-renewal-grants/policy", response_model=ApprovalRequestResponse, status_code=201)
+async def create_cloudflare_private_database_renewal_grant(
+    data: CloudflareOriginProvisionGrantIssue, current_user: User = Depends(get_current_user),
+    tenant_id: str | None = Depends(get_current_tenant_id), db: AsyncSession = Depends(get_db_session),
+):
+    """Owner-authorized lease renewal for one receipt-bound existing staging DB resource set."""
+    tenant_id = _cloudflare_authenticated_tenant(current_user, tenant_id)
+    if data.expires_at.tzinfo is None:
+        raise HTTPException(status_code=422, detail="CLOUDFLARE_STAGING_GRANT_EXPIRY_INVALID")
+    try:
+        return await ApprovalDBService(db).create_cloudflare_staging_grant_request(
+            tenant_id=tenant_id, requester_id=int(current_user.id), idempotency_key=data.idempotency_key,
+            policy_id=data.policy_id, payload={
+                "schemaVersion": "cloudflare.staging-private-database-renewal-grant.v1",
+                "grantRef": "00000000-0000-0000-0000-000000000000", "tenantId": tenant_id,
+                "requesterUserId": int(current_user.id), "projectId": data.project_id, "executorId": data.executor_id,
+                "targetId": "smartspec-cloudflare-staging", "environment": "staging", "accountRef": data.account_ref,
+                "jobId": data.job_id, "actions": ["renew_lease"], "plan": data.plan, "planDigest": data.plan_digest,
+                "expiresAt": data.expires_at.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"), "revokedAt": None,
+            })
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
 @router.post("/cloudflare-staging-grants/policy", response_model=ApprovalRequestResponse, status_code=201)
 async def create_cloudflare_staging_policy_grant(
     data: CloudflareStagingPolicyGrantIssue | CloudflareStagingOriginPolicyGrantIssue, current_user: User = Depends(get_current_user),

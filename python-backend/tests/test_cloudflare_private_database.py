@@ -1,7 +1,9 @@
 """Private database plans extend the existing exact staging authority only."""
 from datetime import datetime, timedelta, timezone
 import pytest
-from app.services.cloudflare_private_database_contract import CONTRACT, POLICY_SCHEMA, GRANT_SCHEMA, validate_plan, normalize_grant
+from app.services.cloudflare_private_database_contract import (CONTRACT, POLICY_SCHEMA, GRANT_SCHEMA, RENEWAL_CONTRACT,
+    RENEWAL_POLICY_SCHEMA, RENEWAL_GRANT_SCHEMA, validate_plan, normalize_grant, validate_renewal_plan, normalize_renewal_grant,
+    renewal_plan_digest)
 from app.services.cloudflare_native_provision_contract import namespace
 from app.services.cloudflare_origin_provision_contract import plan_digest
 from app.services.cloudflare_staging_policy import validate_staging_policy, _version
@@ -25,6 +27,28 @@ def private_grant(policy):
         "tenantId": "tenant-1", "projectId": "project-1", "requesterUserId": policy["actorUserId"], "executorId": policy["executorId"],
         "targetId": policy["targetId"], "environment": "staging", "accountRef": policy["accountRef"], "actions": ["provision"],
         "plan": policy["plan"], "planDigest": policy["planDigest"], "expiresAt": policy["expiresAt"], "revokedAt": None}
+
+
+def renewal_definition():
+    now = datetime.now(timezone.utc)
+    source = private_definition()
+    plan = {"configurationRef": "cf-origin:" + "c" * 64, "configurationDigest": "c" * 64,
+        "sourceProvisionJobId": "44444444-4444-4444-8444-444444444444", "sourcePlan": source["plan"],
+        "sourcePlanDigest": plan_digest(source["plan"]), "resources": {"hyperdriveId": "a" * 32, "caId": "b" * 32,
+            "accessApplicationId": "11111111-1111-4111-8111-111111111111", "accessPolicyId": "22222222-2222-4222-8222-222222222222",
+            "serviceTokenId": "33333333-3333-4333-8333-333333333333", "dnsRecordId": "d" * 32},
+        "leaseExpiresAt": (now + timedelta(days=30)).isoformat(), "authorizationExpiresAt": (now + timedelta(minutes=10)).isoformat()}
+    policy = {key: value for key, value in source.items() if key not in ("contractVersion", "plan", "planDigest")}
+    policy.update({"contractVersion": RENEWAL_CONTRACT, "plan": plan, "planDigest": plan_digest(plan), "maxOperations": 1})
+    return policy
+
+
+def renewal_grant(policy):
+    return {"schemaVersion": RENEWAL_GRANT_SCHEMA, "grantRef": "55555555-5555-4555-8555-555555555555",
+        "jobId": "66666666-6666-4666-8666-666666666666", "tenantId": "tenant-1", "projectId": "project-1",
+        "requesterUserId": policy["actorUserId"], "executorId": policy["executorId"], "targetId": policy["targetId"],
+        "environment": "staging", "accountRef": policy["accountRef"], "actions": ["renew_lease"], "plan": policy["plan"],
+        "planDigest": policy["planDigest"], "expiresAt": policy["plan"]["authorizationExpiresAt"], "revokedAt": None}
 
 
 @pytest.mark.unit
@@ -84,6 +108,44 @@ def test_private_database_policy_cannot_purchase_or_activate():
     for change in [{"maxOperations": 2}, {"environment": "production"}, {"billing": True}, {"activation": "enabled"}]:
         with pytest.raises(ValueError):
             validate_staging_policy({**policy, **change}, datetime.now(timezone.utc))
+
+
+@pytest.mark.unit
+def test_private_database_renewal_contract_is_exact_and_owner_scoped():
+    policy = renewal_definition()
+    assert validate_staging_policy(policy, datetime.now(timezone.utc)) == policy
+    grant = renewal_grant(policy)
+    assert normalize_renewal_grant(grant) == normalize_cloudflare_staging_grant_payload(grant)
+    for changes in ({"actions": ["provision"]}, {"projectId": "foreign"}, {"planDigest": "f" * 64},
+        {"plan": {**grant["plan"], "resources": {**grant["plan"]["resources"], "hyperdriveId": "e" * 32}}}):
+        with pytest.raises(ValueError):
+            normalize_renewal_grant({**grant, **changes})
+
+
+@pytest.mark.unit
+def test_private_database_renewal_rejects_expired_or_unbounded_owner_action():
+    policy = renewal_definition()
+    expired_auth = {**policy, "plan": {**policy["plan"], "authorizationExpiresAt": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()}}
+    expired_auth["planDigest"] = plan_digest(expired_auth["plan"])
+    with pytest.raises(ValueError):
+        validate_staging_policy(expired_auth, datetime.now(timezone.utc))
+    for change in ({"maxOperations": 2}, {"environment": "production"}, {"allowBootstrap": True}):
+        with pytest.raises(ValueError):
+            validate_staging_policy({**policy, **change}, datetime.now(timezone.utc))
+
+
+@pytest.mark.unit
+def test_private_database_renewal_digest_matches_admin_canonical_plan():
+    source = {"namespace": "smartspec-staging-aaaaaaaaaaaa", "hostname": "db-staging.smartaihub.app", "zoneId": "b" * 32,
+        "tunnelId": "22222222-2222-4222-8222-222222222222", "databaseName": "smartaihub", "caSha256": "c" * 64,
+        "connectionLimit": 5, "configurationExpiresAt": "2026-10-01T00:00:00.000Z"}
+    plan = {"configurationRef": "cf-origin:" + "a" * 64, "configurationDigest": "a" * 64,
+        "sourceProvisionJobId": "11111111-1111-4111-8111-111111111111", "sourcePlan": source,
+        "sourcePlanDigest": "f1e7c560cdb582fed16f5c75631adc2184f2576a5e33e65d18bf2c08752831a5",
+        "resources": {"hyperdriveId": "e" * 32, "caId": "f" * 32, "accessApplicationId": "33333333-3333-4333-8333-333333333333",
+            "accessPolicyId": "44444444-4444-4444-8444-444444444444", "serviceTokenId": "55555555-5555-4555-8555-555555555555", "dnsRecordId": "6" * 32},
+        "leaseExpiresAt": "2026-11-28T00:00:00.000Z", "authorizationExpiresAt": "2026-10-29T05:00:00.000Z"}
+    assert renewal_plan_digest(plan) == "9762e7eff4eeaf7f6602d4765ef6d7d8ed3b7a8fc8fa199be0782e25ba12f3e4"
 
 
 @pytest.mark.unit

@@ -480,6 +480,7 @@ export default function AdminDeploymentTargets() {
   const [workflowRuntimeToken, setWorkflowRuntimeToken] = useState("");
   const [controlPlaneToken, setControlPlaneToken] = useState("");
   const [productionQueueJobId, setProductionQueueJobId] = useState("");
+  const [stagingRenewalJobId, setStagingRenewalJobId] = useState("");
   const [productionDatabaseSubmissions, setProductionDatabaseSubmissions] = useState<Record<string, string>>({});
   const [productionDatabaseAdmissions, setProductionDatabaseAdmissions] = useState<Record<string, ProductionDatabaseAdmission>>({});
   const [productionTunnelSelections, setProductionTunnelSelections] = useState<Record<string, string>>({});
@@ -672,6 +673,10 @@ export default function AdminDeploymentTargets() {
   const stagingOriginConfiguration = trpc.infrastructure.getCloudflareOriginConfiguration.useQuery({
     tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: currentStagingConfigRef,
   }, { enabled: validScope && environment === "staging" && /^cf-origin:[a-f0-9]{64}$/.test(currentStagingConfigRef) });
+  const stagingDatabaseRenewal = trpc.infrastructure.getCloudflareStagingPrivateDatabaseRenewalPreflight.useQuery({
+    tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef,
+  }, { enabled: validScope && environment === "staging" && stagingOriginConfiguration.data?.status === "EXPIRED",
+    refetchInterval: query => query.state.data?.existingJob && !["succeeded", "failed", "cancelled", "dead_letter"].includes(query.state.data.existingJob.status) ? 2_000 : false });
   const enabledCloudflareTargets = cloudflareTargets.filter(target => target.enabled);
   const isConflict = enabledCloudflareTargets.length > 1;
   const canCreate = validScope && !targetsQuery.isLoading && !targetsQuery.isError && !isConflict && enabledCloudflareTargets.length === 0;
@@ -693,6 +698,17 @@ export default function AdminDeploymentTargets() {
   });
   const stagingDeployMutation = trpc.infrastructure.queueCloudflareStagingDeploy.useMutation({
     onSuccess: async () => { await stagingDeployPreflight.refetch(); },
+  });
+  const stagingRenewalMutation = trpc.infrastructure.queueCloudflareStagingPrivateDatabaseRenewal.useMutation({
+    onSuccess: async result => { setStagingRenewalJobId(result.jobId); await stagingDatabaseRenewal.refetch(); },
+  });
+  const finalizeStagingRenewal = trpc.infrastructure.finalizeCloudflareStagingPrivateDatabaseRenewal.useMutation({
+    onSuccess: async result => {
+      setStagingRenewalJobId(""); await refreshTargets();
+      const next = { tenantId, projectId, environment: "staging" as const, provider: "cloudflare" as const, configurationRef: result.configurationRef };
+      await utils.infrastructure.getCloudflareOriginConfiguration.invalidate(next);
+      await Promise.all([utils.infrastructure.getCloudflareOriginConfiguration.fetch(next), stagingDeployPreflight.refetch(), stagingRuntimeReadiness.refetch()]);
+    },
   });
   const productionQueueMutation = trpc.infrastructure.prepareCloudflareProductionQueue.useMutation({
     onSuccess: async result => {
@@ -1722,6 +1738,8 @@ export default function AdminDeploymentTargets() {
             const ready = runtime.status === "READY";
             const activationRecoveryStatus = runtime.status === "ACTIVATION_DISABLED" || runtime.status === "UNAVAILABLE" ||
               runtime.status === "NOT_DEPLOYED" || runtime.status === "NOT_READY";
+            const stagingConfigurationExpired = stagingOriginConfiguration.data?.status === "EXPIRED" ||
+              stagingDeployPreflight.data?.reason === "STAGING_ORIGIN_CONFIGURATION_EXPIRED";
             return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare Worker readiness", "ความพร้อมของ Cloudflare Worker ที่กำลังทำงาน")}>
               <HStack gap={2} wrap="wrap">
                 <Badge variant={ready ? "default" : "destructive"}>{runtime.status}</Badge>
@@ -1732,11 +1750,12 @@ export default function AdminDeploymentTargets() {
               </HStack>
               {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
-              {(activationRecoveryStatus ||
+              {(stagingConfigurationExpired || activationRecoveryStatus ||
                 stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED") ? (() => {
-                const configRef = currentStagingConfigRef;
-                const config = stagingOriginConfiguration.data;
-                const secretsMissing = config?.workflowRuntimeTokenConfigured === false || config?.controlPlaneTokenConfigured === false;
+              const configRef = currentStagingConfigRef;
+              const config = stagingOriginConfiguration.data;
+              const activationBlocker = stagingDeployPreflight.data?.reason;
+              const secretsMissing = config?.workflowRuntimeTokenConfigured === false || config?.controlPlaneTokenConfigured === false;
                 const suppliedRuntimeSecrets = Boolean(workflowRuntimeToken || controlPlaneToken);
                 const suppliedRuntimeSecretsValid = workflowRuntimeToken.length >= 32 && controlPlaneToken.length >= 32 &&
                   workflowRuntimeToken !== controlPlaneToken && /^[\x21-\x7e]+$/.test(workflowRuntimeToken) && /^[\x21-\x7e]+$/.test(controlPlaneToken);
@@ -1747,10 +1766,7 @@ export default function AdminDeploymentTargets() {
                   target.workerRef === "smartspec-cloudflare-staging" && !target.containerApplicationRef;
                 const configurationVerified = config?.status === "STORED" &&
                   Boolean(config.descriptor.nativeResources?.privateDatabase);
-                const activationBlocker = stagingDeployPreflight.data?.reason;
-                const stagingConfigurationExpired = config?.status === "EXPIRED" ||
-                  activationBlocker === "STAGING_ORIGIN_CONFIGURATION_EXPIRED";
-                return <VStack gap={2}>
+              return <VStack gap={2}>
                   <h4>{text("1. Prepare Staging", "1. เตรียม Staging")}</h4>
                   <p>{text(
                     "Prepare the internal connection for this Staging target. After saving, continue with “Authorize and deploy to staging” below. The live Worker readiness updates after deployment.",
@@ -1764,11 +1780,58 @@ export default function AdminDeploymentTargets() {
                       "Prepare Staging is intentionally disabled: this immutable configuration and its private-database lease have expired. A fresh, verified database receipt and new configuration version are required before profile activation. Rechecking below is read-only and will not create a job or change Cloudflare resources.",
                       "ปุ่มเตรียม Staging ถูกปิดโดยตั้งใจ เพราะ immutable configuration และ lease ของฐานข้อมูล private หมดอายุแล้ว ต้องมี receipt ฐานข้อมูลชุดใหม่ที่ตรวจสอบแล้วและ configuration version ใหม่ก่อน จึงจะ activate profile ได้ ปุ่มตรวจซ้ำด้านล่างเป็นการอ่านอย่างเดียว ไม่สร้าง job และไม่เปลี่ยนทรัพยากร Cloudflare",
                     )}</p>
-                    <Button type="button" variant="outline" size="sm" disabled={stagingOriginConfiguration.isFetching || stagingDeployPreflight.isFetching || stagingRuntimeReadiness.isFetching}
-                      onClick={() => void Promise.all([refreshTargets(), stagingOriginConfiguration.refetch(), stagingDeployPreflight.refetch(), stagingRuntimeReadiness.refetch()])}>
+                    <Button type="button" variant="outline" size="sm" disabled={stagingOriginConfiguration.isFetching || stagingDeployPreflight.isFetching ||
+                      stagingRuntimeReadiness.isFetching || stagingDatabaseRenewal.isFetching}
+                      onClick={() => void Promise.all([refreshTargets(), stagingOriginConfiguration.refetch(), stagingDeployPreflight.refetch(),
+                        stagingRuntimeReadiness.refetch(), stagingDatabaseRenewal.refetch()])}>
                       {text("Recheck Staging configuration (read-only)", "ตรวจ config Staging ซ้ำ (อ่านอย่างเดียว)")}
                     </Button>
-                  </VStack> : null}
+                    {stagingDatabaseRenewal.isLoading ? <p role="status">{text("Checking the existing database lease and Cloudflare resource identities…", "กำลังตรวจ lease ฐานข้อมูลและรหัส resource Cloudflare เดิม…")}</p> : null}
+                    {stagingDatabaseRenewal.isError ? <p role="alert"><code>PRIVATE_DATABASE_RENEWAL_PREFLIGHT_UNAVAILABLE</code> · {text("The read-only renewal check did not complete. Retry the check before authorizing anything.", "ตรวจข้อมูลก่อนต่ออายุไม่สำเร็จ ให้ตรวจซ้ำก่อนอนุมัติ")}</p> : null}
+                    {stagingDatabaseRenewal.data ? (() => {
+                      const renewal = stagingDatabaseRenewal.data;
+                      const job = renewal.existingJob;
+                      const plan = renewal.plan;
+                      return <VStack gap={1} role="group" aria-label={text("Staging database lease renewal", "การต่ออายุ lease ฐานข้อมูล Staging")}>
+                        <p><strong>{text("Database lease renewal", "ต่ออายุ lease ฐานข้อมูล")}</strong> · {renewal.ready ? text("READY", "พร้อมอนุมัติ") : renewal.reason}</p>
+                        {plan ? <>
+                          <p>{text("Existing scope", "ขอบเขต resource เดิม")}: <code>{plan.sourcePlan.namespace}</code> · <code>{plan.sourceProvisionJobId}</code></p>
+                          <details>
+                            <summary>{text("Review exact resource IDs and lease dates", "ตรวจรหัส resource และวันหมดอายุ")}</summary>
+                            <p>Hyperdrive <code>{plan.resources.hyperdriveId}</code> · CA <code>{plan.resources.caId}</code></p>
+                            <p>Access App <code>{plan.resources.accessApplicationId}</code> · Policy <code>{plan.resources.accessPolicyId}</code></p>
+                            <p>Service Token <code>{plan.resources.serviceTokenId}</code> · DNS record <code>{plan.resources.dnsRecordId}</code></p>
+                            <p>{text("Current role lease", "lease ปัจจุบัน")}: <code>{plan.sourcePlan.configurationExpiresAt}</code></p>
+                            <p>{text("New role lease", "lease ใหม่")}: <code>{plan.leaseExpiresAt}</code></p>
+                            <p>{text("Authorization expires", "แผนอนุมัติหมดอายุ")}: <code>{plan.authorizationExpiresAt}</code> · {text("Plan digest", "digest แผน")}: <code>{renewal.planDigest}</code></p>
+                          </details>
+                        </> : null}
+                        {job ? <VStack gap={1} role="status">
+                          <p><strong>{text("Existing renewal Job", "Job ต่ออายุเดิม")}</strong>: <code>{job.jobId}</code> · {job.status}</p>
+                          {job.heartbeatAt ? <p>{text("Last heartbeat", "heartbeat ล่าสุด")}: {new Date(job.heartbeatAt).toLocaleString()}</p> : null}
+                          {job.errorCode ? <p role="alert"><code>{job.errorCode}</code> · {text("Inspect this existing Job before starting another operation.", "ตรวจ Job เดิมนี้ก่อน ห้ามเริ่มซ้ำ")}</p> : null}
+                          {job.status === "succeeded" ? <Button type="button" disabled={finalizeStagingRenewal.isPending}
+                            onClick={() => finalizeStagingRenewal.mutate({ tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef, renewalJobId: job.jobId })}>
+                            {finalizeStagingRenewal.isPending ? text("Saving renewed configuration…", "กำลังบันทึก config ใหม่…") : text("Save verified renewal as a new Staging configuration", "บันทึก lease ที่ตรวจแล้วเป็น config Staging ชุดใหม่")}
+                          </Button> : null}
+                          {job.status === "failed" || job.status === "cancelled" || job.status === "dead_letter" ? <p>{text("This attempt is preserved. Resolve its recorded failure before requesting another lease operation.", "เก็บหลักฐานการทำงานนี้ไว้แล้ว ให้แก้สาเหตุจาก Job ก่อนขอทำรายการใหม่")}</p> : null}
+                        </VStack> : null}
+                        {renewal.ready && plan && !job ? <Button type="button" disabled={stagingRenewalMutation.isPending || Date.parse(plan.authorizationExpiresAt) <= Date.now()}
+                          onClick={() => {
+                            const message = text(
+                              `Authorize one Staging-only job to extend the existing read-only database role lease until ${plan.leaseExpiresAt}. It will verify the existing Cloudflare resource IDs, change only the role VALID UNTIL value, and save a new immutable Staging configuration after success. It will not create Cloudflare resources, change DNS/routes, or affect Production traffic.`,
+                              `อนุมัติ Job สำหรับ Staging หนึ่งรายการ เพื่อขยาย lease ของ role ฐานข้อมูลแบบอ่านอย่างเดียวถึง ${plan.leaseExpiresAt} ระบบจะตรวจ resource Cloudflare เดิม เปลี่ยนเฉพาะค่า VALID UNTIL ของ role และบันทึก config Staging แบบ immutable ชุดใหม่เมื่อสำเร็จ จะไม่สร้าง Cloudflare resource ไม่เปลี่ยน DNS/route และไม่กระทบ Production`);
+                            if (window.confirm(message)) stagingRenewalMutation.mutate({ tenantId, projectId, environment: "staging",
+                              configurationRef: currentStagingConfigRef, planDigest: renewal.planDigest! });
+                          }}>
+                          {stagingRenewalMutation.isPending ? text("Submitting the authorized renewal…", "กำลังส่งคำขอต่ออายุ…") : text("Authorize and renew the existing Staging database lease", "อนุมัติและต่ออายุ lease ฐานข้อมูล Staging เดิม")}
+                        </Button> : null}
+                        {stagingRenewalMutation.error ? <p role="alert"><code>{stagingRenewalMutation.error.message}</code></p> : null}
+                        {finalizeStagingRenewal.error ? <p role="alert"><code>{finalizeStagingRenewal.error.message}</code></p> : null}
+                        {stagingRenewalJobId && !job ? <p role="status">{text("Submission recorded; reconciling the same canonical Job…", "บันทึกคำขอแล้ว กำลัง reconcile canonical Job เดิม…")}: <code>{stagingRenewalJobId}</code></p> : null}
+                      </VStack>;
+                    })() : null}
+                    </VStack> : null}
                   {stagingOriginConfiguration.data?.status === "REVOKED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_REVOKED</code> · {text("Save a new authorized immutable configuration before activation.", "บันทึก immutable configuration ชุดใหม่ที่ได้รับอนุญาตก่อน activate")}</p> : null}
                   {stagingOriginConfiguration.data && !stagingOriginConfiguration.data.descriptor.nativeResources?.privateDatabase ? <p role="alert"><code>STAGING_PRIVATE_DATABASE_BINDING_REQUIRED</code> · {text("The stored configuration has no verified private database receipt. Complete the authorized database binding workflow before activation.", "config ไม่มี receipt ของ private database ที่ตรวจสอบแล้ว ให้ทำขั้นตอนผูก database ที่ได้รับอนุญาตก่อน activate")}</p> : null}
                   {secretsMissing ? <VStack gap={2}>

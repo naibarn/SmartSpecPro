@@ -7,6 +7,9 @@ from app.services.cloudflare_native_provision_contract import namespace
 CONTRACT = "cloudflare-staging-private-db-v1"
 POLICY_SCHEMA = "cloudflare.staging-private-database-provision-policy.v1"
 GRANT_SCHEMA = "cloudflare.staging-private-database-provision-grant.v1"
+RENEWAL_CONTRACT = "cloudflare-staging-private-db-renewal-v1"
+RENEWAL_POLICY_SCHEMA = "cloudflare.staging-private-database-renewal-policy.v1"
+RENEWAL_GRANT_SCHEMA = "cloudflare.staging-private-database-renewal-grant.v1"
 
 
 def validate_plan(value):
@@ -37,3 +40,55 @@ def normalize_grant(value):
     if value["planDigest"] != plan_digest(plan) or plan["namespace"] != namespace(value["tenantId"], value["projectId"]):
         raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_SCOPE_INVALID")
     return {**value, "plan": plan, "actions": ["provision"]}
+
+
+def validate_renewal_plan(value):
+    """Renew only the lease on one receipt-bound staging role and its existing resources."""
+    fields = {"configurationRef", "configurationDigest", "sourceProvisionJobId", "sourcePlan", "sourcePlanDigest",
+        "resources", "leaseExpiresAt", "authorizationExpiresAt"}
+    ids = {"hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId"}
+    if not isinstance(value, dict) or set(value) != fields:
+        raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_PLAN_INVALID")
+    source_plan = validate_plan(value["sourcePlan"])
+    if (not isinstance(value["configurationDigest"], str) or not re.fullmatch(r"[a-f0-9]{64}", value["configurationDigest"])
+        or value["configurationRef"] != "cf-origin:" + value["configurationDigest"]
+        or not isinstance(value["sourceProvisionJobId"], str) or not re.fullmatch(r"[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", value["sourceProvisionJobId"])
+        or value["sourcePlanDigest"] != plan_digest(source_plan)
+        or not isinstance(value["resources"], dict) or set(value["resources"]) != ids):
+        raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_BINDING_INVALID")
+    for resource_id in value["resources"].values():
+        if not isinstance(resource_id, str) or not re.fullmatch(r"[a-f0-9]{32}|[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", resource_id):
+            raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_RESOURCE_INVALID")
+    try:
+        expires_at = datetime.fromisoformat(value["leaseExpiresAt"].replace("Z", "+00:00"))
+        authorization_expires_at = datetime.fromisoformat(value["authorizationExpiresAt"].replace("Z", "+00:00"))
+        old_expiry = datetime.fromisoformat(source_plan["configurationExpiresAt"].replace("Z", "+00:00"))
+        if (expires_at.tzinfo is None or old_expiry.tzinfo is None or authorization_expires_at.tzinfo is None
+            or expires_at <= old_expiry or authorization_expires_at >= expires_at):
+            raise ValueError()
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_EXPIRY_INVALID") from exc
+    return {**value, "sourcePlan": source_plan, "resources": dict(value["resources"])}
+
+
+def renewal_plan_digest(plan):
+    return plan_digest(validate_renewal_plan(plan))
+
+
+def normalize_renewal_grant(value):
+    if not isinstance(value, dict):
+        raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_GRANT_INVALID")
+    fields = {"schemaVersion", "grantRef", "tenantId", "projectId", "requesterUserId", "executorId", "jobId", "accountRef",
+        "targetId", "environment", "actions", "plan", "planDigest", "expiresAt", "revokedAt"}
+    if set(value) != fields or value["schemaVersion"] != RENEWAL_GRANT_SCHEMA or value["targetId"] != "smartspec-cloudflare-staging" \
+        or value["environment"] != "staging" or value["actions"] != ["renew_lease"] or value["revokedAt"] is not None:
+        raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_GRANT_INVALID")
+    plan = validate_renewal_plan(value["plan"])
+    if value["planDigest"] != renewal_plan_digest(plan) or plan["sourcePlan"]["namespace"] != namespace(value["tenantId"], value["projectId"]):
+        raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_SCOPE_INVALID")
+    for name in ("grantRef", "jobId", "sourceProvisionJobId"):
+        candidate = value["plan"].get(name) if name == "sourceProvisionJobId" else value[name]
+        if not isinstance(candidate, str) or not re.fullmatch(r"[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}", candidate):
+            raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_GRANT_INVALID")
+    validate_grant_identity({**value, "actions": ["provision"]}, RENEWAL_GRANT_SCHEMA)
+    return {**value, "plan": plan, "actions": ["renew_lease"]}

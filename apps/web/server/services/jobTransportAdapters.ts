@@ -15,7 +15,7 @@ import { RESEARCH_NOTES_SUMMARY_CONTRACT } from "./researchNotesSummaryContract"
 import { DEVELOPER_FAST_LANE_CONTRACT } from "./spec224DeveloperFastLaneContract";
 import { NATIVE_PROVISION_CONTRACT } from "./cloudflareNativeProvisionContract";
 import { HTTP_IMAGE_PROVISION_CONTRACT } from "./cloudflareHttpImageProvisionContract";
-import { PRIVATE_DATABASE_CONTRACT } from "./cloudflarePrivateDatabaseContract";
+import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_RENEWAL_CONTRACT } from "./cloudflarePrivateDatabaseContract";
 import { CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT } from "./cloudflareProductionQueueProvision";
 import { CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT } from "./cloudflareProductionDatabaseExecutor";
 import { M3_PARITY_CONTRACT } from "./cloudflareM3ParityJobContract";
@@ -46,6 +46,7 @@ const POSTGRES_PULL_JOB_CONTRACT_VERSIONS: ReadonlySet<string> = new Set([
   "cloudflare-staging-origin-provision-v1",
   NATIVE_PROVISION_CONTRACT,
   PRIVATE_DATABASE_CONTRACT,
+  PRIVATE_DATABASE_RENEWAL_CONTRACT,
   HTTP_IMAGE_PROVISION_CONTRACT,
   CLOUDFLARE_PRODUCTION_QUEUE_CONTRACT,
   CLOUDFLARE_PRODUCTION_DATABASE_CONTRACT,
