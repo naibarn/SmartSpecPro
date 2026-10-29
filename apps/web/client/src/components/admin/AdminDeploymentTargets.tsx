@@ -1971,6 +1971,7 @@ export default function AdminDeploymentTargets() {
                             const elapsedFrom = live?.startedAt ?? live?.createdAt;
                             const elapsedMs = elapsedFrom ? Math.max(0, Date.now() - Date.parse(elapsedFrom)) : null;
                             const nextAction = status === "succeeded" ? "Save the verified Staging receipt"
+                              : status === "failed" && job.retryable ? "Confirm one fresh Staging-only Job"
                               : status === "failed" || status === "expired" || status === "dead_letter" ? "Inspect the recorded failure before any new authorization"
                               : heartbeatStale || leaseExpired ? "Recheck canonical Job status; do not submit another Job"
                               : "Wait while the canonical Job continues; do not submit again";
@@ -1993,9 +1994,13 @@ export default function AdminDeploymentTargets() {
                               {live?.errorCode ? <p role="alert"><code>{live.errorCode}</code></p> : null}
                             </>;
                           })()}
-                          {renewal.ready && job.retryable ? <p role="alert"><code>JOB_DEADLINE_EXPIRED</code> · {text(
-                            "The previous authorized Job expired before it was claimed. Readback confirms it had no execution attempt or provider checkpoint; its record is preserved. A fresh, separately confirmed Staging-only Job is required.",
-                            "Job ที่อนุมัติก่อนหน้าหมดเวลาก่อน worker รับงาน การตรวจยืนยันว่าไม่มี execution attempt หรือ provider checkpoint และยังเก็บประวัติเดิมไว้ ต้องยืนยัน Job ใหม่สำหรับ Staging แยกอีกหนึ่งรายการ",
+                          {renewal.ready && job.retryable ? <p role="alert"><code>{job.errorCode ?? "JOB_DEADLINE_EXPIRED"}</code> · {text(
+                            job.retryReason === "authority_rejected_before_provider"
+                              ? "The previous Job is preserved. Its exact failure was at the initial read-only authority check, with no provider/database write or receipt. The grant-to-Job identity binding is corrected; one fresh Staging-only confirmation is required."
+                              : "The previous authorized Job expired before it was claimed. Readback confirms it had no execution attempt or provider checkpoint; its record is preserved. A fresh, separately confirmed Staging-only Job is required.",
+                            job.retryReason === "authority_rejected_before_provider"
+                              ? "เก็บ Job เดิมไว้แล้ว ความล้มเหลวเกิดตรงขั้นตรวจสิทธิ์แบบอ่านอย่างเดียวก่อนเขียน provider/ฐานข้อมูล และไม่มี receipt แก้การผูก grant กับ Job แล้ว ต้องยืนยัน Job ใหม่สำหรับ Staging อีกหนึ่งครั้ง"
+                              : "Job ที่อนุมัติก่อนหน้าหมดเวลาก่อน worker รับงาน การตรวจยืนยันว่าไม่มี execution attempt หรือ provider checkpoint และยังเก็บประวัติเดิมไว้ ต้องยืนยัน Job ใหม่สำหรับ Staging แยกอีกหนึ่งรายการ",
                           )}</p> : null}
                           {job.errorCode && !(renewal.ready && job.retryable) ? <p role="alert"><code>{job.errorCode}</code> · {job.errorCode === "PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_HTTP_403"
                             ? text("The saved Staging Cloudflare credential needs Access: Service Tokens Write. Update that existing credential's permission, then recheck; do not paste the token here.", "credential Cloudflare ของ Staging ที่บันทึกไว้ต้องมีสิทธิ์ Access: Service Tokens Write ให้ปรับสิทธิ์ของ credential เดิมแล้วตรวจซ้ำ ไม่ต้องนำ token มาวางในหน้านี้")
@@ -2009,14 +2014,20 @@ export default function AdminDeploymentTargets() {
                             })}>
                             {finalizeStagingRenewal.isPending ? text("Saving renewed configuration…", "กำลังบันทึก config ใหม่…") : text("Save verified renewal as a new Staging configuration", "บันทึก lease ที่ตรวจแล้วเป็น config Staging ชุดใหม่")}
                           </Button> : null}
-                          {job.status === "failed" || job.status === "cancelled" || job.status === "dead_letter" ? <p>{text("This attempt is preserved. Resolve its recorded failure before requesting another lease operation.", "เก็บหลักฐานการทำงานนี้ไว้แล้ว ให้แก้สาเหตุจาก Job ก่อนขอทำรายการใหม่")}</p> : null}
+                          {job.status === "failed" || job.status === "cancelled" || job.status === "dead_letter" ? <p>{job.retryable
+                            ? text("This attempt is preserved. A new confirmation is available because the recorded failure is proven to be pre-mutation.", "เก็บ Job เดิมไว้แล้ว ระบบเปิดให้ยืนยันใหม่เพราะตรวจแล้วว่าความล้มเหลวเกิดก่อนการเปลี่ยนแปลง")
+                            : text("This attempt is preserved. Resolve its recorded failure before requesting another lease operation.", "เก็บหลักฐานการทำงานนี้ไว้แล้ว ให้แก้สาเหตุจาก Job ก่อนขอทำรายการใหม่")}</p> : null}
                         </VStack> : null}
                         {renewal.ready && plan && (!job || job.retryable) ? <Button type="button" disabled={stagingRenewalMutation.isPending || stagingActionRunning || Date.parse(plan.authorizationExpiresAt) <= Date.now()}
                           onClick={() => requestStagingConfirmation({
                             title: text("Authorize and renew the Staging database lease", "อนุมัติและต่ออายุ lease ฐานข้อมูล Staging"),
                             description: text(
-                              `${job?.retryable ? `The previous Job ${job.jobId} expired before claim and is preserved. ` : ""}One Staging-only Job will ${plan.refreshServiceTokenExpiry ? `refresh the expiry of the exact existing Cloudflare Access service token ${plan.resources.serviceTokenId} (Cloudflare permission: Access: Service Tokens Write; the token ID, client ID, secret and policy stay unchanged), then extend the existing read-only database role lease` : `extend the existing read-only database role lease; the current service-token expiry already covers it`} until ${plan.leaseExpiresAt}. It will verify the existing Cloudflare resource IDs, update only the role VALID UNTIL value, and save a new immutable Staging configuration after success. It will not create Cloudflare resources, change DNS/routes, or affect Production traffic.`,
-                              `${job?.retryable ? `Job เดิม ${job.jobId} หมดเวลาก่อน worker รับงานและยังเก็บประวัติไว้ ` : ""}จะสร้าง Job สำหรับ Staging หนึ่งรายการ${plan.refreshServiceTokenExpiry ? ` เพื่อต่ออายุวันหมดอายุของ Cloudflare Access service token เดิม ID ${plan.resources.serviceTokenId} (ต้องมีสิทธิ์ Access: Service Tokens Write โดยคง token ID, client ID, secret และ policy เดิม)` : ""} แล้วขยาย lease ของ role ฐานข้อมูลแบบอ่านอย่างเดียวถึง ${plan.leaseExpiresAt} โดยตรวจ resource เดิม เปลี่ยนเฉพาะค่า VALID UNTIL และบันทึก config immutable ชุดใหม่เมื่อสำเร็จ ไม่สร้าง Cloudflare resource ไม่เปลี่ยน DNS/route และไม่กระทบ Production`),
+                              `${job?.retryable ? (job.retryReason === "authority_rejected_before_provider"
+                                ? `The previous Job ${job.jobId} failed before any provider/database write and is preserved. `
+                                : `The previous Job ${job.jobId} expired before claim and is preserved. `) : ""}One Staging-only Job will ${plan.refreshServiceTokenExpiry ? `refresh the expiry of the exact existing Cloudflare Access service token ${plan.resources.serviceTokenId} (Cloudflare permission: Access: Service Tokens Write; the token ID, client ID, secret and policy stay unchanged), then extend the existing read-only database role lease` : `extend the existing read-only database role lease; the current service-token expiry already covers it`} until ${plan.leaseExpiresAt}. It will verify the existing Cloudflare resource IDs, update only the role VALID UNTIL value, and save a new immutable Staging configuration after success. It will not create Cloudflare resources, change DNS/routes, or affect Production traffic.`,
+                              `${job?.retryable ? (job.retryReason === "authority_rejected_before_provider"
+                                ? `Job เดิม ${job.jobId} ล้มเหลวก่อนเขียน provider/ฐานข้อมูลและยังเก็บประวัติไว้ `
+                                : `Job เดิม ${job.jobId} หมดเวลาก่อน worker รับงานและยังเก็บประวัติไว้ `) : ""}จะสร้าง Job สำหรับ Staging หนึ่งรายการ${plan.refreshServiceTokenExpiry ? ` เพื่อต่ออายุวันหมดอายุของ Cloudflare Access service token เดิม ID ${plan.resources.serviceTokenId} (ต้องมีสิทธิ์ Access: Service Tokens Write โดยคง token ID, client ID, secret และ policy เดิม)` : ""} แล้วขยาย lease ของ role ฐานข้อมูลแบบอ่านอย่างเดียวถึง ${plan.leaseExpiresAt} โดยตรวจ resource เดิม เปลี่ยนเฉพาะค่า VALID UNTIL และบันทึก config immutable ชุดใหม่เมื่อสำเร็จ ไม่สร้าง Cloudflare resource ไม่เปลี่ยน DNS/route และไม่กระทบ Production`),
                             confirmLabel: text("Authorize one renewal Job", "อนุมัติ Job ต่ออายุหนึ่งรายการ"),
                             run: () => stagingRenewalMutation.mutateAsync({ tenantId, projectId, environment: "staging",
                               configurationRef: currentStagingConfigRef, planDigest: renewal.planDigest! }),

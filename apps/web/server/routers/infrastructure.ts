@@ -757,7 +757,7 @@ export const infrastructureRouter = router({
       // recovery case: the prior authorized Job expired before it was ever
       // claimed. Keep the old Job immutable and give the fresh grant/Job a
       // distinct idempotency identity.
-      const renewalGeneration = preflight.existingJob?.retryable ? 2 : 1;
+      const renewalGeneration = preflight.existingJob?.retryable ? preflight.existingJob.nextGeneration ?? 2 : 1;
       const operationKey = `cloudflare-private-database-renewal:${preflight.planDigest}:generation:${renewalGeneration}`;
       const operationId = stableOperationUuid(operationKey);
       const grantExpiresAt = preflight.plan.authorizationExpiresAt;
@@ -793,7 +793,8 @@ export const infrastructureRouter = router({
             idempotencyKey: `cloudflare-staging-private-db-renewal:${preflight.planDigest}:generation:${renewalGeneration}`,
             activeDedupeKey: `cloudflare-staging-private-db-renewal:${input.configurationRef}`,
             retryPolicy: CLOUDFLARE_STAGING_RETRY_POLICY,
-            timeoutPolicy: { softTimeoutMs: 60_000, hardTimeoutMs: 10 * 60_000 } }, createOptions: { runtimeType: "node_job_worker" } });
+          timeoutPolicy: { softTimeoutMs: 60_000, hardTimeoutMs: 10 * 60_000 } },
+          createOptions: { runtimeType: "node_job_worker", canonicalJobId: operationId } });
         auditLogger.log({ eventType: "cloudflare_staging_private_database_renewal_queued", userId: ctx.user.id,
           requestType: "cloudflare_staging_private_database_renewal", responsePayload: { tenantId, projectId: input.projectId,
             jobId: job.jobId, grantRef, configurationRef: input.configurationRef, planDigest: preflight.planDigest }, statusCode: 202 });

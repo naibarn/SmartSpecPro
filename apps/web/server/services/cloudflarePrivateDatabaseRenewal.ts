@@ -17,8 +17,14 @@ export type PrivateDatabaseRenewalPreflight = {
   ready: boolean; reason: string | null; failureStage: string | null; failureDetail: string | null; checkedAt: string; configurationRef: string; configurationDigest: string;
   accountRef: string;
   plan: PrivateDatabaseRenewalPlan | null; planDigest: string | null; leaseExpiresAt: string | null;
-  existingJob: { jobId: string; status: string; errorCode: string | null; heartbeatAt: string | null; retryable: boolean } | null;
+  existingJob: { jobId: string; status: string; errorCode: string | null; heartbeatAt: string | null; retryable: boolean;
+    retryReason: "expired_before_claim" | "authority_rejected_before_provider" | null; nextGeneration: number | null } | null;
 };
+
+export function nextPrivateDatabaseRenewalGeneration(idempotencyKey: string | null): number {
+  const match = idempotencyKey?.match(/:generation:(\d+)$/);
+  return match ? Math.max(2, Number(match[1]) + 1) : 2;
+}
 
 export function isSafeUnstartedPrivateDatabaseRenewalExpiry(job: {
   status: string; errorCode: string | null; startedAt: Date | null; heartbeatAt: Date | null;
@@ -30,6 +36,21 @@ export function isSafeUnstartedPrivateDatabaseRenewalExpiry(job: {
     && job.fencingVersion === 0 && job.attempt === 1 && job.maxAttempts >= 2
     && Boolean(job.planDigest) && job.idempotencyKey === `cloudflare-staging-private-db-renewal:${job.planDigest}`
     && attemptCount === 0 && checkpointCount === 0;
+}
+
+/** A failure at the initial authority checkpoint is read-only: no provider or
+ * database write has run. Permit a new, explicitly authorized Job only when
+ * this exact checkpoint is present and no execution receipt was persisted. */
+export function isSafePreProviderPrivateDatabaseRenewalAuthorityFailure(job: {
+  status: string; errorCode: string | null; progress: unknown; output: unknown; startedAt: Date | null;
+  attempt: number; fencingVersion: number; maxAttempts: number;
+}, checkpointCount: number): boolean {
+  const progress = job.progress && typeof job.progress === "object" && !Array.isArray(job.progress)
+    ? job.progress as Record<string, unknown> : {};
+  return job.status === "failed" && job.errorCode === "PRIVATE_DATABASE_RENEWAL_AUTHORITY_DENIED"
+    && progress.stage === "RENEWAL_AUTHORITY_CHECK" && progress.progress === 5
+    && job.startedAt !== null && job.attempt >= 1 && job.fencingVersion >= 1
+    && job.output == null && job.maxAttempts >= job.attempt && checkpointCount === 0;
 }
 
 export function projectPrivateDatabaseRenewalJobStatus(job: {
@@ -146,7 +167,8 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
   const [existing] = await atStage("RENEWAL_JOB_READBACK", () => db.select({ id: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode,
     heartbeatAt: workerJobs.heartbeatAt, startedAt: workerJobs.startedAt, leaseExpiresAt: workerJobs.leaseExpiresAt,
     fencingVersion: workerJobs.fencingVersion, attempt: workerJobs.attempt, maxAttempts: workerJobs.maxAttempts,
-    idempotencyKey: workerJobs.idempotencyKey, planDigest: sql<string | null>`${workerJobs.inputJson}->>'planDigest'` })
+    idempotencyKey: workerJobs.idempotencyKey, progress: workerJobs.progressJson, output: workerJobs.outputJson,
+    planDigest: sql<string | null>`${workerJobs.inputJson}->>'planDigest'` })
     .from(workerJobs).where(and(eq(workerJobs.tenantId, input.identity.tenantId), eq(workerJobs.jobType, PRIVATE_DATABASE_RENEWAL_JOB),
       eq(workerJobs.contractVersion, PRIVATE_DATABASE_RENEWAL_CONTRACT), sql`${workerJobs.inputJson}->>'projectId' = ${input.identity.projectId}`,
       sql`${workerJobs.inputJson}->>'configurationRef' = ${input.configurationRef}`)).orderBy(desc(workerJobs.createdAt)).limit(1));
@@ -159,9 +181,14 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
         .where(and(eq(systemSettings.category, "cloudflare_private_database_renewals"), eq(systemSettings.key, existing.id))).limit(1)),
     ]);
     const safeUnstartedDeadlineExpiry = isSafeUnstartedPrivateDatabaseRenewalExpiry(existing, attemptRows.length, checkpointRows.length);
+    const safePreProviderAuthorityFailure = isSafePreProviderPrivateDatabaseRenewalAuthorityFailure(existing, checkpointRows.length);
     const previousJob = { jobId: existing.id, status: existing.status, errorCode: existing.errorCode,
-      heartbeatAt: existing.heartbeatAt?.toISOString() ?? null, retryable: safeUnstartedDeadlineExpiry };
-    if (!safeUnstartedDeadlineExpiry) return result({ ...base, ready: false, reason: existing.status === "expired"
+      heartbeatAt: existing.heartbeatAt?.toISOString() ?? null, retryable: safeUnstartedDeadlineExpiry || safePreProviderAuthorityFailure,
+      retryReason: safeUnstartedDeadlineExpiry ? "expired_before_claim" as const
+        : safePreProviderAuthorityFailure ? "authority_rejected_before_provider" as const : null,
+      nextGeneration: safeUnstartedDeadlineExpiry || safePreProviderAuthorityFailure
+        ? nextPrivateDatabaseRenewalGeneration(existing.idempotencyKey) : null };
+    if (!previousJob.retryable) return result({ ...base, ready: false, reason: existing.status === "expired"
       ? "PRIVATE_DATABASE_RENEWAL_PREVIOUS_JOB_REQUIRES_REVIEW" : "PRIVATE_DATABASE_RENEWAL_JOB_EXISTS",
       plan: null, planDigest: null, leaseExpiresAt, existingJob: previousJob });
     retryableExpiredJob = previousJob;

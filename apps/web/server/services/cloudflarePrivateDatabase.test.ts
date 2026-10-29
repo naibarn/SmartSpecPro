@@ -10,7 +10,8 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB
   privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail,
-  isSafeUnstartedPrivateDatabaseRenewalExpiry, projectPrivateDatabaseRenewalJobStatus,
+  isSafePreProviderPrivateDatabaseRenewalAuthorityFailure, isSafeUnstartedPrivateDatabaseRenewalExpiry,
+  nextPrivateDatabaseRenewalGeneration, projectPrivateDatabaseRenewalJobStatus,
   stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
 import { reconcilePrivateDatabaseServiceTokenRefresh } from "./cloudflarePrivateDatabaseRenewalExecutor";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
@@ -52,6 +53,29 @@ describe("Staging private database renewal recovery", () => {
     expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob, errorCode: "PROVIDER_FAILURE" }, 0, 0)).toBe(false);
     expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob,
       idempotencyKey: `${safeExpiredJob.idempotencyKey}:generation:2` }, 0, 0)).toBe(false);
+  });
+
+  it("allows a fresh explicit authorization only for the exact pre-provider authority failure", () => {
+    const failedAtAuthorityCheck = { status: "failed", errorCode: "PRIVATE_DATABASE_RENEWAL_AUTHORITY_DENIED",
+      progress: { stage: "RENEWAL_AUTHORITY_CHECK", progress: 5 }, output: null, startedAt: new Date(), attempt: 1,
+      fencingVersion: 1, maxAttempts: 2 };
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure(failedAtAuthorityCheck, 0)).toBe(true);
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure(failedAtAuthorityCheck, 1)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck, output: { partial: true } }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck,
+      progress: { stage: "CLOUDFLARE_RESOURCE_READBACK", progress: 40 } }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck,
+      progress: { stage: "RENEWAL_AUTHORITY_CHECK", progress: 6 } }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck,
+      errorCode: "PRIVATE_DATABASE_RENEWAL_PLAN_STALE" }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck, startedAt: null }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck, fencingVersion: 0 }, 0)).toBe(false);
+  });
+
+  it("increments the bounded renewal generation instead of replaying a failed idempotency identity", () => {
+    expect(nextPrivateDatabaseRenewalGeneration(null)).toBe(2);
+    expect(nextPrivateDatabaseRenewalGeneration("cloudflare-staging-private-db-renewal:abc:generation:1")).toBe(2);
+    expect(nextPrivateDatabaseRenewalGeneration("cloudflare-staging-private-db-renewal:abc:generation:2")).toBe(3);
   });
 
   it("projects only safe canonical Job status and real progress fields", () => {
