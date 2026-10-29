@@ -2843,6 +2843,32 @@ fn poll_external_agents<T: ControlTransport>(
 ) -> Result<(), String> {
     let command_ids = processes.keys().cloned().collect::<Vec<_>>();
     for command_id in command_ids {
+        let stream_events = processes
+            .get_mut(&command_id)
+            .map(|active| active.process.drain_harness_events())
+            .unwrap_or_else(|| Ok(Vec::new()));
+        match stream_events {
+            Ok(events) => {
+                for event in events {
+                    if let Some(active) = processes.get(&command_id) {
+                        send_external_progress_receipt(
+                            endpoint,
+                            transport,
+                            channel,
+                            node_kind,
+                            &active.command,
+                            receipt_sequences,
+                            receipt_journal,
+                            event,
+                        )?;
+                    }
+                }
+            }
+            Err(_) => {
+                // Progress is observational. A stream read fault must not
+                // change execution or the canonical terminal receipt.
+            }
+        }
         let outcome = processes
             .get_mut(&command_id)
             .map(|active| active.process.try_collect(std::time::Instant::now()));
@@ -2896,6 +2922,51 @@ fn poll_external_agents<T: ControlTransport>(
         }
     }
     Ok(())
+}
+
+fn send_external_progress_receipt<T: ControlTransport>(
+    endpoint: &ControlEndpoint,
+    transport: &mut T,
+    channel: &mut ControlChannel,
+    node_kind: NodeKind,
+    command: &RunnerJobCommand,
+    receipt_sequences: &mut std::collections::HashMap<String, u64>,
+    receipt_journal: &mut RunnerReceiptJournal,
+    harness_event: serde_json::Value,
+) -> Result<(), String> {
+    let next_sequence = receipt_journal.next_receipt_sequence(&command.command_id)?;
+    let sequence = receipt_sequences
+        .entry(command.command_id.clone())
+        .or_insert(0);
+    *sequence = next_sequence.max(sequence.saturating_add(1));
+    let receipt = RunnerJobReceipt {
+        event_id: format!("receipt:{}:{}", command.command_id, *sequence),
+        event_type: RunnerJobReceiptEventType::Progress,
+        command_id: command.command_id.clone(),
+        job_id: command.job_id.clone(),
+        runner_id: command.runner_id.clone(),
+        runner_session_id: command.runner_session_id.clone(),
+        sequence: *sequence,
+        observed_at: current_time_iso(),
+        status: "running".into(),
+        result_ref: None,
+        evidence_refs: None,
+        error_code: None,
+        error_summary: None,
+        correlation: Some(json!({
+            "taskId": command.payload.get("taskId"),
+            "adapterId": command.adapter_id,
+        })),
+        payload: Some(json!({
+            "executionKind": command.execution_kind,
+            "adapterId": command.adapter_id,
+            "attempt": command.attempt,
+            "workspaceRef": command.workspace_ref,
+            "harnessEvent": harness_event,
+        })),
+    };
+    let envelope = channel.build_receipt(node_kind, command, receipt)?;
+    persist_and_send_runner_receipt(endpoint, transport, receipt_journal, envelope)
 }
 
 fn recover_interrupted_external_agent_commands<T: ControlTransport>(

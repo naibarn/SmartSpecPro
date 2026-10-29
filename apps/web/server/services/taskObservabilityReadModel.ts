@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { and, desc, eq, inArray, lte, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lte, lt, or, sql } from "drizzle-orm";
 
 import { db, getDb } from "../db";
 import {
@@ -540,6 +540,82 @@ export async function getTaskObservabilityDetail(input: { scope: Scope; jobId: s
   if (!job) throw new TaskObservabilityError("TASK_NOT_FOUND");
   const detail = await loadJobDetail(input.scope, job, snapshotAt);
   return snapshot ? { ...detail, projectionSnapshot: { token: input.projectionToken, asOf: snapshot.asOf, expiresAt: new Date(snapshot.exp).toISOString(), consistency: "created_at_watermark_live_state" as const } } : detail;
+}
+
+const HARNESS_EVENT_KINDS = new Set([
+  "assistant_message", "tool_call", "tool_status", "tool_result", "file_change", "file_diff", "turn_status", "final_summary",
+]);
+
+/** Read the owner-scoped, durable projection of actual harness stream events. */
+export async function getTaskHarnessOutputEvents(input: {
+  scope: Scope;
+  jobId: string;
+  afterSequence?: number;
+  limit?: number;
+}) {
+  assertScope(input.scope);
+  getDb();
+  const afterSequence = input.afterSequence ?? 0;
+  const limit = Math.max(1, Math.min(input.limit ?? 50, 100));
+  if (!Number.isSafeInteger(afterSequence) || afterSequence < 0) {
+    throw new TaskObservabilityError("SNAPSHOT_INVALID");
+  }
+  const [job] = await db.select({ id: workerJobs.id }).from(workerJobs).where(and(
+    eq(workerJobs.id, input.jobId),
+    eq(workerJobs.tenantId, input.scope.tenantId),
+    ...(input.scope.isAdmin ? [] : [eq(workerJobs.requestedByUserId, input.scope.userId)]),
+  )).limit(1);
+  if (!job) throw new TaskObservabilityError("TASK_NOT_FOUND");
+  const rows = await db.select({
+    id: workerJobEvents.id,
+    eventSequence: workerJobEvents.eventSequence,
+    payloadJson: workerJobEvents.payloadJson,
+    createdAt: workerJobEvents.createdAt,
+    attempt: workerJobEvents.workerJobAttempt,
+  }).from(workerJobEvents).where(and(
+    eq(workerJobEvents.workerJobId, input.jobId),
+    eq(workerJobEvents.eventType, "RUNNER_PROGRESS"),
+    gt(workerJobEvents.eventSequence, afterSequence),
+  )).orderBy(asc(workerJobEvents.eventSequence)).limit(limit + 1);
+  const hasMore = rows.length > limit;
+  const page = rows.slice(0, limit);
+  const events = page.flatMap((row) => {
+    const payload = objectValue(row.payloadJson);
+    const harness = objectValue(payload?.harnessEvent);
+    const kind = safeText(harness?.kind, 40);
+    if (!kind || !HARNESS_EVENT_KINDS.has(kind)) return [];
+    const text = safeText(harness?.text, 6_000);
+    const detail = safeText(harness?.detail, 6_000);
+    const diff = safeText(harness?.diff, 6_000);
+    const path = safeText(harness?.path, 500);
+    const name = safeText(harness?.name, 160);
+    const status = safeText(harness?.status, 100);
+    const chunkIndex = Number.isSafeInteger(harness?.chunkIndex) ? Number(harness?.chunkIndex) : 0;
+    const chunkCount = Number.isSafeInteger(harness?.chunkCount) ? Number(harness?.chunkCount) : 1;
+    const exitCode = Number.isSafeInteger(harness?.exitCode) ? Number(harness?.exitCode) : null;
+    return [{
+      id: row.id,
+      sequence: row.eventSequence ?? 0,
+      at: row.createdAt.toISOString(),
+      attempt: row.attempt,
+      kind,
+      ...(text ? { text } : {}),
+      ...(detail ? { detail } : {}),
+      ...(diff ? { diff } : {}),
+      ...(path ? { path } : {}),
+      ...(name ? { name } : {}),
+      ...(status ? { status } : {}),
+      ...(exitCode !== null ? { exitCode } : {}),
+      chunkIndex,
+      chunkCount: Math.max(1, Math.min(chunkCount, 10_000)),
+    }];
+  });
+  return {
+    jobId: input.jobId,
+    events,
+    hasMore,
+    nextSequence: page.at(-1)?.eventSequence ?? afterSequence,
+  };
 }
 
 export async function listTaskObservability(input: { scope: Scope; cursor?: string | null; projectionToken?: string; projectId?: string; specId?: string; conversationId?: number }) {

@@ -3,6 +3,7 @@ use crate::config::RunnerConfig;
 use crate::discovery::ToolCandidate;
 use crate::protocol::RunnerJobCommand;
 use sha2::{Digest, Sha256};
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -22,6 +23,11 @@ pub struct ExternalAgentProcess {
     session_host: Option<crate::session_host::SessionHostClient>,
     output_path: PathBuf,
     error_path: PathBuf,
+    adapter_id: String,
+    output_offset: u64,
+    pending_line: Vec<u8>,
+    discard_until_newline: bool,
+    harness_output_finalized: bool,
     started_at: Instant,
     deadline: Instant,
     candidate: Option<crate::spec224_candidate::Candidate>,
@@ -324,7 +330,7 @@ pub fn start_external_agent(
     }
     let log_root = PathBuf::from(&config.data_root).join("agent-logs");
     std::fs::create_dir_all(&log_root).map_err(|_| "RUNNER_AGENT_OUTPUT_CREATE_FAILED")?;
-    #[cfg(unix)]
+    #[cfg(target_os = "linux")]
     {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&log_root, std::fs::Permissions::from_mode(0o700))
@@ -351,6 +357,11 @@ pub fn start_external_agent(
         session_host: None,
         output_path,
         error_path,
+        adapter_id: command.adapter_id.clone(),
+        output_offset: 0,
+        pending_line: Vec::new(),
+        discard_until_newline: false,
+        harness_output_finalized: false,
         started_at: now,
         // The server has already bounded the command deadline. The local cap
         // prevents a malformed or distant timestamp from creating an unbounded
@@ -495,6 +506,11 @@ pub(crate) fn reattach_session_host(
         session_host: Some(client),
         output_path: PathBuf::new(),
         error_path: PathBuf::new(),
+        adapter_id: command.adapter_id.clone(),
+        output_offset: 0,
+        pending_line: Vec::new(),
+        discard_until_newline: false,
+        harness_output_finalized: false,
         started_at: Instant::now(),
         deadline: Instant::now() + deadline.min(ttl),
         candidate,
@@ -627,6 +643,11 @@ fn start_in_session_host(
         session_host: Some(client),
         output_path: PathBuf::new(),
         error_path: PathBuf::new(),
+        adapter_id: command.adapter_id.clone(),
+        output_offset: 0,
+        pending_line: Vec::new(),
+        discard_until_newline: false,
+        harness_output_finalized: false,
         started_at: now,
         deadline: now + deadline,
         candidate,
@@ -654,6 +675,109 @@ impl ExternalAgentProcess {
             .as_ref()
             .map(crate::spec224_candidate::Candidate::recovery_ref)
     }
+
+    /// Read newly appended harness JSONL, project only user-visible events,
+    /// and keep an incomplete line bounded until its newline arrives.
+    pub fn drain_harness_events(&mut self) -> Result<Vec<serde_json::Value>, String> {
+        const MAX_READ_PER_POLL: usize = 256 * 1024;
+        const MAX_PENDING_LINE: usize = 1024 * 1024;
+        if self.harness_output_finalized {
+            return Ok(Vec::new());
+        }
+        let mut appended = Vec::new();
+        let mut terminal = false;
+        #[cfg(target_os = "linux")]
+        if let Some(host) = self.session_host.as_ref() {
+            let terminal_receipt = host.read_terminal_receipt().ok();
+            let (snapshot, start_offset) = if let Some(receipt) = terminal_receipt.as_ref() {
+                terminal = true;
+                host.read_terminal_output(receipt)?
+            } else {
+                let (snapshot, _truncated, start_offset) = host.read_output_window()?;
+                (snapshot, start_offset)
+            };
+            let end_offset = start_offset.saturating_add(snapshot.len() as u64);
+            if end_offset > self.output_offset {
+                let local_offset = self.output_offset.saturating_sub(start_offset) as usize;
+                let local_offset = local_offset.min(snapshot.len());
+                appended.extend_from_slice(&snapshot[local_offset..]);
+                if self.output_offset < start_offset {
+                    // The session host uses a bounded tail. Record that some
+                    // old output was unavailable; never replay the retained
+                    // prefix as though it were newly emitted.
+                    self.discard_until_newline = true;
+                }
+                self.output_offset = end_offset;
+            }
+        } else {
+            read_appended_file(
+                &self.output_path,
+                &mut self.output_offset,
+                MAX_READ_PER_POLL,
+                &mut appended,
+            )?;
+            let child_exited = self
+                .child
+                .as_mut()
+                .and_then(|child| child.try_wait().ok().flatten())
+                .is_some();
+            terminal = child_exited
+                && std::fs::metadata(&self.output_path)
+                    .map(|metadata| self.output_offset >= metadata.len())
+                    .unwrap_or(true);
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            read_appended_file(
+                &self.output_path,
+                &mut self.output_offset,
+                MAX_READ_PER_POLL,
+                &mut appended,
+            )?;
+            let child_exited = self
+                .child
+                .as_mut()
+                .and_then(|child| child.try_wait().ok().flatten())
+                .is_some();
+            terminal = child_exited
+                && std::fs::metadata(&self.output_path)
+                    .map(|metadata| self.output_offset >= metadata.len())
+                    .unwrap_or(true);
+        }
+
+        let mut events = Vec::new();
+        for byte in appended {
+            if byte == b'\n' {
+                if !self.discard_until_newline && !self.pending_line.is_empty() {
+                    events.extend(crate::harness_output::project_harness_json_line(
+                        &self.adapter_id,
+                        &self.pending_line,
+                    ));
+                }
+                self.pending_line.clear();
+                self.discard_until_newline = false;
+            } else if !self.discard_until_newline {
+                if self.pending_line.len() >= MAX_PENDING_LINE {
+                    self.pending_line.clear();
+                    self.discard_until_newline = true;
+                } else {
+                    self.pending_line.push(byte);
+                }
+            }
+        }
+        if terminal {
+            if !self.discard_until_newline && !self.pending_line.is_empty() {
+                events.extend(crate::harness_output::project_harness_json_line(
+                    &self.adapter_id,
+                    &self.pending_line,
+                ));
+            }
+            self.pending_line.clear();
+            self.harness_output_finalized = true;
+        }
+        Ok(events)
+    }
+
     pub fn try_collect(&mut self, now: Instant) -> Result<Option<ExternalAgentResult>, String> {
         if now >= self.deadline {
             #[cfg(target_os = "linux")]
@@ -689,6 +813,9 @@ impl ExternalAgentProcess {
             let receipt = host
                 .read_terminal_receipt()
                 .map_err(|_| "RUNNER_AGENT_TERMINAL_RECEIPT_UNAVAILABLE".to_string())?;
+            if self.harness_output_finalized {
+                let _ = host.clear_terminal_output();
+            }
             if receipt.exit_code != 0 {
                 return Err(
                     self.with_recovery_ref(&format!("RUNNER_AGENT_EXITED_{}", receipt.exit_code))
@@ -796,9 +923,68 @@ impl ExternalAgentProcess {
     }
 }
 
+fn read_appended_file(
+    path: &Path,
+    offset: &mut u64,
+    max_bytes: usize,
+    output: &mut Vec<u8>,
+) -> Result<(), String> {
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return Ok(());
+    };
+    file.seek(SeekFrom::Start(*offset))
+        .map_err(|_| "RUNNER_AGENT_OUTPUT_READ_FAILED")?;
+    let mut buffer = vec![0; max_bytes];
+    let read = file
+        .read(&mut buffer)
+        .map_err(|_| "RUNNER_AGENT_OUTPUT_READ_FAILED")?;
+    output.extend_from_slice(&buffer[..read]);
+    *offset = offset.saturating_add(read as u64);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn completed_short_harness_output_is_drained_including_final_partial_line() {
+        let directory = tempfile::tempdir().expect("temporary output directory");
+        let output_path = directory.path().join("harness.jsonl");
+        std::fs::write(
+            &output_path,
+            br#"{"type":"item.completed","item":{"type":"agent_message","text":"short run done"}}"#,
+        )
+        .expect("write completed harness output");
+        let mut child = Command::new("/bin/true")
+            .spawn()
+            .expect("spawn short-lived process");
+        let _ = child.wait().expect("wait for short-lived process");
+        let now = Instant::now();
+        let mut process = ExternalAgentProcess {
+            child: Some(child),
+            session_host: None,
+            output_path,
+            error_path: directory.path().join("harness.stderr"),
+            adapter_id: "codex.v1".into(),
+            output_offset: 0,
+            pending_line: Vec::new(),
+            discard_until_newline: false,
+            harness_output_finalized: false,
+            started_at: now,
+            deadline: now + Duration::from_secs(5),
+            candidate: None,
+        };
+
+        let events = process
+            .drain_harness_events()
+            .expect("drain completed output");
+        assert!(events.iter().any(|event| {
+            event["kind"] == "assistant_message" && event["text"] == "short run done"
+        }));
+        assert!(process.harness_output_finalized);
+    }
 
     fn command(adapter_id: &str) -> RunnerJobCommand {
         RunnerJobCommand {

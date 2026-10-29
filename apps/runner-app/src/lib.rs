@@ -11,6 +11,7 @@ pub mod diagnostics;
 pub mod discovery;
 pub mod execution;
 pub mod external_agent;
+pub mod harness_output;
 pub mod identity;
 pub mod journal;
 pub mod leasing;

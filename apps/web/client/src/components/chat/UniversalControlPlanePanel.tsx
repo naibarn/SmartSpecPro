@@ -66,6 +66,23 @@ type TaskGroupView = {
   }>;
 };
 
+type DeveloperExecutionEvent = {
+  id: string;
+  sequence: number;
+  at: string;
+  attempt: number | null;
+  kind: string;
+  text?: string;
+  detail?: string;
+  diff?: string;
+  path?: string;
+  name?: string;
+  status?: string;
+  exitCode?: number;
+  chunkIndex: number;
+  chunkCount: number;
+};
+
 function stateTone(state: string): string {
   const normalized = state.toLowerCase();
   if (
@@ -335,6 +352,9 @@ export function UniversalControlPlanePanel({
     new Set()
   );
   const [runnerViewMode, setRunnerViewMode] = useState<"simple" | "developer">("simple");
+  const [developerEventCursor, setDeveloperEventCursor] = useState(0);
+  const [developerEvents, setDeveloperEvents] = useState<DeveloperExecutionEvent[]>([]);
+  const [developerEventsJobId, setDeveloperEventsJobId] = useState<string | null>(null);
   const trpcUtils = trpc.useUtils();
   const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
     conversationId ? { conversationId } : {},
@@ -355,6 +375,39 @@ export function UniversalControlPlanePanel({
     },
   );
   const conversationTaskDetail = conversationTaskDetailQuery.error ? undefined : conversationTaskDetailQuery.data;
+  const developerExecutionEventsQuery = trpc.workerJobs.developerExecutionEvents.useQuery(
+    {
+      jobId: latestConversationJob?.id ?? "",
+      afterSequence: developerEventCursor,
+      limit: 50,
+    },
+    {
+      enabled: runnerViewMode === "developer" && Boolean(latestConversationJob),
+      staleTime: 0,
+      refetchInterval: runnerViewMode === "developer" && Boolean(latestConversationJob) ? 2_000 : false,
+      refetchIntervalInBackground: false,
+      retry: false,
+    },
+  );
+  useEffect(() => {
+    const jobId = latestConversationJob?.id ?? null;
+    if (jobId === developerEventsJobId) return;
+    setDeveloperEventsJobId(jobId);
+    setDeveloperEvents([]);
+    setDeveloperEventCursor(0);
+  }, [latestConversationJob?.id, developerEventsJobId]);
+  useEffect(() => {
+    const page = developerExecutionEventsQuery.data;
+    if (!page || page.jobId !== latestConversationJob?.id) return;
+    if (page.events.length) {
+      setDeveloperEvents(current => {
+        const known = new Set(current.map(event => event.id));
+        const incoming = page.events.filter(event => !known.has(event.id)) as DeveloperExecutionEvent[];
+        return incoming.length ? [...current, ...incoming].sort((left, right) => left.sequence - right.sequence).slice(-500) : current;
+      });
+    }
+    if (page.nextSequence > developerEventCursor) setDeveloperEventCursor(page.nextSequence);
+  }, [developerExecutionEventsQuery.data, latestConversationJob?.id, developerEventCursor]);
   const taskMonitorParams = new URLSearchParams();
   if (conversationId) taskMonitorParams.set("conversationId", String(conversationId));
   if (taskProjectionToken) taskMonitorParams.set("projectionToken", taskProjectionToken);
@@ -792,6 +845,33 @@ export function UniversalControlPlanePanel({
                     <p>Worker requested {conversationTaskDetail.usage.receipts.at(-1)?.model.requested ?? "Unknown"} · Provider effective {conversationTaskDetail.usage.receipts.at(-1)?.model.effective ?? "Unknown / unverified"} · External helper {conversationTaskDetail.usage.receipts.at(-1)?.model.helper ?? "Unknown / unverified"}</p>
                     <p>Measured linked tokens {conversationTaskDetail.usage.completeTotalTokens === null ? "Unknown" : conversationTaskDetail.usage.completeTotalTokens.toLocaleString()} · known subtotal {conversationTaskDetail.usage.knownSubtotalTokens.toLocaleString()} · calls {conversationTaskDetail.usage.counts.unique} · missing {conversationTaskDetail.usage.counts.missing} · quota {conversationTaskDetail.quotaCoverage.status}</p>
                     <p>Coverage {conversationTaskDetail.usage.coverage.status}: {conversationTaskDetail.usage.coverage.reason}</p>
+                  </section>
+                ) : null}
+                {runnerViewMode === "developer" ? (
+                  <section className="mt-4 space-y-2 border-t border-border/60 pt-3" aria-label={t("taskControl.harnessOutputTitle")}>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold text-foreground">{t("taskControl.harnessOutputTitle")}</p>
+                      {latestConversationJob ? <span className="text-xs">{t("taskControl.harnessOutputJob", { jobId: latestConversationJob.id, status: latestConversationJob.status })}</span> : null}
+                    </div>
+                    {!latestConversationJob ? <p>{t("taskControl.harnessOutputNotStarted")}</p> : null}
+                    {latestConversationJob && developerExecutionEventsQuery.isLoading && developerEvents.length === 0 ? <p>{t("taskControl.harnessOutputLoading")}</p> : null}
+                    {latestConversationJob && developerExecutionEventsQuery.error ? <p>{t("taskControl.harnessOutputUnavailable")}</p> : null}
+                    {latestConversationJob && !developerExecutionEventsQuery.error && !developerExecutionEventsQuery.isLoading && developerEvents.length === 0 ? <p>{t("taskControl.harnessOutputEmpty")}</p> : null}
+                    {developerEvents.length ? (
+                      <ol className="max-h-[32rem] space-y-3 overflow-y-auto rounded-lg border border-border/60 bg-background p-3" aria-live="polite">
+                        {developerEvents.map(event => (
+                          <li key={event.id} className="space-y-1 border-b border-border/50 pb-3 last:border-b-0 last:pb-0" data-testid="harness-output-event">
+                            <p className="text-xs font-medium text-muted-foreground">
+                              {event.kind.replaceAll("_", " ")}{event.name ? ` · ${event.name}` : ""}{event.status ? ` · ${event.status}` : ""}{event.exitCode !== undefined ? ` · exit ${event.exitCode}` : ""} · {new Date(event.at).toLocaleTimeString()}
+                            </p>
+                            {event.path ? <p className="font-mono text-xs">{event.path}</p> : null}
+                            {event.detail ? <pre className="whitespace-pre-wrap break-words rounded bg-muted/40 p-2 font-mono text-xs">{event.detail}</pre> : null}
+                            {event.text ? <pre className="whitespace-pre-wrap break-words rounded bg-muted/40 p-2 text-sm">{event.text}</pre> : null}
+                            {event.diff ? <details><summary className="cursor-pointer text-xs">{t("taskControl.harnessOutputDiff")}</summary><pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded bg-muted/40 p-2 font-mono text-xs">{event.diff}</pre></details> : null}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
                   </section>
                 ) : null}
               </section>

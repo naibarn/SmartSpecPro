@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   summaryQuery: vi.fn(),
   observabilityQuery: vi.fn(),
   observabilityDetailQuery: vi.fn(),
+  developerExecutionEventsQuery: vi.fn(),
   taskGroupsQuery: vi.fn(),
   devicesQuery: vi.fn(),
   runnersQuery: vi.fn(),
@@ -54,6 +55,9 @@ vi.mock("@/lib/trpc", () => ({
       },
       observabilityDetail: {
         useQuery: (...args: unknown[]) => mocks.observabilityDetailQuery(...args),
+      },
+      developerExecutionEvents: {
+        useQuery: (...args: unknown[]) => mocks.developerExecutionEventsQuery(...args),
       },
       dashboardSummary: {
         useQuery: (...args: unknown[]) => mocks.summaryQuery(...args),
@@ -141,6 +145,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "taskControl.description": "Chat composer → approval → canonical worker job → Runner/MCP → verified result",
       "taskControl.evidenceLabel": "Chat task evidence",
       "taskControl.snapshotTitle": "Chat model and usage snapshot",
+      "taskControl.harnessOutputTitle": "Harness execution output",
       "taskControl.inspectEvidence": "Inspect this Chat’s model, usage, and Runner evidence",
       "taskControl.openFullPage": "Open full workspace",
       "taskControl.close": "Close Task Control Center",
@@ -194,6 +199,7 @@ beforeEach(() => {
   mocks.summaryQuery.mockReturnValue(emptyQuery);
   mocks.observabilityQuery.mockReturnValue(emptyQuery);
   mocks.observabilityDetailQuery.mockReturnValue(emptyQuery);
+  mocks.developerExecutionEventsQuery.mockReturnValue({ ...emptyQuery, data: { jobId: "", events: [], hasMore: false, nextSequence: 0 } });
   mocks.taskGroupsQuery.mockReturnValue({
     ...emptyQuery,
     data: {
@@ -322,6 +328,28 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByText(/UI Session session-model/)).toBeTruthy();
     expect(screen.getByText(/Worker requested worker-model · Provider effective Unknown \/ unverified/)).toBeTruthy();
     expect(screen.getByText(/Measured linked tokens Unknown · known subtotal 400 · calls 1 · missing 1 · quota UNKNOWN/)).toBeTruthy();
+  });
+
+  it("shows durable harness text and tool output in Developer Mode for the linked task", async () => {
+    mocks.observabilityQuery.mockReturnValue({
+      ...emptyQuery,
+      data: { snapshot: { projectionToken: "scope-token" }, items: [{ id: "job-harness-1", status: "running" }] },
+    });
+    mocks.developerExecutionEventsQuery.mockReturnValue({
+      ...emptyQuery,
+      data: { jobId: "job-harness-1", hasMore: false, nextSequence: 22, events: [
+        { id: "out-21", sequence: 21, attempt: 1, at: "2026-10-29T08:00:00Z", kind: "assistant_message", text: "I added the utility." },
+        { id: "out-22", sequence: 22, attempt: 1, at: "2026-10-29T08:00:01Z", kind: "tool_result", name: "command", text: "2 tests passed" },
+      ] },
+    });
+    render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "taskControl.developerMode" }));
+
+    expect(await screen.findByText("I added the utility.")).toBeInTheDocument();
+    expect(screen.getByText("2 tests passed")).toBeInTheDocument();
+    expect(mocks.developerExecutionEventsQuery.mock.calls.some(([input, options]) =>
+      input.jobId === "job-harness-1" && options.enabled === true,
+    )).toBe(true);
   });
 
   it("shows a bounded conversation overview without treating completion as verified or changing work when switching views", () => {

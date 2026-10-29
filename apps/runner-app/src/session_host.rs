@@ -175,6 +175,8 @@ pub struct HostResponse {
     pub child_pid: u32,
     pub exit_code: Option<i32>,
     pub output_base64: Option<String>,
+    #[serde(default)]
+    pub output_start_offset: Option<u64>,
     pub output_truncated: bool,
     pub command_sequence: u64,
     pub receipt: Option<CommandReceipt>,
@@ -201,12 +203,19 @@ pub struct SessionHostTerminalReceipt {
     pub final_command_sequence: u64,
     pub output_sha256: String,
     pub output_truncated: bool,
+    #[serde(default)]
+    pub output_start_offset: u64,
+    #[serde(default)]
+    pub output_total_bytes: u64,
+    #[serde(default)]
+    pub retained_output_sha256: String,
 }
 
 #[derive(Default)]
 struct OutputState {
     bytes: VecDeque<u8>,
     truncated: bool,
+    total_bytes: u64,
     digest: Sha256,
 }
 
@@ -610,6 +619,13 @@ impl SessionHostClient {
     }
 
     pub fn read_output(&self) -> Result<(Vec<u8>, bool), String> {
+        let (output, truncated, _) = self.read_output_window()?;
+        Ok((output, truncated))
+    }
+
+    /// Read the bounded tail with its absolute stream offset so reconnecting
+    /// clients can project only new output without replaying prior content.
+    pub fn read_output_window(&self) -> Result<(Vec<u8>, bool, u64), String> {
         let response = self.call(HostRequest::ReadOutput)?;
         let encoded = response
             .output_base64
@@ -617,7 +633,10 @@ impl SessionHostClient {
         let output = BASE64
             .decode(encoded)
             .map_err(|_| "RUNNER_SESSION_HOST_RESPONSE_INVALID")?;
-        Ok((output, response.output_truncated))
+        let start_offset = response
+            .output_start_offset
+            .ok_or_else(|| "RUNNER_SESSION_HOST_RESPONSE_INVALID".to_string())?;
+        Ok((output, response.output_truncated, start_offset))
     }
 
     pub fn read_terminal_receipt(&self) -> Result<SessionHostTerminalReceipt, String> {
@@ -663,6 +682,81 @@ impl SessionHostClient {
             return Err("RUNNER_SESSION_HOST_RECEIPT_SCOPE_MISMATCH".into());
         }
         Ok(receipt)
+    }
+
+    /// Read the bounded output tail persisted before the host exits. This
+    /// closes the race where a short command finishes between worker polls.
+    pub fn read_terminal_output(
+        &self,
+        receipt: &SessionHostTerminalReceipt,
+    ) -> Result<(Vec<u8>, u64), String> {
+        if receipt.session_id != self.descriptor.session_id
+            || receipt.session_generation != self.descriptor.session_generation
+            || receipt.process_identity != self.descriptor.child_identity
+        {
+            return Err("RUNNER_SESSION_HOST_RECEIPT_SCOPE_MISMATCH".into());
+        }
+        let directory = self
+            .descriptor
+            .socket_path
+            .parent()
+            .ok_or("RUNNER_SESSION_HOST_DESCRIPTOR_INVALID")?;
+        let path = directory.join("terminal-output.log");
+        let metadata =
+            fs::symlink_metadata(&path).map_err(|_| "RUNNER_SESSION_HOST_OUTPUT_UNAVAILABLE")?;
+        if metadata.file_type().is_symlink()
+            || !metadata.is_file()
+            || metadata.len() > MAX_OUTPUT_BYTES as u64
+            || metadata.permissions().mode() & 0o077 != 0
+        {
+            return Err("RUNNER_SESSION_HOST_OUTPUT_INVALID".into());
+        }
+        let mut options = OpenOptions::new();
+        options
+            .read(true)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC);
+        let file = options
+            .open(&path)
+            .map_err(|_| "RUNNER_SESSION_HOST_OUTPUT_UNAVAILABLE")?;
+        let mut bytes = Vec::with_capacity(metadata.len() as usize);
+        file.take(MAX_OUTPUT_BYTES as u64 + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|_| "RUNNER_SESSION_HOST_OUTPUT_UNAVAILABLE")?;
+        let digest = format!("{:x}", Sha256::digest(&bytes));
+        if bytes.len() > MAX_OUTPUT_BYTES
+            || bytes.len() as u64
+                != receipt
+                    .output_total_bytes
+                    .saturating_sub(receipt.output_start_offset)
+            || digest != receipt.retained_output_sha256
+        {
+            return Err("RUNNER_SESSION_HOST_OUTPUT_INVALID".into());
+        }
+        Ok((bytes, receipt.output_start_offset))
+    }
+
+    /// Remove the retained output after its projected progress events have
+    /// been written to the durable Runner receipt journal.
+    pub fn clear_terminal_output(&self) -> Result<(), String> {
+        let directory = self
+            .descriptor
+            .socket_path
+            .parent()
+            .ok_or("RUNNER_SESSION_HOST_DESCRIPTOR_INVALID")?;
+        let path = directory.join("terminal-output.log");
+        match fs::symlink_metadata(&path) {
+            Ok(metadata) if metadata.file_type().is_symlink() || !metadata.is_file() => {
+                return Err("RUNNER_SESSION_HOST_OUTPUT_INVALID".into());
+            }
+            Ok(_) => {
+                fs::remove_file(&path).map_err(|_| "RUNNER_SESSION_HOST_OUTPUT_CLEANUP_FAILED")?
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+            Err(_) => return Err("RUNNER_SESSION_HOST_OUTPUT_CLEANUP_FAILED".into()),
+        }
+        File::open(directory)
+            .and_then(|directory| directory.sync_all())
+            .map_err(|_| "RUNNER_SESSION_HOST_OUTPUT_CLEANUP_FAILED".into())
     }
 
     pub fn write_input(
@@ -1013,6 +1107,7 @@ fn spawn_output_reader<R: Read + Send + 'static>(
             };
             if let Ok(mut state) = output.lock() {
                 state.digest.update(&buffer[..read]);
+                state.total_bytes = state.total_bytes.saturating_add(read as u64);
                 for byte in &buffer[..read] {
                     state.bytes.push_back(*byte);
                 }
@@ -1148,6 +1243,7 @@ fn process_request(
             child_pid,
             exit_code,
             output_base64: None,
+            output_start_offset: None,
             output_truncated: output.lock().map(|state| state.truncated).unwrap_or(true),
             command_sequence: command_state.sequence,
             receipt: None,
@@ -1168,6 +1264,9 @@ fn process_request(
                     exit_code,
                     output_base64: Some(
                         BASE64.encode(state.bytes.iter().copied().collect::<Vec<_>>()),
+                    ),
+                    output_start_offset: Some(
+                        state.total_bytes.saturating_sub(state.bytes.len() as u64),
                     ),
                     output_truncated: state.truncated,
                     command_sequence: command_state.sequence,
@@ -1312,6 +1411,7 @@ fn success_response(
         child_pid: pid,
         exit_code: None,
         output_base64: None,
+        output_start_offset: None,
         output_truncated: false,
         command_sequence: state.sequence,
         receipt,
@@ -1326,6 +1426,7 @@ fn error_response(error: &str, pid: u32, state: &CommandState) -> HostResponse {
         child_pid: pid,
         exit_code: None,
         output_base64: None,
+        output_start_offset: None,
         output_truncated: false,
         command_sequence: state.sequence,
         receipt: None,
@@ -1340,15 +1441,23 @@ fn write_terminal_receipt(
     command_sequence: u64,
     output: &Arc<Mutex<OutputState>>,
 ) -> Result<(), String> {
-    let (output_sha256, output_truncated) = {
+    let (output_sha256, output_truncated, output_start_offset, output_total_bytes, retained_output) = {
         let state = output
             .lock()
             .map_err(|_| "RUNNER_SESSION_HOST_STATE_UNAVAILABLE")?;
         (
             format!("{:x}", state.digest.clone().finalize()),
             state.truncated,
+            state.total_bytes.saturating_sub(state.bytes.len() as u64),
+            state.total_bytes,
+            state.bytes.iter().copied().collect::<Vec<_>>(),
         )
     };
+    let retained_output_sha256 = format!("{:x}", Sha256::digest(&retained_output));
+    write_atomic_private(
+        &launch.state_directory.join("terminal-output.log"),
+        &retained_output,
+    )?;
     let receipt = SessionHostTerminalReceipt {
         session_id: launch.session_id.clone(),
         session_generation: launch.session_generation,
@@ -1362,6 +1471,9 @@ fn write_terminal_receipt(
         final_command_sequence: command_sequence,
         output_sha256,
         output_truncated,
+        output_start_offset,
+        output_total_bytes,
+        retained_output_sha256,
     };
     let path = launch.state_directory.join("terminal-receipt.json");
     let encoded =
@@ -1391,6 +1503,87 @@ fn write_atomic_private(path: &Path, bytes: &[u8]) -> Result<(), String> {
     )
     .and_then(|directory| directory.sync_all())
     .map_err(|_| "RUNNER_SESSION_HOST_RECEIPT_COMMIT_FAILED".to_string())
+}
+
+#[cfg(test)]
+mod terminal_output_tests {
+    use super::*;
+
+    fn process_identity(pid: u32) -> crate::session_registry::LocalProcessIdentity {
+        crate::session_registry::LocalProcessIdentity {
+            pid,
+            started_at: "test-start".into(),
+            host_boot_id: "test-boot".into(),
+            identity_digest: format!("test-{pid}"),
+        }
+    }
+
+    #[test]
+    fn terminal_receipt_recovers_bounded_output_after_host_exit() {
+        let directory = tempfile::tempdir().expect("temporary state directory");
+        secure_directory(directory.path()).expect("secure state directory");
+        let child_identity = process_identity(42);
+        let launch = HostLaunch {
+            session_id: "session-test".into(),
+            session_generation: 3,
+            socket_path: directory.path().join("session-host.sock"),
+            state_directory: directory.path().to_path_buf(),
+            auth_token: "a".repeat(64),
+            process: ProcessSpec {
+                program: PathBuf::from("/bin/true"),
+                args: Vec::new(),
+                working_directory: directory.path().to_path_buf(),
+                environment: Vec::new(),
+            },
+            authority_ttl_ms: None,
+        };
+        let complete_output = b"discarded-prefixretained-jsonl\n";
+        let retained_output = b"retained-jsonl\n";
+        let mut state = OutputState::default();
+        state.bytes.extend(retained_output.iter().copied());
+        state.total_bytes = complete_output.len() as u64;
+        state.truncated = true;
+        state.digest.update(complete_output);
+        let output = Arc::new(Mutex::new(state));
+
+        write_terminal_receipt(
+            &launch,
+            Some(child_identity.clone()),
+            0,
+            "exited",
+            7,
+            &output,
+        )
+        .expect("persist terminal evidence");
+
+        let client = SessionHostClient {
+            descriptor: SessionHostDescriptor {
+                session_id: launch.session_id.clone(),
+                session_generation: launch.session_generation,
+                socket_path: launch.socket_path,
+                auth_token: launch.auth_token,
+                host_pid: 41,
+                child_pid: child_identity.pid,
+                host_identity: process_identity(41),
+                child_identity: Some(child_identity),
+            },
+        };
+        let receipt = client
+            .read_terminal_receipt()
+            .expect("read terminal receipt");
+        let (bytes, offset) = client
+            .read_terminal_output(&receipt)
+            .expect("read terminal output tail");
+        assert_eq!(bytes, retained_output);
+        assert_eq!(
+            offset,
+            (complete_output.len() - retained_output.len()) as u64
+        );
+        client
+            .clear_terminal_output()
+            .expect("clean retained output");
+        assert!(client.read_terminal_output(&receipt).is_err());
+    }
 }
 
 fn secure_directory(path: &Path) -> Result<(), String> {

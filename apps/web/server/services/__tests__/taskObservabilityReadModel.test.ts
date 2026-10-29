@@ -7,7 +7,7 @@ vi.mock("../../db", () => ({
   getDb: vi.fn(),
 }));
 
-import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
+import { aggregateTaskObservability, decodeProjectionSnapshotToken, encodeProjectionSnapshotToken, getTaskHarnessOutputEvents, getTaskObservabilityDetail, projectEconomicSettlementEvidence, projectJobSettlementMarker, projectRunnerTimelineEvent } from "../taskObservabilityReadModel";
 
 function query(rows: unknown[]) {
   const chain: any = {
@@ -258,5 +258,43 @@ describe("task acceptance detail authorization", () => {
     expect(result.acceptance.sdkUsage.historical.completeTotalTokens).toBeNull();
     expect(result.acceptance.graph.references).toEqual([{ kind: "job", id: "job-1" }]);
     expect(result.acceptance.verifiedLiveAcceptance).toBe(false);
+  });
+});
+
+describe("developer harness output projection", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns only sanitized, owner-scoped harness events from the canonical job event stream", async () => {
+    mocks.rows = [
+      [{ id: "job-1" }],
+      [{
+        id: "event-1", eventSequence: 12, attempt: 1, createdAt: new Date("2026-10-29T08:00:00Z"),
+        payloadJson: { harnessEvent: { kind: "tool_result", name: "command", text: "Tests passed token=secret-value", secret: "must not leak" } },
+      }, {
+        id: "event-2", eventSequence: 13, attempt: 1, createdAt: new Date("2026-10-29T08:00:01Z"),
+        payloadJson: { harnessEvent: { kind: "private_reasoning", text: "not user-visible" } },
+      }],
+    ];
+    mocks.db.select.mockImplementation(() => query(mocks.rows.shift() ?? []));
+
+    const result = await getTaskHarnessOutputEvents({
+      scope: { tenantId: "tenant-1", userId: 9 }, jobId: "job-1", afterSequence: 10,
+    });
+
+    expect(result).toMatchObject({ jobId: "job-1", hasMore: false, nextSequence: 13 });
+    expect(result.events).toEqual([{
+      id: "event-1", sequence: 12, at: "2026-10-29T08:00:00.000Z", attempt: 1,
+      kind: "tool_result", text: "Tests passed [redacted]", name: "command", chunkIndex: 0, chunkCount: 1,
+    }]);
+    expect(JSON.stringify(result)).not.toContain("secret-value");
+    expect(JSON.stringify(result)).not.toContain("not user-visible");
+  });
+
+  it("does not query output events for a job outside the authenticated tenant/user scope", async () => {
+    mocks.db.select.mockImplementation(() => query([]));
+    await expect(getTaskHarnessOutputEvents({
+      scope: { tenantId: "tenant-1", userId: 9 }, jobId: "other-job",
+    })).rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+    expect(mocks.db.select).toHaveBeenCalledTimes(1);
   });
 });
