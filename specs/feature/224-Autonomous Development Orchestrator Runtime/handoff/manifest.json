@@ -158,6 +158,13 @@
         "scope": "Runner 0.2.52 installed in-place on the existing Debian device; fresh live snapshot was applied by the development Control Plane, Codex account fingerprint matched current read-only account/read, and eight real app-server models were persisted. Focused Runner/API/Task Control tests passed. Authenticated browser selection, Goal approval and two-phase live execution remain open.",
         "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "THREAD_OBSERVABILITY_REGRESSION_AND_RUNTIME_RECHECK",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-thread-observability-regression-recheck-20261029.md",
+        "scope": "Focused PostgreSQL thread/observability tests 12/12; local authenticated Mission Control overview UAT 1/1; both service schemas contain required thread tables/columns; hosted authenticated browser unavailable; no real SPEC-224 Goal exists in tenant-001.",
+        "source_sha": "731ac46ebb62f9775b98947edcf9d5f248662b83",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1089,7 +1096,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "16b0bdd61c6ed61bde2786b6439eb3947adc5990",
+    "expected_canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
@@ -1268,7 +1275,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 257,
+  "generation": 259,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1500,9 +1507,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "16b0bdd61c6ed61bde2786b6439eb3947adc5990",
+    "canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
     "integrated": true,
-    "integrated_at": "2026-10-29T07:41:30+07:00",
+    "integrated_at": "2026-10-30T00:00:00+07:00",
     "pull_request": null,
     "source_sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6"
   },
@@ -4018,7 +4025,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T16:43:52.766793Z",
+  "updated_at": "2026-10-29T16:59:23.224831Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

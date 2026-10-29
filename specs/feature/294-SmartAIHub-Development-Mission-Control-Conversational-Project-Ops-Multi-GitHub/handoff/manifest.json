@@ -1,6 +1,21 @@
 {
   "acceptance": {
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "THREAD_OBSERVABILITY_REGRESSION_AND_RUNTIME_RECHECK",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/thread-observability-db-and-uat-recheck-20261029.md",
+        "scope": "Focused PostgreSQL thread/observability tests 12/12; local authenticated Mission Control overview UAT 1/1; both service schemas contain required thread tables/columns; hosted authenticated browser unavailable; no real SPEC-224 Goal exists in tenant-001.",
+        "source_sha": "731ac46ebb62f9775b98947edcf9d5f248662b83",
+        "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC_HANDOFF_LARGE_JSON_ARGUMENT_FIX",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/spec-handoff-large-json-cli-fix-20261029.md",
+        "scope": "CLI safely accepts large inline changes JSON or a file path; 17 focused handoff CLI/store tests passed. The broad tools/spec_handoff suite retains six pre-existing classification/skill-contract failures.",
+        "source_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
+        "status": "PARTIAL"
+      }
+    ],
     "required": false,
     "status": "UNKNOWN"
   },
@@ -21,7 +36,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "4569bf8ef967a7c0659b608e54ef2af1875b05bf",
+    "expected_canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
@@ -139,7 +154,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 124,
+  "generation": 126,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -268,9 +283,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4569bf8ef967a7c0659b608e54ef2af1875b05bf",
+    "canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
     "integrated": true,
-    "integrated_at": "2026-10-29T23:00:00+07:00"
+    "integrated_at": "2026-10-30T00:00:00+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1462,7 +1477,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T16:42:45.114793Z",
+  "updated_at": "2026-10-29T16:59:23.278795Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
