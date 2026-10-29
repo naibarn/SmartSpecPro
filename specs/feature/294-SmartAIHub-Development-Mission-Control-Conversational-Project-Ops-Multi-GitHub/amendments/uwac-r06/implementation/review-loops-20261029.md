@@ -92,7 +92,7 @@ changing conversation/thread identity or adding another data store.
   thread. Failed refreshes retain previously loaded sessions while showing the
   error and retry action. Focused regressions cover each behavior.
 
-Follow-up verification at source commit `4f3e15371176e42c441ad8806b9dbbe8d90dd35c`:
+Follow-up verification at source commit `ca6860f892b05a538d8f85758b2e8c58a17d1067`:
 
 - Focused Vitest for `Spec224WorkspacePanel`, `ChatSidebar`,
   `UniversalControlPlanePanel`, and `ConversationExecutionActivity`: 4 files,

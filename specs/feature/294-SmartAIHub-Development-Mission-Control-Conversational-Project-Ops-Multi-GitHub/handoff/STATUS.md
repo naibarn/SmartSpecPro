@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 504 unresolved of 504
-- Next action: Continue SPEC-294 WP33 from integrated 4f3e15371: resolve the isolated authenticated-UAT web startup export error, complete authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps; retain SPEC-224 genuine Child 1/2 live execution and Independent Final Verify as open acceptance.
-- Manifest generation: 101
+- Next action: Continue SPEC-294 WP33 from integrated ca6860f89: resolve the isolated authenticated-UAT web startup export error, complete authenticated browser acceptance and correlate the reported authenticated 500s, then close project/thread global replay gaps; retain SPEC-224 genuine Child 1/2 live execution and Independent Final Verify as open acceptance.
+- Manifest generation: 103
 
 ## Source-declared status and relationship claims
 
