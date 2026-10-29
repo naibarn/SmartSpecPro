@@ -56,8 +56,8 @@ beforeEach(() => {
     authorization: { status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_REQUIRED"] } });
 });
 
-async function preparePanel() {
-  render(<Spec224WorkspacePanel conversationId={8} />);
+async function preparePanel(simpleMode = false) {
+  render(<Spec224WorkspacePanel conversationId={8} simpleMode={simpleMode} />);
   fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "A scoped unit test goal" } });
   fireEvent.click(screen.getByRole("button", { name: "เตรียมแผนและตรวจความพร้อม" }));
   await screen.findByText(/ผลการเตรียม/);
@@ -105,11 +105,30 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByText(/ยังไม่มี Model catalog/)).toBeInTheDocument();
   });
 
-  it("keeps Simple Mode on Auto and shows the Runner-resolved default without exposing model overrides", () => {
-    render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
-    expect(screen.getByText("Auto · Test Model")).toBeInTheDocument();
-    expect(screen.queryByRole("combobox", { name: "AI Model" })).not.toBeInTheDocument();
+  it("lets Simple Mode choose only Runner-catalog models while keeping Auto as the default", async () => {
+    mocks.workspaces[0].modelCatalog = {
+      ...discoveredModelCatalog(),
+      models: [
+        { id: "dynamic-model-a", displayName: "Dynamic Model A", isDefault: true, reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium" },
+        { id: "dynamic-model-b", displayName: "Dynamic Model B", isDefault: false, reasoningEfforts: ["high"], defaultReasoningEffort: "high" },
+      ],
+    };
+    mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
+    await preparePanel(true);
+
+    const modelSelector = screen.getByRole("combobox", { name: "AI Model" });
+    expect(modelSelector).toHaveTextContent("Auto · Dynamic Model A");
+    fireEvent.click(modelSelector);
+    expect(screen.getByRole("option", { name: "Dynamic Model A · Default" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Dynamic Model B" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: /gpt-|claude|o[0-9]/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Dynamic Model B" }));
     expect(screen.queryByRole("radiogroup", { name: "Reasoning Effort" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
+
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
+      modelSelection: { policy: "explicit", modelId: "dynamic-model-b", reasoningEffort: "high" },
+    })));
   });
 
   it("keeps continuation available without displaying internal run or package identifiers in simple mode", () => {

@@ -204,7 +204,6 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const [modelPolicy, setModelPolicy] = useState<"auto" | "explicit">("auto");
   const [selectedModelId, setSelectedModelId] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
-  const effectiveModelPolicy = simpleMode ? "auto" : modelPolicy;
   const [uploading, setUploading] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
@@ -289,9 +288,10 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     && modelCatalog.revision
     && Date.parse(modelCatalog.expiresAt) > Date.now()
     && Date.parse(modelCatalog.observedAt) <= Date.now());
-  const activeModel = effectiveModelPolicy === "explicit"
+  const defaultModel = catalogModels.find(model => model.isDefault);
+  const activeModel = modelPolicy === "explicit"
     ? catalogModels.find(model => model.id === selectedModelId)
-    : catalogModels.find(model => model.isDefault);
+    : defaultModel;
   const availableEfforts = activeModel?.reasoningEfforts ?? [];
   const supportedEffort = availableEfforts.includes(reasoningEffort)
     ? reasoningEffort
@@ -523,7 +523,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       toast.error("เลือก responsive target อย่างน้อยหนึ่งอุปกรณ์");
       return;
     }
-    const modelSelection = { policy: effectiveModelPolicy, ...(effectiveModelPolicy === "explicit" ? { modelId: selectedModelId } : {}), reasoningEffort: supportedEffort };
+    const modelSelection = { policy: modelPolicy, ...(modelPolicy === "explicit" ? { modelId: selectedModelId } : {}), reasoningEffort: supportedEffort };
     if (!(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || !targetPreparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort))) {
       toast.error("Runner หรือ Codex model readiness ยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
@@ -802,34 +802,27 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                   emptyText="ยังไม่มี Harness ที่รายงานจาก Runner"
                   width="100%"
                 />
-                {!simpleMode ? (
-                  <Selector
-                    label="AI Model"
-                    value={modelPolicy === "auto" ? "auto" : selectedModelId}
-                    options={[
-                      { value: "auto", label: "Auto — ใช้รุ่นเริ่มต้นจาก Runner" },
-                      ...catalogModels.map(model => ({ value: model.id, label: `${model.displayName}${model.isDefault ? " · Default" : ""}` })),
-                    ]}
-                    onChange={value => {
-                        if (value === "auto") {
-                          setModelPolicy("auto");
-                          setSelectedModelId("");
-                        } else {
-                          setModelPolicy("explicit");
-                          setSelectedModelId(value);
-                        }
-                    }}
-                    disabledMessage="รอ Model catalog ล่าสุดจาก Runner ก่อนเลือกรุ่น"
-                    emptyText="Runner ยังไม่รายงานรุ่น AI"
-                    isDisabled={!catalogFresh || catalogModels.length === 0 || workspacesQuery.isFetching}
-                    width="100%"
-                  />
-                ) : (
-                  <VStack gap={1}>
-                    <AstryxText type="label">AI Model</AstryxText>
-                    <AstryxText type="body">{activeModel ? `Auto · ${activeModel.displayName}` : "Auto · ยังไม่มีรุ่นที่พร้อมจาก Runner"}</AstryxText>
-                  </VStack>
-                )}
+                <Selector
+                  label="AI Model"
+                  value={modelPolicy === "auto" ? "auto" : selectedModelId}
+                  options={[
+                    { value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto — ใช้รุ่นเริ่มต้นจาก Runner" },
+                    ...catalogModels.map(model => ({ value: model.id, label: `${model.displayName}${model.isDefault ? " · Default" : ""}` })),
+                  ]}
+                  onChange={value => {
+                      if (value === "auto") {
+                        setModelPolicy("auto");
+                        setSelectedModelId("");
+                      } else {
+                        setModelPolicy("explicit");
+                        setSelectedModelId(value);
+                      }
+                  }}
+                  disabledMessage="รอ Model catalog ล่าสุดจาก Runner ก่อนเลือกรุ่น"
+                  emptyText="Runner ยังไม่รายงานรุ่น AI"
+                  isDisabled={!catalogFresh || catalogModels.length === 0 || workspacesQuery.isFetching}
+                  width="100%"
+                />
               {!simpleMode ? (
                 <RadioList
                   label="Reasoning Effort"
