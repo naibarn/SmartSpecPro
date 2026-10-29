@@ -14,6 +14,13 @@
         "scope": "CLI safely accepts large inline changes JSON or a file path; 17 focused handoff CLI/store tests passed. The broad tools/spec_handoff suite retains six pre-existing classification/skill-contract failures.",
         "source_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC_HANDOFF_TOOLCHAIN_REGRESSION_RECHECK",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/thread-observability-db-and-uat-recheck-20261029.md",
+        "scope": "Spec Handoff unit suite 86/86; local Mission Control overview UAT 1/1; live schemas complete. Hosted authenticated browser unavailable; SPEC-256 duplicate canonical ID remains an explicit cross-repository classification blocker.",
+        "source_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -36,7 +43,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
+    "expected_canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
@@ -154,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 126,
+  "generation": 127,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -283,9 +290,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
+    "canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
     "integrated": true,
-    "integrated_at": "2026-10-30T00:00:00+07:00"
+    "integrated_at": "2026-10-30T00:20:00+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1477,7 +1484,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T16:59:23.278795Z",
+  "updated_at": "2026-10-29T17:04:56.137418Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

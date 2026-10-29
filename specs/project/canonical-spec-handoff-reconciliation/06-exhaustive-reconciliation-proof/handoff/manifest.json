@@ -1,6 +1,14 @@
 {
   "acceptance": {
-    "evidence": [],
+    "evidence": [
+      {
+        "kind": "DYNAMIC_SPEC256_DUPLICATE_AUTHORITY_BLOCKER",
+        "path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/handoff/evidence/spec256-duplicate-id-blocker-20261030.md",
+        "scope": "Two non-identical canonical-root Spec 256 files are surfaced as UNRESOLVED_AUTHORITY; generated passing classification gate remains blocked pending sourced disposition. Handoff suite 86/86.",
+        "source_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
+        "status": "BLOCKED"
+      }
+    ],
     "required": false,
     "status": "UNKNOWN"
   },
@@ -21,7 +29,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
+    "expected_canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
     "expected_spec_digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce"
   },
   "continuation": {
@@ -113,7 +121,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 53,
+  "generation": 54,
   "identity": {
     "canonical_path": "specs/project/canonical-spec-handoff-reconciliation/06-exhaustive-reconciliation-proof/spec.md",
     "digest": "b1f6af094b75123771dd297f8654f1b29d4480f050a9923d955e5670b049f3ce",
@@ -138,9 +146,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
+    "canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
     "integrated": true,
-    "integrated_at": "2026-10-08T02:12:22Z"
+    "integrated_at": "2026-10-30T00:20:00+07:00"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -304,7 +312,7 @@
     "unresolved": 9
   },
   "schema_version": 1,
-  "updated_at": "2026-10-08T02:13:46.356405Z",
+  "updated_at": "2026-10-29T17:04:56.185606Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

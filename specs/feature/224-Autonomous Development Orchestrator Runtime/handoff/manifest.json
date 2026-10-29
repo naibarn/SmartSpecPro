@@ -165,6 +165,13 @@
         "scope": "Focused PostgreSQL thread/observability tests 12/12; local authenticated Mission Control overview UAT 1/1; both service schemas contain required thread tables/columns; hosted authenticated browser unavailable; no real SPEC-224 Goal exists in tenant-001.",
         "source_sha": "731ac46ebb62f9775b98947edcf9d5f248662b83",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC_HANDOFF_TOOLCHAIN_REGRESSION_RECHECK",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/spec-handoff-large-json-cli-fix-20261029.md",
+        "scope": "Spec Handoff full unit suite 86/86 at the updated shared lifecycle contract. SPEC-224 live owner-authorized Goal and genuine two-phase Runner receipts remain absent.",
+        "source_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1096,7 +1103,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
+    "expected_canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
@@ -1275,7 +1282,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 259,
+  "generation": 260,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1507,9 +1514,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
+    "canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
     "integrated": true,
-    "integrated_at": "2026-10-30T00:00:00+07:00",
+    "integrated_at": "2026-10-30T00:20:00+07:00",
     "pull_request": null,
     "source_sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6"
   },
@@ -4025,7 +4032,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T16:59:23.224831Z",
+  "updated_at": "2026-10-29T17:04:56.083983Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
