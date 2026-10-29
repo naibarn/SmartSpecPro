@@ -83,6 +83,11 @@ describe("Core goal readiness feedback", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "ตรวจสอบ Model ล่าสุด" }));
     expect(mocks.refetchWorkspaces).toHaveBeenCalled();
+    const harnessSelector = screen.getByRole("combobox", { name: "Harness" });
+    expect(harnessSelector).toHaveTextContent("Auto · Codex");
+    fireEvent.click(harnessSelector);
+    expect(screen.getByRole("option", { name: "Codex" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Codex" }));
     const modelSelector = screen.getByRole("combobox", { name: "AI Model" });
     expect(modelSelector).toHaveTextContent(/Auto/);
     fireEvent.click(modelSelector);
@@ -94,6 +99,7 @@ describe("Core goal readiness feedback", () => {
     fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
 
     await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
+      provider: "codex",
       modelSelection: { policy: "explicit", modelId: "dynamic-model-b", reasoningEffort: "high" },
     })));
   });
@@ -105,7 +111,7 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByText(/ยังไม่มี Model catalog/)).toBeInTheDocument();
   });
 
-  it("lets Simple Mode choose only Runner-catalog models while keeping Auto as the default", async () => {
+  it("lets Simple Mode choose a Runner-reported Harness and model while keeping Auto as the default", async () => {
     mocks.workspaces[0].modelCatalog = {
       ...discoveredModelCatalog(),
       models: [
@@ -115,6 +121,12 @@ describe("Core goal readiness feedback", () => {
     };
     mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
     await preparePanel(true);
+
+    const harnessSelector = screen.getByRole("combobox", { name: "Harness" });
+    expect(harnessSelector).toHaveTextContent("Auto · Codex");
+    fireEvent.click(harnessSelector);
+    expect(screen.getByRole("option", { name: "Codex" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("option", { name: "Codex" }));
 
     const modelSelector = screen.getByRole("combobox", { name: "AI Model" });
     expect(modelSelector).toHaveTextContent("Auto · Dynamic Model A");
@@ -127,6 +139,7 @@ describe("Core goal readiness feedback", () => {
     fireEvent.click(screen.getByRole("button", { name: "สั่งพัฒนา" }));
 
     await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
+      provider: "codex",
       modelSelection: { policy: "explicit", modelId: "dynamic-model-b", reasoningEffort: "high" },
     })));
   });

@@ -201,6 +201,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const [pendingSpecFiles, setPendingSpecFiles] = useState<File[]>([]);
   const [requestKind, setRequestKind] = useState<"development" | "mini_app">("development");
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
+  const [harnessPolicy, setHarnessPolicy] = useState<"auto" | "explicit">("auto");
+  const [selectedHarnessAdapterId, setSelectedHarnessAdapterId] = useState("");
   const [modelPolicy, setModelPolicy] = useState<"auto" | "explicit">("auto");
   const [selectedModelId, setSelectedModelId] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
@@ -282,6 +284,14 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const modelCatalog = selectedWorkspace?.modelCatalog;
+  // Only expose an execution adapter when the selected Runner's fresh,
+  // account-bound catalog reports it. The current delegated Start contract
+  // supports Codex; do not offer other adapters until that path is enabled.
+  const catalogHarnesses = modelCatalog?.adapterId === "codex.v1" ? [modelCatalog.adapterId] : [];
+  const effectiveHarnessAdapterId = harnessPolicy === "explicit"
+    ? selectedHarnessAdapterId
+    : catalogHarnesses[0] ?? "";
+  const effectiveProvider = effectiveHarnessAdapterId === "codex.v1" ? "codex" : "";
   const catalogModels = modelCatalog?.models ?? [];
   const catalogFresh = Boolean(modelCatalog?.state === "discovered"
     && modelCatalog.accountProviderFingerprint
@@ -334,6 +344,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     }
   }, [workspaceQuery.data?.workspace?.runnerId, workspaceQuery.data?.workspace?.workspaceId]);
   useEffect(() => {
+    setHarnessPolicy("auto");
+    setSelectedHarnessAdapterId("");
     setModelPolicy("auto");
     setSelectedModelId("");
     setReasoningEffort("");
@@ -524,11 +536,11 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
       return;
     }
     const modelSelection = { policy: modelPolicy, ...(modelPolicy === "explicit" ? { modelId: selectedModelId } : {}), reasoningEffort: supportedEffort };
-    if (!(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || !targetPreparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort))) {
+    if (!(runnerReadiness?.ready ?? targetPreparation.runnerReadiness.ready) || !targetPreparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !effectiveProvider || (harnessPolicy === "explicit" && !catalogHarnesses.includes(selectedHarnessAdapterId)) || !activeModel || !supportedEffort))) {
       toast.error("Runner หรือ Codex model readiness ยังไม่พร้อม จึงยังไม่เริ่มงาน");
       return;
     }
-    const key = `${targetConversationId}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}:${JSON.stringify(modelSelection)}`;
+    const key = `${targetConversationId}:${mode}:${targetPreparation.planRevision}:${workPackageId}:${designStartFingerprint}:${JSON.stringify(proposedWriteScope)}:${budgetCapMinorUnits}:${harnessPolicy}:${effectiveProvider}:${JSON.stringify(modelSelection)}`;
     const idempotencyKey = stableKey ?? startKeys[key] ?? globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
     setStartKeys(current => ({ ...current, [key]: idempotencyKey }));
     startInFlight.current = true;
@@ -545,6 +557,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
           ...(developmentInputMode === "spec_prompt" ? { additionalInstructions: prompt } : {}),
         }),
         budgetCapMinorUnits,
+        ...(requestKind === "development" ? { provider: effectiveProvider as "codex" } : {}),
         modelSelection,
         ...(visualReferences.length ? {
           visualReferences: visualReferences.map(reference => ({
@@ -792,14 +805,24 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                 </HStack>
                 <Selector
                   label="Harness"
-                  value={modelCatalog?.adapterId ?? ""}
-                  options={modelCatalog?.adapterId
-                    ? [{ value: modelCatalog.adapterId, label: harnessLabel(modelCatalog.adapterId) }]
-                    : []}
+                  value={harnessPolicy === "auto" ? "auto" : selectedHarnessAdapterId}
+                  options={[
+                    { value: "auto", label: catalogHarnesses[0] ? `Auto · ${harnessLabel(catalogHarnesses[0])}` : "Auto — ใช้ Harness ที่ Runner ยืนยัน" },
+                    ...catalogHarnesses.map(adapterId => ({ value: adapterId, label: harnessLabel(adapterId) })),
+                  ]}
+                  onChange={value => {
+                    if (value === "auto") {
+                      setHarnessPolicy("auto");
+                      setSelectedHarnessAdapterId("");
+                    } else if (catalogHarnesses.includes(value)) {
+                      setHarnessPolicy("explicit");
+                      setSelectedHarnessAdapterId(value);
+                    }
+                  }}
                   placeholder="ยังไม่มี catalog จาก Runner"
                   isDisabled={!catalogFresh || workspacesQuery.isFetching}
                   disabledMessage="รอ catalog ล่าสุดจาก Runner ก่อนเลือก Harness"
-                  emptyText="ยังไม่มี Harness ที่รายงานจาก Runner"
+                  emptyText="Runner ยังไม่รายงาน Harness ที่รองรับ"
                   width="100%"
                 />
                 <Selector
