@@ -144,6 +144,13 @@
         "scope": "Latest dev Runner heartbeat, source snapshot, APPLIED capability ACK, Codex 0.165 task probe and SAFE_DISJOINT_DIRTY source admission are verified. SPEC-293 execution lease table exists with no overlapping active lease and next fence generation 1. No actual Goal Grant, Run, Job, Attempt, or live execution evidence exists; wait at authenticated Task Control Start and Approval Authority.",
         "source_sha": "0d2b9443b050c60902f7f9bc8eb2e820bbe46323",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_RUNNER_MODEL_CATALOG_DELIVERY_BLOCKED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-model-catalog-runner-runtime-blocker-20261029.md",
+        "scope": "Fresh authenticated Dev Runner snapshot and applied ACK are present, and the Task Control catalog projection works. Runner 0.2.51 predates account-scoped model catalog discovery, so the current codex.v1 snapshot lacks modelCatalog and Task Control correctly disables selection. Current-source live Codex discovery returns 8 real models. Signed Linux local_device update publication and authenticated Playwright selection remain pending. The independent desktop-review 503 is runner_release_github_not_configured in the current development service; a recorded voiceAgents.listEnabled 403 is unrelated to availableWorkspaces.",
+        "source_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1075,15 +1082,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963",
+    "expected_canonical_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00",
     "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
-    "next_action": "WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present. After approval refresh Runner ACK/source admission and trace real Child 1, automatic Child 2 and Independent Final Verify.",
-    "next_ready_workunit": "SPEC224_ACTIVATE_BOUNDED_GOAL_AND_TRACE_AUTONOMOUS_CHILD_EXECUTION",
+    "next_action": "BLOCKED_ON_DEV_RUNNER_RELEASE_CONFIGURATION: configure the existing Runner Release Control with the authorized GitHub repository and token; build a linux/local_device Runner from main using required-secret signing, import and publish its signed update to the Dev catalog, and request the update for the existing Runner. After a fresh applied snapshot includes a non-expired account-bound Model Catalog, verify Codex/model/reasoning selection in authenticated Task Control and resume the existing SPEC-224 Goal pilot.",
+    "next_ready_workunit": "SPEC224_PUBLISH_SIGNED_CATALOG_CAPABLE_LINUX_RUNNER_AND_VERIFY_TASK_CONTROL",
     "reactivation_predicate": "An approved, unrevoked, unexpired Goal Grant and corresponding DevelopmentRun/Job/Attempt are visible in tenant tenant-001; before release the same Runner session has a fresh applied snapshot/ACK at the current source SHA, Codex readiness passes, and the bounded scope has SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission with no active writer conflict.",
-    "resume_point": "The current screenshot shows successful Mini App factory creation on smartaihub.app, not SPEC-224 Goal Admission. Resume on aimarkethubs.com at Task Control: choose Debian Platform Engineering Runner/workspace, select “พัฒนาตาม prompt”, and click “เริ่มพัฒนา”. Approve only the resulting actual Goal Grant through Approval Authority. If the durable Run already appears, reuse it and its idempotency identity. Then refresh Runner ACK/source admission before dispatch.",
-    "waiting_predicate": "No authenticated SPEC-224 Goal Start and matching Goal Grant request are present in the latest smartspec_dev observation. The owner must start the bounded Goal on aimarkethubs.com using the development workflow and approve that exact Grant. The supplied smartaihub.app screenshot created a Mini App through factoryMode and does not satisfy this predicate."
+    "resume_point": "Source/API/UI checks pass, but the existing Runner 0.2.51 predates Model Catalog support. Its latest fresh applied snapshot at 2026-10-29T00:19:25.690Z has Codex CLI 0.165.0 and taskProbeState=passed but no modelCatalog. The current development service also returns runner_release_github_not_configured (503) because the Runner Release GitHub repository/token are absent from its authorized settings. Configure Runner Release Control, build/import/publish a signed Linux local_device update, and update the same Runner; then verify real Task Control selection and continue the durable pilot.",
+    "waiting_predicate": "The existing trusted Runner publishes an account-bound, unexpired modelCatalog in a fresh applied snapshot and the authorized availableWorkspaces read model plus authenticated Task Control show a real Codex harness, at least one discovered model, and that model's supported reasoning efforts. No catalog values may be fabricated; keep Goal Approval, Source Admission, Writer Lease, Fencing, and Budget guards unchanged."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1248,7 +1255,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 248,
+  "generation": 249,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -1480,11 +1487,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963",
+    "canonical_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00",
     "integrated": true,
-    "integrated_at": "2026-10-28T18:50:18Z",
+    "integrated_at": "2026-10-29T00:20:00Z",
     "pull_request": null,
-    "source_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9"
+    "source_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -3992,7 +3999,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-28T23:47:29.219382Z",
+  "updated_at": "2026-10-29T00:20:41.382284Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",

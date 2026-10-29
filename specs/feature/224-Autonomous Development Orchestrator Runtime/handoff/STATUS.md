@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1301 unresolved of 1302
 - Next action: WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present; after approval refresh Runner ACK/source admission and continue real Child 1, automatic Child 2 and Independent Final Verify.
-- Manifest generation: 248
+- Manifest generation: 249
 
 ## Source-declared status and relationship claims
 
