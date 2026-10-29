@@ -73,6 +73,51 @@ type ImageReferenceDraft = {
   assetReuseAllowed: boolean;
 };
 
+type Spec224TaskDraft = {
+  prompt: string;
+  workspaceAccessMode: "workspace" | "exclude_risky";
+  developmentInputMode: "prompt" | "spec" | "spec_prompt";
+  requestKind: "development" | "mini_app";
+  selectedRunnerId: string;
+  selectedWorkspace: string;
+  budgetCapUsd: string;
+  harnessPolicy: "auto" | "explicit";
+  selectedHarnessAdapterId: string;
+  modelPolicy: "auto" | "explicit";
+  selectedModelId: string;
+  reasoningEffort: string;
+};
+
+function taskDraftStorageKey(userId: string, tenantId: string | null | undefined, conversationId: number | null): string {
+  return `spec224-task-draft:v1:${encodeURIComponent(tenantId ?? "personal")}:${encodeURIComponent(userId)}:${conversationId ?? "new"}`;
+}
+
+function readTaskDraft(key: string): Partial<Spec224TaskDraft> | null {
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const value: unknown = JSON.parse(raw);
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const draft = value as Record<string, unknown>;
+    return {
+      ...(typeof draft.prompt === "string" ? { prompt: draft.prompt.slice(0, 4_000) } : {}),
+      ...(draft.workspaceAccessMode === "workspace" || draft.workspaceAccessMode === "exclude_risky" ? { workspaceAccessMode: draft.workspaceAccessMode } : {}),
+      ...(draft.developmentInputMode === "prompt" || draft.developmentInputMode === "spec" || draft.developmentInputMode === "spec_prompt" ? { developmentInputMode: draft.developmentInputMode } : {}),
+      ...(draft.requestKind === "development" || draft.requestKind === "mini_app" ? { requestKind: draft.requestKind } : {}),
+      ...(typeof draft.selectedRunnerId === "string" ? { selectedRunnerId: draft.selectedRunnerId.slice(0, 200) } : {}),
+      ...(typeof draft.selectedWorkspace === "string" ? { selectedWorkspace: draft.selectedWorkspace.slice(0, 500) } : {}),
+      ...(typeof draft.budgetCapUsd === "string" && /^\d{1,6}(?:\.\d{0,2})?$/.test(draft.budgetCapUsd) ? { budgetCapUsd: draft.budgetCapUsd } : {}),
+      ...(draft.harnessPolicy === "auto" || draft.harnessPolicy === "explicit" ? { harnessPolicy: draft.harnessPolicy } : {}),
+      ...(typeof draft.selectedHarnessAdapterId === "string" ? { selectedHarnessAdapterId: draft.selectedHarnessAdapterId.slice(0, 100) } : {}),
+      ...(draft.modelPolicy === "auto" || draft.modelPolicy === "explicit" ? { modelPolicy: draft.modelPolicy } : {}),
+      ...(typeof draft.selectedModelId === "string" ? { selectedModelId: draft.selectedModelId.slice(0, 200) } : {}),
+      ...(typeof draft.reasoningEffort === "string" ? { reasoningEffort: draft.reasoningEffort.slice(0, 32) } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
 async function encodeImageReference(file: File): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -179,6 +224,11 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const { user } = useAuth();
   const trpcUtils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
+  const draftKey = user?.id ? taskDraftStorageKey(user.id, user.currentTenantId, conversationId) : null;
+  const draftOwnerKey = user?.id ? `${user.currentTenantId ?? "personal"}:${user.id}` : null;
+  const previousDraftOwnerKey = useRef<string | null>(null);
+  const restoringTaskDraft = useRef(false);
+  const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const mockupInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState("");
@@ -210,6 +260,65 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const [preparing, setPreparing] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
   const [startKeys, setStartKeys] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!draftKey) return;
+    if (previousDraftOwnerKey.current && previousDraftOwnerKey.current !== draftOwnerKey) {
+      setPrompt("");
+      setWorkspaceAccessMode("exclude_risky");
+      setDevelopmentInputMode("prompt");
+      setRequestKind("development");
+      setSelectedRunnerId("");
+      setSelected("");
+      setBudgetCapUsd("1.00");
+      setHarnessPolicy("auto");
+      setSelectedHarnessAdapterId("");
+      setModelPolicy("auto");
+      setSelectedModelId("");
+      setReasoningEffort("");
+    }
+    previousDraftOwnerKey.current = draftOwnerKey;
+    const draft = readTaskDraft(draftKey);
+    if (draft) {
+      restoringTaskDraft.current = draft.selectedWorkspace !== undefined;
+      if (draft.prompt !== undefined) setPrompt(draft.prompt);
+      if (draft.workspaceAccessMode) setWorkspaceAccessMode(draft.workspaceAccessMode);
+      if (draft.developmentInputMode) setDevelopmentInputMode(draft.developmentInputMode);
+      if (draft.requestKind) setRequestKind(draft.requestKind);
+      if (draft.selectedRunnerId !== undefined) setSelectedRunnerId(draft.selectedRunnerId);
+      if (draft.selectedWorkspace !== undefined) setSelected(draft.selectedWorkspace);
+      if (draft.budgetCapUsd) setBudgetCapUsd(draft.budgetCapUsd);
+      if (draft.harnessPolicy) setHarnessPolicy(draft.harnessPolicy);
+      if (draft.selectedHarnessAdapterId !== undefined) setSelectedHarnessAdapterId(draft.selectedHarnessAdapterId);
+      if (draft.modelPolicy) setModelPolicy(draft.modelPolicy);
+      if (draft.selectedModelId !== undefined) setSelectedModelId(draft.selectedModelId);
+      if (draft.reasoningEffort !== undefined) setReasoningEffort(draft.reasoningEffort);
+    }
+    setHydratedDraftKey(draftKey);
+  }, [draftKey, draftOwnerKey]);
+
+  useEffect(() => {
+    if (!draftKey || hydratedDraftKey !== draftKey) return;
+    const draft: Spec224TaskDraft = {
+      prompt,
+      workspaceAccessMode,
+      developmentInputMode,
+      requestKind,
+      selectedRunnerId,
+      selectedWorkspace: selected,
+      budgetCapUsd,
+      harnessPolicy,
+      selectedHarnessAdapterId,
+      modelPolicy,
+      selectedModelId,
+      reasoningEffort,
+    };
+    try {
+      window.sessionStorage.setItem(draftKey, JSON.stringify(draft));
+    } catch {
+      // Storage may be disabled or full; the in-memory draft remains usable.
+    }
+  }, [draftKey, hydratedDraftKey, prompt, workspaceAccessMode, developmentInputMode, requestKind, selectedRunnerId, selected, budgetCapUsd, harnessPolicy, selectedHarnessAdapterId, modelPolicy, selectedModelId, reasoningEffort]);
 
   function addVisualReferences(files: FileList | null) {
     if (!files?.length) return;
@@ -347,6 +456,10 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     }
   }, [workspaceQuery.data?.workspace?.runnerId, workspaceQuery.data?.workspace?.workspaceId]);
   useEffect(() => {
+    if (restoringTaskDraft.current) {
+      restoringTaskDraft.current = false;
+      return;
+    }
     setHarnessPolicy("auto");
     setSelectedHarnessAdapterId("");
     setModelPolicy("auto");

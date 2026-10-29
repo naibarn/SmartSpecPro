@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/re
 import { Spec224WorkspacePanel, readinessMessage } from "./Spec224WorkspacePanel";
 
 const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), refetchWorkspaces: vi.fn(), info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
-vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { role: mocks.role } }) }));
+vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "user-test", currentTenantId: "tenant-test", role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } } }), runnerNodes: {
   list: { useQuery: () => ({ data: { runners: [{ runnerId: "runner-test", displayName: "Test Runner", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1", platform: { os: "windows", architecture: "x86_64", target: "x86_64-pc-windows-msvc", machineName: "DEV-PC-01" } }] } }) },
@@ -46,6 +46,7 @@ function usePlatformSourceWorkspace() {
 
 beforeEach(() => {
   cleanup();
+  window.sessionStorage.clear();
   vi.clearAllMocks();
   mocks.readiness = undefined;
   mocks.bindWorkspace.mockResolvedValue({ conversationId: 47 });
@@ -71,6 +72,19 @@ async function preparePanel(simpleMode = false) {
 }
 
 describe("Core goal readiness feedback", () => {
+  it("restores the unsubmitted Task Control draft after the panel remounts in the same tab", async () => {
+    const first = render(<Spec224WorkspacePanel conversationId={9} simpleMode />);
+    fireEvent.change(screen.getByLabelText("Spec 224 prompt"), { target: { value: "Resume this bounded pilot after switching apps" } });
+    fireEvent.click(screen.getByRole("radio", { name: /อนุญาตทุกไฟล์ใน Workspace/ }));
+
+    await waitFor(() => expect(window.sessionStorage.getItem("spec224-task-draft:v1:tenant-test:user-test:9")).toContain("Resume this bounded pilot"));
+    first.unmount();
+
+    render(<Spec224WorkspacePanel conversationId={9} simpleMode />);
+    expect(await screen.findByLabelText("Spec 224 prompt")).toHaveValue("Resume this bounded pilot after switching apps");
+    expect(screen.getByRole("radio", { name: /อนุญาตทุกไฟล์ใน Workspace/ })).toBeChecked();
+  });
+
   it("explains stale probe publication and missing workspace source facts separately", () => {
     expect(readinessMessage("CODEX_TASK_PROBE_EXPIRED", "stale")).toMatch(/ยังไม่ถูกรับรอง.*ACK/);
     expect(readinessMessage("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE", "applied")).toMatch(/เป็น Git repository.*เข้าถึงได้/);
