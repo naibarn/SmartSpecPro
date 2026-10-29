@@ -689,7 +689,7 @@ export const systemSettingsRouter = router({
    */
   listTenants: adminProcedure.query(async () => {
     const db = await getDb();
-    if (!db) return [];
+    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Tenant inventory is temporarily unavailable" });
 
     const rows = await db
       .select({

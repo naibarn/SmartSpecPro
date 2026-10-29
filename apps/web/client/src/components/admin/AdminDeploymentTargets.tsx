@@ -500,7 +500,7 @@ export default function AdminDeploymentTargets() {
   const [stagingActionStatus, setStagingActionStatus] = useState<StagingActionStatus | null>(null);
   const stagingActionLock = useRef(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
-  const tenantsQuery = trpc.systemSettings.listTenants.useQuery();
+  const tenantsQuery = trpc.systemSettings.listTenants.useQuery(undefined, { retry: 1, refetchOnWindowFocus: true });
   const tenantInventory = tenantsQuery.data ?? [];
   const operationalTenants = tenantInventory.filter(tenant => !tenant.selectorKind || tenant.selectorKind === "operational");
   const visibleTenants = showNonOperationalTenants ? tenantInventory : operationalTenants;
@@ -959,8 +959,20 @@ export default function AdminDeploymentTargets() {
             })}
             value={tenantId}
             menuSize="tenant"
+            disabled={(tenantsQuery.isLoading || tenantsQuery.isError) && !tenantsQuery.data}
             onValueChange={value => { setTenantId(value); setProjectId(""); setWorkflowRuntimeToken(""); setControlPlaneToken(""); }}
           />
+          {tenantsQuery.isLoading ? <p role="status">{text("Loading tenant list…", "กำลังโหลดรายการ tenant…")}</p> : null}
+          {tenantsQuery.isError ? <VStack gap={1} role="alert">
+            <p>{text("The tenant list request failed. Saved tenant data was not changed. Retry the request.", "โหลดรายการ tenant ไม่สำเร็จ ระบบไม่ได้แก้ไขข้อมูล tenant ที่บันทึกไว้ กรุณาลองโหลดอีกครั้ง")}</p>
+            <Button type="button" variant="outline" size="sm" disabled={tenantsQuery.isFetching} onClick={() => { void tenantsQuery.refetch(); }}>
+              {text("Retry tenant list", "ลองโหลดรายการ tenant อีกครั้ง")}
+            </Button>
+          </VStack> : null}
+          {tenantsQuery.isSuccess && visibleTenants.length === 0 ? <p role="status">{text(
+            showNonOperationalTenants ? "No tenants are available in the returned inventory." : "No active business tenants were returned. Enable test, system, and inactive tenants below to inspect retained records.",
+            showNonOperationalTenants ? "ไม่พบ tenant ในรายการที่ระบบส่งกลับมา" : "ไม่พบ tenant ธุรกิจที่ Active เปิดตัวเลือก tenant ทดสอบ ระบบ หรือไม่ใช้งานด้านล่างเพื่อดูข้อมูลที่เก็บไว้",
+          )}</p> : null}
           {tenantId && !validTenantId ? <p role="status">{text("Select an existing tenant to configure deployment targets.", "เลือก tenant ที่มีอยู่ในระบบเพื่อตั้งค่า deployment target")}</p> : null}
         </VStack>
         <VStack gap={1} style={{ flex: "2 1 36rem", minWidth: "min(100%, 36rem)" }}>

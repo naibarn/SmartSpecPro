@@ -47,4 +47,10 @@ describe("admin tenant selector inventory", () => {
     }
     expect(getDbMock).not.toHaveBeenCalled();
   });
+
+  it("reports an unavailable database instead of disguising it as an empty tenant inventory", async () => {
+    getDbMock.mockResolvedValue(null);
+    const caller = systemSettingsRouter.createCaller({ user: { id: 1, role: "admin" } } as any);
+    await expect(caller.listTenants()).rejects.toMatchObject({ code: "INTERNAL_SERVER_ERROR", message: "Tenant inventory is temporarily unavailable" });
+  });
 });

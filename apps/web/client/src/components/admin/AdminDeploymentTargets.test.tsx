@@ -10,6 +10,7 @@ vi.mock("./CloudflareMigrationPreparation", () => ({ CloudflareMigrationPreparat
 
 const mocks = vi.hoisted(() => ({
   invalidate: vi.fn(),
+  tenantListQuery: null as any,
   create: vi.fn(),
   update: vi.fn(),
   disable: vi.fn(),
@@ -99,13 +100,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareHttpCandidatePreparation: { invalidate: mocks.invalidate },
       getCloudflareHttpRuntimeOperation: { invalidate: mocks.invalidate },
     } }),
-    systemSettings: { listTenants: { useQuery: () => ({ data: [
-      { id: "tenant-system", name: "System", selectorKind: "system" },
-      { id: "tenant-codex-uat", name: "Codex UAT Isolated Tenant", selectorKind: "test" },
-      { id: "tenant-ZCSKEM9s", name: "Tenant One", selectorKind: "operational" },
-      { id: "tenant-smartaihub", name: "Production tenant", domain: "smartaihub.app", selectorKind: "operational" },
-      { id: "tenant-inactive", name: "Former tenant", selectorKind: "inactive" },
-    ] }) } },
+    systemSettings: { listTenants: { useQuery: () => mocks.tenantListQuery } },
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
       listProviderDeploymentTargets: { useQuery: (input: { environment: string }) => ({ data: input.environment === "production" ? mocks.targets : (mocks.stagingTargets.length ? mocks.stagingTargets : mocks.targets), isLoading: false, isError: mocks.targetsError, isFetching: false }) },
@@ -292,6 +287,13 @@ describe("AdminDeploymentTargets", () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
     sessionStorage.clear();
+    mocks.tenantListQuery = { data: [
+      { id: "tenant-system", name: "System", selectorKind: "system" },
+      { id: "tenant-codex-uat", name: "Codex UAT Isolated Tenant", selectorKind: "test" },
+      { id: "tenant-ZCSKEM9s", name: "Tenant One", selectorKind: "operational" },
+      { id: "tenant-smartaihub", name: "Production tenant", domain: "smartaihub.app", selectorKind: "operational" },
+      { id: "tenant-inactive", name: "Former tenant", selectorKind: "inactive" },
+    ], isLoading: false, isSuccess: true, isError: false, isFetching: false, refetch: vi.fn() };
     mocks.targets = [];
     mocks.stagingTargets = [];
     mocks.targetsError = false;
@@ -369,6 +371,24 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.getByRole("combobox", { name: "Canonical project" })).toBeDisabled();
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
+  });
+
+  it("shows loading instead of an empty tenant result while inventory is pending", () => {
+    mocks.tenantListQuery = { data: undefined, isLoading: true, isSuccess: false, isError: false, isFetching: true, refetch: vi.fn() };
+    render(<AdminDeploymentTargets />);
+    expect(screen.getByText("Loading tenant list…")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Authenticated tenant" })).toBeDisabled();
+  });
+
+  it("shows tenant inventory query failures and offers an explicit retry", async () => {
+    const refetch = vi.fn();
+    mocks.tenantListQuery = { data: undefined, isLoading: false, isSuccess: false, isError: true, isFetching: false, refetch };
+    const user = userEvent.setup();
+    render(<AdminDeploymentTargets />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Saved tenant data was not changed");
+    expect(screen.getByRole("combobox", { name: "Authenticated tenant" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Retry tenant list" }));
+    expect(refetch).toHaveBeenCalledOnce();
   });
 
   it("filters the tenant list by name or ID instead of requiring scrolling", async () => {
