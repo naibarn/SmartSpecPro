@@ -37,6 +37,7 @@ def renewal_definition():
         "sourcePlanDigest": plan_digest(source["plan"]), "resources": {"hyperdriveId": "a" * 32, "caId": "b" * 32,
             "accessApplicationId": "11111111-1111-4111-8111-111111111111", "accessPolicyId": "22222222-2222-4222-8222-222222222222",
             "serviceTokenId": "33333333-3333-4333-8333-333333333333", "dnsRecordId": "d" * 32},
+        "serviceTokenExpiresAt": (now + timedelta(days=1)).isoformat(), "refreshServiceTokenExpiry": True,
         "leaseExpiresAt": (now + timedelta(days=30)).isoformat(), "authorizationExpiresAt": (now + timedelta(minutes=10)).isoformat()}
     policy = {key: value for key, value in source.items() if key not in ("contractVersion", "plan", "planDigest")}
     policy.update({"contractVersion": RENEWAL_CONTRACT, "plan": plan, "planDigest": plan_digest(plan), "maxOperations": 1})
@@ -120,6 +121,8 @@ def test_private_database_renewal_contract_is_exact_and_owner_scoped():
         {"plan": {**grant["plan"], "resources": {**grant["plan"]["resources"], "hyperdriveId": "e" * 32}}}):
         with pytest.raises(ValueError):
             normalize_renewal_grant({**grant, **changes})
+    with pytest.raises(ValueError):
+        validate_renewal_plan({**policy["plan"], "refreshServiceTokenExpiry": False})
 
 
 @pytest.mark.unit
@@ -144,8 +147,9 @@ def test_private_database_renewal_digest_matches_admin_canonical_plan():
         "sourcePlanDigest": "f1e7c560cdb582fed16f5c75631adc2184f2576a5e33e65d18bf2c08752831a5",
         "resources": {"hyperdriveId": "e" * 32, "caId": "f" * 32, "accessApplicationId": "33333333-3333-4333-8333-333333333333",
             "accessPolicyId": "44444444-4444-4444-8444-444444444444", "serviceTokenId": "55555555-5555-4555-8555-555555555555", "dnsRecordId": "6" * 32},
+        "serviceTokenExpiresAt": "2026-10-30T00:00:00.000Z", "refreshServiceTokenExpiry": True,
         "leaseExpiresAt": "2026-11-28T00:00:00.000Z", "authorizationExpiresAt": "2026-10-29T05:00:00.000Z"}
-    assert renewal_plan_digest(plan) == "9762e7eff4eeaf7f6602d4765ef6d7d8ed3b7a8fc8fa199be0782e25ba12f3e4"
+    assert renewal_plan_digest(plan) == "f04bb438ffaef8f55bea335233cf23583aae13d5d40d8c708600337353cdbe5c"
 
 
 @pytest.mark.unit

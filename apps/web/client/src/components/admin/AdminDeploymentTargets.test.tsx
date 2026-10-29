@@ -713,6 +713,7 @@ describe("AdminDeploymentTargets", () => {
       sourcePlanDigest: "d".repeat(64),
       resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: "33333333-3333-4333-8333-333333333333",
         accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      serviceTokenExpiresAt: "2026-10-30T00:00:00.000Z", refreshServiceTokenExpiry: true,
       leaseExpiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
       authorizationExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
     };
@@ -732,6 +733,8 @@ describe("AdminDeploymentTargets", () => {
     await user.click(renew);
     expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
     expect(await screen.findByRole("dialog")).toHaveTextContent("Authorize and renew the Staging database lease");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Access: Service Tokens Write");
+    expect(screen.getByRole("dialog")).toHaveTextContent("secret and policy stay unchanged");
     await user.click(screen.getByRole("button", { name: "Authorize one renewal Job" }));
     expect(mocks.queueStagingDatabaseRenewal).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", configurationRef,
       planDigest: "7".repeat(64) });

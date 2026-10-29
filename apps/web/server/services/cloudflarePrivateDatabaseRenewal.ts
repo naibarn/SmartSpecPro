@@ -24,7 +24,8 @@ function result(input: Omit<PrivateDatabaseRenewalPreflight, "checkedAt" | "fail
   return { ...input, failureStage: input.failureStage ?? null, failureDetail: input.failureDetail ?? null, checkedAt: new Date().toISOString() };
 }
 const SAFE_PLAN_PATHS = new Set(["configurationRef", "configurationDigest", "sourceProvisionJobId", "sourcePlan", "sourcePlanDigest", "resources",
-  "hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId", "leaseExpiresAt", "authorizationExpiresAt",
+  "hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId", "serviceTokenExpiresAt",
+  "refreshServiceTokenExpiry", "leaseExpiresAt", "authorizationExpiresAt",
   "namespace", "hostname", "zoneId", "tunnelId", "databaseName", "caSha256", "connectionLimit", "configurationExpiresAt"]);
 const SAFE_ZOD_CODES = new Set(["invalid_type", "invalid_format", "too_small", "too_big", "custom", "unrecognized_keys", "invalid_union", "not_multiple_of"]);
 export function privateDatabaseRenewalPlanFailureDetail(error: unknown): string | null {
@@ -90,16 +91,11 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
 
   const leaseExpiresAt = new Date(Math.floor((now + 30 * 24 * 60 * 60_000) / 60_000) * 60_000).toISOString();
   const authorizationExpiresAt = new Date(now + 10 * 60_000).toISOString();
-  const plan = await atStage("PLAN_BINDING", async () => privateDatabaseRenewalPlanSchema.parse({ configurationRef: config.configurationRef, configurationDigest: config.configurationDigest,
-    sourceProvisionJobId: binding.provisionJobId, sourcePlan: binding.plan, sourcePlanDigest: binding.planDigest,
-    resources: { hyperdriveId: binding.hyperdriveId, caId: binding.caId, accessApplicationId: binding.accessApplicationId,
-      accessPolicyId: binding.accessPolicyId, serviceTokenId: binding.serviceTokenId, dnsRecordId: binding.dnsRecordId }, leaseExpiresAt, authorizationExpiresAt }));
-  const planDigest = privateDatabaseRenewalPlanDigest(plan);
   const [existing] = await atStage("RENEWAL_JOB_READBACK", () => db.select({ id: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode, heartbeatAt: workerJobs.heartbeatAt })
     .from(workerJobs).where(and(eq(workerJobs.tenantId, input.identity.tenantId), eq(workerJobs.jobType, PRIVATE_DATABASE_RENEWAL_JOB),
       eq(workerJobs.contractVersion, PRIVATE_DATABASE_RENEWAL_CONTRACT), sql`${workerJobs.inputJson}->>'projectId' = ${input.identity.projectId}`,
       sql`${workerJobs.inputJson}->>'configurationRef' = ${input.configurationRef}`)).orderBy(desc(workerJobs.createdAt)).limit(1));
-  if (existing) return result({ ...base, ready: false, reason: "PRIVATE_DATABASE_RENEWAL_JOB_EXISTS", plan, planDigest, leaseExpiresAt,
+  if (existing) return result({ ...base, ready: false, reason: "PRIVATE_DATABASE_RENEWAL_JOB_EXISTS", plan: null, planDigest: null, leaseExpiresAt,
     existingJob: { jobId: existing.id, status: existing.status, errorCode: existing.errorCode, heartbeatAt: existing.heartbeatAt?.toISOString() ?? null } });
 
   const runtime = options.runtime ?? createCloudflareNativeProvisionRuntime(), scope = input.identity;
@@ -119,7 +115,17 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
   if (checkpoint.planDigest !== binding.planDigest || !checkpoint.databaseRolePrepared || !checkpoint.databasePassword)
     return result({ ...base, ready: false, reason: "PRIVATE_DATABASE_RENEWAL_SOURCE_RECEIPT_DENIED", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
   await atStage("DATABASE_ROLE_READBACK", () => verifyExpiredRole(db, binding.plan, now));
-  await atStage("CLOUDFLARE_PROVIDER_READBACK", () => runtime.withCredential(scope, async token => verifyPrivateDatabaseProviderResources({ descriptor: binding,
-    accountRef: config.descriptor.accountRef, token, fetchImpl: runtime.fetchImpl, effectiveLeaseExpiresAt: leaseExpiresAt })));
+  const providerState = await atStage("CLOUDFLARE_PROVIDER_READBACK", () => runtime.withCredential(scope, async token => verifyPrivateDatabaseProviderResources({ descriptor: binding,
+    accountRef: config.descriptor.accountRef, token, fetchImpl: runtime.fetchImpl, effectiveLeaseExpiresAt: leaseExpiresAt, allowServiceTokenExpiryRefresh: true })));
+  if (!providerState.serviceTokenExpiresAt) return result({ ...base, ready: false, reason: "PRIVATE_DATABASE_SERVICE_TOKEN_EXPIRY_UNAVAILABLE",
+    plan: null, planDigest: null, leaseExpiresAt, existingJob: null });
+  const plan = await atStage("PLAN_BINDING", async () => privateDatabaseRenewalPlanSchema.parse({ configurationRef: config.configurationRef, configurationDigest: config.configurationDigest,
+    sourceProvisionJobId: binding.provisionJobId, sourcePlan: binding.plan, sourcePlanDigest: binding.planDigest,
+    resources: { hyperdriveId: binding.hyperdriveId, caId: binding.caId, accessApplicationId: binding.accessApplicationId,
+      accessPolicyId: binding.accessPolicyId, serviceTokenId: binding.serviceTokenId, dnsRecordId: binding.dnsRecordId },
+    serviceTokenExpiresAt: providerState.serviceTokenExpiresAt,
+    refreshServiceTokenExpiry: providerState.serviceTokenExpiryRefreshRequired,
+    leaseExpiresAt, authorizationExpiresAt }));
+  const planDigest = privateDatabaseRenewalPlanDigest(plan);
   return result({ ...base, ready: true, reason: null, plan, planDigest, leaseExpiresAt, existingJob: null });
 }

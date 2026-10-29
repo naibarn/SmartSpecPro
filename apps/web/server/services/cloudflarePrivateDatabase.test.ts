@@ -9,11 +9,12 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB
   certificateDigest, privateDatabaseGrantSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail } from "./cloudflarePrivateDatabaseRenewal";
+import { reconcilePrivateDatabaseServiceTokenRefresh } from "./cloudflarePrivateDatabaseRenewalExecutor";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { validateJobDefinition } from "./jobCanonicalization";
 import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt, validatePrivateDatabaseBinding,
-  verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
+  refreshPrivateDatabaseServiceToken, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
 import { assertNativeWorkerBindings, nativeWorkerBindings } from "./cloudflareNativeBindingDescriptor";
 import { nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
 import { PUBLIC_RUNNER_RELEASE_PREDICATE as backendPredicate, PUBLIC_RUNNER_RELEASE_SELECT as backendSelect,
@@ -81,6 +82,7 @@ describe("private PostgreSQL staging provisioning", () => {
       sourcePlan: { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app", zoneId: "b".repeat(32),
         tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub", caSha256: "c".repeat(64), connectionLimit: 5,
         configurationExpiresAt: "2026-10-01T00:00:00.000Z" }, sourcePlanDigest: "d".repeat(64), resources,
+      serviceTokenExpiresAt: "2026-10-20T00:00:00.000Z", refreshServiceTokenExpiry: true,
       leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" };
     input.sourcePlanDigest = privateDatabasePlanDigest(input.sourcePlan);
     expect(privateDatabaseRenewalPlanSchema.safeParse(input).success).toBe(true);
@@ -96,6 +98,7 @@ describe("private PostgreSQL staging provisioning", () => {
       sourceProvisionJobId: "11111111-1111-4111-8111-111111111111", sourcePlan, sourcePlanDigest: privateDatabasePlanDigest(sourcePlan),
       resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: secretishValue,
         accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      serviceTokenExpiresAt: "2026-10-20T00:00:00.000Z", refreshServiceTokenExpiry: true,
       leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" });
     expect(parsed.success).toBe(false);
     if (!parsed.success) {
@@ -113,6 +116,21 @@ describe("private PostgreSQL staging provisioning", () => {
       expect(privateDatabaseProviderFailureDetail({ diagnosticDetail })).toBeNull();
   });
 
+  it("binds the planned service-token expiry and refresh decision into the immutable renewal plan", () => {
+    const plan = { configurationRef: `cf-origin:${"a".repeat(64)}`, configurationDigest: "a".repeat(64),
+      sourceProvisionJobId: "11111111-1111-4111-8111-111111111111",
+      sourcePlan: { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app" as const, zoneId: "b".repeat(32),
+        tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub", caSha256: "c".repeat(64), connectionLimit: 5 as const,
+        configurationExpiresAt: "2026-10-01T00:00:00.000Z" }, sourcePlanDigest: "d".repeat(64),
+      resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: "33333333-3333-4333-8333-333333333333",
+        accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      serviceTokenExpiresAt: "2026-10-20T00:00:00.000Z", refreshServiceTokenExpiry: true,
+      leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" };
+    plan.sourcePlanDigest = privateDatabasePlanDigest(plan.sourcePlan);
+    expect(privateDatabaseRenewalPlanSchema.safeParse(plan).success).toBe(true);
+    expect(privateDatabaseRenewalPlanSchema.safeParse({ ...plan, refreshServiceTokenExpiry: false }).success).toBe(false);
+  });
+
   it("matches the Python approval service's immutable renewal plan digest", () => {
     const sourcePlan = { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app" as const,
       zoneId: "b".repeat(32), tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub",
@@ -121,8 +139,9 @@ describe("private PostgreSQL staging provisioning", () => {
       sourceProvisionJobId: "11111111-1111-4111-8111-111111111111", sourcePlan, sourcePlanDigest: "f1e7c560cdb582fed16f5c75631adc2184f2576a5e33e65d18bf2c08752831a5",
       resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: "33333333-3333-4333-8333-333333333333",
         accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      serviceTokenExpiresAt: "2026-10-30T00:00:00.000Z", refreshServiceTokenExpiry: true,
       leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" }))
-      .toBe("9762e7eff4eeaf7f6602d4765ef6d7d8ed3b7a8fc8fa199be0782e25ba12f3e4");
+      .toBe("f04bb438ffaef8f55bea335233cf23583aae13d5d40d8c708600337353cdbe5c");
   });
 
   it("verifies the renewal receipt against the exact immutable job plan and original resource IDs", async () => {
@@ -134,6 +153,7 @@ describe("private PostgreSQL staging provisioning", () => {
       sourcePlan: descriptor.plan, sourcePlanDigest: descriptor.planDigest,
       resources: { hyperdriveId: descriptor.hyperdriveId, caId: descriptor.caId, accessApplicationId: descriptor.accessApplicationId,
         accessPolicyId: descriptor.accessPolicyId, serviceTokenId: descriptor.serviceTokenId, dnsRecordId: descriptor.dnsRecordId },
+      serviceTokenExpiresAt: new Date(Date.now() + 24 * 60 * 60_000).toISOString(), refreshServiceTokenExpiry: true,
       leaseExpiresAt: new Date(Date.now() + 2 * 86_400_000).toISOString(), authorizationExpiresAt: new Date(Date.now() + 60_000).toISOString() };
     const planDigest = privateDatabaseRenewalPlanDigest(plan), renewalJobId = "77777777-7777-4777-8777-777777777777";
     const renewed = { ...descriptor, leaseRenewal: { jobId: renewalJobId, leaseExpiresAt: plan.leaseExpiresAt, planDigest,
@@ -144,6 +164,7 @@ describe("private PostgreSQL staging provisioning", () => {
         projectId: f.grant.projectId, configurationRef, planDigest, plan },
       outputJson: { status: "verified", configurationRef, configurationDigest, sourceProvisionJobId: descriptor.provisionJobId,
         sourcePlanDigest: descriptor.planDigest, planDigest, resourceIds: plan.resources, leaseExpiresAt: plan.leaseExpiresAt,
+        serviceTokenRefreshed: true, serviceTokenExpiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
         providerResourcesVerified: true, databaseRoleReadbackVerified: true } };
     expect(() => assertPrivateDatabaseRenewalReceipt(renewed, receipt, { tenantId: f.grant.tenantId,
       projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId })).not.toThrow();
@@ -409,5 +430,47 @@ describe("immutable private database binding authority", () => {
     await expect(verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token,
       fetchImpl: f.input.fetchImpl, effectiveLeaseExpiresAt: new Date(Date.now() + 3 * 86_400_000).toISOString() }))
       .rejects.toThrow("PRIVATE_DATABASE_PROVIDER_RESOURCE_DRIFT");
+  });
+  it("allows read-only preflight to identify a short-lived existing token for the explicit renewal action", async () => {
+    const f = await bindingFixture(), effectiveLeaseExpiresAt = new Date(Date.now() + 36 * 60 * 60_000).toISOString();
+    f.resources.token.expires_at = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    await expect(verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token,
+      fetchImpl: f.input.fetchImpl, effectiveLeaseExpiresAt, allowServiceTokenExpiryRefresh: true })).resolves.toMatchObject({
+      serviceTokenExpiryRefreshRequired: true });
+    await expect(verifyPrivateDatabaseProviderResources({ descriptor: f.descriptor, accountRef: f.grant.accountRef, token: f.input.token,
+      fetchImpl: f.input.fetchImpl, effectiveLeaseExpiresAt })).rejects.toThrow("PRIVATE_DATABASE_PROVIDER_RESOURCE_DRIFT");
+  });
+  it("refreshes only the exact existing service token and checks expiry without exposing its secret", async () => {
+    const expiresAt = new Date(Date.now() + 40 * 86_400_000).toISOString(), fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toBe(`https://api.cloudflare.com/client/v4/accounts/${"a".repeat(32)}/access/service_tokens/${"5".repeat(32)}/refresh`);
+      expect(init?.method).toBe("POST");
+      expect(JSON.stringify(init)).not.toContain("fixture-private-service-secret");
+      return Response.json({ success: true, result: { id: "5".repeat(32), client_id: "fixture-access-client",
+        name: "exact-staging-token", enabled: true, expires_at: expiresAt } });
+    });
+    await expect(refreshPrivateDatabaseServiceToken({ accountRef: "a".repeat(32), serviceTokenId: "5".repeat(32),
+      expectedClientId: "fixture-access-client", expectedName: "exact-staging-token", effectiveLeaseExpiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      token: "fixture-cloudflare-api-token", fetchImpl })).resolves.toEqual({ expiresAt });
+    const deniedFetch = vi.fn(async () => Response.json({ success: false }, { status: 403 }));
+    await expect(refreshPrivateDatabaseServiceToken({ accountRef: "a".repeat(32), serviceTokenId: "5".repeat(32), expectedClientId: "fixture-access-client",
+      expectedName: "exact-staging-token", effectiveLeaseExpiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(), token: "fixture-cloudflare-api-token",
+      fetchImpl: deniedFetch })).rejects.toThrow("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_HTTP_403");
+  });
+  it("reconciles an ambiguous token refresh from the same job checkpoint and provider readback", () => {
+    const jobId = "88888888-8888-4888-8888-888888888888", serviceTokenId = "5".repeat(32), planDigest = "a".repeat(64);
+    const leaseExpiresAt = new Date(Date.now() + 30 * 86_400_000).toISOString();
+    const before = new Date(Date.now() + 24 * 60 * 60_000).toISOString();
+    const after = new Date(Date.now() + 40 * 86_400_000).toISOString();
+    const pending = { status: "service_token_refresh_pending", jobId, planDigest, serviceTokenId, leaseExpiresAt };
+    expect(reconcilePrivateDatabaseServiceTokenRefresh({ checkpoint: pending, jobId, planDigest, serviceTokenId, leaseExpiresAt,
+      serviceTokenExpiresAt: before, refreshRequired: true })).toEqual({ refreshRequiredNow: true, refreshReconciled: false });
+    expect(reconcilePrivateDatabaseServiceTokenRefresh({ checkpoint: pending, jobId, planDigest, serviceTokenId, leaseExpiresAt,
+      serviceTokenExpiresAt: after, refreshRequired: true })).toEqual({ refreshRequiredNow: false, refreshReconciled: true });
+    expect(() => reconcilePrivateDatabaseServiceTokenRefresh({ checkpoint: { ...pending, status: "service_token_refreshed", serviceTokenExpiresAt: after },
+      jobId, planDigest, serviceTokenId, leaseExpiresAt, serviceTokenExpiresAt: before, refreshRequired: true }))
+      .toThrow("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_READBACK_MISMATCH");
+    expect(() => reconcilePrivateDatabaseServiceTokenRefresh({ checkpoint: { ...pending, planDigest: "b".repeat(64) },
+      jobId, planDigest, serviceTokenId, leaseExpiresAt, serviceTokenExpiresAt: before, refreshRequired: true }))
+      .toThrow("PRIVATE_DATABASE_RENEWAL_CHECKPOINT_DENIED");
   });
 });

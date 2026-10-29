@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod";
 import { getDb } from "../db";
 import { systemSettings, workerJobs } from "../../drizzle/schema";
 import { decrypt, encrypt } from "./crypto";
@@ -7,9 +8,9 @@ import { getEffectiveWorkerJobDeadlineMs } from "./workerJobDeadlinePolicy";
 import type { JobExecutor } from "./jobExecutor";
 import { createCloudflareNativeProvisionRuntime, nativeProvisionCredentialRef } from "./cloudflareNativeProvisionExecutor";
 import { createCloudflareStagingExecutorProof, verifyCloudflareStagingExecutorProof, type CloudflareStagingExecutorAttemptBinding } from "./cloudflareStagingExecutorIdentityService";
-import { assertPrivateDatabaseProvisionReceipt, verifyPrivateDatabaseProviderResources, type PrivateDatabaseBinding } from "./cloudflarePrivateDatabaseBinding";
+import { assertPrivateDatabaseProvisionReceipt, refreshPrivateDatabaseServiceToken, verifyPrivateDatabaseProviderResources, type PrivateDatabaseBinding } from "./cloudflarePrivateDatabaseBinding";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
-import { privateDatabaseRole, privateDatabaseRenewalGrantSchema, privateDatabaseRenewalJobSchema,
+import { privateDatabaseResourceDigest, privateDatabaseRole, privateDatabaseRenewalGrantSchema, privateDatabaseRenewalJobSchema,
   privateDatabaseRenewalPlanDigest, PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, type PrivateDatabaseRenewalGrant } from "./cloudflarePrivateDatabaseContract";
 import { CLOUDFLARE_STAGING_EXECUTOR_TARGET } from "./cloudflareStagingExecutorIdentityService";
 
@@ -18,11 +19,36 @@ type Runtime = {
   resolveAccount(scope: { tenantId: string; projectId: string; provider: "cloudflare"; environment: "staging" }): Promise<string | null>;
   withCredential<T>(scope: { tenantId: string; projectId: string; provider: "cloudflare"; environment: "staging" }, operation: (token: string) => Promise<T>): Promise<T>;
   verifyExecutor(grant: PrivateDatabaseRenewalGrant): Promise<string>;
-  loadSource(grant: PrivateDatabaseRenewalGrant): Promise<{ receipt: any; checkpoint: any }>;
+  loadSource(grant: PrivateDatabaseRenewalGrant): Promise<{ receipt: any; checkpoint: any; renewalCheckpoint: unknown | null }>;
   saveCheckpoint(grant: PrivateDatabaseRenewalGrant, value: Record<string, unknown>): Promise<void>;
   renewRole(grant: PrivateDatabaseRenewalGrant): Promise<void>;
   fetchImpl?: typeof fetch;
 };
+
+const renewalExecutionCheckpointSchema = z.object({
+  status: z.enum(["service_token_refresh_pending", "service_token_refreshed", "succeeded"]),
+  jobId: z.string().uuid(), planDigest: z.string().regex(/^[a-f0-9]{64}$/), serviceTokenId: z.string(),
+  leaseExpiresAt: z.string().datetime({ offset: true }), serviceTokenExpiresAt: z.string().datetime({ offset: true }).optional(),
+}).passthrough();
+
+export function reconcilePrivateDatabaseServiceTokenRefresh(input: {
+  checkpoint: unknown | null | undefined; jobId: string; planDigest: string; serviceTokenId: string;
+  leaseExpiresAt: string; serviceTokenExpiresAt: string; refreshRequired: boolean;
+}): { refreshRequiredNow: boolean; refreshReconciled: boolean } {
+  const parsed = input.checkpoint == null ? null : renewalExecutionCheckpointSchema.safeParse(input.checkpoint);
+  if (parsed && (!parsed.success || parsed.data.jobId !== input.jobId || parsed.data.planDigest !== input.planDigest
+    || parsed.data.serviceTokenId !== input.serviceTokenId || parsed.data.leaseExpiresAt !== input.leaseExpiresAt
+    || (parsed.data.status !== "service_token_refresh_pending" && !parsed.data.serviceTokenExpiresAt)))
+    fail("PRIVATE_DATABASE_RENEWAL_CHECKPOINT_DENIED");
+  const prior = parsed?.success ? parsed.data : null;
+  const observedExpiry = Date.parse(input.serviceTokenExpiresAt), leaseExpiry = Date.parse(input.leaseExpiresAt);
+  if (!Number.isFinite(observedExpiry) || !Number.isFinite(leaseExpiry)) fail("PRIVATE_DATABASE_RENEWAL_CHECKPOINT_DENIED");
+  if (!input.refreshRequired) return { refreshRequiredNow: false, refreshReconciled: false };
+  if (observedExpiry >= leaseExpiry) return { refreshRequiredNow: false, refreshReconciled: true };
+  if (prior?.status === "service_token_refreshed" || prior?.status === "succeeded")
+    fail("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_READBACK_MISMATCH");
+  return { refreshRequiredNow: true, refreshReconciled: false };
+}
 
 function fail(code: string): never { throw Object.assign(new Error(code), { diagnosticCode: code, class: "permanent" }); }
 
@@ -50,7 +76,15 @@ export function createCloudflarePrivateDatabaseRenewalRuntime(options: { fetchIm
       if (rows.length !== 1 || !rows[0].isSensitive || !rows[0].value || rows[0].updatedBy !== g.requesterUserId) fail("PRIVATE_DATABASE_RENEWAL_SOURCE_CHECKPOINT_UNAVAILABLE");
       let checkpoint: unknown;
       try { checkpoint = JSON.parse(decrypt(rows[0].value)); } catch { return fail("PRIVATE_DATABASE_RENEWAL_SOURCE_CHECKPOINT_INVALID"); }
-      return { receipt, checkpoint };
+      const renewalRows = await db.select({ value: systemSettings.value, isSensitive: systemSettings.isSensitive, updatedBy: systemSettings.updatedBy })
+        .from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_private_database_renewals"), eq(systemSettings.key, g.jobId))).limit(2);
+      if (renewalRows.length > 1 || (renewalRows[0] && (!renewalRows[0].isSensitive || !renewalRows[0].value || renewalRows[0].updatedBy !== g.requesterUserId)))
+        fail("PRIVATE_DATABASE_RENEWAL_CHECKPOINT_DENIED");
+      let renewalCheckpoint: unknown | null = null;
+      if (renewalRows[0]?.value) {
+        try { renewalCheckpoint = JSON.parse(decrypt(renewalRows[0].value)); } catch { return fail("PRIVATE_DATABASE_RENEWAL_CHECKPOINT_DENIED"); }
+      }
+      return { receipt, checkpoint, renewalCheckpoint };
     },
     async saveCheckpoint(g, state) {
       const key = g.jobId;
@@ -123,7 +157,7 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
     };
     await assertAuthorized();
     if (await active.verifyExecutor(grant) !== grant.executorId) fail("PRIVATE_DATABASE_RENEWAL_EXECUTOR_DENIED");
-    const { receipt, checkpoint: rawCheckpoint } = await active.loadSource(grant);
+    const { receipt, checkpoint: rawCheckpoint, renewalCheckpoint: rawRenewalCheckpoint } = await active.loadSource(grant);
     const checkpoint = privateDatabaseCheckpointSchema.parse(rawCheckpoint), plan = grant.plan.sourcePlan;
     const descriptor: PrivateDatabaseBinding = { provisionJobId: grant.plan.sourceProvisionJobId, plan,
       planDigest: grant.plan.sourcePlanDigest, ...grant.plan.resources };
@@ -134,8 +168,39 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
       || checkpoint.policyId !== descriptor.accessPolicyId || checkpoint.dnsRecordId !== descriptor.dnsRecordId
       || checkpoint.serviceToken?.id !== descriptor.serviceTokenId) fail("PRIVATE_DATABASE_RENEWAL_SOURCE_RECEIPT_DENIED");
     const providerDescriptor = { ...descriptor } as PrivateDatabaseBinding;
-    await active.withCredential(scope, async token => verifyPrivateDatabaseProviderResources({ descriptor: providerDescriptor,
+    const beforeProvider = await active.withCredential(scope, async token => verifyPrivateDatabaseProviderResources({ descriptor: providerDescriptor,
+      accountRef: grant.accountRef, token, effectiveLeaseExpiresAt: grant.plan.leaseExpiresAt, fetchImpl: active.fetchImpl,
+      allowServiceTokenExpiryRefresh: grant.plan.refreshServiceTokenExpiry }));
+    const plannedTokenExpiry = Date.parse(grant.plan.serviceTokenExpiresAt);
+    const observedTokenExpiry = Date.parse(beforeProvider.serviceTokenExpiresAt ?? "");
+    if (!Number.isFinite(observedTokenExpiry) || (observedTokenExpiry !== plannedTokenExpiry
+      && !(grant.plan.refreshServiceTokenExpiry && observedTokenExpiry > plannedTokenExpiry && observedTokenExpiry >= Date.parse(grant.plan.leaseExpiresAt))))
+      fail("PRIVATE_DATABASE_RENEWAL_PLAN_STALE");
+    // A previous attempt may have lost its response after Cloudflare applied the
+    // refresh. Reconcile the exact token readback before deciding to write again.
+    const tokenRefresh = reconcilePrivateDatabaseServiceTokenRefresh({ checkpoint: rawRenewalCheckpoint, jobId: grant.jobId,
+      planDigest: grant.planDigest, serviceTokenId: descriptor.serviceTokenId, leaseExpiresAt: grant.plan.leaseExpiresAt,
+      serviceTokenExpiresAt: beforeProvider.serviceTokenExpiresAt!, refreshRequired: grant.plan.refreshServiceTokenExpiry });
+    let serviceTokenRefreshed = tokenRefresh.refreshReconciled;
+    if (tokenRefresh.refreshRequiredNow) {
+      const marker = `${plan.namespace}-database-${privateDatabaseResourceDigest(plan).slice(0, 12)}`;
+      const priorRefresh = rawRenewalCheckpoint == null ? null : renewalExecutionCheckpointSchema.parse(rawRenewalCheckpoint);
+      if (priorRefresh?.status !== "service_token_refresh_pending") await active.saveCheckpoint(grant, { status: "service_token_refresh_pending", planDigest: grant.planDigest,
+        serviceTokenId: descriptor.serviceTokenId, leaseExpiresAt: grant.plan.leaseExpiresAt });
+      await assertAuthorized();
+      const refreshed = await active.withCredential(scope, token => refreshPrivateDatabaseServiceToken({ accountRef: grant.accountRef,
+        serviceTokenId: descriptor.serviceTokenId, expectedClientId: checkpoint.serviceToken!.clientId, expectedName: marker,
+        effectiveLeaseExpiresAt: grant.plan.leaseExpiresAt, token, fetchImpl: active.fetchImpl }));
+      await assertAuthorized();
+      serviceTokenRefreshed = true;
+      await active.saveCheckpoint(grant, { status: "service_token_refreshed", planDigest: grant.planDigest,
+        serviceTokenId: descriptor.serviceTokenId, serviceTokenExpiresAt: refreshed.expiresAt, leaseExpiresAt: grant.plan.leaseExpiresAt });
+    }
+    const afterProvider = await active.withCredential(scope, async token => verifyPrivateDatabaseProviderResources({ descriptor: providerDescriptor,
       accountRef: grant.accountRef, token, effectiveLeaseExpiresAt: grant.plan.leaseExpiresAt, fetchImpl: active.fetchImpl }));
+    if (!afterProvider.serviceTokenExpiresAt || Date.parse(afterProvider.serviceTokenExpiresAt) < Date.parse(grant.plan.leaseExpiresAt))
+      fail("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_INSUFFICIENT");
+    if (grant.plan.refreshServiceTokenExpiry) serviceTokenRefreshed = true;
     await assertAuthorized();
     await active.renewRole(grant);
     await assertAuthorized();
@@ -143,6 +208,7 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
       configurationDigest: grant.plan.configurationDigest, sourceProvisionJobId: grant.plan.sourceProvisionJobId,
       sourcePlanDigest: grant.plan.sourcePlanDigest, planDigest: grant.planDigest,
       resourceIds: grant.plan.resources, leaseExpiresAt: grant.plan.leaseExpiresAt,
+      serviceTokenRefreshed, serviceTokenExpiresAt: afterProvider.serviceTokenExpiresAt,
       providerResourcesVerified: true as const, databaseRoleReadbackVerified: true as const };
     await active.saveCheckpoint(grant, { ...output, status: "succeeded" });
     return { output };

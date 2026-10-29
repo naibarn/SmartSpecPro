@@ -1875,13 +1875,17 @@ export default function AdminDeploymentTargets() {
                             <p>Service Token <code>{plan.resources.serviceTokenId}</code> · DNS record <code>{plan.resources.dnsRecordId}</code></p>
                             <p>{text("Current role lease", "lease ปัจจุบัน")}: <code>{plan.sourcePlan.configurationExpiresAt}</code></p>
                             <p>{text("New role lease", "lease ใหม่")}: <code>{plan.leaseExpiresAt}</code></p>
+                            <p>{text("Current Access service-token expiry", "วันหมดอายุ Access service token ปัจจุบัน")}: <code>{plan.serviceTokenExpiresAt}</code></p>
+                            <p>{text("Refresh existing service-token expiry", "ต่ออายุวันหมดอายุ service token เดิม")}: <strong>{plan.refreshServiceTokenExpiry ? text("Yes — same token and secret", "ทำ — ใช้ token และ secret เดิม") : text("No — current token already covers the lease", "ไม่ต้อง — token ปัจจุบันครอบคลุม lease แล้ว")}</strong></p>
                             <p>{text("Authorization expires", "แผนอนุมัติหมดอายุ")}: <code>{plan.authorizationExpiresAt}</code> · {text("Plan digest", "digest แผน")}: <code>{renewal.planDigest}</code></p>
                           </details>
                         </> : null}
                         {job ? <VStack gap={1} role="status">
                           <p><strong>{text("Existing renewal Job", "Job ต่ออายุเดิม")}</strong>: <code>{job.jobId}</code> · {job.status}</p>
                           {job.heartbeatAt ? <p>{text("Last heartbeat", "heartbeat ล่าสุด")}: {new Date(job.heartbeatAt).toLocaleString()}</p> : null}
-                          {job.errorCode ? <p role="alert"><code>{job.errorCode}</code> · {text("Inspect this existing Job before starting another operation.", "ตรวจ Job เดิมนี้ก่อน ห้ามเริ่มซ้ำ")}</p> : null}
+                          {job.errorCode ? <p role="alert"><code>{job.errorCode}</code> · {job.errorCode === "PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_HTTP_403"
+                            ? text("The saved Staging Cloudflare credential needs Access: Service Tokens Write. Update that existing credential's permission, then recheck; do not paste the token here.", "credential Cloudflare ของ Staging ที่บันทึกไว้ต้องมีสิทธิ์ Access: Service Tokens Write ให้ปรับสิทธิ์ของ credential เดิมแล้วตรวจซ้ำ ไม่ต้องนำ token มาวางในหน้านี้")
+                            : text("Inspect this existing Job before starting another operation.", "ตรวจ Job เดิมนี้ก่อน ห้ามเริ่มซ้ำ")}</p> : null}
                           {job.status === "succeeded" ? <Button type="button" disabled={finalizeStagingRenewal.isPending || stagingActionRunning}
                             onClick={() => requestStagingConfirmation({
                               title: text("Save verified Staging renewal", "บันทึกผลต่ออายุ Staging ที่ตรวจแล้ว"),
@@ -1897,8 +1901,8 @@ export default function AdminDeploymentTargets() {
                           onClick={() => requestStagingConfirmation({
                             title: text("Authorize and renew the Staging database lease", "อนุมัติและต่ออายุ lease ฐานข้อมูล Staging"),
                             description: text(
-                              `One Staging-only Job will extend the existing read-only database role lease until ${plan.leaseExpiresAt}. It will verify the existing Cloudflare resource IDs, change only the role VALID UNTIL value, and save a new immutable Staging configuration after success. It will not create Cloudflare resources, change DNS/routes, or affect Production traffic.`,
-                              `จะสร้าง Job สำหรับ Staging หนึ่งรายการเพื่อขยาย lease ของ role ฐานข้อมูลแบบอ่านอย่างเดียวถึง ${plan.leaseExpiresAt} โดยตรวจ resource เดิม เปลี่ยนเฉพาะค่า VALID UNTIL และบันทึก config immutable ชุดใหม่เมื่อสำเร็จ ไม่สร้าง Cloudflare resource ไม่เปลี่ยน DNS/route และไม่กระทบ Production`),
+                              `One Staging-only Job will ${plan.refreshServiceTokenExpiry ? `refresh the expiry of the exact existing Cloudflare Access service token ${plan.resources.serviceTokenId} (Cloudflare permission: Access: Service Tokens Write; the token ID, client ID, secret and policy stay unchanged), then extend the existing read-only database role lease` : `extend the existing read-only database role lease; the current service-token expiry already covers it`} until ${plan.leaseExpiresAt}. It will verify the existing Cloudflare resource IDs, update only the role VALID UNTIL value, and save a new immutable Staging configuration after success. It will not create Cloudflare resources, change DNS/routes, or affect Production traffic.`,
+                              `จะสร้าง Job สำหรับ Staging หนึ่งรายการ${plan.refreshServiceTokenExpiry ? ` เพื่อต่ออายุวันหมดอายุของ Cloudflare Access service token เดิม ID ${plan.resources.serviceTokenId} (ต้องมีสิทธิ์ Access: Service Tokens Write โดยคง token ID, client ID, secret และ policy เดิม)` : ""} แล้วขยาย lease ของ role ฐานข้อมูลแบบอ่านอย่างเดียวถึง ${plan.leaseExpiresAt} โดยตรวจ resource เดิม เปลี่ยนเฉพาะค่า VALID UNTIL และบันทึก config immutable ชุดใหม่เมื่อสำเร็จ ไม่สร้าง Cloudflare resource ไม่เปลี่ยน DNS/route และไม่กระทบ Production`),
                             confirmLabel: text("Authorize one renewal Job", "อนุมัติ Job ต่ออายุหนึ่งรายการ"),
                             run: () => stagingRenewalMutation.mutateAsync({ tenantId, projectId, environment: "staging",
                               configurationRef: currentStagingConfigRef, planDigest: renewal.planDigest! }),

@@ -45,7 +45,7 @@ def normalize_grant(value):
 def validate_renewal_plan(value):
     """Renew only the lease on one receipt-bound staging role and its existing resources."""
     fields = {"configurationRef", "configurationDigest", "sourceProvisionJobId", "sourcePlan", "sourcePlanDigest",
-        "resources", "leaseExpiresAt", "authorizationExpiresAt"}
+        "resources", "serviceTokenExpiresAt", "refreshServiceTokenExpiry", "leaseExpiresAt", "authorizationExpiresAt"}
     ids = {"hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId"}
     if not isinstance(value, dict) or set(value) != fields:
         raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_PLAN_INVALID")
@@ -61,9 +61,12 @@ def validate_renewal_plan(value):
             raise ValueError("CLOUDFLARE_PRIVATE_DATABASE_RENEWAL_RESOURCE_INVALID")
     try:
         expires_at = datetime.fromisoformat(value["leaseExpiresAt"].replace("Z", "+00:00"))
+        token_expires_at = datetime.fromisoformat(value["serviceTokenExpiresAt"].replace("Z", "+00:00"))
         authorization_expires_at = datetime.fromisoformat(value["authorizationExpiresAt"].replace("Z", "+00:00"))
         old_expiry = datetime.fromisoformat(source_plan["configurationExpiresAt"].replace("Z", "+00:00"))
-        if (expires_at.tzinfo is None or old_expiry.tzinfo is None or authorization_expires_at.tzinfo is None
+        if (expires_at.tzinfo is None or token_expires_at.tzinfo is None or old_expiry.tzinfo is None or authorization_expires_at.tzinfo is None
+            or type(value["refreshServiceTokenExpiry"]) is not bool
+            or value["refreshServiceTokenExpiry"] != (token_expires_at < expires_at)
             or expires_at <= old_expiry or authorization_expires_at >= expires_at):
             raise ValueError()
     except (ValueError, TypeError, AttributeError) as exc:

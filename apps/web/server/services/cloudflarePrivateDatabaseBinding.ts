@@ -52,6 +52,7 @@ export function assertPrivateDatabaseRenewalReceipt(value: PrivateDatabaseBindin
     || !output.success || output.data.planDigest !== renewal.planDigest || output.data.configurationRef !== renewal.sourceConfigurationRef
     || output.data.configurationDigest !== renewal.sourceConfigurationDigest || output.data.sourceProvisionJobId !== descriptor.provisionJobId
     || output.data.sourcePlanDigest !== descriptor.planDigest || output.data.leaseExpiresAt !== renewal.leaseExpiresAt
+    || output.data.serviceTokenRefreshed !== input.data.plan.refreshServiceTokenExpiry
     || Object.entries(output.data.resourceIds).some(([key, id]) => (descriptor as any)[key] !== id))
     denied("PRIVATE_DATABASE_RENEWAL_RECEIPT_DENIED");
 }
@@ -97,6 +98,7 @@ checkpoint?: { jobId: string; actorUserId: number; state: unknown }) {
 /** Verify the dedicated provider resources, never just a matching annotation. */
 export async function verifyPrivateDatabaseProviderResources(input: {
   descriptor: PrivateDatabaseBinding; accountRef: string; token: string; fetchImpl?: typeof fetch; effectiveLeaseExpiresAt?: string;
+  allowServiceTokenExpiryRefresh?: boolean;
 }) {
   const d = privateDatabaseBindingSchema.parse(input.descriptor), p = d.plan;
   const effectiveExpiry = input.effectiveLeaseExpiresAt ?? p.configurationExpiresAt;
@@ -151,7 +153,10 @@ export async function verifyPrivateDatabaseProviderResources(input: {
   if (app.type !== "self_hosted") drift("accessApplication.type");
   if (token?.id !== d.serviceTokenId) drift("serviceToken.id");
   if (token.name !== marker) drift("serviceToken.name");
-  if (!Number.isFinite(Date.parse(token.expires_at)) || Date.parse(token.expires_at) < Date.parse(effectiveExpiry)) drift("serviceToken.expires_at");
+  const serviceTokenExpiresAt = typeof token.expires_at === "string" && Number.isFinite(Date.parse(token.expires_at))
+    ? new Date(token.expires_at).toISOString() : null;
+  if (!serviceTokenExpiresAt || (!input.allowServiceTokenExpiryRefresh && Date.parse(serviceTokenExpiresAt) < Date.parse(effectiveExpiry)))
+    drift("serviceToken.expires_at");
   if (!Array.isArray(policies) || policies.length !== 1) drift("accessPolicy.count");
   if (policies[0].id !== d.accessPolicyId) drift("accessPolicy.id");
   if (policies[0].name !== marker) drift("accessPolicy.name");
@@ -171,4 +176,35 @@ export async function verifyPrivateDatabaseProviderResources(input: {
   if (tunnel.deleted_at) drift("tunnel.deleted_at");
   if (zone?.name !== "smartaihub.app") drift("zone.name");
   if (zone.account?.id !== input.accountRef) drift("zone.account.id");
+  return { serviceTokenExpiresAt, serviceTokenExpiryRefreshRequired: Date.parse(serviceTokenExpiresAt) < Date.parse(effectiveExpiry) };
+}
+
+/** Refreshes the exact existing Staging Access token without rotating its secret or changing its ID/policy. */
+export async function refreshPrivateDatabaseServiceToken(input: {
+  accountRef: string; serviceTokenId: string; expectedClientId: string; expectedName: string;
+  effectiveLeaseExpiresAt: string; token: string; fetchImpl?: typeof fetch;
+}): Promise<{ expiresAt: string }> {
+  if (!/^[a-f0-9]{32}$/.test(input.accountRef) || !/^[a-f0-9]{32}$|^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(input.serviceTokenId)
+    || !input.expectedClientId || !input.expectedName || !Number.isFinite(Date.parse(input.effectiveLeaseExpiresAt)))
+    denied("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_SCOPE_DENIED");
+  let response: Response, body: any;
+  try {
+    response = await (input.fetchImpl ?? fetch)(`https://api.cloudflare.com/client/v4/accounts/${input.accountRef}/access/service_tokens/${input.serviceTokenId}/refresh`, {
+      method: "POST", headers: { authorization: `Bearer ${input.token}` }, redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15_000),
+    });
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > 256 * 1024) denied("PRIVATE_DATABASE_PROVIDER_RESPONSE_INVALID");
+    body = JSON.parse(new TextDecoder().decode(bytes));
+  } catch (error) {
+    if ((error as { diagnosticCode?: unknown })?.diagnosticCode) throw error;
+    denied("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_OUTCOME_UNKNOWN");
+  }
+  if (!response!.ok || body?.success !== true) denied(`PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_HTTP_${response!.status}`);
+  const result = body.result;
+  if (result?.id !== input.serviceTokenId || result?.client_id !== input.expectedClientId || result?.name !== input.expectedName
+    || result?.enabled !== true || typeof result?.expires_at !== "string" || !Number.isFinite(Date.parse(result.expires_at)))
+    denied("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_READBACK_DENIED");
+  const expiresAt = new Date(result.expires_at).toISOString();
+  if (Date.parse(expiresAt) < Date.parse(input.effectiveLeaseExpiresAt)) denied("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_INSUFFICIENT");
+  return { expiresAt };
 }

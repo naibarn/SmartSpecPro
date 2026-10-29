@@ -55,9 +55,12 @@ export const privateDatabaseRenewalPlanSchema = z.object({
   configurationDigest: z.string().regex(/^[a-f0-9]{64}$/),
   sourceProvisionJobId: z.string().uuid(), sourcePlan: privateDatabasePlanSchema,
   sourcePlanDigest: z.string().regex(/^[a-f0-9]{64}$/), resources: privateDatabaseResourceIdsSchema,
+  /** Exact existing Access token readback; refresh only when required to cover the renewed lease. */
+  serviceTokenExpiresAt: z.string().datetime({ offset: true }), refreshServiceTokenExpiry: z.boolean(),
   leaseExpiresAt: z.string().datetime({ offset: true }), authorizationExpiresAt: z.string().datetime({ offset: true }),
 }).strict().refine(value => value.configurationRef === `cf-origin:${value.configurationDigest}`
   && value.sourcePlanDigest === privateDatabasePlanDigest(value.sourcePlan)
+  && value.refreshServiceTokenExpiry === (Date.parse(value.serviceTokenExpiresAt) < Date.parse(value.leaseExpiresAt))
   && Date.parse(value.leaseExpiresAt) > Date.parse(value.sourcePlan.configurationExpiresAt)
   && Date.parse(value.authorizationExpiresAt) < Date.parse(value.leaseExpiresAt));
 export type PrivateDatabaseRenewalPlan = z.infer<typeof privateDatabaseRenewalPlanSchema>;
@@ -89,5 +92,6 @@ export const privateDatabaseRenewalReceiptSchema = z.object({
   configurationDigest: z.string().regex(/^[a-f0-9]{64}$/), sourceProvisionJobId: z.string().uuid(),
   sourcePlanDigest: z.string().regex(/^[a-f0-9]{64}$/), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
   resourceIds: privateDatabaseResourceIdsSchema, leaseExpiresAt: z.string().datetime({ offset: true }),
+  serviceTokenRefreshed: z.boolean(), serviceTokenExpiresAt: z.string().datetime({ offset: true }),
   providerResourcesVerified: z.literal(true), databaseRoleReadbackVerified: z.literal(true),
-}).strict();
+}).strict().refine(value => Date.parse(value.serviceTokenExpiresAt) >= Date.parse(value.leaseExpiresAt));
