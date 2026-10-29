@@ -2538,6 +2538,43 @@ describe("generateVerticalDramaShotVideoPromptSpeakerSwitch (speaker-switch cons
     expect(result.prompt).toContain('"That\'s not good enough."');
   });
 
+  it("rejects unresolved anatomical screen-position wording in enhanced speaker-switch prompts", async () => {
+    mockResolveVerticalDramaCapabilities.mockReturnValue({
+      supportsStartFrame: true,
+      maxReferenceImages: 3,
+      nativeAudioDialogue: true,
+      supportsNativeAudio: true,
+      verticalDramaReady: true,
+    } as any);
+    mockExecute.mockResolvedValue(
+      successResponse(
+        speakerSwitchOutput({
+          prompt: 'Alice on the right hand says "Why didn\'t you tell me?". Bob says "I was going to.". Alice says "That\'s not good enough.".',
+          frame_analysis: {
+            people: [
+              { name: "Alice", position: "left" },
+              { name: "Bob", position: "right" },
+            ],
+            position_source: "image",
+          },
+        }),
+      ),
+    );
+
+    await expect(
+      generateVerticalDramaShotVideoPromptSpeakerSwitch(
+        baseSpeakerSwitchParams({
+          characterReferenceImages: [
+            { characterKey: "alice", name: "Alice", url: "https://example.com/alice.png" },
+            { characterKey: "bob", name: "Bob", url: "https://example.com/bob.png" },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(VdSchemaValidationError);
+    expect(mockExecute).toHaveBeenCalledTimes(4);
+    expect(mockDeductCredits).not.toHaveBeenCalled();
+  });
+
   it("removes speaker labels copied inside quoted lines for the consolidated speaker-switch path", async () => {
     mockResolveVerticalDramaCapabilities.mockReturnValue({
       nativeAudioDialogue: true,

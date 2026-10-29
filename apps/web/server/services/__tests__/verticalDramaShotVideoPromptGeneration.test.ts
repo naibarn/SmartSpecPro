@@ -605,7 +605,7 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
     );
   });
 
-  it("throws VdSchemaValidationError (does not silently deduct credits) when BOTH attempts fail schema validation", async () => {
+  it("throws VdSchemaValidationError (does not silently deduct credits) when bounded schema recovery and recommended fallback fail", async () => {
     mockHasEnoughCredits.mockResolvedValue(true);
     mockLoadEnabledLlmModelRows.mockResolvedValue([
       { modelId: "active-vision-model", providerId: 1, supportsVision: true, supportsStructuredOutputs: true, isRecommended: true, priority: 1 } as any,
@@ -619,9 +619,12 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
       VdSchemaValidationError,
     );
 
-    // Recovery may rotate once, but only into the admin-recommended set.
-    expect(mockExecute).toHaveBeenCalledTimes(4);
+    // The selected model gets the initial request, retry, and two bounded
+    // malformed-JSON recoveries before one attempt on the recommended fallback.
+    expect(mockExecute).toHaveBeenCalledTimes(6);
     expect(mockExecute.mock.calls.map(([request]) => request.model)).toEqual([
+      "active-vision-model",
+      "active-vision-model",
       "active-vision-model",
       "active-vision-model",
       "active-vision-fallback",
@@ -645,7 +648,7 @@ describe("generateVerticalDramaShotVideoPrompt", () => {
       VdSchemaValidationError,
     );
 
-    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockExecute).toHaveBeenCalledTimes(5);
     expect(mockExecute.mock.calls.every(([request]) => request.model === "active-vision-model")).toBe(true);
     expect(mockDeductCredits).not.toHaveBeenCalled();
   });
@@ -1349,7 +1352,7 @@ describe("model-family-aware, vision-grounded video prompt quality upgrade (plan
           }),
         ),
       ).rejects.toThrow(VdSchemaValidationError);
-      expect(mockExecute).toHaveBeenCalledTimes(2);
+      expect(mockExecute).toHaveBeenCalledTimes(4);
       expect(mockDeductCredits).not.toHaveBeenCalled();
     });
 

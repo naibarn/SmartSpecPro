@@ -3935,6 +3935,15 @@ export async function generateVerticalDramaShotVideoPrompt(
         );
       }
       if (remainingIssues.length > 0) {
+        const unresolvedAnatomicalPositionIssues = remainingIssues.filter(
+          issue => issue.includes(POSITION_AMBIGUITY_MARKER),
+        );
+        if (unresolvedAnatomicalPositionIssues.length > 0) {
+          throw new VdSchemaValidationError(
+            "Video prompt still uses anatomical left/right as a screen position",
+            unresolvedAnatomicalPositionIssues,
+          );
+        }
         warnings.push(
           `Shot ${params.shotNumber}: video-prompt position-anchor check was repaired with ${repairAttempts} bounded attempt(s); residual non-fatal findings — ${remainingIssues.join("; ")}`,
         );
@@ -4927,6 +4936,15 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
         );
       }
       if (remainingIssues.length > 0) {
+        const unresolvedAnatomicalPositionIssues = remainingIssues.filter(
+          issue => issue.includes(POSITION_AMBIGUITY_MARKER),
+        );
+        if (unresolvedAnatomicalPositionIssues.length > 0) {
+          throw new VdSchemaValidationError(
+            "Video prompt still uses anatomical left/right as a screen position",
+            unresolvedAnatomicalPositionIssues,
+          );
+        }
         warnings.push(
           `Shot ${params.shotNumber}: video-prompt position-anchor check was repaired with ${repairAttempts} bounded attempt(s); residual non-fatal findings — ${remainingIssues.join("; ")}`,
         );
