@@ -54,4 +54,23 @@ describe("shot-local speaker visual bindings", () => {
     );
     expect(promptBlock).toContain("stronger than left-to-right ordering");
   });
+
+  it("drops manually described speakers when their approved frame is replaced", () => {
+    const bindings = normalizeVerticalDramaSpeakerVisualBindings([
+      {
+        id: "local-manual",
+        speakerLabel: "นักตรวจผนึก",
+        visualCue: "ชายชุดเกราะสีเข้มที่ยืนอยู่ด้านหลังทางซ้าย",
+        sourceMediaAssetId: "asset-20",
+      },
+    ]);
+
+    expect(bindings).toHaveLength(1);
+    expect(
+      getCurrentVerticalDramaSpeakerVisualBindings(bindings, "asset-21")
+    ).toEqual([]);
+    expect(
+      getCurrentVerticalDramaSpeakerVisualBindings(bindings, "asset-20")
+    ).toHaveLength(1);
+  });
 });

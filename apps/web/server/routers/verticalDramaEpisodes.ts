@@ -18520,11 +18520,9 @@ export const verticalDramaEpisodesRouter = router({
             ).optional(),
             sourceMediaAssetId: z.string().trim().min(1).max(128).optional(),
           }).superRefine((binding, context) => {
-            const hasImageSelection = Boolean(
-              binding.personId || binding.boundingBox || binding.sourceMediaAssetId,
-            );
+            const hasPersonSelection = Boolean(binding.personId || binding.boundingBox);
             if (
-              hasImageSelection &&
+              hasPersonSelection &&
               (!binding.personId || !binding.boundingBox || !binding.sourceMediaAssetId)
             ) {
               context.addIssue({
@@ -18541,7 +18539,6 @@ export const verticalDramaEpisodesRouter = router({
       const userId = ctx.user.id;
       const seriesId = parseId(input.seriesId, "series id");
       const episodeId = parseId(input.episodeId, "episode id");
-      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
       const normalized = normalizeVerticalDramaSpeakerVisualBindings(input.speakerVisualBindings);
       if (normalized.length !== input.speakerVisualBindings.length) {
         throw new TRPCError({
@@ -18549,91 +18546,119 @@ export const verticalDramaEpisodesRouter = router({
           message: "ชื่อผู้พูดต้องไม่ซ้ำกัน และต้องระบุคำอธิบายคนในภาพให้ครบ",
         });
       }
-      const existingPlan = row.startFramePlan as VerticalDramaStartFramePlan | null;
-      const basePlan: VerticalDramaStartFramePlan =
-        existingPlan && Array.isArray(existingPlan.frames)
-          ? existingPlan
-          : { mode: "single_frame_per_shot", selectedImageModelId: "", frames: [] };
-      const frameIndex = basePlan.frames.findIndex(frame => frame.shotNumber === input.shotNumber);
-      const updatedFrames = basePlan.frames.slice();
-      const currentFrame = frameIndex >= 0 ? updatedFrames[frameIndex] : undefined;
-      const currentAssetId = currentFrame?.approvedMediaAssetId
-        ? String(currentFrame.approvedMediaAssetId)
-        : "";
-      if (input.speakerVisualBindings.some(binding =>
-        binding.sourceMediaAssetId && binding.sourceMediaAssetId !== currentAssetId
-      )) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "ภาพ Start frame เปลี่ยนแล้ว กรุณาตรวจจับและเลือกคนในภาพปัจจุบันใหม่",
-        });
-      }
-      if (frameIndex < 0) {
-        const storyboard = sceneRecord(row.storyboard);
-        const shot = Array.isArray(storyboard.shots)
-          ? storyboard.shots.map(sceneRecord).find(value =>
-              Number(value.shot_number ?? value.shotNumber) === input.shotNumber
-            )
-          : undefined;
-        const storyboardRefs = Array.isArray(shot?.required_character_refs)
-          ? shot.required_character_refs.filter((value): value is string => typeof value === "string")
-          : Array.isArray(shot?.characters)
-            ? shot.characters.filter((value): value is string => typeof value === "string")
-            : [];
-        updatedFrames.push({
-          shotNumber: input.shotNumber,
-          imagePrompt: "",
-          negativePrompt: "",
-          requiredCharacterRefs: storyboardRefs,
-          ...(normalized.length ? { speakerVisualBindings: normalized } : {}),
-          productReferenceAssetIds: [],
-        });
-      } else {
-        const prior = updatedFrames[frameIndex];
-        updatedFrames[frameIndex] = {
-          ...prior,
-          ...(normalized.length ? { speakerVisualBindings: normalized } : {}),
-        };
-        if (!normalized.length) delete updatedFrames[frameIndex].speakerVisualBindings;
-      }
-      updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
-      const updatedPlan: VerticalDramaStartFramePlan = { ...basePlan, frames: updatedFrames };
-      const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
-      const promptStaleAt = new Date().toISOString();
-      const updatedPack = existingPack?.clips
-        ? {
-            ...existingPack,
-            clips: existingPack.clips.map(clip => {
-              const sourceShots = Array.isArray((clip as any).sourceShotNumbers)
-                ? (clip as any).sourceShotNumbers as number[]
-                : [Number((clip as any).shotNumber)];
-              const parentShot = Number((clip as any).parentShotNumber);
-              if (!sourceShots.includes(input.shotNumber) && parentShot !== input.shotNumber) {
-                return clip;
-              }
-              const invalidated = invalidateVideoPromptVariantsOnInputChange(
-                clip as unknown as Record<string, unknown>,
-                "speaker_visual_binding_changed"
-              );
-              return {
-                ...invalidated,
-                promptStaleReason: "speaker_visual_binding_changed",
-                promptStaleAt,
-              } as typeof clip;
-            }),
-          }
-        : existingPack;
-      await db.update(verticalDramaEpisodes).set({
-        startFramePlan: updatedPlan,
-        ...(updatedPack ? { motionPromptPack: updatedPack } : {}),
-        updatedAt: new Date(),
-      }).where(and(
-        eq(verticalDramaEpisodes.id, episodeId),
-        eq(verticalDramaEpisodes.tenantId, tenantId),
-        eq(verticalDramaEpisodes.userId, userId),
-        eq(verticalDramaEpisodes.seriesId, seriesId)
-      ));
-      return { startFramePlan: updatedPlan };
+      return db.transaction(async tx => {
+        // JSON plans and prompt packs share one episode row. Re-read under a
+        // row lock so a concurrent frame approval or dialogue edit cannot be
+        // overwritten by this mapping save, and validate against that frame.
+        const [row] = await tx
+          .select()
+          .from(verticalDramaEpisodes)
+          .where(and(
+            eq(verticalDramaEpisodes.id, episodeId),
+            eq(verticalDramaEpisodes.tenantId, tenantId),
+            eq(verticalDramaEpisodes.userId, userId),
+            eq(verticalDramaEpisodes.seriesId, seriesId)
+          ))
+          .for("update")
+          .limit(1);
+        if (!row) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "ไม่พบตอนนี้" });
+        }
+        const existingPlan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+        const basePlan: VerticalDramaStartFramePlan =
+          existingPlan && Array.isArray(existingPlan.frames)
+            ? existingPlan
+            : { mode: "single_frame_per_shot", selectedImageModelId: "", frames: [] };
+        const frameIndex = basePlan.frames.findIndex(frame => frame.shotNumber === input.shotNumber);
+        const updatedFrames = basePlan.frames.slice();
+        const currentFrame = frameIndex >= 0 ? updatedFrames[frameIndex] : undefined;
+        const currentAssetId = currentFrame?.approvedMediaAssetId
+          ? String(currentFrame.approvedMediaAssetId)
+          : "";
+        if (input.speakerVisualBindings.some(binding =>
+          binding.sourceMediaAssetId && binding.sourceMediaAssetId !== currentAssetId
+        )) {
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "ภาพ Start frame เปลี่ยนแล้ว กรุณาตรวจจับและเลือกคนในภาพปัจจุบันใหม่",
+          });
+        }
+        // Scope typed visual cues to the frame that was current when the user
+        // saved them too. This prevents a manual description from silently
+        // pointing at a different person after the approved image changes.
+        const frameScopedBindings = normalized.map(binding => ({
+          ...binding,
+          ...(currentAssetId
+            ? { sourceMediaAssetId: currentAssetId }
+            : {}),
+        }));
+        if (frameIndex < 0) {
+          const storyboard = sceneRecord(row.storyboard);
+          const shot = Array.isArray(storyboard.shots)
+            ? storyboard.shots.map(sceneRecord).find(value =>
+                Number(value.shot_number ?? value.shotNumber) === input.shotNumber
+              )
+            : undefined;
+          const storyboardRefs = Array.isArray(shot?.required_character_refs)
+            ? shot.required_character_refs.filter((value): value is string => typeof value === "string")
+            : Array.isArray(shot?.characters)
+              ? shot.characters.filter((value): value is string => typeof value === "string")
+              : [];
+          updatedFrames.push({
+            shotNumber: input.shotNumber,
+            imagePrompt: "",
+            negativePrompt: "",
+            requiredCharacterRefs: storyboardRefs,
+            ...(frameScopedBindings.length ? { speakerVisualBindings: frameScopedBindings } : {}),
+            productReferenceAssetIds: [],
+          });
+        } else {
+          const prior = updatedFrames[frameIndex];
+          updatedFrames[frameIndex] = {
+            ...prior,
+            ...(frameScopedBindings.length ? { speakerVisualBindings: frameScopedBindings } : {}),
+          };
+          if (!normalized.length) delete updatedFrames[frameIndex].speakerVisualBindings;
+        }
+        updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+        const updatedPlan: VerticalDramaStartFramePlan = { ...basePlan, frames: updatedFrames };
+        const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+        const promptStaleAt = new Date().toISOString();
+        const updatedPack = existingPack?.clips
+          ? {
+              ...existingPack,
+              clips: existingPack.clips.map(clip => {
+                const sourceShots = Array.isArray((clip as any).sourceShotNumbers)
+                  ? (clip as any).sourceShotNumbers as number[]
+                  : [Number((clip as any).shotNumber)];
+                const parentShot = Number((clip as any).parentShotNumber);
+                if (!sourceShots.includes(input.shotNumber) && parentShot !== input.shotNumber) {
+                  return clip;
+                }
+                const invalidated = invalidateVideoPromptVariantsOnInputChange(
+                  clip as unknown as Record<string, unknown>,
+                  "speaker_visual_binding_changed"
+                );
+                return {
+                  ...invalidated,
+                  promptStaleReason: "speaker_visual_binding_changed",
+                  promptStaleAt,
+                } as typeof clip;
+              }),
+            }
+          : existingPack;
+        await tx.update(verticalDramaEpisodes).set({
+          startFramePlan: updatedPlan,
+          ...(updatedPack ? { motionPromptPack: updatedPack } : {}),
+          updatedAt: new Date(),
+        }).where(and(
+          eq(verticalDramaEpisodes.id, episodeId),
+          eq(verticalDramaEpisodes.tenantId, tenantId),
+          eq(verticalDramaEpisodes.userId, userId),
+          eq(verticalDramaEpisodes.seriesId, seriesId)
+        ));
+        return { startFramePlan: updatedPlan };
+      });
     }),
 
   /**

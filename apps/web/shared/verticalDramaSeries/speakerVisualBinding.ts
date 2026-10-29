@@ -22,7 +22,7 @@ export interface VerticalDramaSpeakerVisualBinding {
   personId?: string;
   /** Normalized [0, 1] region from the exact Start Frame used for confirmation. */
   boundingBox?: { x: number; y: number; width: number; height: number };
-  /** Approved media asset this selection was made against; stale after frame replacement. */
+  /** Approved frame this visual cue was confirmed against; stale after frame replacement. */
   sourceMediaAssetId?: string;
 }
 
