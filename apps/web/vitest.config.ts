@@ -66,6 +66,8 @@ export default defineConfig({
       CONTROL_PLANE_API_KEY: "test-cp.key",
       CONTROL_PLANE_URL: "http://localhost:7070",
       ORCHESTRATOR_URL: "http://localhost:8000",
+      // Test-only signing material for authenticated cursor/snapshot fixtures.
+      JWT_SECRET: "smartspec-vitest-only-jwt-secret-not-for-runtime-0001",
     },
     server: {
       deps: {
