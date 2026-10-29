@@ -4,7 +4,7 @@ import { z } from "zod";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, certificateDigest, privateDatabaseJobSchema,
   PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalJobSchema, privateDatabaseRenewalReceiptSchema,
   privateDatabasePlanSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, privateDatabaseResourceDigest, privateDatabaseRole,
-  privateDatabaseResourceIdSchema } from "./cloudflarePrivateDatabaseContract";
+  privateDatabaseResourceIdSchema, privateDatabaseResourceIdsSchema } from "./cloudflarePrivateDatabaseContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 
@@ -40,10 +40,36 @@ export function validatePrivateDatabaseBinding(value: PrivateDatabaseBinding, sc
 export function assertPrivateDatabaseRenewalReceipt(value: PrivateDatabaseBinding, receipt: {
   id: string; tenantId: string; requestedByUserId: number | null; jobType: string; contractVersion: string;
   status: string; operatorReviewRequired: boolean; inputJson: unknown; outputJson: unknown;
-}, scope: { tenantId: string; projectId: string; actorUserId: number }) {
+}, scope: { tenantId: string; projectId: string; actorUserId: number }, checkpoint?: { jobId: string; actorUserId: number; state: unknown }) {
   const descriptor = privateDatabaseBindingSchema.parse(value), renewal = descriptor.leaseRenewal;
   const input = privateDatabaseRenewalJobSchema.safeParse(receipt.inputJson);
-  const output = privateDatabaseRenewalReceiptSchema.safeParse(receipt.outputJson);
+  const rawOutput = receipt.outputJson as Record<string, any> | null;
+  const rawResourceIds = rawOutput?.resourceIds as Record<string, unknown> | undefined;
+  const redactedTokenFields = rawOutput?.serviceTokenRefreshed === "[REDACTED]"
+    && rawOutput?.serviceTokenExpiresAt === "[REDACTED]" && rawResourceIds?.serviceTokenId === "[REDACTED]";
+  const savedCheckpoint = checkpoint ? z.object({
+    status: z.literal("succeeded"), jobId: z.string().uuid(), planDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), configurationDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    sourceProvisionJobId: z.string().uuid(), sourcePlanDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    resourceIds: privateDatabaseResourceIdsSchema, leaseExpiresAt: z.string().datetime({ offset: true }),
+    serviceTokenRefreshed: z.boolean(), serviceTokenExpiresAt: z.string().datetime({ offset: true }),
+    providerResourcesVerified: z.literal(true), databaseRoleReadbackVerified: z.literal(true),
+  }).strict().safeParse(checkpoint.state) : null;
+  const checkpointVerified = Boolean(renewal && checkpoint && savedCheckpoint?.success
+    && checkpoint.jobId === renewal.jobId && savedCheckpoint.data.jobId === renewal.jobId
+    && checkpoint.actorUserId === scope.actorUserId && savedCheckpoint.data.planDigest === renewal.planDigest
+    && savedCheckpoint.data.configurationRef === renewal.sourceConfigurationRef
+    && savedCheckpoint.data.configurationDigest === renewal.sourceConfigurationDigest
+    && savedCheckpoint.data.sourceProvisionJobId === descriptor.provisionJobId
+    && savedCheckpoint.data.sourcePlanDigest === descriptor.planDigest
+    && savedCheckpoint.data.leaseExpiresAt === renewal.leaseExpiresAt
+    && Object.entries(savedCheckpoint.data.resourceIds).every(([key, id]) => (descriptor as any)[key] === id));
+  const verifiedCheckpoint = checkpointVerified && savedCheckpoint?.success ? savedCheckpoint.data : null;
+  const output = privateDatabaseRenewalReceiptSchema.safeParse(redactedTokenFields && checkpointVerified
+    ? { ...rawOutput, serviceTokenRefreshed: verifiedCheckpoint!.serviceTokenRefreshed,
+      serviceTokenExpiresAt: verifiedCheckpoint!.serviceTokenExpiresAt,
+      resourceIds: { ...rawResourceIds, serviceTokenId: verifiedCheckpoint!.resourceIds.serviceTokenId } }
+    : receipt.outputJson);
   if (!renewal || !receipt || receipt.id !== renewal.jobId || receipt.tenantId !== scope.tenantId
     || receipt.requestedByUserId !== scope.actorUserId || receipt.jobType !== PRIVATE_DATABASE_RENEWAL_JOB
     || receipt.contractVersion !== PRIVATE_DATABASE_RENEWAL_CONTRACT || receipt.status !== "succeeded" || receipt.operatorReviewRequired

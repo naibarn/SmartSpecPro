@@ -17,7 +17,7 @@ import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailure
 import { reconcilePrivateDatabaseServiceTokenRefresh } from "./cloudflarePrivateDatabaseRenewalExecutor";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
-import { validateJobDefinition } from "./jobCanonicalization";
+import { redactJobPayload, validateJobDefinition } from "./jobCanonicalization";
 import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt, validatePrivateDatabaseBinding,
   refreshPrivateDatabaseServiceToken, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
 import { assertNativeWorkerBindings, nativeWorkerBindings } from "./cloudflareNativeBindingDescriptor";
@@ -279,6 +279,27 @@ describe("private PostgreSQL staging provisioning", () => {
     expect(() => validatePrivateDatabaseBinding({ ...renewed, leaseRenewal: { ...renewed.leaseRenewal,
       sourceConfigurationDigest: "b".repeat(64) } }, { tenantId: f.grant.tenantId, projectId: f.grant.projectId,
       expiresAt: plan.leaseExpiresAt })).toThrow();
+
+    const checkpoint = { jobId: renewalJobId, actorUserId: f.grant.requesterUserId, state: {
+      status: "succeeded", jobId: renewalJobId, planDigest, configurationRef, configurationDigest,
+      sourceProvisionJobId: descriptor.provisionJobId, sourcePlanDigest: descriptor.planDigest, resourceIds: plan.resources,
+      leaseExpiresAt: plan.leaseExpiresAt, serviceTokenRefreshed: true,
+      serviceTokenExpiresAt: receipt.outputJson.serviceTokenExpiresAt, providerResourcesVerified: true, databaseRoleReadbackVerified: true,
+    } };
+    const redactedReceipt = { ...receipt, outputJson: redactJobPayload(receipt.outputJson) };
+    expect(redactedReceipt.outputJson).toMatchObject({ serviceTokenRefreshed: "[REDACTED]", serviceTokenExpiresAt: "[REDACTED]",
+      resourceIds: { serviceTokenId: "[REDACTED]" } });
+    expect(() => assertPrivateDatabaseRenewalReceipt(renewed, redactedReceipt,
+      { tenantId: f.grant.tenantId, projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId }, checkpoint)).not.toThrow();
+    expect(() => assertPrivateDatabaseRenewalReceipt(renewed, redactedReceipt,
+      { tenantId: f.grant.tenantId, projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId })).toThrow("RENEWAL_RECEIPT_DENIED");
+    expect(() => assertPrivateDatabaseRenewalReceipt(renewed, redactedReceipt,
+      { tenantId: f.grant.tenantId, projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId },
+      { ...checkpoint, actorUserId: f.grant.requesterUserId + 1 })).toThrow("RENEWAL_RECEIPT_DENIED");
+    expect(() => assertPrivateDatabaseRenewalReceipt(renewed, redactedReceipt,
+      { tenantId: f.grant.tenantId, projectId: f.grant.projectId, actorUserId: f.grant.requesterUserId },
+      { ...checkpoint, state: { ...checkpoint.state, resourceIds: { ...plan.resources, serviceTokenId: "f".repeat(32) } } }))
+      .toThrow("RENEWAL_RECEIPT_DENIED");
   });
 
   it("keeps the standalone runtime public release SQL contract aligned with shared Cloudflare readers", () => {

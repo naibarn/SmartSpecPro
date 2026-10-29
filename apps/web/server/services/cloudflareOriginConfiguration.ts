@@ -83,7 +83,14 @@ async function verifyNativeReceipt(db: Pick<DrizzleDB, "select">, descriptor: De
         operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })
         .from(workerJobs).where(eq(workerJobs.id, privateDatabase.leaseRenewal.jobId)).limit(1);
       if (!renewalReceipt || renewalReceipt.jobType !== PRIVATE_DATABASE_RENEWAL_JOB || renewalReceipt.contractVersion !== PRIVATE_DATABASE_RENEWAL_CONTRACT) denied();
-      assertPrivateDatabaseRenewalReceipt(privateDatabase, renewalReceipt, { ...descriptor, actorUserId });
+      const checkpoints = await db.select({ value: systemSettings.value, isSensitive: systemSettings.isSensitive, updatedBy: systemSettings.updatedBy })
+        .from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_private_database_renewals"),
+          eq(systemSettings.key, privateDatabase.leaseRenewal.jobId))).limit(2);
+      if (checkpoints.length !== 1 || !checkpoints[0].isSensitive || !checkpoints[0].value || checkpoints[0].updatedBy !== actorUserId) denied();
+      let renewalCheckpoint: unknown;
+      try { renewalCheckpoint = JSON.parse(decrypt(checkpoints[0].value)); } catch { denied(); }
+      assertPrivateDatabaseRenewalReceipt(privateDatabase, renewalReceipt, { ...descriptor, actorUserId },
+        { jobId: privateDatabase.leaseRenewal.jobId, actorUserId, state: renewalCheckpoint });
     }
   }
 }
