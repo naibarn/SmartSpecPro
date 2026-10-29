@@ -18,15 +18,14 @@ class ReconciliationClassificationTests(unittest.TestCase):
         relationship_graph = build_relationship_graph(ROOT)
         registry = build_registry_projection(ROOT, current_inventory)
         review = json.loads((ROOT / "specs/_status/ambiguity-review.json").read_text(encoding="utf-8"))
-        # Keep the inventory projection useful even while an actual duplicate
-        # canonical ID is unresolved; validation must surface that blocker.
-        self.assertEqual(["duplicate canonical authority remains"], validate_classifications(ROOT, document))
+        self.assertEqual([], validate_classifications(ROOT, document))
         self.assertEqual(current_inventory["invariants"]["record_count"], document["inventory_record_count"])
         self.assertEqual(len(review["records"]), document["reconciliation_review_count"])
-        self.assertEqual(1, document["duplicate_canonical_authority_count"])
-        duplicate_rows = [row for row in document["records"] if row.get("spec_id") == "256" and row["classification"] == "UNRESOLVED_AUTHORITY"]
-        self.assertEqual(2, len(duplicate_rows))
-        self.assertTrue(all(row["classification"] == "UNRESOLVED_AUTHORITY" for row in duplicate_rows))
+        self.assertEqual(0, document["duplicate_canonical_authority_count"])
+        spec256_rows = [row for row in document["records"] if row.get("spec_id") == "256"]
+        self.assertEqual(1, len(spec256_rows))
+        self.assertEqual("CANONICAL_SPEC", spec256_rows[0]["record_kind"])
+        self.assertEqual("CANONICAL_ACTIVE", spec256_rows[0]["classification"])
         self.assertEqual(len(registry["aliases"]), document["renumber_alias_count"])
         self.assertEqual(relationship_graph["edge_count"], document["relationship_edge_count"])
         self.assertEqual(current_inventory["invariants"]["canonical_spec_count"], document["canonical_spec_count"])
