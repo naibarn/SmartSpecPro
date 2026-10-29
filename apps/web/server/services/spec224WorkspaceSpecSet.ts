@@ -301,7 +301,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
         const current = (await store.listTrustedWorkspaces(input)).find(item => item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId);
         const blockers = current?.gitHead && current.contentFingerprint ? [] : ["WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE"];
-        const workspaceAccessMode = input.workspaceAccessMode ?? (input.writeScope ? undefined : "exclude_risky");
+        const workspaceAccessMode = input.workspaceAccessMode ?? (current?.scope === "PLATFORM_ENGINEERING" && input.writeScope ? undefined : "exclude_risky");
         const accessPolicy = workspaceAccessMode ? resolveSpec224WorkspaceWritePolicy(workspaceAccessMode) : null;
         const allowedWriteSet = accessPolicy?.allowedWriteSet ?? input.writeScope;
         const sourceAdmission = current?.scope === "PLATFORM_ENGINEERING"
@@ -369,7 +369,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         if (input.additionalInstructions) fail("SPEC_SET_ADDITIONAL_INSTRUCTIONS_REQUIRE_SPEC");
         const prompt = input.prompt;
         if (!prompt?.trim() || prompt.length > 4_000) fail("PREPARE_PROMPT_INVALID");
-        const workspaceAccessMode = input.workspaceAccessMode ?? (input.writeScope ? undefined : "exclude_risky");
+        const workspaceAccessMode = input.workspaceAccessMode ?? (workspace.scope === "PLATFORM_ENGINEERING" && input.writeScope ? undefined : "exclude_risky");
         const accessPolicy = workspaceAccessMode ? resolveSpec224WorkspaceWritePolicy(workspaceAccessMode) : null;
         const allowedWriteSet = accessPolicy?.allowedWriteSet ?? (workspace.scope === "PLATFORM_ENGINEERING" ? input.writeScope : ["**"]);
         if (workspace.scope === "PLATFORM_ENGINEERING") {

@@ -136,6 +136,15 @@ describe("spec224 workspace Spec Set", () => {
     expect(runInput.workspaceAccessMode).toBe("exclude_risky");
   });
 
+  it("keeps legacy path input from downgrading user workspaces to an unbound broad scope", async () => {
+    const store = memoryStore();
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const runInput = await service.resolveWorkspaceRunInput({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "prompt", prompt: "Implement a feature", writeScope: ["src/**"] });
+    expect(runInput.allowedWriteSet).toEqual(["**"]);
+    expect(runInput.workspaceAccessMode).toBe("exclude_risky");
+  });
+
   it("accepts bounded Markdown and JSON artifacts deterministically", async () => {
     await expect(parseSpec224WorkspaceArtifacts([
       { path: "specs/login.md", contentBase64: Buffer.from("# Login\n- [ ] MUST authenticate users", "utf8").toString("base64") },
