@@ -44,6 +44,9 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "sidebar.chatActions": `Actions for ${params?.title ?? ""}`,
         "sidebar.loadOlder": "Load older chats",
         "sidebar.loadingOlder": "Loading chats...",
+        "sidebar.sessionsUnavailable": "Chat sessions could not be loaded.",
+        "sidebar.retrySessions": "Retry loading sessions",
+        "sidebar.refreshingSessions": "Refreshing sessions…",
         "sidebar.select": "Select",
         "sidebar.selected": `${params?.count ?? 0} selected`,
         "sidebar.selectAll": "All",
@@ -73,6 +76,8 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "threads.status.ERROR": "Failed",
         "threads.loading": "Loading threads…",
         "threads.overviewUnavailable": "Thread overview unavailable",
+        "threads.retryOverview": "Retry loading threads",
+        "threads.refreshing": "Refreshing…",
         "threads.overviewEmpty": "No work threads",
         "threads.openThread": `Open ${params?.thread ?? ""} in ${params?.conversation ?? ""}`,
         "threads.timeUnknown": "Time unavailable",
@@ -132,6 +137,9 @@ describe("ChatSidebar", () => {
         nextCursor: null,
       }] },
       isLoading: false,
+      error: null,
+      isFetching: false,
+      refetch: vi.fn(),
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: mocks.mockFetchNextPage,
@@ -152,6 +160,8 @@ describe("ChatSidebar", () => {
       data: { pages: [{ items: [], nextCursor: null }] },
       isLoading: false,
       error: null,
+      isFetching: false,
+      refetch: vi.fn(),
       hasNextPage: false,
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
@@ -291,11 +301,34 @@ describe("ChatSidebar", () => {
       isFetchingNextPage: false,
       fetchNextPage: vi.fn(),
     });
-    render(<ChatSidebar selectedConversationId={12} onSelectConversation={vi.fn()} onSelectThread={vi.fn()} onNewChat={vi.fn()} />);
+    render(<ChatSidebar selectedConversationId={42} selectedThreadId="new-error" onSelectConversation={vi.fn()} onSelectThread={vi.fn()} onNewChat={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Threads overview" }));
     const orderedThreads = screen.getByRole("list", { name: "Work threads ordered by most recent activity" });
     const rows = within(orderedThreads).getAllByRole("button");
     expect(rows[0]).toHaveAccessibleName("Open Just updated failure in New chat");
+    expect(rows[0]).toHaveAttribute("aria-current", "page");
     expect(rows[1]).toHaveAccessibleName("Open Older running work in Old chat");
+  });
+
+  it("offers retry instead of rendering a failed session query as an empty list", () => {
+    const refetch = vi.fn();
+    mocks.mockListConversationsQuery.mockReturnValue({ data: undefined, isLoading: false, error: new Error("unavailable"), isFetching: false, refetch });
+    render(<ChatSidebar selectedConversationId={null} onSelectConversation={vi.fn()} onNewChat={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sessions" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Chat sessions could not be loaded.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading sessions" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("No conversations yet")).toBeNull();
+  });
+
+  it("offers retry for an unavailable thread overview and keeps the error visible", () => {
+    const refetch = vi.fn();
+    mocks.mockRecentThreadsQuery.mockReturnValue({ data: undefined, isLoading: false, error: new Error("unavailable"), isFetching: false, refetch, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() });
+    render(<ChatSidebar selectedConversationId={null} onSelectConversation={vi.fn()} onNewChat={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Threads overview" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Thread overview unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading threads" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("No work threads")).toBeNull();
   });
 });
