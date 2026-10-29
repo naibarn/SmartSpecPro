@@ -4839,7 +4839,39 @@ fn capability_snapshot(
     let tool_inventory = tools
         .iter()
         .map(|tool| {
-            let model_catalog = if tool.adapter_id.as_deref() != Some("codex.v1") {
+            let model_catalog = if tool.adapter_id.as_deref() == Some(crate::copilot_harness::ADAPTER_ID)
+                && tool.auth_state == CapabilityDimension::Ready
+                && tool.version_probe_state == crate::discovery::ProbeState::Passed
+            {
+                match tool.executable_path.as_deref()
+                    .ok_or_else(|| "RUNNER_ADAPTER_EXECUTABLE_PATH_MISSING".to_string())
+                    .and_then(|program| crate::copilot_harness::refresh_model_catalog(program, Duration::from_secs(8)))
+                {
+                    Ok(catalog) => json!({
+                        "state": "discovered",
+                        "adapterId": crate::copilot_harness::ADAPTER_ID,
+                        "adapterVersion": crate::copilot_harness::ADAPTER_ID,
+                        "cliVersion": catalog.cli_version,
+                        "accountProviderFingerprint": catalog.account_provider_fingerprint,
+                        "accountScopeState": catalog.account_scope_state,
+                        "source": catalog.source,
+                        "revision": catalog.revision,
+                        "verificationState": catalog.verification_state,
+                        "observedAt": observed_at,
+                        "expiresAt": expires_at,
+                        "models": catalog.models,
+                    }),
+                    Err(error_code) => json!({
+                        "state": "error",
+                        "adapterId": crate::copilot_harness::ADAPTER_ID,
+                        "adapterVersion": crate::copilot_harness::ADAPTER_ID,
+                        "cliVersion": tool.version,
+                        "observedAt": observed_at,
+                        "expiresAt": expires_at,
+                        "errorCode": error_code,
+                    }),
+                }
+            } else if tool.adapter_id.as_deref() != Some("codex.v1") {
                 serde_json::Value::Null
             } else if tool.auth_state == CapabilityDimension::Ready
                 && tool.version_probe_state == crate::discovery::ProbeState::Passed

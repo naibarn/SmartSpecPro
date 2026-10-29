@@ -95,6 +95,7 @@ pub struct ToolCandidate {
 pub const KNOWN_TOOLS: &[(&str, ToolKind)] = &[
     ("claude", ToolKind::AgentCli),
     ("codex", ToolKind::AgentCli),
+    ("copilot", ToolKind::AgentCli),
     ("deepseek", ToolKind::AgentHarness),
     ("antigravity", ToolKind::AgentRuntime),
     ("hermes", ToolKind::AgentHarness),

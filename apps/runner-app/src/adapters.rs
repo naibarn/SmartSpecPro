@@ -70,6 +70,12 @@ pub const ADAPTERS: &[AdapterManifest] = &[
         allowed: true,
     },
     AdapterManifest {
+        id: crate::copilot_harness::ADAPTER_ID,
+        tool_id: "copilot",
+        kind: ToolKind::AgentCli,
+        allowed: true,
+    },
+    AdapterManifest {
         id: "deepseek.v1",
         tool_id: "deepseek",
         kind: ToolKind::AgentHarness,
@@ -786,6 +792,19 @@ fn run_version_probe_cancellable(
             healthy: true,
             available: true,
             reason_codes: vec!["version_probe_ok".into(), "auth_probe_required".into()],
+        });
+    }
+    if candidate.adapter_id.as_deref() == Some(crate::copilot_harness::ADAPTER_ID) {
+        let sdk_timeout = timeout
+            .max(Duration::from_secs(4))
+            .min(Duration::from_secs(10));
+        let probe = crate::copilot_harness::probe(program, sdk_timeout)?;
+        return Ok(AdapterProbeResult {
+            version: probe.version,
+            authenticated: probe.authenticated,
+            healthy: probe.healthy,
+            available: true,
+            reason_codes: probe.reason_codes,
         });
     }
     let mut command = command_for_cli(program, &["--version".into()])?;

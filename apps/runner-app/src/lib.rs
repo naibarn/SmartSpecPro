@@ -6,6 +6,7 @@ pub mod connection;
 pub mod container;
 pub mod container_probe;
 pub mod control_channel;
+pub mod copilot_harness;
 pub mod device_proof;
 pub mod diagnostics;
 pub mod discovery;
