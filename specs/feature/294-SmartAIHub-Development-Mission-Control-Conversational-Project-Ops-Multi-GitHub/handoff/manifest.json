@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8",
+    "expected_canonical_sha": "04f4533b3757068ed7c8977296b4ec023a918ecd",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "The stale local dev web process was restarted after a read-only check found no active worker jobs; workerJobs.observability rejected threadId before restart and the authenticated local responsive UAT now passes. Next, verify the hosted serving revision and correlate the hosted chat.getMessages 500, confirm Thread cursor/snapshot parity, then continue cross-source event replay and genuine SPEC-224 two-phase execution through the existing authorities.",
+    "next_action": "Correlate the hosted chat.getMessages 500 with its exact serving revision and backend error; then continue the remaining Mission/Task snapshot parity, source-linked cross-source replay, and genuine SPEC-224 two-phase Runner acceptance.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Global Project/Thread overview integrated at 1f940d5ce11e412b4fb9d0fa9030c886aaaff2da. Local dev service restarted at 21:48 +07 and loaded c5e556db7b8f02e60c0e7d0e41008e998d2ed22e-dirty after no-active-job read-only inspection. Zod rejected threadId/direction in the stale process; authenticated responsive UAT then passed at 390/768/1440 with no tracked Thread/Task 5xx. Evidence: handoff/evidence/global-project-thread-overview-20261029.md. Hosted serving identity and chat.getMessages 500 cause, Mission/Task cursor parity, cross-source replay, and genuine SPEC-224 Child 1/2 receipts and Independent Final Verify remain open.",
+    "resume_point": "Transcript load errors now remain visible and retryable; empty-chat welcome is suppressed when getMessages fails. Authenticated local UAT passed at 04f4533b3757068ed7c8977296b4ec023a918ecd. Evidence: handoff/evidence/chat-transcript-error-recovery-20261029.md. Underlying hosted 500 and hosted serving revision remain unverified; Mission/Task snapshot parity, cross-source event replay and genuine SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify remain open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 112,
+  "generation": 113,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -268,9 +268,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "d8dfec6a9e7748277a447c0b8a5cd6c617623dc8",
+    "canonical_sha": "04f4533b3757068ed7c8977296b4ec023a918ecd",
     "integrated": true,
-    "integrated_at": "2026-10-29T14:19:56Z"
+    "integrated_at": "2026-10-29T22:01:22+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1386,7 +1386,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T14:49:58.051265Z",
+  "updated_at": "2026-10-29T15:01:40.001197Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1743,6 +1743,13 @@
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/ui-ux-10-pass-review-20261029.md",
         "scope": "Ten-pass review and fixes across Chat Thread navigation, task naming, execution identity selection/readability, Task Control correlation, and authenticated tRPC/browser behavior.",
         "source_sha": "5fe7a8270878a32562cb6681362e5cc784ba58e6",
+        "status": "PASS"
+      },
+      {
+        "kind": "CHAT_TRANSCRIPT_ERROR_RECOVERY",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/chat-transcript-error-recovery-20261029.md",
+        "scope": "Authenticated local UAT forces chat.getMessages HTTP 500 and verifies visible transcript recovery, retry, and suppression of the misleading empty-chat state.",
+        "source_sha": "04f4533b3757068ed7c8977296b4ec023a918ecd",
         "status": "PASS"
       }
     ],
