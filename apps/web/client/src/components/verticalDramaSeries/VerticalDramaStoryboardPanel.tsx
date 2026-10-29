@@ -182,6 +182,7 @@ import {
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  hasCompleteDetectedVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
   type VerticalDramaDetectedShotPerson,
   type VerticalDramaSpeakerVisualBinding,
@@ -4820,10 +4821,17 @@ export function VerticalDramaStoryboardPanel({
               activeAssetId: selectedVideoAnchorAssetId,
               requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
             }).valid;
+          const detectedSpeakerBindingsAreComplete =
+            hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
+              frame?.speakerVisualBindings,
+              speakerOptionsForShot.map(speaker => [speaker.speakerLabel]),
+              selectedVideoAnchorAssetId
+            );
           const castPositionLockNeedsReview =
             !barrierMultiView &&
             (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
-            !castPositionLockIsCurrent;
+            !castPositionLockIsCurrent &&
+            !detectedSpeakerBindingsAreComplete;
           const enhancedReadiness = enhancedReadinessByShot[shotNumber];
           const enhancedButtonTitle = !asset?.url
             ? t2.generateShotVideoPromptNeedsImage

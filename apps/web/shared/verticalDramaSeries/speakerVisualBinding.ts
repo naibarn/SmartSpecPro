@@ -118,6 +118,32 @@ export function findVerticalDramaSpeakerVisualBinding(
   );
 }
 
+/**
+ * A complete, frame-specific detected-person map can replace the legacy
+ * left-to-right cast lock for the dialogue speakers in that frame. Free-text
+ * cues and stale/manual bindings do not satisfy this gate.
+ */
+export function hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
+  bindings: readonly VerticalDramaSpeakerVisualBinding[] | null | undefined,
+  requiredSpeakerAliases: readonly (readonly (string | null | undefined)[])[],
+  currentSourceMediaAssetId: string | number | null | undefined
+): boolean {
+  const currentAssetId =
+    currentSourceMediaAssetId == null
+      ? ""
+      : String(currentSourceMediaAssetId).trim();
+  if (!currentAssetId || requiredSpeakerAliases.length === 0) return false;
+
+  return requiredSpeakerAliases.every(aliases => {
+    const binding = findVerticalDramaSpeakerVisualBinding(bindings, ...aliases);
+    return Boolean(
+      binding?.personId &&
+      binding.boundingBox &&
+      binding.sourceMediaAssetId === currentAssetId
+    );
+  });
+}
+
 /** Keep image-grounded selections only while they still refer to this frame. */
 export function getCurrentVerticalDramaSpeakerVisualBindings(
   bindings: unknown,

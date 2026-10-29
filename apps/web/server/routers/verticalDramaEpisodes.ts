@@ -415,6 +415,7 @@ import {
   resolveVerticalDramaSupportingPresenceForShot,
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  hasCompleteDetectedVerticalDramaSpeakerVisualBindings,
   findVerticalDramaSpeakerVisualBinding,
   getCurrentVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
@@ -1077,29 +1078,6 @@ async function loadEnhancedShotContext(input: {
   };
   const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
   const frame = plan?.frames?.find(f => f.shotNumber === input.shotNumber);
-  const requiresCastPositionLock =
-    input.operation === "generate" &&
-    !frame?.barrierMultiView &&
-    (frame?.requiredCharacterRefs?.length ?? 0) >= 2;
-  if (requiresCastPositionLock) {
-    const activeVideoAnchorAssetId =
-      frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
-    const lockValidation = validateVerticalDramaCastPositionLock({
-      lock: frame?.castPositionLock,
-      activeAssetId:
-        activeVideoAnchorAssetId != null
-          ? String(activeVideoAnchorAssetId)
-          : undefined,
-      requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
-    });
-    if (!lockValidation.valid) {
-      throw new TRPCError({
-        code: "PRECONDITION_FAILED",
-        message:
-          "ยังสร้าง Enhanced video prompt ไม่ได้: ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน หากภาพไม่ชัดให้เปลี่ยนภาพ/ซ่อมภาพหรือสร้าง Video-Safe frame เพื่อลดการเสียเครดิตโดยเปล่าประโยชน์",
-      });
-    }
-  }
   const startFrameAssetId = Number(frame?.approvedMediaAssetId);
   const stopFrameAssetId = Number(frame?.approvedStopFrameAssetId);
   if (!Number.isInteger(startFrameAssetId) || startFrameAssetId <= 0) {
@@ -1418,6 +1396,61 @@ async function loadEnhancedShotContext(input: {
     frame?.speakerVisualBindings,
     frame?.approvedMediaAssetId,
   );
+
+  const activeVideoAnchorAssetId =
+    frame?.videoStartMediaAssetId ?? frame?.approvedMediaAssetId;
+  const enhancedDialogueSpeakerAliases = rawDialogueList
+    .filter((line: any) =>
+      Boolean(
+        String(
+          line.lineTh ?? line.text ?? line.dialogue_line ?? line.line ?? ""
+        ).trim()
+      )
+    )
+    .map((line: any) => {
+      const authoredSpeaker = String(
+        line.characterKey ??
+          line.speaker_character_id ??
+          line.speakerId ??
+          line.speaker ??
+          line.speakerHint ??
+          ""
+      ).trim();
+      return [
+        authoredSpeaker,
+        line.speaker,
+        line.speakerHint,
+        speakerNameMap.get(authoredSpeaker),
+      ];
+    });
+  const dialogueSpeakersHaveDetectedBindings =
+    hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
+      speakerVisualBindings,
+      enhancedDialogueSpeakerAliases,
+      activeVideoAnchorAssetId
+    );
+  const requiresCastPositionLock =
+    input.operation === "generate" &&
+    !frame?.barrierMultiView &&
+    (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
+    !dialogueSpeakersHaveDetectedBindings;
+  if (requiresCastPositionLock) {
+    const lockValidation = validateVerticalDramaCastPositionLock({
+      lock: frame?.castPositionLock,
+      activeAssetId:
+        activeVideoAnchorAssetId != null
+          ? String(activeVideoAnchorAssetId)
+          : undefined,
+      requiredCharacterRefs: frame?.requiredCharacterRefs ?? [],
+    });
+    if (!lockValidation.valid) {
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message:
+          "ยังสร้าง Enhanced video prompt ไม่ได้: ต้องจับคู่ผู้พูดกับคนในภาพให้ครบ หรือยืนยันลำดับซ้าย→ขวาสำหรับผู้พูดที่ยังไม่จับคู่ หากภาพไม่ชัดให้เปลี่ยนภาพ/ซ่อมภาพหรือสร้าง Video-Safe frame",
+      });
+    }
+  }
 
   // Resolve verified cast positions from start frame lock if present
   let verifiedCastPositions: Array<{
@@ -29067,13 +29100,31 @@ export const verticalDramaEpisodesRouter = router({
           return { ...line, characterKey: resolution.characterKey };
         });
       dialogueLines = normalizeShotDialogueLines(dialogueLines);
+      const shotSpeakerVisualBindings =
+        getCurrentVerticalDramaSpeakerVisualBindings(
+          frame?.speakerVisualBindings,
+          activeVideoAnchorAssetId
+        );
+      const dialogueSpeakersHaveDetectedBindings =
+        hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
+          shotSpeakerVisualBindings,
+          dialogueLines.map(line => [
+            line.characterKey,
+            line.characterKey
+              ? shotVideoCharacterNameByKey.get(line.characterKey)
+              : undefined,
+          ]),
+          activeVideoAnchorAssetId
+        );
       const characterDescriptionOverrides =
         normalizeVerticalDramaCharacterDescriptionOverrides(
           frame?.characterDescriptionOverrides,
           frame?.requiredCharacterRefs ?? []
         );
       const requiresCastLock =
-        !barrierMultiView && (frame?.requiredCharacterRefs?.length ?? 0) >= 2;
+        !barrierMultiView &&
+        (frame?.requiredCharacterRefs?.length ?? 0) >= 2 &&
+        !dialogueSpeakersHaveDetectedBindings;
       let verifiedCastPositions:
         | ReturnType<typeof buildVerticalDramaVerifiedCastPositions>
         | undefined;
@@ -29089,7 +29140,7 @@ export const verticalDramaEpisodesRouter = router({
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
             message:
-              "ยังสร้าง video prompt ไม่ได้: ต้องยืนยันลำดับตัวละครซ้าย→ขวาจากภาพปัจจุบันก่อน หากภาพไม่ชัดให้เปลี่ยนภาพ/ซ่อมภาพหรือสร้าง Video-Safe frame เพื่อลดการเสียเครดิตโดยเปล่าประโยชน์",
+              "ยังสร้าง video prompt ไม่ได้: จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบ หรือยืนยันลำดับซ้าย→ขวาสำหรับผู้พูดที่ยังไม่จับคู่ก่อน หากภาพไม่ชัดให้เปลี่ยนภาพ/ซ่อมภาพหรือสร้าง Video-Safe frame",
           });
         }
         verifiedCastPositions = buildVerticalDramaVerifiedCastPositions({
@@ -29300,10 +29351,7 @@ export const verticalDramaEpisodesRouter = router({
                 ? localeSeriesRow.genre
                 : undefined,
             supportingPresence: shotSupportingPresence,
-            speakerVisualBindings: getCurrentVerticalDramaSpeakerVisualBindings(
-              frame?.speakerVisualBindings,
-              frame?.approvedMediaAssetId,
-            ),
+            speakerVisualBindings: shotSpeakerVisualBindings,
             // Lip-sync discipline fix — same `characterKey -> name` map the
             // non-split path uses below (`shotVideoCharacterNameByKey`,
             // resolved once from `shotVideoCharacterIdentitySources` — no new
@@ -29441,10 +29489,7 @@ export const verticalDramaEpisodesRouter = router({
                 ? localeSeriesRow.genre
                 : undefined,
             supportingPresence: shotSupportingPresence,
-            speakerVisualBindings: getCurrentVerticalDramaSpeakerVisualBindings(
-              frame?.speakerVisualBindings,
-              frame?.approvedMediaAssetId,
-            ),
+            speakerVisualBindings: shotSpeakerVisualBindings,
           },
           // Retention hooks (W7) — omitted (all four) whenever the tenant flag
           // is off, reproducing the exact prior prompt byte-for-byte.

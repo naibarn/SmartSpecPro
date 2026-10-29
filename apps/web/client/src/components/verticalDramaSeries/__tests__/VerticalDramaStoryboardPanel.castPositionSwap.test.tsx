@@ -134,4 +134,71 @@ describe("VerticalDramaStoryboardPanel — cast position swaps", () => {
       screen.queryByTestId("vd-credit-confirm-enhanced-video-prompt-1")
     ).not.toBeInTheDocument();
   });
+
+  it("uses complete detected speaker mappings instead of requiring the legacy left-to-right lock", () => {
+    const props = baseProps({
+      canonicalShotDrafts: [
+        {
+          shotNumber: 1,
+          summary: "A conversation",
+          dialogueLines: [
+            { speaker: "left-character", line: "First line" },
+            { speaker: "right-character", line: "Reply" },
+          ],
+        },
+      ],
+      startFramePlan: {
+        frames: [
+          {
+            shotNumber: 1,
+            imagePrompt: "a prompt",
+            approvedMediaAssetId: "10",
+            requiredCharacterRefs: ["left-character", "right-character"],
+            speakerVisualBindings: [
+              {
+                id: "speaker-left",
+                speakerLabel: "left-character",
+                visualCue: "person by the doorway",
+                personId: "person-1",
+                boundingBox: { x: 0.1, y: 0.1, width: 0.2, height: 0.8 },
+                sourceMediaAssetId: "10",
+              },
+              {
+                id: "speaker-right",
+                speakerLabel: "right-character",
+                visualCue: "person at the table",
+                personId: "person-2",
+                boundingBox: { x: 0.6, y: 0.2, width: 0.2, height: 0.7 },
+                sourceMediaAssetId: "10",
+              },
+            ],
+          },
+        ],
+      },
+      assetUrls: {
+        "10": {
+          url: "https://example.com/start-frame.png",
+          thumbnailUrl: null,
+        },
+      },
+      selectedVideoModelId: "video-model",
+      enhancedVideoPromptUiEnabled: true,
+      onGenerateShotVideoPrompt: vi.fn(),
+      onGenerateEnhancedShotVideoPrompt: vi.fn(),
+      enhancedReadinessByShot: { 1: { ready: true, reasons: [] } },
+      enhancedGeneratingForShot: new Set(),
+    });
+
+    render(<VerticalDramaStoryboardPanel {...(props as any)} />);
+
+    expect(
+      screen.getByTestId("vd-storyboard-generate-shot-video-prompt-1")
+    ).toBeEnabled();
+    expect(
+      screen.getByTestId("vd-storyboard-generate-enhanced-video-prompt-1")
+    ).toBeEnabled();
+    expect(
+      screen.queryByTestId("vd-storyboard-cast-position-review-1")
+    ).not.toBeInTheDocument();
+  });
 });
