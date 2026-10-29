@@ -4631,8 +4631,9 @@ fn capability_snapshot(
     let tool_inventory = tools
         .iter()
         .map(|tool| {
-            let model_catalog = if tool.adapter_id.as_deref() == Some("codex.v1")
-                && tool.auth_state == CapabilityDimension::Ready
+            let model_catalog = if tool.adapter_id.as_deref() != Some("codex.v1") {
+                serde_json::Value::Null
+            } else if tool.auth_state == CapabilityDimension::Ready
                 && tool.version_probe_state == crate::discovery::ProbeState::Passed
             {
                 match crate::adapters::refresh_model_catalog(tool, Duration::from_secs(8)) {
