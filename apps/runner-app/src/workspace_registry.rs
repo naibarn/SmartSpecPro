@@ -658,7 +658,7 @@ mod tests {
     }
 
     #[test]
-    fn oversized_dirty_path_set_is_unknown_instead_of_breaking_snapshot_envelope() {
+    fn dirty_path_set_larger_than_legacy_limit_remains_complete() {
         let temp = tempfile::tempdir().unwrap();
         let project = temp.path().join("project");
         let data_root = temp.path().join("runner-data");
@@ -699,7 +699,14 @@ mod tests {
 
         let facts = workspace_registry::snapshot_facts(&config).unwrap();
         assert!(facts[0].dirty);
-        assert!(facts[0].dirty_paths.is_none());
+        let paths = facts[0]
+            .dirty_paths
+            .as_ref()
+            .expect("complete bounded paths");
+        assert_eq!(paths.len(), 2_000);
+        let encoded_bytes = paths.iter().map(|path| path.len() + 3).sum::<usize>();
+        assert!(encoded_bytes > 192 * 1024);
+        assert!(encoded_bytes < 512 * 1024);
     }
 
     #[test]
@@ -889,7 +896,9 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 
-const MAX_SNAPSHOT_DIRTY_PATH_BYTES: usize = 192 * 1024;
+// Preserve complete dirty-path evidence for large workspaces while keeping
+// snapshots inside the aligned Runner protocol payload limit.
+const MAX_SNAPSHOT_DIRTY_PATH_BYTES: usize = 512 * 1024;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RegisteredWorkspace {

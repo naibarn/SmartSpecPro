@@ -625,10 +625,32 @@ describe("Feature 197 Runner contracts", () => {
     const paths = Array.from({ length: 800 }, (_, index) => `apps/web/${index}-${"x".repeat(160)}`);
 
     expect(() => validateRunnerProtocolEnvelope(envelope(paths))).not.toThrow();
-    expect(() => validateRunnerProtocolEnvelope(envelope([
-      ...paths,
-      ...Array.from({ length: 800 }, (_, index) => `apps/web/extra-${index}-${"y".repeat(160)}`),
-    ]))).toThrowError(expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" }));
+    expect(() => validateRunnerProtocolEnvelope(envelope(
+      Array.from({ length: 4_097 }, (_, index) => `apps/web/${index}.ts`),
+    ))).toThrowError(expect.objectContaining({ code: "RUNNER_CONTRACT_INVALID" }));
+  });
+
+  it("accepts complete large dirty-path snapshots within the aligned envelope budget", () => {
+    const dirtyPaths = Array.from({ length: 2_000 }, (_, index) =>
+      `apps/module/${String(index).padStart(4, "0")}-${"x".repeat(100)}.txt`,
+    );
+    const envelope = {
+      protocolVersion: "sah-runner-v1",
+      profile: "local_device",
+      nodeKind: "local_device",
+      runnerId: "runner-1",
+      nodeId: "device-1",
+      jobId: null,
+      attemptId: null,
+      leaseId: null,
+      fencingVersion: null,
+      correlationId: "corr-large-dirty-paths",
+      sequence: 1,
+      idempotencyKey: "large-dirty-paths-1",
+      payload: { type: "runner.capabilities.update", snapshot: { workspaces: [{ dirtyPaths }] } },
+    };
+    expect(Buffer.byteLength(JSON.stringify(envelope.payload), "utf8")).toBeGreaterThan(224 * 1024);
+    expect(validateRunnerProtocolEnvelope(envelope)).toEqual(envelope);
   });
 
   it("accepts bounded semantic observation receipts at the canonical wire depth", () => {

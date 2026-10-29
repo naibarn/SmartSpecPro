@@ -622,7 +622,7 @@ const RUNNER_ENVELOPE_SECRET_KEYS = new Set([
   "token",
 ]);
 const MAX_RUNNER_PAYLOAD_DEPTH = 8;
-const MAX_RUNNER_ENVELOPE_PAYLOAD_BYTES = 224 * 1024;
+const MAX_RUNNER_ENVELOPE_PAYLOAD_BYTES = 512 * 1024;
 
 function assertSafeRunnerPayload(
   value: unknown,
