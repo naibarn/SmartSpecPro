@@ -183,6 +183,7 @@ import {
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
   normalizeVerticalDramaSpeakerVisualBindings,
+  type VerticalDramaDetectedShotPerson,
   type VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
 export { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
@@ -1544,6 +1545,12 @@ interface VerticalDramaStoryboardPanelProps {
     bindings: VerticalDramaSpeakerVisualBinding[]
   ) => void;
   savingShotSpeakerVisualBindingsForShot?: number | null;
+  onDetectShotSpeakerPeople?: (shotNumber: number) => void;
+  detectingShotSpeakerPeopleForShot?: number | null;
+  detectedShotSpeakerPeopleByShot?: Record<number, {
+    sourceMediaAssetId: string;
+    people: VerticalDramaDetectedShotPerson[];
+  }>;
   /** Convert the current physical + Caller assignment into a closed-door shot. */
   onSetShotBarrierDialogue?: (
     shotNumber: number,
@@ -2403,6 +2410,9 @@ export function VerticalDramaStoryboardPanel({
   onResetShotSupportingPresence,
   onSetShotSpeakerVisualBindings,
   savingShotSpeakerVisualBindingsForShot = null,
+  onDetectShotSpeakerPeople,
+  detectingShotSpeakerPeopleForShot = null,
+  detectedShotSpeakerPeopleByShot = {},
   onSetShotBarrierDialogue,
   onSetShotViewMode,
   savingShotCharacterReferencesForShot = null,
@@ -7288,10 +7298,20 @@ export function VerticalDramaStoryboardPanel({
                   {onSetShotSpeakerVisualBindings ? (
                     <VerticalDramaShotSpeakerBindingEditor
                       shotNumber={shotNumber}
+                      locale={locale === "en" ? "en" : "th"}
                       speakers={speakerOptionsForShot}
                       bindings={normalizeVerticalDramaSpeakerVisualBindings(
                         frame?.speakerVisualBindings
                       )}
+                      startFrameImageSrc={startFrameImageSrc}
+                      sourceMediaAssetId={frame?.approvedMediaAssetId}
+                      detectedPeople={
+                        detectedShotSpeakerPeopleByShot[shotNumber]?.sourceMediaAssetId === String(frame?.approvedMediaAssetId ?? "")
+                          ? detectedShotSpeakerPeopleByShot[shotNumber].people
+                          : []
+                      }
+                      detectingPeople={detectingShotSpeakerPeopleForShot === shotNumber}
+                      onDetectPeople={onDetectShotSpeakerPeople ? () => onDetectShotSpeakerPeople(shotNumber) : undefined}
                       saving={savingShotSpeakerVisualBindingsForShot === shotNumber}
                       onSave={bindings => onSetShotSpeakerVisualBindings(shotNumber, bindings)}
                     />

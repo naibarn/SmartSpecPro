@@ -1,0 +1,18 @@
+{
+  "name": "vertical_drama_speaker_visual_detection",
+  "display_name": "Vertical Drama Speaker Visual Detection",
+  "display_name_th": "ตรวจจับคนในภาพสำหรับระบุผู้พูดละครแนวตั้ง",
+  "version": "1.0.0",
+  "description": "Detect and describe visible people in one approved Vertical Drama start frame, returning viewer-relative normalized regions for user-confirmed dialogue-speaker mapping.",
+  "description_th": "ตรวจจับและอธิบายบุคคลที่เห็นในภาพเริ่มต้นของละครแนวตั้ง พร้อมกรอบตำแหน่งสำหรับให้ผู้ใช้ยืนยันการจับคู่บทพูดกับคนในภาพ",
+  "entry_prompt": "Analyze one approved start frame and return visible person regions. Propose visual candidates only; never infer or assign dialogue speakers.",
+  "input_schema": "schemas/input.schema.json",
+  "ui_schema": "schemas/ui.schema.json",
+  "output_schema": "schemas/output.schema.json",
+  "help_files": { "th": "help/help.th.md", "en": "help/help.en.md" },
+  "examples": { "input_th": "examples/example.input.th.json", "output_sample": "examples/example.output.sample.json" },
+  "capabilities": ["json_handoff", "bilingual_ui", "image_grounded_person_detection", "normalized_bounding_boxes", "user_confirmed_speaker_mapping"],
+  "contract_version": 1,
+  "smartspec_slug": "vertical-drama-speaker-visual-detection",
+  "openai_sora_primary": false
+}

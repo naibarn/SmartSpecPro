@@ -1,0 +1,8 @@
+{
+  "type": "object",
+  "properties": {
+    "shot_number": { "type": "integer", "title": "Shot number" },
+    "approved_start_frame": { "type": "string", "title": "Approved start frame" },
+    "max_people": { "type": "integer", "title": "Maximum people to detect", "default": 16 }
+  }
+}

@@ -416,9 +416,11 @@ import {
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
   findVerticalDramaSpeakerVisualBinding,
+  getCurrentVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
   type VerticalDramaSpeakerVisualBinding,
 } from "@shared/verticalDramaSeries/speakerVisualBinding";
+import { detectVerticalDramaShotPeople } from "../services/verticalDramaSpeakerVisualDetection";
 import {
   deriveVerticalDramaStartFrameShotComposition,
   ensureVerticalDramaShotCompositionLock,
@@ -1412,8 +1414,9 @@ async function loadEnhancedShotContext(input: {
             : undefined,
       }))
     );
-  const speakerVisualBindings = normalizeVerticalDramaSpeakerVisualBindings(
-    frame?.speakerVisualBindings
+  const speakerVisualBindings = getCurrentVerticalDramaSpeakerVisualBindings(
+    frame?.speakerVisualBindings,
+    frame?.approvedMediaAssetId,
   );
 
   // Resolve verified cast positions from start frame lock if present
@@ -17931,6 +17934,60 @@ export const verticalDramaEpisodesRouter = router({
       return { startFramePlan: updatedPlan };
     }),
 
+  /** Vision-assisted proposal; the caller must explicitly map and save speakers. */
+  detectShotSpeakerPeople: verticalDramaProcedure
+    .input(z.object({
+      seriesId: z.string().min(1),
+      episodeId: z.string().min(1),
+      shotNumber: z.number().int().positive(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const rateLimitKey = `user:${ctx.user.id}`;
+      if (!mediaGenerationLimiter.isAllowed(rateLimitKey)) {
+        throw new TRPCError({
+          code: "TOO_MANY_REQUESTS",
+          message: `Rate limit exceeded. Try again in ${Math.ceil(mediaGenerationLimiter.getResetTime(rateLimitKey) / 1000)} seconds.`,
+        });
+      }
+      const tenantId = requireTenantId(ctx.tenantId);
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({
+        tenantId,
+        userId: ctx.user.id,
+        seriesId,
+        episodeId,
+      });
+      const plan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const frame = plan?.frames?.find(candidate => candidate.shotNumber === input.shotNumber);
+      const sourceMediaAssetId = String(frame?.approvedMediaAssetId ?? "");
+      const assetNumericId = Number(sourceMediaAssetId);
+      if (!Number.isInteger(assetNumericId) || assetNumericId <= 0 || frame?.imageStaleReason) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "ต้องมีภาพ Start frame ปัจจุบันที่อนุมัติแล้วก่อนตรวจจับคนในภาพ",
+        });
+      }
+      const imageUrl = (await resolveMediaAssetUrlsByIds(tenantId, ctx.user.id, [assetNumericId])).get(assetNumericId);
+      if (!imageUrl) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "ไม่พบภาพ Start frame ที่เข้าถึงได้ในบัญชีนี้ กรุณาอนุมัติภาพใหม่",
+        });
+      }
+      const result = await detectVerticalDramaShotPeople({
+        userId: ctx.user.id,
+        tenantId,
+        seriesId,
+        episodeId,
+        shotNumber: input.shotNumber,
+        sourceMediaAssetId,
+        imageUrl,
+        publicUrl: ctx.publicUrl,
+      });
+      return { ...result, sourceMediaAssetId };
+    }),
+
   /**
    * Persist a user-confirmed viewer-left -> viewer-right cast order for the
    * exact current video anchor. This is intentionally separate from changing
@@ -18451,8 +18508,32 @@ export const verticalDramaEpisodesRouter = router({
             id: z.string().max(80).optional(),
             speakerLabel: z.string().trim().min(1).max(120),
             visualCue: z.string().trim().min(1).max(240),
+            personId: z.string().trim().min(1).max(64).optional(),
+            boundingBox: z.object({
+              x: z.number().min(0).max(1),
+              y: z.number().min(0).max(1),
+              width: z.number().gt(0).max(1),
+              height: z.number().gt(0).max(1),
+            }).refine(
+              box => box.x + box.width <= 1.001 && box.y + box.height <= 1.001,
+              "กรอบตำแหน่งต้องอยู่ภายในภาพ",
+            ).optional(),
+            sourceMediaAssetId: z.string().trim().min(1).max(128).optional(),
+          }).superRefine((binding, context) => {
+            const hasImageSelection = Boolean(
+              binding.personId || binding.boundingBox || binding.sourceMediaAssetId,
+            );
+            if (
+              hasImageSelection &&
+              (!binding.personId || !binding.boundingBox || !binding.sourceMediaAssetId)
+            ) {
+              context.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "การเลือกคนจากภาพต้องมีรหัสคน กรอบตำแหน่ง และภาพต้นทางครบ",
+              });
+            }
           })
-        ).max(6),
+        ).max(12),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -18475,6 +18556,18 @@ export const verticalDramaEpisodesRouter = router({
           : { mode: "single_frame_per_shot", selectedImageModelId: "", frames: [] };
       const frameIndex = basePlan.frames.findIndex(frame => frame.shotNumber === input.shotNumber);
       const updatedFrames = basePlan.frames.slice();
+      const currentFrame = frameIndex >= 0 ? updatedFrames[frameIndex] : undefined;
+      const currentAssetId = currentFrame?.approvedMediaAssetId
+        ? String(currentFrame.approvedMediaAssetId)
+        : "";
+      if (input.speakerVisualBindings.some(binding =>
+        binding.sourceMediaAssetId && binding.sourceMediaAssetId !== currentAssetId
+      )) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "ภาพ Start frame เปลี่ยนแล้ว กรุณาตรวจจับและเลือกคนในภาพปัจจุบันใหม่",
+        });
+      }
       if (frameIndex < 0) {
         const storyboard = sceneRecord(row.storyboard);
         const shot = Array.isArray(storyboard.shots)
@@ -29182,8 +29275,9 @@ export const verticalDramaEpisodesRouter = router({
                 ? localeSeriesRow.genre
                 : undefined,
             supportingPresence: shotSupportingPresence,
-            speakerVisualBindings: normalizeVerticalDramaSpeakerVisualBindings(
-              frame?.speakerVisualBindings
+            speakerVisualBindings: getCurrentVerticalDramaSpeakerVisualBindings(
+              frame?.speakerVisualBindings,
+              frame?.approvedMediaAssetId,
             ),
             // Lip-sync discipline fix — same `characterKey -> name` map the
             // non-split path uses below (`shotVideoCharacterNameByKey`,
@@ -29322,8 +29416,9 @@ export const verticalDramaEpisodesRouter = router({
                 ? localeSeriesRow.genre
                 : undefined,
             supportingPresence: shotSupportingPresence,
-            speakerVisualBindings: normalizeVerticalDramaSpeakerVisualBindings(
-              frame?.speakerVisualBindings
+            speakerVisualBindings: getCurrentVerticalDramaSpeakerVisualBindings(
+              frame?.speakerVisualBindings,
+              frame?.approvedMediaAssetId,
             ),
           },
           // Retention hooks (W7) — omitted (all four) whenever the tenant flag

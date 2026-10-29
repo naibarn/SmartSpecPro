@@ -1,0 +1,13 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vertical-drama-speaker-visual-detection/input",
+  "title": "Vertical Drama Start Frame Detection Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["shot_number", "approved_start_frame"],
+  "properties": {
+    "shot_number": { "type": "integer", "minimum": 1 },
+    "approved_start_frame": { "type": "string", "format": "uri" },
+    "max_people": { "type": "integer", "minimum": 1, "maximum": 16, "default": 16 }
+  }
+}

@@ -4744,6 +4744,36 @@ function EpisodeWorkspaceShell({
       onError: err => toast.error(err.message),
     });
 
+  const [detectedSpeakerPeopleByShot, setDetectedSpeakerPeopleByShot] =
+    useState<Record<number, { sourceMediaAssetId: string; people: Array<{
+      id: string;
+      boundingBox: { x: number; y: number; width: number; height: number };
+      appearance: string;
+      confidence: number;
+    }> }>>({});
+  const detectShotSpeakerPeopleMutation =
+    trpc.verticalDramaEpisodes.detectShotSpeakerPeople.useMutation({
+      onSuccess: (result, variables) => {
+        setDetectedSpeakerPeopleByShot(current => ({
+          ...current,
+          [variables.shotNumber]: {
+            sourceMediaAssetId: result.sourceMediaAssetId,
+            people: result.people,
+          },
+        }));
+        toast.success(
+          lang === "en"
+            ? `Detected ${result.people.length} people. Credits used: ${result.creditsUsed}. Review and map each speaker before saving.`
+            : `ตรวจพบ ${result.people.length} คน ใช้ ${result.creditsUsed} เครดิต โปรดตรวจและจับคู่ผู้พูดก่อนบันทึก`
+        );
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleDetectShotSpeakerPeople(shotNumber: number) {
+    detectShotSpeakerPeopleMutation.mutate({ seriesId, episodeId, shotNumber });
+  }
+
   function handleSetShotSpeakerVisualBindings(
     shotNumber: number,
     bindings: VerticalDramaSpeakerVisualBinding[]
@@ -10575,6 +10605,12 @@ function EpisodeWorkspaceShell({
               setShotSpeakerVisualBindingsMutation.isPending
                 ? (setShotSpeakerVisualBindingsMutation.variables?.shotNumber ?? null)
                 : null,
+            onDetectShotSpeakerPeople: handleDetectShotSpeakerPeople,
+            detectingShotSpeakerPeopleForShot:
+              detectShotSpeakerPeopleMutation.isPending
+                ? (detectShotSpeakerPeopleMutation.variables?.shotNumber ?? null)
+                : null,
+            detectedShotSpeakerPeopleByShot: detectedSpeakerPeopleByShot,
             onSetShotBarrierDialogue: handleSetShotBarrierDialogue,
             onSetShotViewMode: handleSetShotViewMode,
             savingShotCharacterReferencesForShot,

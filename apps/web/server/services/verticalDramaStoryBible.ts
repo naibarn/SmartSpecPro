@@ -2578,6 +2578,7 @@ export async function runVisionAwareJsonAttempt<T>(args: {
   };
   modelFallbackFrom?: string;
   modelFallbackReason?: string;
+  onUsage?: (response: VisionAwareCallResponse, requestedModel: string) => void;
 }): Promise<{ data: T; response: VisionAwareCallResponse }> {
   const result = await executeWithFallback({
     model: args.model,
@@ -2601,6 +2602,8 @@ export async function runVisionAwareJsonAttempt<T>(args: {
         : "LLM request did not reach a successful provider response"
     );
   }
+
+  args.onUsage?.(result.response, args.model);
 
   const responseContent = result.response.choices?.[0]?.message?.content ?? "";
   if (!responseContent.trim()) {
@@ -2657,6 +2660,8 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
   disableModelFallback?: boolean;
   /** Restrict the recovery model to the admin-curated LLM Recommend set. */
   modelFallbackPolicy?: "recommended";
+  /** Observe every successful provider response, including schema-repair attempts. */
+  onUsage?: (response: VisionAwareCallResponse, requestedModel: string) => void;
 }): Promise<{
   data: T;
   response: VisionAwareCallResponse;
@@ -2690,6 +2695,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
       userId: args.userId,
       maxTokens: args.firstAttemptMaxTokens,
       schema: args.schema,
+      onUsage: args.onUsage,
       extraBodyParams: resolvedExtraBodyParams,
     });
     return { ...result, usedVision: args.hasVision };
@@ -2723,6 +2729,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
             userId: args.userId,
             maxTokens: args.retryMaxTokens,
             schema: args.schema,
+            onUsage: args.onUsage,
             extraBodyParams: resolvedExtraBodyParams,
           });
           return { ...result, usedVision: args.hasVision };
@@ -2762,6 +2769,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           userId: args.userId,
           maxTokens: args.retryMaxTokens,
           schema: args.schema,
+          onUsage: args.onUsage,
           extraBodyParams: resolvedExtraBodyParams,
           modelFallbackFrom: args.model,
           modelFallbackReason: "vision_provider_response_failure",
@@ -2781,6 +2789,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
         userId: args.userId,
         maxTokens: args.retryMaxTokens,
         schema: args.schema,
+        onUsage: args.onUsage,
         extraBodyParams: resolvedExtraBodyParams,
       });
       return { ...result, usedVision: args.hasVision };
@@ -2829,6 +2838,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
               userId: args.userId,
               maxTokens: Math.max(args.retryMaxTokens * 2, 8000),
               schema: args.schema,
+              onUsage: args.onUsage,
               extraBodyParams: resolvedExtraBodyParams,
             });
             return { ...result, usedVision: args.hasVision };
@@ -2863,6 +2873,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
             userId: args.userId,
             maxTokens: args.retryMaxTokens,
             schema: args.schema,
+            onUsage: args.onUsage,
             extraBodyParams: resolvedExtraBodyParams,
             modelFallbackFrom: args.model,
             modelFallbackReason: "vision_retry_failed",
@@ -2884,6 +2895,7 @@ export async function executeVisionAwareJsonCallWithRetry<T>(args: {
           userId: args.userId,
           maxTokens: args.retryMaxTokens,
           schema: args.schema,
+          onUsage: args.onUsage,
           extraBodyParams: resolvedExtraBodyParams,
         });
         // The final recovery attempt deliberately omits all images. Report

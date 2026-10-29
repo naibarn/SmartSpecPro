@@ -1,0 +1,16 @@
+{
+  "people": [
+    {
+      "id": "person-1",
+      "bounding_box": { "x": 0.03, "y": 0.19, "width": 0.21, "height": 0.72 },
+      "appearance": "ชายชุดเกราะสีเข้มยืนอยู่ด้านหลังทางซ้าย",
+      "confidence": 0.91
+    },
+    {
+      "id": "person-2",
+      "bounding_box": { "x": 0.28, "y": 0.24, "width": 0.22, "height": 0.68 },
+      "appearance": "หญิงชุดคลุมสีอ่อนอยู่ด้านหน้าฝั่งซ้าย",
+      "confidence": 0.96
+    }
+  ]
+}
