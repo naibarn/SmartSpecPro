@@ -750,7 +750,21 @@ export function ChatSidebar({
                 </Button>
               ) : null}
             </header>
-            {threadsQuery.error ? <p className="text-xs text-muted-foreground" role="status">{t("threads.unavailable")}</p> : null}
+            {threadsQuery.error ? (
+              <section className="flex flex-wrap items-center gap-2" role="alert">
+                <p className="text-xs text-muted-foreground">{t("threads.unavailable")}</p>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  disabled={threadsQuery.isFetching}
+                  onClick={() => void threadsQuery.refetch()}
+                >
+                  {threadsQuery.isFetching ? t("threads.refreshing") : t("threads.retryOverview")}
+                </Button>
+              </section>
+            ) : null}
             {threadsQuery.isLoading ? <p className="text-xs text-muted-foreground" role="status">{t("threads.loading")}</p> : null}
             <ol className="space-y-1">
               {(threadsQuery.data?.threads ?? []).map(thread => (

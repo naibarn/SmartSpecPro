@@ -77,6 +77,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "threads.status.UNAVAILABLE": "Unavailable",
         "threads.status.ERROR": "Failed",
         "threads.loading": "Loading threads…",
+        "threads.unavailable": "Thread list is temporarily unavailable.",
         "threads.overviewUnavailable": "Thread overview unavailable",
         "threads.retryOverview": "Retry loading threads",
         "threads.refreshing": "Refreshing…",
@@ -406,5 +407,22 @@ describe("ChatSidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry loading threads" }));
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("No work threads")).toBeNull();
+  });
+
+  it("offers a scoped retry when the selected conversation thread list fails", () => {
+    const refetch = vi.fn();
+    mocks.mockListThreadsQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      error: new Error("unavailable"),
+      refetch,
+    });
+    render(<ChatSidebar selectedConversationId={1} onSelectConversation={vi.fn()} onNewChat={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sessions" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Thread list is temporarily unavailable.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading threads" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });
