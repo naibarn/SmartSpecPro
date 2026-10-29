@@ -540,6 +540,21 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
   });
 
+  it("distinguishes a deployed job runtime from disabled application HTTP ingress", async () => {
+    const user = userEvent.setup();
+    mocks.stagingRuntime = {
+      status: "READY", checkedAt: "2026-10-30T00:00:00.000Z", activation: "enabled", transport: "queues",
+      missing: [], applicationIngress: { enabled: false, ready: false, missing: ["NODE_HTTP", "PYTHON_HTTP"] },
+    };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText("READY")).toBeInTheDocument();
+    const ingress = screen.getByLabelText("Application HTTP ingress readiness");
+    expect(ingress).toHaveTextContent("Application HTTP ingress: DISABLED");
+    expect(ingress).toHaveTextContent("Missing application bindings: NODE_HTTP, PYTHON_HTTP");
+  });
+
   it("probes the exact Production target credential and shows the permission to add", async () => {
     const user = userEvent.setup();
     mocks.targets = [{ ...existingTarget, environment: "production", deploymentTargetId: "smartspec-cloudflare-runtime" }];

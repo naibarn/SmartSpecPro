@@ -1854,6 +1854,14 @@ export default function AdminDeploymentTargets() {
                 {runtime.controlPlaneConfigured !== undefined ? <Badge variant="outline">{text("Control plane", "control plane")}: {runtime.controlPlaneConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
               </HStack>
               {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
+              {runtime.applicationIngress ? <VStack gap={0} role="status" aria-label={text("Application HTTP ingress readiness", "ความพร้อม HTTP ingress ของแอป") }>
+                <p><strong>{text("Application HTTP ingress", "HTTP ingress ของแอป")}</strong>: {runtime.applicationIngress.ready
+                  ? text("READY", "พร้อมใช้งาน")
+                  : runtime.applicationIngress.enabled
+                    ? text("ENABLED, NOT READY", "เปิดใช้งานแล้ว แต่ยังไม่พร้อม")
+                    : text("DISABLED", "ยังไม่เปิดใช้งาน")}</p>
+                {runtime.applicationIngress.missing.length > 0 ? <p>{text("Missing application bindings", "binding ของแอปที่ยังขาด")}: <code>{runtime.applicationIngress.missing.join(", ")}</code></p> : null}
+              </VStack> : null}
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
               {(stagingConfigurationExpired || activationRecoveryStatus ||
                 stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED") ? (() => {

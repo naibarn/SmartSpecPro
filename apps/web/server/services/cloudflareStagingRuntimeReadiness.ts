@@ -17,6 +17,7 @@ export type CloudflareStagingRuntimeReadiness = {
   missing: string[];
   jobHandlerConfigured?: boolean;
   controlPlaneConfigured?: boolean;
+  applicationIngress?: { enabled: boolean; ready: boolean; missing: string[] };
   httpStatus?: number;
   deploymentId?: string;
   reason?: string;
@@ -116,6 +117,15 @@ export async function probeCloudflareStagingRuntimeReadiness(input: {
       typeof body.readiness?.activation === "string"
         ? body.readiness.activation
         : "unknown";
+    const rawIngress = body.readiness?.applicationIngress;
+    const applicationIngress = rawIngress && typeof rawIngress === "object" && !Array.isArray(rawIngress)
+      ? rawIngress as Record<string, unknown>
+      : undefined;
+    const ingressMissing = Array.isArray(applicationIngress?.missing)
+      ? [...new Set(applicationIngress.missing.filter(
+          (value): value is string => typeof value === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(value),
+        ))]
+      : [];
     const activationDisabled = !ready && activation === "disabled";
     return {
       // Staging deployments intentionally ship inactive until a separately
@@ -137,6 +147,13 @@ export async function probeCloudflareStagingRuntimeReadiness(input: {
         typeof body.readiness?.controlPlaneConfigured === "boolean"
           ? body.readiness.controlPlaneConfigured
           : undefined,
+      ...(typeof applicationIngress?.enabled === "boolean" && typeof applicationIngress.ready === "boolean"
+        ? { applicationIngress: {
+            enabled: applicationIngress.enabled,
+            ready: applicationIngress.ready,
+            missing: ingressMissing,
+          } }
+        : {}),
       httpStatus: response.status,
       deploymentId: input.deploymentId,
       ...(!ready ? { reason: activationDisabled ? "CLOUDFLARE_WORKER_ACTIVATION_DISABLED" : "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" } : {}),

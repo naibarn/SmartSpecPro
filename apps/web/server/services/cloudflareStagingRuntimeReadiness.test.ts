@@ -111,6 +111,36 @@ describe("probeCloudflareStagingRuntimeReadiness", () => {
     });
   });
 
+  it("reports application ingress separately when the job runtime is ready", async () => {
+    const fetchImpl = vi.fn(async () =>
+      response(200, {
+        ok: true,
+        readiness: {
+          ready: true,
+          activation: "enabled",
+          transport: "queues",
+          missing: [],
+          applicationIngress: {
+            enabled: false,
+            ready: false,
+            missing: ["NODE_HTTP", "PYTHON_HTTP", "Authorization: Bearer secret"],
+          },
+        },
+      })
+    ) as unknown as typeof fetch;
+
+    await expect(
+      probeCloudflareStagingRuntimeReadiness({ url, deploymentId: "deploy-1", fetchImpl })
+    ).resolves.toMatchObject({
+      status: "READY",
+      applicationIngress: {
+        enabled: false,
+        ready: false,
+        missing: ["NODE_HTTP", "PYTHON_HTTP"],
+      },
+    });
+  });
+
   it.each([
     "http://smartspec-cloudflare-staging.example.workers.dev",
     "https://other-worker.example.workers.dev",
