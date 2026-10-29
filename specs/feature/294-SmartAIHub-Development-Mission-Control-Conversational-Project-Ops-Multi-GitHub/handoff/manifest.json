@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "f4fb4a75d2cc634c9bc1e139d14948eb0ac00a72",
+    "expected_canonical_sha": "ec3001d37b6cc10b693bc87baf2b3360b56db2e6",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Owner refreshes ~/.config/smartspec-dev/admin-login.txt with the current development Admin password (or resets that development account through its existing recovery flow), then reruns pnpm run dev:web:verify and authenticated Task Control/Chat browser acceptance. Separately correlate the hosted chat.getMessages 500 to its serving revision and backend error; continue remaining Mission/Task parity, cross-source replay, and genuine SPEC-224 Child 1/2 execution and verification.",
+    "next_action": "Owner refreshes ~/.config/smartspec-dev/admin-login.txt with the current development Admin password (or resets that development account through its existing recovery flow), then reruns pnpm run dev:web:verify and authenticated Chat/Task Control acceptance. Continue the separately open cross-source event replay/gap recovery, global cross-host Mission/Agent session correlation, and genuine SPEC-224 Child 1/2 execution, settlement, automatic continuation, and Independent Final Verify.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Transcript load errors are now visible and retryable; empty-chat welcome is suppressed when chat.getMessages fails. Focused Vitest passed 48/48 and authenticated local UAT passed 1/1. The local dev service/tunnel is healthy at f4fb4a75d2cc634c9bc1e139d14948eb0ac00a72; public/anonymous dev checks passed. Authenticated browser verification is blocked because ~/.config/smartspec-dev/admin-login.txt password does not match the enabled development Admin account in smartspec_dev. Refresh that local verifier credential through the owner or the normal dev account recovery flow, then rerun dev:web:verify and authenticated acceptance. This does not explain the earlier hosted chat.getMessages 500. Hosted serving revision/root cause, Mission/Task parity, cross-source event replay, and genuine SPEC-224 Child 1/2 receipts, settlement, automatic continuation, and Independent Final Verify remain open.",
+    "resume_point": "Source fixes integrated at ec3001d37b6cc10b693bc87baf2b3360b56db2e6: Chat transcript load failures are visible and retryable; Thread status groups now sort by latest activity; focused Chat/Thread tests pass. Development tunnel public checks passed at f4fb4a75d2cc634c9bc1e139d14948eb0ac00a72. Authenticated dev browser verification remains blocked because ~/.config/smartspec-dev/admin-login.txt does not match the enabled smartspec_dev Admin password. Update the local verifier credential through the owner or normal dev account recovery, then rerun dev:web:verify and authenticated acceptance. This does not establish the root cause of the hosted chat.getMessages 500. Remaining source/runtime gaps: cross-source replay and gap recovery, global cross-host Mission/Agent session correlation, and genuine SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 115,
+  "generation": 116,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -268,9 +268,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f4fb4a75d2cc634c9bc1e139d14948eb0ac00a72",
+    "canonical_sha": "ec3001d37b6cc10b693bc87baf2b3360b56db2e6",
     "integrated": true,
-    "integrated_at": "2026-10-29T22:02:05+07:00"
+    "integrated_at": "2026-10-29T22:25:26+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1386,7 +1386,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T15:12:43.210981Z",
+  "updated_at": "2026-10-29T15:26:28.792957Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1758,6 +1758,13 @@
         "scope": "Development tunnel fresh-load and authenticated verifier check; verifier login blocked by local configured credential mismatch.",
         "source_sha": "f4fb4a75d2cc634c9bc1e139d14948eb0ac00a72",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "THREAD_OVERVIEW_RECENCY_ORDER",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/thread-overview-recency-order-20261029.md",
+        "scope": "Chat Thread status groups ordered by newest activity; focused sidebar/component regressions.",
+        "source_sha": "ec3001d37b6cc10b693bc87baf2b3360b56db2e6",
+        "status": "PASS"
       }
     ],
     "freshness": "UNKNOWN",
