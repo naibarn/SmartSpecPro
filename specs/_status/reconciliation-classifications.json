@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
-  "baseline_sha": "0565e8c4e0c92025362b11bec26496056231b2aa",
-  "inventory_record_count": 472,
-  "reconciliation_review_count": 330,
-  "relationship_edge_count": 312,
+  "baseline_sha": "db9566ad0a58d3549c28850e84eac8120f7acee3",
+  "inventory_record_count": 473,
+  "reconciliation_review_count": 333,
+  "relationship_edge_count": 317,
   "renumber_alias_count": 6,
-  "canonical_spec_count": 314,
+  "canonical_spec_count": 316,
   "duplicate_canonical_authority_count": 0,
   "classification_counts": {
-    "CANONICAL_ACTIVE": 313,
-    "DUPLICATE_REVISION": 1,
+    "CANONICAL_ACTIVE": 315,
+    "DUPLICATE_REVISION": 0,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
     "ORPHANED_RECORD": 0,
@@ -21,7 +21,7 @@
     "VALID_NON_CANONICAL": 156
   },
   "review_classification_counts": {
-    "CANONICAL_ACTIVE": 302,
+    "CANONICAL_ACTIVE": 305,
     "DUPLICATE_REVISION": 0,
     "HISTORICAL_REVISION": 0,
     "IMPLEMENTATION_EVIDENCE": 1,
@@ -835,7 +835,7 @@
       "evidence": [
         {
           "path": "specs/feature/014-Core-Funnel-Dashboard/spec.md",
-          "sha256": "38116a2fb063464b89fecd60c7dd676122a53e1e62735e138879b9205909fb21"
+          "sha256": "ca78708d47f70dc05f65b810baf6c17173db8ca12b7e19db41a31beb85ebfdd0"
         }
       ],
       "in_reconciliation_review": true
@@ -2184,7 +2184,7 @@
       "evidence": [
         {
           "path": "specs/feature/088-agentops-tracing-evaluation-and-release-gates/spec.md",
-          "sha256": "ccad53825520809c6ccef34ff01b4fc818cc09ee8cafc310ec2c418df38bd0f2"
+          "sha256": "019e89b4f221385053a3fae3e4ae9a7eddb34d4d3b15a2ad950d9ab7e213ab62"
         }
       ],
       "in_reconciliation_review": true
@@ -3039,7 +3039,7 @@
       "evidence": [
         {
           "path": "specs/feature/133-content-video-intelligence-platform/spec.md",
-          "sha256": "50da4ab277d558fb66e18ee97ca3f3e2d6ec03491ec481e3cd98ae4e1a9c1d11"
+          "sha256": "bd953c1ad4ad6d7b7d36b994194c6fe7440f27849fc7af45d980f137d2ef4548"
         }
       ],
       "in_reconciliation_review": true
@@ -4217,7 +4217,7 @@
       "evidence": [
         {
           "path": "specs/feature/196-universal-goal-orchestration/spec.md",
-          "sha256": "3c8c6c68979415b9277fc523c50b8d4fb76d73ad34f64dc423a029d5c345326b"
+          "sha256": "74f6c983255664a8ff33ad8bc42473046b67ce8623d11571f26b1ff030aabb3f"
         }
       ],
       "in_reconciliation_review": true
@@ -4255,7 +4255,7 @@
       "evidence": [
         {
           "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
-          "sha256": "275beeba6f8b56ba420aa90cbecd7193c4e1e567b8510370a97e807d5bbaa8cc"
+          "sha256": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3"
         }
       ],
       "in_reconciliation_review": true
@@ -4293,7 +4293,7 @@
       "evidence": [
         {
           "path": "specs/feature/200-universal-coding-agent-control-plane/spec.md",
-          "sha256": "ba0dcc4f0c64cfee38601e452bfc5a8b1c345185c1e3199b51427df6cd2d77aa"
+          "sha256": "13a476b5f715fff356197de4b6f39fda82b4b98b1edcba1b842f33127f047b0b"
         }
       ],
       "in_reconciliation_review": true
@@ -4388,7 +4388,7 @@
       "evidence": [
         {
           "path": "specs/feature/204-cloudflare-container-runtime-control-plane/spec.md",
-          "sha256": "9b9a0afca14fa18286c39b5172331bda6a95ea01f8ee16988af0cc7a5bd61e54"
+          "sha256": "4e39068072fbe75554107a63f1771b9894548bd9b2b7e36ebc4e2cdb4cb01706"
         }
       ],
       "in_reconciliation_review": true
@@ -4407,7 +4407,7 @@
       "evidence": [
         {
           "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-          "sha256": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae"
+          "sha256": "507693664ba5ca173220ab6867fdefa4e8f2916ad3441095faaf17fa47728e77"
         }
       ],
       "in_reconciliation_review": true
@@ -4426,7 +4426,7 @@
       "evidence": [
         {
           "path": "specs/feature/206-a2a-first-hybrid-external-agent-interoperability/spec.md",
-          "sha256": "66f44a4eba571a7a6b5d2c948be2dacc05f31efe91985fc91b2c3f7f33426c38"
+          "sha256": "4cd3660f84f05741fc2b8477e1bf3662be94f3ee1a4611ca9d34301c9df224dc"
         }
       ],
       "in_reconciliation_review": true
@@ -4445,7 +4445,7 @@
       "evidence": [
         {
           "path": "specs/feature/207-agentic-economic-control-plane/spec.md",
-          "sha256": "cbe6097d0f99a5ec93231fca6bedb0896dbd96ec54c8b291d8a799bd96755e93"
+          "sha256": "c4bb60ef65f2c7cfc645ff37f6ef37a0fa4780b36ae1011a1328837e5f973dcf"
         }
       ],
       "in_reconciliation_review": true
@@ -4464,7 +4464,7 @@
       "evidence": [
         {
           "path": "specs/feature/208-hybrid-computer-use-dynamic-capability-routing/spec.md",
-          "sha256": "37e56cf09a008a3527379986ec9b17bc547ecfdef555fb85ee5d3936b1a08994"
+          "sha256": "1d3e3dd853353c17685ad21d079c7c2909d63fe5fa3a98039cd82b55553ff8f1"
         }
       ],
       "in_reconciliation_review": true
@@ -4597,7 +4597,7 @@
       "evidence": [
         {
           "path": "specs/feature/213-jev-system-one-post-implementation-upgrade/spec.md",
-          "sha256": "34493df93ed0bb1557d1720b1592228fc52938cda7c3a8197fa2af49be318007"
+          "sha256": "e7b30a3e2da94ed219ec66418d64dab53abe3beaaa6b6dc3c5de45d552a4659d"
         }
       ],
       "in_reconciliation_review": true
@@ -4692,7 +4692,7 @@
       "evidence": [
         {
           "path": "specs/feature/218-ai-product-development-control-plane/spec.md",
-          "sha256": "f440ffc98f78cc12e46c4e43db8e7048a870968c0b8839efb9e4bd456974c7f5"
+          "sha256": "38ca7e4b04982438259c7d255c1a4b73a7c3bdfb017c451e496efc058e94fc0a"
         }
       ],
       "in_reconciliation_review": true
@@ -4711,7 +4711,7 @@
       "evidence": [
         {
           "path": "specs/feature/219-managed-tenant-runtime-deployment-cloudflare/spec.md",
-          "sha256": "a37863dee344e9b7b7f3c591b021eb5bbecce7861d8cbf321b2359f1f752c941"
+          "sha256": "13aab6f9b0357f91186d0deb0cafbc21fa7e7c8f377799044b155df78791d5ce"
         }
       ],
       "in_reconciliation_review": true
@@ -4730,7 +4730,7 @@
       "evidence": [
         {
           "path": "specs/feature/220-tenant-data-capability-security-gateway/spec.md",
-          "sha256": "9522f47e7e4753701e48417d9d06a766367b5541c70a46d7783f998b9fc0488f"
+          "sha256": "1c5340be5e6c5d4cc24a008aa2b82b0afe5576b70e56ed66cc96aa2bb5b739f0"
         }
       ],
       "in_reconciliation_review": true
@@ -4749,7 +4749,7 @@
       "evidence": [
         {
           "path": "specs/feature/221-smartaihub-skill-engineering-framework/spec.md",
-          "sha256": "0dead70a93b12199ffd5ca89cdf1050a08f6dfcf1a95744da9f5b61732890055"
+          "sha256": "38925f054581a77eb72d133f2d8e02bb19a5364c7fefb32de3a01877a3a27e1d"
         }
       ],
       "in_reconciliation_review": true
@@ -4806,7 +4806,7 @@
       "evidence": [
         {
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "sha256": "1b5c418a1c90b0f7e404a6ede75deadebac4a58f6328c5a98960d92f8853a6cd"
+          "sha256": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
         }
       ],
       "in_reconciliation_review": true
@@ -4901,7 +4901,7 @@
       "evidence": [
         {
           "path": "specs/feature/229-Unified RAG Retrieval Intelligence, Cloudflare AI Search & Vectorize/spec.md",
-          "sha256": "cc80f597235f1ccacbdb1940870bec15b16d5e8774fbcac5fbf0912f8845a300"
+          "sha256": "0fa3d9acf2b6480d495d5ecf3f0803f3be22384acb257b3194514067e6834c3d"
         }
       ],
       "in_reconciliation_review": true
@@ -4939,7 +4939,7 @@
       "evidence": [
         {
           "path": "specs/feature/231-Unified LLM Routing & Inference Orchestration/spec.md",
-          "sha256": "d7df7ea474c462746016cda468a27a6e5085f7fbc80e62b1cf8c47e6b2ed7ea6"
+          "sha256": "39583fd54784e1799e56237f9831d3679f2c76b647dbcea6eca23e3f972569e8"
         }
       ],
       "in_reconciliation_review": true
@@ -5414,33 +5414,10 @@
       "evidence": [
         {
           "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-          "sha256": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3"
+          "sha256": "3dcc17dbe80715d587cc9df709e90a80ce779bb96130db08a208e624209e171b"
         }
       ],
       "in_reconciliation_review": true
-    },
-    {
-      "record_key": "canonical:specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "record_kind": "DUPLICATE_SPEC_COPY",
-      "spec_id": "256",
-      "classification": "DUPLICATE_REVISION",
-      "canonical_target": "specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "provenance_relationship": "DUPLICATE_SPEC_COPY_OF:specs/feature/256-skill-first-capability-discovery-intent-execution",
-      "reason": "Nested spec.md is byte-identical to its authoritative ancestor copy.",
-      "action_taken": "Keep the duplicate visible in inventory; use the ancestor as authority and exclude this copy from canonical projection.",
-      "validation_state": "PASS_IDENTICAL_DIGEST_AND_ANCESTOR",
-      "evidence": [
-        {
-          "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-          "sha256": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3"
-        },
-        {
-          "path": "specs/feature/256-skill-first-capability-discovery-intent-execution/spec.md",
-          "sha256": "d9cb05d056947cb0b1b31ec479bc1e30eaf0cfb7a2e8ddbdeb19ba8911ae2df3"
-        }
-      ],
-      "in_reconciliation_review": false
     },
     {
       "record_key": "canonical:specs/feature/257-cloudflare-admin-control-plane-and-redisless-readiness",
@@ -5513,7 +5490,7 @@
       "evidence": [
         {
           "path": "specs/feature/261-smartaihub-portable-ai-application-standard-v1-6-0/spec.md",
-          "sha256": "3caa0c57268018721f5e5d6fffcc2fdfdeb00f48364803b718e2f91eb9ebc8a5"
+          "sha256": "7c804dc34b1a8d45f69aa13e446159a28dc744533093aebe0761fc783b2a2363"
         }
       ],
       "in_reconciliation_review": true
@@ -5608,7 +5585,7 @@
       "evidence": [
         {
           "path": "specs/feature/266-smartaihub-unified-data-evidence-knowledge-spatial-intelligence-fabric/spec.md",
-          "sha256": "d10c1080ef5ad8791f701e569d55e583fe009e2b72d235d84c2a949b821212e9"
+          "sha256": "f912bd365c17e316858ac91e3b3774ba39ea290d056cb22e9543ee35dcab3720"
         }
       ],
       "in_reconciliation_review": true
@@ -5627,7 +5604,7 @@
       "evidence": [
         {
           "path": "specs/feature/267-smartaihub-cloudflare-production-migration-durable-execution-control-plane-v2/spec.md",
-          "sha256": "b024915e0498d0ba4361b8f3aa34d629fae8c91a8b015dd7bc5963af7d6ece50"
+          "sha256": "c1712de1bbb6799c8ea1ab37c0eeb8a74d43c3415525e09a8c8727acc359a7de"
         }
       ],
       "in_reconciliation_review": true
@@ -5665,10 +5642,10 @@
       "evidence": [
         {
           "path": "specs/feature/269-smartaihub-primary-specialist-assistant-teams-autonomous-workforce/spec.md",
-          "sha256": "9a9f33ebed78afdda4bf76f1243292092b13c69e3fc05be8079b60d4620393be"
+          "sha256": "00e444043fa63058317e0db40aa62235252370f56ddf2e21fd27e938a0750592"
         }
       ],
-      "in_reconciliation_review": false
+      "in_reconciliation_review": true
     },
     {
       "record_key": "canonical:specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime",
@@ -5684,7 +5661,7 @@
       "evidence": [
         {
           "path": "specs/feature/270-smartaihub-design-intelligence-ui-generation-provider-neutral-design-runtime/spec.md",
-          "sha256": "d1c3860439af7e0be258a587a01b22d1f2a67af2d9954c52a92637ed0b369c41"
+          "sha256": "ce74e7b5be1c52315a57858dc559e30450416a1cbedf751340ca4f2c6c84c3a9"
         }
       ],
       "in_reconciliation_review": true
@@ -5722,7 +5699,7 @@
       "evidence": [
         {
           "path": "specs/feature/272-smartaihub-credential-vault-root-of-trust-secure-provider-broker/spec.md",
-          "sha256": "800e82daf67c73d4dd9bbe82718751b5af0f4a76674fb3ad5fe327c1fdb991b3"
+          "sha256": "9aab72501a345982771dedbdcff1976e9ff2d3c2476798222a00bcc0260e2c04"
         }
       ],
       "in_reconciliation_review": true
@@ -5741,7 +5718,7 @@
       "evidence": [
         {
           "path": "specs/feature/273-portable-mini-app-data-architecture/spec.md",
-          "sha256": "fbfe4627fd2572e877b92f4819caf4cc29fb14bfb4bbbc831c273926239c36f2"
+          "sha256": "1bcfaaa0cbec7f654a5672d037e8f257b0895dfc209a6a9b4d2e202142764c1e"
         }
       ],
       "in_reconciliation_review": true
@@ -5817,7 +5794,7 @@
       "evidence": [
         {
           "path": "specs/feature/277-task-control-experience-r1-6/spec.md",
-          "sha256": "5a322f0ab1eaf3126a0fcf3b12d4f06179f9f7e2f0c9b8045c7d3c9d713771d4"
+          "sha256": "9fff0b3594558231e3eca9607ac9be41ecc4ff63a3396c8ad3cd5cb2a0696f8d"
         }
       ],
       "in_reconciliation_review": true
@@ -5855,7 +5832,7 @@
       "evidence": [
         {
           "path": "specs/feature/279-universal-command-ingress-agent-delegation-gateway-r1-0/spec.md",
-          "sha256": "f374d69b0a5be30c20e30c63a2acd8511438eb792bdf380282e56cfa6d366909"
+          "sha256": "867a0172a2fd605b2b6213a60b0449f74c77529c4eedcdae2da447f2acc628d0"
         }
       ],
       "in_reconciliation_review": true
@@ -5874,7 +5851,7 @@
       "evidence": [
         {
           "path": "specs/feature/280-metered-capability-commerce-creator-economy-runtime-r1-0/spec.md",
-          "sha256": "08a0efade1db8df58269c6968049865fc5d9889400f9fafc4c31b8f5bd87ac6e"
+          "sha256": "1def67e6eae372085db425f0bb95e7ae43efbacd43131047de169df4c433bf48"
         }
       ],
       "in_reconciliation_review": true
@@ -5988,7 +5965,7 @@
       "evidence": [
         {
           "path": "specs/feature/286-agentic-video-production-creative-quality-runtime/spec.md",
-          "sha256": "ed6a6aabcf3e737261bee089081c2273980adeccdeac4967b8ec18532e717f72"
+          "sha256": "eb5e3510d299410ac143d632198e5921ea4b7b05c823b5b22c5e38a753bae724"
         }
       ],
       "in_reconciliation_review": true
@@ -6007,7 +5984,7 @@
       "evidence": [
         {
           "path": "specs/feature/287-Unified-UI-Governance-Rendering-Conformance-MiniApp-Design-Contract/spec.md",
-          "sha256": "77108e3eee67807545bfc0e8367d7b8af82823a71d4d4bf775c4d80adf80b936"
+          "sha256": "86fb4bb732d604ce61138580263a7f8259a654bc9cccf5887aa7ca20a7cb07a0"
         }
       ],
       "in_reconciliation_review": true
@@ -6026,7 +6003,7 @@
       "evidence": [
         {
           "path": "specs/feature/288-SmartAIHub-Resource-Fabric-Portable-Application-Backend-Contract/spec.md",
-          "sha256": "8062f7ea24fd504d2966e7f4e222ecae506826a1ff5725eba4c585f9f136d94b"
+          "sha256": "b3312a1535c3a88abf332fc04ee4a4510765a1bc90110879964d9a78222afca4"
         }
       ],
       "in_reconciliation_review": true
@@ -6121,7 +6098,7 @@
       "evidence": [
         {
           "path": "specs/feature/293-SmartAIHub-Unified-Git-Workspace-Repository-Federation/spec.md",
-          "sha256": "0d7877da73adb09a1b1bba3a16771c7d3074b8f8a560ae2622f3cba853d27a0a"
+          "sha256": "05335a57aa23ad949ae5a7f3745267e12f06f59331181f40e1f59283f221d688"
         }
       ],
       "in_reconciliation_review": true
@@ -6140,7 +6117,7 @@
       "evidence": [
         {
           "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "sha256": "410cd0f97af5829674d76ed9133c9dd8422d2a0de00e9775469eea6955a9ec13"
+          "sha256": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
         }
       ],
       "in_reconciliation_review": true
@@ -6159,7 +6136,7 @@
       "evidence": [
         {
           "path": "specs/feature/295-SmartAIHub-Production-Release-Deployment-Runtime-Data-Migration-Operations/spec.md",
-          "sha256": "a9cdb28b428f67a993b78e499f5a4ab31929d44e75cde27872c39d4100cd6d0c"
+          "sha256": "c2a783a729593d577fecd7650771d73101d22d53c91ad236f500dfef929ff22f"
         }
       ],
       "in_reconciliation_review": true
@@ -6350,6 +6327,44 @@
         {
           "path": "specs/feature/307-smartaihub-local-edge-inference-access-fabric/spec.md",
           "sha256": "ddb109ab2128a85dd2651d267dc90f2961850acf0749f9e1f17b5af24981d5e1"
+        }
+      ],
+      "in_reconciliation_review": true
+    },
+    {
+      "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
+      "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "308",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/308 - SmartAIHub Cooperative Dual Surface/spec.md",
+          "sha256": "81477c8fc0bf065ab95cae8b866a763741eccee5b8d051e437992d76685e71b9"
+        }
+      ],
+      "in_reconciliation_review": true
+    },
+    {
+      "record_key": "canonical:specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
+      "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
+      "record_kind": "CANONICAL_SPEC",
+      "spec_id": "310",
+      "classification": "CANONICAL_ACTIVE",
+      "canonical_target": null,
+      "provenance_relationship": "CANONICAL",
+      "reason": "Valid spec.md under a configured canonical root; unique ID/revision and canonical handoff are present.",
+      "action_taken": "Retain as current canonical authority; implementation completion remains independently governed by its handoff.",
+      "validation_state": "PASS_UNIQUE_CANONICAL_RECORD",
+      "evidence": [
+        {
+          "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
+          "sha256": "3da2b1b2903aae489f60be2bc5436743fda2c53d905347b8684b82f42793150e"
         }
       ],
       "in_reconciliation_review": true
