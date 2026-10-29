@@ -4,7 +4,10 @@ Date: 2026-10-29 (Asia/Bangkok)
 
 Scope: Project/status Thread navigation and same-task execution identity across Chat and the existing Task Control/Mission view.
 
-State: source changes and focused tests only; not hosted UI or live execution acceptance.
+Integrated source SHA: `cd538f528f7b19091379cc300d20b10d184ed853`.
+
+State: local source and authenticated browser acceptance are partial; no hosted
+serving revision or live execution acceptance is claimed.
 
 ## Implemented in this source checkpoint
 
@@ -56,10 +59,28 @@ Result: 1 file, 4 tests passed. The test verifies the real project-title join,
 tenant/owner-scoped Thread list, pagination, status projection and cursor
 isolation against disposable PostgreSQL.
 
+Authenticated local browser UAT used the isolated development environment and
+source SHA above. Run ID: `59953e23-500c-4a72-aae2-21b5f8306109`; evidence is at
+`apps/web/test-results/smarthub-uat/59953e23-500c-4a72-aae2-21b5f8306109/`.
+The attempted test-file filter was not applied by the package script, so the
+full authenticated UAT profile ran: **14 passed, 2 failed, 1 skipped**. The six
+English/Thai Task Control overview cases across desktop/tablet/mobile passed,
+as did authenticated navigation and the no-execution composer/skill-selector
+checks. The Developer Runner/model-catalog case was skipped because no fresh
+authorized Runner model catalog was returned in this UAT tenant.
+
+The Gateway integration case failed before issuing a request because no
+Gateway-authorized model was available. SPEC-224 public-access failed at
+`STORAGE_CONDITIONAL_CREATE_UNSUPPORTED` in the configured local storage
+adapter. These were incidental cases from the broad profile and are not
+attributed to this Chat/Task Control source change. The UAT run used the local
+isolated development server; it did not inspect or change the hosted site.
+
 ## Remaining acceptance gaps
 
-- No authenticated browser UAT or current serving-revision proof was available
-  in this source-only check; this checkpoint does not claim hosted deployment.
+- The local authenticated UAT did not exercise project/thread selection after
+  reload, nor prove the live model catalog. Current hosted serving-revision
+  proof remains unavailable; this checkpoint does not claim hosted deployment.
 - Mission Control remains an authorized current task-snapshot and Runner
   topology view, not a global multi-host Thread board with a complete
   cross-machine Agent/session graph.

@@ -138,11 +138,14 @@ session history, and thread overview queries. Selected threads are now visibly
 marked and navigable by keyboard. These are partial UX improvements, not full
 acceptance of any phase. Focused component verification passed 57/57 tests and
 Chat locale-key coverage is 100% (384/384 keys in English and Thai).
-Authenticated browser verification did not start: the isolated UAT web server
-exits with a named-export error for `./_core/env` before browser assertions.
-See `uwac-r06/implementation/review-loops-20261029.md` for the ten review
-passes, follow-up regression pass, evidence and remaining gaps. No hosted
-deployment or SPEC-224 live execution is claimed.
+An earlier authenticated browser attempt did not start because the isolated
+UAT web server exited on a named-export error for `./_core/env`. The current
+source checkpoint has since passed local authenticated navigation and
+Task-Control overview browser cases (see the acceptance evidence below); this
+does not verify a hosted serving revision. See
+`uwac-r06/implementation/review-loops-20261029.md` for the ten review passes,
+follow-up regression pass, and remaining gaps. No hosted deployment or
+SPEC-224 live execution is claimed.
 
 ## Source implementation checkpoint — 2026-10-29
 
@@ -156,10 +159,13 @@ Authorized Runner observation remains the Mission/Task topology source. No
 duplicate session, event, Job or Run store was introduced.
 
 Verification for this checkpoint: five focused component/service test files,
-44 tests passed; the real disposable PostgreSQL conversation-thread integration
-test passed 4/4, including project-title owner scope. `git diff --check` is
-required before integration. These are source-level checks only. Hosted
-authenticated browser verification, serving revision, global cross-host
+45 tests passed; the real disposable PostgreSQL conversation-thread integration
+test passed 4/4, including project-title owner scope. `git diff --check` passed.
+The isolated authenticated local UAT passed 14 tests, failed 2 unrelated tests
+and skipped the live Runner model-catalog case because no current authorized
+catalog was available; see the handoff evidence for exact failure boundaries.
+These checks do not prove a hosted serving revision. Hosted authenticated
+browser verification and serving revision, global cross-host
 Mission Thread board, immutable multi-source replay/gap recovery, complete
 result return to the Chat transcript, and real SPEC-224 two-child execution
 remain open. Exact evidence is in
