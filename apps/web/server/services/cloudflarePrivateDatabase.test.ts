@@ -10,7 +10,8 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB
   privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail,
-  isSafePreProviderPrivateDatabaseRenewalAuthorityFailure, isSafeUnstartedPrivateDatabaseRenewalExpiry,
+  isSafePreProviderPrivateDatabaseRenewalAuthorityFailure, isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure,
+  isSafeUnstartedPrivateDatabaseRenewalExpiry,
   nextPrivateDatabaseRenewalGeneration, projectPrivateDatabaseRenewalJobStatus,
   stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
 import { reconcilePrivateDatabaseServiceTokenRefresh } from "./cloudflarePrivateDatabaseRenewalExecutor";
@@ -70,6 +71,22 @@ describe("Staging private database renewal recovery", () => {
       errorCode: "PRIVATE_DATABASE_RENEWAL_PLAN_STALE" }, 0)).toBe(false);
     expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck, startedAt: null }, 0)).toBe(false);
     expect(isSafePreProviderPrivateDatabaseRenewalAuthorityFailure({ ...failedAtAuthorityCheck, fencingVersion: 0 }, 0)).toBe(false);
+  });
+
+  it("allows one explicit retry only for an executor binding rejection before any provider write", () => {
+    const failedBeforeProvider = { status: "failed", errorCode: "CloudflareStagingExecutorIdentityError", errorMessage: "executor_attempt_binding_invalid",
+      progress: { stage: "RENEWAL_AUTHORITY_CHECK", progress: 5 }, output: null, startedAt: new Date(), attempt: 1,
+      fencingVersion: 1, maxAttempts: 2 };
+    expect(isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure(failedBeforeProvider, 0)).toBe(true);
+    expect(isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure(failedBeforeProvider, 1)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure({ ...failedBeforeProvider,
+      progress: { stage: "SOURCE_RECEIPT_VERIFICATION", progress: 20 } }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure({ ...failedBeforeProvider, output: { changed: true } }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure({ ...failedBeforeProvider,
+      errorCode: "PRIVATE_DATABASE_RENEWAL_EXECUTOR_DENIED" }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure({ ...failedBeforeProvider,
+      errorMessage: "executor_private_key_invalid" }, 0)).toBe(false);
+    expect(isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure({ ...failedBeforeProvider, attempt: 2 }, 0)).toBe(false);
   });
 
   it("increments the bounded renewal generation instead of replaying a failed idempotency identity", () => {

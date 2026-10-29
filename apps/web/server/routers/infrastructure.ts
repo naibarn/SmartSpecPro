@@ -753,10 +753,9 @@ export const infrastructureRouter = router({
           message: cloudflareApprovalFailureCode(payload, response.status, stage) });
         return cloudflareApprovalResponseObject(payload);
       };
-      // A new explicit Owner confirmation is required only for the one safe
-      // recovery case: the prior authorized Job expired before it was ever
-      // claimed. Keep the old Job immutable and give the fresh grant/Job a
-      // distinct idempotency identity.
+      // A fresh Owner confirmation is required for every new Job. Safe recovery
+      // cases are limited to verified pre-mutation expiry or executor rejection;
+      // preserve the old record and use a distinct idempotency identity.
       const renewalGeneration = preflight.existingJob?.retryable ? preflight.existingJob.nextGeneration ?? 2 : 1;
       const operationKey = `cloudflare-private-database-renewal:${preflight.planDigest}:generation:${renewalGeneration}`;
       const operationId = stableOperationUuid(operationKey);

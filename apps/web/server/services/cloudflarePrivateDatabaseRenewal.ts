@@ -18,7 +18,7 @@ export type PrivateDatabaseRenewalPreflight = {
   accountRef: string;
   plan: PrivateDatabaseRenewalPlan | null; planDigest: string | null; leaseExpiresAt: string | null;
   existingJob: { jobId: string; status: string; errorCode: string | null; heartbeatAt: string | null; retryable: boolean;
-    retryReason: "expired_before_claim" | "authority_rejected_before_provider" | null; nextGeneration: number | null } | null;
+    retryReason: "expired_before_claim" | "authority_rejected_before_provider" | "executor_binding_rejected_before_provider" | null; nextGeneration: number | null } | null;
 };
 
 export function nextPrivateDatabaseRenewalGeneration(idempotencyKey: string | null): number {
@@ -50,6 +50,21 @@ export function isSafePreProviderPrivateDatabaseRenewalAuthorityFailure(job: {
   return job.status === "failed" && job.errorCode === "PRIVATE_DATABASE_RENEWAL_AUTHORITY_DENIED"
     && progress.stage === "RENEWAL_AUTHORITY_CHECK" && progress.progress === 5
     && job.startedAt !== null && job.attempt >= 1 && job.fencingVersion >= 1
+    && job.output == null && job.maxAttempts >= job.attempt && checkpointCount === 0;
+}
+
+/** Executor proof validation is also read-only. Keep this recovery narrow to
+ * the initial authority checkpoint and require an untouched output/checkpoint. */
+export function isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure(job: {
+  status: string; errorCode: string | null; errorMessage: string | null; progress: unknown; output: unknown; startedAt: Date | null;
+  attempt: number; fencingVersion: number; maxAttempts: number;
+}, checkpointCount: number): boolean {
+  const progress = job.progress && typeof job.progress === "object" && !Array.isArray(job.progress)
+    ? job.progress as Record<string, unknown> : {};
+  return job.status === "failed" && job.errorCode === "CloudflareStagingExecutorIdentityError"
+    && job.errorMessage === "executor_attempt_binding_invalid"
+    && progress.stage === "RENEWAL_AUTHORITY_CHECK" && progress.progress === 5
+    && job.startedAt !== null && job.attempt === 1 && job.fencingVersion >= 1
     && job.output == null && job.maxAttempts >= job.attempt && checkpointCount === 0;
 }
 
@@ -165,6 +180,7 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
   const leaseExpiresAt = stagingPrivateDatabaseRenewalLeaseExpiresAt(now);
   const authorizationExpiresAt = new Date(now + 10 * 60_000).toISOString();
   const [existing] = await atStage("RENEWAL_JOB_READBACK", () => db.select({ id: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode,
+    errorMessage: workerJobs.errorMessage,
     heartbeatAt: workerJobs.heartbeatAt, startedAt: workerJobs.startedAt, leaseExpiresAt: workerJobs.leaseExpiresAt,
     fencingVersion: workerJobs.fencingVersion, attempt: workerJobs.attempt, maxAttempts: workerJobs.maxAttempts,
     idempotencyKey: workerJobs.idempotencyKey, progress: workerJobs.progressJson, output: workerJobs.outputJson,
@@ -182,11 +198,13 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
     ]);
     const safeUnstartedDeadlineExpiry = isSafeUnstartedPrivateDatabaseRenewalExpiry(existing, attemptRows.length, checkpointRows.length);
     const safePreProviderAuthorityFailure = isSafePreProviderPrivateDatabaseRenewalAuthorityFailure(existing, checkpointRows.length);
+    const safePreProviderExecutorBindingFailure = isSafePreProviderPrivateDatabaseRenewalExecutorBindingFailure(existing, checkpointRows.length);
     const previousJob = { jobId: existing.id, status: existing.status, errorCode: existing.errorCode,
-      heartbeatAt: existing.heartbeatAt?.toISOString() ?? null, retryable: safeUnstartedDeadlineExpiry || safePreProviderAuthorityFailure,
+      heartbeatAt: existing.heartbeatAt?.toISOString() ?? null, retryable: safeUnstartedDeadlineExpiry || safePreProviderAuthorityFailure || safePreProviderExecutorBindingFailure,
       retryReason: safeUnstartedDeadlineExpiry ? "expired_before_claim" as const
-        : safePreProviderAuthorityFailure ? "authority_rejected_before_provider" as const : null,
-      nextGeneration: safeUnstartedDeadlineExpiry || safePreProviderAuthorityFailure
+        : safePreProviderAuthorityFailure ? "authority_rejected_before_provider" as const
+          : safePreProviderExecutorBindingFailure ? "executor_binding_rejected_before_provider" as const : null,
+      nextGeneration: safeUnstartedDeadlineExpiry || safePreProviderAuthorityFailure || safePreProviderExecutorBindingFailure
         ? nextPrivateDatabaseRenewalGeneration(existing.idempotencyKey) : null };
     if (!previousJob.retryable) return result({ ...base, ready: false, reason: existing.status === "expired"
       ? "PRIVATE_DATABASE_RENEWAL_PREVIOUS_JOB_REQUIRES_REVIEW" : "PRIVATE_DATABASE_RENEWAL_JOB_EXISTS",

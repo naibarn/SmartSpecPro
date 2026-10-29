@@ -92,6 +92,18 @@ describe("Cloudflare staging executor identity", () => {
     await expect(createCloudflareStagingExecutorProof({ ...binding, provisionContract: "cloudflare-staging-native-provision-v1" })).rejects.toThrow("executor_attempt_binding_invalid");
   });
 
+  it("accepts the Staging database lease-renewal action during proof verification", async () => {
+    const renewal = { ...binding, action: "renew_lease" as const,
+      provisionContract: "cloudflare-staging-private-db-renewal-v1" as const,
+      provisionAuthority: { projectId: "project-stage", grantRef: "11111111-1111-4111-8111-111111111111",
+        accountRef: "a".repeat(32), planDigest: binding.artifactSha256 } };
+    const proof = await signedProof(renewal as any);
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: renewal as any }))
+      .resolves.toMatchObject({ registered: true, executorId });
+    await expect(verifyCloudflareStagingExecutorProof(proof, { now, expectedBinding: { ...renewal, idempotencyKey: "different-attempt" } as any }))
+      .rejects.toThrow("executor_proof_invalid");
+  });
+
   it("binds HTTP image publication separately from metadata or VM provisioning", async () => {
     const attempt = { ...binding, action: "provision" as const,
       provisionContract: "cloudflare-staging-http-image-v1" as const,

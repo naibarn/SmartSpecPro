@@ -326,7 +326,8 @@ export async function verifyCloudflareStagingExecutorProof(
     expectedBinding.target !== CLOUDFLARE_STAGING_EXECUTOR_TARGET ||
     !/^[a-f0-9]{64}$/i.test(expectedBinding.artifactSha256) ||
     (expectedBinding.action !== "deploy" &&
-      expectedBinding.action !== "rollback" && expectedBinding.action !== "bootstrap" && expectedBinding.action !== "provision")
+      expectedBinding.action !== "rollback" && expectedBinding.action !== "bootstrap" && expectedBinding.action !== "provision"
+      && expectedBinding.action !== "renew_lease")
   )
     throw new CloudflareStagingExecutorIdentityError(
       "executor_attempt_binding_invalid"
