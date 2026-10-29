@@ -53,11 +53,11 @@ the three UI phases, their owner boundaries, and the requested acceptance.
 
 ## Consolidated verification
 
-- Focused Vitest: `Spec224WorkspacePanel`, `ChatSidebar`,
-  `UniversalControlPlanePanel`, `ConversationExecutionActivity` — 4 files,
-  55/55 tests passed after updating the translation mock for the new copy.
-- `pnpm --dir apps/web run i18n:coverage` — `chat` locale keys 379/379 in both
-  English and Thai; 100% overall key-count coverage.
+- Focused Vitest at the original checkpoint: `Spec224WorkspacePanel`,
+  `ChatSidebar`, `UniversalControlPlanePanel`,
+  `ConversationExecutionActivity` — 4 files, 55/55 tests passed.
+- `pnpm --dir apps/web run i18n:coverage` at the original checkpoint — `chat`
+  locale keys 379/379 in English and Thai.
 - Authenticated Playwright attempt: blocked before browser execution by the
   `./_core/env` named-export startup error above. No hosted runtime result is
   inferred from this isolated dev test server.
@@ -76,5 +76,30 @@ the three UI phases, their owner boundaries, and the requested acceptance.
 - SPEC-224 genuine Child 1/2 Runner execution, settlement, automatic
   continuation and Independent Final Verify remain separate live acceptance;
   no synthetic evidence is counted.
-- This change is source-only until its owned paths are committed/integrated;
-  no deployed UI claim is made.
+- At that original checkpoint, the change was source-only; no deployed UI
+  claim was made.
+
+## Follow-up after review loop 10
+
+The initial ten passes exposed a phase-1 recoverability gap: failed session
+history was rendered as an empty list, and the thread overview error had no
+retry action or active-thread marker. The follow-up fixes those states without
+changing conversation/thread identity or adding another data store.
+
+11. **Recovery and selected-thread state.** Added explicit session-history
+  error/retry handling, a visible thread-overview retry that preserves the
+  error until recovery, and `aria-current` plus selected styling for the active
+  thread. Failed refreshes retain previously loaded sessions while showing the
+  error and retry action. Focused regressions cover each behavior.
+
+Follow-up verification at source commit `4f3e15371176e42c441ad8806b9dbbe8d90dd35c`:
+
+- Focused Vitest for `Spec224WorkspacePanel`, `ChatSidebar`,
+  `UniversalControlPlanePanel`, and `ConversationExecutionActivity`: 4 files,
+  58/58 tests passed.
+- Chat English/Thai locale coverage: 384/384 keys (100%); overall key-count
+  coverage: 8799/8802 (the existing three-key presentation gap is unrelated).
+- `git diff --check` passed; the source commit is integrated in `origin/main`.
+- Hosted authenticated browser acceptance remains blocked before browser
+  assertions by the isolated test server's `./_core/env` named-export startup
+  error. Hosted API 500 reports and SPEC-224 live execution remain unverified.

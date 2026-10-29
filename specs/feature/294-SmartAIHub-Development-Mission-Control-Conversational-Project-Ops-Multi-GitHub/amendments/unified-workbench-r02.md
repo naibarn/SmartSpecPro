@@ -132,11 +132,13 @@ The reviewed source change removes client-side status regrouping from the
 recent-thread list so newest verified activity remains first across statuses;
 adds plain-language session/thread hints; improves Runner option labels while
 keeping machine names out of Simple mode; localizes the single-Harness Goal
-contract; and adds an explicit Task Control retry for failed work-observation
-queries. These are partial UX improvements, not full acceptance of any phase.
-Focused component verification passed 55/55 tests and Chat locale-key coverage
-is 100% (379/379 keys in English and Thai). Authenticated browser verification did not start: the isolated UAT web
-server exits with a named-export error for `./_core/env` before browser
-assertions. See `uwac-r06/implementation/review-loops-20261029.md` for the ten
-review passes, evidence and remaining gaps. No hosted deployment or SPEC-224
-live execution is claimed.
+contract; and adds explicit retry for failed Task Control observation, Chat
+session history, and thread overview queries. Selected threads are now visibly
+marked and navigable by keyboard. These are partial UX improvements, not full
+acceptance of any phase. Focused component verification passed 57/57 tests and
+Chat locale-key coverage is 100% (384/384 keys in English and Thai).
+Authenticated browser verification did not start: the isolated UAT web server
+exits with a named-export error for `./_core/env` before browser assertions.
+See `uwac-r06/implementation/review-loops-20261029.md` for the ten review
+passes, follow-up regression pass, evidence and remaining gaps. No hosted
+deployment or SPEC-224 live execution is claimed.
