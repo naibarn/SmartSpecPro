@@ -74,7 +74,19 @@ type StagingConfirmation = {
   confirmLabel: string;
   run: () => Promise<unknown>;
 };
-type StagingActionStatus = { state: "running" | "succeeded" | "failed"; action: string; detail?: string; at: string };
+type StagingActionStatus = { state: "running" | "accepted" | "succeeded" | "failed"; action: string; detail?: string; at: string };
+
+function stagingActionFailureText(code: string, text: (en: string, th: string) => string) {
+  if (code === "PRIVATE_DATABASE_RENEWAL_PLAN_CHANGED") return text(
+    "The reviewed plan changed during confirmation. No renewal Job was admitted. Refresh the read-only Staging check and confirm the latest plan.",
+    "แผนที่ตรวจทานเปลี่ยนระหว่างยืนยัน ระบบยังไม่ได้รับ Job ต่ออายุ ให้ตรวจ Staging แบบอ่านอย่างเดียวอีกครั้ง แล้วตรวจและยืนยันแผนล่าสุด",
+  );
+  if (code === "PRIVATE_DATABASE_RENEWAL_PLAN_EXPIRED") return text(
+    "The confirmation window expired. No renewal Job was admitted. Refresh the read-only Staging check before confirming again.",
+    "ช่วงเวลายืนยันหมดอายุ ระบบยังไม่ได้รับ Job ต่ออายุ ให้ตรวจ Staging แบบอ่านอย่างเดียวอีกครั้งก่อนยืนยันใหม่",
+  );
+  return code;
+}
 
 function productionDatabaseAdmissionStorageKey(scopeKey: string) {
   return `smartspec:cloudflare-production-database:${scopeKey}`;
@@ -908,8 +920,11 @@ export default function AdminDeploymentTargets() {
     setStagingActionRunning(true);
     setStagingActionStatus({ state: "running", action: action.title, at: new Date().toISOString() });
     try {
-      await action.run();
-      setStagingActionStatus({ state: "succeeded", action: action.title, at: new Date().toISOString() });
+      const result = await action.run();
+      const jobId = result && typeof result === "object" && "jobId" in result && typeof result.jobId === "string"
+        ? result.jobId : null;
+      setStagingActionStatus({ state: jobId ? "accepted" : "succeeded", action: action.title,
+        ...(jobId ? { detail: jobId } : {}), at: new Date().toISOString() });
       setStagingConfirmation(null);
     } catch (error) {
       const message = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "STAGING_ACTION_FAILED";
@@ -1771,9 +1786,13 @@ export default function AdminDeploymentTargets() {
         <VStack as="section" gap={2}>
           {stagingActionStatus ? <VStack gap={0} role={stagingActionStatus.state === "failed" ? "alert" : "status"} aria-live="polite">
             <p><strong>{stagingActionStatus.state === "running" ? text("Action started", "เริ่มดำเนินการแล้ว")
-              : stagingActionStatus.state === "succeeded" ? text("Action completed", "ดำเนินการเสร็จแล้ว")
+              : stagingActionStatus.state === "accepted" ? text("Canonical Job accepted", "ระบบรับ Job กลางแล้ว")
+                : stagingActionStatus.state === "succeeded" ? text("Action completed", "ดำเนินการเสร็จแล้ว")
                 : text("Action failed", "ดำเนินการไม่สำเร็จ")}</strong>: {stagingActionStatus.action}</p>
-            {stagingActionStatus.detail ? <p><code>{stagingActionStatus.detail}</code></p> : null}
+            {stagingActionStatus.detail ? stagingActionStatus.state === "failed"
+              && stagingActionFailureText(stagingActionStatus.detail, text) !== stagingActionStatus.detail
+              ? <p>{stagingActionFailureText(stagingActionStatus.detail, text)} · <code>{stagingActionStatus.detail}</code></p>
+              : <p>{stagingActionStatus.state === "accepted" ? text("Job ID", "รหัส Job") : null} <code>{stagingActionStatus.detail}</code></p> : null}
             <p>{text("Updated", "อัปเดตเมื่อ")}: {new Date(stagingActionStatus.at).toLocaleString()}</p>
           </VStack> : null}
           {savedStagingScope?.tenantId === tenantId && savedStagingScope.projectId === projectId ? <p role="status">{text(
@@ -1909,7 +1928,7 @@ export default function AdminDeploymentTargets() {
                           })}>
                           {stagingRenewalMutation.isPending ? text("Submitting the authorized renewal…", "กำลังส่งคำขอต่ออายุ…") : text("Authorize and renew the existing Staging database lease", "อนุมัติและต่ออายุ lease ฐานข้อมูล Staging เดิม")}
                         </Button> : null}
-                        {stagingRenewalMutation.error ? <p role="alert"><code>{stagingRenewalMutation.error.message}</code></p> : null}
+                        {stagingRenewalMutation.error ? <p role="alert">{stagingActionFailureText(stagingRenewalMutation.error.message, text)} · <code>{stagingRenewalMutation.error.message}</code></p> : null}
                         {finalizeStagingRenewal.error ? <p role="alert"><code>{finalizeStagingRenewal.error.message}</code></p> : null}
                         {stagingRenewalJobId && !job ? <p role="status">{text("Submission recorded; reconciling the same canonical Job…", "บันทึกคำขอแล้ว กำลัง reconcile canonical Job เดิม…")}: <code>{stagingRenewalJobId}</code></p> : null}
                       </VStack>;

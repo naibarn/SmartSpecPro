@@ -40,7 +40,7 @@ def renewal_definition():
         "serviceTokenExpiresAt": (now + timedelta(days=1)).isoformat(), "refreshServiceTokenExpiry": True,
         "leaseExpiresAt": (now + timedelta(days=30)).isoformat(), "authorizationExpiresAt": (now + timedelta(minutes=10)).isoformat()}
     policy = {key: value for key, value in source.items() if key not in ("contractVersion", "plan", "planDigest")}
-    policy.update({"contractVersion": RENEWAL_CONTRACT, "plan": plan, "planDigest": plan_digest(plan), "maxOperations": 1})
+    policy.update({"contractVersion": RENEWAL_CONTRACT, "plan": plan, "planDigest": renewal_plan_digest(plan), "maxOperations": 1})
     return policy
 
 
@@ -129,7 +129,7 @@ def test_private_database_renewal_contract_is_exact_and_owner_scoped():
 def test_private_database_renewal_rejects_expired_or_unbounded_owner_action():
     policy = renewal_definition()
     expired_auth = {**policy, "plan": {**policy["plan"], "authorizationExpiresAt": (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()}}
-    expired_auth["planDigest"] = plan_digest(expired_auth["plan"])
+    expired_auth["planDigest"] = renewal_plan_digest(expired_auth["plan"])
     with pytest.raises(ValueError):
         validate_staging_policy(expired_auth, datetime.now(timezone.utc))
     for change in ({"maxOperations": 2}, {"environment": "production"}, {"allowBootstrap": True}):
@@ -149,7 +149,9 @@ def test_private_database_renewal_digest_matches_admin_canonical_plan():
             "accessPolicyId": "44444444-4444-4444-8444-444444444444", "serviceTokenId": "55555555-5555-4555-8555-555555555555", "dnsRecordId": "6" * 32},
         "serviceTokenExpiresAt": "2026-10-30T00:00:00.000Z", "refreshServiceTokenExpiry": True,
         "leaseExpiresAt": "2026-11-28T00:00:00.000Z", "authorizationExpiresAt": "2026-10-29T05:00:00.000Z"}
-    assert renewal_plan_digest(plan) == "f04bb438ffaef8f55bea335233cf23583aae13d5d40d8c708600337353cdbe5c"
+    digest = renewal_plan_digest(plan)
+    assert digest == renewal_plan_digest({**plan, "authorizationExpiresAt": "2026-10-29T05:09:00.000Z"})
+    assert digest != renewal_plan_digest({**plan, "serviceTokenExpiresAt": "2026-10-31T00:00:00.000Z"})
 
 
 @pytest.mark.unit

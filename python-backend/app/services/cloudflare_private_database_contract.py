@@ -75,7 +75,11 @@ def validate_renewal_plan(value):
 
 
 def renewal_plan_digest(plan):
-    return plan_digest(validate_renewal_plan(plan))
+    # The short-lived authorization window is reissued by each read-only preflight. It remains
+    # validated and bounds the grant, but is not part of the immutable reviewed operation plan.
+    reviewed = validate_renewal_plan(plan)
+    reviewed.pop("authorizationExpiresAt")
+    return plan_digest(reviewed)
 
 
 def normalize_renewal_grant(value):

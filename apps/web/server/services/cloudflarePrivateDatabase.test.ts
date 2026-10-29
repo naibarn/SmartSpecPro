@@ -8,7 +8,8 @@ import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB, PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB,
   certificateDigest, privateDatabaseGrantSchema, privateDatabasePlanDigest, privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
-import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail } from "./cloudflarePrivateDatabaseRenewal";
+import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail,
+  stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
 import { reconcilePrivateDatabaseServiceTokenRefresh } from "./cloudflarePrivateDatabaseRenewalExecutor";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
@@ -131,6 +132,30 @@ describe("private PostgreSQL staging provisioning", () => {
     expect(privateDatabaseRenewalPlanSchema.safeParse({ ...plan, refreshServiceTokenExpiry: false }).success).toBe(false);
   });
 
+  it("keeps renewal confirmation stable across short-lived authorization refreshes", () => {
+    const plan = { configurationRef: `cf-origin:${"a".repeat(64)}`, configurationDigest: "a".repeat(64),
+      sourceProvisionJobId: "11111111-1111-4111-8111-111111111111",
+      sourcePlan: { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app" as const, zoneId: "b".repeat(32),
+        tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub", caSha256: "c".repeat(64), connectionLimit: 5 as const,
+        configurationExpiresAt: "2026-10-01T00:00:00.000Z" }, sourcePlanDigest: "d".repeat(64),
+      resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: "33333333-3333-4333-8333-333333333333",
+        accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      serviceTokenExpiresAt: "2026-10-20T00:00:00.000Z", refreshServiceTokenExpiry: true,
+      leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" };
+    plan.sourcePlanDigest = privateDatabasePlanDigest(plan.sourcePlan);
+    const digest = privateDatabaseRenewalPlanDigest(plan);
+    expect(privateDatabaseRenewalPlanDigest({ ...plan, authorizationExpiresAt: "2026-10-29T05:09:00.000Z" })).toBe(digest);
+    expect(privateDatabaseRenewalPlanDigest({ ...plan, serviceTokenExpiresAt: "2026-10-21T00:00:00.000Z" })).not.toBe(digest);
+  });
+
+  it("uses a stable UTC-day lease target that remains at least 30 days ahead", () => {
+    const before = Date.parse("2026-10-29T05:00:00.000Z");
+    const after = Date.parse("2026-10-29T05:09:00.000Z");
+    const expiry = stagingPrivateDatabaseRenewalLeaseExpiresAt(before);
+    expect(stagingPrivateDatabaseRenewalLeaseExpiresAt(after)).toBe(expiry);
+    expect(Date.parse(expiry) - before).toBeGreaterThan(29 * 24 * 60 * 60_000);
+  });
+
   it("matches the Python approval service's immutable renewal plan digest", () => {
     const sourcePlan = { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app" as const,
       zoneId: "b".repeat(32), tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub",
@@ -141,7 +166,7 @@ describe("private PostgreSQL staging provisioning", () => {
         accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
       serviceTokenExpiresAt: "2026-10-30T00:00:00.000Z", refreshServiceTokenExpiry: true,
       leaseExpiresAt: "2026-11-28T00:00:00.000Z", authorizationExpiresAt: "2026-10-29T05:00:00.000Z" }))
-      .toBe("f04bb438ffaef8f55bea335233cf23583aae13d5d40d8c708600337353cdbe5c");
+      .toBe("64911708eb634f124c1958ec1f6ba0f7afb61363dfcede43bb9b318b07be991f");
   });
 
   it("verifies the renewal receipt against the exact immutable job plan and original resource IDs", async () => {

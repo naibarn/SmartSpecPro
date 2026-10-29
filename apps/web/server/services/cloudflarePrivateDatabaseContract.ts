@@ -70,8 +70,12 @@ function stableJson(value: unknown): string {
   return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b))
     .map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`).join(",")}}`;
 }
-export const privateDatabaseRenewalPlanDigest = (plan: PrivateDatabaseRenewalPlan) =>
-  createHash("sha256").update(stableJson(privateDatabaseRenewalPlanSchema.parse(plan))).digest("hex");
+export const privateDatabaseRenewalPlanDigest = (plan: PrivateDatabaseRenewalPlan) => {
+  const { authorizationExpiresAt: _authorizationExpiresAt, ...reviewedPlan } = privateDatabaseRenewalPlanSchema.parse(plan);
+  // Authorization is short lived and recalculated by each preflight. Keep it validated and use
+  // it to bound the grant, but don't let that clock invalidate the reviewed operation plan.
+  return createHash("sha256").update(stableJson(reviewedPlan)).digest("hex");
+};
 export const privateDatabaseRenewalGrantSchema = z.object({
   schemaVersion: z.literal(PRIVATE_DATABASE_RENEWAL_GRANT), grantRef: z.string().uuid(),
   tenantId: z.string().min(1).max(36), projectId: z.string().min(1).max(36), requesterUserId: z.number().int().positive(),

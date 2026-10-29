@@ -73,6 +73,12 @@ async function verifyExpiredRole(db: DrizzleDB, plan: PrivateDatabaseRenewalPlan
     throw new Error("PRIVATE_DATABASE_RENEWAL_ROLE_DRIFT");
 }
 
+/** Stable for a UTC day while keeping the lease within the existing 30-day policy limit. */
+export function stagingPrivateDatabaseRenewalLeaseExpiresAt(now: number): string {
+  const dayMs = 24 * 60 * 60_000;
+  return new Date(Math.floor((now + 30 * dayMs) / dayMs) * dayMs).toISOString();
+}
+
 /** Read-only plan construction. It proves exact existing provider IDs and the role state before an Owner action is shown. */
 export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB, input: {
   identity: PrivateDatabaseRenewalIdentity; configurationRef: string; actorUserId: number;
@@ -89,7 +95,7 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
     || target.target.workerRef !== "smartspec-cloudflare-staging" || target.target.containerApplicationRef
     || target.target.accountRef !== config.descriptor.accountRef) return result({ ...base, ready: false, reason: "STAGING_TARGET_AUTHORITY_CONFLICT", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
 
-  const leaseExpiresAt = new Date(Math.floor((now + 30 * 24 * 60 * 60_000) / 60_000) * 60_000).toISOString();
+  const leaseExpiresAt = stagingPrivateDatabaseRenewalLeaseExpiresAt(now);
   const authorizationExpiresAt = new Date(now + 10 * 60_000).toISOString();
   const [existing] = await atStage("RENEWAL_JOB_READBACK", () => db.select({ id: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode, heartbeatAt: workerJobs.heartbeatAt })
     .from(workerJobs).where(and(eq(workerJobs.tenantId, input.identity.tenantId), eq(workerJobs.jobType, PRIVATE_DATABASE_RENEWAL_JOB),

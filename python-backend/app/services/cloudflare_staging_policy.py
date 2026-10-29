@@ -20,7 +20,8 @@ from app.services.cloudflare_native_provision_contract import (CONTRACT as NATIV
 from app.services.cloudflare_private_database_contract import (CONTRACT as DATABASE_CONTRACT, POLICY_SCHEMA as DATABASE_SCHEMA,
     GRANT_SCHEMA as DATABASE_GRANT, validate_plan as validate_database_plan,
     RENEWAL_CONTRACT as DATABASE_RENEWAL_CONTRACT, RENEWAL_POLICY_SCHEMA as DATABASE_RENEWAL_SCHEMA,
-    RENEWAL_GRANT_SCHEMA as DATABASE_RENEWAL_GRANT, validate_renewal_plan as validate_database_renewal_plan)
+    RENEWAL_GRANT_SCHEMA as DATABASE_RENEWAL_GRANT, validate_renewal_plan as validate_database_renewal_plan,
+    renewal_plan_digest as database_renewal_plan_digest)
 from app.services.cloudflare_http_image_provision_contract import (CONTRACT as HTTP_IMAGE_CONTRACT, POLICY_SCHEMA as HTTP_IMAGE_SCHEMA,
     GRANT_SCHEMA as HTTP_IMAGE_GRANT, validate_plan as validate_http_image_plan)
 
@@ -72,7 +73,8 @@ def validate_staging_policy(value: dict, now: datetime) -> dict:
         plan = PROVISION_CONTRACTS[value["contractVersion"]][1](value["plan"])
         expiry_key = "leaseExpiresAt" if value["contractVersion"] == DATABASE_RENEWAL_CONTRACT else "configurationExpiresAt"
         expiry = datetime.fromisoformat(plan[expiry_key].replace("Z", "+00:00"))
-        if value["maxOperations"] != 1 or value["planDigest"] != plan_digest(plan) or not now < expiry <= now + timedelta(days=30):
+        expected_digest = database_renewal_plan_digest(plan) if value["contractVersion"] == DATABASE_RENEWAL_CONTRACT else plan_digest(plan)
+        if value["maxOperations"] != 1 or value["planDigest"] != expected_digest or not now < expiry <= now + timedelta(days=30):
             raise ValueError("CLOUDFLARE_ORIGIN_PROVISION_POLICY_INVALID")
         if value["contractVersion"] == HTTP_IMAGE_CONTRACT and expiry > now + timedelta(hours=1):
             raise ValueError("CLOUDFLARE_HTTP_IMAGE_POLICY_EXPIRY_INVALID")
