@@ -87,7 +87,6 @@ function requireScope(ctx: {
 
 async function authorizeFeatureSpecCatalog(ctx: { tenantId: string | null; user?: { id?: number | null; role?: string | null; currentTenantId?: string | number | null } | null }, conversationId?: number) {
   const scope = requireScope(ctx);
-  if (ctx.user?.role === "admin") return scope;
   const authorizedWorkspaces = await defaultSpec224WorkspaceSpecSetService.availableWorkspaces(scope);
   const platformWorkspaces = authorizedWorkspaces.filter(workspace => workspace.scope === "PLATFORM_ENGINEERING");
   if (!platformWorkspaces.length) throw new TRPCError({ code: "FORBIDDEN", message: "PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED" });
@@ -644,7 +643,11 @@ export const spec226DevelopmentControlRouter = router({
         let scope: ReturnType<typeof requireScope>;
         if (ctx.user?.role === "admin") {
           await requireDevelopmentBearerScope(ctx.req);
-          scope = requireScope(ctx);
+          // Admin access permits reading the canonical catalog, but importing a
+          // SmartAIHub SPEC must still bind the conversation to its registered
+          // source workspace. A role must not redirect canonical source into an
+          // unrelated Project Workspace.
+          scope = await authorizeFeatureSpecCatalog(ctx, input.conversationId);
         } else {
           scope = await authorizeFeatureSpecCatalog(ctx, input.conversationId);
         }

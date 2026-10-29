@@ -37,6 +37,13 @@ function discoveredModelCatalog() {
   };
 }
 
+function usePlatformSourceWorkspace() {
+  mocks.workspaces = [
+    { runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: discoveredModelCatalog() },
+    { runnerId: "runner-test", workspaceId: "platform-source", displayName: "SmartAIHub Development Workspace", canonicalProjectTitle: "SmartAIHub Development Workspace", scope: "PLATFORM_ENGINEERING", status: "online", snapshotRevision: "fresh", gitHead: "a".repeat(40), dirty: false, convergenceState: "USER_WORKSPACE_CONVERGED", convergenceCanonicalSha: "a".repeat(40), modelCatalog: discoveredModelCatalog() },
+  ];
+}
+
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -152,11 +159,12 @@ describe("Core goal readiness feedback", () => {
   });
 
   it("keeps the selected development source when switching presentation modes", () => {
+    usePlatformSourceWorkspace();
     const { rerender } = render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
     rerender(<Spec224WorkspacePanel conversationId={8} simpleMode />);
-    expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
+    expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
     rerender(<Spec224WorkspacePanel conversationId={8} />);
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
     expect(mocks.start).not.toHaveBeenCalled();
@@ -171,10 +179,12 @@ describe("Core goal readiness feedback", () => {
   });
 
   it("lets an Admin select a repository Feature Spec and imports it into the current Spec Set", async () => {
+    usePlatformSourceWorkspace();
     mocks.ingestFeatureSpec.mockResolvedValue({ revision: 2, sourceSpec: { title: "Example Feature" } });
     render(<Spec224WorkspacePanel conversationId={8} />);
 
     fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
+    expect(mocks.bindWorkspace).toHaveBeenCalledWith({ conversationId: 8, runnerId: "runner-test", workspaceId: "platform-source" });
     expect(screen.getByRole("radio", { name: "เลือก Canonical SPEC จากระบบ" })).toBeInTheDocument();
     expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), { target: { value: "224-example-feature" } });
@@ -186,6 +196,20 @@ describe("Core goal readiness feedback", () => {
       idempotencyKey: expect.any(String),
     })));
     expect(mocks.start).not.toHaveBeenCalled();
+  });
+
+  it("binds an existing conversation to the authoritative SmartAIHub source workspace when selected", async () => {
+    usePlatformSourceWorkspace();
+    render(<Spec224WorkspacePanel conversationId={8} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ใช้ SmartAIHub Source Workspace" }));
+
+    await waitFor(() => expect(mocks.bindWorkspace).toHaveBeenCalledWith({
+      conversationId: 8,
+      runnerId: "runner-test",
+      workspaceId: "platform-source",
+    }));
+    expect(screen.getByLabelText("2. เลือก Project Workspace")).toHaveValue('["runner-test","platform-source"]');
   });
 
   it("exposes the repository catalog only to Admins and keeps manual Spec upload available", async () => {
@@ -255,6 +279,7 @@ describe("Core goal readiness feedback", () => {
   });
 
   it("shows a clear multi-image mock-up attachment control while developing from a Spec Set", async () => {
+    usePlatformSourceWorkspace();
     render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
 
@@ -317,7 +342,7 @@ describe("Core goal readiness feedback", () => {
     const specMode = screen.getByRole("radio", { name: "Canonical SPEC" });
     expect(specMode).toBeEnabled();
     fireEvent.click(specMode);
-    expect(screen.getByLabelText("เลือกไฟล์ spec.md")).toBeInTheDocument();
+    expect(screen.getByLabelText("แนบไฟล์ Spec 224")).toBeInTheDocument();
   });
 
   it("preserves the Start key for pending authorization and displays the precise setup reason", async () => {
@@ -413,6 +438,7 @@ describe("Core goal readiness feedback", () => {
   });
 
   it("blocks a canonical SPEC package that is not the next handoff WorkUnit", async () => {
+    usePlatformSourceWorkspace();
     render(<Spec224WorkspacePanel conversationId={8} />);
     fireEvent.click(screen.getByRole("radio", { name: "Canonical SPEC" }));
     fireEvent.change(screen.getByLabelText("เลือกไฟล์ spec.md"), { target: { value: "224-example-feature" } });

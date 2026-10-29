@@ -411,6 +411,9 @@ describe("spec226DevelopmentControlRouter", () => {
   });
 
   it("lists Admin feature specs and ingests selected source into the existing conversation Spec Set", async () => {
+    const platformWorkspace = { runnerId: "runner-platform", workspaceId: "smartaihub-source", scope: "PLATFORM_ENGINEERING" };
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue([platformWorkspace]);
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValue({ workspace: platformWorkspace });
     mocks.workspaceSpecSets.ingestSpecSet.mockResolvedValueOnce({ revision: 3, digest: "a".repeat(64), files: [{ path: "feature-specs/224-example-5c8fbd15e8.md" }], requirementCount: 2, runnableWorkPackageCount: 1, blockedWorkPackageCount: 0 });
 
     await expect((spec226DevelopmentControlRouter.listFeatureSpecs as unknown as Function)({ ctx: CTX, input: { search: "Example" } })).resolves.toMatchObject({ specs: [{ id: "224-example" }] });
@@ -428,6 +431,18 @@ describe("spec226DevelopmentControlRouter", () => {
       artifacts: [{ path: expect.stringMatching(/^feature-specs\/224-example-spec-[a-f0-9]{10}\.md$/), contentBase64: Buffer.from("# Example\n").toString("base64") }],
       idempotencyKey: expect.stringMatching(/^feature-spec:[a-f0-9]{10}:admin-spec-import-1$/),
     }));
+  });
+
+  it("refuses to import a canonical SmartAIHub SPEC into a non-platform workspace, including for Admin", async () => {
+    mocks.workspaceSpecSets.availableWorkspaces.mockResolvedValue([{ runnerId: "runner-platform", workspaceId: "smartaihub-source", scope: "PLATFORM_ENGINEERING" }]);
+    mocks.workspaceSpecSets.getConversationWorkspace.mockResolvedValue({ workspace: { runnerId: "runner-user", workspaceId: "user-project" } });
+
+    await expect((spec226DevelopmentControlRouter.ingestFeatureSpec as unknown as Function)({
+      ctx: CTX,
+      input: { conversationId: 8, specId: "224 Example Spec", idempotencyKey: "wrong-workspace-import" },
+    })).rejects.toMatchObject({ message: "PLATFORM_ENGINEERING_WORKSPACE_BINDING_REQUIRED" });
+    expect(mocks.featureSpecCatalog.load).not.toHaveBeenCalled();
+    expect(mocks.workspaceSpecSets.ingestSpecSet).not.toHaveBeenCalled();
   });
 
   it("limits canonical SPEC catalog access to an authorized Platform workspace", async () => {

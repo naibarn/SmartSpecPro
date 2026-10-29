@@ -237,7 +237,9 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const workspacesQuery = trpc.spec226DevelopmentControl.availableWorkspaces.useQuery({});
   const workspaces = workspacesQuery.data?.workspaces ?? [];
   const platformWorkspace = workspaces.find(item => item.scope === "PLATFORM_ENGINEERING");
-  const canUseCanonicalSpecs = Boolean(platformWorkspace) || (isAdmin && !simpleMode);
+  // Canonical SmartAIHub specs are read from the platform source authority and
+  // must execute in that same registered workspace, never an arbitrary chat binding.
+  const canUseCanonicalSpecs = Boolean(platformWorkspace);
   const effectiveSpecSource = specSource === "catalog" && !canUseCanonicalSpecs ? "upload" : specSource;
   const runnersQuery = trpc.runnerNodes.list.useQuery({ viewMode: "simple" }, {
     refetchInterval: 15_000,
@@ -283,6 +285,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
+  const platformWorkspaceSelected = Boolean(platformWorkspace && selectedWorkspace
+    && selectionKey(platformWorkspace) === selectionKey(selectedWorkspace));
   const modelCatalog = selectedWorkspace?.modelCatalog;
   // Only expose an execution adapter when the selected Runner's fresh,
   // account-bound catalog reports it. The current delegated Start contract
@@ -325,7 +329,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   const canCreateConversation = developmentInputMode === "prompt"
     ? Boolean(effectivePrompt) && (!isPlatformWorkspace || mode !== "prompt" || proposedWriteScope.length > 0)
     : (developmentInputMode !== "spec_prompt" || Boolean(effectivePrompt)) && (effectiveSpecSource === "catalog"
-      ? Boolean(selectedFeatureSpec) && (!platformWorkspace || featureSpecContextQuery.data?.handoff.status === "CURRENT")
+      ? Boolean(platformWorkspaceSelected && selectedFeatureSpec) && (!platformWorkspace || featureSpecContextQuery.data?.handoff.status === "CURRENT")
       : pendingSpecFiles.length > 0);
   const budgetCapMinorUnits = /^\d{1,6}(?:\.\d{1,2})?$/.test(budgetCapUsd.trim())
     ? Math.round(Number(budgetCapUsd) * 100) : 0;
@@ -376,9 +380,11 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
   async function bindWorkspace(value: string) {
     setSelected(value);
     setPreparation(null);
-    if (!conversationId || !value) return;
+    if (!value) return;
     const workspace = workspaces.find(item => selectionKey(item) === value);
     if (!workspace) return;
+    setSelectedRunnerId(workspace.runnerId);
+    if (!conversationId) return;
     try {
       await bindMutation.mutateAsync({
         conversationId,
@@ -392,8 +398,20 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
     }
   }
 
+  function selectCanonicalPlatformWorkspace() {
+    if (!platformWorkspace) return;
+    lastPlatformWorkspaceKey.current = selectionKey(platformWorkspace);
+    void bindWorkspace(selectionKey(platformWorkspace));
+    setSpecSource("catalog");
+    setSelectedFeatureSpec("");
+  }
+
   async function createTaskConversation() {
     if (!onCreateConversation || !selectedWorkspace || !canCreateConversation || creatingTaskInFlight.current) return;
+    if (effectiveSpecSource === "catalog" && !platformWorkspaceSelected) {
+      toast.error("Canonical SPEC ต้องเลือก SmartAIHub Source Workspace ก่อนสร้างงาน");
+      return;
+    }
     creatingTaskInFlight.current = true;
     setCreatingTask(true);
     try {
@@ -493,6 +511,11 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
 
   async function prepare() {
     if (!conversationId) return;
+    if (effectiveSpecSource === "catalog" && !platformWorkspaceSelected) {
+      toast.error("Canonical SPEC ต้องผูกกับ SmartAIHub Source Workspace ก่อนเตรียมงาน");
+      return;
+    }
+    if (bindMutation.isPending) return;
     setPreparing(true);
     setPreparation(null);
     try {
@@ -664,6 +687,16 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
           <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Platform Engineering</p>
           <h2 id="spec224-workspace-heading" className="mt-1 text-lg font-semibold text-slate-950">พัฒนาระบบ SmartAIHub</h2>
           <p className="mt-1 text-sm text-slate-700">Project: {platformWorkspace.canonicalProjectTitle ?? platformWorkspace.displayName} · Runner: Debian Development Server · Harness: Codex</p>
+          <p className="mt-1 text-xs text-slate-600" role="status">
+            {platformWorkspaceSelected
+              ? "เลือก SmartAIHub Source Workspace แล้ว"
+              : "งานพัฒนาระบบ SmartAIHub และ Canonical SPEC ต้องใช้ Workspace นี้ ซึ่งผูกกับ source repository ที่ได้รับอนุญาต"}
+          </p>
+          {!platformWorkspaceSelected ? (
+            <Button type="button" size="sm" variant="outline" className="mt-2" disabled={bindMutation.isPending || workspacesQuery.isFetching} onClick={selectCanonicalPlatformWorkspace}>
+              ใช้ SmartAIHub Source Workspace
+            </Button>
+          ) : null}
           <p className="mt-1 text-xs text-slate-600" role="status">Codex readiness: {selectedWorkspace && selectedRunnerId === platformWorkspace.runnerId ? runnerReadiness?.ready ? "พร้อม" : runnerReadiness?.code ?? "กำลังตรวจสอบจาก Runner" : "กำลังตรวจสอบจาก Runner"}</p>
           {selectedWorkspace && !platformSourceIsSafe ? <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">Runner หรือ Project Workspace binding เปลี่ยนไป โปรดโหลดข้อมูลใหม่และยืนยัน binding ปัจจุบันก่อนเริ่ม</p> : null}
         </section>
@@ -952,8 +985,8 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                   <p className="text-xs text-[var(--color-text-secondary)]">ภาพถูกส่งเป็นไฟล์ Runner input แบบ tenant-bound; เนื้อหาเป็นหลักฐานภาพที่ไม่น่าเชื่อถือและไม่ใช่คำสั่ง. จำกัดตาม Runner ปัจจุบัน: 6 ภาพ, ภาพละ 1 MiB, รวมสูงสุด 1.5 MiB</p>
                 </fieldset> : null}
             </>
-            <label className="flex items-center gap-2 text-xs"><input type="radio" name="spec224-mode" checked={developmentInputMode === "spec"} onChange={() => { setDevelopmentInputMode("spec"); setRequestKind("development"); setSpecSource(canUseCanonicalSpecs ? "catalog" : "upload"); setPreparation(null); }} />Canonical SPEC</label>
-            <label className="flex items-center gap-2 text-xs"><input type="radio" name="spec224-mode" checked={developmentInputMode === "spec_prompt"} onChange={() => { setDevelopmentInputMode("spec_prompt"); setRequestKind("development"); setSpecSource(canUseCanonicalSpecs ? "catalog" : "upload"); setPreparation(null); }} />SPEC + Prompt</label>
+            <label className="flex items-center gap-2 text-xs"><input type="radio" name="spec224-mode" checked={developmentInputMode === "spec"} onChange={() => { setDevelopmentInputMode("spec"); setRequestKind("development"); if (canUseCanonicalSpecs) selectCanonicalPlatformWorkspace(); else setSpecSource("upload"); setPreparation(null); }} />Canonical SPEC</label>
+            <label className="flex items-center gap-2 text-xs"><input type="radio" name="spec224-mode" checked={developmentInputMode === "spec_prompt"} onChange={() => { setDevelopmentInputMode("spec_prompt"); setRequestKind("development"); if (canUseCanonicalSpecs) selectCanonicalPlatformWorkspace(); else setSpecSource("upload"); setPreparation(null); }} />SPEC + Prompt</label>
             {mode === "spec_set" ? (
               <>
                 {developmentInputMode === "spec_prompt" ? <Textarea aria-label="คำสั่งเพิ่มเติมสำหรับ SPEC" value={prompt} onChange={event => { setPrompt(event.target.value); setPreparation(null); }} placeholder="คำสั่งเพิ่มเติมภายใต้ขอบเขตและ write scope ของ SPEC" maxLength={4_000} className="min-h-20 resize-y text-sm" /> : null}
@@ -965,7 +998,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                   </label>
                   {canUseCanonicalSpecs ? (
                     <label className="flex items-center gap-2 text-xs">
-                      <input type="radio" name="spec224-source" checked={effectiveSpecSource === "catalog"} onChange={() => setSpecSource("catalog")} />
+                      <input type="radio" name="spec224-source" checked={effectiveSpecSource === "catalog"} onChange={selectCanonicalPlatformWorkspace} />
                       เลือก Canonical SPEC จากระบบ
                     </label>
                   ) : null}
@@ -1016,7 +1049,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                         id="feature-spec-select"
                         value={selectedFeatureSpec}
                         onChange={event => setSelectedFeatureSpec(event.target.value)}
-                        disabled={featureSpecsQuery.isLoading || !featureSpecsQuery.data?.specs.length}
+                        disabled={!platformWorkspaceSelected || bindMutation.isPending || featureSpecsQuery.isLoading || !featureSpecsQuery.data?.specs.length}
                         className="w-full rounded-md border border-[var(--color-border)] bg-background px-3 py-2 text-sm"
                       >
                         <option value="">เลือก Feature Spec</option>
@@ -1032,7 +1065,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
                         {!simpleMode ? <p className="mt-1 break-all">{featureSpecContextQuery.data.path} · SHA-256 {featureSpecContextQuery.data.digest}</p> : null}
                       </section> : null}
                       {selectedFeatureSpec ? <p className="break-all text-xs text-[var(--color-text-secondary)]">ต้นฉบับ: specs/feature/{selectedFeatureSpec}/spec.md</p> : null}
-                      <Button type="button" variant="outline" disabled={!workspaceQuery.data?.workspace || !selectedFeatureSpec || uploading || ingestFeatureSpecMutation.isPending} onClick={() => void ingestSelectedFeatureSpec()}>
+                      <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || !selectedFeatureSpec || uploading || ingestFeatureSpecMutation.isPending} onClick={() => void ingestSelectedFeatureSpec()}>
                         {uploading ? "กำลังเพิ่ม Spec ใน workspace…" : "เพิ่ม Spec ที่เลือกใน workspace"}
                       </Button>
                     </div>
@@ -1090,7 +1123,7 @@ export function Spec224WorkspacePanel({ conversationId, simpleMode = false, onCr
               {startMutation.isPending ? "กำลังส่ง Mini App ไปสร้าง…" : "สร้าง Mini App จาก prompt"}
             </Button>
           ) : (
-            <Button type="button" className="mt-3 w-full" disabled={!workspaceQuery.data?.workspace || uploading || preparing || (mode === "prompt" && !prompt.trim()) || (developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && featureSpecContextQuery.data?.handoff.status !== "CURRENT")} onClick={() => void prepare()}>
+            <Button type="button" className="mt-3 w-full" disabled={!workspaceQuery.data?.workspace || uploading || preparing || bindMutation.isPending || (mode === "prompt" && !prompt.trim()) || (developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && (!platformWorkspaceSelected || featureSpecContextQuery.data?.handoff.status !== "CURRENT"))} onClick={() => void prepare()}>
               {uploading ? "กำลังบันทึก Spec revision…" : preparing ? "กำลังเตรียม…" : "เตรียมแผนและตรวจความพร้อม"}
             </Button>
           )}
