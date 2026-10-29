@@ -49,6 +49,18 @@ def _atomic_write(path: Path, data: bytes) -> None:
             os.unlink(temp_name)
 
 
+def _load_json_argument(value: str) -> object:
+    """Load inline JSON or a path to a JSON file without treating long JSON as a filename."""
+    path = Path(value)
+    try:
+        if path.is_file():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except OSError:
+        # Inline JSON may exceed the platform's maximum filename length.
+        pass
+    return json.loads(value)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="spec-handoff")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository root")
@@ -286,8 +298,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "update":
         from .store import update_manifest
-        changes_path = Path(args.changes_json)
-        changes = json.loads(changes_path.read_text(encoding="utf-8") if changes_path.is_file() else args.changes_json)
+        changes = _load_json_argument(args.changes_json)
         if not isinstance(changes, dict):
             parser.error("--changes-json must decode to an object")
         updated = update_manifest(args.spec_dir, expected_generation=args.expected_generation,
@@ -298,8 +309,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "requirement-update":
         from .store import update_requirement_ledger
-        changes_path = Path(args.changes_json)
-        changes = json.loads(changes_path.read_text(encoding="utf-8") if changes_path.is_file() else args.changes_json)
+        changes = _load_json_argument(args.changes_json)
         if not isinstance(changes, dict):
             parser.error("--changes-json must decode to an object")
         manifest, ledger = update_requirement_ledger(args.spec_dir,
