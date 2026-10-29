@@ -72,8 +72,7 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
   const { events, eventsJobId, query: developerEventsQuery, hasMore } = harnessOutput;
 
   if (!conversationId) return null;
-  const failed = Boolean(query.error || detailQuery.error);
-  if (!selectedJob && !query.isLoading && !failed) return null;
+  if (!selectedJob && !query.isLoading && !query.error) return null;
 
   const activity = detailQuery.data?.timeline?.at(-1);
   const activityAt = activity?.at ? new Date(activity.at) : null;
@@ -102,25 +101,39 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
       ) : null}
       {query.isLoading && !selectedJob ? (
         <p className="mt-2 text-sm text-muted-foreground" role="status">{t("chat.executionActivityLoading")}</p>
-      ) : failed ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
+      ) : query.error ? (
+        <section className="mt-2 flex flex-wrap items-center gap-2">
           <p className="text-sm text-muted-foreground" role="alert">{t("chat.executionActivityUnavailable")}</p>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={query.isFetching || detailQuery.isFetching}
-            onClick={() => void Promise.all([query.refetch(), detailQuery.refetch()])}
+            disabled={query.isFetching}
+            onClick={() => void query.refetch()}
           >
-            {query.isFetching || detailQuery.isFetching ? t("chat.executionActivityRetrying") : t("chat.executionActivityRetry")}
+            {query.isFetching ? t("chat.executionActivityRetrying") : t("chat.executionActivityRetry")}
           </Button>
-        </div>
+        </section>
       ) : selectedJob ? (
         <>
           <p className="mt-2 text-sm text-muted-foreground">
             {activity ? activityLabel(activity.type, t) : t("chat.executionActivityRecorded")}
             {formattedTime ? ` · ${formattedTime}` : ""}
           </p>
+          {detailQuery.error ? (
+            <section className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted-foreground" role="alert">{t("chat.executionDetailsUnavailable")}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={detailQuery.isFetching}
+                onClick={() => void detailQuery.refetch()}
+              >
+                {detailQuery.isFetching ? t("chat.executionActivityRetrying") : t("chat.executionActivityRetry")}
+              </Button>
+            </section>
+          ) : null}
           {detailQuery.data ? (
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs text-muted-foreground">
               <dt className="font-medium">{t("chat.executionAgent")}</dt>

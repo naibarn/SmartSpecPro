@@ -28,6 +28,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "chat.executionStatusUnknown": "Status unavailable",
       "chat.executionActivityLoading": "Loading work status…",
       "chat.executionActivityUnavailable": "Work status is temporarily unavailable.",
+      "chat.executionDetailsUnavailable": "Task details could not be loaded. The latest status is still shown.",
       "chat.executionActivityRetry": "Retry loading status",
       "chat.executionActivityRetrying": "Retrying…",
       "chat.executionActivityRecorded": "Activity recorded",
@@ -159,5 +160,18 @@ describe("ConversationExecutionActivity", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Work status is temporarily unavailable.");
     fireEvent.click(screen.getByRole("button", { name: "Retry loading status" }));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the job status visible and retries only task details when that read fails", () => {
+    const refetchDetails = vi.fn();
+    mocks.detailQuery.mockReturnValue({ data: undefined, error: new Error("temporary 500"), isFetching: false, refetch: refetchDetails });
+
+    render(<ConversationExecutionActivity conversationId={241} />);
+
+    expect(screen.getByText("Running")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Task details could not be loaded. The latest status is still shown.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading status" }));
+    expect(refetchDetails).toHaveBeenCalledTimes(1);
+    expect(mocks.observabilityQuery.mock.results.at(-1)?.value.refetch).not.toHaveBeenCalled();
   });
 });

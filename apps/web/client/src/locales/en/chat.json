@@ -76,6 +76,7 @@
   "loadingMessagesRetry": "Retrying…",
   "chat.executionActivityLoading": "Loading work status…",
   "chat.executionActivityUnavailable": "Work status is temporarily unavailable.",
+  "chat.executionDetailsUnavailable": "Task details could not be loaded. The latest status is still shown.",
   "chat.executionActivityRetry": "Retry loading status",
   "chat.executionActivityRetrying": "Retrying…",
   "chat.executionActivityRecorded": "Activity recorded",
