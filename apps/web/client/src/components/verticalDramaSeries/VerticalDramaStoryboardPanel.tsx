@@ -181,6 +181,10 @@ import {
   resolveVerticalDramaSupportingPresenceForShot,
   type VerticalDramaSupportingPresence,
 } from "@shared/verticalDramaSeries/supportingPresence";
+import {
+  normalizeVerticalDramaSpeakerVisualBindings,
+  type VerticalDramaSpeakerVisualBinding,
+} from "@shared/verticalDramaSeries/speakerVisualBinding";
 export { resolveStoryboardLocationRoster } from "@shared/verticalDramaSeries/locationIdentity";
 import {
   VIDEO_PROMPT_MODEL_FAMILY_LABELS,
@@ -221,6 +225,7 @@ import {
   type VerticalDramaShotSceneAnchorView,
 } from "./VerticalDramaSceneLockRow";
 import { VerticalDramaSupportingPresenceEditor } from "./VerticalDramaSupportingPresenceEditor";
+import { VerticalDramaShotSpeakerBindingEditor } from "./VerticalDramaShotSpeakerBindingEditor";
 import { VerticalDramaAudioInspector } from "./VerticalDramaAudioInspector";
 
 export type {
@@ -815,6 +820,7 @@ export interface VerticalDramaStartFramePlanFrame {
   screenCallerCharacterRefs?: string[];
   supportingPresence?: VerticalDramaSupportingPresence[];
   supportingPresenceCustomized?: boolean;
+  speakerVisualBindings?: VerticalDramaSpeakerVisualBinding[];
   barrierDialogue?: VerticalDramaBarrierDialogue;
   barrierMultiView?: VerticalDramaBarrierMultiView;
   productReferenceAssetIds?: string[];
@@ -1533,6 +1539,11 @@ interface VerticalDramaStoryboardPanelProps {
   ) => void;
   /** Remove the shot-local override and let the storyboard auto-detection apply again. */
   onResetShotSupportingPresence?: (shotNumber: number) => void;
+  onSetShotSpeakerVisualBindings?: (
+    shotNumber: number,
+    bindings: VerticalDramaSpeakerVisualBinding[]
+  ) => void;
+  savingShotSpeakerVisualBindingsForShot?: number | null;
   /** Convert the current physical + Caller assignment into a closed-door shot. */
   onSetShotBarrierDialogue?: (
     shotNumber: number,
@@ -2390,6 +2401,8 @@ export function VerticalDramaStoryboardPanel({
   onSetShotScreenCallerReferences,
   onSetShotSupportingPresence,
   onResetShotSupportingPresence,
+  onSetShotSpeakerVisualBindings,
+  savingShotSpeakerVisualBindingsForShot = null,
   onSetShotBarrierDialogue,
   onSetShotViewMode,
   savingShotCharacterReferencesForShot = null,
@@ -4517,6 +4530,25 @@ export function VerticalDramaStoryboardPanel({
           const shotNumber = shot.shot_number ?? i + 1;
           const frame = frameByShot.get(shotNumber);
           const clipsForShot = clipByShot.get(shotNumber) ?? [];
+          const canonicalDialogueLines = canonicalDialogueByShot.get(shotNumber)?.dialogueLines ?? [];
+          const speakerOptionsForShot = (() => {
+            const lines = canonicalDialogueLines.length
+              ? canonicalDialogueLines
+              : clipsForShot.flatMap(clip => (clip.dialogue ?? []).map(line => ({
+                  speaker: line.characterKey ?? "",
+                  line: line.lineTh,
+                })));
+            const grouped = new Map<string, string[]>();
+            for (const line of lines) {
+              const speakerLabel = line.speaker.trim();
+              if (!speakerLabel) continue;
+              grouped.set(speakerLabel, [...(grouped.get(speakerLabel) ?? []), line.line]);
+            }
+            return Array.from(grouped, ([speakerLabel, dialogueLines]) => ({
+              speakerLabel,
+              dialogueLines,
+            }));
+          })();
           const dialogueCharacterKeys = (() => {
             const keys = new Set<string>();
             for (const clip of clipsForShot) {
@@ -7252,6 +7284,18 @@ export function VerticalDramaStoryboardPanel({
                         );
                       })()
                     : null}
+
+                  {onSetShotSpeakerVisualBindings ? (
+                    <VerticalDramaShotSpeakerBindingEditor
+                      shotNumber={shotNumber}
+                      speakers={speakerOptionsForShot}
+                      bindings={normalizeVerticalDramaSpeakerVisualBindings(
+                        frame?.speakerVisualBindings
+                      )}
+                      saving={savingShotSpeakerVisualBindingsForShot === shotNumber}
+                      onSave={bindings => onSetShotSpeakerVisualBindings(shotNumber, bindings)}
+                    />
+                  ) : null}
 
                   {(() => {
                     const rawPhysicalKeys =

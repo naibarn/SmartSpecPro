@@ -1050,6 +1050,29 @@ describe("vertical drama Enhanced prompt boundary", () => {
 
     expect(input.shot.characterDescriptionOverrides).toEqual(overrides);
   });
+
+  it("turns a shot-local dialogue speaker cue into an Enhanced identity override", () => {
+    const input = buildEnhancedSkillInput({
+      shot: {
+        shot_number: 1,
+        dialogue: [{
+          characterKey: "shot-local-speaker-extra-1",
+          speaker: "นักตรวจผนึก",
+          speakerVisualCue: "ชายชุดเข้มที่ยืนด้านขวาหลังโต๊ะ",
+          text: "ห้ามผู้ใดเปิดผนึก",
+        }],
+      },
+      continuity: {},
+      mediaBundle: baseMediaBundle,
+      targetVideoModel: baseInput.targetVideoModel,
+      authoringModel: baseInput.authoringModel,
+    });
+
+    expect((input.dialogue as any[])[0].characterKey).toBe("shot-local-speaker-extra-1");
+    expect((input.shot.characterDescriptionOverrides as Record<string, string>)[
+      "shot-local-speaker-extra-1"
+    ]).toContain("ชายชุดเข้มที่ยืนด้านขวาหลังโต๊ะ");
+  });
 });
 
 

@@ -100,6 +100,7 @@ import type {
 } from "@shared/verticalDramaSeries/audio";
 import type { SpecialTieInInput } from "@shared/verticalDramaSeries/specialTieInContracts";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
+import type { VerticalDramaSpeakerVisualBinding } from "@shared/verticalDramaSeries/speakerVisualBinding";
 import type {
   VerticalDramaAudioLineStatus,
   VerticalDramaDialogueAudioBatchData,
@@ -4732,6 +4733,27 @@ function EpisodeWorkspaceShell({
       },
       { onSettled: () => setSavingShotSupportingPresenceForShot(null) }
     );
+  }
+
+  const setShotSpeakerVisualBindingsMutation =
+    trpc.verticalDramaEpisodes.setShotSpeakerVisualBindings.useMutation({
+      onSuccess: () => {
+        toast.success("บันทึกผู้พูดเฉพาะช็อตแล้ว ต้องสร้าง prompt วิดีโอใหม่เพื่อใช้ข้อมูลนี้");
+        void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+      },
+      onError: err => toast.error(err.message),
+    });
+
+  function handleSetShotSpeakerVisualBindings(
+    shotNumber: number,
+    bindings: VerticalDramaSpeakerVisualBinding[]
+  ) {
+    setShotSpeakerVisualBindingsMutation.mutate({
+      seriesId,
+      episodeId,
+      shotNumber,
+      speakerVisualBindings: bindings,
+    });
   }
 
   const setShotBarrierDialogueMutation =
@@ -10548,6 +10570,11 @@ function EpisodeWorkspaceShell({
               handleSetShotScreenCallerReferences,
             onSetShotSupportingPresence: handleSetShotSupportingPresence,
             onResetShotSupportingPresence: handleResetShotSupportingPresence,
+            onSetShotSpeakerVisualBindings: handleSetShotSpeakerVisualBindings,
+            savingShotSpeakerVisualBindingsForShot:
+              setShotSpeakerVisualBindingsMutation.isPending
+                ? (setShotSpeakerVisualBindingsMutation.variables?.shotNumber ?? null)
+                : null,
             onSetShotBarrierDialogue: handleSetShotBarrierDialogue,
             onSetShotViewMode: handleSetShotViewMode,
             savingShotCharacterReferencesForShot,

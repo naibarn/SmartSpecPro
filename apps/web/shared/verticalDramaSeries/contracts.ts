@@ -647,6 +647,8 @@ export type VerticalDramaStartFramePlan = {
     supportingPresence?: VerticalDramaSupportingPresence[];
     /** True after the user explicitly replaces this shot's supporting presence. */
     supportingPresenceCustomized?: boolean;
+    /** Visible dialogue speakers without a durable character identity. */
+    speakerVisualBindings?: import("./speakerVisualBinding").VerticalDramaSpeakerVisualBinding[];
     productReferenceAssetIds: string[];
     /** Generic non-product references; product refs stay in the dedicated track. */
     referenceAssetIds?: string[];

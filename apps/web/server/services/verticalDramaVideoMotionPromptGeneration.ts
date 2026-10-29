@@ -156,6 +156,11 @@ import {
 } from "@shared/verticalDramaSeries/videoPromptMotionAssurance";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  findVerticalDramaSpeakerVisualBinding,
+  renderVerticalDramaSpeakerVisualBindings,
+  type VerticalDramaSpeakerVisualBinding,
+} from "@shared/verticalDramaSeries/speakerVisualBinding";
+import {
   analyzeVerticalDramaStorySafety,
   buildVerticalDramaVideoPromptSafetyInput,
   formatVerticalDramaStorySafetyWarnings,
@@ -2853,6 +2858,8 @@ export interface GenerateVerticalDramaShotVideoPromptParams {
     genre?: string;
     /** Explicit generic people allowed by the shot; never identity-locked. */
     supportingPresence?: VerticalDramaSupportingPresence[];
+    /** User-confirmed, shot-local visible speaker cues for people outside Character Stock. */
+    speakerVisualBindings?: VerticalDramaSpeakerVisualBinding[];
   };
   selectedVideoModelId: string;
   /**
@@ -3119,6 +3126,14 @@ export function buildShotVideoPromptUserPrompt(
           if (customDescription) {
             parts.push(`custom visual identity (use instead of screen position): ${customDescription}`);
           }
+          const shotLocalSpeaker = findVerticalDramaSpeakerVisualBinding(
+            shotContext.speakerVisualBindings,
+            l.speakerName,
+            l.characterKey,
+          );
+          if (shotLocalSpeaker) {
+            parts.push(`user-confirmed visible person in this shot (no persistent character reference): ${shotLocalSpeaker.visualCue}`);
+          }
           return parts.join(" | ");
         })
         .join("\n")
@@ -3205,6 +3220,7 @@ export function buildShotVideoPromptUserPrompt(
     `Shot number: ${params.shotNumber}`,
     visualCastPolicyBlock,
     hardSpeakerMapBlock,
+    renderVerticalDramaSpeakerVisualBindings(shotContext.speakerVisualBindings),
     typeof params.shotDurationSeconds === "number"
       ? `Clip duration: ${params.shotDurationSeconds}s`
       : null,
@@ -3502,9 +3518,10 @@ export async function generateVerticalDramaShotVideoPrompt(
       { seriesId: params.seriesId, episodeId: params.episodeId, shotNumber: params.shotNumber },
     );
   }
+  const hasShotLocalSpeakers = (params.shotContext.speakerVisualBindings?.length ?? 0) > 0;
   assertVisionForCharacterGroundedPrompt(
     hasVision,
-    hasEstablishedCharacters || Boolean(params.barrierReferenceImage),
+    hasEstablishedCharacters || hasShotLocalSpeakers || Boolean(params.barrierReferenceImage),
   );
   const systemPrompt = loadShotVideoPromptSystemPrompt();
 
@@ -3551,7 +3568,8 @@ export async function generateVerticalDramaShotVideoPrompt(
   // "established characters" signal, computed once here.
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
-    (params.characterReferenceImages?.length ?? 0) >= 1;
+    (params.characterReferenceImages?.length ?? 0) >= 1 ||
+    (params.shotContext.speakerVisualBindings?.length ?? 0) > 0;
   const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const family = resolveShotVideoPromptModelFamily(
     params.selectedVideoModelId,
@@ -4566,7 +4584,8 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   // this also stays correct for a future solo caller.
   const motionContractsEnabled = params.motionContractsEnabled === true;
   const frameAnalysisRequested =
-    (params.characterReferenceImages?.length ?? 0) >= 1;
+    (params.characterReferenceImages?.length ?? 0) >= 1 ||
+    (params.shotContext.speakerVisualBindings?.length ?? 0) > 0;
   const frameObservabilityRequested = motionContractsEnabled && frameAnalysisRequested;
   const family = resolveShotVideoPromptModelFamily(
     params.selectedVideoModelId,

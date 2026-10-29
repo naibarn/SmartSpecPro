@@ -1034,6 +1034,42 @@ export function buildEnhancedSkillInput(input: {
   videoPromptMaxChars?: number;
 }): EnhancedSkillInput {
   const dialogue = Array.isArray(input.shot.dialogue) ? input.shot.dialogue : [];
+  const localSpeakerOverrides = dialogue.reduce<Record<string, string>>(
+    (result, line) => {
+      if (
+        typeof line === "object" &&
+        line !== null &&
+        typeof (line as Record<string, unknown>).characterKey === "string" &&
+        typeof (line as Record<string, unknown>).speakerVisualCue === "string"
+      ) {
+        const key = String((line as Record<string, unknown>).characterKey);
+        const cue = String(
+          (line as Record<string, unknown>).speakerVisualCue
+        ).trim();
+        if (key && cue) {
+          result[key] = `Visible in the approved start frame: ${cue}`;
+        }
+      }
+      return result;
+    },
+    {}
+  );
+  const descriptionOverrides = {
+    ...localSpeakerOverrides,
+    ...(input.characterDescriptionOverrides ?? {}),
+  };
+  const shotDescriptionOverrides = {
+    ...((input.shot.characterDescriptionOverrides as
+      | Record<string, string>
+      | undefined) ?? {}),
+    ...descriptionOverrides,
+  };
+  const continuityDescriptionOverrides = {
+    ...((input.continuity.characterDescriptionOverrides as
+      | Record<string, string>
+      | undefined) ?? {}),
+    ...descriptionOverrides,
+  };
   const resolvedVideoPromptMaxChars = resolveEnhancedPromptBudget(
     input.targetVideoModel,
     input.videoPromptMaxChars,
@@ -1041,16 +1077,18 @@ export function buildEnhancedSkillInput(input: {
   return {
     shot: {
       ...input.shot,
-      ...(input.characterDescriptionOverrides &&
-      Object.keys(input.characterDescriptionOverrides).length > 0
+      ...(Object.keys(shotDescriptionOverrides).length > 0
         ? {
-            characterDescriptionOverrides: {
-              ...input.characterDescriptionOverrides,
-            },
+            characterDescriptionOverrides: shotDescriptionOverrides,
           }
         : {}),
     },
-    continuity: { ...input.continuity },
+    continuity: {
+      ...input.continuity,
+      ...(Object.keys(continuityDescriptionOverrides).length > 0
+        ? { characterDescriptionOverrides: continuityDescriptionOverrides }
+        : {}),
+    },
     dialogue,
     mediaBundle: input.mediaBundle,
     visionReferences: input.visionReferences ?? [],

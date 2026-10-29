@@ -415,6 +415,11 @@ import {
   resolveVerticalDramaSupportingPresenceForShot,
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  findVerticalDramaSpeakerVisualBinding,
+  normalizeVerticalDramaSpeakerVisualBindings,
+  type VerticalDramaSpeakerVisualBinding,
+} from "@shared/verticalDramaSeries/speakerVisualBinding";
+import {
   deriveVerticalDramaStartFrameShotComposition,
   ensureVerticalDramaShotCompositionLock,
   ensureVerticalDramaStartFrameShotCompositionLock,
@@ -1407,6 +1412,9 @@ async function loadEnhancedShotContext(input: {
             : undefined,
       }))
     );
+  const speakerVisualBindings = normalizeVerticalDramaSpeakerVisualBindings(
+    frame?.speakerVisualBindings
+  );
 
   // Resolve verified cast positions from start frame lock if present
   let verifiedCastPositions: Array<{
@@ -1475,12 +1483,25 @@ async function loadEnhancedShotContext(input: {
           line.speakerHint ??
           ""
       ).trim();
-      const resolution = resolveEnhancedSpeakerForPrompt({
+      const localSpeakerBinding = findVerticalDramaSpeakerVisualBinding(
+        speakerVisualBindings,
         authoredSpeaker,
-        candidates: speakerIdentityCandidates,
-        assignments: frame?.characterLookAssignments,
-        fallbackKey: `speaker-${idx + 1}`,
-      });
+        line.speaker,
+        line.speakerHint,
+        speakerNameMap.get(authoredSpeaker)
+      );
+      const resolution = localSpeakerBinding
+        ? {
+            status: "resolved" as const,
+            characterKey: `shot-local-speaker-${localSpeakerBinding.id}`,
+            offscreen: false as const,
+          }
+        : resolveEnhancedSpeakerForPrompt({
+            authoredSpeaker,
+            candidates: speakerIdentityCandidates,
+            assignments: frame?.characterLookAssignments,
+            fallbackKey: `speaker-${idx + 1}`,
+          });
       if (resolution.status === "ambiguous") {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
@@ -1496,6 +1517,7 @@ async function loadEnhancedShotContext(input: {
         p => p.characterKey.toLowerCase() === stableCharacterKey.toLowerCase()
       );
       const speaker =
+        localSpeakerBinding?.speakerLabel ??
         speakerNameMap.get(stableCharacterKey) ??
         speakerNameMap.get(stableCharacterKey.toLowerCase()) ??
         matchedPosition?.name ??
@@ -1509,7 +1531,9 @@ async function loadEnhancedShotContext(input: {
       }
       const position = isOffscreenSpeaker
         ? "viewer-offscreen"
-        : matchedPosition?.position ?? line.position ?? undefined;
+        : localSpeakerBinding
+          ? "viewer-visible-as-described"
+          : matchedPosition?.position ?? line.position ?? undefined;
       const text = String(
         line.lineTh ?? line.text ?? line.dialogue_line ?? line.line ?? ""
       ).trim();
@@ -1522,6 +1546,9 @@ async function loadEnhancedShotContext(input: {
         position,
         speakerVisibility: isOffscreenSpeaker ? "offscreen" : "in_frame",
         mustBeOnScreen: !isOffscreenSpeaker,
+        ...(localSpeakerBinding
+          ? { speakerVisualCue: localSpeakerBinding.visualCue }
+          : {}),
         text,
         lineTh: text,
         emotion: line.emotion ? String(line.emotion) : undefined,
@@ -1542,7 +1569,12 @@ async function loadEnhancedShotContext(input: {
   });
   const locationId = storyboardShot?.locationId;
   const visualCastPolicy = {
-    physicalCharacterRefs: characterIds,
+    physicalCharacterRefs: [
+      ...characterIds,
+      ...enhancedDialogue
+        .filter((line: any) => Boolean(line.speakerVisualCue))
+        .map((line: any) => line.characterKey),
+    ],
     screenCallerCharacterRefs,
     narrativeOnlyCharacterRefs: Array.from(
       new Set([
@@ -1550,9 +1582,14 @@ async function loadEnhancedShotContext(input: {
         ...offscreenDialogueCharacterRefs,
       ])
     ),
-    physicalCharacterNames: characterIds.map(
-      characterKey => speakerNameMap.get(characterKey) ?? characterKey
-    ),
+    physicalCharacterNames: [
+      ...characterIds.map(
+        characterKey => speakerNameMap.get(characterKey) ?? characterKey
+      ),
+      ...enhancedDialogue
+        .filter((line: any) => Boolean(line.speakerVisualCue))
+        .map((line: any) => line.speaker),
+    ],
     screenCallerCharacterNames: screenCallerCharacterRefs.map(
       characterKey => speakerNameMap.get(characterKey) ?? characterKey
     ),
@@ -11277,6 +11314,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
   supportingPresence?: ReturnType<
     typeof resolveVerticalDramaSupportingPresenceForShot
   >;
+  speakerVisualBindings?: VerticalDramaSpeakerVisualBinding[];
   /**
    * Lip-sync discipline fix — `characterKey -> roster display name`,
    * pre-resolved by the CALLER from the identity sources it already fetched
@@ -11374,6 +11412,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
     beatIsSilent,
     genre,
     supportingPresence,
+    speakerVisualBindings,
     screenCallerCharacterRefs,
     visualCastPolicy,
     characterNameByKey,
@@ -11458,6 +11497,7 @@ async function generateAndPersistSplitShotVideoPrompt(args: {
           : undefined,
         genre,
         supportingPresence,
+        speakerVisualBindings,
       },
       selectedVideoModelId: selectedVideoModel.id,
       selectedVideoModel,
@@ -18396,6 +18436,103 @@ export const verticalDramaEpisodesRouter = router({
         .update(verticalDramaEpisodes)
         .set({ startFramePlan: updatedPlan, updatedAt: new Date() })
         .where(eq(verticalDramaEpisodes.id, episodeId));
+      return { startFramePlan: updatedPlan };
+    }),
+
+  /** Bind short-lived, non-roster dialogue speakers to people already visible in this shot. */
+  setShotSpeakerVisualBindings: verticalDramaProcedure
+    .input(
+      z.object({
+        seriesId: z.string().min(1),
+        episodeId: z.string().min(1),
+        shotNumber: z.number().int().positive(),
+        speakerVisualBindings: z.array(
+          z.object({
+            id: z.string().max(80).optional(),
+            speakerLabel: z.string().trim().min(1).max(120),
+            visualCue: z.string().trim().min(1).max(240),
+          })
+        ).max(6),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireTenantId(ctx.tenantId);
+      const userId = ctx.user.id;
+      const seriesId = parseId(input.seriesId, "series id");
+      const episodeId = parseId(input.episodeId, "episode id");
+      const row = await loadOwnedEpisode({ tenantId, userId, seriesId, episodeId });
+      const normalized = normalizeVerticalDramaSpeakerVisualBindings(input.speakerVisualBindings);
+      if (normalized.length !== input.speakerVisualBindings.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "ชื่อผู้พูดต้องไม่ซ้ำกัน และต้องระบุคำอธิบายคนในภาพให้ครบ",
+        });
+      }
+      const existingPlan = row.startFramePlan as VerticalDramaStartFramePlan | null;
+      const basePlan: VerticalDramaStartFramePlan =
+        existingPlan && Array.isArray(existingPlan.frames)
+          ? existingPlan
+          : { mode: "single_frame_per_shot", selectedImageModelId: "", frames: [] };
+      const frameIndex = basePlan.frames.findIndex(frame => frame.shotNumber === input.shotNumber);
+      const updatedFrames = basePlan.frames.slice();
+      if (frameIndex < 0) {
+        const storyboard = sceneRecord(row.storyboard);
+        const shot = Array.isArray(storyboard.shots)
+          ? storyboard.shots.map(sceneRecord).find(value =>
+              Number(value.shot_number ?? value.shotNumber) === input.shotNumber
+            )
+          : undefined;
+        const storyboardRefs = Array.isArray(shot?.required_character_refs)
+          ? shot.required_character_refs.filter((value): value is string => typeof value === "string")
+          : Array.isArray(shot?.characters)
+            ? shot.characters.filter((value): value is string => typeof value === "string")
+            : [];
+        updatedFrames.push({
+          shotNumber: input.shotNumber,
+          imagePrompt: "",
+          negativePrompt: "",
+          requiredCharacterRefs: storyboardRefs,
+          ...(normalized.length ? { speakerVisualBindings: normalized } : {}),
+          productReferenceAssetIds: [],
+        });
+      } else {
+        const prior = updatedFrames[frameIndex];
+        updatedFrames[frameIndex] = {
+          ...prior,
+          ...(normalized.length ? { speakerVisualBindings: normalized } : {}),
+        };
+        if (!normalized.length) delete updatedFrames[frameIndex].speakerVisualBindings;
+      }
+      updatedFrames.sort((a, b) => a.shotNumber - b.shotNumber);
+      const updatedPlan: VerticalDramaStartFramePlan = { ...basePlan, frames: updatedFrames };
+      const existingPack = row.motionPromptPack as VerticalDramaMotionPromptPack | null;
+      const updatedPack = existingPack?.clips
+        ? {
+            ...existingPack,
+            clips: existingPack.clips.map(clip => {
+              const sourceShots = Array.isArray((clip as any).sourceShotNumbers)
+                ? (clip as any).sourceShotNumbers as number[]
+                : [Number((clip as any).shotNumber)];
+              const parentShot = Number((clip as any).parentShotNumber);
+              return sourceShots.includes(input.shotNumber) || parentShot === input.shotNumber
+                ? invalidateVideoPromptVariantsOnInputChange(
+                    clip as unknown as Record<string, unknown>,
+                    "speaker_visual_binding_changed"
+                  ) as typeof clip
+                : clip;
+            }),
+          }
+        : existingPack;
+      await db.update(verticalDramaEpisodes).set({
+        startFramePlan: updatedPlan,
+        ...(updatedPack ? { motionPromptPack: updatedPack } : {}),
+        updatedAt: new Date(),
+      }).where(and(
+        eq(verticalDramaEpisodes.id, episodeId),
+        eq(verticalDramaEpisodes.tenantId, tenantId),
+        eq(verticalDramaEpisodes.userId, userId),
+        eq(verticalDramaEpisodes.seriesId, seriesId)
+      ));
       return { startFramePlan: updatedPlan };
     }),
 
@@ -29038,6 +29175,9 @@ export const verticalDramaEpisodesRouter = router({
                 ? localeSeriesRow.genre
                 : undefined,
             supportingPresence: shotSupportingPresence,
+            speakerVisualBindings: normalizeVerticalDramaSpeakerVisualBindings(
+              frame?.speakerVisualBindings
+            ),
             // Lip-sync discipline fix — same `characterKey -> name` map the
             // non-split path uses below (`shotVideoCharacterNameByKey`,
             // resolved once from `shotVideoCharacterIdentitySources` — no new
@@ -29175,6 +29315,9 @@ export const verticalDramaEpisodesRouter = router({
                 ? localeSeriesRow.genre
                 : undefined,
             supportingPresence: shotSupportingPresence,
+            speakerVisualBindings: normalizeVerticalDramaSpeakerVisualBindings(
+              frame?.speakerVisualBindings
+            ),
           },
           // Retention hooks (W7) — omitted (all four) whenever the tenant flag
           // is off, reproducing the exact prior prompt byte-for-byte.
