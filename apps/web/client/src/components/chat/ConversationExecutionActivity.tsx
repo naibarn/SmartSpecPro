@@ -1,28 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
+import { useTaskHarnessOutputEvents } from "@/lib/useTaskHarnessOutputEvents";
 
 const ACTIVE_STATUSES = new Set(["running", "claimed", "leased", "preparing", "uploading", "publishing", "indexing"]);
 const WAITING_STATUSES = new Set(["pending", "queued", "retry_scheduled", "waiting_external", "waiting_approval"]);
-
-type DeveloperExecutionEvent = {
-  id: string;
-  sequence: number;
-  at: string;
-  attempt: number | null;
-  kind: string;
-  text?: string;
-  detail?: string;
-  diff?: string;
-  path?: string;
-  name?: string;
-  status?: string;
-  exitCode?: number;
-  chunkIndex: number;
-  chunkCount: number;
-};
 
 function statusLabel(status: string, t: (key: string) => string): string {
   if (ACTIVE_STATUSES.has(status)) return t("chat.executionRunning");
@@ -80,42 +64,8 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
     },
   );
   const [developerDetails, setDeveloperDetails] = useState(false);
-  const [eventCursor, setEventCursor] = useState(0);
-  const [events, setEvents] = useState<DeveloperExecutionEvent[]>([]);
-  const [eventsJobId, setEventsJobId] = useState<string | null>(null);
-  const developerEventsQuery = trpc.workerJobs.developerExecutionEvents.useQuery(
-    {
-      jobId: selectedJob?.id ?? "",
-      afterSequence: eventCursor,
-      limit: 50,
-    },
-    {
-      enabled: developerDetails && Boolean(selectedJob && eventsJobId === selectedJob.id),
-      staleTime: 0,
-      refetchInterval: developerDetails && selectedJob ? 2_000 : false,
-      refetchIntervalInBackground: false,
-      retry: false,
-    },
-  );
-
-  useEffect(() => {
-    const jobId = selectedJob?.id ?? null;
-    if (jobId === eventsJobId) return;
-    setEventsJobId(jobId);
-    setEvents([]);
-    setEventCursor(0);
-  }, [selectedJob?.id, eventsJobId]);
-
-  useEffect(() => {
-    const page = developerEventsQuery.data;
-    if (!developerDetails || !selectedJob || eventsJobId !== selectedJob.id || !page) return;
-    setEvents(current => {
-      const known = new Set(current.map(event => event.id));
-      const incoming = page.events.filter(event => !known.has(event.id)) as DeveloperExecutionEvent[];
-      return incoming.length ? [...current, ...incoming] : current;
-    });
-    if (page.nextSequence > eventCursor) setEventCursor(page.nextSequence);
-  }, [developerDetails, developerEventsQuery.data, eventCursor, eventsJobId, selectedJob]);
+  const harnessOutput = useTaskHarnessOutputEvents(selectedJob?.id ?? null, developerDetails);
+  const { events, eventsJobId, query: developerEventsQuery, hasMore } = harnessOutput;
 
   if (!conversationId) return null;
   const failed = Boolean(query.error || detailQuery.error);
@@ -159,6 +109,7 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
       {developerDetails ? (
         <section className="mt-3 space-y-2 border-t border-[var(--color-border)] pt-3" aria-label={t("taskControl.harnessOutputTitle")}>
           <h3 className="text-sm font-semibold">{t("taskControl.harnessOutputTitle")}</h3>
+          {hasMore ? <p className="text-sm text-muted-foreground" role="status">{t("taskControl.harnessOutputBacklog")}</p> : null}
           {!selectedJob ? <p className="text-sm text-muted-foreground">{t("taskControl.harnessOutputNotStarted")}</p> : null}
           {selectedJob && (developerEventsQuery.isLoading || eventsJobId !== selectedJob.id) && events.length === 0 ? <p className="text-sm text-muted-foreground" role="status">{t("taskControl.harnessOutputLoading")}</p> : null}
           {selectedJob && developerEventsQuery.error ? <p className="text-sm text-destructive">{t("taskControl.harnessOutputUnavailable")}</p> : null}

@@ -12,7 +12,7 @@ import { createSpec277DisposablePostgres } from "./support/spec277DisposablePost
 import { installSpec277AutoTeamRuntimeSchema } from "./support/spec277AutoTeamRuntimeSchema";
 import {
   aggregateTaskObservability, encodeProjectionSnapshotToken,
-  getTaskObservabilityDetail, listTaskObservability,
+  getTaskHarnessOutputEvents, getTaskObservabilityDetail, listTaskObservability,
 } from "../taskObservabilityReadModel";
 
 /** Real SQL read-boundary acceptance only. Caller scopes and signing secret are
@@ -67,6 +67,19 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
         id === foreignUserId ? 8 : owner.userId, { projectId, specId: "224" },
         new Date(Date.now() - 60_000 - index * 1000).toISOString()]);
     }
+    await writer.unsafe(`INSERT INTO worker_job_events
+      ("workerJobId", "workerJobAttempt", "eventType", "eventSequence", "payloadJson", "createdAt") VALUES
+      ($1, 1, 'RUNNER_PROGRESS', 1, $2::jsonb, '2026-10-29T10:00:01Z'),
+      ($1, 1, 'RUNNER_PROGRESS', 2, $3::jsonb, '2026-10-29T10:00:02Z'),
+      ($1, 1, 'RUNNER_PROGRESS', 3, $4::jsonb, '2026-10-29T10:00:03Z'),
+      ($1, 1, 'RUNNER_PROGRESS', 4, $5::jsonb, '2026-10-29T10:00:04Z'),
+      ($1, 1, 'JOB_PROGRESS', 5, $6::jsonb, '2026-10-29T10:00:05Z')`, [ids[0],
+    JSON.stringify({ harnessEvent: { kind: "assistant_message", text: "Phase 1 started" } }),
+    JSON.stringify({ harnessEvent: { kind: "tool_result", name: "test", text: "2 tests passed token=do-not-leak" } }),
+    JSON.stringify({ harnessEvent: { kind: "final_summary", text: "Phase 1 complete" } }),
+    JSON.stringify({ harnessEvent: { kind: "private_reasoning", text: "must not be shown" } }),
+    JSON.stringify({ harnessEvent: { kind: "assistant_message", text: "wrong event source" } }),
+    ]);
     await writer`INSERT INTO worker_jobs
       (id, "tenantId", "requestedByUserId", "runtimeType", "jobType", status,
        "executionClass", "contractVersion", "inputJson") VALUES
@@ -140,6 +153,23 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
       .rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
   });
 
+  it("replays durable harness output by sequence with bounded pages and current Job ownership", async () => {
+    const first = await getTaskHarnessOutputEvents({ scope: owner, jobId: ids[0]!, limit: 2 });
+    expect(first).toMatchObject({ jobId: ids[0], hasMore: true, nextSequence: 2 });
+    expect(first.events.map(event => [event.sequence, event.kind])).toEqual([[1, "assistant_message"], [2, "tool_result"]]);
+    expect(first.events[1]?.text).toBe("2 tests passed [redacted]");
+    expect(JSON.stringify(first)).not.toContain("do-not-leak");
+    expect(JSON.stringify(first)).not.toContain("must not be shown");
+
+    const replay = await getTaskHarnessOutputEvents({ scope: owner, jobId: ids[0]!, limit: 2 });
+    expect(replay).toEqual(first);
+    const next = await getTaskHarnessOutputEvents({ scope: owner, jobId: ids[0]!, afterSequence: first.nextSequence, limit: 2 });
+    expect(next).toMatchObject({ jobId: ids[0], hasMore: false, nextSequence: 4 });
+    expect(next.events.map(event => [event.sequence, event.kind, event.text])).toEqual([[3, "final_summary", "Phase 1 complete"]]);
+    await expect(getTaskHarnessOutputEvents({ scope: owner, jobId: foreignUserId })).rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+    await expect(getTaskHarnessOutputEvents({ scope: owner, jobId: foreignTenantId })).rejects.toMatchObject({ code: "TASK_NOT_FOUND" });
+  });
+
   it("projects legacy and child-thread jobs into the authorized conversation without leaking another conversation", async () => {
     const page = await listTaskObservability({ scope: owner, conversationId });
     expect(page.items.map(item => item.id)).toContain(threadJobId);
@@ -148,7 +178,20 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
     expect(page.items).toHaveLength(2);
     expect(page.items.find(item => item.id === threadJobId)?.threadId).toBe(threadId);
     expect(page.items.find(item => item.id === threadJobId)?.conversationId).toBe(conversationId);
+    expect(page.items.find(item => item.id === threadJobId)).toMatchObject({
+      conversationTitle: "Authorized thread conversation",
+      threadTitle: "Child task",
+    });
     expect(page.items.find(item => item.id === legacyConversationJobId)?.conversationId).toBe(conversationId);
+    expect(page.items.find(item => item.id === legacyConversationJobId)).toMatchObject({
+      conversationTitle: "Authorized thread conversation",
+      threadTitle: "Authorized thread conversation",
+    });
+    const exactJob = await listTaskObservability({ scope: owner, conversationId, threadId, jobId: threadJobId });
+    expect(exactJob.items.map(item => item.id)).toEqual([threadJobId]);
+    expect(exactJob.items[0]).toMatchObject({ threadTitle: "Child task", conversationTitle: "Authorized thread conversation" });
+    await expect(listTaskObservability({ scope: owner, conversationId, threadId, jobId: foreignConversationJobId }))
+      .resolves.toMatchObject({ items: [] });
     const mainThread = await listTaskObservability({ scope: owner, conversationId, threadId: null });
     expect(mainThread.items.map(item => item.id)).toEqual([legacyConversationJobId]);
     await expect(listTaskObservability({ scope: owner, conversationId: foreignConversationId }))
@@ -159,6 +202,12 @@ describe("Task observability native PostgreSQL read prerequisites (not live auth
       .rejects.toMatchObject({ code: "SCOPE_REQUIRED" });
     await expect(listTaskObservability({ scope: owner, threadId: null }))
       .rejects.toMatchObject({ code: "SCOPE_REQUIRED" });
+    const tenantAdminPage = await listTaskObservability({ scope: { ...owner, isAdmin: true } });
+    expect(tenantAdminPage.items.find(item => item.id === mismatchedThreadJobId)).toMatchObject({
+      conversationId: null,
+      conversationTitle: null,
+      threadTitle: null,
+    });
     const legacyTenantless = await listTaskObservability({ scope: owner, conversationId: legacyTenantlessConversationId });
     expect(legacyTenantless.items.map(item => item.id)).toEqual([legacyTenantlessConversationJobId]);
     expect(legacyTenantless.items[0]?.conversationId).toBe(legacyTenantlessConversationId);

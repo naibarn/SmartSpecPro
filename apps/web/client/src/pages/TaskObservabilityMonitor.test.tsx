@@ -3,11 +3,12 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-const { listQuery, detailQuery, runnerQuery, aggregateQuery, detailArgs, aggregateArgs, aggregateOptions } = vi.hoisted(() => ({
+const { listQuery, detailQuery, runnerQuery, aggregateQuery, listArgs, detailArgs, aggregateArgs, aggregateOptions } = vi.hoisted(() => ({
   listQuery: { current: {} as Record<string, unknown> },
   detailQuery: { current: {} as Record<string, unknown> },
   runnerQuery: { current: {} as Record<string, unknown> },
   aggregateQuery: { current: {} as Record<string, unknown> },
+  listArgs: { current: [] as unknown[] },
   detailArgs: { current: [] as unknown[] },
   aggregateArgs: { current: [] as unknown[] },
   aggregateOptions: { current: {} as Record<string, unknown> },
@@ -15,7 +16,7 @@ const { listQuery, detailQuery, runnerQuery, aggregateQuery, detailArgs, aggrega
 
 vi.mock("@/lib/trpc", () => ({
   trpc: { workerJobs: {
-    observability: { useQuery: () => listQuery.current },
+    observability: { useQuery: (...args: unknown[]) => { listArgs.current = args; return listQuery.current; } },
     observabilityDetail: { useQuery: (...args: unknown[]) => { detailArgs.current = args; return detailQuery.current; } },
     observabilityAggregate: { useQuery: (...args: unknown[]) => { aggregateArgs.current = args; aggregateOptions.current = args[1] as Record<string, unknown>; return aggregateQuery.current; } },
   }, runnerNodes: { list: { useQuery: () => runnerQuery.current } } },
@@ -29,10 +30,12 @@ function renderMonitor(mode: "simple" | "developer" = "simple") {
   return result;
 }
 
-const job = { id: "job-1", jobType: "spec224.development", status: "running", stage: "IMPLEMENT", attempt: 1, maxAttempts: 2, heartbeatAt: null, createdAt: "2026-10-17T00:00:00Z", workerId: null, runnerId: "runner-1", runnerSessionState: "running", conversationId: 451, threadId: "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1", projectId: null, specId: null, identityBinding: { status: "UNKNOWN", source: null }, operatorAttention: { required: false, reason: null }, recovery: { nextRetryAt: null, retryEligible: false } };
+const job = { id: "job-1", jobType: "spec224.development", status: "running", stage: "IMPLEMENT", attempt: 1, maxAttempts: 2, heartbeatAt: null, createdAt: "2026-10-17T00:00:00Z", workerId: null, runnerId: "runner-1", runnerSessionState: "running", conversationId: 451, conversationTitle: "Authorized pilot", threadId: "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1", threadTitle: "SPEC-224 pilot", projectId: null, specId: null, identityBinding: { status: "UNKNOWN", source: null }, operatorAttention: { required: false, reason: null }, recovery: { nextRetryAt: null, retryEligible: false } };
 
 beforeEach(() => {
+  window.history.replaceState({}, "", "/agent-monitor");
   listQuery.current = { data: { scope: "owner", items: [job], snapshot: { asOf: "2026-10-17T00:00:00Z", expiresAt: "2026-10-17T00:10:00Z", projectionToken: "shared.snapshot-token" }, nextCursor: null }, isLoading: false, error: null, refetch: vi.fn() };
+  listArgs.current = [];
   detailArgs.current = [];
   aggregateArgs.current = [];
   aggregateOptions.current = {};
@@ -72,6 +75,20 @@ describe("TaskObservabilityMonitor", () => {
     expect(screen.getByRole("link", { name: "Open in Chat thread" })).toHaveAttribute("href", href);
   });
 
+  it("shows authorized thread-to-Job correlation and preserves exact IDs in both navigation links", () => {
+    renderMonitor("developer");
+    expect(screen.getByRole("heading", { name: "Project and thread correlation" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Open this thread in Chat" })).toHaveAttribute("href", "/chat?c=451&t=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1");
+    expect(screen.getByRole("link", { name: "Open exact task" })).toHaveAttribute("href", "/agent-monitor?jobId=job-1&conversationId=451&threadId=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1");
+  });
+
+  it("loads an exact Job deep link with its authorization-bound conversation and thread scope", () => {
+    window.history.replaceState({}, "", "/agent-monitor?conversationId=451&threadId=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1&jobId=job-1");
+    render(<TaskObservabilityMonitor />);
+    expect(listArgs.current[0]).toMatchObject({ conversationId: 451, threadId: "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1", jobId: "job-1" });
+    expect(detailArgs.current[0]).toMatchObject({ jobId: "job-1" });
+  });
+
   it("switches to developer evidence while retaining the same selected task", () => {
     renderMonitor();
     fireEvent.click(screen.getByText("Developer"));
@@ -100,7 +117,7 @@ describe("TaskObservabilityMonitor", () => {
   it("shows runner fleet state from the canonical runner read model", () => {
     renderMonitor("developer");
     expect(screen.getByText(/Available runner fleet/)).toBeTruthy();
-    expect(screen.getAllByText(/Runner One/)).toHaveLength(2);
+    expect(screen.getAllByText(/Runner One/)).toHaveLength(3);
     expect(screen.getAllByText(/snapshot expires 2026-10-17T00:10:00Z/)).toHaveLength(2);
     expect(screen.getByRole("button", { name: /↳ spec224\.development · running · job-1/ })).toBeTruthy();
   });

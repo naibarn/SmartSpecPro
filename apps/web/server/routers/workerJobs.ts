@@ -127,10 +127,11 @@ export const workerJobsRouter = router({
       specId: z.string().trim().min(1).max(64).optional(),
       conversationId: z.number().int().positive().optional(),
       threadId: z.string().uuid().nullable().optional(),
+      jobId: z.string().trim().min(1).max(36).optional(),
     }).strict().optional())
     .query(async ({ ctx, input }) => {
       try {
-        return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, ...(input?.projectionToken ? { projectionToken: input.projectionToken } : {}), projectId: input?.projectId, specId: input?.specId, conversationId: input?.conversationId, threadId: input?.threadId });
+        return await listTaskObservability({ scope: requireTaskObservabilityScope(ctx), cursor: input?.cursor, ...(input?.projectionToken ? { projectionToken: input.projectionToken } : {}), projectId: input?.projectId, specId: input?.specId, conversationId: input?.conversationId, threadId: input?.threadId, jobId: input?.jobId });
       } catch (error) { return mapObservabilityError(error); }
     }),
 

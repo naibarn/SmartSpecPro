@@ -8,13 +8,13 @@ acceptance are separate claims.
 
 ## Surface ownership
 
-| Surface | Owns | Consumes |
-| --- | --- | --- |
-| Chat — SPEC-198 | Conversation and thread navigation, messages, user intent and links to work | Authorized thread projection and canonical job/result references |
-| Task Control — SPEC-277 | Exact Job/Run/Attempt, approval, recovery, evidence and usage inspection | Canonical worker job, outbox, event, Runner and settlement authorities |
-| Mission Control — SPEC-294 | Cross-project/agent/host correlation and operational overview | The same authorized task/thread projections and existing source events |
-| Development execution — SPEC-224 | DevelopmentRun, phases, grants, budget, child authorization, dispatch and final verification | Optional conversation/thread correlation for origin and return navigation |
-| Harness adapters — SPEC-310 | Adapter-specific harness and harness-session capabilities | Canonical job identity; optional Chat thread association where the producer provides it |
+| Surface                          | Owns                                                                                         | Consumes                                                                                |
+| -------------------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Chat — SPEC-198                  | Conversation and thread navigation, messages, user intent and links to work                  | Authorized thread projection and canonical job/result references                        |
+| Task Control — SPEC-277          | Exact Job/Run/Attempt, approval, recovery, evidence and usage inspection                     | Canonical worker job, outbox, event, Runner and settlement authorities                  |
+| Mission Control — SPEC-294       | Cross-project/agent/host correlation and operational overview                                | The same authorized task/thread projections and existing source events                  |
+| Development execution — SPEC-224 | DevelopmentRun, phases, grants, budget, child authorization, dispatch and final verification | Optional conversation/thread correlation for origin and return navigation               |
+| Harness adapters — SPEC-310      | Adapter-specific harness and harness-session capabilities                                    | Canonical job identity; optional Chat thread association where the producer provides it |
 
 ## Identity, relationship and cardinality
 
@@ -93,6 +93,28 @@ acceptance are separate claims.
 - Apply migration through the canonical development migration runner after
   source integration. Verify exact target identity and schema before browser
   acceptance; production migration and release remain separately authorized.
+
+## Follow-up implementation slice (2026-10-29)
+
+- Chat and Task Control Developer views now consume one shared client hook over
+  the existing owner-scoped `worker_jobs` / `worker_job_events` output query.
+  Replay remains bounded and sequence-based; the client de-duplicates stable
+  event IDs, fetches older pages after reconnect, and limits the visible window.
+  Server filtering continues to exclude unsupported/private event kinds and
+  redact sensitive text. No new event storage or execution authority is added.
+- The existing Task Observability Monitor groups the authorized Jobs on the
+  current snapshot page by verified Conversation/Thread and provides exact
+  Chat and Job links. Opening a Job creates a fresh authorized projection
+  instead of carrying a potentially expired snapshot token in the navigation
+  URL. Pagination and the existing task snapshot remain authoritative.
+- Thread titles are returned only when the Job owner, authorized Conversation
+  and Thread binding agree, including tenant-admin projections. A mismatched
+  association remains an unlinked Job with unknown conversation/thread labels.
+- These changes improve same-Job continuity across Chat, Task Control and the
+  Task Observability/Mission view. They do not close cross-source immutable
+  replay/gap detection, global project grouping, full Inspector/result return,
+  hosted authenticated browser acceptance, deployment, or real SPEC-224
+  Child 1/2 live execution and Independent Final Verify.
 
 ## Acceptance and known limits
 

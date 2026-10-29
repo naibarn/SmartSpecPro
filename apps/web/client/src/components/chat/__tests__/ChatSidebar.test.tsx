@@ -274,6 +274,6 @@ describe("ChatSidebar", () => {
     fireEvent.click(screen.getByRole("button", { name: "Threads overview" }));
     fireEvent.click(screen.getByRole("button", { name: "Open SPEC-224 Phase 2 in SPEC-224 Pilot" }));
     expect(onSelectThread).toHaveBeenCalledWith(42, "c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1");
-    expect(screen.getByRole("link", { name: "Open Task Control" })).toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1");
+    expect(screen.getByRole("link", { name: "Open Task Control" })).toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=c5ea1c96-d20b-47b0-a74e-5c90c8ab72f1&jobId=job-42");
   });
 });

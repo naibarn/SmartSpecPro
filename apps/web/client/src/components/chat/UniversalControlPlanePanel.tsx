@@ -27,6 +27,7 @@ import { WorkOverview } from "@/components/chat/WorkOverview";
 import { trpc } from "@/lib/trpc";
 import { cn } from "@/lib/utils";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
+import { useTaskHarnessOutputEvents } from "@/lib/useTaskHarnessOutputEvents";
 
 export interface UniversalControlPlanePanelProps {
   conversationId: number | null;
@@ -65,23 +66,6 @@ type TaskGroupView = {
     latestEvent: { message: string | null; phase: string | null } | null;
     worker: { displayName: string | null; machineName: string | null } | null;
   }>;
-};
-
-type DeveloperExecutionEvent = {
-  id: string;
-  sequence: number;
-  at: string;
-  attempt: number | null;
-  kind: string;
-  text?: string;
-  detail?: string;
-  diff?: string;
-  path?: string;
-  name?: string;
-  status?: string;
-  exitCode?: number;
-  chunkIndex: number;
-  chunkCount: number;
 };
 
 function stateTone(state: string): string {
@@ -354,9 +338,6 @@ export function UniversalControlPlanePanel({
     new Set()
   );
   const [runnerViewMode, setRunnerViewMode] = useState<"simple" | "developer">("simple");
-  const [developerEventCursor, setDeveloperEventCursor] = useState(0);
-  const [developerEvents, setDeveloperEvents] = useState<DeveloperExecutionEvent[]>([]);
-  const [developerEventsJobId, setDeveloperEventsJobId] = useState<string | null>(null);
   const trpcUtils = trpc.useUtils();
   const taskObservabilityQuery = trpc.workerJobs.observability.useQuery(
     conversationId ? { conversationId, threadId } : {},
@@ -377,42 +358,12 @@ export function UniversalControlPlanePanel({
     },
   );
   const conversationTaskDetail = conversationTaskDetailQuery.error ? undefined : conversationTaskDetailQuery.data;
-  const developerExecutionEventsQuery = trpc.workerJobs.developerExecutionEvents.useQuery(
-    {
-      jobId: latestConversationJob?.id ?? "",
-      afterSequence: developerEventCursor,
-      limit: 50,
-    },
-    {
-      enabled: runnerViewMode === "developer" && Boolean(latestConversationJob),
-      staleTime: 0,
-      refetchInterval: runnerViewMode === "developer" && Boolean(latestConversationJob) ? 2_000 : false,
-      refetchIntervalInBackground: false,
-      retry: false,
-    },
-  );
-  useEffect(() => {
-    const jobId = latestConversationJob?.id ?? null;
-    if (jobId === developerEventsJobId) return;
-    setDeveloperEventsJobId(jobId);
-    setDeveloperEvents([]);
-    setDeveloperEventCursor(0);
-  }, [latestConversationJob?.id, developerEventsJobId]);
-  useEffect(() => {
-    const page = developerExecutionEventsQuery.data;
-    if (!page || page.jobId !== latestConversationJob?.id) return;
-    if (page.events.length) {
-      setDeveloperEvents(current => {
-        const known = new Set(current.map(event => event.id));
-        const incoming = page.events.filter(event => !known.has(event.id)) as DeveloperExecutionEvent[];
-        return incoming.length ? [...current, ...incoming].sort((left, right) => left.sequence - right.sequence).slice(-500) : current;
-      });
-    }
-    if (page.nextSequence > developerEventCursor) setDeveloperEventCursor(page.nextSequence);
-  }, [developerExecutionEventsQuery.data, latestConversationJob?.id, developerEventCursor]);
+  const harnessOutput = useTaskHarnessOutputEvents(latestConversationJob?.id ?? null, runnerViewMode === "developer");
+  const { events: developerEvents, query: developerExecutionEventsQuery, hasMore: hasMoreDeveloperEvents } = harnessOutput;
   const taskMonitorParams = new URLSearchParams();
   if (conversationId) taskMonitorParams.set("conversationId", String(conversationId));
   if (conversationId) taskMonitorParams.set("threadId", threadId ?? "main");
+  if (latestConversationJob) taskMonitorParams.set("jobId", latestConversationJob.id);
   if (taskProjectionToken) taskMonitorParams.set("projectionToken", taskProjectionToken);
   const taskMonitorHref = conversationId || fullPage ? `/agent-monitor${taskMonitorParams.size ? `?${taskMonitorParams}` : ""}` : "";
   const summaryQuery = trpc.workerJobs.dashboardSummary.useQuery(undefined, {
@@ -856,6 +807,7 @@ export function UniversalControlPlanePanel({
                       <p className="font-semibold text-foreground">{t("taskControl.harnessOutputTitle")}</p>
                       {latestConversationJob ? <span className="text-xs">{t("taskControl.harnessOutputJob", { jobId: latestConversationJob.id, status: latestConversationJob.status })}</span> : null}
                     </div>
+                    {hasMoreDeveloperEvents ? <p className="text-sm text-muted-foreground" role="status">{t("taskControl.harnessOutputBacklog")}</p> : null}
                     {!latestConversationJob ? <p>{t("taskControl.harnessOutputNotStarted")}</p> : null}
                     {latestConversationJob && developerExecutionEventsQuery.isLoading && developerEvents.length === 0 ? <p>{t("taskControl.harnessOutputLoading")}</p> : null}
                     {latestConversationJob && developerExecutionEventsQuery.error ? <p>{t("taskControl.harnessOutputUnavailable")}</p> : null}

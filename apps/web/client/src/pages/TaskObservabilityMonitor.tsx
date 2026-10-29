@@ -13,36 +13,67 @@ import { Link } from "@astryxdesign/core/Link";
 import { trpc } from "@/lib/trpc";
 import { TaskAcceptanceEvidence } from "@/components/task-control/TaskAcceptanceEvidence";
 import { formatVerifiedPercentLabel } from "@shared/taskAcceptanceProjection";
+import { useTranslation } from "react-i18next";
 
 const metricLabel = (value: number | null): string => value === null ? "Unknown" : `${value.toFixed(1)}%`;
 const tokenLabel = (value: number | null): string => value === null ? "Unknown" : value.toLocaleString();
 const simpleStatusLabels: Record<string, string> = { running: "In progress", queued: "Waiting to start", completed: "Completed", failed: "Needs attention", cancelled: "Cancelled", waiting_approval: "Waiting for your review", retry_scheduled: "Retry scheduled" };
 const simpleStatusLabel = (status: string): string => simpleStatusLabels[status] ?? status.replaceAll("_", " ");
 const simpleStepLabel = (step: string | null): string => step ? step.toLowerCase().replaceAll("_", " ") : "Not reported";
+const threadOverviewFallbacks: Record<string, string> = {
+  "taskControl.threadOverviewTitle": "Project and thread correlation",
+  "taskControl.threadOverviewDescription": "Read-only links from authorized task records. A thread can contain multiple Jobs; each link keeps the exact Chat and task context.",
+  "taskControl.threadOverviewPageLimit": "Showing threads represented in this task snapshot page. Load the next task page to see older work.",
+  "taskControl.threadOverviewEmpty": "No linked work is available in this task snapshot.",
+  "taskControl.threadOverviewUnknownTitle": "Thread title unavailable",
+  "taskControl.threadOverviewConversationUnknown": "Conversation title unavailable",
+  "taskControl.threadOverviewOpenChatThread": "Open this thread in Chat",
+  "taskControl.threadOverviewOpenChat": "Open this conversation in Chat",
+  "taskControl.threadOverviewChatUnavailable": "No authorized Chat binding is available for this Job.",
+  "taskControl.threadOverviewAttempt": "Attempt {{attempt}} of {{maxAttempts}}",
+  "taskControl.threadOverviewStageUnknown": "Stage unavailable",
+  "taskControl.threadOverviewRunnerUnverified": "Runner identity unverified",
+  "taskControl.threadOverviewRunnerUnknown": "Runner unavailable",
+  "taskControl.threadOverviewOpenTask": "Open exact task",
+};
 const chatHref = (conversationId: number, threadId: string | null): string => {
   const params = new URLSearchParams({ c: String(conversationId) });
   if (threadId) params.set("t", threadId);
   return `/chat?${params.toString()}`;
 };
+const taskHref = (item: { id: string; conversationId: number | null; threadId: string | null }): string => {
+  const params = new URLSearchParams({ jobId: item.id });
+  if (item.conversationId) {
+    params.set("conversationId", String(item.conversationId));
+    params.set("threadId", item.threadId ?? "main");
+  }
+  return `/agent-monitor?${params.toString()}`;
+};
 
 export default function TaskObservabilityMonitor() {
+  const { t: translate } = useTranslation("chat", { useSuspense: false });
+  const t = (key: string, params?: Record<string, string | number>) => translate(key, { ns: "chat", defaultValue: threadOverviewFallbacks[key] ?? key, ...params }) as string;
   const [mode, setMode] = useState("simple");
-  const [projectionToken, setProjectionToken] = useState(() => new URLSearchParams(window.location.search).get("projectionToken"));
+  const initialParams = new URLSearchParams(window.location.search);
+  const requestedJobId = initialParams.get("jobId");
+  const jobId = requestedJobId && requestedJobId.length <= 36 ? requestedJobId : undefined;
+  const [projectionToken, setProjectionToken] = useState(() => initialParams.get("projectionToken"));
   const [cursor, setCursor] = useState<string | null>(null);
   const [projectFilter, setProjectFilter] = useState("");
   const [specFilter, setSpecFilter] = useState("");
   const [projectDraft, setProjectDraft] = useState("");
   const [specDraft, setSpecDraft] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const conversationCandidate = Number(new URLSearchParams(window.location.search).get("conversationId"));
+  const [selectedId, setSelectedId] = useState<string | null>(jobId ?? null);
+  const conversationCandidate = Number(initialParams.get("conversationId"));
   const conversationId = Number.isSafeInteger(conversationCandidate) && conversationCandidate > 0 ? conversationCandidate : undefined;
-  const threadScopeParam = new URLSearchParams(window.location.search).get("threadId");
+  const threadScopeParam = initialParams.get("threadId");
   const threadId = threadScopeParam === "main" ? null : threadScopeParam;
   const query = trpc.workerJobs.observability.useQuery({
     cursor,
     ...(projectionToken ? { projectionToken } : {}),
     ...(conversationId ? { conversationId } : {}),
     ...(threadScopeParam !== null ? { threadId } : {}),
+    ...(jobId ? { jobId } : {}),
     ...(projectFilter ? { projectId: projectFilter } : {}),
     ...(specFilter ? { specId: specFilter } : {}),
   }, { staleTime: 15_000, refetchInterval: 15_000, retry: false });
@@ -63,6 +94,19 @@ export default function TaskObservabilityMonitor() {
   const aggregate = aggregateQuery.error ? undefined : aggregateQuery.data;
   const filtered = projectFilter || specFilter;
   const snapshotExpired = query.error?.data?.code === "PRECONDITION_FAILED";
+  const threadGroups = new Map<string, { title: string; conversationTitle: string | null; conversationId: number | null; threadId: string | null; jobs: typeof items }>();
+  for (const item of items) {
+    const key = item.conversationId ? `${item.conversationId}:${item.threadId ?? "main"}` : `unlinked:${item.id}`;
+    const existing = threadGroups.get(key);
+    if (existing) existing.jobs.push(item);
+    else threadGroups.set(key, {
+      title: item.threadTitle ?? t("taskControl.threadOverviewUnknownTitle"),
+      conversationTitle: item.conversationTitle,
+      conversationId: item.conversationId,
+      threadId: item.threadId,
+      jobs: [item],
+    });
+  }
 
   return (
     <VStack as="main" gap={4} padding={4}>
@@ -164,6 +208,36 @@ export default function TaskObservabilityMonitor() {
           </VStack>
         </Section>
       ) : null}
+
+      {mode === "developer" ? <Section>
+        <VStack gap={3}>
+          <VStack gap={1}>
+            <Heading level={2}>{t("taskControl.threadOverviewTitle")}</Heading>
+            <Text type="supporting">{t("taskControl.threadOverviewDescription")}</Text>
+            {query.data?.nextCursor ? <Text type="supporting">{t("taskControl.threadOverviewPageLimit")}</Text> : null}
+          </VStack>
+          {!query.isLoading && !query.error && threadGroups.size === 0 ? <Text>{t("taskControl.threadOverviewEmpty")}</Text> : null}
+          {[...threadGroups.entries()].map(([key, group]) => (
+            <VStack as="article" key={key} gap={1} padding={2}>
+              <Heading level={3}>{group.title}</Heading>
+              <Text type="supporting">{group.conversationTitle ?? t("taskControl.threadOverviewConversationUnknown")}</Text>
+              {group.conversationId ? <Link href={chatHref(group.conversationId, group.threadId)} isStandalone>
+                {group.threadId ? t("taskControl.threadOverviewOpenChatThread") : t("taskControl.threadOverviewOpenChat")}
+              </Link> : <Text type="supporting">{t("taskControl.threadOverviewChatUnavailable")}</Text>}
+              <VStack as="ol" gap={1}>
+                {group.jobs.map((item) => (
+                  <HStack as="li" key={item.id} gap={2} wrap="wrap" padding={1}>
+                    <Button label={`${item.jobType} · ${simpleStatusLabel(item.status)} · ${item.id}`} variant={selected?.id === item.id ? "primary" : "secondary"} onClick={() => setSelectedId(item.id)} />
+                    <Text type="supporting">{t("taskControl.threadOverviewAttempt", { attempt: item.attempt, maxAttempts: item.maxAttempts })} · {item.stage ?? t("taskControl.threadOverviewStageUnknown")}</Text>
+                    <Text type="supporting">{item.runnerId ? runners.find(runner => runner.runnerId === item.runnerId)?.displayName ?? t("taskControl.threadOverviewRunnerUnverified") : t("taskControl.threadOverviewRunnerUnknown")}</Text>
+                    <Link href={taskHref(item)} isStandalone>{t("taskControl.threadOverviewOpenTask")}</Link>
+                  </HStack>
+                ))}
+              </VStack>
+            </VStack>
+          ))}
+        </VStack>
+      </Section> : null}
 
       {mode === "developer" ? <Section>
         <VStack gap={2}>

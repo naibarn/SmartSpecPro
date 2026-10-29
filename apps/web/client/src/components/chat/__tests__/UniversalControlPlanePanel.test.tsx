@@ -275,7 +275,7 @@ describe("UniversalControlPlanePanel", () => {
       "/chat?panel=control-plane&view=full&c=42",
     );
     expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute("target", "_blank");
-    expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ })).toHaveAttribute("href", "/agent-monitor?conversationId=42");
+    expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ })).toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=main");
     fireEvent.change(screen.getByLabelText("1. เลือก Runner"), { target: { value: "runner-1" } });
     fireEvent.change(screen.getByLabelText("2. เลือก Project Workspace"), { target: { value: '["runner-1","workspace-1"]' } });
     await waitFor(() => expect(mocks.bindWorkspaceMutateAsync).toHaveBeenCalledWith({ conversationId: 42, runnerId: "runner-1", workspaceId: "workspace-1" }));
@@ -285,11 +285,11 @@ describe("UniversalControlPlanePanel", () => {
   it("carries the same signed projection snapshot into the Task evidence view", () => {
     mocks.observabilityQuery.mockReturnValue({
       ...emptyQuery,
-      data: { snapshot: { projectionToken: "scope-bound.snapshot-token" } },
+      data: { snapshot: { projectionToken: "scope-bound.snapshot-token" }, items: [{ id: "job-1", status: "running" }] },
     });
     render(<UniversalControlPlanePanel conversationId={42} onClose={vi.fn()} onOpenPrompt={vi.fn()} />);
     expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ }))
-      .toHaveAttribute("href", "/agent-monitor?conversationId=42&projectionToken=scope-bound.snapshot-token");
+      .toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=main&jobId=job-1&projectionToken=scope-bound.snapshot-token");
   });
 
   it("renders the latest Chat task usage with the same signed snapshot and preserves unknown values", () => {

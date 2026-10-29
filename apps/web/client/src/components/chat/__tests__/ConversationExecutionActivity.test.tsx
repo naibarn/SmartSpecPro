@@ -59,7 +59,7 @@ describe("ConversationExecutionActivity", () => {
       error: null,
     });
     mocks.developerEventsQuery.mockReturnValue({
-      data: { events: [{ id: "harness-1", sequence: 1, at: "2026-10-29T10:00:01.000Z", attempt: 1, kind: "assistant_message", text: "Codex executed the test suite.", chunkIndex: 0, chunkCount: 1 }], nextSequence: 1 },
+      data: { jobId: "job-1", events: [{ id: "harness-1", sequence: 1, at: "2026-10-29T10:00:01.000Z", attempt: 1, kind: "assistant_message", text: "Codex executed the test suite.", chunkIndex: 0, chunkCount: 1 }], hasMore: false, nextSequence: 1 },
       error: null,
       isLoading: false,
     });

@@ -93,7 +93,7 @@ export function ThreadOverviewSidebarPanel({
                     </span>
                   </button>
                   {item.latestJob ? <Link
-                    href={`/agent-monitor?conversationId=${item.conversationId}&threadId=${encodeURIComponent(item.threadId)}`}
+                    href={`/agent-monitor?conversationId=${item.conversationId}&threadId=${encodeURIComponent(item.threadId)}&jobId=${encodeURIComponent(item.latestJob.jobId)}`}
                     className="ml-8 inline-block rounded px-1 py-1 text-xs text-[var(--color-text-accent)] underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >{t("threads.openTaskControl")}</Link> : null}
                 </li>
