@@ -5,8 +5,8 @@
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 504 unresolved of 504
-- Next action: Resume from integrated 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Verify exact-thread persisted result restoration and correlate authenticated runtime 500s; implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.
-- Manifest generation: 105
+- Next action: Continue SPEC-294 residual acceptance: verify exact-Thread transcript/result restoration after browser revisit, correlate remaining authenticated runtime errors, and implement the separately scoped global cross-host Mission Control Thread/Agent graph with immutable event replay and gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.
+- Manifest generation: 107
 
 ## Source-declared status and relationship claims
 

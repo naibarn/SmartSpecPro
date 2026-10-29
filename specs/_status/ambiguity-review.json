@@ -7690,7 +7690,7 @@
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "2642dc4db34013ef89cd4714a8d18dee45bdad4603987ff011957e41ab9cf8ff",
+      "digest": "38ca7e4b04982438259c7d255c1a4b73a7c3bdfb017c451e496efc058e94fc0a",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
@@ -78541,6 +78541,8 @@
         "requirement REQ-74660B2BE467 is OPEN",
         "requirement REQ-198-UWAC-01 is OPEN",
         "requirement REQ-198-UWAC-02 is OPEN",
+        "requirement REQ-198-THR-01 is OPEN",
+        "requirement REQ-198-THR-02 is OPEN",
         "required verification evidence is missing",
         "canonical integration evidence is missing"
       ],
@@ -78638,7 +78640,7 @@
           "excerpt": "**Status:** Implementation-ready target specification",
           "line": 5,
           "source": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
-          "source_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+          "source_digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
           "value": "Implementation-ready target specification"
         }
       ],
@@ -78651,16 +78653,16 @@
           "excerpt": "**Status:** Implementation-ready target specification",
           "line": 5,
           "source": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
-          "source_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+          "source_digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
           "value": "Implementation-ready target specification"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+      "digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-20T23:27:53.028890Z",
+      "last_reconciled": "2026-10-29T09:41:47.774949Z",
       "lifecycle": "DISCOVERING",
       "next_action": "Review consolidated ambiguity evidence and assess current relevance.",
       "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution",
@@ -78765,14 +78767,14 @@
             "excerpt": "**Status:** Implementation-ready target specification",
             "line": 5,
             "source": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md",
-            "source_digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+            "source_digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
             "value": "Implementation-ready target specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "8e8fc6884192be1bc453a37e12aaadd584374fa5cc8f09f31cd6f43c1f94ce62",
+            "digest": "bfcdc96c6c3c1eaba73e7b28ef59d04cb59ba4b0914994d1fbb2ebe1ace9f7e3",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/198-intelligent-chat-universal-orchestration-capability-evolution/spec.md"
           },
@@ -78848,9 +78850,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 401,
+        "open": 403,
         "pass": 0,
-        "total": 401
+        "total": 403
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "5",
@@ -90045,7 +90047,7 @@
     {
       "acceptance": "PARTIAL",
       "authority": "ACTIVE_CANONICAL",
-      "canonical_sha": "5859261fc7eb56880920477e92176a021778d144",
+      "canonical_sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -90076,7 +90078,7 @@
         "requirement REQ-14E0521A4732 is OPEN",
         "requirement REQ-BC477A7B1814 is OPEN",
         "requirement REQ-B39DBFC4C758 is OPEN",
-        "requirement REQ-759DCE45F6BA is OPEN",
+        "requirement REQ-759DCE45F6BA is STALE_EVIDENCE",
         "requirement REQ-FC74F6FC9090 is OPEN",
         "requirement REQ-D50A620ABAD0 is OPEN",
         "requirement REQ-9C2380343017 is OPEN",
@@ -90175,7 +90177,7 @@
         "requirement REQ-D0A397742FCC is OPEN",
         "requirement REQ-90A22BB3A658 is OPEN",
         "requirement REQ-A4D2FAD9F780 is OPEN",
-        "requirement REQ-2C34C51DC8BD is OPEN",
+        "requirement REQ-2C34C51DC8BD is PARTIAL",
         "requirement REQ-3C86DECDF871 is OPEN",
         "requirement REQ-4741C54CC7BD is OPEN",
         "requirement REQ-78382E032B1D is OPEN",
@@ -90205,7 +90207,7 @@
         "requirement REQ-AA6D6A340E63 is OPEN",
         "requirement REQ-D3E428A63830 is OPEN",
         "requirement REQ-35DBD22AAFC0 is OPEN",
-        "requirement REQ-3917D7A777B0 evidence is stale or not bound to canonical SHA",
+        "requirement REQ-3917D7A777B0 is STALE_EVIDENCE",
         "requirement REQ-C42685D3C75D is OPEN",
         "requirement REQ-700F0597AD20 is OPEN",
         "requirement REQ-4C3CEC0DD52F is OPEN",
@@ -91304,15 +91306,15 @@
         "requirement REQ-02DADAA16ED9 is OPEN",
         "requirement REQ-C7565D4BEDE2 is OPEN",
         "requirement REQ-09D54E098C5F is PARTIAL",
-        "requirement REQ-B92C79FEA294 evidence is stale or not bound to canonical SHA",
-        "requirement REQ-6B95E2497188 evidence is stale or not bound to canonical SHA",
+        "requirement REQ-B92C79FEA294 is STALE_EVIDENCE",
+        "requirement REQ-6B95E2497188 is STALE_EVIDENCE",
         "requirement REQ-99636C68BAEA is PARTIAL",
         "requirement REQ-AA925E33A229 is PARTIAL",
-        "requirement REQ-28DAED30E097 evidence is stale or not bound to canonical SHA",
+        "requirement REQ-28DAED30E097 is STALE_EVIDENCE",
         "requirement REQ-24575B1B523F is PARTIAL",
         "requirement REQ-23C689C1ACC7 is PARTIAL",
-        "requirement REQ-410EE0357FDC evidence is stale or not bound to canonical SHA",
-        "requirement REQ-F12D04357ED8 evidence is stale or not bound to canonical SHA",
+        "requirement REQ-410EE0357FDC is STALE_EVIDENCE",
+        "requirement REQ-F12D04357ED8 is STALE_EVIDENCE",
         "requirement REQ-224-UWAC-01 is OPEN",
         "requirement REQ-224-UWAC-02 is OPEN",
         "requirement REQ-9032C703AC1E is OPEN",
@@ -91334,6 +91336,27 @@
         "requirement REQ-065D2AA57334 is PARTIAL",
         "requirement REQ-09C3661BEE60 is OPEN",
         "requirement REQ-A5A0D43A8A62 is OPEN",
+        "requirement REQ-13219D8DF56E is OPEN",
+        "requirement REQ-65EBF25B869C is OPEN",
+        "requirement REQ-F2307D8D9C62 is OPEN",
+        "requirement REQ-3348F3A53E2B is OPEN",
+        "requirement REQ-359225915B24 is OPEN",
+        "requirement REQ-7E9C426566AD is OPEN",
+        "requirement REQ-DADBCE44C58B is OPEN",
+        "requirement REQ-BC2BF20A349A is OPEN",
+        "requirement REQ-710512245E1A is OPEN",
+        "requirement REQ-60ECE2F64603 is OPEN",
+        "requirement REQ-35327D4F7AAC is OPEN",
+        "requirement REQ-9F0ECDBA4FE9 is OPEN",
+        "requirement REQ-4B1087248599 is OPEN",
+        "requirement REQ-11F65C188FC4 is OPEN",
+        "requirement REQ-B0F730F1E549 is OPEN",
+        "requirement REQ-3969CA400BEC is OPEN",
+        "requirement REQ-0F3F082257BD is OPEN",
+        "requirement REQ-3D193E44D0CA is OPEN",
+        "requirement REQ-D094A292C89C is OPEN",
+        "requirement REQ-D94C603C4313 is OPEN",
+        "requirement REQ-C581133E6AED is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -91391,7 +91414,7 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+          "source_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
         }
       ],
@@ -91404,35 +91427,39 @@
           "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
           "line": 4,
           "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-          "source_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+          "source_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
           "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
         }
       ],
       "deployment": "PASS",
-      "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+      "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-25T13:18:43.973118Z",
+      "last_reconciled": "2026-10-29T09:28:20.256901Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
+      "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "primary_blocker": {
         "class": "AUTHORITY",
-        "classification": "TRUE_EXTERNAL",
+        "classification": "RESOLVED",
         "evidence": [
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-final-canonical-e2e-reconciliation-20261025.md",
           "orchestra/tasks/task-control-completed-pilot-20261017/evidence/spec224-windows-authority-preparation-20261017.json",
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-start-and-public-runtime-20261026.md",
           "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-codex-owner-probe-received-20261026.json",
-          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-0241-readiness-received-20261026.json"
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-runner-0241-readiness-received-20261026.json",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-writer-lease-checkpoint-20261028.md",
+          "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-live-goal-observer-20261029.md"
         ],
         "evidence_freshness": "FRESH",
         "id": "R11_DISPOSABLE_AUTHORITY_ACCEPTANCE",
-        "next_action": "Preserve passed probe and fingerprint; do not reinstall or repeat task probe. Reconcile canonical source and existing policy/budget through legitimate owner/admin APIs, then execute the scoped owner Start. If local GUI still reports no heartbeat, use its redacted Debug report to compare actual transport acknowledgement.",
-        "owner": "Registered Windows Runner owner and authenticated non-production tenant owner",
-        "reactivation_predicate": "RUNNER_READY remains current; canonical source/workspace and configured policy/budget satisfy the real authenticated owner Start and protected dispatch.",
-        "root_cause": "Existing Windows Runner 0.2.41 now publishes a passed authenticated Codex task probe and nonempty workspace fingerprint. Current readiness evaluator returns RUNNER_READY with policy pending, not denied. Remaining protected execution prerequisites are canonical source synchronization, configured bounded development policy/economic budget and real owner Start/run-bound authority. Local GUI acknowledgement discrepancy still needs local diagnostics if persistent."
+        "next_action": "No further reconnect action. Refresh the expired snapshot before any execution dispatch.",
+        "owner": "Authenticated non-production tenant owner for same-device Runner reconnect; development runtime operator for post-approval service resume.",
+        "reactivation_predicate": "The same existing Runner identity has a current authenticated session and server-applied capability ACK at the integrated source SHA; the authorized Project Workspace snapshot has complete current dirtyPaths; Codex probe is fresh; and a bounded write set is SAFE_CLEAN or SAFE_DISJOINT_DIRTY with no overlapping active writer lease.",
+        "resolution": "Same-device reconnect completed; existing Runner ID, tenant, device and workspace were retained and a server-persisted capability snapshot was observed. The later snapshot expiry is tracked separately by R13_RUNNER_SNAPSHOT_REFRESH.",
+        "resolved_at": "2026-10-28T17:46:35Z",
+        "root_cause": "The current development Control Plane snapshot expired at 2026-10-28T14:26:36.549Z and still binds the Runner workspace to source a773f5482c64f42292d4a0dc5b986e97aaac3a1b. A controlled restart of the existing Runner process returned RUNNER_CONNECT_REQUEST_REJECTED_401 during credential refresh. The same registered Runner/device reconnect flow is pending authenticated owner approval. No fresh source admission or Goal Grant exists."
       },
       "problem": null,
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -92349,14 +92376,14 @@
             "excerpt": "**Status:** Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implem",
             "line": 4,
             "source": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
-            "source_digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+            "source_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
             "value": "Durable DevelopmentRun projection/phase controller, bounded closure and Runner-continuation reconciliation slices implemented; canonical SmartAIHub Internet-first Mini-App delivery is the current default and remains under implementation and acceptance"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "0b418c7509b206cb6e3d166fdcf1d2e3209e7823d0e3f70b0f5a7a9891bad4b0",
+            "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md"
           },
@@ -92417,9 +92444,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 1277,
-        "pass": 6,
-        "total": 1284
+        "open": 1304,
+        "pass": 0,
+        "total": 1305
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "24",
@@ -113320,7 +113347,7 @@
     {
       "acceptance": "NOT_VERIFIED",
       "authority": "UNRESOLVED",
-      "canonical_sha": "1d4ab37795bd299eeafb52e406d0c9b9f14f84bb",
+      "canonical_sha": "838523a86ec6c76c95d542334801cdd49ebb134b",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -113686,7 +113713,7 @@
     {
       "acceptance": "UNKNOWN",
       "authority": "UNRESOLVED",
-      "canonical_sha": "2800149773c9ec33de5a6dc82d3ed08fd855b4d0",
+      "canonical_sha": "5fe7a8270878a32562cb6681362e5cc784ba58e6",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -114190,10 +114217,13 @@
         "requirement REQ-294-OBS-03 is PARTIAL",
         "requirement REQ-294-OBS-04 is PARTIAL",
         "requirement REQ-294-OBS-05 is PARTIAL",
-        "requirement REQ-294-UWAC-01 is OPEN",
-        "requirement REQ-294-UWAC-02 is OPEN",
+        "requirement REQ-294-UWAC-01 is PARTIAL",
+        "requirement REQ-294-UWAC-02 is PARTIAL",
         "requirement REQ-83610882F326 is OPEN",
         "requirement REQ-294-UWAC-03 is PARTIAL",
+        "requirement REQ-294-THR-02 is PARTIAL",
+        "requirement REQ-294-THR-03 is PARTIAL",
+        "requirement REQ-38B60BA02161 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -114207,12 +114237,25 @@
       "declared_claims": [
         {
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.event-projection: in_progress; commit_hash=missing",
+          "line": null,
+          "section": "event-projection",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json",
+          "source_digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
+          "value": "in_progress"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "DECLARED_STATUS",
           "confidence": "LOW",
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
+          "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
@@ -114225,18 +114268,18 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
+          "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
+      "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-20T23:27:53.873306Z",
+      "last_reconciled": "2026-10-29T09:41:47.769498Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
+      "next_action": "Continue SPEC-294 residual acceptance: verify exact-Thread transcript/result restoration after browser revisit, correlate remaining authenticated runtime errors, and implement the separately scoped global cross-host Mission Control Thread/Agent graph with immutable event replay and gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -114256,19 +114299,32 @@
         "declared_claims": [
           {
             "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.event-projection: in_progress; commit_hash=missing",
+            "line": null,
+            "section": "event-projection",
+            "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json",
+            "source_digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
+            "value": "in_progress"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
             "claim_kind": "DECLARED_STATUS",
             "confidence": "LOW",
             "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
             "line": 4,
             "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-            "source_digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
+            "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
             "value": "Proposed / Additive implementation-ready specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "9c46589a7371ddce6d541df1238e9821138797d22a779d3188a9d57b8e833ce2",
+            "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
           },
@@ -114281,6 +114337,26 @@
             "digest": "da1555532e31aa47716a1d9338b927d38e61df2947718a7d7eaa17b5020c612b",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/claude-spec.md"
+          },
+          {
+            "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/.deep_implement_state.lock"
+          },
+          {
+            "digest": "6fbc0fc84e381de907e8db643f2469190c4d9a978e3209f6f586ba36789aaa2e",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/HANDOFF.md"
+          },
+          {
+            "digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "ec942614f99f6d9fe22d904647aff762df2c73f64f66bd483f25aa47a1936654",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/handoff_history.jsonl"
           },
           {
             "digest": "e723edbc3527bb15612453cf4e8f2fa5536c5a19637dffdc5cfc363ddfd95fa7",
@@ -114339,14 +114415,28 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 501,
+        "open": 504,
         "pass": 0,
-        "total": 501
+        "total": 504
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.7",
       "root_kind": "CANONICAL",
-      "section_status_claims": [],
+      "section_status_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.event-projection: in_progress; commit_hash=missing",
+          "line": null,
+          "section": "event-projection",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/deep_implement_config.json",
+          "source_digest": "4617cc27130ffdef9d7bc435e8781f8fd548665b223a1d426cc0945cfb7c99a7",
+          "value": "in_progress"
+        }
+      ],
       "slug": "294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_id": "294",
@@ -114355,7 +114445,7 @@
       "successors": [],
       "title": "SPEC-294 — SmartAIHub Development Mission Control & Conversational Project Operations",
       "true_blockers": 0,
-      "verification": "UNKNOWN"
+      "verification": "PARTIAL"
     },
     {
       "acceptance": "UNKNOWN",
@@ -116290,6 +116380,8 @@
         "requirement REQ-AB083D777DC5 is OPEN",
         "requirement REQ-7CA4788FC31C is OPEN",
         "requirement REQ-76426464E612 is OPEN",
+        "requirement REQ-DD510E03E608 is OPEN",
+        "requirement REQ-3269EAB7EC24 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -116303,12 +116395,90 @@
       "declared_claims": [
         {
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-g0-owner-audit: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-g0-owner-audit",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-g1-contracts: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-g1-contracts",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-managed-pi-isolated-spike: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-managed-pi-isolated-spike",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-non-git-general-work: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-non-git-general-work",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-05-chat-native-bridge-gate: in_progress; commit_hash=missing",
+          "line": null,
+          "section": "section-05-chat-native-bridge-gate",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "in_progress"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-06-team-runtime-acceptance: in_progress; commit_hash=missing",
+          "line": null,
+          "section": "section-06-team-runtime-acceptance",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "in_progress"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "DECLARED_STATUS",
           "confidence": "LOW",
           "excerpt": "status: PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
-          "source_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+          "source_digest": "3da2b1b2903aae489f60be2bc5436743fda2c53d905347b8684b82f42793150e",
           "value": "PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED"
         }
       ],
@@ -116321,17 +116491,17 @@
           "excerpt": "status: PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
-          "source_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+          "source_digest": "3da2b1b2903aae489f60be2bc5436743fda2c53d905347b8684b82f42793150e",
           "value": "PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED"
         }
       ],
       "deployment": "UNKNOWN",
-      "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+      "digest": "3da2b1b2903aae489f60be2bc5436743fda2c53d905347b8684b82f42793150e",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-22T10:41:27.958599Z",
-      "lifecycle": "DISCOVERING",
+      "last_reconciled": "2026-10-29T09:41:47.768162Z",
+      "lifecycle": "VALIDATION_PENDING",
       "next_action": "Recover the original R1.0 source; route each of the seven G1 decisions to its owner; continue only independent offline contract work while live gates stay closed.",
       "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
       "primary_blocker": null,
@@ -116352,34 +116522,127 @@
         "declared_claims": [
           {
             "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-01-g0-owner-audit: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-01-g0-owner-audit",
+            "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+            "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-02-g1-contracts: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-02-g1-contracts",
+            "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+            "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-03-managed-pi-isolated-spike: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-03-managed-pi-isolated-spike",
+            "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+            "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-04-non-git-general-work: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-04-non-git-general-work",
+            "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+            "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-05-chat-native-bridge-gate: in_progress; commit_hash=missing",
+            "line": null,
+            "section": "section-05-chat-native-bridge-gate",
+            "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+            "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+            "value": "in_progress"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-06-team-runtime-acceptance: in_progress; commit_hash=missing",
+            "line": null,
+            "section": "section-06-team-runtime-acceptance",
+            "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+            "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+            "value": "in_progress"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
             "claim_kind": "DECLARED_STATUS",
             "confidence": "LOW",
             "excerpt": "status: PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED",
             "line": 6,
             "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md",
-            "source_digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+            "source_digest": "3da2b1b2903aae489f60be2bc5436743fda2c53d905347b8684b82f42793150e",
             "value": "PROPOSED_ADD_ONLY_DESIGN_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "bd6cf9a975b6fb0bf06ad8d8a08f836a7d79c31a8b77f8107fa48fef32a32243",
+            "digest": "3da2b1b2903aae489f60be2bc5436743fda2c53d905347b8684b82f42793150e",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/spec.md"
           },
           {
-            "digest": "91ac50927e10d974acd7050b28558e8a570d6cd8b6eaec2899d36407db6c84bc",
+            "digest": "4d67f1e2355c1a47cd8a91eceb3cbf354d99d8fc63a22750b61eaf4d30702b11",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-plan.md"
           },
           {
-            "digest": "71a4f7d423ae1273dc35ca590d9e9f74c237df8850b37347c1e55daa68ef62d7",
+            "digest": "ed6f1ba3de7db2abda5547057d0adac4d7257402a2a19517f8d1038e2704f4a5",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/claude-spec.md"
           },
           {
-            "digest": "6599f82a8a0d46cf69ec43398b38f034881515524a87ce6277a998a3102ace70",
+            "digest": "5362cf5a3a069273b9a1ff83ad86ec3e121263b921284b45585191af20565900",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/HANDOFF.md"
+          },
+          {
+            "digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "d92fd002208395d2a273bf61709db64d6d14d727d780f98296d394283bdc9342",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/handoff_history.jsonl"
+          },
+          {
+            "digest": "1b63e5b518efbb0f7a0489ef820556ea82328b9b920c81ce3fb8016a23b33e60",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/index.md"
           },
@@ -116389,7 +116652,7 @@
             "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-01-g0-owner-audit.md"
           },
           {
-            "digest": "65fde027f95ad57f12aabdd48aa81dcbb2fc34a687b71f2b8a7354cd4828c2c2",
+            "digest": "ba5e5d2c1d99c5813ff5b9dd7daafdc4c0a95743fa203dad0e235bfee66a7c27",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/sections/section-02-g1-contracts.md"
           },
@@ -116420,14 +116683,93 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 101,
+        "open": 103,
         "pass": 0,
-        "total": 101
+        "total": 103
       },
       "review_priority": "R4_STATUS_CLAIM",
       "revision": "1.3",
       "root_kind": "CANONICAL",
-      "section_status_claims": [],
+      "section_status_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-g0-owner-audit: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-g0-owner-audit",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-g1-contracts: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-g1-contracts",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-managed-pi-isolated-spike: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-managed-pi-isolated-spike",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-04-non-git-general-work: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-04-non-git-general-work",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-05-chat-native-bridge-gate: in_progress; commit_hash=missing",
+          "line": null,
+          "section": "section-05-chat-native-bridge-gate",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "in_progress"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-06-team-runtime-acceptance: in_progress; commit_hash=missing",
+          "line": null,
+          "section": "section-06-team-runtime-acceptance",
+          "source": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle/implementation/deep_implement_config.json",
+          "source_digest": "3fadc776afe13fd980cd5f81cca0a0aa5d35d7c5cb535750e35c4114fd0a99c3",
+          "value": "in_progress"
+        }
+      ],
       "slug": "310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
       "spec_created_at": "2026-10-22T17:39:07+07:00",
       "spec_id": "310",
@@ -130887,6 +131229,9 @@
         "requirement REQ-FEEFBF1F00E9 is OPEN",
         "requirement REQ-6F8C62E6A826 is OPEN",
         "requirement REQ-277-UWAC-03 is PARTIAL",
+        "requirement REQ-277-THR-01 is OPEN",
+        "requirement REQ-277-THR-02 is OPEN",
+        "requirement REQ-277-THR-03 is OPEN",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -130901,11 +131246,11 @@
       "declared_relationship_claims": [],
       "declared_status_claims": [],
       "deployment": "UNKNOWN",
-      "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
+      "digest": "9fff0b3594558231e3eca9607ac9be41ecc4ff63a3396c8ad3cd5cb2a0696f8d",
       "disposition": "DORMANT_UNRESOLVED",
       "evidence_freshness": "PARTIAL",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-27T13:01:56.640905Z",
+      "last_reconciled": "2026-10-29T09:41:47.777449Z",
       "lifecycle": "CONTINUATION_REQUIRED",
       "next_action": "Continue direct acceptance for provider receipt/outbox consistency within the existing worker_jobs/outbox authority; keep durable receipt schema work waiting for explicit SPEC-302 ownership and migration authorization. Continue remaining callback-producer attempt-correlation review where producers can supply attempt metadata. Keep SPEC-277 PARTIAL until all applicable authority and end-to-end requirements pass.",
       "path": "specs/feature/277-task-control-experience-r1-6",
@@ -130928,7 +131273,7 @@
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "42bff29aaec98031b677020a1335d25c731bcb57d31a4c5be3d36e6de150cf27",
+            "digest": "9fff0b3594558231e3eca9607ac9be41ecc4ff63a3396c8ad3cd5cb2a0696f8d",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/277-task-control-experience-r1-6/spec.md"
           }
@@ -130939,9 +131284,9 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 445,
+        "open": 448,
         "pass": 0,
-        "total": 445
+        "total": 448
       },
       "review_priority": "R5_NO_DIRECT_EVIDENCE",
       "revision": "1.8",

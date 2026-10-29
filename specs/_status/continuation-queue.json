@@ -3009,7 +3009,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 4,
-      "next_action": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
+      "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -3803,8 +3803,8 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
-      "declared_claim_count": 1,
-      "next_action": "Continue P0_INTERNAL_GAP_CLOSURE: resolve cross-host authority precedence across distinct trusted hosts; complete Mission Control push/integration and task/provider identity evidence; bind migration/runtime health and Cloudflare credential-center paths; finish regression and acceptance gates. Preserve the dirty noncanonical primary checkout until explicit safe reconciliation.",
+      "declared_claim_count": 2,
+      "next_action": "Continue SPEC-294 residual acceptance: verify exact-Thread transcript/result restoration after browser revisit, correlate remaining authenticated runtime errors, and implement the separately scoped global cross-host Mission Control Thread/Agent graph with immutable event replay and gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
@@ -3923,7 +3923,7 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
-      "declared_claim_count": 1,
+      "declared_claim_count": 7,
       "next_action": "Recover the original R1.0 source; route each of the seven G1 decisions to its owner; continue only independent offline contract work while live gates stay closed.",
       "path": "specs/feature/310-smartaihub-native-agent-harness-governed-pi-runtime-lifecycle",
       "priority": "R4_STATUS_CLAIM",
@@ -4947,7 +4947,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "P1",
-      "rationale": "At https://smartaihub.app/login, sign in as the existing owner in the owner’s browser. In Chat, open an existing conversation and Spec 224 workspace, select the existing Windows Runner and SmartSpecPro workspace, keep the cap at USD 1.00, and start one reversible source-status/ancestry verification goal. Capture its real DevelopmentRun ID and continue the same run using the supported status and receipt surfaces for protected dispatch, Codex execution, durable audit, settlement, reconnect recovery and independent Final Verify.",
+      "rationale": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
       "spec_id": "224"
     },

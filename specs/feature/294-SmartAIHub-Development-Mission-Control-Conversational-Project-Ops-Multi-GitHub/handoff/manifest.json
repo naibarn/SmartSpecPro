@@ -21,14 +21,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081",
+    "expected_canonical_sha": "5fe7a8270878a32562cb6681362e5cc784ba58e6",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Continue SPEC-294 unified workbench: verify exact-thread message/result restoration after browser revisit and correlate current authenticated runtime 500s; then implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving revision and SPEC-224 genuine Child 1/2 execution plus Independent Final Verify open.",
+    "next_action": "Continue SPEC-294 residual acceptance: verify exact-Thread transcript/result restoration after browser revisit, correlate remaining authenticated runtime errors, and implement the separately scoped global cross-host Mission Control Thread/Agent graph with immutable event replay and gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Integrated current source through 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Project/status Thread navigation and shared canonical execution identity are implemented with 45 focused tests, 4 disposable PostgreSQL tests, and local authenticated UAT (14 pass, 2 unrelated fail, 1 skip); evidence is handoff/evidence/unified-thread-overview-acceptance-20261029.md. Hosted runtime is not verified; the UAT skipped live model catalog, Gateway lacks an authorized model, and local storage conditional-create blocks unrelated SPEC-224 public-access. Remaining: exact-thread persisted result return browser proof, authenticated 500 correlation, global cross-host Mission Control Thread/Agent graph, immutable multi-source event replay/gap recovery, hosted serving provenance, and genuine SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify.",
+    "resume_point": "Integrated source through 5fe7a8270878a32562cb6681362e5cc784ba58e6. Ten-pass UI/UX review fixed default project-aware Thread navigation, truthful status-order copy, Project sentinel collision, misleading Task 1 labels, silent multi-Job selection, responsive identity alignment, and the strict tRPC infinite-query direction rejection. Focused Chat/Task/router tests pass 46/46; authenticated Chromium UAT passes 13 with 1 catalog-dependent skip. Evidence: handoff/evidence/ui-ux-10-pass-review-20261029.md. Hosted deployment, exact Thread transcript restoration, cross-host graph/event replay, and genuine SPEC-224 two-phase execution remain unverified/open.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -102,7 +102,7 @@
       "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
       "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
     ],
-    "next_action": "Resume from integrated 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Verify exact-thread persisted result restoration and correlate authenticated runtime 500s; implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
+    "next_action": "Continue SPEC-294 residual acceptance: verify exact-Thread transcript/result restoration after browser revisit, correlate remaining authenticated runtime errors, and implement the separately scoped global cross-host Mission Control Thread/Agent graph with immutable event replay and gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
     "rationale": "The integrated follow-up closes same-Job Chat/Task Control durable harness replay, adds authorized page-scoped Thread-to-Job correlation and fixes stale snapshot navigation and mismatched-owner Thread title disclosure. Cross-source Mission Control scope, hosted runtime verification and live SPEC-224 acceptance remain incomplete.",
     "residual_requirements": [
       "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
@@ -139,7 +139,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 105,
+  "generation": 107,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -160,9 +160,11 @@
       "00e840b514c598e8b0864a694246702feb694a3a",
       "02f4ae88f8dbdd5bafa693aefff3dc11b860dbd0",
       "064f07851a0fe27f531cb2139ad0644a94dbf3f8",
+      "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0",
       "0b19f95cbc8648358e082ae1e946e00247d9498b",
       "13266879192cf761a45a0f2a8a70d19eff3a0317",
       "1b93981fdde901e30ca6f681af02315de68d65cb",
+      "1f9cda7857372f0e4369943cb257216658b84d0e",
       "26fd48168f44f31a6759c9264cfc5107445fe187",
       "27092cfda7f1bf651a44f6894b2b0cc87ecf0b11",
       "2753c74afbfeadd0f218d23367f7c61728602a0b",
@@ -175,20 +177,26 @@
       "420c9d80d4369800d6ab83c70e230c61b10ae689",
       "452a2073b64a7a610b504b5175196a95a5e58d81",
       "46f17355679a746cd8637198e9af96ee807d20cc",
+      "47235563d14d6a4c861c04127e77e6dd655283db",
       "4850d2bd1b067f9f9c2a292099c6d8233ad39ba8",
       "4b572c75042d7ba1c22d8bb7dfdfe674a8e13798",
       "4c5c43d52249ae767806947e9e6abe3222035542",
+      "4f3e15371176e42c441ad8806b9dbbe8d90dd35c",
       "52fe0fead65f8d3542d73f21e0abbf24ce70fb2f",
       "55571e18378880a7058bde38548e8211aa280842",
       "587e52b7067482582b807a8786b81c075b8f46b8",
       "5928f373f7c395d1e0cf900615df3b116aae9fee",
+      "594e3a109ee0422d71ff63b276be58c007e34506",
+      "5fe7a8270878a32562cb6681362e5cc784ba58e6",
       "60678faa879d5cad0646275086a79760b4b6ba8a",
+      "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081",
       "6b68c02dc9cfe51ac50bf6c34207fad7fea22225",
       "72337eed620e3be6852e07893c566d12708dd543",
       "76ec09333bb5fe55388c0c5fa3d0eb4b85b568be",
       "78f6aa42f197d76a4df28eae81ac3a3cb99b57a6",
       "7902974a70d4631e51410de67762b1e59ded9bde",
       "8104541b5cd082f2218b27f251e0d67ae8f80eee",
+      "86a16d13592b7be4063c0ab37044418a8212de7c",
       "8884004059d061b0d19177c60f2916d1757dc975",
       "8b6e23602de8341593586e6e25beb554443287b7",
       "94db033447cf115490d970bb368b00a0949043e4",
@@ -205,26 +213,19 @@
       "b350f013bbcd4ea299961f982f8c59c323e5add3",
       "b6151bcd293015f2376ac003d07cb296daf8c139",
       "ba8da3fb51458b0ee98f16289e346d4fe0575474",
+      "ca6860f892b05a538d8f85758b2e8c58a17d1067",
       "d70d14aa97a7aefc4e6751e62379999ae5a87702",
       "d7c2930c003bb5af2ec9739301e17839a9022759",
       "dc76f5423e039d117233889997dce73843907c7d",
       "e3bbbb8d55cc4898c00f0cc1ebbfef0a25e8f64a",
+      "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c",
       "ebabe0cab9805f7a26ba4b752e045db8fcf16608",
       "f1bf44911d8176db9414ddc4eee934b0f304dec7",
+      "f250326711d7d170e575d03b7c358f74891dfecc",
       "f3703f06ba9ba8679838e7ab6c5b4b157f52d78e",
       "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
       "fb9012f80ef413f34180ccf294588155b0454ae7",
-      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
-      "47235563d14d6a4c861c04127e77e6dd655283db",
-      "1f9cda7857372f0e4369943cb257216658b84d0e",
-      "86a16d13592b7be4063c0ab37044418a8212de7c",
-      "f250326711d7d170e575d03b7c358f74891dfecc",
-      "0a8a808c5d9b2d3c6f6a5978c6f479a065082ae0",
-      "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c",
-      "594e3a109ee0422d71ff63b276be58c007e34506",
-      "4f3e15371176e42c441ad8806b9dbbe8d90dd35c",
-      "ca6860f892b05a538d8f85758b2e8c58a17d1067",
-      "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081"
+      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9"
     ],
     "mapping": [],
     "source_paths": [
@@ -267,7 +268,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081",
+    "canonical_sha": "5fe7a8270878a32562cb6681362e5cc784ba58e6",
     "integrated": true,
     "integrated_at": "2026-10-29T14:19:56Z"
   },
@@ -437,7 +438,7 @@
         "git:fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-wu4c-provider-neutral-closeout.md"
       ],
-      "next_action": "Resume from integrated 6ad9a10b6e7c9ba4ee47e9f44365407cddd6b081. Verify exact-thread persisted result restoration and correlate authenticated runtime 500s; implement the global cross-host Mission Control Thread/Agent view and immutable event replay/gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
+      "next_action": "Continue SPEC-294 residual acceptance: verify exact-Thread transcript/result restoration after browser revisit, correlate remaining authenticated runtime errors, and implement the separately scoped global cross-host Mission Control Thread/Agent graph with immutable event replay and gap recovery. Keep hosted serving provenance and SPEC-224 genuine Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify open.",
       "rationale": "The integrated follow-up closes same-Job Chat/Task Control durable harness replay, adds authorized page-scoped Thread-to-Job correlation and fixes stale snapshot navigation and mismatched-owner Thread title disclosure. Cross-source Mission Control scope, hosted runtime verification and live SPEC-224 acceptance remain incomplete.",
       "residual_requirements": [
         "authority precedence and deterministic conflict handling across distinct trusted Runner hosts",
@@ -1375,7 +1376,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T14:22:39.568034Z",
+  "updated_at": "2026-10-29T14:33:00.462133Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1726,12 +1727,19 @@
         "source_sha": "cd538f528f7b19091379cc300d20b10d184ed853",
         "status": "PARTIAL",
         "summary": "45/45 focused tests and 4/4 disposable PostgreSQL integration tests passed. Authenticated local UAT profile: 14 passed, 2 failed, 1 skipped. The 2 failures are Gateway test configuration with no authorized model and unrelated SPEC-224 public-access local storage conditional-create unsupported; live Runner model-catalog check skipped because no current authorized catalog was returned. No hosted serving revision or SPEC-224 live execution claimed."
+      },
+      {
+        "kind": "TEN_PASS_UI_UX_REVIEW",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/ui-ux-10-pass-review-20261029.md",
+        "scope": "Ten-pass review and fixes across Chat Thread navigation, task naming, execution identity selection/readability, Task Control correlation, and authenticated tRPC/browser behavior.",
+        "source_sha": "5fe7a8270878a32562cb6681362e5cc784ba58e6",
+        "status": "PASS"
       }
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
-    "sha": null,
-    "status": "UNKNOWN",
+    "sha": "5fe7a8270878a32562cb6681362e5cc784ba58e6",
+    "status": "PARTIAL",
     "task_regressions": []
   }
 }
