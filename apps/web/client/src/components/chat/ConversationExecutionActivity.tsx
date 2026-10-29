@@ -33,6 +33,10 @@ function taskControlHref(conversationId: number, threadId?: string | null): stri
   return `/chat?panel=control-plane&view=full&c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`;
 }
 
+function isAuthorizationReadFailure(code: string | undefined): boolean {
+  return code === "UNAUTHORIZED" || code === "FORBIDDEN" || code === "NOT_FOUND";
+}
+
 /** Safe lifecycle summary for Chat; detailed harness output stays in authorized Task Control. */
 export function ConversationExecutionActivity({ conversationId, threadId = null }: { conversationId: number | null; threadId?: string | null }) {
   const { t, locale } = useScopedTranslation("chat");
@@ -48,7 +52,9 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
     },
   );
   const selectedJob = useMemo(() => {
-    const items = query.error ? [] : query.data?.items ?? [];
+    // Preserve previously authorized status through transient refresh failures,
+    // but never keep rendering it after an explicit authorization denial.
+    const items = isAuthorizationReadFailure(query.error?.data?.code) ? [] : query.data?.items ?? [];
     return items.find(item => item.id === selectedJobId)
       ?? items.find(item => ACTIVE_STATUSES.has(item.status))
       ?? items[0]
@@ -101,7 +107,7 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
       ) : null}
       {query.isLoading && !selectedJob ? (
         <p className="mt-2 text-sm text-muted-foreground" role="status">{t("chat.executionActivityLoading")}</p>
-      ) : query.error ? (
+      ) : query.error && !selectedJob ? (
         <section className="mt-2 flex flex-wrap items-center gap-2">
           <p className="text-sm text-muted-foreground" role="alert">{t("chat.executionActivityUnavailable")}</p>
           <Button
@@ -116,6 +122,22 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
         </section>
       ) : selectedJob ? (
         <>
+          {query.error ? (
+            <section className="mt-2 flex flex-wrap items-center gap-2">
+              <p className="text-sm text-muted-foreground" role="status">
+                {`${t("chat.executionActivityStale")}${query.data?.snapshot.asOf ? ` · ${query.data.snapshot.asOf}` : ""}`}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={query.isFetching}
+                onClick={() => void query.refetch()}
+              >
+                {query.isFetching ? t("chat.executionActivityRetrying") : t("chat.executionActivityRetry")}
+              </Button>
+            </section>
+          ) : null}
           <p className="mt-2 text-sm text-muted-foreground">
             {activity ? activityLabel(activity.type, t) : t("chat.executionActivityRecorded")}
             {formattedTime ? ` · ${formattedTime}` : ""}

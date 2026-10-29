@@ -76,6 +76,7 @@
   "loadingMessagesRetry": "กำลังลองโหลด…",
   "chat.executionActivityLoading": "กำลังโหลดสถานะงาน…",
   "chat.executionActivityUnavailable": "สถานะงานยังไม่พร้อมแสดง",
+  "chat.executionActivityStale": "โหลดสถานะล่าสุดไม่สำเร็จ กำลังแสดงข้อมูลที่เคยได้รับอนุญาต ณ เวลา",
   "chat.executionDetailsUnavailable": "โหลดรายละเอียดงานไม่สำเร็จ แต่ยังแสดงสถานะล่าสุดได้",
   "chat.executionActivityRetry": "ลองโหลดสถานะอีกครั้ง",
   "chat.executionActivityRetrying": "กำลังลองอีกครั้ง…",

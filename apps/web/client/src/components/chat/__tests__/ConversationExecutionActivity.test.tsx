@@ -28,6 +28,7 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "chat.executionStatusUnknown": "Status unavailable",
       "chat.executionActivityLoading": "Loading work status…",
       "chat.executionActivityUnavailable": "Work status is temporarily unavailable.",
+      "chat.executionActivityStale": "Refresh failed. Showing the last authorized task status as of",
       "chat.executionDetailsUnavailable": "Task details could not be loaded. The latest status is still shown.",
       "chat.executionActivityRetry": "Retry loading status",
       "chat.executionActivityRetrying": "Retrying…",
@@ -173,5 +174,39 @@ describe("ConversationExecutionActivity", () => {
     fireEvent.click(screen.getByRole("button", { name: "Retry loading status" }));
     expect(refetchDetails).toHaveBeenCalledTimes(1);
     expect(mocks.observabilityQuery.mock.results.at(-1)?.value.refetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps the last authorized status visible after a transient refresh failure", () => {
+    const refetch = vi.fn();
+    mocks.observabilityQuery.mockReturnValue({
+      data: { snapshot: { projectionToken: "projection-token", asOf: "2026-10-29T10:00:00.000Z" }, items: [{ id: "job-1", status: "running" }] },
+      error: Object.assign(new Error("temporary 500"), { data: { code: "INTERNAL_SERVER_ERROR" } }),
+      isLoading: false,
+      isFetching: false,
+      refetch,
+    });
+
+    render(<ConversationExecutionActivity conversationId={241} />);
+
+    expect(screen.getByText("Running")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Refresh failed. Showing the last authorized task status as of · 2026-10-29T10:00:00.000Z");
+    expect(screen.getByText("Agent")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading status" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not render cached task status after an authorization denial", () => {
+    mocks.observabilityQuery.mockReturnValue({
+      data: { snapshot: { projectionToken: "projection-token" }, items: [{ id: "job-1", status: "running" }] },
+      error: Object.assign(new Error("forbidden"), { data: { code: "FORBIDDEN" } }),
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+
+    render(<ConversationExecutionActivity conversationId={241} />);
+
+    expect(screen.queryByText("Running")).not.toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Work status is temporarily unavailable.");
   });
 });
