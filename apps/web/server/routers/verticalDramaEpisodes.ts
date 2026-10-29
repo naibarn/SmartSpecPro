@@ -415,6 +415,7 @@ import {
 } from "@shared/verticalDramaSeries/supportingPresence";
 import {
   hasCompleteDetectedVerticalDramaSpeakerVisualBindings,
+  cleanVerticalDramaSpeakerVisualCue,
   findVerticalDramaSpeakerVisualBinding,
   getCurrentVerticalDramaSpeakerVisualBindings,
   normalizeVerticalDramaSpeakerVisualBindings,
@@ -1520,7 +1521,19 @@ async function loadEnhancedShotContext(input: {
         speakerVisibility: isOffscreenSpeaker ? "offscreen" : "in_frame",
         mustBeOnScreen: !isOffscreenSpeaker,
         ...(localSpeakerBinding
-          ? { speakerVisualCue: localSpeakerBinding.visualCue }
+          ? {
+              speakerVisualCue: [
+                cleanVerticalDramaSpeakerVisualCue(localSpeakerBinding.visualCue),
+                localSpeakerBinding.personId
+                  ? `selected detected person ${localSpeakerBinding.personId}`
+                  : null,
+                localSpeakerBinding.boundingBox
+                  ? `normalized image region x=${localSpeakerBinding.boundingBox.x.toFixed(3)}, y=${localSpeakerBinding.boundingBox.y.toFixed(3)}, width=${localSpeakerBinding.boundingBox.width.toFixed(3)}, height=${localSpeakerBinding.boundingBox.height.toFixed(3)}`
+                  : null,
+              ]
+                .filter(Boolean)
+                .join("; "),
+            }
           : {}),
         text,
         lineTh: text,

@@ -156,6 +156,7 @@ import {
 } from "@shared/verticalDramaSeries/videoPromptMotionAssurance";
 import type { VerticalDramaSupportingPresence } from "@shared/verticalDramaSeries/supportingPresence";
 import {
+  cleanVerticalDramaSpeakerVisualCue,
   findVerticalDramaSpeakerVisualBinding,
   renderVerticalDramaSpeakerVisualBindings,
   type VerticalDramaSpeakerVisualBinding,
@@ -2386,6 +2387,51 @@ function findPositionAnchorIssues(
   return issues;
 }
 
+/** Replace legacy viewer-side anchors for speakers with a confirmed,
+ * frame-scoped person selection. */
+function applyShotLocalSpeakerVisualAnchors(
+  prompt: string,
+  dialogueLines: Array<{ lineTh: string; characterKey?: string; speakerName?: string }>,
+  bindings: readonly VerticalDramaSpeakerVisualBinding[] | undefined,
+): string {
+  let result = prompt;
+  for (const line of dialogueLines) {
+    const binding = findVerticalDramaSpeakerVisualBinding(bindings, line.speakerName, line.characterKey);
+    if (!binding) continue;
+    const speaker = line.speakerName?.trim() || line.characterKey?.trim();
+    const quoteIndex = findQuotedLineStartIndex(result, line.lineTh);
+    if (quoteIndex < 0 || !speaker) continue;
+
+    const windowStart = Math.max(0, quoteIndex - 260);
+    const window = result.slice(windowStart, quoteIndex);
+    const speakerIndex = window.toLocaleLowerCase().lastIndexOf(speaker.toLocaleLowerCase());
+    const cue = cleanVerticalDramaSpeakerVisualCue(binding.visualCue);
+    const detectedAnchor = [
+      `identified by ${cue || "the selected visible person"}`,
+      binding.personId ? `(detected person ${binding.personId})` : "",
+      binding.boundingBox
+        ? `(image region x=${binding.boundingBox.x.toFixed(3)}, y=${binding.boundingBox.y.toFixed(3)}, width=${binding.boundingBox.width.toFixed(3)}, height=${binding.boundingBox.height.toFixed(3)})`
+        : "",
+    ].filter(Boolean).join(" ");
+
+    if (speakerIndex < 0) {
+      result = `${result.slice(0, quoteIndex)}${speaker} ${detectedAnchor} says: ${result.slice(quoteIndex)}`;
+      continue;
+    }
+    const speakerEnd = windowStart + speakerIndex + speaker.length;
+    const between = result.slice(speakerEnd, quoteIndex);
+    const withoutLegacyPosition = between.replace(
+      /\s*\(?\s*(?:(?:on|at|from|in)\s+)?(?:viewer|screen)[ -](?:far[ -](?:left|right)|left|right|center(?:[ -](?:left|right))?)\s*\)?/giu,
+      "",
+    );
+    const nextWindow = withoutLegacyPosition.toLocaleLowerCase().includes("identified by ")
+      ? withoutLegacyPosition
+      : ` ${detectedAnchor}${withoutLegacyPosition}`;
+    result = `${result.slice(0, speakerEnd)}${nextWindow}${result.slice(quoteIndex)}`;
+  }
+  return result;
+}
+
 /**
  * Repair a wrong viewer-relative anchor from the authoritative cast/frame
  * facts.  This is intentionally deterministic: the LLM may choose prose and
@@ -3163,7 +3209,7 @@ export function buildShotVideoPromptUserPrompt(
             l.characterKey,
           );
           if (shotLocalSpeaker) {
-            parts.push(`user-confirmed visible person in this shot (no persistent character reference): ${shotLocalSpeaker.visualCue}`);
+            parts.push(`user-confirmed detected speaker identity (use instead of screen position; no persistent character reference): ${cleanVerticalDramaSpeakerVisualCue(shotLocalSpeaker.visualCue)}${shotLocalSpeaker.personId ? `; selected person ${shotLocalSpeaker.personId}` : ""}${shotLocalSpeaker.boundingBox ? `; normalized region x=${shotLocalSpeaker.boundingBox.x.toFixed(3)}, y=${shotLocalSpeaker.boundingBox.y.toFixed(3)}, width=${shotLocalSpeaker.boundingBox.width.toFixed(3)}, height=${shotLocalSpeaker.boundingBox.height.toFixed(3)}` : ""}`);
           }
           return parts.join(" | ");
         })
@@ -3211,7 +3257,9 @@ export function buildShotVideoPromptUserPrompt(
     characterNameByKey,
   );
   const verifiedCastPositionFacts = (params.verifiedCastPositions ?? []).filter(
-    person => !getCharacterDescriptionOverride(person.characterKey, characterDescriptionOverrides),
+    person =>
+      !getCharacterDescriptionOverride(person.characterKey, characterDescriptionOverrides) &&
+      !findVerticalDramaSpeakerVisualBinding(shotContext.speakerVisualBindings, person.characterKey, person.name),
   );
   const verifiedCastPositionLock = verifiedCastPositionFacts.length
     ? `VERIFIED CAST POSITION LOCK (AUTHORITATIVE; user confirmed against the exact attached start frame): ${verifiedCastPositionFacts
@@ -3237,7 +3285,7 @@ export function buildShotVideoPromptUserPrompt(
     dialogueLines,
   });
   const speakerFaceBindingInstruction = dialogueLines.length
-    ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named speaker. If the user supplied a SHOT-LOCAL SPEAKER BINDING, use its selected person ID, normalized image region, and appearance cue together as the authoritative person anchor; do not replace that selection with left-to-right order or another cast member. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character without a shot-local person selection or custom identity description, state the observed screen position from frame_analysis using ONLY viewer-far-left, viewer-left, viewer-center-left, viewer-center, viewer-center-right, viewer-right, or viewer-far-right next to the line. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
+    ? "SPEAKER-TO-FACE BINDING (MANDATORY): first inspect the attached start frame, then match each visible face to the labeled portrait manifest by facial identity. For every dialogue line, animate only the exact named speaker. If the user supplied a SHOT-LOCAL SPEAKER BINDING, identify that speaker with its exact appearance cue and selected person ID/normalized image region; write the dialogue anchor as the speaker name identified by that cue. Do NOT use viewer-left, viewer-right, viewer-center, left-to-right ordering, or another cast member to identify a speaker who has this binding. A binding supersedes any legacy verified cast-position lock for that speaker. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. Only characters without a shot-local person selection or custom identity description may use their observed screen position from frame_analysis. These coordinates are always from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or the requested prompt layout, and keep every non-speaker's mouth closed. If a face cannot be matched confidently, flag it instead of guessing."
     : null;
   // Location reference image (Phase E of `planning/polished-toasting-
   // gadget.md` — location visual bible) — same purely FACTUAL announcement
@@ -4105,6 +4153,11 @@ export async function generateVerticalDramaShotVideoPrompt(
   const assuranceWarnings = assurance.warnings.map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
   );
+  finalPrompt = applyShotLocalSpeakerVisualAnchors(
+    finalPrompt,
+    requiredDialogue,
+    params.shotContext.speakerVisualBindings,
+  );
   const finalSafety = analyzeVerticalDramaStorySafety(finalPrompt);
   safetyWarnings.push(
     ...formatVerticalDramaStorySafetyWarnings(finalSafety, params.shotNumber),
@@ -4348,7 +4401,9 @@ function buildSpeakerSwitchUserPrompt(
     characterNameByKey,
   );
   const verifiedCastPositionFacts = (params.verifiedCastPositions ?? []).filter(
-    person => !getCharacterDescriptionOverride(person.characterKey, characterDescriptionOverrides),
+    person =>
+      !getCharacterDescriptionOverride(person.characterKey, characterDescriptionOverrides) &&
+      !findVerticalDramaSpeakerVisualBinding(shotContext.speakerVisualBindings, person.characterKey, person.name),
   );
   const verifiedCastPositionLock = verifiedCastPositionFacts.length
     ? `VERIFIED CAST POSITION LOCK (AUTHORITATIVE; user confirmed against the exact attached start frame): ${verifiedCastPositionFacts
@@ -4419,6 +4474,14 @@ function buildSpeakerSwitchUserPrompt(
               if (customDescription) {
                 parts.push(`custom visual identity (use instead of screen position): ${customDescription}`);
               }
+              const shotLocalSpeaker = findVerticalDramaSpeakerVisualBinding(
+                shotContext.speakerVisualBindings,
+                l.speakerName,
+                l.characterKey,
+              );
+              if (shotLocalSpeaker) {
+                parts.push(`user-confirmed detected person identity (use instead of any viewer position): ${cleanVerticalDramaSpeakerVisualCue(shotLocalSpeaker.visualCue)}${shotLocalSpeaker.personId ? `; selected person ${shotLocalSpeaker.personId}` : ""}${shotLocalSpeaker.boundingBox ? `; normalized region x=${shotLocalSpeaker.boundingBox.x.toFixed(3)}, y=${shotLocalSpeaker.boundingBox.y.toFixed(3)}, width=${shotLocalSpeaker.boundingBox.width.toFixed(3)}, height=${shotLocalSpeaker.boundingBox.height.toFixed(3)}` : ""}`);
+              }
               return parts.join(" | ");
             })
             .join("\n")
@@ -4435,6 +4498,7 @@ function buildSpeakerSwitchUserPrompt(
     `Shot number: ${params.shotNumber}`,
     visualCastPolicyBlock,
     hardSpeakerMapBlock,
+    renderVerticalDramaSpeakerVisualBindings(shotContext.speakerVisualBindings),
     storySafety.level === "medium"
       ? `POLICY-SAFE STORY DIRECTIVE (MANDATORY): ${storySafety.instruction}`
       : null,
@@ -4476,7 +4540,7 @@ function buildSpeakerSwitchUserPrompt(
       ? `CHARACTER FACE IDENTITY MANIFEST (label-to-face mapping; the attached start frame remains authoritative for actual position): ${characterIdentityManifest}`
       : null,
     allDialogueLines.length
-      ? "SPEAKER-TO-FACE BINDING (MANDATORY): inspect the attached start frame first, match every visible face to the labeled portrait manifest by facial identity, and bind each timed segment to the exact speaker name. For a speaker with a SHOT-LOCAL SPEAKER BINDING, use its selected person ID, normalized image region, and appearance cue together as the authoritative anchor; do not replace it with left-to-right order or another cast member. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. For every other character without a shot-local person selection, include the observed screen position from frame_analysis using only viewer-far-left, viewer-left, viewer-center-left, viewer-center, viewer-center-right, viewer-right, or viewer-far-right. These are always coordinates from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or requested layout; keep non-speakers' mouths closed and flag any unmatched face instead of guessing."
+      ? "SPEAKER-TO-FACE BINDING (MANDATORY): inspect the attached start frame first, match every visible face to the labeled portrait manifest by facial identity, and bind each timed segment to the exact speaker name. For a speaker with a SHOT-LOCAL SPEAKER BINDING, identify them in each spoken beat with their exact appearance cue plus selected person ID and normalized image region. Write the anchor as the speaker name identified by that cue. Do NOT use viewer-left/right/center, left-to-right order, or a legacy cast-position lock to identify a bound speaker. For a character with a CUSTOM CHARACTER IDENTIFICATION OVERRIDE, use that exact description as the identity anchor and do not add a viewer-left/right position cue. Only characters without a shot-local person selection or custom identity override may use an observed screen position from frame_analysis. These are always coordinates from the viewer/camera side, never the character's anatomical left/right or left/right hand. Never use 'left hand', 'right hand', 'left-hand side', or 'right-hand side' as a screen-position label. Never infer identity from gender, clothing, or requested layout; keep non-speakers' mouths closed and flag any unmatched face instead of guessing."
       : null,
     // Location reference image (Phase E of `planning/polished-toasting-
     // gadget.md` — location visual bible) — factual announcement only; see
@@ -5116,6 +5180,11 @@ export async function generateVerticalDramaShotVideoPromptSpeakerSwitch(
   }
   const assuranceWarnings = assurance.warnings.map(
     (finding: VideoPromptAssuranceFinding) => `Shot ${params.shotNumber}: ${finding.message}`,
+  );
+  finalPrompt = applyShotLocalSpeakerVisualAnchors(
+    finalPrompt,
+    dialogueForBlock,
+    params.shotContext.speakerVisualBindings,
   );
   const finalSafety = analyzeVerticalDramaStorySafety(finalPrompt);
   safetyWarnings.push(

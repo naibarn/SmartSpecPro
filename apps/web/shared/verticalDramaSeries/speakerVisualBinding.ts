@@ -157,6 +157,16 @@ export function getCurrentVerticalDramaSpeakerVisualBindings(
   );
 }
 
+/** Keep appearance wording as the identity cue; the selected region already
+ * supplies spatial grounding, so legacy viewer buckets are redundant here. */
+export function cleanVerticalDramaSpeakerVisualCue(value: string): string {
+  return value
+    .replace(/\bviewer[ -](?:far[ -](?:left|right)|left|right|center(?:[ -](?:left|right))?)\b/giu, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([,.])/g, "$1")
+    .trim();
+}
+
 export function renderVerticalDramaSpeakerVisualBindings(
   bindings: readonly VerticalDramaSpeakerVisualBinding[] | null | undefined
 ): string | null {
@@ -168,8 +178,8 @@ export function renderVerticalDramaSpeakerVisualBindings(
       const box = binding.boundingBox
         ? ` normalized region x=${binding.boundingBox.x.toFixed(3)}, y=${binding.boundingBox.y.toFixed(3)}, width=${binding.boundingBox.width.toFixed(3)}, height=${binding.boundingBox.height.toFixed(3)}`
         : "";
-      return `- Dialogue speaker “${binding.speakerLabel}” maps to ${binding.personId ? `selected person ${binding.personId}` : "the person"} already visible in START_FRAME_IMAGE: ${binding.visualCue}.${box} Keep this speaker attached to their exact line and animate only this person's mouth while they speak.`;
+      return `- Dialogue speaker “${binding.speakerLabel}” maps to ${binding.personId ? `selected person ${binding.personId}` : "the person"} already visible in START_FRAME_IMAGE: ${cleanVerticalDramaSpeakerVisualCue(binding.visualCue)}.${box} Keep this speaker attached to their exact line and animate only this person's mouth while they speak.`;
     }),
-    "Treat each selected person ID and region as a visual anchor, stronger than left-to-right ordering. Do not turn these speakers into off-screen voices or assign their lines to another person. Do not add a new person if the selected person is not visible in the approved start frame; preserve the frame and flag an uncertain match instead of guessing.",
+    "For every mapped dialogue line, identify the speaker by the supplied appearance cue and selected person ID/region. Write the speaker name followed by 'identified by [appearance cue]' next to their line. Never identify a mapped speaker with viewer-left/right/center wording, left-to-right ordering, or a legacy cast-position lock. Do not turn these speakers into off-screen voices or assign their lines to another person. Do not add a new person if the selected person is not visible in the approved start frame; preserve the frame and flag an uncertain match instead of guessing.",
   ].join("\n");
 }

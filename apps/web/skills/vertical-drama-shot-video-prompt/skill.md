@@ -187,16 +187,23 @@ Work out:
    never use gender, wardrobe, or the requested layout as an identity shortcut.
 
 Report that reading in the `frame_analysis` output field (see the JSON
-contract above) with `"position_source": "image"`. Then USE it everywhere:
+contract above) with `"position_source": "image"`. Use screen position for
+frame analysis and as a fallback identity anchor only for speakers without a
+shot-local person binding. Apply this identity priority to every dialogue line:
 
-- Every speech cue in `prompt` anchors the speaker by NAME + the VIEWER SCREEN
-  POSITION you read from the image — "คุณกฤต on viewer-left says with quiet
-  menace: …" — and every silent listener is anchored the same way — "ภาคิน
-  on viewer-right listens, mouth closed."
-- Position is how a video model decides whose mouth moves: a wrong position
-  IS a wrong speaker. This field exists because unverified position guessing
-  is the single most common cause of a line being spoken by the wrong
-  character.
+- **Mapped speaker:** when the caller supplies a SHOT-LOCAL SPEAKER BINDING,
+  use the exact selected detected-person ID, normalized image region, and
+  appearance cue together. Identify the speaker by name and appearance in the
+  prompt, for example "คุณกฤต, the man in dark armor behind the table, says…".
+  Do NOT identify this mapped speaker with `viewer-left`, `viewer-right`,
+  `viewer-center`, left-to-right order, or a legacy cast-position lock. The
+  detected person binding replaces screen position for that speaker.
+- **Unmapped speaker:** when no shot-local binding is supplied for that
+  dialogue speaker, anchor the line by the observed name + viewer-side screen
+  position (for example, "คุณกฤต on viewer-left says…").
+- Keep every silent listener's mouth closed. A position may describe blocking
+  for an unmapped person; it must never override the detected-person binding
+  for a mapped speaker.
 - The `note` field is a short pose/orientation audit cue only ("foreground
   shoulder, back three-quarter to camera") — never wardrobe or facial
   description, and nothing from `note` may be copied into `prompt` as
@@ -208,22 +215,28 @@ contract above) with `"position_source": "image"`. Then USE it everywhere:
 For DUAL VIEW, every person entry MUST include `view_role`: `start_frame` for
 characters assigned to Image 1 and `barrier_reference` for characters assigned
 to Image 2. Every speaking cue in `prompt` MUST begin with the literal owning
-label (`Image 1` or `Image 2`) before the name and
-that image's viewer-relative position. The same `viewer-right` value may occur
+label (`Image 1` or `Image 2`) before the speaker name; use the selected
+appearance anchor for a mapped speaker and viewer-relative position for an
+unmapped speaker. The same `viewer-right` value may occur
 once in each image; it never transfers a person between images.
 
 **CHARACTER FACE IDENTITY MANIFEST — MANDATORY:** when the caller supplies a
 `CHARACTER FACE IDENTITY MANIFEST`, treat each `characterKey`/name label as the
 only valid identity binding for the matching portrait. Match the visible faces
 in the actual start frame to those portraits before assigning speech. For every
-dialogue line, write the exact name and `characterKey` plus the observed screen
-position from `frame_analysis`; never use generic labels such as "the man" or
-infer identity from gender, wardrobe, or requested left-to-right order. If the
-face cannot be matched confidently, return a warning rather than guessing.
+dialogue line, write the exact name and `characterKey`. For a speaker with a
+shot-local person binding, use that selected detected-person ID, image region,
+and appearance cue instead of screen position. For an unmapped speaker, use
+the observed screen position from `frame_analysis`. Never use generic labels
+such as "the man" or infer identity from gender, wardrobe, or requested
+left-to-right order. If the face cannot be matched confidently, return a
+warning rather than guessing.
 
 When NO image is attached (vision unavailable), derive the best-known
 positions from the image-prompt text instead, set `"position_source":
-"image_prompt_text"`, and still anchor every speech cue by name + position.
+"image_prompt_text"`, and still anchor unmapped speech cues by name +
+position. A shot-local speaker binding, when present, takes precedence and
+uses the selected person ID, image region, and appearance cue instead.
 When no character portrait is attached, `frame_analysis` is optional — include
 it when the image itself makes a useful person-position reading possible, or
 omit it.
@@ -425,8 +438,9 @@ none of these entries.
    SFX/ambient tail from `audio_direction` when the budget allows). When the
    full description would not fit, spend the budget in this strict priority
    order and drop from the bottom, never the top:
-   1) who-speaks-where — name + screen-position speech cues, lip-sync and
-      silent-listener discipline; 2) the single primary camera move
+   1) speaker identity — detected-person/appearance anchors for mapped
+      speakers or name + screen-position cues for unmapped speakers, plus
+      lip-sync and silent-listener discipline; 2) the single primary camera move
    continuing the start frame; 3) emotion and acting texture per the CAMERA
    & EMOTION GRAMMAR section; 4) atmosphere/environment evolution; 5) any
    sound texture (always the first thing to drop). A downstream
@@ -509,12 +523,11 @@ none of these entries.
    REQUEST that was sent to the image model; image models very often place
    characters differently than requested, so a position restated from the text
    is frequently the WRONG side of the frame. When the text and the image
-   disagree, the IMAGE is right. **Anchor every speaking beat by NAME + SCREEN
-   POSITION as the start frame shows it** ("ภาคิน on the left speaks…",
-   "ไอริณ on the right listens, mouth closed") — screen position is the one
-   identity signal a video model reads reliably from the start frame, and it
-   is how the model decides whose mouth moves; position anchoring is NOT
-   appearance description and does not violate rule 1. Attribute EVERY spoken line to the EXACT named
+disagree, the IMAGE is right. **For a speaker without a shot-local binding,
+anchor each speaking beat by NAME + SCREEN POSITION as the start frame shows
+it** ("ภาคิน on the left speaks…"). For a mapped speaker, use the selected
+detected person and appearance cue instead; never add a viewer position to
+that speaker's dialogue anchor. Attribute EVERY spoken line to the EXACT named
    speaker the dialogue facts assign it to — the speaker you write for each
    line MUST match the name the facts give for that line; never reassign a
    line to the wrong character or let a silent listener appear to speak it.
@@ -592,9 +605,9 @@ the model or its family inside `prompt` itself.
   `prompt`: the silent listener's mouth stays closed, exactly N people in
   frame, no on-screen text.
 - Identity reaches the render through ONE start frame only — no extra
-  reference images survive to the video call. The name + screen-position
-  anchors from FRAME ANALYSIS carry ALL identity disambiguation; make them
-  unmissable and repeat the position anchor at every speaking beat.
+  reference images survive to the video call. For mapped speakers, make the
+  detected-person/appearance anchor unmissable and repeat it at every
+  speaking beat. Use name + screen position only for unmapped speakers.
 - Native audio is supported: embed each line verbatim with an explicit speech
   cue and strong lip-sync wording per rule 5.
 - Style: compact, kinetic, action-first sentences. Put the most load-bearing
@@ -605,8 +618,9 @@ the model or its family inside `prompt` itself.
 
 ### family: veo (Veo 3 / 3.1)
 
-- Native audio with strong lip-sync: embed dialogue verbatim per rule 5, each
-  line introduced by its name + screen-position speech cue.
+- Native audio with strong lip-sync: embed dialogue verbatim per rule 5. Use
+  detected-person/appearance cues for mapped speakers and name +
+  screen-position cues only for unmapped speakers.
 - ALWAYS state positively, near the top of `prompt`: "No subtitles, no
   captions, no on-screen text." Veo tends to burn subtitles into the frame
   whenever quoted dialogue is present, and the negative prompt alone does not
@@ -625,8 +639,9 @@ the model or its family inside `prompt` itself.
   needs an internal cut (a reaction reverse, an insert already implied by
   the beat), narrate the sequence explicitly and sequentially — "The clip
   opens on … / mid-clip, cut to a reverse angle on … / in the final
-  seconds …" — one cut per story beat, and re-anchor identity by name +
-  screen position IMMEDIATELY after every cut. Do not force a cut into a
+  seconds …" — one cut per story beat, and re-anchor identity IMMEDIATELY
+  after every cut, using detected-person appearance for mapped speakers and
+  name + screen position only for unmapped speakers. Do not force a cut into a
   beat that plays stronger as one continuous move (rule 6 still governs the
   default).
 - CHECK the native_audio fact: when native audio is NOT supported, embed NO
