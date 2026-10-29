@@ -28,6 +28,8 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "chat.executionStatusUnknown": "Status unavailable",
       "chat.executionActivityLoading": "Loading work status…",
       "chat.executionActivityUnavailable": "Work status is temporarily unavailable.",
+      "chat.executionActivityRetry": "Retry loading status",
+      "chat.executionActivityRetrying": "Retrying…",
       "chat.executionActivityRecorded": "Activity recorded",
       "chat.executionSelectJob": "Choose task activity",
       "chat.executionAgent": "Agent",
@@ -62,10 +64,14 @@ describe("ConversationExecutionActivity", () => {
       data: { snapshot: { projectionToken: "projection-token" }, items: [{ id: "job-1", status: "running" }] },
       error: null,
       isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
     });
     mocks.detailQuery.mockReturnValue({
       data: { timeline: [{ id: "event-1", type: "PROGRESS", at: "2026-10-29T10:00:00.000Z", phase: "private phase value" }] },
       error: null,
+      isFetching: false,
+      refetch: vi.fn(),
     });
     mocks.developerEventsQuery.mockReturnValue({
       data: { jobId: "job-1", events: [{ id: "harness-1", sequence: 1, at: "2026-10-29T10:00:01.000Z", attempt: 1, kind: "assistant_message", text: "Codex executed the test suite.", chunkIndex: 0, chunkCount: 1 }], hasMore: false, nextSequence: 1 },
@@ -141,5 +147,17 @@ describe("ConversationExecutionActivity", () => {
     const { container } = render(<ConversationExecutionActivity conversationId={null} />);
     expect(mocks.observabilityQuery).toHaveBeenCalledWith({}, expect.objectContaining({ enabled: false }));
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("offers a retry when the authorized work status query fails", () => {
+    const refetch = vi.fn();
+    mocks.observabilityQuery.mockReturnValue({ data: undefined, error: new Error("temporary 500"), isLoading: false, isFetching: false, refetch });
+    mocks.detailQuery.mockReturnValue({ data: undefined, error: null, isFetching: false, refetch: vi.fn() });
+
+    render(<ConversationExecutionActivity conversationId={241} />);
+
+    expect(screen.getByRole("alert")).toHaveTextContent("Work status is temporarily unavailable.");
+    fireEvent.click(screen.getByRole("button", { name: "Retry loading status" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });

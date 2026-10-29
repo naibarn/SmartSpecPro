@@ -103,7 +103,18 @@ export function ConversationExecutionActivity({ conversationId, threadId = null 
       {query.isLoading && !selectedJob ? (
         <p className="mt-2 text-sm text-muted-foreground" role="status">{t("chat.executionActivityLoading")}</p>
       ) : failed ? (
-        <p className="mt-2 text-sm text-muted-foreground">{t("chat.executionActivityUnavailable")}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <p className="text-sm text-muted-foreground" role="alert">{t("chat.executionActivityUnavailable")}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={query.isFetching || detailQuery.isFetching}
+            onClick={() => void Promise.all([query.refetch(), detailQuery.refetch()])}
+          >
+            {query.isFetching || detailQuery.isFetching ? t("chat.executionActivityRetrying") : t("chat.executionActivityRetry")}
+          </Button>
+        </div>
       ) : selectedJob ? (
         <>
           <p className="mt-2 text-sm text-muted-foreground">
