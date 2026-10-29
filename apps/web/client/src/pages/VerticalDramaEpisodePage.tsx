@@ -4737,9 +4737,19 @@ function EpisodeWorkspaceShell({
 
   const setShotSpeakerVisualBindingsMutation =
     trpc.verticalDramaEpisodes.setShotSpeakerVisualBindings.useMutation({
-      onSuccess: () => {
+      onSuccess: (_result, variables) => {
         toast.success("บันทึกผู้พูดเฉพาะช็อตแล้ว ต้องสร้าง prompt วิดีโอใหม่เพื่อใช้ข้อมูลนี้");
         void utils.verticalDramaEpisodes.getEpisodeDetail.invalidate();
+        // A speaker mapping changes the Enhanced prompt gate even when the
+        // Start frame and cast lock are unchanged. Clear the cached probe now
+        // so the button can update as soon as the saved episode detail arrives.
+        void utils.verticalDramaEpisodes.getEnhancedVideoPromptReadiness.invalidate(
+          {
+            seriesId,
+            episodeId,
+            shotNumber: variables.shotNumber,
+          }
+        );
       },
       onError: err => toast.error(err.message),
     });
@@ -9152,7 +9162,7 @@ function EpisodeWorkspaceShell({
       (episodeDetailQuery.data?.startFramePlan?.frames ?? [])
         .map(
           frame =>
-            `${frame.shotNumber}:${frame.approvedMediaAssetId ?? ""}:${frame.approvedStopFrameAssetId ?? ""}:${frame.castPositionLock?.assetId ?? ""}:${(frame.castPositionLock?.orderedCharacterRefs ?? []).join(",")}:${frame.castPositionLock?.confirmedAt ?? ""}:${JSON.stringify(Object.entries(frame.characterDescriptionOverrides ?? {}).sort(([left], [right]) => left.localeCompare(right)))}`
+            `${frame.shotNumber}:${frame.approvedMediaAssetId ?? ""}:${frame.videoStartMediaAssetId ?? ""}:${frame.approvedStopFrameAssetId ?? ""}:${frame.castPositionLock?.assetId ?? ""}:${(frame.castPositionLock?.orderedCharacterRefs ?? []).join(",")}:${frame.castPositionLock?.confirmedAt ?? ""}:${JSON.stringify(Object.entries(frame.characterDescriptionOverrides ?? {}).sort(([left], [right]) => left.localeCompare(right)))}:${JSON.stringify(frame.speakerVisualBindings ?? [])}`
         )
         .join("|"),
     [episodeDetailQuery.data?.startFramePlan?.frames]
