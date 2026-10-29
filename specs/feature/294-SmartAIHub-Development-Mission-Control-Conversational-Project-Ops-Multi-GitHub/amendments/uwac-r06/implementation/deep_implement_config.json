@@ -26,10 +26,10 @@
     },
     "section-03-unified-experience": {
       "status": "checkpointed",
-      "next_action": "Local authenticated child-thread transcript restore and Mission Control overview UAT pass at the current dev source. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution.",
+      "next_action": "Local authenticated child-thread transcript restore and Mission Control overview UAT pass at tested source 40aca3d847b293d05a5032daf6124b8369ac3153; evidence handoff integrated at 122aeee9c0cb772c6afb78ea19d54a53fd7a1731. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 smartspec_dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution.",
       "review_file": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/uwac-r06/implementation/review-loops-20261029.md",
       "checkpoint_sha": "e74cf6e3088835f3bcff8a5c150a4c2cd1e6050c",
-      "merged_main_sha": "40aca3d847b293d05a5032daf6124b8369ac3153"
+      "merged_main_sha": "122aeee9c0cb772c6afb78ea19d54a53fd7a1731"
     }
   },
   "pre_commit": {
@@ -41,14 +41,14 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-29T08:23:20.751694+00:00",
-  "generation": 11,
-  "updated_at": "2026-10-29T16:35:43.444796+00:00",
+  "generation": 12,
+  "updated_at": "2026-10-29T16:37:07.698402+00:00",
   "progress": {
     "active_section": "section-03-unified-experience",
-    "next_action": "Local authenticated child-thread transcript restore and Mission Control overview UAT pass at the current dev source. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution.",
+    "next_action": "Local authenticated child-thread transcript restore and Mission Control overview UAT pass at tested source 40aca3d847b293d05a5032daf6124b8369ac3153; evidence handoff integrated at 122aeee9c0cb772c6afb78ea19d54a53fd7a1731. Continue the unimplemented cross-host Mission Control Thread/Agent graph with durable multi-source replay/gap recovery; obtain correlated authenticated hosted logs and immutable serving identity to explain hosted 500s. SPEC-224 smartspec_dev tenant-001 currently has no real Goal/Run/Job; continue source-side preparation, then resume only an actual Task Control Goal and verify genuine Child 1/2 execution.",
     "gaps": [
       "Global project/thread overview across conversations and sources plus immutable multi-source replay/gap recovery remain open; current Task Observability developer view correlates Jobs present in the selected task snapshot only. Hosted authenticated UI/development-runtime verification and real SPEC-224 Child 1/2 live acceptance remain unverified."
     ],
-    "merged_main_sha": "40aca3d847b293d05a5032daf6124b8369ac3153"
+    "merged_main_sha": "122aeee9c0cb772c6afb78ea19d54a53fd7a1731"
   }
 }
