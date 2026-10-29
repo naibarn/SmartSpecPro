@@ -1008,23 +1008,28 @@ export const chatRouter = router({
       z.object({
         limit: z.number().min(1).max(100).default(20),
         offset: z.number().min(0).default(0),
+        cursor: z.number().int().min(0).nullable().optional(),
         isArchived: z.boolean().optional(),
         search: z.string().nullable().optional(),
       })
     )
     .query(async ({ ctx, input }) => {
+      const offset = input.cursor ?? input.offset;
+      const search = input.search?.trim() || undefined;
       const conversations = await getConversations({
         userId: ctx.user.id,
         isArchived: input.isArchived ?? false,
-        search: input.search ?? undefined,
+        search,
         limit: input.limit,
-        offset: input.offset,
+        offset,
       });
 
       const total = await getConversationCount(
         ctx.user.id,
-        input.isArchived ?? false
+        input.isArchived ?? false,
+        search
       );
+      const hasMore = offset + conversations.length < total;
 
       return {
         conversations: conversations.map(c => ({
@@ -1041,7 +1046,8 @@ export const chatRouter = router({
           updatedAt: c.updatedAt,
         })),
         total,
-        hasMore: input.offset + conversations.length < total,
+        hasMore,
+        nextCursor: hasMore ? offset + conversations.length : null,
       };
     }),
 

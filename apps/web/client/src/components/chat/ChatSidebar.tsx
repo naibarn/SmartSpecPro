@@ -77,11 +77,20 @@ export function ChatSidebar({
 
   const utils = trpc.useUtils();
 
-  const { data, isLoading } = trpc.chat.listConversations.useQuery({
-    limit: 50,
-    isArchived: false,
-    search: search || undefined,
-  });
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    trpc.chat.listConversations.useInfiniteQuery(
+      {
+        limit: 50,
+        isArchived: false,
+        search: search.trim() || undefined,
+      },
+      {
+        initialCursor: 0,
+        getNextPageParam: lastPage => lastPage.nextCursor ?? undefined,
+        refetchInterval: 30_000,
+        refetchIntervalInBackground: false,
+      }
+    );
 
   const { data: trashData, isLoading: trashLoading } =
     trpc.chat.listTrashedConversations.useQuery(undefined, {
@@ -216,7 +225,7 @@ export function ChatSidebar({
     return daysLeft > 0 ? `${daysLeft}d left` : "Expiring";
   };
 
-  const conversations = data?.conversations || [];
+  const conversations = data?.pages.flatMap(page => page.conversations) || [];
   const trashedConversations = trashData?.conversations || [];
   const emptyCount = conversations.filter(c => c.messageCount === 0).length;
 
@@ -610,6 +619,23 @@ export function ChatSidebar({
                 </div>
               </div>
             ))
+          )}
+          {!isLoading && hasNextPage && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="my-2 w-full gap-2 text-xs text-muted-foreground"
+              onClick={() => void fetchNextPage()}
+              disabled={isFetchingNextPage}
+            >
+              {isFetchingNextPage && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
+              {isFetchingNextPage
+                ? t("sidebar.loadingOlder")
+                : t("sidebar.loadOlder")}
+            </Button>
           )}
         </div>
       </div>

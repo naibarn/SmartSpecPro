@@ -1,5 +1,7 @@
 import { TRPCError } from "@trpc/server";
+import { desc } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { conversations, messages } from "../../../drizzle/schema";
 
 const dbMocks = vi.hoisted(() => {
   let selectedRows: Array<Record<string, unknown>> = [];
@@ -25,7 +27,11 @@ const dbMocks = vi.hoisted(() => {
 
   const selectLimit = vi.fn(async () => selectedRows);
   const selectQuery: any = { limit: selectLimit };
-  selectQuery.orderBy = vi.fn(() => selectQuery);
+  let lastOrderByArguments: unknown[] = [];
+  selectQuery.orderBy = vi.fn((...args: unknown[]) => {
+    lastOrderByArguments = args;
+    return selectQuery;
+  });
   const selectFrom = vi.fn(() => ({ where: vi.fn(() => selectQuery) }));
   const select = vi.fn(() => ({ from: selectFrom }));
 
@@ -40,6 +46,12 @@ const dbMocks = vi.hoisted(() => {
     },
     getInsertedRowValues() {
       return insertedRowValues;
+    },
+    getLastOrderByArguments() {
+      return lastOrderByArguments;
+    },
+    resetLastOrderByArguments() {
+      lastOrderByArguments = [];
     },
     resetInsertedRowValues() {
       insertedRowValues = null;
@@ -62,6 +74,8 @@ import { getDb } from "../../db";
 import {
   createConversation,
   createPersonalConversation,
+  getConversations,
+  getMessages,
   getPersonalConversation,
   updateConversation,
 } from "../chatService";
@@ -72,6 +86,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetDb.mockResolvedValue(dbMocks.mockDb as any);
   dbMocks.resetInsertedRowValues();
+  dbMocks.resetLastOrderByArguments();
   dbMocks.setSelectedRows([]);
 });
 
@@ -210,5 +225,52 @@ describe("chatService personal lock", () => {
       projectId: "personal",
       tenantId: "tenant-1",
     });
+  });
+
+  it("opens long chat sessions at the latest messages and pages backwards", async () => {
+    const olderMessage = {
+      id: 10,
+      conversationId: 42,
+      role: "user",
+      content: "earlier",
+      createdAt: new Date("2026-10-27T10:00:00.000Z"),
+    };
+    const recentMessage = {
+      id: 11,
+      conversationId: 42,
+      role: "assistant",
+      content: "latest",
+      createdAt: new Date("2026-10-28T10:00:00.000Z"),
+    };
+    dbMocks.setSelectedRows([recentMessage, olderMessage]);
+
+    const latestPage = await getMessages(42, { limit: 2 });
+
+    expect(latestPage.map(message => message.id)).toEqual([10, 11]);
+    expect(dbMocks.getLastOrderByArguments()).toHaveLength(2);
+
+    dbMocks.setSelectedRows([olderMessage]);
+    const previousPage = await getMessages(42, { limit: 100, beforeId: 11 });
+
+    expect(previousPage.map(message => message.id)).toEqual([10]);
+    expect(dbMocks.getLastOrderByArguments()).toHaveLength(2);
+  });
+
+  it("orders chat sessions by recent activity before pin state", async () => {
+    await getConversations({ userId: 7, limit: 50 });
+
+    expect(dbMocks.getLastOrderByArguments()).toEqual([
+      desc(conversations.updatedAt),
+      desc(conversations.isPinned),
+      desc(conversations.id),
+    ]);
+
+    dbMocks.resetLastOrderByArguments();
+    await getMessages(42, { limit: 20 });
+
+    expect(dbMocks.getLastOrderByArguments()).toEqual([
+      desc(messages.createdAt),
+      desc(messages.id),
+    ]);
   });
 });

@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import { useLocation } from "wouter";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { VoiceAgentPanel } from "./voice/VoiceAgentPanel";
@@ -735,6 +742,18 @@ interface Message {
   createdAt: Date;
 }
 
+function mergeChatMessages(...groups: Message[][]): Message[] {
+  const messagesById = new Map<number, Message>();
+  for (const group of groups) {
+    for (const message of group) messagesById.set(message.id, message);
+  }
+  return [...messagesById.values()].sort((left, right) => {
+    const timeDifference =
+      new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    return timeDifference || left.id - right.id;
+  });
+}
+
 interface Attachment {
   key: string;
   url: string;
@@ -787,6 +806,8 @@ export function ChatView({
   const [, navigate] = useLocation();
   const { t } = useScopedTranslation("chat");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [canLoadOlderMessages, setCanLoadOlderMessages] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [input, setInput] = useState("");
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashFilter, setSlashFilter] = useState("");
@@ -826,6 +847,14 @@ export function ChatView({
   const appliedSkillSelectorRequestIdRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
+  const messagesScrollRef = useRef<HTMLDivElement>(null);
+  const loadedOlderMessagesRef = useRef(new Map<number, Message[]>());
+  const olderMessagesAvailableRef = useRef(new Map<number, boolean>());
+  const pendingScrollRestoreRef = useRef<{
+    scrollTop: number;
+    scrollHeight: number;
+  } | null>(null);
+  const skipNextAutoScrollRef = useRef(false);
   const { user } = useAuth();
   const ocrOnlyModeStorageKey = useMemo(() => {
     const tenantId =
@@ -927,7 +956,17 @@ export function ChatView({
     activeLocalReplyAbortControllerRef.current = null;
     lastLocalAddTime.current = 0;
     lastLocalAddConversationId.current = null;
-    setMessages([]);
+    setMessages(
+      conversationId
+        ? loadedOlderMessagesRef.current.get(conversationId) ?? []
+        : []
+    );
+    setCanLoadOlderMessages(
+      conversationId
+        ? olderMessagesAvailableRef.current.get(conversationId) ?? false
+        : false
+    );
+    pendingScrollRestoreRef.current = null;
     setStreamingContent("");
     setIsStreaming(false);
     setActiveLocalReplyKind(null);
@@ -3214,9 +3253,87 @@ export function ChatView({
       console.log("[ChatView] Syncing from server data", {
         serverLength: messagesData.length,
       });
-      setMessages(messagesData as Message[]);
+      const serverMessages = messagesData as Message[];
+      const olderMessages = conversationId
+        ? loadedOlderMessagesRef.current.get(conversationId) ?? []
+        : [];
+      setMessages(mergeChatMessages(olderMessages, serverMessages));
+
+      if (conversationId) {
+        const hasOlderMessages = olderMessagesAvailableRef.current.has(
+          conversationId
+        )
+          ? olderMessagesAvailableRef.current.get(conversationId) === true
+          : serverMessages.length === 100;
+        olderMessagesAvailableRef.current.set(
+          conversationId,
+          hasOlderMessages
+        );
+        setCanLoadOlderMessages(hasOlderMessages);
+      }
     }
   }, [conversationId, messagesData]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (
+      !conversationId ||
+      !canLoadOlderMessages ||
+      loadingOlderMessages ||
+      messages.length === 0
+    ) {
+      return;
+    }
+
+    const firstMessage = messages[0];
+    const scrollContainer = messagesScrollRef.current;
+    if (!firstMessage || !scrollContainer) return;
+
+    setLoadingOlderMessages(true);
+    pendingScrollRestoreRef.current = {
+      scrollTop: scrollContainer.scrollTop,
+      scrollHeight: scrollContainer.scrollHeight,
+    };
+
+    try {
+      const olderPage = (await utils.chat.getMessages.fetch({
+        conversationId,
+        limit: 100,
+        beforeId: firstMessage.id,
+      })) as Message[];
+      if (olderPage.length === 0) {
+        pendingScrollRestoreRef.current = null;
+        olderMessagesAvailableRef.current.set(conversationId, false);
+        setCanLoadOlderMessages(false);
+        return;
+      }
+
+      const allOlderMessages = mergeChatMessages(
+        loadedOlderMessagesRef.current.get(conversationId) ?? [],
+        olderPage
+      );
+      loadedOlderMessagesRef.current.set(conversationId, allOlderMessages);
+      const hasMoreOlderMessages = olderPage.length === 100;
+      olderMessagesAvailableRef.current.set(
+        conversationId,
+        hasMoreOlderMessages
+      );
+      setCanLoadOlderMessages(hasMoreOlderMessages);
+      setMessages(current => mergeChatMessages(olderPage, current));
+    } catch (error) {
+      pendingScrollRestoreRef.current = null;
+      console.error("Failed to load earlier chat messages", error);
+      toast.error(t("loadOlderMessagesError"));
+    } finally {
+      setLoadingOlderMessages(false);
+    }
+  }, [
+    canLoadOlderMessages,
+    conversationId,
+    loadingOlderMessages,
+    messages,
+    t,
+    utils,
+  ]);
 
   // Debug: Log when messages state changes
   useEffect(() => {
@@ -3244,7 +3361,23 @@ export function ChatView({
     topRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  useLayoutEffect(() => {
+    const pendingRestore = pendingScrollRestoreRef.current;
+    const scrollContainer = messagesScrollRef.current;
+    if (!pendingRestore || !scrollContainer) return;
+
+    scrollContainer.scrollTop =
+      pendingRestore.scrollTop +
+      (scrollContainer.scrollHeight - pendingRestore.scrollHeight);
+    pendingScrollRestoreRef.current = null;
+    skipNextAutoScrollRef.current = true;
+  }, [messages]);
+
   useEffect(() => {
+    if (skipNextAutoScrollRef.current) {
+      skipNextAutoScrollRef.current = false;
+      return;
+    }
     scrollToBottom();
   }, [messages, streamingContent, scrollToBottom]);
 
@@ -5966,7 +6099,10 @@ export function ChatView({
       </div>
 
       {/* Messages */}
-      <div className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--color-background-body)]">
+      <div
+        ref={messagesScrollRef}
+        className="relative min-h-0 flex-1 overflow-y-auto bg-[var(--color-background-body)]"
+      >
         {/* Floating scroll buttons */}
         {messages.length > 3 && (
           <div className="sticky top-2 right-2 z-10 flex flex-col gap-1 float-right mr-2">
@@ -5992,6 +6128,25 @@ export function ChatView({
         )}
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-3 sm:p-4 lg:p-5">
           <div ref={topRef} />
+          {canLoadOlderMessages && messages.length > 0 && (
+            <div className="flex justify-center">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void loadOlderMessages()}
+                disabled={loadingOlderMessages}
+                className="gap-2"
+              >
+                {loadingOlderMessages && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                {loadingOlderMessages
+                  ? t("loadingOlderMessages")
+                  : t("loadOlderMessages")}
+              </Button>
+            </div>
+          )}
           {loadingMessages ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />

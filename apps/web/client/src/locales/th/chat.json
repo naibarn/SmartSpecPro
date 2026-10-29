@@ -211,6 +211,8 @@
   "sidebar.startHere": "เริ่มต้นที่นี่",
   "sidebar.startHint": "แชทใหม่คือบทสนทนาทั่วไป ส่วนแชทส่วนตัวจะล็อกไว้เฉพาะคุณ เหมาะสำหรับใบเสร็จ บิล และโน้ตส่วนตัว",
   "sidebar.search": "ค้นหาแชท...",
+  "sidebar.loadOlder": "โหลดแชทเก่าเพิ่มเติม",
+  "sidebar.loadingOlder": "กำลังโหลดแชท...",
   "sidebar.select": "เลือก",
   "sidebar.new": "ใหม่",
   "sidebar.personalChatHint": "แชทส่วนตัวจะเห็นได้เฉพาะคุณ",
@@ -234,6 +236,9 @@
   "sidebar.expiring": "กำลังหมดอายุ",
 
   "noConversationSelected": "ยังไม่ได้เลือกบทสนทนา",
+  "loadOlderMessages": "โหลดข้อความก่อนหน้านี้",
+  "loadingOlderMessages": "กำลังโหลดข้อความก่อนหน้า...",
+  "loadOlderMessagesError": "โหลดข้อความก่อนหน้าไม่สำเร็จ กรุณาลองอีกครั้ง",
   "noConversationHint": "เลือกบทสนทนาจากแถบด้านข้างหรือเริ่มแชทใหม่",
   "noModelsFound": "ไม่พบโมเดล",
   "startConversation": "เริ่มบทสนทนา",

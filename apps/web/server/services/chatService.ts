@@ -229,7 +229,13 @@ export async function getConversations(filters: ConversationFilters): Promise<Co
     .select()
     .from(conversations)
     .where(and(...conditions))
-    .orderBy(desc(conversations.isPinned), desc(conversations.updatedAt));
+    // Activity is primary so the session used most recently stays at the top.
+    // Pinning is a stable tie-breaker when activity timestamps match.
+    .orderBy(
+      desc(conversations.updatedAt),
+      desc(conversations.isPinned),
+      desc(conversations.id)
+    );
 
   if (filters.limit) {
     query = query.limit(filters.limit) as typeof query;
@@ -426,13 +432,23 @@ export async function deleteEmptyConversations(userId: number): Promise<number> 
 /**
  * Get conversation count for user
  */
-export async function getConversationCount(userId: number, isArchived?: boolean): Promise<number> {
+export async function getConversationCount(
+  userId: number,
+  isArchived?: boolean,
+  search?: string
+): Promise<number> {
   const db = await getDb();
   if (!db) return 0;
 
-  const conditions: SQL<unknown>[] = [eq(conversations.userId, userId)];
+  const conditions: SQL<unknown>[] = [
+    eq(conversations.userId, userId),
+    isNull(conversations.trashedAt),
+  ];
   if (isArchived !== undefined) {
     conditions.push(eq(conversations.isArchived, isArchived));
+  }
+  if (search) {
+    conditions.push(ilike(conversations.title, `%${search}%`));
   }
 
   const [result] = await db
@@ -841,11 +857,19 @@ export async function getMessages(
     conditions.push(sql`${messages.id} > ${options.afterId}`);
   }
 
+  // Bounded history reads open at the newest messages. beforeId walks back
+  // through older pages; reverse each page to preserve chronological display.
+  const newestPage =
+    options.limit !== undefined &&
+    (options.beforeId !== undefined || !options.offset);
   let query = db
     .select()
     .from(messages)
     .where(and(...conditions))
-    .orderBy(asc(messages.createdAt));
+    .orderBy(
+      newestPage ? desc(messages.createdAt) : asc(messages.createdAt),
+      newestPage ? desc(messages.id) : asc(messages.id)
+    );
 
   if (options.limit) {
     query = query.limit(options.limit) as typeof query;
@@ -855,7 +879,8 @@ export async function getMessages(
     query = query.offset(options.offset) as typeof query;
   }
 
-  return await query;
+  const result = await query;
+  return newestPage ? result.reverse() : result;
 }
 
 /**

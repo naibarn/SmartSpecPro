@@ -42,6 +42,8 @@ vi.mock("../../services/creditService", () => ({
 
 const mockCreateMessage = vi.fn().mockResolvedValue({});
 const mockGetConversationById = vi.fn();
+const mockGetConversations = vi.fn();
+const mockGetConversationCount = vi.fn();
 const mockCreateConversation = vi.fn();
 const mockCreatePersonalConversation = vi.fn();
 const mockGetRecentMessages = vi.fn().mockResolvedValue([]);
@@ -59,7 +61,7 @@ vi.mock("../../services/chatService", () => ({
     mockGetConversationById(...args),
   getPersonalConversation: vi.fn(),
   buildChatContext: (...args: unknown[]) => mockBuildChatContext(...args),
-  getConversations: vi.fn(),
+  getConversations: (...args: unknown[]) => mockGetConversations(...args),
   getMessages: vi.fn(),
   getRecentMessages: (...args: unknown[]) => mockGetRecentMessages(...args),
   getMessageById: vi.fn(),
@@ -71,7 +73,7 @@ vi.mock("../../services/chatService", () => ({
   permanentlyDeleteConversation: vi.fn(),
   emptyTrash: vi.fn(),
   deleteEmptyConversations: vi.fn(),
-  getConversationCount: vi.fn(),
+  getConversationCount: (...args: unknown[]) => mockGetConversationCount(...args),
   updateConversationCredits: vi.fn(),
   getSummaries: (...args: unknown[]) => mockGetSummaries(...args),
   getEntityMemories: vi.fn(),
@@ -263,6 +265,8 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
     mockUpdateConversation.mockResolvedValue(undefined);
     mockGetRecentMessages.mockResolvedValue([]);
     mockGetSummaries.mockResolvedValue([]);
+    mockGetConversations.mockResolvedValue([]);
+    mockGetConversationCount.mockResolvedValue(0);
     mockStartSkillTask.mockResolvedValue({ taskId: "queued-task-1" });
     mockDetectSkill.mockResolvedValue({
       detected: false,
@@ -279,6 +283,69 @@ describe("Chat Router → Unified Orchestrator Wiring", () => {
       source: "fallback",
     });
   });
+
+  it("paginates conversation history and counts only matching sessions", async () => {
+    mockGetConversations.mockResolvedValueOnce([
+      {
+        id: 12,
+        title: "SPEC-224 Pilot",
+        model: "gpt-6-luna",
+        skillSettings: null,
+        messageCount: 18,
+        isPinned: false,
+        isArchived: false,
+        totalCreditsUsed: "0",
+        projectId: "platform",
+        createdAt: new Date("2026-10-20T10:00:00.000Z"),
+        updatedAt: new Date("2026-10-28T10:00:00.000Z"),
+      },
+    ]);
+    mockGetConversationCount.mockResolvedValueOnce(101);
+
+    const { chatRouter } = await import("../chat");
+    const caller = chatRouter.createCaller({
+      user: {
+        id: 1,
+        openId: "user-open-id",
+        email: "user@example.com",
+        name: "Tester",
+        role: "admin",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignedIn: new Date(),
+        currentTenantId: "tenant-1",
+        registeredDomain: "tenant-1",
+      },
+      tenantId: "tenant-1",
+      userToken: null,
+      privateVaultToken: null,
+      publicUrl: "https://example.com",
+      req: { ip: "127.0.0.1", headers: {}, protocol: "https" } as any,
+      res: {} as any,
+    });
+
+    const result = await caller.listConversations({
+      limit: 50,
+      cursor: 50,
+      isArchived: false,
+      search: "  SPEC-224  ",
+    });
+
+    expect(mockGetConversations).toHaveBeenCalledWith({
+      userId: 1,
+      isArchived: false,
+      search: "SPEC-224",
+      limit: 50,
+      offset: 50,
+    });
+    expect(mockGetConversationCount).toHaveBeenCalledWith(1, false, "SPEC-224");
+    expect(result).toMatchObject({
+      total: 101,
+      hasMore: true,
+      nextCursor: 51,
+      conversations: [{ id: 12, title: "SPEC-224 Pilot" }],
+    });
+  }, 15_000);
 
   it("queues execution under authenticated tenant and ignores client App/Project identity fields", async () => {
     mockGetConversationById.mockResolvedValue({

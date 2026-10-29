@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => {
       },
     })),
     mockListConversationsQuery: vi.fn(),
+    mockFetchNextPage: vi.fn(),
     mockListTrashedConversationsQuery: vi.fn(),
     mockMutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
   };
@@ -29,6 +30,8 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "sidebar.startHere": "Start here",
         "sidebar.startHint": "New Chat starts a normal conversation. Personal Chat is locked to you and is best for receipts, bills, and private notes.",
         "sidebar.search": "Search chats...",
+        "sidebar.loadOlder": "Load older chats",
+        "sidebar.loadingOlder": "Loading chats...",
         "sidebar.select": "Select",
         "sidebar.selected": `${params?.count ?? 0} selected`,
         "sidebar.selectAll": "All",
@@ -47,7 +50,7 @@ vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: mocks.mockUseUtils,
     chat: {
-      listConversations: { useQuery: mocks.mockListConversationsQuery },
+      listConversations: { useInfiniteQuery: mocks.mockListConversationsQuery },
       listTrashedConversations: { useQuery: mocks.mockListTrashedConversationsQuery },
       deleteConversation: { useMutation: () => mocks.mockMutation() },
       updateConversation: { useMutation: () => mocks.mockMutation() },
@@ -66,7 +69,7 @@ describe("ChatSidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mockListConversationsQuery.mockReturnValue({
-      data: {
+      data: { pages: [{
         conversations: [
           {
             id: 1,
@@ -81,8 +84,12 @@ describe("ChatSidebar", () => {
         ],
         total: 1,
         hasMore: false,
-      },
+        nextCursor: null,
+      }] },
       isLoading: false,
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: mocks.mockFetchNextPage,
     });
     mocks.mockListTrashedConversationsQuery.mockReturnValue({
       data: { conversations: [] },
@@ -112,5 +119,50 @@ describe("ChatSidebar", () => {
 
     expect(onNewChat).toHaveBeenCalledTimes(1);
     expect(onNewPersonalChat).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens an existing chat session and can load older sessions", () => {
+    const onSelectConversation = vi.fn();
+    mocks.mockListConversationsQuery.mockReturnValue({
+      data: {
+        pages: [
+          {
+            conversations: [
+              {
+                id: 12,
+                title: "SPEC-224 Pilot",
+                messageCount: 18,
+                isPinned: false,
+                isArchived: false,
+                totalCreditsUsed: 0,
+                projectId: "platform",
+                updatedAt: new Date(),
+              },
+            ],
+            total: 51,
+            hasMore: true,
+            nextCursor: 50,
+          },
+        ],
+      },
+      isLoading: false,
+      hasNextPage: true,
+      isFetchingNextPage: false,
+      fetchNextPage: mocks.mockFetchNextPage,
+    });
+
+    render(
+      <ChatSidebar
+        selectedConversationId={null}
+        onSelectConversation={onSelectConversation}
+        onNewChat={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByText("SPEC-224 Pilot"));
+    fireEvent.click(screen.getByRole("button", { name: "Load older chats" }));
+
+    expect(onSelectConversation).toHaveBeenCalledWith(12);
+    expect(mocks.mockFetchNextPage).toHaveBeenCalledTimes(1);
   });
 });
