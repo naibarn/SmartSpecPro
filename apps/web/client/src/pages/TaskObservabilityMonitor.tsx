@@ -10,8 +10,10 @@ import { TextInput } from "@astryxdesign/core/TextInput";
 import { Text } from "@astryxdesign/core/Text";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Link } from "@astryxdesign/core/Link";
+import { useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { TaskAcceptanceEvidence } from "@/components/task-control/TaskAcceptanceEvidence";
+import { ThreadOverviewSidebarPanel } from "@/components/chat/ThreadOverviewSidebarPanel";
 import { formatVerifiedPercentLabel } from "@shared/taskAcceptanceProjection";
 import { useTranslation } from "react-i18next";
 
@@ -51,6 +53,7 @@ const taskHref = (item: { id: string; conversationId: number | null; threadId: s
 };
 
 export default function TaskObservabilityMonitor() {
+  const [, setLocation] = useLocation();
   const { t: translate } = useTranslation("chat", { useSuspense: false });
   const t = (key: string, params?: Record<string, string | number>) => translate(key, { ns: "chat", defaultValue: threadOverviewFallbacks[key] ?? key, ...params }) as string;
   const [mode, setMode] = useState("simple");
@@ -68,6 +71,7 @@ export default function TaskObservabilityMonitor() {
   const conversationId = Number.isSafeInteger(conversationCandidate) && conversationCandidate > 0 ? conversationCandidate : undefined;
   const threadScopeParam = initialParams.get("threadId");
   const threadId = threadScopeParam === "main" ? null : threadScopeParam;
+  const selectedThreadId = threadId ?? null;
   const query = trpc.workerJobs.observability.useQuery({
     cursor,
     ...(projectionToken ? { projectionToken } : {}),
@@ -118,6 +122,15 @@ export default function TaskObservabilityMonitor() {
           <SegmentedControlItem value="developer" label="Developer" />
         </SegmentedControl>
       </VStack>
+
+      <ThreadOverviewSidebarPanel
+        onOpenThread={(targetConversationId, targetThreadId) => {
+          setLocation(chatHref(targetConversationId, targetThreadId));
+        }}
+        search=""
+        selectedConversationId={conversationId ?? null}
+        selectedThreadId={selectedThreadId}
+      />
 
       {mode === "simple" && items.length > 0 ? <Section>
         <VStack gap={2}>

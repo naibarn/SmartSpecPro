@@ -3,15 +3,17 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-const { listQuery, detailQuery, runnerQuery, aggregateQuery, listArgs, detailArgs, aggregateArgs, aggregateOptions } = vi.hoisted(() => ({
+const { listQuery, detailQuery, runnerQuery, aggregateQuery, threadQuery, listArgs, detailArgs, aggregateArgs, aggregateOptions, setLocation } = vi.hoisted(() => ({
   listQuery: { current: {} as Record<string, unknown> },
   detailQuery: { current: {} as Record<string, unknown> },
   runnerQuery: { current: {} as Record<string, unknown> },
   aggregateQuery: { current: {} as Record<string, unknown> },
+  threadQuery: { current: {} as Record<string, unknown> },
   listArgs: { current: [] as unknown[] },
   detailArgs: { current: [] as unknown[] },
   aggregateArgs: { current: [] as unknown[] },
   aggregateOptions: { current: {} as Record<string, unknown> },
+  setLocation: vi.fn(),
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -19,7 +21,39 @@ vi.mock("@/lib/trpc", () => ({
     observability: { useQuery: (...args: unknown[]) => { listArgs.current = args; return listQuery.current; } },
     observabilityDetail: { useQuery: (...args: unknown[]) => { detailArgs.current = args; return detailQuery.current; } },
     observabilityAggregate: { useQuery: (...args: unknown[]) => { aggregateArgs.current = args; aggregateOptions.current = args[1] as Record<string, unknown>; return aggregateQuery.current; } },
-  }, runnerNodes: { list: { useQuery: () => runnerQuery.current } } },
+  }, runnerNodes: { list: { useQuery: () => runnerQuery.current } }, chat: {
+    listRecentConversationThreads: { useInfiniteQuery: () => threadQuery.current },
+  } },
+}));
+
+vi.mock("@/i18n/useScopedTranslation", () => ({
+  useScopedTranslation: () => ({
+    locale: "en",
+    t: (key: string, params?: Record<string, string | number>) => ({
+      "threads.overviewTitle": "Thread overview",
+      "threads.overviewDescription": "Recent project threads",
+      "threads.overviewHint": "Choose a thread to continue.",
+      "threads.allStatuses": "All statuses",
+      "threads.loading": "Loading threads…",
+      "threads.overviewUnavailable": "Thread overview unavailable",
+      "threads.retryOverview": "Retry thread overview",
+      "threads.refreshing": "Refreshing…",
+      "threads.overviewEmpty": "No work threads match this view yet.",
+      "threads.projectUnlinked": "Unlinked project",
+      "threads.projectThreads": `Threads for ${params?.project ?? "project"}`,
+      "threads.openThread": `Open ${params?.thread ?? "thread"} in ${params?.conversation ?? "chat"}`,
+      "threads.openTaskControl": "Open Task Control",
+      "threads.loadingMore": "Loading more threads…",
+      "threads.loadMore": "Load more threads",
+      "threads.timeUnknown": "Time unknown",
+      "threads.status.WORKING": "Working",
+    }[key] ?? key),
+  }),
+}));
+
+vi.mock("wouter", () => ({
+  useLocation: () => ["/agent-monitor", setLocation],
+  Link: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => React.createElement("a", { ...props, href }, children),
 }));
 
 import TaskObservabilityMonitor from "./TaskObservabilityMonitor";
@@ -41,6 +75,15 @@ beforeEach(() => {
   aggregateOptions.current = {};
   runnerQuery.current = { data: { runners: [{ runnerId: "runner-1", displayName: "Runner One", displayState: "ready", trustState: "trusted", status: "online", lastSeenAt: "2026-10-17T00:00:00Z", snapshotExpiresAt: "2026-10-17T00:10:00Z", workspaceCount: 0, toolCount: 2, capabilityCount: 3 }] }, isLoading: false, error: null };
   aggregateQuery.current = { data: null, isLoading: false, error: null };
+  threadQuery.current = {
+    data: { pages: [{ items: [{
+      threadId: "recent-thread-1", parentThreadId: null, title: "Recent implementation", kind: "thread",
+      lastActivityAt: "2026-10-29T12:00:00.000Z", createdAt: "2026-10-29T10:00:00.000Z", status: "WORKING",
+      latestJob: { jobId: "recent-job-1", status: "running", statusReason: null, hasReviewableEvidence: false, createdAt: "2026-10-29T10:00:00.000Z", heartbeatAt: null },
+      conversationId: 777, conversationTitle: "Platform work", projectId: "project-1", projectTitle: "SmartAIHub Core",
+    }], nextCursor: null }] }, isLoading: false, error: null, hasNextPage: false, refetch: vi.fn(),
+  };
+  setLocation.mockClear();
   detailQuery.current = { data: {
     ...job,
     heartbeatFreshness: "unknown",
@@ -57,6 +100,15 @@ beforeEach(() => {
 });
 
 describe("TaskObservabilityMonitor", () => {
+  it("shows the global authorized Project/Thread overview and opens its exact Chat context", () => {
+    renderMonitor();
+    expect(screen.getByRole("region", { name: "Thread overview" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open Recent implementation in Platform work" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open Task Control" })).toHaveAttribute("href", "/agent-monitor?conversationId=777&threadId=recent-thread-1&jobId=recent-job-1");
+    fireEvent.click(screen.getByRole("button", { name: "Open Recent implementation in Platform work" }));
+    expect(setLocation).toHaveBeenCalledWith("/chat?c=777&t=recent-thread-1");
+  });
+
   it("defaults to a simple evidence summary and keeps unknown progress explicit", () => {
     renderMonitor();
     expect(screen.getByRole("heading", { name: "Task Control" })).toBeTruthy();

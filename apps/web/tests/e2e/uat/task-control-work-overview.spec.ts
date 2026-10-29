@@ -111,3 +111,27 @@ test("Task Control opens the existing skill selector without executing work", as
   await expect(page.getByText("Select a Skill", { exact: true })).toBeVisible({ timeout: 30_000 });
   expect(executionRequests).toEqual([]);
 });
+
+test("Mission Control opens the account-wide Project and Thread overview without starting work", async ({ page }) => {
+  const executionRequests: string[] = [];
+  const controlPlaneFailures: string[] = [];
+  page.on("request", request => {
+    if (request.method() === "POST" && /spec226DevelopmentControl\.(?:create|startWorkspaceRun|resumeWorkspaceRun|command)/.test(request.url())) executionRequests.push(request.url().split("?")[0]);
+  });
+  page.on("response", response => {
+    if (response.status() >= 500 && /(?:chat\.listRecentConversationThreads|workerJobs\.observability)/.test(response.url())) controlPlaneFailures.push(`${response.status()} ${response.url().split("?")[0]}`);
+  });
+
+  await page.goto("/agent-monitor");
+  await expect(page.getByRole("heading", { name: "Task Control" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("region", { name: "Thread overview" })).toBeVisible();
+  await expect(page.getByText(/No work threads match this view|Recent implementation|Loading threads/)).toBeVisible({ timeout: 30_000 });
+  for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await expect(page.getByRole("region", { name: "Thread overview" })).toBeVisible();
+    const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
+    expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport + 1);
+  }
+  await expect.poll(() => controlPlaneFailures).toEqual([]);
+  expect(executionRequests).toEqual([]);
+});
