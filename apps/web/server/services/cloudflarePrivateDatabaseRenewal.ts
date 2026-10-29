@@ -32,6 +32,29 @@ export function isSafeUnstartedPrivateDatabaseRenewalExpiry(job: {
     && attemptCount === 0 && checkpointCount === 0;
 }
 
+export function projectPrivateDatabaseRenewalJobStatus(job: {
+  jobId: string; status: string; errorCode: string | null; workerId: string | null;
+  attempt: number; maxAttempts: number; progress: unknown; heartbeatAt: Date | null;
+  leaseExpiresAt: Date | null; createdAt: Date; startedAt: Date | null; finishedAt: Date | null;
+}) {
+  const progress = job.progress && typeof job.progress === "object" && !Array.isArray(job.progress)
+    ? job.progress as Record<string, unknown> : {};
+  const rawStage = progress.stage;
+  const progressStage = typeof rawStage === "string" && /^[A-Za-z0-9_.-]{1,80}$/.test(rawStage) ? rawStage : null;
+  const rawProgress = progress.progress;
+  const progressPercent = typeof rawProgress === "number" && Number.isInteger(rawProgress) && rawProgress >= 0 && rawProgress <= 100
+    ? rawProgress : null;
+  const lastStatusUpdateAt = job.finishedAt ?? job.heartbeatAt ?? job.startedAt ?? job.createdAt;
+  return {
+    jobId: job.jobId, status: job.status,
+    errorCode: typeof job.errorCode === "string" && /^[A-Z0-9_]{1,100}$/.test(job.errorCode) ? job.errorCode : null,
+    workerId: job.workerId, attempt: job.attempt, maxAttempts: job.maxAttempts, progressStage, progressPercent,
+    heartbeatAt: job.heartbeatAt?.toISOString() ?? null, leaseExpiresAt: job.leaseExpiresAt?.toISOString() ?? null,
+    createdAt: job.createdAt.toISOString(), startedAt: job.startedAt?.toISOString() ?? null,
+    finishedAt: job.finishedAt?.toISOString() ?? null, lastStatusUpdateAt: lastStatusUpdateAt.toISOString(),
+  };
+}
+
 function result(input: Omit<PrivateDatabaseRenewalPreflight, "checkedAt" | "failureStage" | "failureDetail"> & { failureStage?: string | null; failureDetail?: string | null }): PrivateDatabaseRenewalPreflight {
   return { ...input, failureStage: input.failureStage ?? null, failureDetail: input.failureDetail ?? null, checkedAt: new Date().toISOString() };
 }

@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   stagingRenewalSubmissionFailure: null as Error | null,
   finalizeStagingDatabaseRenewal: vi.fn(),
   stagingDatabaseRenewal: null as any,
+  stagingRenewalJobStatus: null as any,
   stagingRenewalFetching: false,
   prepareProductionQueue: vi.fn(),
   prepareProductionDatabase: vi.fn(),
@@ -93,6 +94,7 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareStagingRuntimeReadiness: { invalidate: mocks.invalidate },
       getCloudflareOriginConfiguration: { invalidate: mocks.invalidate, fetch: mocks.fetchOriginConfiguration },
       getCloudflareStagingPrivateDatabaseRenewalPreflight: { invalidate: mocks.invalidate, cancel: mocks.cancelStagingDatabaseRenewal },
+      getCloudflareStagingPrivateDatabaseRenewalJobStatus: { invalidate: mocks.invalidate },
       getCloudflareProductionRuntimeReadiness: { invalidate: mocks.invalidate },
       getCloudflareProductionProviderInventory: { invalidate: mocks.invalidate },
       getCloudflareProductionQueueJobStatus: { invalidate: mocks.invalidate },
@@ -112,6 +114,8 @@ vi.mock("@/lib/trpc", () => ({
       getCloudflareStagingPrivateDatabaseRenewalPreflight: { useQuery: () => ({ data: mocks.stagingDatabaseRenewal,
         isLoading: mocks.stagingRenewalFetching && !mocks.stagingDatabaseRenewal,
         isFetching: mocks.stagingRenewalFetching, isError: false, refetch: mocks.refetchStagingDatabaseRenewal }) },
+      getCloudflareStagingPrivateDatabaseRenewalJobStatus: { useQuery: () => mocks.stagingRenewalJobStatus ?? ({ data: null,
+        isLoading: false, isFetching: false, isError: false, refetch: vi.fn() }) },
       getCloudflareStagingRuntimeReadiness: { useQuery: () => ({ data: mocks.stagingRuntime, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchStagingRuntimeReadiness }) },
       getCloudflareProductionRuntimeReadiness: { useQuery: () => ({ data: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", environment: "production", activation: "disabled", transport: "queues", missing: ["HYPERDRIVE", "JOB_QUEUE"], unconfigured: ["HYPERDRIVE", "JOB_QUEUE", "JOB_WORKFLOW", "JOB_CONTAINERS", "WORKER_APP", "MEDIA_BUCKET", "VECTOR_INDEX"], applicationIngress: { enabled: false, ready: false, missing: ["CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", "NODE_HTTP", "PYTHON_HTTP"] }, jobHandlerConfigured: false, reason: "CLOUDFLARE_PRODUCTION_WORKER_RUNTIME_NOT_READY" }, isLoading: false, isFetching: false, isError: false, refetch: mocks.refetchProductionRuntimeReadiness }) },
       getCloudflareProductionProviderInventory: { useQuery: () => ({ data: { status: mocks.productionInventoryStatus, checkedAt: "2026-10-24T00:00:00.000Z",
@@ -857,8 +861,35 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
 
-    expect(await screen.findByText(/Existing renewal Job/)).toBeInTheDocument();
+    expect(await screen.findByText(/Canonical renewal Job/)).toBeInTheDocument();
     expect(screen.getByText(/77777777-7777-4777-8777-777777777777/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Authorize and renew the existing Staging database lease" })).not.toBeInTheDocument();
+    expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
+  });
+
+  it("shows authoritative queued Job state and a read-only status refresh without exposing another submission", async () => {
+    const user = userEvent.setup();
+    const configurationRef = `cf-origin:${"a".repeat(64)}`;
+    const jobId = "77777777-7777-4777-8777-777777777777";
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingRuntime = { status: "READY", checkedAt: "2026-10-29T00:00:00.000Z", activation: "disabled", missing: [], reason: null };
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_EXPIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = { status: "EXPIRED", configurationRef, descriptor: { nativeResources: { privateDatabase: { provisionJobId: "11111111-1111-4111-8111-111111111111" } } } };
+    mocks.stagingDatabaseRenewal = { ready: false, reason: "PRIVATE_DATABASE_RENEWAL_JOB_EXISTS", configurationRef,
+      plan: null, planDigest: null, leaseExpiresAt: null,
+      existingJob: { jobId, status: "queued", heartbeatAt: null, errorCode: null, retryable: false } };
+    mocks.stagingRenewalJobStatus = { data: { jobId, status: "queued", errorCode: null, workerId: null, attempt: 1, maxAttempts: 2,
+      progressStage: null, progressPercent: null, heartbeatAt: null, leaseExpiresAt: null, createdAt: "2026-10-29T00:00:00.000Z",
+      startedAt: null, finishedAt: null }, isFetching: false, isError: false, refetch: vi.fn() };
+
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    const renewalPanel = screen.getByRole("group", { name: "Staging database lease renewal" });
+    expect(renewalPanel).toHaveTextContent("Queued — waiting for a worker");
+    expect(renewalPanel).toHaveTextContent("Waiting for worker");
+    expect(renewalPanel).toHaveTextContent("Wait while the canonical Job continues");
+    expect(screen.getByRole("button", { name: "Refresh renewal Job status (read-only)" })).toBeEnabled();
     expect(screen.queryByRole("button", { name: "Authorize and renew the existing Staging database lease" })).not.toBeInTheDocument();
     expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
   });

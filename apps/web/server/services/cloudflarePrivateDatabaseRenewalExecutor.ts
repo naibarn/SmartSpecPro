@@ -155,8 +155,10 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
       if (tokenFingerprint && tokenFingerprint !== fingerprint) fail("PRIVATE_DATABASE_RENEWAL_CREDENTIAL_CHANGED");
       tokenFingerprint = fingerprint;
     };
+    await reporter.progress(lease, { progress: 5, stage: "RENEWAL_AUTHORITY_CHECK" });
     await assertAuthorized();
     if (await active.verifyExecutor(grant) !== grant.executorId) fail("PRIVATE_DATABASE_RENEWAL_EXECUTOR_DENIED");
+    await reporter.progress(lease, { progress: 20, stage: "SOURCE_RECEIPT_VERIFICATION" });
     const { receipt, checkpoint: rawCheckpoint, renewalCheckpoint: rawRenewalCheckpoint } = await active.loadSource(grant);
     const checkpoint = privateDatabaseCheckpointSchema.parse(rawCheckpoint), plan = grant.plan.sourcePlan;
     const descriptor: PrivateDatabaseBinding = { provisionJobId: grant.plan.sourceProvisionJobId, plan,
@@ -176,6 +178,7 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
     if (!Number.isFinite(observedTokenExpiry) || (observedTokenExpiry !== plannedTokenExpiry
       && !(grant.plan.refreshServiceTokenExpiry && observedTokenExpiry > plannedTokenExpiry && observedTokenExpiry >= Date.parse(grant.plan.leaseExpiresAt))))
       fail("PRIVATE_DATABASE_RENEWAL_PLAN_STALE");
+    await reporter.progress(lease, { progress: 40, stage: "CLOUDFLARE_RESOURCE_READBACK" });
     // A previous attempt may have lost its response after Cloudflare applied the
     // refresh. Reconcile the exact token readback before deciding to write again.
     const tokenRefresh = reconcilePrivateDatabaseServiceTokenRefresh({ checkpoint: rawRenewalCheckpoint, jobId: grant.jobId,
@@ -187,6 +190,7 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
       const priorRefresh = rawRenewalCheckpoint == null ? null : renewalExecutionCheckpointSchema.parse(rawRenewalCheckpoint);
       if (priorRefresh?.status !== "service_token_refresh_pending") await active.saveCheckpoint(grant, { status: "service_token_refresh_pending", planDigest: grant.planDigest,
         serviceTokenId: descriptor.serviceTokenId, leaseExpiresAt: grant.plan.leaseExpiresAt });
+      await reporter.progress(lease, { progress: 55, stage: "ACCESS_TOKEN_EXPIRY_REFRESH" });
       await assertAuthorized();
       const refreshed = await active.withCredential(scope, token => refreshPrivateDatabaseServiceToken({ accountRef: grant.accountRef,
         serviceTokenId: descriptor.serviceTokenId, expectedClientId: checkpoint.serviceToken!.clientId, expectedName: marker,
@@ -201,9 +205,11 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
     if (!afterProvider.serviceTokenExpiresAt || Date.parse(afterProvider.serviceTokenExpiresAt) < Date.parse(grant.plan.leaseExpiresAt))
       fail("PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_INSUFFICIENT");
     if (grant.plan.refreshServiceTokenExpiry) serviceTokenRefreshed = true;
+    await reporter.progress(lease, { progress: 75, stage: "DATABASE_ROLE_LEASE_RENEWAL" });
     await assertAuthorized();
     await active.renewRole(grant);
     await assertAuthorized();
+    await reporter.progress(lease, { progress: 90, stage: "FINAL_PROVIDER_AND_DATABASE_READBACK" });
     const output = { status: "verified" as const, configurationRef: grant.plan.configurationRef,
       configurationDigest: grant.plan.configurationDigest, sourceProvisionJobId: grant.plan.sourceProvisionJobId,
       sourcePlanDigest: grant.plan.sourcePlanDigest, planDigest: grant.planDigest,
@@ -211,6 +217,7 @@ export function createCloudflarePrivateDatabaseRenewalExecutor(runtime: Runtime 
       serviceTokenRefreshed, serviceTokenExpiresAt: afterProvider.serviceTokenExpiresAt,
       providerResourcesVerified: true as const, databaseRoleReadbackVerified: true as const };
     await active.saveCheckpoint(grant, { ...output, status: "succeeded" });
+    await reporter.progress(lease, { progress: 100, stage: "VERIFIED_RECEIPT_SAVED" });
     return { output };
   };
 }

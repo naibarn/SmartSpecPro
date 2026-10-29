@@ -75,7 +75,7 @@ import { auditLogger } from "../services/auditLogger";
 import { cloudflareOriginSettingsSchema, cloudflareOriginSecretsSchema, saveCloudflareOriginConfiguration,
   getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration, activateCloudflareStagingQueueProfile,
   saveCloudflareStagingConfigurationAfterDatabaseRenewal } from "../services/cloudflareOriginConfiguration";
-import { getCloudflarePrivateDatabaseRenewalPreflight } from "../services/cloudflarePrivateDatabaseRenewal";
+import { getCloudflarePrivateDatabaseRenewalPreflight, projectPrivateDatabaseRenewalJobStatus } from "../services/cloudflarePrivateDatabaseRenewal";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
 import { getInternalRuntimeEvidence } from "../services/internalRuntimeEvidence";
@@ -698,6 +698,28 @@ export const infrastructureRouter = router({
         checkedAt: new Date().toISOString(),
         configurationRef: input.configurationRef, configurationDigest: input.configurationRef.slice("cf-origin:".length), accountRef: null,
         plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null }; }
+    }),
+
+  getCloudflareStagingPrivateDatabaseRenewalJobStatus: exactAdminProcedure
+    .input(z.object({ tenantId: deploymentTenantIdSchema, projectId: z.string().trim().min(1).max(100), environment: z.literal("staging"),
+      configurationRef: z.string().regex(/^cf-origin:[a-f0-9]{64}$/), jobId: z.string().uuid() }).strict())
+    .query(async ({ input, ctx }) => {
+      const tenantId = resolveTenantIdVarchar(ctx.tenantId, ctx.user?.currentTenantId);
+      if (!tenantId || tenantId !== input.tenantId) throw new TRPCError({ code: "FORBIDDEN", message: "Authenticated tenant must match staging target" });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database not available" });
+      const [job] = await db.select({ jobId: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode,
+        tenantId: workerJobs.tenantId, jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion,
+        input: workerJobs.inputJson, progress: workerJobs.progressJson, workerId: workerJobs.workerId,
+        attempt: workerJobs.attempt, maxAttempts: workerJobs.maxAttempts, heartbeatAt: workerJobs.heartbeatAt,
+        leaseExpiresAt: workerJobs.leaseExpiresAt, createdAt: workerJobs.createdAt, startedAt: workerJobs.startedAt,
+        finishedAt: workerJobs.finishedAt })
+        .from(workerJobs).where(and(eq(workerJobs.id, input.jobId), eq(workerJobs.tenantId, tenantId),
+          eq(workerJobs.jobType, PRIVATE_DATABASE_RENEWAL_JOB), eq(workerJobs.contractVersion, PRIVATE_DATABASE_RENEWAL_CONTRACT),
+          sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`,
+          sql`${workerJobs.inputJson}->>'configurationRef' = ${input.configurationRef}`)).limit(1);
+      if (!job) return null;
+      return projectPrivateDatabaseRenewalJobStatus(job);
     }),
 
   queueCloudflareStagingPrivateDatabaseRenewal: exactAdminProcedure

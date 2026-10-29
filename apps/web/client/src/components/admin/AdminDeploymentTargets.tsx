@@ -701,8 +701,20 @@ export default function AdminDeploymentTargets() {
   }, { enabled: validScope && environment === "staging" && /^cf-origin:[a-f0-9]{64}$/.test(currentStagingConfigRef) });
   const stagingDatabaseRenewal = trpc.infrastructure.getCloudflareStagingPrivateDatabaseRenewalPreflight.useQuery({
     tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef,
-  }, { enabled: validScope && environment === "staging" && stagingOriginConfiguration.data?.status === "EXPIRED",
-    refetchInterval: query => query.state.data?.existingJob && !["succeeded", "failed", "cancelled", "dead_letter"].includes(query.state.data.existingJob.status) ? 2_000 : false });
+  }, { enabled: validScope && environment === "staging" && stagingOriginConfiguration.data?.status === "EXPIRED" });
+  const observedStagingRenewalJobId = stagingRenewalJobId || stagingDatabaseRenewal.data?.existingJob?.jobId || "";
+  const stagingRenewalJobStatus = trpc.infrastructure.getCloudflareStagingPrivateDatabaseRenewalJobStatus.useQuery({
+    tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef, jobId: observedStagingRenewalJobId,
+  }, { enabled: validScope && environment === "staging" && Boolean(observedStagingRenewalJobId),
+    refetchInterval: query => query.state.data && !["succeeded", "completed", "failed", "cancelled", "canceled", "expired", "dead_letter"].includes(query.state.data.status) ? 2_000 : false });
+  useEffect(() => {
+    const live = stagingRenewalJobStatus.data;
+    const terminal = live && ["succeeded", "completed", "failed", "cancelled", "canceled", "expired", "dead_letter"].includes(live.status);
+    if (terminal && stagingDatabaseRenewal.data?.existingJob?.jobId === live.jobId
+      && stagingDatabaseRenewal.data.existingJob.status !== live.status && !stagingDatabaseRenewal.isFetching) {
+      void stagingDatabaseRenewal.refetch();
+    }
+  }, [stagingRenewalJobStatus.data, stagingDatabaseRenewal.data, stagingDatabaseRenewal.isFetching]);
   useEffect(() => {
     if (!stagingDatabaseRenewal.isFetching) {
       setStagingRenewalPreflightStalled(false);
@@ -735,7 +747,10 @@ export default function AdminDeploymentTargets() {
     onSuccess: async () => { await stagingDeployPreflight.refetch(); },
   });
   const stagingRenewalMutation = trpc.infrastructure.queueCloudflareStagingPrivateDatabaseRenewal.useMutation({
-    onSuccess: async result => { setStagingRenewalJobId(result.jobId); await stagingDatabaseRenewal.refetch(); },
+    onSuccess: async result => {
+      setStagingRenewalJobId(result.jobId);
+      await stagingDatabaseRenewal.refetch();
+    },
   });
   const finalizeStagingRenewal = trpc.infrastructure.finalizeCloudflareStagingPrivateDatabaseRenewal.useMutation({
     onSuccess: async result => {
@@ -1924,8 +1939,60 @@ export default function AdminDeploymentTargets() {
                           </details>
                         </> : null}
                         {job ? <VStack gap={1} role="status">
-                          <p><strong>{text("Existing renewal Job", "Job ต่ออายุเดิม")}</strong>: <code>{job.jobId}</code> · {job.status}</p>
-                          {job.heartbeatAt ? <p>{text("Last heartbeat", "heartbeat ล่าสุด")}: {new Date(job.heartbeatAt).toLocaleString()}</p> : null}
+                          {(() => {
+                            const live = stagingRenewalJobStatus.data?.jobId === job.jobId ? stagingRenewalJobStatus.data : null;
+                            const status = live?.status ?? job.status;
+                            const statusLabel: Record<string, [string, string]> = {
+                              queued: ["Queued — waiting for a worker", "เข้าคิวแล้ว — กำลังรอ worker"],
+                              pending: ["Pending — waiting for dispatch", "รอส่งให้ worker"],
+                              leased: ["Leased by a worker", "worker รับ lease แล้ว"],
+                              claimed: ["Claimed — worker is starting", "worker รับงานแล้วและกำลังเริ่ม"],
+                              preparing: ["Preparing existing resources", "กำลังตรวจ resource เดิม"],
+                              running: ["Running renewal checks", "กำลังตรวจสอบการต่ออายุ"],
+                              waiting_external: ["Waiting for Cloudflare or database response", "กำลังรอ Cloudflare หรือฐานข้อมูลตอบกลับ"],
+                              retry_scheduled: ["Retry scheduled by the Job Control Plane", "ระบบกำหนดเวลาลองใหม่แล้ว"],
+                              uploading: ["Applying the authorized provider update", "กำลังใช้การเปลี่ยนแปลงที่อนุมัติกับ provider"],
+                              publishing: ["Verifying the provider update", "กำลังตรวจผลการเปลี่ยนแปลงกับ provider"],
+                              indexing: ["Saving the verified receipt", "กำลังบันทึก receipt ที่ตรวจแล้ว"],
+                              succeeded: ["Succeeded — receipt is ready to save", "สำเร็จ — พร้อมบันทึก receipt"],
+                              completed: ["Completed", "เสร็จแล้ว"],
+                              failed: ["Failed — inspect the safe error code", "ไม่สำเร็จ — ตรวจรหัสข้อผิดพลาด"],
+                              cancelled: ["Cancelled", "ยกเลิกแล้ว"],
+                              canceled: ["Canceled", "ยกเลิกแล้ว"],
+                              expired: ["Expired before completion", "หมดเวลาก่อนเสร็จ"],
+                              dead_letter: ["Stopped for operator review", "หยุดเพื่อให้ผู้ดูแลตรวจสอบ"],
+                            };
+                            const isActive = !["succeeded", "completed", "failed", "cancelled", "canceled", "expired", "dead_letter"].includes(status);
+                            const heartbeatAt = live?.heartbeatAt ?? job.heartbeatAt;
+                            const heartbeatAgeMs = heartbeatAt ? Date.now() - Date.parse(heartbeatAt) : null;
+                            const leaseExpired = Boolean(live?.leaseExpiresAt && Date.parse(live.leaseExpiresAt) <= Date.now());
+                            const heartbeatStale = isActive && (heartbeatAgeMs === null ? status !== "queued" && status !== "pending" : heartbeatAgeMs > 60_000);
+                            const stage = live?.progressStage;
+                            const elapsedFrom = live?.startedAt ?? live?.createdAt;
+                            const elapsedMs = elapsedFrom ? Math.max(0, Date.now() - Date.parse(elapsedFrom)) : null;
+                            const nextAction = status === "succeeded" ? "Save the verified Staging receipt"
+                              : status === "failed" || status === "expired" || status === "dead_letter" ? "Inspect the recorded failure before any new authorization"
+                              : heartbeatStale || leaseExpired ? "Recheck canonical Job status; do not submit another Job"
+                              : "Wait while the canonical Job continues; do not submit again";
+                            return <>
+                              <p><strong>{text("Canonical renewal Job", "Job ต่ออายุในระบบกลาง")}</strong>: <code>{job.jobId}</code></p>
+                              <p><strong>{text("Current status", "สถานะปัจจุบัน")}</strong>: {(() => { const copy = statusLabel[status]; return copy ? text(copy[0], copy[1]) : status; })()}</p>
+                              {stage ? <p>{text("Executor stage", "ขั้นตอน executor")}: <code>{stage}</code></p> : null}
+                              {live?.progressPercent !== null && live?.progressPercent !== undefined ? <p>{text("Reported progress", "ความคืบหน้าที่รายงาน")}: {live.progressPercent}%</p> : null}
+                              <p>{text("Attempt", "ครั้งที่")}: {live ? `${live.attempt}/${live.maxAttempts}` : text("Loading authoritative Job status…", "กำลังอ่านสถานะ Job จากระบบกลาง…")}</p>
+                              <p>{text("Elapsed", "เวลาที่ผ่านไป")}: {elapsedMs === null ? "—" : `${Math.floor(elapsedMs / 60_000)}m ${Math.floor((elapsedMs % 60_000) / 1_000)}s`}</p>
+                              {live?.lastStatusUpdateAt ? <p>{text("Last successful status update", "อัปเดตสถานะสำเร็จล่าสุด")}: {new Date(live.lastStatusUpdateAt).toLocaleString()}</p> : null}
+                              <p>{text("Worker / lease", "worker / lease")}: {live?.workerId ? <code>{live.workerId}</code> : status === "queued" || status === "pending" ? text("Waiting for worker", "กำลังรอ worker") : text("Not claimed", "ยังไม่มี worker รับงาน")}{live?.leaseExpiresAt ? ` · ${leaseExpired ? text("lease expired", "lease หมดอายุ") : text("lease active", "lease ยังทำงาน")}` : ""}</p>
+                              <p>{text("Last heartbeat", "heartbeat ล่าสุด")}: {heartbeatAt ? new Date(heartbeatAt).toLocaleString() : text("No heartbeat yet", "ยังไม่มี heartbeat")}{heartbeatStale ? ` · ${text("STALE", "ข้อมูลเก่า")}` : ""}</p>
+                              {stagingRenewalJobStatus.isError ? <p role="alert">{text("Status connection failed. Retry read-only status; no new Job was submitted.", "เชื่อมต่ออ่านสถานะไม่สำเร็จ ให้ตรวจสถานะแบบอ่านอย่างเดียวอีกครั้ง ไม่มีการส่ง Job ใหม่")}</p> : null}
+                              <p>{text("Next action", "ขั้นตอนถัดไป")}: {text(nextAction, status === "succeeded" ? "บันทึก receipt Staging ที่ตรวจแล้ว" : status === "failed" || status === "expired" || status === "dead_letter" ? "ตรวจข้อผิดพลาดก่อนอนุมัติรายการใหม่" : heartbeatStale || leaseExpired ? "ตรวจสถานะ Job เดิม ห้ามส่ง Job ซ้ำ" : "รอ Job เดิมทำงานต่อ ห้ามส่งซ้ำ")}</p>
+                              <Button type="button" variant="outline" disabled={stagingRenewalJobStatus.isFetching}
+                                onClick={() => void stagingRenewalJobStatus.refetch()}>
+                                {stagingRenewalJobStatus.isFetching ? text("Refreshing renewal Job status…", "กำลังตรวจสถานะ Job ต่ออายุ…") : text("Refresh renewal Job status (read-only)", "ตรวจสถานะ Job ต่ออายุ (อ่านอย่างเดียว)")}
+                              </Button>
+                              {live?.errorCode ? <p role="alert"><code>{live.errorCode}</code></p> : null}
+                            </>;
+                          })()}
                           {renewal.ready && job.retryable ? <p role="alert"><code>JOB_DEADLINE_EXPIRED</code> · {text(
                             "The previous authorized Job expired before it was claimed. Readback confirms it had no execution attempt or provider checkpoint; its record is preserved. A fresh, separately confirmed Staging-only Job is required.",
                             "Job ที่อนุมัติก่อนหน้าหมดเวลาก่อน worker รับงาน การตรวจยืนยันว่าไม่มี execution attempt หรือ provider checkpoint และยังเก็บประวัติเดิมไว้ ต้องยืนยัน Job ใหม่สำหรับ Staging แยกอีกหนึ่งรายการ",
@@ -1933,7 +2000,7 @@ export default function AdminDeploymentTargets() {
                           {job.errorCode && !(renewal.ready && job.retryable) ? <p role="alert"><code>{job.errorCode}</code> · {job.errorCode === "PRIVATE_DATABASE_SERVICE_TOKEN_REFRESH_HTTP_403"
                             ? text("The saved Staging Cloudflare credential needs Access: Service Tokens Write. Update that existing credential's permission, then recheck; do not paste the token here.", "credential Cloudflare ของ Staging ที่บันทึกไว้ต้องมีสิทธิ์ Access: Service Tokens Write ให้ปรับสิทธิ์ของ credential เดิมแล้วตรวจซ้ำ ไม่ต้องนำ token มาวางในหน้านี้")
                             : text("Inspect this existing Job before starting another operation.", "ตรวจ Job เดิมนี้ก่อน ห้ามเริ่มซ้ำ")}</p> : null}
-                          {job.status === "succeeded" ? <Button type="button" disabled={finalizeStagingRenewal.isPending || stagingActionRunning}
+                          {(stagingRenewalJobStatus.data?.jobId === job.jobId ? stagingRenewalJobStatus.data.status : job.status) === "succeeded" ? <Button type="button" disabled={finalizeStagingRenewal.isPending || stagingActionRunning}
                             onClick={() => requestStagingConfirmation({
                               title: text("Save verified Staging renewal", "บันทึกผลต่ออายุ Staging ที่ตรวจแล้ว"),
                               description: text(`Save the verified result from existing Job ${job.jobId} as a new immutable Staging configuration. No new provider mutation will be started.`, `บันทึกผลที่ตรวจแล้วจาก Job ${job.jobId} เป็น config Staging แบบ immutable ชุดใหม่ โดยไม่เริ่มเปลี่ยน provider เพิ่ม`),

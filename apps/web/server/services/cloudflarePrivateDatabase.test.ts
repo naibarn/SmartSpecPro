@@ -10,7 +10,8 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB
   privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail,
-  isSafeUnstartedPrivateDatabaseRenewalExpiry, stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
+  isSafeUnstartedPrivateDatabaseRenewalExpiry, projectPrivateDatabaseRenewalJobStatus,
+  stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
 import { reconcilePrivateDatabaseServiceTokenRefresh } from "./cloudflarePrivateDatabaseRenewalExecutor";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
@@ -51,6 +52,19 @@ describe("Staging private database renewal recovery", () => {
     expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob, errorCode: "PROVIDER_FAILURE" }, 0, 0)).toBe(false);
     expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob,
       idempotencyKey: `${safeExpiredJob.idempotencyKey}:generation:2` }, 0, 0)).toBe(false);
+  });
+
+  it("projects only safe canonical Job status and real progress fields", () => {
+    const createdAt = new Date("2026-10-29T10:00:00.000Z");
+    const projected = projectPrivateDatabaseRenewalJobStatus({ jobId: "77777777-7777-4777-8777-777777777777",
+      status: "running", errorCode: "PRIVATE_DATABASE_RENEWAL_IO_ETIMEDOUT", workerId: "worker-1", attempt: 1, maxAttempts: 2,
+      progress: { stage: "CLOUDFLARE_RESOURCE_READBACK", progress: 40, accessToken: "must-not-leak", arbitrary: "secret" },
+      heartbeatAt: new Date("2026-10-29T10:00:30.000Z"), leaseExpiresAt: new Date("2026-10-29T10:05:00.000Z"),
+      createdAt, startedAt: createdAt, finishedAt: null });
+    expect(projected).toMatchObject({ status: "running", progressStage: "CLOUDFLARE_RESOURCE_READBACK", progressPercent: 40,
+      workerId: "worker-1", attempt: 1, maxAttempts: 2, lastStatusUpdateAt: "2026-10-29T10:00:30.000Z" });
+    expect(JSON.stringify(projected)).not.toContain("must-not-leak");
+    expect(JSON.stringify(projected)).not.toContain("arbitrary");
   });
 });
 
