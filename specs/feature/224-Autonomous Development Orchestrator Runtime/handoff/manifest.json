@@ -151,6 +151,13 @@
         "scope": "Fresh authenticated Dev Runner snapshot and applied ACK are present, and the Task Control catalog projection works. Runner 0.2.51 predates account-scoped model catalog discovery, so the current codex.v1 snapshot lacks modelCatalog and Task Control correctly disables selection. Current-source live Codex discovery returns 8 real models. Signed Linux local_device update publication and authenticated Playwright selection remain pending. The independent desktop-review 503 is runner_release_github_not_configured in the current development service; a recorded voiceAgents.listEnabled 403 is unrelated to availableWorkspaces.",
         "source_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "LOCAL_DEBIAN_RUNNER_MODEL_CATALOG_RUNTIME_VERIFIED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
+        "scope": "Runner 0.2.52 installed in-place on the existing Debian device; fresh live snapshot was applied by the development Control Plane, Codex account fingerprint matched current read-only account/read, and eight real app-server models were persisted. Focused Runner/API/Task Control tests passed. Authenticated browser selection, Goal approval and two-phase live execution remain open.",
+        "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1082,15 +1089,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00",
+    "expected_canonical_sha": "ffc367b845be7ca6f23d19719138fba585695e0f",
     "expected_spec_digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5"
   },
   "continuation": {
-    "next_action": "BLOCKED_ON_DEV_RUNNER_RELEASE_CONFIGURATION: configure the existing Runner Release Control with the authorized GitHub repository and token; build a linux/local_device Runner from main using required-secret signing, import and publish its signed update to the Dev catalog, and request the update for the existing Runner. After a fresh applied snapshot includes a non-expired account-bound Model Catalog, verify Codex/model/reasoning selection in authenticated Task Control and resume the existing SPEC-224 Goal pilot.",
-    "next_ready_workunit": "SPEC224_PUBLISH_SIGNED_CATALOG_CAPABLE_LINUX_RUNNER_AND_VERIFY_TASK_CONTROL",
-    "reactivation_predicate": "An approved, unrevoked, unexpired Goal Grant and corresponding DevelopmentRun/Job/Attempt are visible in tenant tenant-001; before release the same Runner session has a fresh applied snapshot/ACK at the current source SHA, Codex readiness passes, and the bounded scope has SAFE_CLEAN or SAFE_DISJOINT_DIRTY admission with no active writer conflict.",
-    "resume_point": "Source/API/UI checks pass, but the existing Runner 0.2.51 predates Model Catalog support. Its latest fresh applied snapshot at 2026-10-29T00:19:25.690Z has Codex CLI 0.165.0 and taskProbeState=passed but no modelCatalog. The current development service also returns runner_release_github_not_configured (503) because the Runner Release GitHub repository/token are absent from its authorized settings. Configure Runner Release Control, build/import/publish a signed Linux local_device update, and update the same Runner; then verify real Task Control selection and continue the durable pilot.",
-    "waiting_predicate": "The existing trusted Runner publishes an account-bound, unexpired modelCatalog in a fresh applied snapshot and the authorized availableWorkspaces read model plus authenticated Task Control show a real Codex harness, at least one discovered model, and that model's supported reasoning efforts. No catalog values may be fabricated; keep Goal Approval, Source Admission, Writer Lease, Fencing, and Budget guards unchanged."
+    "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
+    "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
+    "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
+    "resume_point": "Runtime upgrade/catalog delivery is verified at source ffc367b845be7ca6f23d19719138fba585695e0f. No SPEC-224 worker job or active execution lease exists in tenant-001. Next: authenticated owner starts and approves the bounded Goal in Task Control; then resume that durable Run through real Child 1/2 execution. The broader UniversalControlPlanePanel standalone-start test also has one independent accessible-button failure to investigate.",
+    "waiting_predicate": "Authenticated Task Control shows the current account-bound, unexpired Model Catalog and enables Codex/model/reasoning selection; an owner-created and owner-approved bounded Goal Grant is persisted with its DevelopmentRun/Job/Attempt in tenant-001. No authenticated browser session was available in this host turn."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1167,10 +1174,16 @@
         "observed_at": "2026-10-28T23:46:02Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
         "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
+      },
+      {
+        "kind": "VERIFICATION",
+        "observed_at": "2026-10-29T00:42:45Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
+        "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
       }
     ],
-    "next_action": "WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present; after approval refresh Runner ACK/source admission and continue real Child 1, automatic Child 2 and Independent Final Verify.",
-    "rationale": "The current smartspec_dev observation has no Goal Grant or SPEC-224 worker Job. The user-provided screenshot shows successful Mini App factory creation on smartaihub.app with a stale Windows Runner, so it does not exercise the development Goal Admission path. The Development Task Control on aimarkethubs.com serves the integrated Start flow; the authenticated owner must start the bounded Goal there and approve its resulting Grant. Refresh the expired Debian snapshot before dispatch.",
+    "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
+    "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
       "REQ-0691BAE3D6B0",
@@ -1255,7 +1268,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 249,
+  "generation": 251,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "8f01f1535834de5c8c5379c83bfb4f6c5732cab74fba23a98d710037b03a32b5",
@@ -1487,11 +1500,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00",
+    "canonical_sha": "ffc367b845be7ca6f23d19719138fba585695e0f",
     "integrated": true,
-    "integrated_at": "2026-10-29T00:20:00Z",
+    "integrated_at": "2026-10-29T07:41:30+07:00",
     "pull_request": null,
-    "source_sha": "0a31f67009fc9d9e443a8eefe0d7084c1df30e00"
+    "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -2451,10 +2464,16 @@
           "observed_at": "2026-10-28T23:46:02Z",
           "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-goal-activation-flow-20261029.md",
           "source_sha": "a870e9abd51392601a104009dc8d1b9ff29b6963"
+        },
+        {
+          "kind": "VERIFICATION",
+          "observed_at": "2026-10-29T00:42:45Z",
+          "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
+          "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
         }
       ],
-      "next_action": "WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present; after approval refresh Runner ACK/source admission and continue real Child 1, automatic Child 2 and Independent Final Verify.",
-      "rationale": "The current smartspec_dev observation has no Goal Grant or SPEC-224 worker Job. The user-provided screenshot shows successful Mini App factory creation on smartaihub.app with a stale Windows Runner, so it does not exercise the development Goal Admission path. The Development Task Control on aimarkethubs.com serves the integrated Start flow; the authenticated owner must start the bounded Goal there and approve its resulting Grant. Refresh the expired Debian snapshot before dispatch.",
+      "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
+      "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
         "REQ-0691BAE3D6B0",
@@ -3999,7 +4018,7 @@
     "unresolved": 1301
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T00:20:41.382284Z",
+  "updated_at": "2026-10-29T00:48:19.894203Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4492,13 +4511,20 @@
         "observed_at": "2026-10-28T18:50:18Z",
         "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-first-goal-activation-20261029.md",
         "source_sha": "fdd490d0ebeea543edb50df46a47f3d04ba9a5f9"
+      },
+      {
+        "kind": "LOCAL_DEBIAN_RUNNER_MODEL_CATALOG_RUNTIME_VERIFIED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-debian-runner-model-catalog-live-20261029.md",
+        "scope": "Runner 0.2.52 installed in-place on the existing Debian device; fresh live snapshot was applied by the development Control Plane, Codex account fingerprint matched current read-only account/read, and eight real app-server models were persisted. Focused Runner/API/Task Control tests passed. Authenticated browser selection, Goal approval and two-phase live execution remain open.",
+        "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "e0009508f94195928ffb65bfc7ed3bbf6256575d",
+    "sha": "ffc367b845be7ca6f23d19719138fba585695e0f",
     "status": "PARTIAL",
     "task_regressions": []
   }

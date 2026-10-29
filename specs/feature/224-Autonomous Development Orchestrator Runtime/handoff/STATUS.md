@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1301 unresolved of 1302
-- Next action: WAITING_FOR_OWNER_GOAL_START_AND_APPROVAL: on aimarkethubs.com select the registered Debian Runner and Project Workspace, choose “พัฒนาตาม prompt” (not Mini App), click “เริ่มพัฒนา”, then approve the resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if present; after approval refresh Runner ACK/source admission and continue real Child 1, automatic Child 2 and Independent Final Verify.
-- Manifest generation: 249
+- Next action: From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.
+- Manifest generation: 251
 
 ## Source-declared status and relationship claims
 
