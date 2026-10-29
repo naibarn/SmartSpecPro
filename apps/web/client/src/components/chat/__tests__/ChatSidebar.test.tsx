@@ -321,6 +321,29 @@ describe("ChatSidebar", () => {
     expect(screen.queryByText("No conversations yet")).toBeNull();
   });
 
+  it("keeps previously loaded sessions visible while reporting a refresh failure", () => {
+    mocks.mockListConversationsQuery.mockReturnValue({
+      data: { pages: [{ conversations: [{
+        id: 1,
+        title: "Personal Finance",
+        messageCount: 4,
+        isPinned: false,
+        isArchived: false,
+        totalCreditsUsed: 0,
+        projectId: "personal",
+        updatedAt: new Date("2026-04-09T10:00:00.000Z"),
+      }], total: 1, hasMore: false, nextCursor: null }] },
+      isLoading: false,
+      error: new Error("refresh unavailable"),
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+    render(<ChatSidebar selectedConversationId={null} onSelectConversation={vi.fn()} onNewChat={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sessions" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("Chat sessions could not be loaded.");
+    expect(screen.getByRole("button", { name: "Open chat: Personal Finance" })).toBeInTheDocument();
+  });
+
   it("offers retry for an unavailable thread overview and keeps the error visible", () => {
     const refetch = vi.fn();
     mocks.mockRecentThreadsQuery.mockReturnValue({ data: undefined, isLoading: false, error: new Error("unavailable"), isFetching: false, refetch, hasNextPage: false, isFetchingNextPage: false, fetchNextPage: vi.fn() });

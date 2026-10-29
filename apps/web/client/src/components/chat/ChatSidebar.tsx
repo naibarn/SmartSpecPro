@@ -551,15 +551,8 @@ export function ChatSidebar({
         </ScrollArea>
       ) : <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="p-2">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : conversationsError && conversations.length === 0 ? (
-            <div
-              className="space-y-2 py-8 text-center text-sm text-destructive"
-              role="alert"
-            >
+          {conversationsError ? (
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-element)] border border-[var(--color-border)] p-2 text-sm text-destructive" role="alert">
               <p>{t("sidebar.sessionsUnavailable")}</p>
               <Button
                 type="button"
@@ -571,7 +564,12 @@ export function ChatSidebar({
                 {isRefreshingConversations ? t("sidebar.refreshingSessions") : t("sidebar.retrySessions")}
               </Button>
             </div>
-          ) : conversations.length === 0 ? (
+          ) : null}
+          {isLoading && conversations.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : conversationsError && conversations.length === 0 ? null : conversations.length === 0 ? (
             <div className="py-8 text-center text-sm text-muted-foreground">
               {search ? "No chats found" : "No conversations yet"}
             </div>
