@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { ZodError } from "zod";
 import { getDb, type DrizzleDB } from "../db";
-import { systemSettings, workerJobs } from "../../drizzle/schema";
+import { systemSettings, workerJobAttempts, workerJobs } from "../../drizzle/schema";
 import { decrypt } from "./crypto";
 import { getCloudflareOriginConfiguration } from "./cloudflareOriginConfiguration";
 import { resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
@@ -17,8 +17,20 @@ export type PrivateDatabaseRenewalPreflight = {
   ready: boolean; reason: string | null; failureStage: string | null; failureDetail: string | null; checkedAt: string; configurationRef: string; configurationDigest: string;
   accountRef: string;
   plan: PrivateDatabaseRenewalPlan | null; planDigest: string | null; leaseExpiresAt: string | null;
-  existingJob: { jobId: string; status: string; errorCode: string | null; heartbeatAt: string | null } | null;
+  existingJob: { jobId: string; status: string; errorCode: string | null; heartbeatAt: string | null; retryable: boolean } | null;
 };
+
+export function isSafeUnstartedPrivateDatabaseRenewalExpiry(job: {
+  status: string; errorCode: string | null; startedAt: Date | null; heartbeatAt: Date | null;
+  leaseExpiresAt: Date | null; fencingVersion: number; attempt: number; maxAttempts: number;
+  idempotencyKey: string | null; planDigest: string | null;
+}, attemptCount: number, checkpointCount: number): boolean {
+  return job.status === "expired" && job.errorCode === "JOB_DEADLINE_EXPIRED"
+    && job.startedAt === null && job.heartbeatAt === null && job.leaseExpiresAt === null
+    && job.fencingVersion === 0 && job.attempt === 1 && job.maxAttempts >= 2
+    && Boolean(job.planDigest) && job.idempotencyKey === `cloudflare-staging-private-db-renewal:${job.planDigest}`
+    && attemptCount === 0 && checkpointCount === 0;
+}
 
 function result(input: Omit<PrivateDatabaseRenewalPreflight, "checkedAt" | "failureStage" | "failureDetail"> & { failureStage?: string | null; failureDetail?: string | null }): PrivateDatabaseRenewalPreflight {
   return { ...input, failureStage: input.failureStage ?? null, failureDetail: input.failureDetail ?? null, checkedAt: new Date().toISOString() };
@@ -108,12 +120,29 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
 
   const leaseExpiresAt = stagingPrivateDatabaseRenewalLeaseExpiresAt(now);
   const authorizationExpiresAt = new Date(now + 10 * 60_000).toISOString();
-  const [existing] = await atStage("RENEWAL_JOB_READBACK", () => db.select({ id: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode, heartbeatAt: workerJobs.heartbeatAt })
+  const [existing] = await atStage("RENEWAL_JOB_READBACK", () => db.select({ id: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode,
+    heartbeatAt: workerJobs.heartbeatAt, startedAt: workerJobs.startedAt, leaseExpiresAt: workerJobs.leaseExpiresAt,
+    fencingVersion: workerJobs.fencingVersion, attempt: workerJobs.attempt, maxAttempts: workerJobs.maxAttempts,
+    idempotencyKey: workerJobs.idempotencyKey, planDigest: sql<string | null>`${workerJobs.inputJson}->>'planDigest'` })
     .from(workerJobs).where(and(eq(workerJobs.tenantId, input.identity.tenantId), eq(workerJobs.jobType, PRIVATE_DATABASE_RENEWAL_JOB),
       eq(workerJobs.contractVersion, PRIVATE_DATABASE_RENEWAL_CONTRACT), sql`${workerJobs.inputJson}->>'projectId' = ${input.identity.projectId}`,
       sql`${workerJobs.inputJson}->>'configurationRef' = ${input.configurationRef}`)).orderBy(desc(workerJobs.createdAt)).limit(1));
-  if (existing) return result({ ...base, ready: false, reason: "PRIVATE_DATABASE_RENEWAL_JOB_EXISTS", plan: null, planDigest: null, leaseExpiresAt,
-    existingJob: { jobId: existing.id, status: existing.status, errorCode: existing.errorCode, heartbeatAt: existing.heartbeatAt?.toISOString() ?? null } });
+  let retryableExpiredJob: PrivateDatabaseRenewalPreflight["existingJob"] = null;
+  if (existing) {
+    const [attemptRows, checkpointRows] = await Promise.all([
+      atStage("RENEWAL_JOB_ATTEMPT_READBACK", () => db.select({ id: workerJobAttempts.id }).from(workerJobAttempts)
+        .where(eq(workerJobAttempts.workerJobId, existing.id)).limit(1)),
+      atStage("RENEWAL_JOB_CHECKPOINT_READBACK", () => db.select({ id: systemSettings.id }).from(systemSettings)
+        .where(and(eq(systemSettings.category, "cloudflare_private_database_renewals"), eq(systemSettings.key, existing.id))).limit(1)),
+    ]);
+    const safeUnstartedDeadlineExpiry = isSafeUnstartedPrivateDatabaseRenewalExpiry(existing, attemptRows.length, checkpointRows.length);
+    const previousJob = { jobId: existing.id, status: existing.status, errorCode: existing.errorCode,
+      heartbeatAt: existing.heartbeatAt?.toISOString() ?? null, retryable: safeUnstartedDeadlineExpiry };
+    if (!safeUnstartedDeadlineExpiry) return result({ ...base, ready: false, reason: existing.status === "expired"
+      ? "PRIVATE_DATABASE_RENEWAL_PREVIOUS_JOB_REQUIRES_REVIEW" : "PRIVATE_DATABASE_RENEWAL_JOB_EXISTS",
+      plan: null, planDigest: null, leaseExpiresAt, existingJob: previousJob });
+    retryableExpiredJob = previousJob;
+  }
 
   const runtime = options.runtime ?? createCloudflareNativeProvisionRuntime(), scope = input.identity;
   const receiptRows = await atStage("SOURCE_RECEIPT_READBACK", () => db.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
@@ -144,5 +173,5 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
     refreshServiceTokenExpiry: providerState.serviceTokenExpiryRefreshRequired,
     leaseExpiresAt, authorizationExpiresAt }));
   const planDigest = privateDatabaseRenewalPlanDigest(plan);
-  return result({ ...base, ready: true, reason: null, plan, planDigest, leaseExpiresAt, existingJob: null });
+  return result({ ...base, ready: true, reason: null, plan, planDigest, leaseExpiresAt, existingJob: retryableExpiredJob });
 }

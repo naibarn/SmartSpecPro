@@ -10,7 +10,7 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_GRANT, PRIVATE_DATABASE_JOB
   privateDatabaseRenewalPlanDigest, type PrivateDatabaseGrant } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseRenewalPlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseProviderFailureDetail, privateDatabaseRenewalPlanFailureDetail,
-  stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
+  isSafeUnstartedPrivateDatabaseRenewalExpiry, stagingPrivateDatabaseRenewalLeaseExpiresAt } from "./cloudflarePrivateDatabaseRenewal";
 import { reconcilePrivateDatabaseServiceTokenRefresh } from "./cloudflarePrivateDatabaseRenewalExecutor";
 import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
@@ -36,6 +36,23 @@ beforeAll(() => {
   caCertificate = readFileSync(join(certDirectory, "ca"), "utf8");
 });
 afterAll(() => { if (certDirectory) rmSync(certDirectory, { recursive: true, force: true }); });
+
+describe("Staging private database renewal recovery", () => {
+  const safeExpiredJob = { status: "expired", errorCode: "JOB_DEADLINE_EXPIRED", startedAt: null, heartbeatAt: null,
+    leaseExpiresAt: null, fencingVersion: 0, attempt: 1, maxAttempts: 2, planDigest: "a".repeat(64),
+    idempotencyKey: `cloudflare-staging-private-db-renewal:${"a".repeat(64)}` };
+  it("allows a fresh explicit authorization only when the prior job never started or wrote a checkpoint", () => {
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry(safeExpiredJob, 0, 0)).toBe(true);
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry(safeExpiredJob, 1, 0)).toBe(false);
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry(safeExpiredJob, 0, 1)).toBe(false);
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob, startedAt: new Date() }, 0, 0)).toBe(false);
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob, heartbeatAt: new Date() }, 0, 0)).toBe(false);
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob, fencingVersion: 1 }, 0, 0)).toBe(false);
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob, errorCode: "PROVIDER_FAILURE" }, 0, 0)).toBe(false);
+    expect(isSafeUnstartedPrivateDatabaseRenewalExpiry({ ...safeExpiredJob,
+      idempotencyKey: `${safeExpiredJob.idempotencyKey}:generation:2` }, 0, 0)).toBe(false);
+  });
+});
 
 function fixture() {
   const plan = { namespace: nativeProvisionNamespace("tenant-test", "project-test"), hostname: "db-staging.smartaihub.app" as const,

@@ -715,6 +715,7 @@ export const infrastructureRouter = router({
         ? error.message : "PRIVATE_DATABASE_RENEWAL_PREFLIGHT_UNAVAILABLE" }); }
       if (!preflight.ready || !preflight.plan || !preflight.planDigest) throw new TRPCError({ code: "PRECONDITION_FAILED", message: preflight.reason ?? "PRIVATE_DATABASE_RENEWAL_NOT_READY" });
       if (preflight.planDigest !== input.planDigest) throw new TRPCError({ code: "CONFLICT", message: "PRIVATE_DATABASE_RENEWAL_PLAN_CHANGED" });
+      if (preflight.existingJob && !preflight.existingJob.retryable) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRIVATE_DATABASE_RENEWAL_PREVIOUS_JOB_REQUIRES_REVIEW" });
       if (Date.parse(preflight.plan.authorizationExpiresAt) <= Date.now()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "PRIVATE_DATABASE_RENEWAL_PLAN_EXPIRED" });
       const executorId = process.env.CLOUDFLARE_STAGING_EXECUTOR_ID?.trim();
       if (!executorId || !/^cf-staging-executor:[a-z0-9][a-z0-9._-]{2,119}$/.test(executorId)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "STAGING_EXECUTOR_NOT_CONFIGURED" });
@@ -730,7 +731,13 @@ export const infrastructureRouter = router({
           message: cloudflareApprovalFailureCode(payload, response.status, stage) });
         return cloudflareApprovalResponseObject(payload);
       };
-      const operationId = stableOperationUuid(`cloudflare-private-database-renewal:${preflight.planDigest}`);
+      // A new explicit Owner confirmation is required only for the one safe
+      // recovery case: the prior authorized Job expired before it was ever
+      // claimed. Keep the old Job immutable and give the fresh grant/Job a
+      // distinct idempotency identity.
+      const renewalGeneration = preflight.existingJob?.retryable ? 2 : 1;
+      const operationKey = `cloudflare-private-database-renewal:${preflight.planDigest}:generation:${renewalGeneration}`;
+      const operationId = stableOperationUuid(operationKey);
       const grantExpiresAt = preflight.plan.authorizationExpiresAt;
       const policyExpiresAt = new Date(Date.parse(grantExpiresAt) + 3 * 60 * 60_000).toISOString();
       let policyId: string | null = null, grantRef: string | null = null, policyCreated = false, jobCreationStarted = false;
@@ -747,7 +754,7 @@ export const infrastructureRouter = router({
         }
         if (!policyId) throw new Error("STAGING_POLICY_CREATE_FAILED");
         const grant = await post("/api/v1/approvals/cloudflare-staging-private-database-renewal-grants/policy", {
-          idempotencyKey: `cf-staging-private-db-renewal:${preflight.planDigest}`, policyId, jobId: operationId,
+          idempotencyKey: `cf-staging-private-db-renewal:${preflight.planDigest}:generation:${renewalGeneration}`, policyId, jobId: operationId,
           projectId: input.projectId, executorId, accountRef: campaign.accountRef, plan: preflight.plan, planDigest: preflight.planDigest,
           expiresAt: grantExpiresAt,
         }, "GRANT_CREATE");
@@ -757,11 +764,11 @@ export const infrastructureRouter = router({
         jobCreationStarted = true;
         const job = await createControlPlaneJob({ context: { tenantId, actorType: "user", actorId: ctx.user.id,
           authorizationScope: "infrastructure.cloudflare_staging_private_database_renewal", correlationId: ctx.req.requestId ?? operationId,
-          idempotencyKey: `cloudflare-staging-private-db-renewal:${preflight.planDigest}` },
+          idempotencyKey: `cloudflare-staging-private-db-renewal:${preflight.planDigest}:generation:${renewalGeneration}` },
           definition: { contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, jobType: PRIVATE_DATABASE_RENEWAL_JOB, executionClass: "long", priority: 50,
             input: { contractVersion: PRIVATE_DATABASE_RENEWAL_CONTRACT, grantRef, projectId: input.projectId,
               configurationRef: input.configurationRef, planDigest: preflight.planDigest, plan: preflight.plan },
-            idempotencyKey: `cloudflare-staging-private-db-renewal:${preflight.planDigest}`,
+            idempotencyKey: `cloudflare-staging-private-db-renewal:${preflight.planDigest}:generation:${renewalGeneration}`,
             activeDedupeKey: `cloudflare-staging-private-db-renewal:${input.configurationRef}`,
             retryPolicy: CLOUDFLARE_STAGING_RETRY_POLICY,
             timeoutPolicy: { softTimeoutMs: 60_000, hardTimeoutMs: 10 * 60_000 } }, createOptions: { runtimeType: "node_job_worker" } });

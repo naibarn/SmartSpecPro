@@ -863,6 +863,35 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.queueStagingDatabaseRenewal).not.toHaveBeenCalled();
   });
 
+  it("offers one fresh confirmation only when the prior renewal expired before claim with no execution record", async () => {
+    const user = userEvent.setup();
+    const configurationRef = `cf-origin:${"a".repeat(64)}`;
+    const plan = { configurationRef, configurationDigest: "a".repeat(64), sourceProvisionJobId: "11111111-1111-4111-8111-111111111111",
+      sourcePlan: { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app", zoneId: "b".repeat(32),
+        tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartaihub", caSha256: "c".repeat(64), connectionLimit: 5,
+        configurationExpiresAt: "2026-10-01T00:00:00.000Z" }, sourcePlanDigest: "d".repeat(64),
+      resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: "33333333-3333-4333-8333-333333333333",
+        accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      serviceTokenExpiresAt: "2026-10-30T00:00:00.000Z", refreshServiceTokenExpiry: true,
+      leaseExpiresAt: new Date(Date.now() + 31 * 86_400_000).toISOString(), authorizationExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString() };
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingRuntime = { status: "READY", checkedAt: "2026-10-29T00:00:00.000Z", activation: "disabled", missing: [], reason: null };
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_EXPIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = { status: "EXPIRED", configurationRef, descriptor: { nativeResources: { privateDatabase: { provisionJobId: plan.sourceProvisionJobId } } } };
+    mocks.stagingDatabaseRenewal = { ready: true, reason: null, configurationRef, plan, planDigest: "7".repeat(64),
+      existingJob: { jobId: "77777777-7777-4777-8777-777777777777", status: "expired", errorCode: "JOB_DEADLINE_EXPIRED",
+        heartbeatAt: null, retryable: true } };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+
+    expect(await screen.findByText(/expired before it was claimed/)).toBeInTheDocument();
+    const renew = screen.getByRole("button", { name: "Authorize and renew the existing Staging database lease" });
+    await user.click(renew);
+    expect(await screen.findByRole("dialog")).toHaveTextContent("77777777-7777-4777-8777-777777777777");
+    await user.click(screen.getByRole("button", { name: "Authorize one renewal Job" }));
+    expect(mocks.queueStagingDatabaseRenewal).toHaveBeenCalledOnce();
+  });
+
   it("explains an expired preflight blocker even when the configuration readback is still STORED", async () => {
     const user = userEvent.setup();
     mocks.targets = [stagingActivationTarget];
