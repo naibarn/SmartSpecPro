@@ -3,6 +3,7 @@ import { Mic, Plus, Trash2 } from "lucide-react";
 import { TextInput } from "@astryxdesign/core/TextInput";
 import { TextArea } from "@astryxdesign/core/TextArea";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
+import { EmptyState } from "@astryxdesign/core/EmptyState";
 import { Button } from "@/components/ui/button";
 import type { VerticalDramaSpeakerVisualBinding } from "@shared/verticalDramaSeries/speakerVisualBinding";
 
@@ -25,11 +26,9 @@ export function VerticalDramaShotSpeakerBindingEditor({
   onSave: (bindings: VerticalDramaSpeakerVisualBinding[]) => void;
 }) {
   const [draft, setDraft] = useState(bindings);
-  const [open, setOpen] = useState(bindings.length > 0);
 
   useEffect(() => {
     setDraft(bindings);
-    if (bindings.length) setOpen(true);
   }, [bindings]);
 
   const setCue = (speakerLabel: string, visualCue: string) => {
@@ -64,7 +63,6 @@ export function VerticalDramaShotSpeakerBindingEditor({
         visualCue: "",
       },
     ]);
-    setOpen(true);
   };
 
   const removeSpeaker = (speakerLabel: string) =>
@@ -115,115 +113,113 @@ export function VerticalDramaShotSpeakerBindingEditor({
 
   return (
     <section data-testid={`vd-speaker-binding-${shotNumber}`}>
-      <button
-        type="button"
-        onClick={() => setOpen(value => !value)}
-        aria-expanded={open}
-      >
+      <VStack gap={3}>
         <HStack gap={2}>
           <Mic aria-hidden="true" />
-          <strong>ผู้พูดที่ไม่มีตัวละครอ้างอิง</strong>
+          <strong>ผู้พูดที่เห็นในภาพ แต่ไม่มีตัวละครอ้างอิง</strong>
           <small>เฉพาะช็อตนี้</small>
         </HStack>
-      </button>
-      {open ? (
-        <VStack gap={3}>
-          <p>
-            ระบุให้ตรงกับคนที่เห็นอยู่ในภาพเริ่มต้น
-            ระบบจะผูกบทพูดกับคนนั้นและสั่งให้ขยับปากเฉพาะตอนพูด
-            โดยไม่เพิ่มลงคลังตัวละคร
-          </p>
-          {options.map((speaker, index) => (
-            <article
-              key={
-                (speaker as VerticalDramaSpeakerVisualBinding).id ??
-                `speaker-${speaker.speakerLabel}-${index}`
-              }
-            >
-              {speakers.some(
-                option => option.speakerLabel === speaker.speakerLabel
-              ) ? (
-                <strong>{speaker.speakerLabel}</strong>
-              ) : (
-                <TextInput
-                  label="ชื่อผู้พูดตามบท"
-                  isLabelHidden
-                  value={speaker.speakerLabel}
-                  maxLength={120}
-                  placeholder="ระบุชื่อผู้พูดให้ตรงกับบท"
-                  onChange={value => renameSpeaker(speaker.speakerLabel, value)}
-                />
-              )}
-              {speaker.dialogueLines.length ? (
-                <p>
-                  บทพูด: {speaker.dialogueLines.join(" / ")}
-                </p>
-              ) : null}
-              <TextArea
-                label={`ลักษณะคนในภาพสำหรับผู้พูด ${speaker.speakerLabel}`}
-                isLabelHidden
-                value={speaker.visualCue}
-                maxLength={240}
-                placeholder="เช่น ชายชุดเข้มที่ยืนด้านขวาหลังโต๊ะ"
-                onChange={value => setCue(speaker.speakerLabel, value)}
+        <p>
+          ระบุชื่อผู้พูดตามบทและลักษณะของคนที่เห็นในภาพเริ่มต้น
+          เพื่อให้ Video Prompt ผูกเสียงกับคนในภาพและสั่งให้ขยับปากตอนพูด
+          ข้อมูลนี้ไม่เพิ่มลงคลังตัวละคร และไม่ใช่ Caller ทางโทรศัพท์ด้านล่าง
+        </p>
+        {options.length === 0 ? (
+          <EmptyState
+            isCompact
+            title="ยังไม่มีผู้พูดในรายการ"
+            description="กด “เพิ่มผู้พูด” แล้วกรอกชื่อให้ตรงกับบท เช่น นักตรวจผนึก จากนั้นระบุว่าคนนี้อยู่ตรงไหนหรือแต่งตัวอย่างไรในภาพ"
+          />
+        ) : null}
+        {options.map((speaker, index) => (
+          <article
+            key={
+              (speaker as VerticalDramaSpeakerVisualBinding).id ??
+              `speaker-${speaker.speakerLabel}-${index}`
+            }
+          >
+            {speakers.some(
+              option => option.speakerLabel === speaker.speakerLabel
+            ) ? (
+              <p>
+                <strong>ผู้พูดตามบท:</strong> {speaker.speakerLabel}
+              </p>
+            ) : (
+              <TextInput
+                label="ชื่อผู้พูดตามบท"
+                value={speaker.speakerLabel}
+                maxLength={120}
+                description="กรอกชื่อที่ใช้หน้าบทพูด เช่น นักตรวจผนึก"
+                onChange={value => renameSpeaker(speaker.speakerLabel, value)}
               />
-              {!speakers.some(
-                option => option.speakerLabel === speaker.speakerLabel
-              ) ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeSpeaker(speaker.speakerLabel)}
-                >
-                  <Trash2 aria-hidden="true" /> ลบ
-                </Button>
-              ) : null}
-            </article>
-          ))}
-          <HStack gap={2} wrap="wrap">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addSpeaker}
-              disabled={draft.length >= 6}
-            >
-              <Plus aria-hidden="true" /> เพิ่มผู้พูด
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() =>
-                onSave(draft.filter(binding => binding.visualCue.trim()))
-              }
-              disabled={
-                saving ||
-                draft.some(
-                  binding =>
-                    !binding.speakerLabel.trim() && binding.visualCue.trim()
-                )
-              }
-            >
-              {saving ? "กำลังบันทึก…" : "บันทึกการระบุผู้พูด"}
-            </Button>
-            {draft.length ? (
+            )}
+            {speaker.dialogueLines.length ? (
+              <p>บทพูด: {speaker.dialogueLines.join(" / ")}</p>
+            ) : null}
+            <TextArea
+              label="ลักษณะของคนพูดในภาพเริ่มต้น"
+              description="บอกตำแหน่ง เสื้อผ้า หรือจุดสังเกต เพื่อแยกจากตัวละครอื่นในภาพ"
+              value={speaker.visualCue}
+              maxLength={240}
+              placeholder="เช่น ชายชุดเกราะสีเข้มที่ยืนอยู่ด้านหลังทางซ้าย"
+              onChange={value => setCue(speaker.speakerLabel, value)}
+            />
+            {!speakers.some(
+              option => option.speakerLabel === speaker.speakerLabel
+            ) ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  setDraft([]);
-                  onSave([]);
-                }}
-                disabled={saving}
+                onClick={() => removeSpeaker(speaker.speakerLabel)}
               >
-                ล้างรายการ
+                <Trash2 aria-hidden="true" /> ลบ
               </Button>
             ) : null}
-          </HStack>
-        </VStack>
-      ) : null}
+          </article>
+        ))}
+        <HStack gap={2} wrap="wrap">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={addSpeaker}
+            disabled={draft.length >= 6}
+          >
+            <Plus aria-hidden="true" /> เพิ่มผู้พูด
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() =>
+              onSave(draft.filter(binding => binding.visualCue.trim()))
+            }
+            disabled={
+              saving ||
+              draft.some(
+                binding =>
+                  !binding.speakerLabel.trim() && binding.visualCue.trim()
+              )
+            }
+          >
+            {saving ? "กำลังบันทึก…" : "บันทึกการระบุผู้พูด"}
+          </Button>
+          {draft.length ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDraft([]);
+                onSave([]);
+              }}
+              disabled={saving}
+            >
+              ล้างรายการ
+            </Button>
+          ) : null}
+        </HStack>
+      </VStack>
     </section>
   );
 }

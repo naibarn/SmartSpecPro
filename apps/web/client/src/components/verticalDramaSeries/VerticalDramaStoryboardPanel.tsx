@@ -7319,12 +7319,34 @@ export function VerticalDramaStoryboardPanel({
                       key => !callerKeys.includes(key)
                     );
                     if (barrierMultiView) return null;
-                    if (
-                      callerKeys.length === 0 &&
-                      !onSetShotScreenCallerReferences &&
-                      !frame?.barrierDialogue
-                    )
-                      return null;
+                    if (callerKeys.length === 0 && !frame?.barrierDialogue) {
+                      if (!onSetShotScreenCallerReferences) return null;
+                      return (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setCharacterRefPickerMode("screen_caller");
+                            setCharacterRefPickerDraft(callerKeys);
+                            setCharacterRefPickerForShot(shotNumber);
+                          }}
+                          title={t(
+                            locale,
+                            "ตั้งค่า Caller สำหรับสายโทรศัพท์เท่านั้น ไม่ใช้ระบุคนพูดในภาพ",
+                            "Set a phone caller only; use speaker visual details above for someone visible in the shot"
+                          )}
+                          data-testid={`vd-storyboard-screen-caller-edit-${shotNumber}`}
+                        >
+                          <Phone aria-hidden="true" className="h-3.5 w-3.5" />
+                          {t(
+                            locale,
+                            "ตั้งค่า Caller โทรศัพท์ (ถ้ามี)",
+                            "Set phone caller (optional)"
+                          )}
+                        </Button>
+                      );
+                    }
                     return (
                       <div
                         className="flex flex-wrap items-start gap-2.5 rounded-md border border-dashed border-sky-300/70 bg-sky-50/50 p-2 dark:bg-sky-950/20"

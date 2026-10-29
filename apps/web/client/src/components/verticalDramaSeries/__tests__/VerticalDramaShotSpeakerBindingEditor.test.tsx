@@ -16,14 +16,12 @@ describe("VerticalDramaShotSpeakerBindingEditor", () => {
       />
     );
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /ผู้พูดที่ไม่มีตัวละครอ้างอิง/ })
-    );
+    expect(
+      screen.getByText("ผู้พูดที่เห็นในภาพ แต่ไม่มีตัวละครอ้างอิง")
+    ).toBeInTheDocument();
     fireEvent.change(
-      screen.getByPlaceholderText("เช่น ชายชุดเข้มที่ยืนด้านขวาหลังโต๊ะ"),
-      {
-        target: { value: "ชายชุดเข้มที่ยืนด้านขวาหลังโต๊ะ" },
-      }
+      screen.getByLabelText("ลักษณะของคนพูดในภาพเริ่มต้น"),
+      { target: { value: "ชายชุดเข้มที่ยืนด้านขวาหลังโต๊ะ" } }
     );
     fireEvent.click(
       screen.getByRole("button", { name: "บันทึกการระบุผู้พูด" })
