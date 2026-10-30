@@ -490,6 +490,9 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
     controlPlaneTokenConfigured: originConfiguration.controlPlaneTokenConfigured,
     applicationSecretsConfigured: originConfiguration.applicationPreparation?.encryptedApplicationSecrets === "STORED" });
   if (activationBlocker) return unavailable(activationBlocker);
+  if (originConfiguration.applicationPreparation?.applicationHttpExpired) {
+    return unavailable("STAGING_APPLICATION_HTTP_PROFILE_EXPIRED");
+  }
   const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) return unavailable("PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE");
   const jobs = await db.select({ input: workerJobs.inputJson, output: workerJobs.outputJson, createdAt: workerJobs.createdAt })

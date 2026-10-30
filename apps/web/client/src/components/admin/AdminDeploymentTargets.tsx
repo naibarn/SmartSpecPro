@@ -1904,6 +1904,7 @@ export default function AdminDeploymentTargets() {
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
               {(stagingConfigurationExpired || activationRecoveryStatus ||
                 stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED" ||
+                stagingDeployPreflight.data?.reason === "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED" ||
                 stagingOriginConfiguration.data?.applicationPreparation?.phase !== "FULL_HTTP") ? (() => {
               const configRef = currentStagingConfigRef;
               const config = stagingOriginConfiguration.data;
@@ -1926,7 +1927,7 @@ export default function AdminDeploymentTargets() {
                 // needs to know that the immutable Node/Python image pair exists.
                 const fullHttpInputsAvailable = applicationPreparation?.imageReceipts === "VERIFIED";
                 const selectedActionNeeded = stagingPreparationProfile === "full-application-http"
-                  ? applicationPreparation?.phase !== "FULL_HTTP" : activationRequired;
+                  ? applicationPreparation?.phase !== "FULL_HTTP" || applicationPreparation?.applicationHttpExpired === true : activationRequired;
               return <VStack gap={2}>
                   <h4>{text("1. Prepare the Staging candidate", "1. เตรียม candidate ของ Staging")}</h4>
                   <p>{text(
@@ -2216,7 +2217,10 @@ export default function AdminDeploymentTargets() {
               })}>
                 {stagingDeployMutation.isPending ? text("Authorizing and queueing…", "กำลังตรวจสิทธิ์และส่งงาน…") : text("Authorize and deploy to staging", "อนุมัติและ deploy ไป staging")}
               </Button>
-            </> : stagingDeployPreflight.data.reason === "STAGING_BOOTSTRAP_REQUIRED" && stagingDeployPreflight.data.artifact ? <>
+            </> : stagingDeployPreflight.data.reason === "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED" ? <p role="status">
+              {text("The Full HTTP runtime profile expired. Prepare a fresh Full Application HTTP configuration, then authorize its new Staging candidate.",
+                "Full HTTP runtime profile หมดอายุแล้ว ให้เตรียม Full Application HTTP configuration ใหม่ แล้วจึงอนุมัติ candidate Staging ชุดใหม่")}
+            </p> : stagingDeployPreflight.data.reason === "STAGING_BOOTSTRAP_REQUIRED" && stagingDeployPreflight.data.artifact ? <>
               <p>{text("This is the first Staging deployment, so Cloudflare has no verified Staging deployment to use as a rollback baseline yet.", "นี่คือการ deploy Staging ครั้งแรก จึงยังไม่มี deployment ที่ตรวจสอบแล้วสำหรับใช้ rollback")}</p>
               <p>{text("The one-time bootstrap below is limited to this published artifact, saved origin configuration, Staging Worker, Cloudflare account, and registered executor. It allows one job, creates no production DNS or route changes, and fails closed if the Worker is already owned by a different deployment.", "bootstrap ครั้งเดียวนี้จำกัดเฉพาะ artifact, origin config ที่บันทึกไว้, Staging Worker, บัญชี Cloudflare และ executor ที่ลงทะเบียน อนุญาตเพียงหนึ่ง job ไม่เปลี่ยน DNS หรือ route ของ production และจะหยุดทันทีหาก Worker มี deployment ที่ไม่ตรงกับงานนี้")}</p>
               <p>{text("Candidate", "รุ่นที่จะ deploy")}: <code>{stagingDeployPreflight.data.artifact.sourceSha}</code> · <code>{stagingDeployPreflight.data.artifact.artifactRef}</code></p>

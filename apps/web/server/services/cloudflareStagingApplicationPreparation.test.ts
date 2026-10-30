@@ -47,10 +47,27 @@ describe("Staging Full Application preparation projection", () => {
     const value = getStagingApplicationPreparation(base, secrets({ node: { CONTROL_PLANE_API_KEY: "fixture-secret-not-returned" }, python: {} }), `cf-origin:${"2".repeat(64)}`);
     expect(value.phase).toBe("FULL_HTTP");
     expect(value.candidateStatus).toBe("RUNTIME_CONFIGURED");
+    expect(value.applicationHttpExpired).toBe(false);
     expect(value.databaseAuthority.code).toBe("STAGING_DB_WRITE_ACCEPTANCE_NOT_VERIFIED");
     expect(value.databaseAuthority.status).toBe("NOT_VERIFIED");
     expect(value.missingRuntimeFields).toEqual([]);
     expect(value.deploymentAuthorized).toBe(false);
     expect(JSON.stringify(value)).not.toContain("fixture-secret-not-returned");
+  });
+
+  it("marks an expired Full HTTP profile blocked and asks for a fresh configuration", () => {
+    const base = descriptor({ applicationHttp: { mode: "private-canary", namespace: "smartspec-staging-aaaaaaaaaaaa",
+      sourceSha: "b".repeat(40), traffic: "staging-full-http-v1",
+      node: { provisionJobId: "00000000-0000-4000-8000-000000000003", planDigest: "c".repeat(64), image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-aaaaaaaaaaaa-node-http@sha256:${"d".repeat(64)}` },
+      python: { provisionJobId: "00000000-0000-4000-8000-000000000004", planDigest: "e".repeat(64), image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-aaaaaaaaaaaa-python-http@sha256:${"f".repeat(64)}` },
+      issuedAt: "2019-01-01T00:00:00.000Z", expiresAt: "2020-01-01T00:00:00.000Z", maxStarts: 2,
+      maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic" } });
+    const value = getStagingApplicationPreparation(base, secrets({ node: { CONTROL_PLANE_API_KEY: "expired-profile-test-secret" }, python: {} }), `cf-origin:${"3".repeat(64)}`);
+    expect(value.phase).toBe("FULL_HTTP");
+    expect(value.applicationHttpExpired).toBe(true);
+    expect(value.applicationHttpExpiresAt).toBe("2020-01-01T00:00:00.000Z");
+    expect(value.candidateStatus).toBe("BLOCKED");
+    expect(value.missingRuntimeFields).toContain("expired Full HTTP application profile; prepare a fresh configuration");
+    expect(JSON.stringify(value)).not.toContain("expired-profile-test-secret");
   });
 });

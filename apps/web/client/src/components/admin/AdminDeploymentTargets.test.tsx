@@ -710,6 +710,41 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
   });
 
+  it("re-enables Full HTTP preparation and blocks deploy when the saved application profile expired", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = {
+      status: "STORED", configurationRef: `cf-origin:${"a".repeat(64)}`,
+      workflowRuntimeTokenConfigured: true, controlPlaneTokenConfigured: true,
+      descriptor: { nativeResources: { privateDatabase: { provisionJobId: "private-db-receipt" } } },
+      applicationPreparation: {
+        phase: "FULL_HTTP", sourceConfigurationRef: `cf-origin:${"a".repeat(64)}`, candidateStatus: "BLOCKED",
+        applicationHttpExpired: true, applicationHttpExpiresAt: "2020-01-01T00:00:00.000Z",
+        missingRuntimeFields: ["expired Full HTTP application profile; prepare a fresh configuration"],
+        imageReceipts: "VERIFIED", encryptedApplicationSecrets: "STORED",
+        containerBindings: "GENERATED_FROM_IMMUTABLE_CONFIGURATION",
+        databaseAuthority: { status: "NOT_VERIFIED", code: "STAGING_DB_WRITE_ACCEPTANCE_NOT_VERIFIED",
+          existingRoleAccess: "READ_ONLY_PROBE_ONLY", host: null, databaseName: null, readOnlyProbeRole: null,
+          requiredPermissions: [], excludedPermissions: [] },
+      },
+    };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    await user.click(screen.getByRole("combobox", { name: "Candidate profile" }));
+    await user.click(screen.getByRole("option", { name: /FULL_APPLICATION_HTTP/ }));
+
+    expect(await screen.findByText("STAGING_APPLICATION_HTTP_PROFILE_EXPIRED")).toBeInTheDocument();
+    expect(screen.getByText(/Full HTTP runtime profile expired/i)).toBeInTheDocument();
+    const prepare = screen.getByRole("button", { name: "Prepare Full Application HTTP candidate" });
+    expect(prepare).toBeEnabled();
+    await user.click(prepare);
+    await user.click(screen.getByRole("button", { name: "Prepare Full HTTP candidate" }));
+    expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging",
+      provider: "cloudflare", configurationRef: `cf-origin:${"a".repeat(64)}`, profile: "full-application-http" });
+    expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
+  });
+
   it("offers automatic internal secret setup without asking the owner to supply tokens", async () => {
     const user = userEvent.setup();
     mocks.targets = [stagingActivationTarget];

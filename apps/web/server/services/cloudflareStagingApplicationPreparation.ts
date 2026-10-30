@@ -12,6 +12,7 @@ export function getStagingApplicationPreparation(descriptor: CloudflareOriginDes
   const application = descriptor.applicationHttp;
   const namespaceOnly = descriptor.applicationHttpPhase === "namespace-only";
   const fullHttp = Boolean(application && !namespaceOnly && application.traffic === "staging-full-http-v1");
+  const applicationHttpExpired = Boolean(fullHttp && application && Date.parse(application.expiresAt) <= Date.now());
   const privateDatabase = descriptor.nativeResources?.privateDatabase;
   const applicationSecretsConfigured = Boolean(secrets.applicationHttp);
   const ingressBindingsGenerated = Boolean(application && !namespaceOnly);
@@ -20,6 +21,7 @@ export function getStagingApplicationPreparation(descriptor: CloudflareOriginDes
     ...(!ingressBindingsGenerated ? ["CLOUDFLARE_CONTAINER_POLICY", "NODE_HTTP", "PYTHON_HTTP",
       "CLOUDFLARE_NODE_HTTP_PROFILE", "CLOUDFLARE_PYTHON_HTTP_PROFILE", "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS"] : []),
     ...(!fullHttp ? ["CLOUDFLARE_APPLICATION_HTTP_TRAFFIC"] : []),
+    ...(applicationHttpExpired ? ["expired Full HTTP application profile; prepare a fresh configuration"] : []),
     ...(!applicationSecretsConfigured ? ["encrypted Node/Python application secrets"] : []),
   ];
   return {
@@ -27,6 +29,8 @@ export function getStagingApplicationPreparation(descriptor: CloudflareOriginDes
       : fullHttp ? "FULL_HTTP" as const : "PRIVATE_CANARY" as const,
     sourceConfigurationRef: configurationRef,
     candidateStatus: (missingRuntimeFields.length === 0 ? "RUNTIME_CONFIGURED" : "BLOCKED") as "RUNTIME_CONFIGURED" | "BLOCKED",
+    applicationHttpExpiresAt: fullHttp ? application?.expiresAt ?? null : null,
+    applicationHttpExpired,
     missingRuntimeFields,
     imageReceipts: application ? "VERIFIED" as const : "MISSING" as const,
     encryptedApplicationSecrets: applicationSecretsConfigured ? "STORED" as const : "MISSING" as const,
