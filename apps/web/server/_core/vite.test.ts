@@ -66,6 +66,27 @@ describe("vite production static serving", () => {
     });
   });
 
+  it("serves the supplied immutable public build when used by the development runtime", async () => {
+    const publicRoot = fs.mkdtempSync(path.join(os.tmpdir(), "smartspec-dev-build-"));
+    fs.mkdirSync(path.join(publicRoot, "assets"));
+    fs.writeFileSync(path.join(publicRoot, "index.html"), "<!doctype html><title>built dev</title>");
+    fs.writeFileSync(path.join(publicRoot, "assets", "app-abcd.js"), "window.built=true");
+
+    try {
+      const app = express();
+      serveStatic(app, publicRoot);
+      const html = await request(app).get("/chat?c=9");
+      const asset = await request(app).get("/assets/app-abcd.js");
+
+      expect(html.status).toBe(200);
+      expect(html.text).toContain("built dev");
+      expect(asset.status).toBe(200);
+      expect(asset.headers["cache-control"]).toContain("immutable");
+    } finally {
+      fs.rmSync(publicRoot, { recursive: true, force: true });
+    }
+  });
+
   it("injects the public homepage snapshot when static hosting serves the root route", async () => {
     const publicRoot = fs.mkdtempSync(path.join(os.tmpdir(), "smartspec-public-root-"));
     fs.writeFileSync(

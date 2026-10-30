@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -45,6 +45,17 @@ const dirty = execFileSync(
   { cwd: appRoot, encoding: "utf8" }
 ).trim();
 const revision = `${sourceSha}${dirty ? "-dirty" : ""}`;
+const builtPublicDir = process.env.SMARTSPEC_DEV_BUILT_PUBLIC_DIR?.trim();
+if (builtPublicDir) {
+  if (!builtPublicDir.startsWith("/")) throw new Error("Built development assets must use an absolute directory");
+  const manifestPath = resolve(builtPublicDir, "release-manifest.json");
+  const indexPath = resolve(builtPublicDir, "index.html");
+  if (!existsSync(manifestPath) || !existsSync(indexPath)) throw new Error("Built development assets are incomplete");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  if (manifest.frontend_source_revision !== sourceSha || manifest.backend_source_revision !== sourceSha) {
+    throw new Error("Built development assets do not match the running source revision");
+  }
+}
 const hostRuntimeEnv = Object.fromEntries(
   ["PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR", "XDG_RUNTIME_DIR"]
     .filter(key => process.env[key] !== undefined)
@@ -95,6 +106,7 @@ const child = spawn(
       COMMIT_SHA: revision,
       RELEASE: revision,
       VITE_RELEASE: revision,
+      ...(builtPublicDir ? { SMARTSPEC_DEV_BUILT_PUBLIC_DIR: builtPublicDir } : {}),
     },
   }
 );

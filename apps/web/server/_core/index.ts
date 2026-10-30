@@ -2776,10 +2776,11 @@ async function main() {
   }
 
   if (applicationRuntimeProfile.serveSpaAssets) {
-    if (process.env.NODE_ENV === "development") {
+    const devBuiltPublicDir = process.env.SMARTSPEC_DEV_BUILT_PUBLIC_DIR?.trim();
+    if (process.env.NODE_ENV === "development" && !devBuiltPublicDir) {
       await setupVite(app, server);
     } else {
-      serveStatic(app);
+      serveStatic(app, devBuiltPublicDir || undefined);
     }
   }
 
