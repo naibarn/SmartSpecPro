@@ -119,9 +119,9 @@ export function findVerticalDramaSpeakerVisualBinding(
 }
 
 /**
- * A complete, frame-specific detected-person map can replace the legacy
- * left-to-right cast lock for the dialogue speakers in that frame. Free-text
- * cues and stale/manual bindings do not satisfy this gate.
+ * A complete, frame-specific speaker map can replace the legacy left-to-right
+ * cast lock. A detected selection needs its person region; a user-authored
+ * visual cue is also valid when it was saved against this exact approved frame.
  */
 export function hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
   bindings: readonly VerticalDramaSpeakerVisualBinding[] | null | undefined,
@@ -136,11 +136,12 @@ export function hasCompleteDetectedVerticalDramaSpeakerVisualBindings(
 
   return requiredSpeakerAliases.every(aliases => {
     const binding = findVerticalDramaSpeakerVisualBinding(bindings, ...aliases);
-    return Boolean(
-      binding?.personId &&
-      binding.boundingBox &&
-      binding.sourceMediaAssetId === currentAssetId
+    if (!binding || binding.sourceMediaAssetId !== currentAssetId) return false;
+    const detectedPersonSelected = Boolean(binding.personId && binding.boundingBox);
+    const manualVisualCueConfirmed = Boolean(
+      binding.visualCue && !binding.personId && !binding.boundingBox
     );
+    return detectedPersonSelected || manualVisualCueConfirmed;
   });
 }
 

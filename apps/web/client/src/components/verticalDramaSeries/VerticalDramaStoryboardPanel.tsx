@@ -4851,8 +4851,8 @@ export function VerticalDramaStoryboardPanel({
             : speakerVisualBindingsNeedReview
               ? t(
                   locale,
-                  "จับคู่ผู้พูดกับคนที่ตรวจพบในภาพให้ครบก่อน",
-                  "Map every speaker to a detected person in the current image first"
+                  "เลือกคนที่ตรวจพบหรือบันทึกลักษณะคนพูดในภาพปัจจุบันให้ครบก่อน",
+                  "Select a detected person or save a visual description for every speaker in the current image first"
                 )
               : enhancedReadiness?.ready === false
                 ? enhancedReadiness.reasons.join("; ")
