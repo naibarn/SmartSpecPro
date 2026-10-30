@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { spawn, execFileSync } from "node:child_process";
 import { parse } from "dotenv";
 import { selectDevWebDatabase, shouldRunDevSchemaMigrations } from "./devWebDatabase.mjs";
+import { isCompatibleDevelopmentBuildSource } from "./devBuildSource.mjs";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const envFile = resolve(
@@ -54,9 +55,25 @@ if (builtPublicDir) {
   const indexPath = resolve(builtPublicDir, "index.html");
   if (!existsSync(indexPath) || !existsSync(buildResultFile)) throw new Error("Built development assets are incomplete");
   const buildResult = JSON.parse(readFileSync(buildResultFile, "utf8"));
-  if (buildResult.status !== "BUILD_PASSED" || buildResult.source_revision !== sourceSha ||
+  const artifactSourceSha = buildResult.source_revision;
+  let isAncestor = false;
+  let interveningPaths = [];
+  if (artifactSourceSha !== sourceSha) {
+    try {
+      execFileSync("git", ["merge-base", "--is-ancestor", artifactSourceSha, sourceSha], { cwd: appRoot, stdio: "ignore" });
+      isAncestor = true;
+      interveningPaths = execFileSync("git", ["diff", "--name-only", `${artifactSourceSha}..${sourceSha}`], {
+        cwd: appRoot,
+        encoding: "utf8",
+      }).split("\n").filter(Boolean);
+    } catch {
+      isAncestor = false;
+    }
+  }
+  if (buildResult.status !== "BUILD_PASSED" ||
+      !isCompatibleDevelopmentBuildSource({ artifactSourceSha, runtimeSourceSha: sourceSha, isAncestor, interveningPaths }) ||
       resolve(buildResult.artifact?.artifact_path || "", "public") !== publicRoot) {
-    throw new Error("Built development assets do not match the verified canonical build receipt");
+    throw new Error("Built development assets do not match the verified canonical build receipt and runtime source");
   }
 }
 const hostRuntimeEnv = Object.fromEntries(
