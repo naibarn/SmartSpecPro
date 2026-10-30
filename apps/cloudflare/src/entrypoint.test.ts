@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("cloudflare:workers", () => ({ WorkflowEntrypoint: class {}, DurableObject: class {}, WorkerEntrypoint: class {} }));
-import entrypoint from "./entrypoint";
+import entrypoint, * as workerExports from "./entrypoint";
 const env = {
   CLOUDFLARE_ENVIRONMENT: "production", CLOUDFLARE_INGRESS_MODE: "production-origin-bridge-v1",
   CLOUDFLARE_APPLICATION_CANARY_TOKEN: "p".repeat(64),
@@ -10,6 +10,10 @@ const env = {
 } as any;
 afterEach(() => vi.unstubAllGlobals());
 describe("deployed Worker entrypoint canary dispatch", () => {
+  it("exports the private database bridge required by the application Containers", () => {
+    expect(workerExports.ApplicationDatabaseBridge).toBeTypeOf("function");
+  });
+
   it.each(["web", "auth"])("dispatches the narrower M2 %s probe before the Container canary prefix", async resource => {
     const fetchImpl = vi.fn(async (request: any) => {
       const url = new URL(request instanceof Request ? request.url : String(request));

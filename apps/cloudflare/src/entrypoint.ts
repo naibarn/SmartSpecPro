@@ -11,7 +11,7 @@ import { APPLICATION_HTTP_CANARY_PREFIX, handleApplicationHttpCanary } from "./a
 import { PRODUCTION_ORIGIN_CANARY_PREFIX } from "./productionOriginCanary";
 import { dispatchApplicationHttpRealtime } from "./applicationHttpRealtime";
 export { CanonicalRunnerContainer } from "./runnerContainerEntrypoint";
-export { ApplicationHttpBridge, ProductionNodeHttpContainer, ProductionPythonHttpContainer,
+export { ApplicationDatabaseBridge, ApplicationHttpBridge, ProductionNodeHttpContainer, ProductionPythonHttpContainer,
   StagingNodeHttpContainer, StagingPythonHttpContainer } from "./applicationHttpContainerEntrypoint";
 
 export class CanonicalJobWorkflow extends WorkflowEntrypoint<CloudflareEnvironment, CanonicalJobEnvelope> {
