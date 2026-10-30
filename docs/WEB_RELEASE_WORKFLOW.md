@@ -2,6 +2,24 @@
 
 Use the same commands from the repository root or `apps/web`.
 
+## Environment boundaries
+
+`aimarkethubs.com` is development-only: its named tunnel forwards to
+`127.0.0.1:3100`, served by the user-level `smartspec-dev-web.service` with
+`~/.config/smartspec-dev/web.env`. `smartaihub.app` is production-only: its
+production tunnel forwards to port 3000, served by the system-level
+`smartspec-web.service` from the immutable production release pointer. The
+services have different unit managers, working directories, application
+database environment files, ports, tunnel configurations and release activation
+state. Both units inherit the host's Node runtime/PATH settings; those settings
+do not select the application database or artifact.
+
+Never use `release:web:linux`, `build:deploy`, or `deploy:web:main` to update
+`aimarkethubs.com`; those commands can activate the production service. Use the
+development-only command below. It has no sudo path, only changes the user
+development service drop-in, verifies the development tunnel and domain, and
+fails if production service or release fingerprints change.
+
 ## Build an artifact without changing production
 
 ```bash
@@ -182,10 +200,28 @@ named Cloudflare Tunnel to the development web service on `127.0.0.1:3100`.
 The production tunnel and service remain independently managed.
 
 ```bash
+pnpm run release:dev:web              # build and publish the immutable dev artifact
 pnpm run dev:web                         # foreground, current checkout
 pnpm run dev:web:restart                 # managed background service
 pnpm run dev:web:status
 ```
+
+`release:dev:web` builds the integrated `origin/main` source through the
+canonical builder, verifies the build receipt and artifact, and activates only
+`smartspec-dev-web.service` on port 3100. It confirms `aimarkethubs.com` serves
+the artifact by hashing a public JavaScript asset against the build output,
+checks the development API readiness endpoint, and records a non-secret release
+receipt under `~/.local/state/smartspec-dev-web/last-deployment.json`. It
+fingerprints both production services and the production release pointer before
+and after activation. An optional `--build-result <receipt.json>` reuses an
+already verified canonical build. A failed health or domain check restores the
+previous dev artifact configuration and restarts only the dev service.
+
+The development launcher separately verifies `SMARTSPEC_ENVIRONMENT`, the
+`aimarkethubs.com` application and tenant domain, port 3100, and a dev-scoped
+database identity (`_dev` role; development database or the explicitly
+tenant-scoped shared development database). Production database access modes
+are rejected for this release procedure.
 
 The restart command fetches canonical history and fast-forwards a clean canonical
 checkout, refreshes web dependencies when the lockfile changes, then restarts
@@ -194,13 +230,19 @@ anonymous diagnostics guard. Edited or differently branched checkouts are preser
 and identified explicitly in the launcher revision.
 
 The development launcher reads `~/.config/smartspec-dev/web.env`, or the path
-specified by `SMARTSPEC_DEV_ENV_FILE`. It requires `SMARTSPEC_ENVIRONMENT=development`,
-an isolated database ending in `_dev_web` by default (or the explicit shared-production mode below), authentication and
-encryption keys matching the selected data, a separate `CONTROL_PLANE_API_KEY` and `CONTROL_PLANE_URL`,
-and a port other than 3000. It sets `DOTENV_CONFIG_PATH` so the
-application does not load the production `.env` as a fallback. The launcher records the source SHA (with a dirty marker for edited source)
-in backend diagnostics and Vite release identity. Frontend edits
-use Vite HMR; restart the development service after backend edits.
+specified by `SMARTSPEC_DEV_ENV_FILE`. It requires
+`SMARTSPEC_ENVIRONMENT=development`, a dedicated development database/role or
+the explicitly tenant-scoped `shared-tenant` database mode (canonical
+`smartspec` database with a separate `_dev` role and `aimarkethubs.com` tenant
+binding), authentication and encryption keys matching the selected data, a
+separate `CONTROL_PLANE_API_KEY` and `CONTROL_PLANE_URL`, and port 3100. The
+immutable release procedure rejects production-readonly database access modes.
+The launcher sets `DOTENV_CONFIG_PATH` so the application does not load the
+production `.env` as a fallback. It records the runtime source SHA (with a dirty
+marker for edited source) in backend diagnostics and release identity.
+`release:dev:web` serves a pinned immutable frontend artifact; use that release
+command after frontend edits. Restart the development service after backend
+edits.
 
 Systemd user service templates and the complete `web.env.example` are in
 `ops/dev-web/`. `SMARTSPEC_ALLOWED_ORIGINS` must contain the exact HTTPS dev
