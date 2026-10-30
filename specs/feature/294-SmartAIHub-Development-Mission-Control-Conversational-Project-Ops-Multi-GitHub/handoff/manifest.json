@@ -29,14 +29,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41",
+    "expected_canonical_sha": "182febfdab9fb54ee7c47201359d78e29aed2e12",
     "expected_spec_digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f"
   },
   "continuation": {
-    "next_action": "Run authenticated development browser acceptance at desktop and mobile widths for the integrated Chat Inspector/Artifacts/Browser dock, then validate populated panels against a real authorized Run. Do not claim hosted serving or SPEC-224 execution acceptance until verified; keep genuine Child 1/2 receipts, settlement and Independent Final Verify as SPEC-224 exit criteria.",
+    "next_action": "Run authenticated browser acceptance at desktop and mobile widths against the deployed Chat session dock and Mission Control tab; then validate populated inspection panels against a real authorized Run. Keep genuine SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify as separate live-execution exit criteria.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Final Chat output dock source is integrated at beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41. Focused tests passed 41/41 and a Vite client build passed to /tmp. Hosted authenticated browser acceptance and service deployment are not verified. See handoff/evidence/chat-output-dock-20261030.md.",
+    "resume_point": "Production deployment is verified at source SHA 182febfdab9fb54ee7c47201359d78e29aed2e12 (release generation 244). Public bundle includes the session dock and Mission Control tab, and public smoke/health checks pass. Authenticated visual browser acceptance remains open because the local computer sidecar was unavailable. See handoff/evidence/production-chat-session-mission-control-deploy-20261030.md. SPEC-224 live Child 1/2 execution remains unverified.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -128,12 +128,14 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": null,
-    "environment": null,
-    "evidence": [],
+    "artifact_digest": "sha256:54afd984b9b463fb38a193f62445f576dd0d89de8827fb9cf066e82e561ca6b9",
+    "environment": "production: https://smartaihub.app (Linux systemd)",
+    "evidence": [
+      "handoff/evidence/production-chat-session-mission-control-deploy-20261030.md"
+    ],
     "required": false,
-    "source_sha": null,
-    "status": "UNKNOWN"
+    "source_sha": "182febfdab9fb54ee7c47201359d78e29aed2e12",
+    "status": "PASS"
   },
   "disposition": {
     "confidence": "UNRESOLVED",
@@ -147,7 +149,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 136,
+  "generation": 137,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f",
@@ -282,9 +284,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41",
+    "canonical_sha": "182febfdab9fb54ee7c47201359d78e29aed2e12",
     "integrated": true,
-    "integrated_at": "2026-10-30T08:06:00+07:00"
+    "integrated_at": "2026-10-30T08:42:03+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1502,7 +1504,7 @@
     "unresolved": 505
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T00:55:23.433394Z",
+  "updated_at": "2026-10-30T02:14:32.544823Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
