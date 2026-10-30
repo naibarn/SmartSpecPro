@@ -78,6 +78,10 @@ type StagingConfirmation = {
 type StagingActionStatus = { state: "running" | "accepted" | "succeeded" | "failed"; action: string; detail?: string; at: string };
 
 function stagingActionFailureText(code: string, text: (en: string, th: string) => string) {
+  if (code === "STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT") return text(
+    "The current Staging configuration or database lease has less than 7 days remaining. Renew the existing Staging database lease and save its verified configuration before preparing Full Application HTTP.",
+    "config หรือ lease ฐานข้อมูล Staging เหลืออายุน้อยกว่า 7 วัน ให้ต่ออายุ lease เดิมและบันทึก config ที่ตรวจสอบแล้วก่อนเตรียม Full Application HTTP",
+  );
   if (code === "PRIVATE_DATABASE_RENEWAL_PLAN_CHANGED") return text(
     "The reviewed plan changed during confirmation. No renewal Job was admitted. Refresh the read-only Staging check and confirm the latest plan.",
     "แผนที่ตรวจทานเปลี่ยนระหว่างยืนยัน ระบบยังไม่ได้รับ Job ต่ออายุ ให้ตรวจ Staging แบบอ่านอย่างเดียวอีกครั้ง แล้วตรวจและยืนยันแผนล่าสุด",
@@ -700,9 +704,15 @@ export default function AdminDeploymentTargets() {
   const stagingOriginConfiguration = trpc.infrastructure.getCloudflareOriginConfiguration.useQuery({
     tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: currentStagingConfigRef,
   }, { enabled: validScope && environment === "staging" && /^cf-origin:[a-f0-9]{64}$/.test(currentStagingConfigRef) });
+  const stagingDatabaseValidityThreshold = Date.now() + 7 * 86_400_000;
+  const stagingDatabasePlanExpiry = Date.parse(stagingOriginConfiguration.data?.descriptor?.nativeResources?.privateDatabase?.plan?.configurationExpiresAt ?? "");
+  const stagingConfigurationExpiry = Date.parse(stagingOriginConfiguration.data?.descriptor?.expiresAt ?? "");
+  const stagingDatabaseValidityTooShort = [stagingDatabasePlanExpiry, stagingConfigurationExpiry]
+    .some(expiry => Number.isFinite(expiry) && expiry <= stagingDatabaseValidityThreshold);
   const stagingDatabaseRenewal = trpc.infrastructure.getCloudflareStagingPrivateDatabaseRenewalPreflight.useQuery({
     tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef,
-  }, { enabled: validScope && environment === "staging" && stagingOriginConfiguration.data?.status === "EXPIRED" });
+  }, { enabled: validScope && environment === "staging" && (stagingOriginConfiguration.data?.status === "EXPIRED" ||
+    stagingDatabaseValidityTooShort || stagingDeployPreflight.data?.reason === "STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT") });
   const observedStagingRenewalJobId = stagingRenewalJobId || stagingDatabaseRenewal.data?.existingJob?.jobId || "";
   const stagingRenewalJobStatus = trpc.infrastructure.getCloudflareStagingPrivateDatabaseRenewalJobStatus.useQuery({
     tenantId, projectId, environment: "staging", configurationRef: currentStagingConfigRef, jobId: observedStagingRenewalJobId,
@@ -1869,6 +1879,9 @@ export default function AdminDeploymentTargets() {
               runtime.status === "NOT_DEPLOYED" || runtime.status === "NOT_READY";
             const stagingConfigurationExpired = stagingOriginConfiguration.data?.status === "EXPIRED" ||
               stagingDeployPreflight.data?.reason === "STAGING_ORIGIN_CONFIGURATION_EXPIRED";
+            const stagingApplicationDatabaseRoleValidityTooShort = stagingDatabaseValidityTooShort ||
+              stagingDeployPreflight.data?.reason === "STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT" ||
+              activateStagingProfile.error?.message === "STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT";
             return <VStack gap={1} role={ready ? "status" : "group"} aria-label={text("Live Cloudflare Worker readiness", "ความพร้อมของ Cloudflare Worker ที่กำลังทำงาน")}>
               <HStack gap={2} wrap="wrap">
                 <Badge variant={ready ? "default" : "destructive"}>{runtime.status}</Badge>
@@ -1932,11 +1945,14 @@ export default function AdminDeploymentTargets() {
                   )}</p> : null}
                   {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
                     <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
-                  {stagingConfigurationExpired ? <VStack gap={1} role="alert" aria-label={text("Staging preparation is blocked", "หยุดการเตรียม Staging") }>
-                    <p><strong><code>STAGING_ORIGIN_CONFIGURATION_EXPIRED</code></strong></p>
-                    <p id="staging-expired-config-help">{text(
-                      "Prepare Staging is intentionally disabled: this immutable configuration and its private-database lease have expired. A fresh, verified database receipt and new configuration version are required before profile activation. Rechecking below is read-only and will not create a job or change Cloudflare resources.",
-                      "ปุ่มเตรียม Staging ถูกปิดโดยตั้งใจ เพราะ immutable configuration และ lease ของฐานข้อมูล private หมดอายุแล้ว ต้องมี receipt ฐานข้อมูลชุดใหม่ที่ตรวจสอบแล้วและ configuration version ใหม่ก่อน จึงจะ activate profile ได้ ปุ่มตรวจซ้ำด้านล่างเป็นการอ่านอย่างเดียว ไม่สร้าง job และไม่เปลี่ยนทรัพยากร Cloudflare",
+                  {stagingConfigurationExpired || stagingApplicationDatabaseRoleValidityTooShort ? <VStack gap={1} role="alert" aria-label={text("Staging preparation is blocked", "หยุดการเตรียม Staging") }>
+                    <p><strong><code>{stagingConfigurationExpired ? "STAGING_ORIGIN_CONFIGURATION_EXPIRED" : "STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT"}</code></strong></p>
+                    <p id="staging-expired-config-help">{stagingConfigurationExpired ? text(
+                      "Prepare Staging is disabled because this immutable configuration and its private-database lease have expired. A fresh, verified database receipt and configuration version are required. Rechecking below is read-only.",
+                      "ปุ่มเตรียม Staging ถูกปิดเพราะ immutable configuration และ lease ฐานข้อมูล private หมดอายุแล้ว ต้องมี receipt ฐานข้อมูลชุดใหม่ที่ตรวจสอบแล้วและ configuration version ใหม่ ปุ่มตรวจซ้ำด้านล่างเป็นการอ่านอย่างเดียว",
+                    ) : text(
+                      "Full Application preparation requires at least 7 days of validity on both the saved configuration and database lease. Renew the existing Staging lease below, save its verified receipt as a new configuration, then prepare Full Application again. The current failure did not create a database role or candidate.",
+                      "การเตรียม Full Application ต้องเหลืออายุ config และ lease ฐานข้อมูลอย่างน้อย 7 วัน ให้ต่ออายุ lease Staging เดิมด้านล่าง บันทึก receipt ที่ตรวจแล้วเป็น config ใหม่ แล้วจึงเตรียม Full Application อีกครั้ง ความล้มเหลวครั้งนี้ยังไม่ได้สร้าง database role หรือ candidate",
                     )}</p>
                     <Button type="button" variant="outline" size="sm" disabled={stagingOriginConfiguration.isFetching || stagingDeployPreflight.isFetching ||
                       stagingRuntimeReadiness.isFetching || (stagingDatabaseRenewal.isFetching && !stagingRenewalPreflightStalled) || stagingActionRunning}
@@ -2142,6 +2158,7 @@ export default function AdminDeploymentTargets() {
                     variant={stagingConfigurationExpired ? "outline" : "default"}
                     disabled={!selectedActionNeeded || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending || stagingActionRunning ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
+                    stagingConfigurationExpired || (stagingPreparationProfile === "full-application-http" && stagingApplicationDatabaseRoleValidityTooShort) ||
                     (stagingPreparationProfile === "full-application-http" && !fullHttpInputsAvailable) ||
                     (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}
                     onClick={() => requestStagingConfirmation({
@@ -2169,7 +2186,7 @@ export default function AdminDeploymentTargets() {
                   </Button>
                   <p>{text("This step saves Staging settings only. Deployment and production traffic retain their separate approval steps.", "ขั้นตอนนี้บันทึกการตั้งค่า Staging เท่านั้น การ deploy และเปิด traffic production ยังใช้การอนุมัติแยกตามเดิม")}</p>
                   {!selectedActionNeeded && configurationVerified ? <p role="status">{text("The selected Staging profile is already active in the saved configuration.", "profile Staging ที่เลือกถูกบันทึกไว้อยู่แล้ว")}</p> : null}
-                  {activateStagingProfile.error ? <p role="alert"><code>{activateStagingProfile.error.message}</code></p> : null}
+                  {activateStagingProfile.error ? <p role="alert">{stagingActionFailureText(activateStagingProfile.error.message, text)} · <code>{activateStagingProfile.error.message}</code></p> : null}
                 </VStack>;
               })() : null}
               {runtime.transport === "all" ? <p>{text("No job transport has been selected yet. The missing list reflects the Worker’s current all-transports profile; Containers are only needed for workloads that require isolated execution.", "ยังไม่ได้เลือก transport สำหรับงาน รายการที่ขาดอ้างอิง profile ที่เปิดตรวจทุก transport ในขณะนี้ และต้องใช้ Containers เฉพาะงานที่ต้องแยก runtime เท่านั้น")}</p> : null}

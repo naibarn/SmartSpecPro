@@ -778,7 +778,7 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
     expect(await screen.findByText("STAGING_ORIGIN_CONFIGURATION_EXPIRED")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" })).toBeDisabled();
-    expect(screen.getByText(/Prepare Staging is intentionally disabled/)).toBeInTheDocument();
+    expect(screen.getByText(/this immutable configuration and its private-database lease have expired/)).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Recheck Staging configuration (read-only)" }));
     expect(mocks.refetchStagingOriginConfiguration).not.toHaveBeenCalled();
     expect(await screen.findByRole("dialog")).toHaveTextContent("Recheck Staging configuration");
@@ -849,6 +849,47 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
     expect(await screen.findByText(/Canonical Job accepted/)).toBeInTheDocument();
     expect(screen.getAllByText("77777777-7777-4777-8777-777777777777")).toHaveLength(2);
+  });
+
+  it("shows the existing lease renewal action before expiry when Full HTTP requires seven days of validity", async () => {
+    const user = userEvent.setup();
+    const configurationRef = `cf-origin:${"a".repeat(64)}`;
+    const expiresSoon = new Date(Date.now() + 5 * 86_400_000).toISOString();
+    const plan = {
+      configurationRef, configurationDigest: "a".repeat(64),
+      sourceProvisionJobId: "11111111-1111-4111-8111-111111111111",
+      sourcePlan: { namespace: "smartspec-staging-aaaaaaaaaaaa", hostname: "db-staging.smartaihub.app", zoneId: "b".repeat(32),
+        tunnelId: "22222222-2222-4222-8222-222222222222", databaseName: "smartspec", caSha256: "c".repeat(64), connectionLimit: 5,
+        configurationExpiresAt: expiresSoon },
+      sourcePlanDigest: "d".repeat(64),
+      resources: { hyperdriveId: "e".repeat(32), caId: "f".repeat(32), accessApplicationId: "33333333-3333-4333-8333-333333333333",
+        accessPolicyId: "44444444-4444-4444-8444-444444444444", serviceTokenId: "55555555-5555-4555-8555-555555555555", dnsRecordId: "6".repeat(32) },
+      serviceTokenExpiresAt: new Date(Date.now() + 40 * 86_400_000).toISOString(), refreshServiceTokenExpiry: false,
+      leaseExpiresAt: new Date(Date.now() + 30 * 86_400_000).toISOString(),
+      authorizationExpiresAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+    };
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingRuntime = { status: "NOT_READY", checkedAt: "2026-10-29T00:00:00.000Z", activation: "disabled", missing: [], reason: null };
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ACTIVATION_PROFILE_REQUIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = { status: "STORED", configurationRef, descriptor: {
+      expiresAt: new Date(Date.now() + 20 * 86_400_000).toISOString(),
+      nativeResources: { privateDatabase: { plan: { configurationExpiresAt: expiresSoon }, provisionJobId: plan.sourceProvisionJobId } },
+    }, applicationPreparation: { phase: "NAMESPACE_ONLY", sourceConfigurationRef: configurationRef, candidateStatus: "READY",
+      missingRuntimeFields: [], imageReceipts: "VERIFIED", encryptedApplicationSecrets: "STORED", containerBindings: "NOT_GENERATED",
+      databaseAuthority: { status: "MISSING", code: "STAGING_DB_AUTHORITY_MISSING", existingRoleAccess: "READ_ONLY_PROBE_ONLY",
+        host: null, databaseName: null, readOnlyProbeRole: null, requiredPermissions: [], excludedPermissions: [] } } };
+    mocks.stagingDatabaseRenewal = { ready: true, reason: null, checkedAt: new Date().toISOString(), configurationRef,
+      configurationDigest: "a".repeat(64), accountRef: "b".repeat(32), plan, planDigest: "7".repeat(64),
+      leaseExpiresAt: plan.leaseExpiresAt, existingJob: null };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    await user.click(screen.getByRole("combobox", { name: "Candidate profile" }));
+    await user.click(screen.getByRole("option", { name: /FULL_APPLICATION_HTTP/ }));
+
+    expect(await screen.findByText("STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Authorize and renew the existing Staging database lease" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Prepare Full Application HTTP candidate" })).toBeDisabled();
+    expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
   });
 
   it("restores an explicit read-only retry after the staging renewal preflight stalls", async () => {
@@ -1009,7 +1050,7 @@ describe("AdminDeploymentTargets", () => {
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
 
-    expect(await screen.findByText(/Prepare Staging is intentionally disabled/)).toBeInTheDocument();
+    expect((await screen.findAllByText("STAGING_ORIGIN_CONFIGURATION_EXPIRED")).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Prepare Staging control-plane profile with saved secrets" })).toBeDisabled();
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
