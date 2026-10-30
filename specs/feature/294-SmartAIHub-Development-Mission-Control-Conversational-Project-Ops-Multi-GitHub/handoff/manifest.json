@@ -43,14 +43,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
+    "expected_canonical_sha": "b0639dcd3c3ac3b7cbeedc7bdcdb427a458fda64",
     "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
   },
   "continuation": {
-    "next_action": "Hosted schema errors have a historical cause and are currently clear: the old service PID logged missing conversation_threads/messages.thread_id at 19:41 +07; the active smartspec-web release is source 39141c9dc2b9a1c4b72119bebbc94f67c2c54f15 with artifact sha256:b2cf493fd8e6094530089b93e8fec1588a89e2fdd257ced85c76532b60eddaa5, the active smartspec database now has migration 0416 and all three thread schema objects, and PID 3897349 started at 23:17 with no matching subsequent errors in inspected journal. This does not replace authenticated hosted browser acceptance. Next: capture a fresh authenticated request result; if clean, continue SPEC-294 global cross-host Mission/Agent graph and immutable multi-source replay/gap recovery. For SPEC-224, first locate a real owner-authorized Goal in the correct tenant/runtime; current read-only tenant-001 smartspec_dev inspection has no approval_requests or worker_jobs, so live Child 1/2 receipts, settlement and Final Verify cannot yet be produced.",
+    "next_action": "Continue the unified workspace gap closure from canonical source b0639dcd3c3ac3b7cbeedc7bdcdb427a458fda64. First obtain a valid authenticated development browser session and reproduce the hosted chat.getMessages/workerJobs.observability 500s with request correlation; fix the first failing boundary. Then complete cross-host Mission Control replay and the genuine SPEC-224 Child 1/2 pilot with receipts, settlement and independent verification. Do not deploy production.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Integrated source is 4569bf8ef967a7c0659b608e54ef2af1875b05bf. Local authenticated development UAT of Mission Control overview passed at 40aca3d847b293d05a5032daf6124b8369ac3153 (1/1, desktop/tablet/mobile); exact child-thread transcript restore UAT is recorded separately. Hosted schema investigation: active release source 39141c9dc2b9a1c4b72119bebbc94f67c2c54f15/artifact sha256:b2cf493fd8e6094530089b93e8fec1588a89e2fdd257ced85c76532b60eddaa5; historical old-PID errors at 19:41 +07 were missing thread schema; active smartspec DB now has 0416 ledger hash and required objects; active PID 3897349 started 23:17 and no matching errors observed afterward. Fresh authenticated hosted UAT remains open. Current dev tenant-001 has no approval request or worker job; do not claim live SPEC-224. Continue global cross-host Mission/Agent graph and immutable multi-source replay/gap recovery, then real authorized SPEC-224 execution.",
+    "resume_point": "Project-aware Chat Sessions grouping and display-name privacy are integrated at b0639dcd3c3ac3b7cbeedc7bdcdb427a458fda64 with 49 focused tests passing. aimarkethubs.com health is 200 and serves the updated Vite module. Authenticated hosted UAT is blocked because the available dev login probe returned HTTP 401 invalid credentials. Preserve unrelated dirty files. SPEC-224 has no observed live worker job/Goal evidence in this audit; do not claim acceptance. See handoff/evidence/unified-workspace-gap-audit-implementation-20261030.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -161,7 +161,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 127,
+  "generation": 128,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
@@ -247,7 +247,8 @@
       "f3703f06ba9ba8679838e7ab6c5b4b157f52d78e",
       "f5b068f2e33523395e6f6989de7fd3fad00fa8a3",
       "fb9012f80ef413f34180ccf294588155b0454ae7",
-      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9"
+      "fcd97a2a2bce02bee56ba5cac60ca4abb316edb9",
+      "b0639dcd3c3ac3b7cbeedc7bdcdb427a458fda64"
     ],
     "mapping": [],
     "source_paths": [
@@ -283,16 +284,21 @@
       "apps/web/server/jobs/workspaceAuthoritySafeActionJob.test.ts",
       "apps/web/shared/taskAcceptanceProjection.ts",
       "apps/web/server/services/taskObservabilityAcceptance.ts",
-      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx"
+      "apps/web/client/src/components/task-control/TaskAcceptanceEvidence.tsx",
+      "apps/web/client/src/components/chat/ChatSidebar.tsx",
+      "apps/web/client/src/components/chat/ConversationScopeBadge.tsx",
+      "apps/web/server/routers/chat.ts",
+      "apps/web/server/services/conversationThreadService.ts",
+      "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-gap-audit-implementation-20261030.md"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
+    "canonical_sha": "b0639dcd3c3ac3b7cbeedc7bdcdb427a458fda64",
     "integrated": true,
-    "integrated_at": "2026-10-30T00:20:00+07:00"
+    "integrated_at": "2026-10-30T00:01:49Z"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1484,7 +1490,7 @@
     "unresolved": 504
   },
   "schema_version": 1,
-  "updated_at": "2026-10-29T17:04:56.137418Z",
+  "updated_at": "2026-10-30T00:02:05.982170Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1870,11 +1876,13 @@
         "scope": "Accessible retry for authorized Chat execution status/detail query failures; 5 focused test files, 60 tests.",
         "source_sha": "92950351bf2f978aa1258d3afa436838694e9c1a",
         "status": "PASS"
-      }
+      },
+      "Focused Vitest: 5 files / 49 tests passed; project-aware session grouping, authorized project display names, scope badge privacy and existing wiring. See handoff/evidence/unified-workspace-gap-audit-implementation-20261030.md.",
+      "Hosted development health HTTP 200 and transformed client module confirmed at aimarkethubs.com; authenticated UI acceptance remains BROWSER_UAT_BLOCKED after auth.login HTTP 401."
     ],
     "freshness": "UNKNOWN",
     "required_profiles": [],
-    "sha": "5fe7a8270878a32562cb6681362e5cc784ba58e6",
+    "sha": "b0639dcd3c3ac3b7cbeedc7bdcdb427a458fda64",
     "status": "PARTIAL",
     "task_regressions": []
   }
