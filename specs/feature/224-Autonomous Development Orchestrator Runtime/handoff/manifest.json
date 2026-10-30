@@ -179,6 +179,13 @@
         "scope": "Development release generation 249 is served by the intended Linux release service on aimarkethubs.com; immutable public chunks match the artifact and contain the Admin-gated Guided First Run UI. Focused tests passed on main 4f0b3d77e1be3eec45e2625c9f6c12134709065d, with Guided First Run source/tests unchanged from deployed d7a51c92. No authenticated owner walkthrough or live Goal/Approval/DevelopmentRun/Runner receipts/settlement/Child 2/Independent Final Verify was performed; retain FEATURE_DEPLOYED / LIVE_GOAL_PENDING.",
         "source_sha": "d7a51c9212349d60772cf69c1430c07d9eb79649",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "SPEC224_OWNER_GOAL_OBSERVATION_NO_LIVE_RUN",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-owner-goal-observation-20261030.md",
+        "scope": "Read-only development DB query found zero SPEC-224 Goal Grant approvals and no canonical DevelopmentRun job; five matching historical jobs are expired anchors/tasks, not an owner-approved pilot. Current generation-250 development release serves Guided First Run UI through aimarkethubs.com. No Goal or execution evidence was created; remain FEATURE_DEPLOYED / LIVE_GOAL_PENDING.",
+        "source_sha": "4f0b3d77e1be3eec45e2625c9f6c12134709065d",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1114,11 +1121,11 @@
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "From https://aimarkethubs.com/chat, an authenticated Admin uses ทดสอบการทำงานจริง, reviews the live authorized Runner/Workspace and fresh Harness/Model catalog plus bounded scope/budget, then starts the Goal and approves it through the existing Approval Authority. Resume that exact DevelopmentRun to verify genuine Child 1 receipt/settlement, automatic Child 2, and Independent Final Verify across Chat, Task Control, and Mission Control. Do not create a duplicate Goal or simulated evidence.",
+    "next_action": "Wait for the authenticated owner to use the deployed Admin Guided First Run action, review and start the bounded Goal, and approve its real Goal Grant through Approval Authority. Once persisted, identify the same Goal/DevelopmentRun/Job/Attempt and follow it through lease/fencing, Runner ACK, genuine Child 1/Child 2 receipts and settlement, and Independent Final Verify. Ignore historical expired anchors; do not create a Goal or synthetic evidence.",
     "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "Development release generation 249 serves immutable source d7a51c9212349d60772cf69c1430c07d9eb79649 through aimarkethubs.com and smartspec-web.service; public bundle hashes and the active tunnel route are recorded in spec224-guided-first-run-deployment-checkpoint-20261030.md. Current main is 4f0b3d77e1be3eec45e2625c9f6c12134709065d and has not been deployed by this checkpoint. The guided First Run UI and focused tests are unchanged between runtime and current source. No authenticated owner Goal or live execution exists to resume; continue only after owner Start/Approval.",
-    "waiting_predicate": "The authenticated Admin reviews and starts the bounded pilot through the deployed First Run UI and approves the real Goal Grant; then the durable Goal/DevelopmentRun/Job/Attempt appears and can be traced through the same Runner execution, genuine Child 1 and Child 2 receipts, settlement, automatic continuation, and Independent Final Verify."
+    "resume_point": "At 2026-10-30T08:18Z, development release generation 250 (source 4f0b3d77e1be3eec45e2625c9f6c12134709065d) is active and aimarkethubs.com/chat returns the built Guided First Run app. A read-only query against the web runtime development database found zero SPEC-224 Goal Grant approval_requests and no current canonical DevelopmentRun worker_job; only five historical matching jobs, all expired (four Mini App anchors and one external task). No run exists to resume or inspect for Writer Lease/Fencing, dispatch, receipts, settlement, Child 2 or Final Verify. Wait for the authenticated owner to start and approve the pilot, then trace that same persisted Run.",
+    "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
@@ -1289,7 +1296,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 262,
+  "generation": 263,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -4039,7 +4046,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T08:10:51.494665Z",
+  "updated_at": "2026-10-30T08:19:14.828033Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
