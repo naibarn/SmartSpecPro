@@ -21,6 +21,13 @@
         "scope": "Integrated full-page SmartAIHub AppShell, Chat/Task Control/Mission Control navigation, Project/Session sidebar, contextual inspector with separate Usage/Receipts/Verify tabs; focused 75/75 tests, production-mode client build, dev restart, local/public route and served-module HTTP verification. Owner visual UAT and live Harness execution remain pending.",
         "source_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "OWNER_WORKSPACE_2_UX_IMPLEMENTATION_AND_DEV_RUNTIME_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md",
+        "scope": "Project/Goal Task Control and multi-Harness Mission Control UI implemented in the full-page AppShell. Focused workspace tests 6/6 and production-mode main+widget build passed. smartspec-dev-web.service restarted on aimarkethubs development checkout; public route and task-owned Vite modules returned HTTP 200. Authenticated owner visual/functional UAT and live Harness execution remain pending.",
+        "source_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -43,14 +50,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
-    "expected_spec_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb"
+    "expected_canonical_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+    "expected_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b"
   },
   "continuation": {
-    "next_action": "OWNER_UAT_PENDING: use an authorized browser session to verify full-page /chat, session/thread navigation, Task Control project lifecycle, Mission Control Harness/Agent/Runner filters, inspector tabs, and mobile drawers on aimarkethubs.com. Then continue remaining requirements only against canonical authorized records: real lifecycle evidence population, Harness-specific dispatch, interactive browser controls, multi-execution recovery, and SPEC-224 live acceptance.",
-    "next_ready_workunit": "WORKSPACE_2_AUTHENTICATED_UAT_AND_REMAINING_ACCEPTANCE",
+    "next_action": "OWNER_UAT_PENDING: review the updated full-page Chat, Project/Goal Task Control, and Mission Control sections on https://aimarkethubs.com/chat. Verify project/session/thread navigation, Harness/Agent/Runner filters and run inspector using authenticated records, then report visual/functional feedback. Keep SPEC-224 live Harness acceptance tracked separately.",
+    "next_ready_workunit": "WORKSPACE_2_OWNER_VISUAL_UAT_AND_REMAINING_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Source commit 961f94291517e372281a1d46b4cc35dc2a6fc5ae is reachable from origin/main and is the integrated full-page workspace source. smartspec-dev-web.service restarted successfully at this source (runtime label has -dirty because unrelated concurrent checkout edits are preserved). https://aimarkethubs.com serves /chat, Task Control, Mission Control and task-owned transformed modules with HTTP 200. Owner authenticated visual/functional UAT and live Harness execution remain pending. Evidence: handoff/evidence/p0-actual-fullpage-workspace-20261030.md.",
+    "resume_point": "Workspace 2.0 Project/Goal Task Control and multi-Harness Mission Control implementation is integrated at ae0e4e688724f859a8faaf70d06ebec2835caaac. smartspec-dev-web.service restarted successfully for the aimarkethubs.com development tenant; /chat and task-owned transformed modules returned HTTP 200. Focused tests passed 6/6 and the main+widget production build passed. Authenticated owner visual/functional UAT, authorized record mapping confirmation, and live Harness execution remain pending. Evidence: handoff/evidence/owner-visual-review-20261030.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -168,13 +175,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 143,
+  "generation": 147,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-    "digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+    "digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-30T03:46:41.311662Z",
+      "last_evidence_at": "2026-10-30T04:37:49.198658Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -316,7 +323,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
+    "canonical_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
     "integrated": true,
     "integrated_at": "2026-10-30T10:44:15+07:00"
   },
@@ -974,22 +981,22 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
+        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# The integrated AppShell owns /chat navigation and RouteAwareFeedbackButton unmounts on /chat. Legacy panel links are routed to full-page modes with c/t preserved. Keep PARTIAL until owner verifies in an authenticated browser."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Complete authorized authenticated owner UAT at aimarkethubs.com. Do not mark PASS until the remaining requirement evidence is observed.",
+        "next_action": "Keep PARTIAL until owner visual/functional UAT and the independent acceptance conditions described in the requirement are observed.",
         "requirement_digest": "c6597a089993fe5abdf7abc05f1dfa0a199f5cbc083adc82955ac5274e5273ef",
         "requirement_id": "REQ-294-P0-WORKSPACE-01",
         "requirement_text": "REQ-294-P0-WORKSPACE-01: Main navigation and old Chat-control links MUST open the full-page workspace; the global assistant modal MUST NOT cover `/chat`.",
-        "source_spec_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "source_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Source SHA 961f94291517e372281a1d46b4cc35dc2a6fc5ae; focused 75/75 tests, build PASS, dev routes and transformed modules HTTP 200. Owner UAT is pending."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Vitest 6/6; production main+widget build and MapLibre verification passed; aimarket dev service health and public route/transformed-module HTTP 200 verified; authenticated owner UAT remains pending."
         ],
-        "verification_method": "Focused Vitest, Vite production-mode client build, development restart/health check, local and public route plus transformed-module HTTP checks; authenticated owner browser acceptance remains required."
+        "verification_method": "Focused Vitest, production-mode main+widget build, development service health/restart, and aimarkethubs.com served-module HTTP checks; owner authenticated visual UAT is still required."
       },
       "REQ-294-P0-WORKSPACE-02": {
         "applicability": "APPLICABLE",
@@ -1000,22 +1007,22 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
+        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# UnifiedWorkspace renders ChatView and the shared persisted ChatSidebar/UnifiedWorkspaceInspector contracts directly, outside the old full-page modal wrapper. Keep PARTIAL until authenticated history/thread continuation is exercised."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Complete authorized authenticated owner UAT at aimarkethubs.com. Do not mark PASS until the remaining requirement evidence is observed.",
+        "next_action": "Keep PARTIAL until owner visual/functional UAT and the independent acceptance conditions described in the requirement are observed.",
         "requirement_digest": "a0a9b13d0cccf5770d13ff6c3fe381054c71fd2704a457257882738dea25d2c4",
         "requirement_id": "REQ-294-P0-WORKSPACE-02",
         "requirement_text": "REQ-294-P0-WORKSPACE-02: Chat MUST render independently from the modal wrapper while reusing the established persisted conversation, thread, ChatView, and inspector contracts.",
-        "source_spec_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "source_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Source SHA 961f94291517e372281a1d46b4cc35dc2a6fc5ae; focused 75/75 tests, build PASS, dev routes and transformed modules HTTP 200. Owner UAT is pending."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Vitest 6/6; production main+widget build and MapLibre verification passed; aimarket dev service health and public route/transformed-module HTTP 200 verified; authenticated owner UAT remains pending."
         ],
-        "verification_method": "Focused Vitest, Vite production-mode client build, development restart/health check, local and public route plus transformed-module HTTP checks; authenticated owner browser acceptance remains required."
+        "verification_method": "Focused Vitest, production-mode main+widget build, development service health/restart, and aimarkethubs.com served-module HTTP checks; owner authenticated visual UAT is still required."
       },
       "REQ-294-P0-WORKSPACE-03": {
         "applicability": "APPLICABLE",
@@ -1026,22 +1033,22 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
+        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Integrated desktop app navigation, Project/Session sidebar, work pane, and inspector; mobile secondary panes use on-demand drawers. Keep PARTIAL until desktop/mobile owner visual UAT."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Complete authorized authenticated owner UAT at aimarkethubs.com. Do not mark PASS until the remaining requirement evidence is observed.",
+        "next_action": "Keep PARTIAL until owner visual/functional UAT and the independent acceptance conditions described in the requirement are observed.",
         "requirement_digest": "ad767c2a47363dcf88a94708c7d4a71b3adfc867b12acf9573ed25530650b3e2",
         "requirement_id": "REQ-294-P0-WORKSPACE-03",
         "requirement_text": "REQ-294-P0-WORKSPACE-03: Desktop MUST expose application navigation, Project/Session navigation, work area, and contextual inspector; narrow screens MUST switch secondary panes to on-demand drawers.",
-        "source_spec_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "source_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Source SHA 961f94291517e372281a1d46b4cc35dc2a6fc5ae; focused 75/75 tests, build PASS, dev routes and transformed modules HTTP 200. Owner UAT is pending."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Vitest 6/6; production main+widget build and MapLibre verification passed; aimarket dev service health and public route/transformed-module HTTP 200 verified; authenticated owner UAT remains pending."
         ],
-        "verification_method": "Focused Vitest, Vite production-mode client build, development restart/health check, local and public route plus transformed-module HTTP checks; authenticated owner browser acceptance remains required."
+        "verification_method": "Focused Vitest, production-mode main+widget build, development service health/restart, and aimarkethubs.com served-module HTTP checks; owner authenticated visual UAT is still required."
       },
       "REQ-294-P0-WORKSPACE-04": {
         "applicability": "APPLICABLE",
@@ -1052,22 +1059,22 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
+        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Mission Control filters observed canonical jobs by Harness/Agent/Runner and writes selected run IDs to URL; focused filter/deep-link tests and served module checks passed. Keep PARTIAL until authenticated multi-run/live-data UAT."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Complete authorized authenticated owner UAT at aimarkethubs.com. Do not mark PASS until the remaining requirement evidence is observed.",
+        "next_action": "Keep PARTIAL until owner visual/functional UAT and the independent acceptance conditions described in the requirement are observed.",
         "requirement_digest": "8987ae2b1e1d19013a12f8086c34bfaf8f9b692eca351cce29a981600cf173b1",
         "requirement_id": "REQ-294-P0-WORKSPACE-04",
         "requirement_text": "REQ-294-P0-WORKSPACE-04: Mission Control's Harness/Agent/Runner filters MUST change the visible canonical Run set, and a Run selection MUST be directly addressable and restorable.",
-        "source_spec_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "source_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Source SHA 961f94291517e372281a1d46b4cc35dc2a6fc5ae; focused 75/75 tests, build PASS, dev routes and transformed modules HTTP 200. Owner UAT is pending."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Vitest 6/6; production main+widget build and MapLibre verification passed; aimarket dev service health and public route/transformed-module HTTP 200 verified; authenticated owner UAT remains pending."
         ],
-        "verification_method": "Focused Vitest, Vite production-mode client build, development restart/health check, local and public route plus transformed-module HTTP checks; authenticated owner browser acceptance remains required."
+        "verification_method": "Focused Vitest, production-mode main+widget build, development service health/restart, and aimarkethubs.com served-module HTTP checks; owner authenticated visual UAT is still required."
       },
       "REQ-294-P0-WORKSPACE-05": {
         "applicability": "APPLICABLE",
@@ -1078,22 +1085,22 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
+        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
         "final_state": "PARTIAL",
         "implementation_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Evidence distinguishes integration, dev runtime, owner UAT, and SPEC-224 live acceptance; only aimarkethubs.com dev service was restarted. Keep PARTIAL because owner UAT and SPEC-224 live acceptance remain pending."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
         ],
         "implementation_status": "PARTIAL",
-        "next_action": "Complete authorized authenticated owner UAT at aimarkethubs.com. Do not mark PASS until the remaining requirement evidence is observed.",
+        "next_action": "Keep PARTIAL until owner visual/functional UAT and the independent acceptance conditions described in the requirement are observed.",
         "requirement_digest": "46e4ec21bcf275a4c2b72b131af3ec0dc389e5ca766e554b5c428f2a093bb2de",
         "requirement_id": "REQ-294-P0-WORKSPACE-05",
         "requirement_text": "REQ-294-P0-WORKSPACE-05: Delivery reporting MUST distinguish integrated source, development runtime, owner UAT, and SPEC-224 live acceptance. No production deployment is authorized by this correction.",
-        "source_spec_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "source_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "successor_mapping": [],
         "verification_evidence": [
-          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/p0-actual-fullpage-workspace-20261030.md# Source SHA 961f94291517e372281a1d46b4cc35dc2a6fc5ae; focused 75/75 tests, build PASS, dev routes and transformed modules HTTP 200. Owner UAT is pending."
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Vitest 6/6; production main+widget build and MapLibre verification passed; aimarket dev service health and public route/transformed-module HTTP 200 verified; authenticated owner UAT remains pending."
         ],
-        "verification_method": "Focused Vitest, Vite production-mode client build, development restart/health check, local and public route plus transformed-module HTTP checks; authenticated owner browser acceptance remains required."
+        "verification_method": "Focused Vitest, production-mode main+widget build, development service health/restart, and aimarkethubs.com served-module HTTP checks; owner authenticated visual UAT is still required."
       },
       "REQ-294-THR-02": {
         "applicability": "APPLICABLE",
@@ -1377,10 +1384,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-30T03:46:41.311662Z",
+    "reconciled_at": "2026-10-30T04:37:49.198658Z",
     "sources": [
       {
-        "digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
       },
@@ -1597,7 +1604,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-        "source_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "source_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
@@ -1693,14 +1700,14 @@
         "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
         "line": 4,
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-        "source_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "source_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
+        "digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
       },
@@ -1851,11 +1858,11 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 543,
-    "unresolved": 543
+    "total": 547,
+    "unresolved": 547
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T03:48:39.510077Z",
+  "updated_at": "2026-10-30T04:39:07.776890Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
