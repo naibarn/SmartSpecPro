@@ -26,6 +26,7 @@ const INSPECTOR_TABS = [
   { id: "artifacts", label: "Artifacts", icon: Package },
   { id: "usage", label: "Usage", icon: Gauge },
   { id: "receipts", label: "Receipts", icon: ReceiptText },
+  { id: "verify", label: "Verify", icon: FlaskConical },
 ] as const;
 
 type InspectorTab = (typeof INSPECTOR_TABS)[number]["id"];
@@ -43,10 +44,14 @@ export function UnifiedWorkspaceInspector({
   conversationId,
   threadId,
   conversationTitle,
+  jobId,
+  className,
 }: {
   conversationId: number | null;
   threadId: string | null;
   conversationTitle?: string | null;
+  jobId?: string | null;
+  className?: string;
 }) {
   const [tab, setTab] = useState<InspectorTab>("overview");
   const threadQuery = trpc.chat.listConversationThreads.useQuery(
@@ -58,9 +63,9 @@ export function UnifiedWorkspaceInspector({
     threadQuery.data?.threads[0] ??
     null;
   const query = trpc.workerJobs.observability.useQuery(
-    conversationId ? { conversationId, threadId } : {},
+    jobId ? { jobId } : conversationId ? { conversationId, threadId } : {},
     {
-      enabled: Boolean(conversationId),
+      enabled: Boolean(conversationId || jobId),
       staleTime: 15_000,
       refetchInterval: 15_000,
       refetchIntervalInBackground: false,
@@ -69,6 +74,7 @@ export function UnifiedWorkspaceInspector({
   );
   const items = query.error ? [] : (query.data?.items ?? []);
   const job =
+    items.find(item => item.id === jobId) ??
     items.find(item =>
       ["running", "claimed", "leased", "preparing", "uploading"].includes(
         item.status
@@ -123,7 +129,10 @@ export function UnifiedWorkspaceInspector({
 
   return (
     <aside
-      className="flex h-full min-h-0 flex-col border-l border-border bg-card"
+      className={
+        className ??
+        "flex h-full min-h-0 flex-col border-l border-border bg-card"
+      }
       aria-label="Thread and run inspector"
     >
       <header className="shrink-0 border-b border-border px-4 py-4">
@@ -168,7 +177,13 @@ export function UnifiedWorkspaceInspector({
             </TabsTrigger>
           ))}
         </TabsList>
-        <VStack as="section" gap={4} padding={4} isScrollable className="min-h-0 flex-1">
+        <VStack
+          as="section"
+          gap={4}
+          padding={4}
+          isScrollable
+          className="min-h-0 flex-1"
+        >
           {query.isLoading ? (
             <p role="status" className="text-sm text-muted-foreground">
               Loading authorized run evidence…
@@ -196,7 +211,11 @@ export function UnifiedWorkspaceInspector({
             {job ? (
               <>
                 <section className="space-y-2 rounded-lg border border-border p-3">
-                  <HStack as="header" gap={2} className="items-center justify-between">
+                  <HStack
+                    as="header"
+                    gap={2}
+                    className="items-center justify-between"
+                  >
                     <h3 className="font-medium">Current run</h3>
                     <small className="rounded-full bg-muted px-2 py-1 text-xs">
                       {job.status.replaceAll("_", " ")}
@@ -452,14 +471,25 @@ export function UnifiedWorkspaceInspector({
               <>
                 <h3 className="font-medium">Recorded verification evidence</h3>
                 {detail.acceptance.evidence.map((item, index) => (
-                  <section key={`${item.kind}-${index}`} className="rounded-lg border border-border p-3">
+                  <section
+                    key={`${item.kind}-${index}`}
+                    className="rounded-lg border border-border p-3"
+                  >
                     <p className="text-sm font-medium">{item.kind}</p>
-                    <p className="mt-1 break-all text-xs text-muted-foreground">{item.reference}</p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">
+                      {item.reference}
+                    </p>
                   </section>
                 ))}
               </>
             ) : (
-              <EmptyEvidence label={job ? "Independent verification has not been reported for this run." : noRun} />
+              <EmptyEvidence
+                label={
+                  job
+                    ? "Independent verification has not been reported for this run."
+                    : noRun
+                }
+              />
             )}
           </TabsContent>
         </VStack>

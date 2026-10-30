@@ -4181,3 +4181,21 @@ REQ-294-P0-WORKSPACE-02: Chat MUST render independently from the modal wrapper w
 REQ-294-P0-WORKSPACE-03: Desktop MUST expose application navigation, Project/Session navigation, work area, and contextual inspector; narrow screens MUST switch secondary panes to on-demand drawers.
 REQ-294-P0-WORKSPACE-04: Mission Control's Harness/Agent/Runner filters MUST change the visible canonical Run set, and a Run selection MUST be directly addressable and restorable.
 REQ-294-P0-WORKSPACE-05: Delivery reporting MUST distinguish integrated source, development runtime, owner UAT, and SPEC-224 live acceptance. No production deployment is authorized by this correction.
+
+## 64. Owner visual review: project operations and harness command center (R2.1)
+
+The owner supplied a visual reference for familiar project/task organization and multi-agent operations, and rejected the current Task Control and Mission Control content/interaction model. Keep the full-page AppShell from Sections 62–63; do not return to a modal-first workspace or perform a navigation-only redesign. This section replaces the current workspace content projection where it conflicts with the requirements below.
+
+Task Control SHALL use a project-first master/detail workspace: project selector and truthful summary, canonical Goals/work groups, lifecycle evidence, current assignment, Run and phase, progress, blockers/owner decisions, files/tests/results, and links to related sessions/threads. Lifecycle labels MAY describe the known product lifecycle, but a stage is active/complete only when persisted evidence supports that state. A worker job or `python.legacy_task` MUST NOT be renamed or presented as a canonical Goal. Legacy work MUST be grouped under its authorized Project or a visibly separate Unassigned/Legacy group. Project, Goal and assignment identity MUST come from authorized records; unknown identity remains explicitly unknown.
+
+Mission Control SHALL become an operational fleet workspace with Overview, Harnesses, Agents, Runners, Active Work, Waiting/Attention and History views over the existing authorized Goal/Job/Run read models. It SHALL prioritize active and waiting work, show verified capability/availability and freshness, execution hierarchy and project links, and provide a contextual Run inspector for status, output/evidence, budget/usage, errors and receipts. Unknown/unreported facts remain unknown. It MUST NOT expose a long historical legacy-job list as primary work, fabricate Harness/Agent/Runner identities, or create a second scheduler or ledger.
+
+Full-page Chat SHALL visibly expose Projects, persisted Sessions and Threads, retain the main conversation canvas, and provide a contextual inspector. Existing chat, attachments, skills, browser/artifact entry points and message behavior remain reachable. The modal may remain only as a compact quick-chat surface.
+
+Implementation MUST reuse existing responsive components, access-scoped contracts and canonical records. Replace backend-oriented raw lists with legible project/agent workspaces, structured rows/panels, meaningful filters and master/detail interaction. Preserve Simple/Developer disclosure boundaries. Add only the backend read capability strictly required to make an already visible control work; keep SPEC-224 Live Execution Acceptance separate.
+
+REQ-294-OWNER-UX-01: Task Control is project/Goal oriented and provides a truthful lifecycle and detail view without treating legacy jobs as Goals or inferring unpersisted stage completion.
+REQ-294-OWNER-UX-02: Mission Control provides operational Harness/Agent/Runner and Active/Waiting/Attention/History views over the same authorized work records, with useful Run drill-down and explicit unknowns.
+REQ-294-OWNER-UX-03: Chat exposes saved Project/Session/Thread navigation and the conversation/inspector experience on the full-page workspace without hiding core navigation.
+REQ-294-OWNER-UX-04: Loading, error, empty, stale and unavailable states are understandable; desktop master/detail layouts adapt to mobile navigation/drawers.
+REQ-294-OWNER-UX-05: Deployment for this owner visual checkpoint targets `aimarkethubs.com` only. Delivery status remains `OWNER_UAT_PENDING` until the owner explicitly accepts; no tests, source commit, or deployment may set that acceptance.
