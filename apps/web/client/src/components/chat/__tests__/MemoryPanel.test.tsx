@@ -267,7 +267,7 @@ describe("MemoryPanel", () => {
 
     render(<MemoryPanel conversationId={123} />);
 
-    expect(screen.getByTitle("Personal scope is locked to this user")).toBeTruthy();
+    expect(screen.getByTitle("sidebar.personalProject")).toBeTruthy();
     expect(screen.getByText(/personal scope is locked to this user/i)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /^Edit$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /new chat in/i })).toBeNull();

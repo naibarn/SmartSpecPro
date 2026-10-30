@@ -252,19 +252,6 @@ export function ChatSidebar({
     setSelectedIds(new Set());
   };
 
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const d = new Date(date);
-    const diffDays = Math.floor(
-      (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
-    if (diffDays < 7) return `${diffDays} days ago`;
-    return d.toLocaleDateString();
-  };
-
   const formatDaysLeft = (trashedAt: Date | string) => {
     const trashed = new Date(trashedAt);
     const deleteDate = new Date(trashed.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -278,16 +265,21 @@ export function ChatSidebar({
   const trashedConversations = trashData?.conversations || [];
   const emptyCount = conversations.filter(c => c.messageCount === 0).length;
 
-  // Group conversations by date
-  const groupedConversations = conversations.reduce(
-    (groups, conv) => {
-      const dateKey = formatDate(conv.updatedAt);
-      if (!groups[dateKey]) groups[dateKey] = [];
-      groups[dateKey].push(conv);
-      return groups;
-    },
-    {} as Record<string, typeof conversations>
-  );
+  // Project is the navigation level; sessions remain ordered by recent activity.
+  const groupedConversations = conversations.reduce((groups, conv) => {
+    const projectId = (conv as any).projectId as string | null | undefined;
+    const title = (conv as any).projectTitle as string | null | undefined;
+    const groupKey = projectId === "personal" ? "personal" : projectId ? `project:${projectId}` : "unassigned";
+    const label = projectId === "personal"
+      ? t("sidebar.personalProject")
+      : projectId && !title
+        ? t("sidebar.projectUnavailable")
+        : title || t("sidebar.unassignedProject");
+    const group = groups.get(groupKey) ?? { label, conversations: [] as typeof conversations };
+    group.conversations.push(conv);
+    groups.set(groupKey, group);
+    return groups;
+  }, new Map<string, { label: string; conversations: typeof conversations }>());
 
   // ==================== TRASH VIEW ====================
   if (showTrash) {
@@ -577,13 +569,14 @@ export function ChatSidebar({
               {search ? "No chats found" : "No conversations yet"}
             </div>
           ) : (
-            Object.entries(groupedConversations).map(([dateKey, convs]) => (
-              <div key={dateKey} className="mb-4">
+            Array.from(groupedConversations.entries()).map(([projectKey, group]) => (
+              <section key={projectKey} className="mb-4" aria-label={group.label}>
                 <div className="mb-2 px-2 text-xs font-medium text-muted-foreground">
-                  {dateKey}
+                  <span>{group.label}</span>
+                  <span className="ml-2" aria-label={t("sidebar.sessionCount", { count: group.conversations.length })}>{group.conversations.length}</span>
                 </div>
                 <div className="space-y-1">
-                  {convs.map(conv => (
+                  {group.conversations.map(conv => (
                     <article
                       key={conv.id}
                       className={cn(
@@ -659,6 +652,7 @@ export function ChatSidebar({
                                   <span aria-hidden="true">·</span>
                                   <ConversationScopeBadge
                                     projectId={(conv as any).projectId}
+                                    projectTitle={(conv as any).projectTitle}
                                     className="h-4 px-1.5"
                                   />
                                 </>
@@ -718,7 +712,7 @@ export function ChatSidebar({
                     </article>
                   ))}
                 </div>
-              </div>
+              </section>
             ))
           )}
           {!isLoading && hasNextPage && (

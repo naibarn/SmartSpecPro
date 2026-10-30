@@ -179,6 +179,45 @@ export function projectTitleForThread(input: { title: string | null; ownerPrinci
   return input.title && (input.ownerPrincipalId === principalId || input.memberPrincipalId === principalId) ? input.title : null;
 }
 
+/** Return display names only for active projects the current tenant user can see. */
+export async function listVisibleConversationProjectTitles(input: {
+  tenantId: string;
+  userId: number;
+  projectIds: string[];
+}): Promise<Map<string, string>> {
+  const projectIds = [...new Set(input.projectIds.map(value => value.trim()).filter(value => value && value !== "personal"))].slice(0, 100);
+  if (!projectIds.length) return new Map();
+  const db = await getDb();
+  if (!db) return new Map();
+  const rows = await db.select({
+    projectId: canonicalProjects.projectId,
+    title: canonicalProjects.title,
+    ownerPrincipalId: canonicalProjects.ownerPrincipalId,
+    memberPrincipalId: canonicalProjectMemberships.principalId,
+  }).from(canonicalProjects).leftJoin(canonicalProjectMemberships, and(
+    eq(canonicalProjectMemberships.tenantId, canonicalProjects.tenantId),
+    eq(canonicalProjectMemberships.projectId, canonicalProjects.projectId),
+    eq(canonicalProjectMemberships.principalId, `user:${input.userId}`),
+    eq(canonicalProjectMemberships.lifecycle, "ACTIVE"),
+  )).where(and(
+    eq(canonicalProjects.tenantId, input.tenantId),
+    eq(canonicalProjects.lifecycle, "ACTIVE"),
+    inArray(canonicalProjects.projectId, projectIds),
+    or(eq(canonicalProjects.ownerPrincipalId, `user:${input.userId}`), eq(canonicalProjectMemberships.principalId, `user:${input.userId}`)),
+  ));
+  const titles = new Map<string, string>();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const title = projectTitleForThread({
+      title: row.title,
+      ownerPrincipalId: row.ownerPrincipalId,
+      memberPrincipalId: row.memberPrincipalId,
+      userId: input.userId,
+    });
+    if (title) titles.set(row.projectId, title);
+  }
+  return titles;
+}
+
 /**
  * Returns one virtual legacy/main thread plus durable child threads. Status is
  * a projection of canonical worker_jobs state and is never stored separately.

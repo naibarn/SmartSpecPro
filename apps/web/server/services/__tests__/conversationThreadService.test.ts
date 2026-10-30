@@ -1,8 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { projectConversationThreadStatus, projectTitleForThread } from "../conversationThreadService";
+const mockProjectRows = vi.hoisted(() => ({ rows: [] as Array<Record<string, unknown>> }));
+vi.mock("../../db", () => ({
+  getDb: vi.fn(async () => ({
+    select: () => ({
+      from: () => ({
+        leftJoin: () => ({
+          where: async () => mockProjectRows.rows,
+        }),
+      }),
+    }),
+  })),
+}));
+
+import { listVisibleConversationProjectTitles, projectConversationThreadStatus, projectTitleForThread } from "../conversationThreadService";
 
 const now = Date.parse("2026-10-29T12:00:00.000Z");
+
+beforeEach(() => { mockProjectRows.rows = []; });
 
 function job(status: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -44,5 +59,32 @@ describe("thread project title authorization", () => {
     expect(projectTitleForThread({ title: "SmartAIHub", ownerPrincipalId: "user:7", memberPrincipalId: "user:9", userId: 9 })).toBe("SmartAIHub");
     expect(projectTitleForThread({ title: "Private project", ownerPrincipalId: "user:7", memberPrincipalId: null, userId: 9 })).toBeNull();
     expect(projectTitleForThread({ title: null, ownerPrincipalId: null, memberPrincipalId: null, userId: 9 })).toBeNull();
+  });
+
+  it("lists only active tenant project names owned by or shared with the user", async () => {
+    mockProjectRows.rows = [
+      { projectId: "owned", title: "My project", ownerPrincipalId: "user:7", memberPrincipalId: null },
+      { projectId: "shared", title: "Shared project", ownerPrincipalId: "user:9", memberPrincipalId: "user:7" },
+      { projectId: "private", title: "Private project", ownerPrincipalId: "user:9", memberPrincipalId: null },
+    ];
+
+    const titles = await listVisibleConversationProjectTitles({
+      tenantId: "tenant-a",
+      userId: 7,
+      projectIds: ["owned", "shared", "private", "owned", "  "],
+    });
+
+    expect([...titles.entries()]).toEqual([
+      ["owned", "My project"],
+      ["shared", "Shared project"],
+    ]);
+  });
+
+  it("does not query the project store when a session has no canonical project", async () => {
+    const { getDb } = await import("../../db");
+    const spy = vi.mocked(getDb);
+    spy.mockClear();
+    await expect(listVisibleConversationProjectTitles({ tenantId: "tenant-a", userId: 7, projectIds: ["personal", " "] })).resolves.toEqual(new Map());
+    expect(spy).not.toHaveBeenCalled();
   });
 });

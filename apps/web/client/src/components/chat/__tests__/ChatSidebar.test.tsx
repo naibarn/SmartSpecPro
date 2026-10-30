@@ -35,6 +35,10 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
         "sidebar.navigationView": "Chat navigation view",
         "sidebar.sessionsView": "Sessions",
         "sidebar.threadsView": "Threads overview",
+        "sidebar.personalProject": "Personal",
+        "sidebar.projectUnavailable": "Project unavailable",
+        "sidebar.unassignedProject": "Other sessions",
+        "sidebar.sessionCount": `${params?.count ?? 0} sessions`,
         "sidebar.startHere": "Start here",
         "sidebar.startHint": "New Chat starts a normal conversation. Personal Chat is locked to you and is best for receipts, bills, and private notes.",
         "sidebar.search": "Search chats...",
@@ -269,6 +273,34 @@ describe("ChatSidebar", () => {
 
     expect(onSelectConversation).toHaveBeenCalledWith(12);
     expect(mocks.mockFetchNextPage).toHaveBeenCalledTimes(1);
+  });
+
+  it("groups chat sessions under their authorized Project name", () => {
+    mocks.mockListConversationsQuery.mockReturnValue({
+      data: { pages: [{ conversations: [{
+        id: 71,
+        title: "Runner onboarding",
+        messageCount: 8,
+        isPinned: false,
+        isArchived: false,
+        totalCreditsUsed: 0,
+        projectId: "project-smartaihub",
+        projectTitle: "SmartAIHub Core",
+        updatedAt: new Date("2026-10-30T03:00:00.000Z"),
+      }], total: 1, hasMore: false, nextCursor: null }] },
+      isLoading: false,
+      error: null,
+      isFetching: false,
+      refetch: vi.fn(),
+      hasNextPage: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+    });
+    render(<ChatSidebar selectedConversationId={71} onSelectConversation={vi.fn()} onNewChat={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Sessions" }));
+
+    expect(screen.getByRole("region", { name: "SmartAIHub Core" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open chat: Runner onboarding" })).toBeInTheDocument();
   });
 
   it("shows persisted threads, opens the exact thread, and reuses a create idempotency key on retry", () => {

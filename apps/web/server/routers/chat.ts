@@ -133,6 +133,7 @@ import {
   createConversationThread,
   listRecentConversationThreads,
   listConversationThreads,
+  listVisibleConversationProjectTitles,
   touchConversationThread,
   ConversationThreadError,
 } from "../services/conversationThreadService";
@@ -1055,6 +1056,11 @@ export const chatRouter = router({
         search
       );
       const hasMore = offset + conversations.length < total;
+      const projectTitles = await listVisibleConversationProjectTitles({
+        tenantId: chatTenantId(ctx),
+        userId: ctx.user.id,
+        projectIds: conversations.map(conversation => (conversation as any).projectId).filter((id): id is string => typeof id === "string" && id !== PERSONAL_PROJECT_ID),
+      });
 
       return {
         conversations: conversations.map(c => ({
@@ -1067,6 +1073,7 @@ export const chatRouter = router({
           isArchived: c.isArchived,
           totalCreditsUsed: c.totalCreditsUsed,
           projectId: (c as any).projectId || null,
+          projectTitle: projectTitles.get((c as any).projectId) ?? null,
           createdAt: c.createdAt,
           updatedAt: c.updatedAt,
         })),
