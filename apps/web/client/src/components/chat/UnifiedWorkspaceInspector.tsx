@@ -160,7 +160,7 @@ export function UnifiedWorkspaceInspector({
             <TabsTrigger
               key={id}
               value={id}
-              className="flex min-w-0 flex-col gap-1 px-1 py-2 text-[11px] leading-tight"
+              className="flex min-w-0 flex-col gap-1 px-1 py-2 text-xs leading-tight"
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
               <small className="truncate">{label}</small>
