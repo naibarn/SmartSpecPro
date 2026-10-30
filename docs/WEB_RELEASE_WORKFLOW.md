@@ -214,8 +214,10 @@ checks the development API readiness endpoint, and records a non-secret release
 receipt under `~/.local/state/smartspec-dev-web/last-deployment.json`. It
 fingerprints both production services and the production release pointer before
 and after activation. An optional `--build-result <receipt.json>` reuses an
-already verified canonical build. A failed health or domain check restores the
-previous dev artifact configuration and restarts only the dev service.
+already verified canonical build. A failed local health check restores the
+previous dev configuration. After the new local runtime is healthy, a temporary
+public edge failure leaves that compatible runtime active and withholds the
+verified deployment receipt; retry the public check when the edge is available.
 
 The development launcher separately verifies `SMARTSPEC_ENVIRONMENT`, the
 `aimarkethubs.com` application and tenant domain, port 3100, and a dev-scoped

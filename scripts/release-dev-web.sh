@@ -134,6 +134,7 @@ PUBLIC_DIR="${ARTIFACT_PATH}/public"
 
 mkdir -p "$DROPIN_DIR" "$STATE_DIR"
 DROPIN_BACKUP="$(mktemp)"
+PUBLIC_VERIFY_DIR=""
 DROPIN_EXISTED=0
 if [[ -f "$DROPIN" ]]; then cp -p "$DROPIN" "$DROPIN_BACKUP"; DROPIN_EXISTED=1; fi
 ROLLBACK_NEEDED=1
@@ -144,6 +145,7 @@ rollback_dev() {
     systemctl --user restart "$DEV_SERVICE" >/dev/null 2>&1 || true
   fi
   rm -f "$DROPIN_BACKUP"
+  if [[ -n "$PUBLIC_VERIFY_DIR" ]]; then rm -rf "$PUBLIC_VERIFY_DIR"; fi
 }
 trap rollback_dev EXIT
 
@@ -200,33 +202,49 @@ if not assets:
 print(json.dumps({"source_revision": sys.argv[2], "artifact_digest": sys.argv[3], "service": sys.argv[4], "index_assets": assets}, sort_keys=True))
 PY
 
-curl --max-time 15 --silent --show-error --fail https://aimarkethubs.com/healthz >/dev/null
-PUBLIC_ASSET_PROOF="$(python3 - "$PUBLIC_DIR" <<'PY'
-import hashlib, re, sys, urllib.request
-from pathlib import Path
-root = Path(sys.argv[1])
-request = urllib.request.Request("https://aimarkethubs.com/chat", headers={"Cache-Control": "no-cache"})
-request.add_header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36")
-with urllib.request.urlopen(request, timeout=20) as response:
-    html = response.read().decode("utf-8", "replace")
-    if response.status != 200 or "/@vite/client" in html:
-        raise SystemExit("Development domain did not return the immutable chat application.")
-assets = re.findall(r'''(?:src|href)=["'](/assets/[^"']+\.(?:js|css))["']''', html)
+curl --max-time 15 --silent --show-error --fail \
+  -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36' \
+  https://aimarkethubs.com/healthz >/dev/null
+PUBLIC_VERIFY_DIR="$(mktemp -d)"
+PUBLIC_CHAT_HTML="${PUBLIC_VERIFY_DIR}/chat.html"
+PUBLIC_CHAT_ASSET="${PUBLIC_VERIFY_DIR}/chat-asset.js"
+curl --max-time 20 --silent --show-error --fail \
+  -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8' \
+  -H 'Accept-Language: en-US,en;q=0.9,th;q=0.8' \
+  -H 'Cache-Control: no-cache' \
+  -H 'Sec-Fetch-Dest: document' -H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-Site: none' \
+  -H 'Upgrade-Insecure-Requests: 1' \
+  -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36' \
+  https://aimarkethubs.com/chat --output "$PUBLIC_CHAT_HTML"
+PUBLIC_ASSET="$(python3 - "$PUBLIC_CHAT_HTML" <<'PY'
+import re, sys
+html = open(sys.argv[1], encoding="utf-8", errors="replace").read()
+if "/@vite/client" in html:
+    raise SystemExit("Development domain returned a Vite development page.")
+assets = re.findall(r'''(?:src|href)=["'](/assets/[^"']+\.js)["']''', html)
 if not assets:
-    raise SystemExit("Development domain returned no built asset references.")
-asset = next((item for item in assets if item.endswith(".js")), assets[0])
+    raise SystemExit("Development domain returned no immutable JavaScript assets.")
+print(assets[0])
+PY
+)"
+curl --max-time 30 --silent --show-error --fail \
+  -A 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36' \
+  "https://aimarkethubs.com${PUBLIC_ASSET}" --output "$PUBLIC_CHAT_ASSET"
+PUBLIC_ASSET_PROOF="$(python3 - "$PUBLIC_DIR" "$PUBLIC_ASSET" "$PUBLIC_CHAT_ASSET" <<'PY'
+import hashlib, json, sys
+from pathlib import Path
+root, asset, remote_path = Path(sys.argv[1]), sys.argv[2], Path(sys.argv[3])
 local = root / asset.lstrip("/")
 if not local.is_file():
     raise SystemExit("Public asset is missing from the immutable artifact.")
-with urllib.request.urlopen("https://aimarkethubs.com" + asset, timeout=30) as response:
-    remote = response.read()
 local_digest = hashlib.sha256(local.read_bytes()).hexdigest()
-remote_digest = hashlib.sha256(remote).hexdigest()
+remote_digest = hashlib.sha256(remote_path.read_bytes()).hexdigest()
 if local_digest != remote_digest:
     raise SystemExit(f"Public asset differs from release artifact: {asset}")
 print(json.dumps({"domain": "aimarkethubs.com", "status": 200, "verified_asset": asset, "asset_sha256": remote_digest}, sort_keys=True))
 PY
 )"
+rm -rf "$PUBLIC_VERIFY_DIR"
 
 PRODUCTION_AFTER="$(production_fingerprint)"
 PRODUCTION_RELEASE_AFTER="$(readlink -f "$PROD_RELEASE_POINTER")"
