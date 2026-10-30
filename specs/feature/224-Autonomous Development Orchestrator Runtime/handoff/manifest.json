@@ -1103,7 +1103,7 @@
       ],
       "evidence_freshness": "FRESH",
       "id": "R12_WAITING_FOR_GOAL_APPROVAL",
-      "next_action": "On aimarkethubs.com choose the registered Debian Runner and Project Workspace, select “พัฒนาตาม prompt” (not “สร้าง Mini App”), click “เริ่มพัฒนา”, then approve the exact resulting Goal Grant through the existing Approval Authority. Reuse the durable Run if it appears.",
+      "next_action": "Continue authorized implementation independently while owner approval is pending. Once the authenticated owner starts and approves a Goal, resume the same persisted identity and trace genuine execution evidence.",
       "owner": "Authenticated tenant owner using Task Control and the existing Approval Authority",
       "reactivation_predicate": "A matching Goal Grant request exists for tenant tenant-001 and is approved, unrevoked and unexpired, with its DevelopmentRun and canonical Job/Attempt recoverable from smartspec_dev.",
       "root_cause": "The current smartspec_dev observation contains no SPEC-224 Goal Grant request or worker job. The supplied Task Control screenshot is on smartaihub.app and shows successful Mini App creation via the factoryMode branch, not the Goal Admission Start flow. The authenticated owner has not yet started the bounded Goal on aimarkethubs.com and approved its resulting Grant."
@@ -1217,7 +1217,7 @@
         "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
       }
     ],
-    "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
+    "next_action": "Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.",
     "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
     "residual_requirements": [
       "REQ-26611F40B8B9",
@@ -1317,7 +1317,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 267,
+  "generation": 269,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -2521,7 +2521,7 @@
           "source_sha": "ffc367b845be7ca6f23d19719138fba585695e0f"
         }
       ],
-      "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
+      "next_action": "Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.",
       "rationale": "The existing Debian Runner is upgraded and its live account-bound Codex catalog is applied. The next remaining action is authenticated Task Control selection and the legitimate owner Goal start/approval; this turn has no authenticated browser session and no durable SPEC-224 job exists.",
       "residual_requirements": [
         "REQ-26611F40B8B9",
@@ -4067,7 +4067,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T10:05:34.515821Z",
+  "updated_at": "2026-10-30T10:08:01.128559Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
