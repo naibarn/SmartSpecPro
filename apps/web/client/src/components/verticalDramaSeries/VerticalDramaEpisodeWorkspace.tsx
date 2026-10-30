@@ -504,10 +504,12 @@ export interface VerticalDramaStoryboardPanelData {
     shotNumber: number,
     prompt: string
   ) => Promise<void> | void;
-  /** Panel-level "generate video prompts" (2026-07-05 fix) — runs
-   *  `dialogue_audio_plan` then `video_motion_prompt_pack` for real. */
-  onGenerateVideoPromptPack?: () => void;
-  generatingVideoPromptPack?: boolean;
+  /** Runs the standard per-shot video prompt job for each selected shot. */
+  onGenerateAllShotVideoPrompts?: (shotNumbers: number[]) => void;
+  generatingAllShotVideoPrompts?: boolean;
+  /** Runs the isolated Enhanced per-shot flow for each selected shot. */
+  onGenerateAllEnhancedShotVideoPrompts?: (shotNumbers: number[]) => void;
+  generatingAllEnhancedShotVideoPrompts?: boolean;
   /** Repairs every shot's `requiredCharacterRefs` by union-merging in any
    *  roster character who speaks per that shot's resolved dialogue but is
    *  missing a reference slot. Free (no LLM/credits), never removes. */
@@ -1709,8 +1711,10 @@ export function VerticalDramaEpisodeWorkspace({
           onGenerateStartFramePlan={storyboardPanel?.onGenerateStartFramePlan}
           generatingStartFramePlan={storyboardPanel?.generatingStartFramePlan}
           onEditStartFramePrompt={storyboardPanel?.onEditStartFramePrompt}
-          onGenerateVideoPromptPack={storyboardPanel?.onGenerateVideoPromptPack}
-          generatingVideoPromptPack={storyboardPanel?.generatingVideoPromptPack}
+          onGenerateAllShotVideoPrompts={storyboardPanel?.onGenerateAllShotVideoPrompts}
+          generatingAllShotVideoPrompts={storyboardPanel?.generatingAllShotVideoPrompts}
+          onGenerateAllEnhancedShotVideoPrompts={storyboardPanel?.onGenerateAllEnhancedShotVideoPrompts}
+          generatingAllEnhancedShotVideoPrompts={storyboardPanel?.generatingAllEnhancedShotVideoPrompts}
           onRepairMissingShotCharacters={
             storyboardPanel?.onRepairMissingShotCharacters
           }

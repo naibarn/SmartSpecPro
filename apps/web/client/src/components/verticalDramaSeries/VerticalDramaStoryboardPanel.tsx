@@ -1609,19 +1609,16 @@ interface VerticalDramaStoryboardPanelProps {
     currentPrompt: string,
     shotImageUrl?: string
   ) => void;
-  /** Panel-level "generate video prompts" (2026-07-05 fix) — runs
-   *  `dialogue_audio_plan` then `video_motion_prompt_pack` for real (mode
-   *  "full", spends credits), populating every clip's "พรอมต์วิดีโอ" box and
-   *  dialogue lines at once. Mirrors `onGenerateStartFramePlan`. Shown only
-   *  while a storyboard exists (the panel itself only renders once shots
-   *  exist, so no extra gating needed here beyond the prop being present). */
-  onGenerateVideoPromptPack?: () => void;
-  generatingVideoPromptPack?: boolean;
+  /** Generates standard video prompts through the individual-shot flow. */
+  onGenerateAllShotVideoPrompts?: (shotNumbers: number[]) => void;
+  generatingAllShotVideoPrompts?: boolean;
+  onGenerateAllEnhancedShotVideoPrompts?: (shotNumbers: number[]) => void;
+  generatingAllEnhancedShotVideoPrompts?: boolean;
   /** "Repair missing characters" (episode-level) — union-merges any roster
    *  character who speaks per a shot's resolved dialogue but is missing
    *  from that shot's `requiredCharacterRefs`. Free (no LLM/credits), no
    *  confirm dialog needed, never removes an existing ref. Shown alongside
-   *  `onGenerateVideoPromptPack` once frames exist. */
+   *  the episode-level video prompt actions once frames exist. */
   onRepairMissingShotCharacters?: () => void;
   repairingMissingShotCharacters?: boolean;
   /** Renders a real AI image for this shot from its approved prompt (spends credits). */
@@ -1649,8 +1646,7 @@ interface VerticalDramaStoryboardPanelProps {
   /** Fires `onGenerateStartFrameImage` for every shot missing an approved
    *  image, concurrently — not one-at-a-time. */
   onGenerateAllStartFrameImages?: (shotNumbers: number[]) => void;
-  /** Generates and renders every storyboard shot, including shots that already
-   *  have an approved image, through the same per-shot prompt + image path. */
+  /** Generates a prompt and image only for shots without an approved image. */
   onGenerateAllPromptAndImages?: (shotNumbers: number[]) => void;
   generatingAllPromptAndImages?: boolean;
   /** Submits a 3x3 multi-angle-variations grid render for this shot; resolves to a 9-candidate picker (see `onPickAngleVariationCandidate`). */
@@ -2415,8 +2411,10 @@ export function VerticalDramaStoryboardPanel({
   onEditStartFramePrompt,
   onChangeStopFrame,
   onClearStopFrame,
-  onGenerateVideoPromptPack,
-  generatingVideoPromptPack = false,
+  onGenerateAllShotVideoPrompts,
+  generatingAllShotVideoPrompts = false,
+  onGenerateAllEnhancedShotVideoPrompts,
+  generatingAllEnhancedShotVideoPrompts = false,
   onRepairMissingShotCharacters,
   repairingMissingShotCharacters = false,
   onGenerateStartFrameImage,
@@ -2881,8 +2879,8 @@ export function VerticalDramaStoryboardPanel({
   ] = useState(false);
   const [confirmingStartFramePlan, setConfirmingStartFramePlan] =
     useState(false);
-  const [confirmingVideoPromptPack, setConfirmingVideoPromptPack] =
-    useState(false);
+  const [confirmingBulkVideoPromptMode, setConfirmingBulkVideoPromptMode] =
+    useState<"standard" | "enhanced" | null>(null);
   const [choosingGenerateModeForShot, setChoosingGenerateModeForShot] =
     useState<number | null>(null);
   const [confirmingImageForShot, setConfirmingImageForShot] = useState<
@@ -3419,13 +3417,15 @@ export function VerticalDramaStoryboardPanel({
     .filter(shotNumber => {
       const frame = frameByShot.get(shotNumber);
       const assetId = frame?.approvedMediaAssetId;
-      return (
-        Boolean(frame?.imagePrompt || frame?.canonicalShotSummary) &&
-        !(assetId && assetUrls[assetId])
-      );
+      return !String(assetId ?? "").trim();
     });
   const allShotNumbers = shots.map(
     (shot, index) => shot.shot_number ?? index + 1
+  );
+  const availableVideoPromptShotNumbers = allShotNumbers.filter(
+    shotNumber =>
+      !generatingShotVideoPromptForShot.has(shotNumber) &&
+      !enhancedGeneratingForShot.has(shotNumber)
   );
 
   const storyboardHeaderTitle = (
@@ -4255,7 +4255,7 @@ export function VerticalDramaStoryboardPanel({
         </div>
       ) : null}
 
-      {onGenerateAllPromptAndImages && allShotNumbers.length > 0 ? (
+      {onGenerateAllPromptAndImages && shotsNeedingImages.length > 0 ? (
         <div>
           {confirmingGenerateAllPromptAndImages ? (
             <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/30">
@@ -4269,8 +4269,8 @@ export function VerticalDramaStoryboardPanel({
               <p className="text-muted-foreground">
                 {t(
                   locale,
-                  `จะสร้างพรอมต์และภาพใหม่สำหรับทุกช็อต (${allShotNumbers.length} ช็อต) แม้ช็อตนั้นจะมีภาพอยู่แล้ว`,
-                  `Creates a new prompt and image for every shot (${allShotNumbers.length}), including shots that already have an image.`
+                  `จะสร้างพรอมต์และภาพเฉพาะ ${shotsNeedingImages.length} ช็อตที่ยังไม่มีภาพ`,
+                  `Creates a prompt and image only for the ${shotsNeedingImages.length} shots without an image.`
                 )}
               </p>
               <div className="mt-2 flex gap-2">
@@ -4288,7 +4288,7 @@ export function VerticalDramaStoryboardPanel({
                   size="sm"
                   onClick={() => {
                     setConfirmingGenerateAllPromptAndImages(false);
-                    onGenerateAllPromptAndImages(allShotNumbers);
+                    onGenerateAllPromptAndImages(shotsNeedingImages);
                   }}
                   disabled={generatingAllPromptAndImages}
                   data-testid="vd-storyboard-confirm-generate-all-prompt-images"
@@ -4328,8 +4328,8 @@ export function VerticalDramaStoryboardPanel({
                   )
                 : t(
                     locale,
-                    "สร้างพรอมต์และภาพทุกช็อต",
-                    "Generate prompts + images for all shots"
+                    `สร้างพรอมต์และภาพสำหรับช็อตที่ยังไม่มีภาพ (${shotsNeedingImages.length})`,
+                    `Generate prompts + images for shots without images (${shotsNeedingImages.length})`
                   )}
             </Button>
           )}
@@ -4350,8 +4350,8 @@ export function VerticalDramaStoryboardPanel({
               <p className="text-muted-foreground">
                 {t(
                   locale,
-                  "ดำเนินการต่อเพื่อสร้างพรอมต์ภาพสำหรับทุกช็อต",
-                  "Continue to generate image prompts for every shot."
+                  `ดำเนินการต่อเพื่อสร้างพรอมต์ภาพ ${shotsNeedingImages.length} ช็อตที่ยังไม่มีภาพ`,
+                  `Continue to generate image prompts for ${shotsNeedingImages.length} shots without images.`
                 )}
               </p>
               <div className="mt-2 flex gap-2">
@@ -4378,8 +4378,8 @@ export function VerticalDramaStoryboardPanel({
                     ? t(locale, "กำลังสร้าง…", "Generating…")
                     : t(
                         locale,
-                        "สร้างพรอมต์ภาพทุกช็อต (มีค่าใช้จ่าย)",
-                        "Generate image prompts for all shots (paid)"
+                        `สร้างพรอมต์ภาพสำหรับช็อตที่ยังไม่มีภาพ (${shotsNeedingImages.length}, มีค่าใช้จ่าย)`,
+                        `Generate image prompts for shots without images (${shotsNeedingImages.length}, paid)`
                       )}
                 </Button>
               </div>
@@ -4397,35 +4397,41 @@ export function VerticalDramaStoryboardPanel({
                 ? t(locale, "กำลังสร้าง…", "Generating…")
                 : t(
                     locale,
-                    "สร้างพรอมต์ภาพทุกช็อต (มีค่าใช้จ่าย)",
-                    "Generate image prompts for all shots (paid)"
+                    `สร้างพรอมต์ภาพสำหรับช็อตที่ยังไม่มีภาพ (${shotsNeedingImages.length}, มีค่าใช้จ่าย)`,
+                    `Generate image prompts for shots without images (${shotsNeedingImages.length}, paid)`
                   )}
             </Button>
           )}
         </div>
       ) : null}
 
-      {onGenerateVideoPromptPack ? (
-        <div>
-          {confirmingVideoPromptPack ? (
+      {onGenerateAllShotVideoPrompts || onGenerateAllEnhancedShotVideoPrompts ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {confirmingBulkVideoPromptMode ? (
             <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/30">
               <p className="font-medium">
-                {t(
-                  locale,
-                  "การทำงานนี้ใช้ AI จริงและใช้เครดิต",
-                  "This uses real AI generation and spends credits."
-                )}
+                {t(locale, "การทำงานนี้ใช้ AI จริงและใช้เครดิต", "This uses real AI generation and spends credits.")}
               </p>
               <p className="text-muted-foreground">
-                {t2.generateVideoPromptPackConfirmNote}
+                {confirmingBulkVideoPromptMode === "enhanced"
+                  ? t(
+                      locale,
+                      `ระบบจะตรวจความพร้อมและยืนยันเครดิตของ Enhanced แยกแต่ละช็อตก่อนเริ่ม รวม ${availableVideoPromptShotNumbers.length} ช็อต`,
+                      `Enhanced readiness and credit estimate will be checked for each of ${availableVideoPromptShotNumbers.length} shots before starting.`
+                    )
+                  : t(
+                      locale,
+                      `สร้างพรอมต์วิดีโอแบบปกติแยกทีละช็อต จำนวน ${availableVideoPromptShotNumbers.length} ช็อต`,
+                      `Generates a standard video prompt for each of ${availableVideoPromptShotNumbers.length} shots.`
+                    )}
               </p>
               <div className="mt-2 flex gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
-                  onClick={() => setConfirmingVideoPromptPack(false)}
-                  disabled={generatingVideoPromptPack}
+                  onClick={() => setConfirmingBulkVideoPromptMode(null)}
+                  disabled={generatingAllShotVideoPrompts || generatingAllEnhancedShotVideoPrompts}
                 >
                   {t(locale, "ยกเลิก", "Cancel")}
                 </Button>
@@ -4433,50 +4439,74 @@ export function VerticalDramaStoryboardPanel({
                   type="button"
                   size="sm"
                   onClick={() => {
-                    setConfirmingVideoPromptPack(false);
-                    onGenerateVideoPromptPack();
+                    const mode = confirmingBulkVideoPromptMode;
+                    setConfirmingBulkVideoPromptMode(null);
+                    if (mode === "enhanced") {
+                      onGenerateAllEnhancedShotVideoPrompts?.(availableVideoPromptShotNumbers);
+                    } else {
+                      onGenerateAllShotVideoPrompts?.(availableVideoPromptShotNumbers);
+                    }
                   }}
-                  disabled={generatingVideoPromptPack}
-                  data-testid="vd-confirm-generate-video-prompt-pack"
+                  disabled={generatingAllShotVideoPrompts || generatingAllEnhancedShotVideoPrompts}
+                  data-testid={`vd-confirm-generate-${confirmingBulkVideoPromptMode}-video-prompts`}
                 >
-                  {generatingVideoPromptPack
-                    ? t2.generatingVideoPromptPack
-                    : t2.generateVideoPromptPackWholeEpisode}
+                  {generatingAllShotVideoPrompts || generatingAllEnhancedShotVideoPrompts
+                    ? t(locale, "กำลังสร้าง…", "Generating…")
+                    : confirmingBulkVideoPromptMode === "enhanced"
+                      ? t(locale, "สร้าง Enhanced ทุกช็อต", "Generate Enhanced for all shots")
+                      : t(locale, "สร้าง Video Prompt ปกติทุกช็อต", "Generate standard video prompts for all shots")}
                 </Button>
               </div>
             </div>
           ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="gap-1.5"
-              onClick={() => {
-                if (!selectedVideoModelId) {
-                  toast.error(t2.selectVideoModelFirst);
-                  setIsVideoModelDialogOpen(true);
-                  return;
-                }
-                setConfirmingVideoPromptPack(true);
-              }}
-              disabled={generatingVideoPromptPack}
-              title={
-                !selectedVideoModelId ? t2.selectVideoModelFirst : undefined
-              }
-              data-testid="vd-generate-video-prompt-pack"
-            >
-              {generatingVideoPromptPack ? (
-                <Loader2
-                  aria-hidden="true"
-                  className="h-3.5 w-3.5 animate-spin"
-                />
-              ) : (
-                <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
-              )}
-              {generatingVideoPromptPack
-                ? t2.generatingVideoPromptPack
-                : t2.generateVideoPromptPackWholeEpisode}
-            </Button>
+            <>
+              {onGenerateAllShotVideoPrompts ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    if (!selectedVideoModelId) {
+                      toast.error(t2.selectVideoModelFirst);
+                      setIsVideoModelDialogOpen(true);
+                      return;
+                    }
+                    setConfirmingBulkVideoPromptMode("standard");
+                  }}
+                  disabled={generatingAllShotVideoPrompts || generatingAllEnhancedShotVideoPrompts || availableVideoPromptShotNumbers.length === 0}
+                  data-testid="vd-generate-all-standard-video-prompts"
+                >
+                  {generatingAllShotVideoPrompts ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />}
+                  {generatingAllShotVideoPrompts
+                    ? t(locale, "กำลังสร้าง Video Prompt ปกติ…", "Generating standard prompts…")
+                    : t(locale, `สร้าง Video Prompt ปกติทุกช็อต (${availableVideoPromptShotNumbers.length})`, `Generate standard video prompts (${availableVideoPromptShotNumbers.length})`)}
+                </Button>
+              ) : null}
+              {onGenerateAllEnhancedShotVideoPrompts ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => {
+                    if (!selectedVideoModelId) {
+                      toast.error(t2.selectVideoModelFirst);
+                      setIsVideoModelDialogOpen(true);
+                      return;
+                    }
+                    setConfirmingBulkVideoPromptMode("enhanced");
+                  }}
+                  disabled={generatingAllEnhancedShotVideoPrompts || generatingAllShotVideoPrompts || availableVideoPromptShotNumbers.length === 0}
+                  data-testid="vd-generate-all-enhanced-video-prompts"
+                >
+                  {generatingAllEnhancedShotVideoPrompts ? <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin" /> : <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />}
+                  {generatingAllEnhancedShotVideoPrompts
+                    ? t(locale, "กำลังสร้าง Enhanced…", "Generating Enhanced…")
+                    : t(locale, `สร้าง Video Prompt Enhanced ทุกช็อต (${availableVideoPromptShotNumbers.length})`, `Generate Enhanced video prompts (${availableVideoPromptShotNumbers.length})`)}
+                </Button>
+              ) : null}
+            </>
           )}
         </div>
       ) : null}

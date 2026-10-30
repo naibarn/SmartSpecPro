@@ -6434,6 +6434,18 @@ function EpisodeWorkspaceShell({
     ).sort((a, b) => a - b);
   }
 
+  function getCurrentShotsWithoutApprovedImages(): number[] {
+    const frames = episodeDetailQuery.data?.startFramePlan?.frames ?? [];
+    const shotsWithImages = new Set(
+      frames
+        .filter(frame => String(frame.approvedMediaAssetId ?? "").trim())
+        .map(frame => frame.shotNumber)
+    );
+    return getCurrentStoryboardShotNumbers().filter(
+      shotNumber => !shotsWithImages.has(shotNumber)
+    );
+  }
+
   /**
    * Generate every image prompt through the same per-shot queue used by the
    * one-shot prompt + image action. This intentionally bypasses the legacy
@@ -6443,12 +6455,12 @@ function EpisodeWorkspaceShell({
   async function handleGenerateAllStartFramePrompts() {
     if (generatingAllStartFramePrompts) return;
     if (!requireModelSelectedOrToast("image")) return;
-    const shotNumbers = getCurrentStoryboardShotNumbers();
+    const shotNumbers = getCurrentShotsWithoutApprovedImages();
     if (shotNumbers.length === 0) {
       toast.error(
         lang === "th"
-          ? "ยังไม่มีช็อตสำหรับสร้างพรอมต์ภาพ"
-          : "There are no storyboard shots to generate prompts for."
+          ? "ทุกช็อตมีภาพแล้ว ไม่มีพรอมต์ภาพที่ต้องสร้าง"
+          : "Every shot already has an image; no image prompts need generation."
       );
       return;
     }
@@ -6516,22 +6528,26 @@ function EpisodeWorkspaceShell({
   }
 
   /**
-   * Run the canonical per-shot prompt + image chain for an explicit shot list.
-   * The list is intentionally not filtered by existing media: the dedicated
-   * all-shot action is an explicit paid regeneration of every shot.
+   * Run the canonical per-shot prompt + image chain only for shots that are
+   * missing an approved image. Re-filter live data so stale UI selections
+   * cannot overwrite or recharge images that were just completed.
    */
   async function handleGenerateAllPromptAndImages(shotNumbers: number[]) {
     if (generatingAllPromptAndImages) return;
     if (!requireModelSelectedOrToast("image")) return;
     if (!requireMcpConnectionOrToast("image")) return;
     if (!requireHermesConnectionOrToast("image")) return;
-    const normalizedShotNumbers = Array.from(
+    const requestedShotNumbers = Array.from(
       new Set(
         shotNumbers.filter(
           shotNumber => Number.isInteger(shotNumber) && shotNumber > 0
         )
       )
     ).sort((a, b) => a - b);
+    const stillMissingImages = new Set(getCurrentShotsWithoutApprovedImages());
+    const normalizedShotNumbers = requestedShotNumbers.filter(shotNumber =>
+      stillMissingImages.has(shotNumber)
+    );
     if (normalizedShotNumbers.length === 0) return;
 
     setGeneratingAllPromptAndImages(true);
@@ -6934,139 +6950,55 @@ function EpisodeWorkspaceShell({
     }
   }
 
-  /* ---- Video prompt pack (2026-07-05 fix): panel-level button that fills
-   *  every clip's video prompt + dialogue at once. Sequential — dialogue/
-   *  audio timing must exist before the motion prompts that reference it are
-   *  generated — with a single combined confirm covering both paid steps
-   *  (the confirm itself lives in the panel; this just runs them). ---- */
-  const [generatingVideoPromptPack, setGeneratingVideoPromptPack] =
+  const [generatingAllShotVideoPrompts, setGeneratingAllShotVideoPrompts] =
     useState(false);
 
-  async function handleGenerateVideoPromptPack() {
-    if (!requireModelSelectedOrToast("video")) return;
-    setGeneratingVideoPromptPack(true);
-    try {
-      const existingDialoguePlan = episodeDetailQuery.data
-        ?.dialogueAudioPlan as
-        | VerticalDramaDialogueAudioPlan
-        | null
-        | undefined;
-      const dialoguePlanUnderfilled = Boolean(
-        existingDialoguePlan?.dialogueQuality?.issues?.some(
-          issue =>
-            issue.code === "VD_DIALOGUE_EPISODE_UNDERFILLED" ||
-            issue.code === "VD_DIALOGUE_UNDERFILLED"
-        ) ||
-        existingDialoguePlan?.warnings?.some(
-          warning =>
-            warning.code === "episode_dialogue_underfilled" ||
-            warning.code === "shot_dialogue_underfilled"
-        )
-      );
-      if (!existingDialoguePlan || dialoguePlanUnderfilled) {
-        const dialogueOutcome = await runStageMutation.mutateAsync({
-          seriesId,
-          episodeId,
-          stage: "dialogue_audio_plan",
-          mode: "full",
-        });
-        if (dialogueOutcome.result.status === "failed") {
-          toast.error(
-            lang === "th"
-              ? `สร้างบทพูด/เสียงไม่สำเร็จ${dialogueOutcome.result.errors[0]?.message ? `: ${dialogueOutcome.result.errors[0].message}` : ""}`
-              : `Failed to generate dialogue/audio${dialogueOutcome.result.errors[0]?.message ? `: ${dialogueOutcome.result.errors[0].message}` : ""}`,
-            {
-              action: {
-                label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
-                onClick: () => void handleGenerateVideoPromptPack(),
-              },
-            }
-          );
-          return;
-        }
-        if (
-          dialogueOutcome.result.status === "approval_required" &&
-          dialogueOutcome.checkpointId != null
-        ) {
-          await approveMutation.mutateAsync({
-            seriesId,
-            episodeId,
-            checkpointId: String(dialogueOutcome.checkpointId),
-            decision: "approve",
-          });
-        }
-        const repairedStillUnderfilled = dialogueOutcome.result.warnings.some(
-          warning =>
-            warning.code === "episode_dialogue_underfilled" ||
-            warning.code === "shot_dialogue_underfilled"
-        );
-        if (repairedStillUnderfilled) {
-          toast.error(
-            lang === "th"
-              ? "บทพูดทั้งตอนยังน้อยเกินไป ควรซ่อมบท/แผนบททั้งตอนก่อนสร้าง prompt วิดีโอ"
-              : "The episode dialogue is still too sparse. Repair the whole episode dialogue plan before video prompts.",
-            {
-              action: {
-                label: lang === "th" ? "สร้างบทพูดใหม่" : "Regenerate dialogue",
-                onClick: () => void handleGenerateVideoPromptPack(),
-              },
-            }
-          );
-          return;
-        }
-      }
+  async function handleGenerateAllShotVideoPrompts(shotNumbers: number[]) {
+    if (generatingAllShotVideoPrompts || !requireModelSelectedOrToast("video"))
+      return;
+    const pending = Array.from(new Set(shotNumbers))
+      .filter(
+        shotNumber =>
+          Number.isInteger(shotNumber) &&
+          shotNumber > 0 &&
+          !generatingShotVideoPromptForShot.has(shotNumber)
+      )
+      .sort((a, b) => a - b);
+    if (pending.length === 0) return;
 
-      const motionOutcome = await runStageMutation.mutateAsync({
-        seriesId,
-        episodeId,
-        stage: "video_motion_prompt_pack",
-        mode: "full",
-      });
-      if (motionOutcome.result.status === "failed") {
-        toast.error(
-          lang === "th"
-            ? `สร้าง prompt วิดีโอไม่สำเร็จ${motionOutcome.result.errors[0]?.message ? `: ${motionOutcome.result.errors[0].message}` : ""}`
-            : `Failed to generate video prompts${motionOutcome.result.errors[0]?.message ? `: ${motionOutcome.result.errors[0].message}` : ""}`,
-          {
-            action: {
-              label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
-              onClick: () => void handleGenerateVideoPromptPack(),
-            },
+    setGeneratingAllShotVideoPrompts(true);
+    const queue = [...pending];
+    const failures: number[] = [];
+    try {
+      await Promise.all(
+        Array.from({ length: Math.min(2, queue.length) }, async () => {
+          while (queue.length > 0) {
+            const shotNumber = queue.shift();
+            if (shotNumber == null) return;
+            try {
+              await submitAndWaitForShotVideoPrompt({
+                seriesId,
+                episodeId,
+                shotNumber,
+                idempotencyKey: crypto.randomUUID(),
+                nativeAudioEnabled,
+                qualityLoop: false,
+              });
+            } catch {
+              failures.push(shotNumber);
+            }
           }
-        );
-        return;
-      }
-      if (
-        motionOutcome.result.status === "approval_required" &&
-        motionOutcome.checkpointId != null
-      ) {
-        await approveMutation.mutateAsync({
-          seriesId,
-          episodeId,
-          checkpointId: String(motionOutcome.checkpointId),
-          decision: "approve",
-        });
-      }
+        })
+      );
       await refreshEpisodeDetailAfterPromptMutation();
-      toast.success(
-        lang === "th" ? "สร้าง prompt วิดีโอสำเร็จ" : "Video prompts generated."
-      );
-    } catch (err) {
-      toast.error(
-        err instanceof Error
-          ? err.message
-          : lang === "th"
-            ? "เกิดข้อผิดพลาด ลองใหม่อีกครั้ง"
-            : "Something went wrong — try again.",
-        {
-          action: {
-            label: lang === "th" ? "ลองอีกครั้ง" : "Retry",
-            onClick: () => void handleGenerateVideoPromptPack(),
-          },
-        }
-      );
+      const summary =
+        lang === "th"
+          ? `สร้าง Video Prompt ปกติสำเร็จ ${pending.length - failures.length}/${pending.length} ช็อต${failures.length ? ` (ไม่สำเร็จ: ${failures.sort((a, b) => a - b).join(", ")})` : ""}`
+          : `Generated standard video prompts for ${pending.length - failures.length}/${pending.length} shots${failures.length ? ` (failed: ${failures.sort((a, b) => a - b).join(", ")})` : ""}`;
+      if (failures.length > 0) toast.error(summary);
+      else toast.success(summary);
     } finally {
-      setGeneratingVideoPromptPack(false);
+      setGeneratingAllShotVideoPrompts(false);
     }
   }
 
@@ -9055,8 +8987,8 @@ function EpisodeWorkspaceShell({
   const [enhancedJobErrorByShot, setEnhancedJobErrorByShot] = useState<
     Record<number, string>
   >({});
-  const [enhancedConfirmationShot, setEnhancedConfirmationShot] = useState<
-    number | null
+  const [enhancedConfirmationShots, setEnhancedConfirmationShots] = useState<
+    number[] | null
   >(null);
   const [enhancedConfirmationEstimate, setEnhancedConfirmationEstimate] =
     useState<number | null>(null);
@@ -9228,7 +9160,9 @@ function EpisodeWorkspaceShell({
     setEnhancedGeneratingForShot(new Set(jobs.map(job => job.shotNumber)));
   }, [enhancedActiveJobsQuery.data]);
 
-  async function runGenerateEnhancedShotVideoPrompt(shotNumber: number) {
+  async function runGenerateEnhancedShotVideoPrompt(
+    shotNumber: number
+  ): Promise<boolean> {
     setEnhancedJobErrorByShot(prev => {
       const next = { ...prev };
       delete next[shotNumber];
@@ -9276,7 +9210,7 @@ function EpisodeWorkspaceShell({
         }
         if (job.status === "succeeded") {
           await refreshEpisodeDetailAfterPromptMutation();
-          return;
+          return true;
         }
         if (job.status === "failed")
           throw new Error(job.error ?? "Enhanced prompt generation failed");
@@ -9291,6 +9225,7 @@ function EpisodeWorkspaceShell({
       const message = error instanceof Error ? error.message : String(error);
       setEnhancedJobErrorByShot(prev => ({ ...prev, [shotNumber]: message }));
       toast.error(message);
+      return false;
     } finally {
       setEnhancedGeneratingForShot(prev => {
         const next = new Set(prev);
@@ -9325,11 +9260,108 @@ function EpisodeWorkspaceShell({
           return;
         }
         setEnhancedConfirmationEstimate(readiness.estimatedCredits);
-        setEnhancedConfirmationShot(shotNumber);
+        setEnhancedConfirmationShots([shotNumber]);
       } catch (error) {
         toast.error(error instanceof Error ? error.message : String(error));
       }
     })();
+  }
+
+  const [generatingAllEnhancedShotVideoPrompts, setGeneratingAllEnhancedShotVideoPrompts] =
+    useState(false);
+
+  async function handleGenerateAllEnhancedShotVideoPrompts(
+    shotNumbers: number[]
+  ) {
+    if (
+      generatingAllEnhancedShotVideoPrompts ||
+      enhancedConfirmationShots !== null ||
+      !requireModelSelectedOrToast("video")
+    )
+      return;
+    const pending = Array.from(new Set(shotNumbers))
+      .filter(
+        shotNumber =>
+          Number.isInteger(shotNumber) &&
+          shotNumber > 0 &&
+          !enhancedGeneratingForShot.has(shotNumber) &&
+          !generatingShotVideoPromptForShot.has(shotNumber)
+      )
+      .sort((a, b) => a - b);
+    if (pending.length === 0) return;
+    setGeneratingAllEnhancedShotVideoPrompts(true);
+    try {
+      const readiness = await Promise.all(
+        pending.map(async shotNumber => {
+          try {
+            return {
+              shotNumber,
+              result:
+                await utils.verticalDramaEpisodes.getEnhancedVideoPromptReadiness.fetch(
+                  {
+                    seriesId,
+                    episodeId,
+                    shotNumber,
+                    targetVideoModelId: selectedVideoModelId || undefined,
+                  }
+                ),
+            };
+          } catch (error) {
+            return {
+              shotNumber,
+              result: {
+                ready: false,
+                estimatedCredits: 0,
+                reasons: [error instanceof Error ? error.message : String(error)],
+              },
+            };
+          }
+        })
+      );
+      const ready = readiness.filter(item => item.result.ready);
+      const unavailable = readiness.filter(item => !item.result.ready);
+      if (unavailable.length > 0) {
+        toast.error(
+          lang === "th"
+            ? `Enhanced ยังไม่พร้อมสำหรับช็อต ${unavailable.map(item => item.shotNumber).join(", ")}; จะสร้างเฉพาะช็อตที่พร้อม`
+            : `Enhanced is not ready for shots ${unavailable.map(item => item.shotNumber).join(", ")}; only ready shots will be generated.`
+        );
+      }
+      if (ready.length === 0) {
+        setGeneratingAllEnhancedShotVideoPrompts(false);
+        return;
+      }
+      setEnhancedConfirmationEstimate(
+        ready.reduce(
+          (sum, item) => sum + (item.result.estimatedCredits ?? 0),
+          0
+        )
+      );
+      setEnhancedConfirmationShots(ready.map(item => item.shotNumber));
+      setGeneratingAllEnhancedShotVideoPrompts(false);
+    } catch (error) {
+      setGeneratingAllEnhancedShotVideoPrompts(false);
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async function confirmEnhancedVideoPromptGeneration(shotNumbers: number[]) {
+    setGeneratingAllEnhancedShotVideoPrompts(true);
+    const failures: number[] = [];
+    try {
+      for (const shotNumber of shotNumbers) {
+        const succeeded = await runGenerateEnhancedShotVideoPrompt(shotNumber);
+        if (!succeeded) failures.push(shotNumber);
+      }
+      const summary =
+        lang === "th"
+          ? `สร้าง Video Prompt Enhanced สำเร็จ ${shotNumbers.length - failures.length}/${shotNumbers.length} ช็อต${failures.length ? ` (ไม่สำเร็จ: ${failures.join(", ")})` : ""}`
+          : `Generated Enhanced video prompts for ${shotNumbers.length - failures.length}/${shotNumbers.length} shots${failures.length ? ` (failed: ${failures.join(", ")})` : ""}`;
+      if (failures.length > 0) toast.error(summary);
+      else toast.success(summary);
+    } finally {
+      setGeneratingAllEnhancedShotVideoPrompts(false);
+    }
   }
 
   function handleSaveEnhancedVideoPrompt(
@@ -10058,9 +10090,13 @@ function EpisodeWorkspaceShell({
           </AlertDialogContent>
         </AlertDialog>
         <AlertDialog
-          open={enhancedConfirmationShot !== null}
+          open={enhancedConfirmationShots !== null}
           onOpenChange={open => {
-            if (!open) setEnhancedConfirmationShot(null);
+            if (!open) {
+              setEnhancedConfirmationShots(null);
+              setEnhancedConfirmationEstimate(null);
+              setGeneratingAllEnhancedShotVideoPrompts(false);
+            }
           }}
         >
           <AlertDialogContent>
@@ -10072,8 +10108,8 @@ function EpisodeWorkspaceShell({
               </AlertDialogTitle>
               <AlertDialogDescription>
                 {lang === "th"
-                  ? `Enhanced เป็นงานแยกสำหรับวิเคราะห์ภาพและบริบทด้วย Agent runtime ที่ล็อกกับ video model ที่เลือก คาดว่าใช้ประมาณ ${enhancedConfirmationEstimate ?? "ไม่ทราบ"} credits ตาม token จริง ปุ่มนี้ไม่เปลี่ยน Legacy prompt จนกว่าจะกด Apply และไม่มี fallback อัตโนมัติ`
-                  : `Enhanced is a separate Agent-runtime authoring operation locked to the selected video model. Estimated usage: ${enhancedConfirmationEstimate ?? "unknown"} credits; actual charge follows token usage. Legacy remains unchanged until Apply and there is no automatic fallback.`}
+                  ? `Enhanced เป็นงานแยกสำหรับวิเคราะห์ภาพและบริบทด้วย Agent runtime จำนวน ${enhancedConfirmationShots?.length ?? 0} ช็อต คาดว่าใช้ประมาณ ${enhancedConfirmationEstimate ?? "ไม่ทราบ"} credits ตาม token จริง ปุ่มนี้ไม่เปลี่ยน Legacy prompt จนกว่าจะกด Apply และไม่มี fallback อัตโนมัติ`
+                  : `Enhanced is a separate Agent-runtime authoring operation for ${enhancedConfirmationShots?.length ?? 0} shots. Estimated usage: ${enhancedConfirmationEstimate ?? "unknown"} credits; actual charge follows token usage. Legacy remains unchanged until Apply and there is no automatic fallback.`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -10082,17 +10118,17 @@ function EpisodeWorkspaceShell({
               </AlertDialogCancel>
               <AlertDialogAction
                 data-testid={
-                  enhancedConfirmationShot === null
+                  !enhancedConfirmationShots || enhancedConfirmationShots.length !== 1
                     ? undefined
-                    : `vd-credit-confirm-enhanced-video-prompt-${enhancedConfirmationShot}`
+                    : `vd-credit-confirm-enhanced-video-prompt-${enhancedConfirmationShots[0]}`
                 }
                 onClick={event => {
                   event.preventDefault();
-                  const shotNumber = enhancedConfirmationShot;
-                  setEnhancedConfirmationShot(null);
+                  const shotNumbers = enhancedConfirmationShots;
+                  setEnhancedConfirmationShots(null);
                   setEnhancedConfirmationEstimate(null);
-                  if (shotNumber !== null)
-                    void runGenerateEnhancedShotVideoPrompt(shotNumber);
+                  if (shotNumbers?.length)
+                    void confirmEnhancedVideoPromptGeneration(shotNumbers);
                 }}
               >
                 {lang === "th" ? "สร้าง Enhanced" : "Generate Enhanced"}
@@ -10478,12 +10514,10 @@ function EpisodeWorkspaceShell({
               setImagePromptAiEditJobStatus("idle");
               setImagePromptAiEditError(undefined);
             },
-            onGenerateVideoPromptPack: isSpecialTieInEpisode
+            onGenerateAllShotVideoPrompts: isSpecialTieInEpisode
               ? undefined
-              : handleGenerateVideoPromptPack,
-            generatingVideoPromptPack: isSpecialTieInEpisode
-              ? false
-              : generatingVideoPromptPack,
+              : handleGenerateAllShotVideoPrompts,
+            generatingAllShotVideoPrompts,
             onRepairMissingShotCharacters: isSpecialTieInEpisode
               ? undefined
               : handleRepairMissingShotCharacters,
@@ -10810,6 +10844,11 @@ function EpisodeWorkspaceShell({
             onGenerateEnhancedShotVideoPrompt: enhancedVideoPromptUiEnabled
               ? handleGenerateEnhancedShotVideoPrompt
               : undefined,
+            onGenerateAllEnhancedShotVideoPrompts:
+              isSpecialTieInEpisode || !enhancedVideoPromptUiEnabled
+                ? undefined
+                : handleGenerateAllEnhancedShotVideoPrompts,
+            generatingAllEnhancedShotVideoPrompts,
             enhancedGeneratingForShot,
             enhancedJobStatusByShot,
             enhancedJobErrorByShot,
