@@ -123,21 +123,21 @@
     },
     {
       "class": "ACCEPTANCE",
-      "id": "WINDOWS_0_2_51_OWNER_HOST_REAUTHORIZATION_PENDING",
-      "next_action": "Download `smartaihub-runner-windows-x64-0.2.51-unsigned-review` from the Artifacts section of workflow run 41083080276, verify installer SHA-256 f59c3381508cad2dcc58e6f37ff6d0f46bc98547cd6d01e851db35ef39fafcee, then install over the existing current-user Runner and verify browser reauthorization plus unchanged identity, fresh capability ACK, and heartbeat.",
-      "root_cause": "The screenshot shows installed 0.2.50 with a signature-invalid refresh credential and disabled connect action. The fix and unsigned review build are complete, but the existing Windows host has not been upgraded and no runtime reauthorization has been observed."
+      "id": "WINDOWS_0_2_52_OWNER_HOST_RUNTIME_ACCEPTANCE_PENDING",
+      "next_action": "Download `smartaihub-runner-windows-x64-0.2.52-unsigned-review` (artifact ID 13021741314) from workflow 41145171095, verify installer SHA-256 61a34aab2b84ef1ed7504c11d42116f2c53cc3703349f3ff23badff727d02a46, install over the existing current-user Runner without clearing app data, approve the visible browser pairing request using the existing authorized account, then verify unchanged Runner/device identity, fresh capability ACK, heartbeat, and no duplicate registration/session.",
+      "root_cause": "The owner installed 0.2.51 but reports that browser reconnection still does not complete; the screenshot shows RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID and an enabled button. That evidence does not establish why the Control Plane rejects the refresh credential or whether browser launch/pairing occurred. Source 0f70bb90 adds registered Windows URL launching and displays the verification URL during the pending pairing flow. Host runtime acceptance is still unverified."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "f8e0b3bffac9df51cca9b729fbea292b45d19c60",
+    "expected_canonical_sha": "dcb3d54a7b4e50cbcb6999f1ea79dba57ac36c99",
     "expected_spec_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf"
   },
   "continuation": {
-    "next_action": "Owner action: open https://github.com/naibarn/SmartSpecPro/actions/runs/41083080276 and download artifact `smartaihub-runner-windows-x64-0.2.51-unsigned-review` (ID 12991143797). It contains `SmartAIHub Runner_0.2.51_x64-setup.exe`; SHA-256 f59c3381508cad2dcc58e6f37ff6d0f46bc98547cd6d01e851db35ef39fafcee; unsigned-review. Verify the checksum, back up the existing Runner app-data folder, and install over the current-user installation without uninstalling or clearing data. Then click “ยืนยันบัญชีใหม่ผ่านเบราว์เซอร์” and verify the existing Runner/device identity, fresh capability ACK, and heartbeat. Do not mark runtime acceptance complete before host evidence.",
-    "next_ready_workunit": "WINDOWS_0_2_51_OWNER_HOST_RUNTIME_ACCEPTANCE",
+    "next_action": "Owner action: download `smartaihub-runner-windows-x64-0.2.52-unsigned-review` from https://github.com/naibarn/SmartSpecPro/actions/runs/41145171095 (artifact ID 13021741314). Installer `SmartAIHub Runner_0.2.52_x64-setup.exe`, SHA-256 `61a34aab2b84ef1ed7504c11d42116f2c53cc3703349f3ff23badff727d02a46`, unsigned-review. Verify the checksum, install over the existing current-user Runner without uninstalling or clearing app data, click browser reconnect, and approve the displayed URL using the existing authorized account. Then verify unchanged Runner/device identity, fresh capability ACK, and heartbeat.",
+    "next_ready_workunit": "WINDOWS_0_2_52_OWNER_HOST_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Source fix integrated at f8e0b3bffac9df51cca9b729fbea292b45d19c60; focused tests and Windows hosted checks passed; artifact 12991143797 was independently downloaded and its installer SHA-256 verified. Resume after the owner installs over the existing Windows identity and authorizes browser reauthentication.",
-    "waiting_predicate": "The owner verifies installer SHA-256 f59c3381508cad2dcc58e6f37ff6d0f46bc98547cd6d01e851db35ef39fafcee, installs review build 0.2.51 over the existing current-user installation, and authorizes browser reauthentication. Then verify unchanged Runner/device identity, fresh capability ACK, heartbeat, and absence of duplicate registration/session."
+    "resume_point": "Browser reconnect UX fix integrated at 0f70bb90c2443b09ec36d09b958636bd609e91b0; 17 Runner connection tests, Tauri compile, JS syntax/format checks, hosted Windows tests, and Windows installer build passed. Artifact 13021741314 was downloaded; installer SHA-256 verified against its manifest. Resume after the existing Windows Runner is updated and the browser approval is completed.",
+    "waiting_predicate": "Owner verifies SHA-256 61a34aab2b84ef1ed7504c11d42116f2c53cc3703349f3ff23badff727d02a46, installs unsigned review version 0.2.52 over the existing current-user installation, clicks browser reconnect, and approves the displayed request. Then verify unchanged Runner/device identity, fresh capability acknowledgement and heartbeat, and no duplicate registration/session."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -249,7 +249,7 @@
         "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
       }
     ],
-    "next_action": "Wait for owner-host installation of the verified review artifact, then perform runtime acceptance on the existing Runner identity. Do not claim completion from build or unit tests.",
+    "next_action": "Owner action: install the SHA-verified Windows Runner 0.2.52 review build over the existing current-user installation, complete the browser pairing request shown in the Runner UI, and capture same-Runner identity, capability acknowledgement, and heartbeat evidence.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -374,7 +374,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 46,
+  "generation": 48,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
@@ -394,7 +394,8 @@
     "checkpoint_shas": [
       "f072ec8448884b88970310fab954c97a465fc6b9",
       "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
-      "96e1ce9f190148627bc5c9d84252e19da8323d85"
+      "96e1ce9f190148627bc5c9d84252e19da8323d85",
+      "0f70bb90c2443b09ec36d09b958636bd609e91b0"
     ],
     "mapping": [],
     "source_paths": [
@@ -412,7 +413,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "f8e0b3bffac9df51cca9b729fbea292b45d19c60",
+    "canonical_sha": "dcb3d54a7b4e50cbcb6999f1ea79dba57ac36c99",
     "integrated": true,
     "integrated_at": "2026-10-30T14:22:00Z"
   },
@@ -645,7 +646,7 @@
           "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
         }
       ],
-      "next_action": "Wait for owner-host installation of the verified review artifact, then perform runtime acceptance on the existing Runner identity. Do not claim completion from build or unit tests.",
+      "next_action": "Owner action: install the SHA-verified Windows Runner 0.2.52 review build over the existing current-user installation, complete the browser pairing request shown in the Runner UI, and capture same-Runner identity, capability acknowledgement, and heartbeat evidence.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -1597,16 +1598,17 @@
     "unresolved": 201
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T16:07:32.707947Z",
+  "updated_at": "2026-10-30T23:51:22.562238Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-auth-reconnect-fix-20261030.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-reauthorization-button-20261030.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-reauthorization-button-20261030.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-browser-reconnect-ux-20261031.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "f8e0b3bffac9df51cca9b729fbea292b45d19c60",
+    "sha": "0f70bb90c2443b09ec36d09b958636bd609e91b0",
     "status": "PARTIAL",
     "task_regressions": []
   }
