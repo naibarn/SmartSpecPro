@@ -26,9 +26,11 @@ export function applicationDatabaseRolePlanDigest(value: ApplicationDatabaseRole
 const quote = (name: string) => `"${identifier.parse(name)}"`;
 const deny = (): never => { throw Error("APPLICATION_DATABASE_ROLE_PREPARATION_DENIED"); };
 
-/** Only a disabled, checkpoint-owned role with the exact original privileges
- * can be reused. Checking effective SELECT alone would miss extra grants,
- * ownership, memberships or default privileges. This function never mutates. */
+/** Only a disabled role whose existing grants are contained in the current
+ * allowlist can be reused. Missing grants are safe to reconcile because the
+ * caller subsequently grants only this exact plan inside the same transaction.
+ * Extra grants, ownership, memberships and default privileges remain denied.
+ * This function never mutates. */
 export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value: ApplicationDatabaseRolePlan) {
   const plan = applicationDatabaseRolePlanSchema.parse(value), role = applicationDatabaseRoleName(plan);
   const [identity] = await db.execute(sql`SELECT current_database() AS name`);
@@ -47,12 +49,11 @@ export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value
   const grants = await db.execute(sql`SELECT n.nspname,c.relname,c.relkind,a.privilege_type,a.is_grantable
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(c.relacl) a
     WHERE a.grantee=${observed.oid} ORDER BY n.nspname,c.relname,a.privilege_type`);
-  const expected = [...plan.tables.flatMap(name => ["SELECT", "INSERT", "UPDATE", "DELETE"].map(privilege => `${name}:${privilege}`)),
-    ...plan.sequences.flatMap(name => ["USAGE", "SELECT"].map(privilege => `${name}:${privilege}`))].sort();
-  const actual = grants.map(g => `${g.relname}:${g.privilege_type}`).sort();
-  const withPythonAuth = [...expected, "token_blacklist:SELECT"].sort();
+  const expected = new Set([...plan.tables.flatMap(name => ["SELECT", "INSERT", "UPDATE", "DELETE"].map(privilege => `${name}:${privilege}`)),
+    ...plan.sequences.flatMap(name => ["USAGE", "SELECT"].map(privilege => `${name}:${privilege}`)), "token_blacklist:SELECT"]);
+  const actual = grants.map(g => `${g.relname}:${g.privilege_type}`);
   if (grants.some(g => g.nspname !== "public" || g.is_grantable || !["r", "p", "S"].includes(String(g.relkind))) ||
-      (JSON.stringify(actual) !== JSON.stringify(expected) && JSON.stringify(actual) !== JSON.stringify(withPythonAuth))) deny();
+      actual.some(grant => !expected.has(grant))) deny();
   const schemas = await db.execute(sql`SELECT n.nspname,a.privilege_type,a.is_grantable FROM pg_namespace n,
     LATERAL aclexplode(n.nspacl) a WHERE a.grantee=${observed.oid}`);
   const databases = await db.execute(sql`SELECT d.datname,a.privilege_type,a.is_grantable FROM pg_database d,

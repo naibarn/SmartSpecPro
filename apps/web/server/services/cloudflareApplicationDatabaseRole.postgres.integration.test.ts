@@ -134,4 +134,26 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
     try { expect((await connection`SELECT current_user AS role`)[0].role).toBe(role); }
     finally { await connection.end({ timeout: 2 }); }
   });
+  it("reconciles missing privileges only inside the current application allowlist", async () => {
+    const p = { ...plan(), projectId: "project-role-grant-reconciliation" }, role = applicationDatabaseRoleName(p);
+    let first: any, rotated: any;
+    await prepareApplicationDatabaseRole(db, { plan: p, pythonAuthReadOnly: true, assertAuthorized: async () => {},
+      saveSecret: async (_tx, secret) => { first = secret; } });
+    await client.unsafe(`ALTER ROLE "${role}" NOLOGIN`);
+    await client.unsafe(`REVOKE INSERT, UPDATE, DELETE ON TABLE runtime_role_fixture FROM "${role}"`);
+    await expect(assertReusableApplicationDatabaseRole(db, p)).resolves.toBeUndefined();
+
+    await prepareApplicationDatabaseRole(db, { plan: p, reuse: p, pythonAuthReadOnly: true,
+      assertAuthorized: async () => {}, saveSecret: async (_tx, secret) => { rotated = secret; } });
+    expect(rotated.password).not.toBe(first.password);
+    const [grants] = await client`SELECT (SELECT rolcanlogin FROM pg_roles WHERE rolname=${role}) AS rolcanlogin,
+      has_table_privilege(${role}, 'runtime_role_fixture', 'SELECT') AS can_select,
+      has_table_privilege(${role}, 'runtime_role_fixture', 'INSERT') AS can_insert,
+      has_table_privilege(${role}, 'runtime_role_fixture', 'UPDATE') AS can_update,
+      has_table_privilege(${role}, 'runtime_role_fixture', 'DELETE') AS can_delete,
+      has_table_privilege(${role}, 'runtime_unselected_fixture', 'SELECT') AS can_read_unselected,
+      has_table_privilege(${role}, 'token_blacklist', 'SELECT') AS can_read_revocation`;
+    expect(grants).toMatchObject({ rolcanlogin: true, can_select: true, can_insert: true, can_update: true,
+      can_delete: true, can_read_unselected: false, can_read_revocation: true });
+  });
 });
