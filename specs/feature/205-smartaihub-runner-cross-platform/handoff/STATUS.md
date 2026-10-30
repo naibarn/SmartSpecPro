@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 189 unresolved of 189
-- Next action: Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.
-- Manifest generation: 36
+- Requirements: 0 pass / 201 unresolved of 201
+- Next action: Windows review workflow 41071803159 is queued for full source SHA 50df3ea7c09476ed9ea706747977fd0ecbf414ff, unsigned version 0.2.49. Record native test results and artifact SHA-256, then validate the candidate on the already enrolled Windows host without replacing/re-enrolling the Runner. Confirm access refresh/rotation, reconnect, capability ACK, heartbeat, and preserved Runner/device/session identity. Historical 0.2.48 logs/source mapping remain unavailable; do not over-attribute the incident. Keep Debian SPEC-224 Pilot separate.
+- Manifest generation: 41
 
 ## Source-declared status and relationship claims
 
