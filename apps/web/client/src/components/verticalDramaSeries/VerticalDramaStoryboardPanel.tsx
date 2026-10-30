@@ -4255,7 +4255,7 @@ export function VerticalDramaStoryboardPanel({
         </div>
       ) : null}
 
-      {onGenerateAllPromptAndImages && shotsNeedingImages.length > 0 ? (
+      {onGenerateAllPromptAndImages ? (
         <div>
           {confirmingGenerateAllPromptAndImages ? (
             <div className="rounded-md border border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/30">
@@ -4306,6 +4306,7 @@ export function VerticalDramaStoryboardPanel({
               variant="outline"
               className="gap-1.5"
               onClick={() => {
+                if (shotsNeedingImages.length === 0) return;
                 if (!selectedImageModelId) {
                   toast.error(t2.selectImageModelFirst);
                   setIsImageModelDialogOpen(true);
@@ -4313,9 +4314,19 @@ export function VerticalDramaStoryboardPanel({
                 }
                 setConfirmingGenerateAllPromptAndImages(true);
               }}
-              disabled={generatingAllPromptAndImages}
+              disabled={
+                generatingAllPromptAndImages || shotsNeedingImages.length === 0
+              }
               title={
-                !selectedImageModelId ? t2.selectImageModelFirst : undefined
+                shotsNeedingImages.length === 0
+                  ? t(
+                      locale,
+                      "ทุกช็อตมีภาพแล้ว ไม่มีภาพที่ต้องสร้างเพิ่ม",
+                      "All shots already have images; nothing to generate."
+                    )
+                  : !selectedImageModelId
+                    ? t2.selectImageModelFirst
+                    : undefined
               }
               data-testid="vd-storyboard-generate-all-prompt-images"
             >
