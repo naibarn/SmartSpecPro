@@ -238,13 +238,15 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, pilotMode = false }: {
+export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null, pilotMode = false, initialPrompt, initialRequestKind = "development" }: {
   conversationId: number | null;
   threadId?: string | null;
   simpleMode?: boolean;
   onCreateConversation?: (title: string) => Promise<number>;
   requestedHarnessAdapterId?: string | null;
   pilotMode?: boolean;
+  initialPrompt?: string;
+  initialRequestKind?: "development" | "mini_app";
 }) {
   const { t } = useScopedTranslation("chat");
   const { user } = useAuth();
@@ -259,7 +261,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const mockupInput = useRef<HTMLInputElement>(null);
   const [selected, setSelected] = useState("");
   const [selectedRunnerId, setSelectedRunnerId] = useState("");
-  const [prompt, setPrompt] = useState(pilotMode ? FIRST_RUN_PILOT_PROMPT : "");
+  const [prompt, setPrompt] = useState(pilotMode ? FIRST_RUN_PILOT_PROMPT : initialPrompt ?? "");
   const [workspaceAccessMode, setWorkspaceAccessMode] = useState<"workspace" | "exclude_risky">("exclude_risky");
   const [visualReferences, setVisualReferences] = useState<ImageReferenceDraft[]>([]);
   const [similarityMode, setSimilarityMode] = useState<"inspired" | "close" | "high_fidelity">("close");
@@ -275,7 +277,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const [featureSpecSearch, setFeatureSpecSearch] = useState("");
   const [selectedFeatureSpec, setSelectedFeatureSpec] = useState("");
   const [pendingSpecFiles, setPendingSpecFiles] = useState<File[]>([]);
-  const [requestKind, setRequestKind] = useState<"development" | "mini_app">("development");
+  const [requestKind, setRequestKind] = useState<"development" | "mini_app">(pilotMode ? "development" : initialRequestKind);
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
   const [harnessPolicy, setHarnessPolicy] = useState<"auto" | "explicit">("auto");
   const [selectedHarnessAdapterId, setSelectedHarnessAdapterId] = useState("");
@@ -422,6 +424,12 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const prepareMutation = trpc.spec226DevelopmentControl.prepareWorkspaceRun.useMutation();
   type Preparation = Awaited<ReturnType<typeof prepareMutation.mutateAsync>>;
   const [preparation, setPreparation] = useState<Preparation | null>(null);
+  useEffect(() => {
+    if (pilotMode || !initialPrompt || !draftKey || hydratedDraftKey !== draftKey) return;
+    setPrompt(initialPrompt.slice(0, 4_000));
+    setRequestKind(initialRequestKind);
+    setPreparation(null);
+  }, [draftKey, hydratedDraftKey, initialPrompt, initialRequestKind, pilotMode]);
   const [pilotSubmission, setPilotSubmission] = useState<{
     runId: string;
     jobId: string | null;

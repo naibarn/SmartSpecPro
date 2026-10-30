@@ -31,6 +31,16 @@ const INSPECTOR_TABS = [
 
 type InspectorTab = (typeof INSPECTOR_TABS)[number]["id"];
 
+export function selectInspectorRun<T extends { id: string; status: string }>(
+  items: T[],
+  selectedJobId?: string | null
+): T | null {
+  if (selectedJobId) return items.find(item => item.id === selectedJobId) ?? null;
+  return items.find(item =>
+    ["running", "claimed", "leased", "preparing", "uploading"].includes(item.status)
+  ) ?? items[0] ?? null;
+}
+
 function EmptyEvidence({ label }: { label: string }) {
   return (
     <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
@@ -58,10 +68,11 @@ export function UnifiedWorkspaceInspector({
     { conversationId: conversationId ?? 0 },
     { enabled: Boolean(conversationId), staleTime: 15_000, retry: false }
   );
-  const activeThread =
-    threadQuery.data?.threads.find(item => item.threadId === threadId) ??
-    threadQuery.data?.threads[0] ??
-    null;
+  const activeThread = conversationId
+    ? threadId
+      ? threadQuery.data?.threads.find(item => item.threadId === threadId) ?? null
+      : threadQuery.data?.threads.find(item => item.threadId === null) ?? null
+    : null;
   const query = trpc.workerJobs.observability.useQuery(
     jobId ? { jobId } : conversationId ? { conversationId, threadId } : {},
     {
@@ -72,16 +83,9 @@ export function UnifiedWorkspaceInspector({
       retry: false,
     }
   );
-  const items = query.error ? [] : (query.data?.items ?? []);
-  const job =
-    items.find(item => item.id === jobId) ??
-    items.find(item =>
-      ["running", "claimed", "leased", "preparing", "uploading"].includes(
-        item.status
-      )
-    ) ??
-    items[0] ??
-    null;
+  const hasContext = Boolean(conversationId || jobId);
+  const items = !hasContext || query.error ? [] : (query.data?.items ?? []);
+  const job = selectInspectorRun(items, jobId);
   const detailQuery = trpc.workerJobs.observabilityDetail.useQuery(
     {
       jobId: job?.id ?? "",
@@ -204,7 +208,7 @@ export function UnifiedWorkspaceInspector({
             </VStack>
           ) : null}
           {!query.isLoading && !query.error && !job ? (
-            <p className="mb-3 text-sm text-muted-foreground">{noRun}</p>
+            <p className="mb-3 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">{hasContext ? noRun : "Select a conversation or Run to inspect its activity, files, tests, and receipts."}</p>
           ) : null}
 
           <TabsContent value="overview" className="mt-0 space-y-4">

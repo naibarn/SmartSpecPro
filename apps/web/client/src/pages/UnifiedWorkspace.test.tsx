@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const state = vi.hoisted(() => ({
   search: "",
@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   jobs: [] as Array<Record<string, any>>,
   goals: [] as Array<Record<string, any>>,
   runners: [] as Array<Record<string, any>>,
+  recentThreads: [] as Array<Record<string, any>>,
   create: vi.fn(async () => ({ id: 902 })),
   user: { role: "admin" } as { role: string } | null,
 }));
@@ -68,7 +69,7 @@ vi.mock("@/lib/trpc", () => ({
       },
       listRecentConversationThreads: {
         useInfiniteQuery: () => ({
-          data: { pages: [{ items: [] }] },
+          data: { pages: [{ items: state.recentThreads }] },
           isLoading: false,
           error: null,
         }),
@@ -82,8 +83,11 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("@/components/chat/Spec224WorkspacePanel", () => ({
-  Spec224WorkspacePanel: ({ conversationId, pilotMode, requestedHarnessAdapterId }: { conversationId: number; pilotMode?: boolean; requestedHarnessAdapterId?: string | null }) => (
-    <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
+  Spec224WorkspacePanel: ({ conversationId, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind }: { conversationId: number; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string }) => (
+    <>
+      <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
+      {initialPrompt ? <p data-testid="goal-review-prompt">{initialRequestKind}: {initialPrompt}</p> : null}
+    </>
   ),
 }));
 
@@ -107,11 +111,14 @@ vi.mock("@/components/chat/ChatSidebar", () => ({
 vi.mock("@/components/chat/ChatView", () => ({
   ChatView: ({
     showBrowserSessionEntry,
+    composerPrompt,
   }: {
     showBrowserSessionEntry?: boolean;
+    composerPrompt?: { id: number; text: string; autoSend?: boolean } | null;
   }) => (
     <section aria-label="Conversation canvas">
       Conversation canvas
+      {composerPrompt ? <p role="status" data-auto-send={String(Boolean(composerPrompt.autoSend))}>{composerPrompt.text}</p> : null}
       {showBrowserSessionEntry ? (
         <button type="button">Browser control</button>
       ) : null}
@@ -172,11 +179,12 @@ describe("UnifiedWorkspace", () => {
         trustState: "trusted",
       },
     ];
+    state.recentThreads = [];
     state.user = { role: "admin" };
     window.localStorage.clear();
   });
 
-  it("renders the full workspace navigation and persistent session/inspector panes", () => {
+  it("renders a usable first-use composer and neutral empty inspector", () => {
     render(<UnifiedWorkspace />);
     expect(
       screen.getByRole("navigation", {
@@ -196,15 +204,31 @@ describe("UnifiedWorkspace", () => {
     expect(
       screen.getByRole("navigation", { name: "Saved sessions" })
     ).toBeTruthy();
-    expect(
-      screen.getByRole("region", { name: "Conversation canvas" })
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Browser control" })
-    ).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "ต้องการให้ AI ช่วยทำอะไร?" })).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "ส่งข้อความ" })).toBeTruthy();
+    expect(screen.queryByText("No conversation selected")).toBeNull();
     expect(
       screen.getByRole("region", { name: "Run inspector for session" })
     ).toBeTruthy();
+  });
+
+  it("creates one persisted session and auto-sends the first Chat message", async () => {
+    const view = render(<UnifiedWorkspace />);
+    fireEvent.change(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" }), {
+      target: { value: "Summarize this project" },
+    });
+    const send = screen.getByRole("button", { name: "ส่งข้อความ" });
+    fireEvent.click(send);
+    fireEvent.click(send);
+    await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
+    act(() => { state.search = "c=902"; });
+    view.rerender(<UnifiedWorkspace />);
+    expect(await screen.findByText("Summarize this project")).toBeTruthy();
+    expect(state.create).toHaveBeenCalledTimes(1);
+    expect(state.create).toHaveBeenCalledWith({ title: "Summarize this project" });
+    expect(state.location).toHaveBeenCalledWith("/chat?c=902");
+    expect(screen.getByText("Summarize this project").getAttribute("data-auto-send")).toBe("true");
   });
 
   it("lets an admin open a first-run pilot bound to a newly persisted chat session", async () => {
@@ -233,6 +257,46 @@ describe("UnifiedWorkspace", () => {
     state.user = { role: "user" };
     render(<UnifiedWorkspace />);
     expect(screen.queryByRole("button", { name: "ทดสอบการทำงานจริง" })).toBeNull();
+  });
+
+  it("offers an obvious New Goal action in Task Control and opens the existing review route", async () => {
+    state.search = "mode=tasks&projectId=SmartAIHub%20Core";
+    render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "สร้างงานใหม่ / New Goal" }));
+    await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
+    expect(state.create).toHaveBeenCalledWith({ title: "New Development Goal" });
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
+  });
+
+  it("offers Mission Control an authorized New Agent Task action", async () => {
+    state.search = "mode=mission";
+    render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "New Agent Task" }));
+    await waitFor(() => expect(state.create).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
+  });
+
+  it("routes Development intent to the existing Goal review instead of Chat", async () => {
+    const view = render(<UnifiedWorkspace />);
+    fireEvent.change(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" }), {
+      target: { value: "Create a small utility" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Development" }));
+    fireEvent.click(screen.getByRole("button", { name: "ตรวจ Goal ก่อนเริ่มงาน" }));
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
+    expect(screen.queryByRole("region", { name: "Conversation canvas" })).toBeNull();
+    act(() => { state.search = "mode=tasks&c=902&newGoal=1"; });
+    view.rerender(<UnifiedWorkspace />);
+    expect((await screen.findByTestId("goal-review-prompt")).textContent).toBe("development: Create a small utility");
+  });
+
+  it("binds a first Chat conversation to a project selected from authorized session context", async () => {
+    state.recentThreads = [{ projectId: "project-1", projectTitle: "Project One" }];
+    const view = render(<UnifiedWorkspace />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Project" }), { target: { value: "project-1" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "คำสั่งเริ่มต้น" }), { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: "ส่งข้อความ" }));
+    await waitFor(() => expect(state.create).toHaveBeenCalledWith({ title: "Hello", projectId: "project-1" }));
   });
 
   it("organizes Task Control by project and reports absent lifecycle evidence honestly", () => {

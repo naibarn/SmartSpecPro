@@ -768,7 +768,7 @@ interface ChatViewProps {
   threadId?: string | null;
   density?: "default" | "compact";
   showExecutionActivity?: boolean;
-  composerPrompt?: { id: number; text: string } | null;
+  composerPrompt?: { id: number; text: string; autoSend?: boolean } | null;
   skillSelectorRequest?: { id: number } | null;
   onSkillSelectorRequestHandled?: () => void;
   mapContextDraft?: { id: number; contextText: string } | null;
@@ -850,6 +850,8 @@ export function ChatView({
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const appliedComposerPromptIdRef = useRef<number | null>(null);
+  const autoSendComposerRef = useRef<((text: string) => Promise<void>) | null>(null);
+  const sendMessageInFlightRef = useRef(false);
   const appliedSkillSelectorRequestIdRef = useRef<number | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -885,7 +887,14 @@ export function ChatView({
     }
     setInput(composerPrompt.text);
     appliedComposerPromptIdRef.current = composerPrompt.id;
-    window.requestAnimationFrame(() => textareaRef.current?.focus());
+    window.requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+      if (composerPrompt.autoSend) {
+        void autoSendComposerRef.current?.(composerPrompt.text).catch(error => {
+          toast.error(error instanceof Error ? error.message : "ส่งข้อความไม่สำเร็จ");
+        });
+      }
+    });
   }, [composerPrompt]);
 
   useEffect(() => {
@@ -4164,7 +4173,7 @@ export function ChatView({
     overrideText?: string,
     options?: { ignoreComposerContext?: boolean }
   ) => {
-    if (isStreaming || !conversationId) return;
+    if (isStreaming || sendMessageInFlightRef.current || !conversationId) return;
     const useComposerContext = !options?.ignoreComposerContext;
     const composerAttachments: Attachment[] = attachments;
     const composerSelectedLibrarySources: ChatLibraryAttachPayload[] =
@@ -4193,18 +4202,28 @@ export function ChatView({
     );
 
     // Save user message
-    const userMessage = await sendMessageMutation.mutateAsync({
-      conversationId,
-      threadId,
-      content: typeof content === "string" ? content : JSON.stringify(content),
-      attachments: messageAttachments.map(attachment => ({
-        type: attachment.fileType.startsWith("image/")
-          ? ("image" as const)
-          : ("file" as const),
-        url: attachment.url,
-        name: attachment.fileName,
-      })),
-    });
+    sendMessageInFlightRef.current = true;
+    setIsStreaming(true);
+    let userMessage: Awaited<ReturnType<typeof sendMessageMutation.mutateAsync>>;
+    try {
+      userMessage = await sendMessageMutation.mutateAsync({
+        conversationId,
+        threadId,
+        content: typeof content === "string" ? content : JSON.stringify(content),
+        attachments: messageAttachments.map(attachment => ({
+          type: attachment.fileType.startsWith("image/")
+            ? ("image" as const)
+            : ("file" as const),
+          url: attachment.url,
+          name: attachment.fileName,
+        })),
+      });
+    } catch (error) {
+      sendMessageInFlightRef.current = false;
+      setIsStreaming(false);
+      throw error;
+    }
+    sendMessageInFlightRef.current = false;
 
     // Add to local state immediately
     setMessages(prev => [
@@ -5565,6 +5584,8 @@ export function ChatView({
       }
     }
   };
+
+  autoSendComposerRef.current = async (text: string) => onSend(text);
 
   submitVoiceCommandRef.current = async (text: string) => {
     await onSend(text, { ignoreComposerContext: true });
