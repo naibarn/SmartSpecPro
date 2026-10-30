@@ -82,8 +82,8 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("@/components/chat/Spec224WorkspacePanel", () => ({
-  Spec224WorkspacePanel: ({ conversationId, pilotMode }: { conversationId: number; pilotMode?: boolean }) => (
-    <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))}</section>
+  Spec224WorkspacePanel: ({ conversationId, pilotMode, requestedHarnessAdapterId }: { conversationId: number; pilotMode?: boolean; requestedHarnessAdapterId?: string | null }) => (
+    <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
   ),
 }));
 
@@ -211,15 +211,15 @@ describe("UnifiedWorkspace", () => {
     render(<UnifiedWorkspace />);
     fireEvent.click(screen.getByRole("button", { name: "ทดสอบการทำงานจริง" }));
     expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
-    expect(screen.getByText("Pilot 902 · true")).toBeTruthy();
+    expect(screen.getByText("Pilot 902 · true · auto")).toBeTruthy();
     expect(state.location).toHaveBeenCalledWith("/chat?c=902&pilot=1");
   });
 
   it("restores the pilot review from its durable conversation URL after remount", async () => {
-    state.search = "c=902&pilot=1";
+    state.search = "c=902&pilot=1&harness=microsoft-copilot.v1";
     render(<UnifiedWorkspace />);
     expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
-    expect(screen.getByText("Pilot 902 · true")).toBeTruthy();
+    expect(screen.getByText("Pilot 902 · true · microsoft-copilot.v1")).toBeTruthy();
   });
 
   it("does not reopen the Pilot dialog while navigating to Task Control", () => {

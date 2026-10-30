@@ -418,6 +418,7 @@ export default function UnifiedWorkspace() {
               conversationId={pilotConversationId}
               simpleMode
               pilotMode
+              requestedHarnessAdapterId={params.get("harness")}
               onCreateConversation={async title => {
                 const created = await createConversation.mutateAsync({ title });
                 return created.id;

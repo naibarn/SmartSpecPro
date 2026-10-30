@@ -828,15 +828,17 @@ export function MissionControlWorkspace({
                 >
                   เปิดหลักฐาน Run, files และ tests
                 </Link>
-                {selected.executionIdentity.harness === "codex" ||
+                {selected.conversationId && (
+                selected.executionIdentity.harness === "codex" ||
                 selected.executionIdentity.harness === "codex.v1" ||
-                selected.executionIdentity.harness === "claude" ||
-                selected.executionIdentity.harness === "claude.v1" ? (
+                selected.executionIdentity.harness === "microsoft-copilot" ||
+                selected.executionIdentity.harness === "microsoft-copilot.v1"
+                ) ? (
                   <Link
                     className="inline-flex w-full items-center justify-center rounded-md border px-3 py-2 text-sm hover:bg-muted"
-                    href={`/chat-legacy?panel=control-plane&view=full&harness=${selected.executionIdentity.harness.startsWith("claude") ? "claude.v1" : "codex.v1"}`}
+                    href={`/chat?c=${selected.conversationId}&pilot=1&harness=${selected.executionIdentity.harness.startsWith("microsoft-copilot") ? "microsoft-copilot.v1" : "codex.v1"}`}
                   >
-                    สร้าง Goal โดยเลือก Harness นี้
+                    เปิด First Run ด้วย {selected.executionIdentity.harness.startsWith("microsoft-copilot") ? "GitHub Copilot" : "Codex"}
                   </Link>
                 ) : null}
               </section>

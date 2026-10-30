@@ -119,6 +119,35 @@ describe("Core goal readiness feedback", () => {
     })));
   });
 
+  it("locks a submitted Pilot Run and keeps its returned identity visible while the persisted view refreshes", async () => {
+    usePlatformSourceWorkspace();
+    mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
+    mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "platform-source" }, availability: { available: true, status: "current" }, specSet: null };
+    mocks.prepare.mockResolvedValue({
+      ...preparation(true),
+      workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }],
+    });
+    mocks.start.mockResolvedValueOnce({
+      runId: "pilot-live-run",
+      jobId: "pilot-live-job",
+      dispatchStatus: "ENQUEUED",
+      goalAdmissionStatus: "READY_FOR_LIVE",
+      authorization: { status: "READY_FOR_LIVE", approvalRef: "approval-live-1" },
+    });
+    render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" }));
+    const start = await screen.findByRole("button", { name: "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot" });
+    fireEvent.click(start);
+
+    expect(await screen.findByRole("status", { name: "บันทึก First Run แล้ว" })).toHaveTextContent("pilot-live-run");
+    expect(screen.getByRole("status", { name: "บันทึก First Run แล้ว" })).toHaveTextContent("approval-live-1");
+    expect(start).toBeDisabled();
+    fireEvent.click(start);
+    expect(mocks.start).toHaveBeenCalledTimes(1);
+    expect(mocks.invalidateWorkspaceQuery).toHaveBeenCalledWith({ conversationId: 47 });
+  });
+
   it("restores a persisted Pilot result and prevents starting a duplicate Goal", async () => {
     usePlatformSourceWorkspace();
     mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
@@ -142,6 +171,28 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByText(/execution evidence refs 1/)).toBeInTheDocument();
     expect(screen.getByText(/captured 0\.25 · held 1\.00/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" })).toBeDisabled();
+  });
+
+  it("resumes the same persisted Pilot DevelopmentRun after approval without creating a new Goal", async () => {
+    usePlatformSourceWorkspace();
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "platform-source" },
+      availability: { available: true, status: "current" }, specSet: null,
+      developmentRuns: [{
+        runId: "pilot-run-resume", jobId: "pilot-job-resume", state: "IMPLEMENT",
+        goalApproval: { status: "approved", approvalRef: "approval-resume" },
+        finalVerifyStatus: "pending", intermediateReceipts: [],
+      }],
+    };
+
+    render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "ทำงานเดิมต่อ" }));
+    await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 47,
+      runId: "pilot-run-resume",
+    })));
+    expect(mocks.start).not.toHaveBeenCalled();
   });
 
   it("explains Runner source and online state without exposing machine name in Simple mode", () => {
