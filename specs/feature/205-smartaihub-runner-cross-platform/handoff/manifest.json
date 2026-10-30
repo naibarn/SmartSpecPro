@@ -116,12 +116,6 @@
   },
   "blockers": [
     {
-      "class": "ACCEPTANCE",
-      "id": "WINDOWS_HOSTED_RUNNER_VERIFY_PENDING",
-      "next_action": "Verify the native Windows Runner checks and unsigned 0.2.51 artifact in GitHub Actions run 41083080276 at source f8e0b3bffac9df51cca9b729fbea292b45d19c60; verify artifact manifest and SHA-256 before owner installation.",
-      "root_cause": "The browser reauthorization button and same-device recovery fix are integrated, but the Windows-hosted release workflow is still running."
-    },
-    {
       "class": "DEPLOYMENT",
       "id": "WINDOWS_REFRESH_LIVE_VERIFICATION_PENDING",
       "next_action": "Verify PR #412 in the normally deployed Control Plane, complete browser reauthorization on Windows, and capture fresh authenticated session/capability/Codex/workspace evidence. If refresh still fails, capture the sanitized status/error code and server correlation record.",
@@ -130,8 +124,8 @@
     {
       "class": "ACCEPTANCE",
       "id": "WINDOWS_0_2_51_OWNER_HOST_REAUTHORIZATION_PENDING",
-      "next_action": "After run 41083080276 succeeds, the owner installs its unsigned 0.2.51 review installer over the existing current-user installation, then verify browser reauthorization, unchanged Runner/device identity, fresh capability ACK, and heartbeat.",
-      "root_cause": "The screenshot shows installed 0.2.50 with a signature-invalid refresh credential and a disabled connect button. The source correction is integrated, but has not yet reached the owner host and no runtime reauthorization has been observed."
+      "next_action": "Download `smartaihub-runner-windows-x64-0.2.51-unsigned-review` from the Artifacts section of workflow run 41083080276, verify installer SHA-256 f59c3381508cad2dcc58e6f37ff6d0f46bc98547cd6d01e851db35ef39fafcee, then install over the existing current-user Runner and verify browser reauthorization plus unchanged identity, fresh capability ACK, and heartbeat.",
+      "root_cause": "The screenshot shows installed 0.2.50 with a signature-invalid refresh credential and disabled connect action. The fix and unsigned review build are complete, but the existing Windows host has not been upgraded and no runtime reauthorization has been observed."
     }
   ],
   "concurrency": {
@@ -139,11 +133,11 @@
     "expected_spec_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf"
   },
   "continuation": {
-    "next_action": "Verify GitHub Actions run 41083080276 for source f8e0b3bffac9df51cca9b729fbea292b45d19c60, Windows Runner 0.2.51 unsigned review build. After it succeeds, verify the artifact manifest and SHA-256 and provide the Actions artifact to the owner for in-place upgrade of the existing Windows Runner. Runtime acceptance remains pending until owner-host reauthorization, unchanged identity, fresh capability acknowledgement, and heartbeat are observed.",
-    "next_ready_workunit": "WINDOWS_0_2_51_REVIEW_ARTIFACT_AND_OWNER_HOST_ACCEPTANCE",
+    "next_action": "Owner action: open https://github.com/naibarn/SmartSpecPro/actions/runs/41083080276 and download artifact `smartaihub-runner-windows-x64-0.2.51-unsigned-review` (ID 12991143797). It contains `SmartAIHub Runner_0.2.51_x64-setup.exe`; SHA-256 f59c3381508cad2dcc58e6f37ff6d0f46bc98547cd6d01e851db35ef39fafcee; unsigned-review. Verify the checksum, back up the existing Runner app-data folder, and install over the current-user installation without uninstalling or clearing data. Then click “ยืนยันบัญชีใหม่ผ่านเบราว์เซอร์” and verify the existing Runner/device identity, fresh capability ACK, and heartbeat. Do not mark runtime acceptance complete before host evidence.",
+    "next_ready_workunit": "WINDOWS_0_2_51_OWNER_HOST_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Source fix integrated at f8e0b3bffac9df51cca9b729fbea292b45d19c60; focused tests passed; Windows review build 41083080276 is running. Resume by verifying its result and artifact, then wait for installation/reauthorization on the existing Windows host.",
-    "waiting_predicate": "GitHub Actions run 41083080276 completes and a checksummed 0.2.51 installer is available; then the owner installs it over the existing current-user installation and authorizes browser reauthentication. Verify unchanged Runner/device identity, fresh capability ACK and heartbeat."
+    "resume_point": "Source fix integrated at f8e0b3bffac9df51cca9b729fbea292b45d19c60; focused tests and Windows hosted checks passed; artifact 12991143797 was independently downloaded and its installer SHA-256 verified. Resume after the owner installs over the existing Windows identity and authorizes browser reauthentication.",
+    "waiting_predicate": "The owner verifies installer SHA-256 f59c3381508cad2dcc58e6f37ff6d0f46bc98547cd6d01e851db35ef39fafcee, installs review build 0.2.51 over the existing current-user installation, and authorizes browser reauthentication. Then verify unchanged Runner/device identity, fresh capability ACK, heartbeat, and absence of duplicate registration/session."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -380,7 +374,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 45,
+  "generation": 46,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
@@ -1603,7 +1597,7 @@
     "unresolved": 201
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T15:48:15.944779Z",
+  "updated_at": "2026-10-30T16:07:32.707947Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

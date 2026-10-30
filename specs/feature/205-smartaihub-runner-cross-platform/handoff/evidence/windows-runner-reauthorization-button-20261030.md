@@ -19,8 +19,10 @@
 - `cargo test --offline --manifest-path apps/runner-desktop/src-tauri/Cargo.toml credential_retry_tests -- --test-threads=1` — 4 passed. The test resolved a newer lock graph locally; the generated `Cargo.lock` delta was discarded and is not part of this change.
 - `node --check apps/runner-desktop/ui/app.js` — passed.
 - `cargo fmt --check` for both Runner crates and `git diff --check` — passed.
-- GitHub Actions review build [41083080276](https://github.com/naibarn/SmartSpecPro/actions/runs/41083080276) was dispatched for Windows version `0.2.51` from this source SHA. Artifact/build result is pending at the time of this record.
+- GitHub Actions review build [41083080276](https://github.com/naibarn/SmartSpecPro/actions/runs/41083080276) succeeded for Windows version `0.2.51` from this source SHA. Windows boundary tests, desktop workspace binding, NSIS packaging, and artifact upload all passed.
+- Actions artifact: `smartaihub-runner-windows-x64-0.2.51-unsigned-review`, ID `12991143797`, expires `2027-01-28T15:41:52Z`. The run page's Artifacts section is the distribution location; this is not a public release. Artifact archive SHA-256: `5db3b8784d13c3b36c8be690c826e43c1c522e2bef893b9009b3bff4c3d79d8d`.
+- Installer: `SmartAIHub Runner_0.2.51_x64-setup.exe`, target `x86_64-pc-windows-msvc`, `signingStatus=unsigned-review`. Manifest and `SHA256SUMS` agree, and a local SHA-256 recomputation matches: `f59c3381508cad2dcc58e6f37ff6d0f46bc98547cd6d01e851db35ef39fafcee`.
 
 ## Acceptance boundary
 
-The source fix cannot alter the already installed `0.2.50` UI. The existing Windows installation has not been changed. Runtime acceptance remains pending: install the eventual `0.2.51` unsigned review artifact over the existing current-user installation, verify the button is actionable, complete browser reauthorization, and confirm unchanged Runner/device identity plus fresh capability acknowledgement and heartbeat. Do not infer runtime success from unit tests or the CI artifact.
+The source fix cannot alter the already installed `0.2.50` UI. The existing Windows installation has not been changed. Runtime acceptance remains pending: install this `0.2.51` unsigned review artifact over the existing current-user installation, verify the button is actionable, complete browser reauthorization, and confirm unchanged Runner/device identity plus fresh capability acknowledgement and heartbeat. Do not infer runtime success from unit tests or the CI artifact.
