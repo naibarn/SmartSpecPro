@@ -97,7 +97,10 @@ describe("exact bounded Workflow deployment configuration", () => {
   });
 
   it("derives Staging auth origins and paired runtime bindings from the reviewed immutable configuration", () => {
-    const { value } = fixture();
+    const { value, target } = fixture();
+    const privateDatabase = value.descriptor.nativeResources!.privateDatabase!;
+    privateDatabase.plan.databaseName = "smartspec";
+    privateDatabase.planDigest = privateDatabasePlanDigest(privateDatabase.plan);
     const namespace = httpApplicationNamespace(value.descriptor.tenantId, value.descriptor.projectId, "staging");
     const image = (runtime: "node" | "python") => `registry.cloudflare.com/${value.descriptor.accountRef}/${namespace}-${runtime}-http@sha256:${(runtime === "node" ? "1" : "2").repeat(64)}`;
     value.descriptor.applicationHttp = {
@@ -107,17 +110,31 @@ describe("exact bounded Workflow deployment configuration", () => {
       issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 50_000).toISOString(),
       maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic",
     };
-    value.secrets.applicationHttp = { node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890" }, python: {} };
+    value.secrets.applicationHttp = {
+      node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890", CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" },
+      python: { CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" },
+    };
     value.secrets.applicationCanaryToken = "application-canary-token-" + "a".repeat(32);
     value.descriptor = cloudflareOriginDescriptorSchema.parse(value.descriptor);
-    const bindings = cloudflareWorkflowVersionBindings(value);
+    value.configurationDigest = cloudflareOriginDescriptorDigest(value.descriptor);
+    value.configurationRef = `cf-origin:${value.configurationDigest}`;
+    target.runtimePolicy = value.configurationRef;
+    const validated = validateCloudflareOriginVersionBindings(value, target);
+    const bindings = cloudflareWorkflowVersionBindings(validated);
     expect(bindings.find(binding => binding.name === "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS")?.text)
       .toBe(JSON.stringify(value.descriptor.allowedPublicOrigins));
     expect(bindings.find(binding => binding.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC")?.text).toBe("staging-full-http-v1");
     expect(bindings.find(binding => binding.name === "CLOUDFLARE_CONTAINER_POLICY")?.text).toBe("on-demand");
     expect(bindings.some(binding => binding.name === "CLOUDFLARE_NODE_HTTP_PROFILE")).toBe(true);
     expect(bindings.some(binding => binding.name === "CLOUDFLARE_PYTHON_HTTP_PROFILE")).toBe(true);
+    expect(bindings).toContainEqual({ name: "CLOUDFLARE_APPLICATION_DATABASE_POLICY", type: "plain_text",
+      text: JSON.stringify({ transport: "private-vpc-websocket-v1", environment: "staging", targetId: "smartspec-cloudflare-staging",
+        configurationRef: value.configurationRef, namespace, tunnelId: privateDatabase.plan.tunnelId,
+        hostname: "db-staging.smartaihub.app", port: 5432, expiresAt: value.descriptor.applicationHttp!.expiresAt }) });
+    expect(bindings).toContainEqual({ name: "DATABASE_NETWORK", type: "vpc_network", tunnel_id: privateDatabase.plan.tunnelId });
+    expect(() => assertCloudflareWorkflowVersionBindings(bindings, validated)).not.toThrow();
     const metadata = httpApplicationWorkerMetadata(value.descriptor.applicationHttp!, value.descriptor);
+    expect(metadata.exports.ApplicationDatabaseBridge).toEqual({ type: "worker" });
     expect(metadata.bindings).toEqual(expect.arrayContaining([
       { name: "NODE_HTTP", type: "durable_object_namespace", class_name: "StagingNodeHttpContainer" },
       { name: "PYTHON_HTTP", type: "durable_object_namespace", class_name: "StagingPythonHttpContainer" },

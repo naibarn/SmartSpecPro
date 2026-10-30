@@ -29,6 +29,7 @@ describe("bounded native runtime composition", () => {
     const node = new URL(result.secrets.node.DATABASE_URL), python = new URL(result.secrets.python.DATABASE_URL);
     expect(node.username).toBe(f.roleSecret.role); expect(python.username).toBe(node.username); expect(python.protocol).toBe("postgresql+asyncpg:");
     expect(result.vpcNetworks).toEqual([{ binding: "DATABASE_NETWORK", tunnel_id: f.network.tunnelId }]);
+    expect(result.policy).toMatchObject({ environment: "production", targetId: "smartspec-cloudflare-runtime" });
     expect(result.secrets.node.DATABASE_SSL_MODE).toBe("verify-full");
     expect(JSON.stringify(result)).not.toMatch(/never-copy/);
     expect(JSON.stringify(result.summary)).not.toContain(f.roleSecret.password);

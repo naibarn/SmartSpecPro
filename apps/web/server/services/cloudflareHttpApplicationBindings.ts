@@ -93,6 +93,7 @@ export function httpApplicationWorkerMetadata(value: HttpApplicationSettings, sc
       [nodeClass]: { type: "durable-object", storage: "sqlite", container: `${value.namespace}-node-http` },
       [pythonClass]: { type: "durable-object", storage: "sqlite", container: `${value.namespace}-python-http` },
       ApplicationHttpBridge: { type: "worker" },
+      ApplicationDatabaseBridge: { type: "worker" },
     },
     containers: [
       { name: `${value.namespace}-node-http`, class_name: nodeClass, images: { node: value.node.image } },

@@ -4,15 +4,19 @@ export const APPLICATION_DATABASE_HOST = "database.application.internal";
 export const APPLICATION_DATABASE_TRANSPORT = "private-vpc-websocket-v1";
 export type ApplicationDatabasePolicy = {
   transport: typeof APPLICATION_DATABASE_TRANSPORT;
+  environment: "staging" | "production"; targetId: "smartspec-cloudflare-staging" | "smartspec-cloudflare-runtime";
   configurationRef: string; namespace: string; tunnelId: string;
-  hostname: "db.smartaihub.app"; port: 5433; expiresAt: string;
+  hostname: "db-staging.smartaihub.app" | "db.smartaihub.app"; port: 5432 | 5433; expiresAt: string;
 };
 export function validateApplicationDatabasePolicy(policy: ApplicationDatabasePolicy, node: ApplicationHttpProfile, python: ApplicationHttpProfile, now = Date.now()) {
   validateApplicationHttpProfilePair(node, python, now);
-  if (!policy || policy.transport !== APPLICATION_DATABASE_TRANSPORT || node.targetId !== "smartspec-cloudflare-runtime" ||
+  const staging = node.targetId === "smartspec-cloudflare-staging";
+  if (!policy || policy.transport !== APPLICATION_DATABASE_TRANSPORT ||
+      policy.environment !== (staging ? "staging" : "production") || policy.targetId !== node.targetId ||
+      node.targetId !== "smartspec-cloudflare-runtime" && !staging ||
       policy.configurationRef !== node.configurationRef || policy.namespace !== node.namespace ||
       !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(policy.tunnelId) ||
-      policy.hostname !== "db.smartaihub.app" || policy.port !== 5433 ||
+      policy.hostname !== (staging ? "db-staging.smartaihub.app" : "db.smartaihub.app") || policy.port !== (staging ? 5432 : 5433) ||
       policy.expiresAt !== node.expiresAt || Date.parse(policy.expiresAt) - now > 600_000)
     throw Error("APPLICATION_DATABASE_POLICY_DENIED");
   return policy;

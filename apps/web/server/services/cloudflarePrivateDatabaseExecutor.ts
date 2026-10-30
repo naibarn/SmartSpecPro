@@ -14,7 +14,7 @@ import { PRIVATE_DATABASE_CONTRACT, PRIVATE_DATABASE_JOB, certificateDigest, pri
   type PrivateDatabaseGrant, type PrivateDatabasePlan } from "./cloudflarePrivateDatabaseContract";
 import { PrivateDatabaseError, privateDatabaseCheckpointSchema, provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } from "./cloudflarePrivateDatabaseTransport";
 
-const inputKey = (scope: DeploymentTargetIdentity, digest: string) =>
+export const privateDatabaseInputKey = (scope: DeploymentTargetIdentity, digest: string) =>
   createHash("sha256").update(`${nativeProvisionCredentialRef(scope)}|${digest}`).digest("hex");
 
 /** Server-only certificate input. Database/API credentials never enter job input/output. */
@@ -25,7 +25,7 @@ export async function savePrivateDatabaseCertificate(db: DrizzleDB, input: {
   const cert = new X509Certificate(input.caCertificate);
   if (!cert.ca || certificateDigest(cert.raw) !== plan.caSha256 || !Number.isSafeInteger(input.actorUserId) || input.actorUserId <= 0)
     throw new PrivateDatabaseError("PRIVATE_DATABASE_CERTIFICATE_INPUT_DENIED");
-  const key = inputKey(input.identity, digest);
+  const key = privateDatabaseInputKey(input.identity, digest);
   await db.transaction(async tx => {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
     const where = and(eq(systemSettings.category, "cloudflare_private_database_inputs"), eq(systemSettings.key, key));
@@ -84,7 +84,7 @@ export function createCloudflarePrivateDatabaseRuntime(options: { fetchImpl?: ty
     },
     async certificate(g) {
       const scope = { tenantId: g.tenantId, projectId: g.projectId, provider: "cloudflare", environment: "staging" };
-      const rows = await db.select().from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_private_database_inputs"), eq(systemSettings.key, inputKey(scope, g.planDigest)))).limit(2);
+      const rows = await db.select().from(systemSettings).where(and(eq(systemSettings.category, "cloudflare_private_database_inputs"), eq(systemSettings.key, privateDatabaseInputKey(scope, g.planDigest)))).limit(2);
       if (rows.length !== 1 || !rows[0].isSensitive || rows[0].updatedBy !== g.requesterUserId || !rows[0].value) throw new PrivateDatabaseError("PRIVATE_DATABASE_CERTIFICATE_INPUT_DENIED");
       let value: any;
       try { value = JSON.parse(decrypt(rows[0].value)); } catch { throw new PrivateDatabaseError("PRIVATE_DATABASE_CERTIFICATE_INPUT_DENIED"); }

@@ -77,6 +77,9 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
       Boolean(settings.applicationHttp && !namespaceOnly) !== Boolean(secrets.applicationHttp) ||
       Boolean((settings.applicationHttp && !namespaceOnly) || settings.ingressMode) !== Boolean(secrets.applicationCanaryToken) ||
       (settings.applicationHttpPhase && (settings.applicationHttp?.traffic !== undefined || settings.applicationHttp?.realtime !== undefined)) ||
+      (secrets.applicationHttp?.node.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT === "private-vpc-websocket-v1" &&
+        (settings.applicationHttp?.traffic !== "staging-full-http-v1" ||
+          !settings.nativeResources?.privateDatabase || settings.nativeResources.privateDatabase.plan.databaseName !== "smartspec")) ||
       (settings.applicationHttp && (settings.mediaProbe || Date.parse(settings.applicationHttp.expiresAt) > Date.parse(settings.expiresAt))) ||
       (settings.runnerReleaseCatalog && !settings.nativeResources?.privateDatabase?.plan.publicRunnerCatalogSourceJobId)) {
     throw new Error("CLOUDFLARE_WORKFLOW_CONFIGURATION_DENIED");
@@ -96,6 +99,20 @@ export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersion
       { name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
       { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
+    ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase &&
+      value.secrets.applicationHttp?.node.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT === "private-vpc-websocket-v1" ? (() => {
+        if (value.descriptor.environment !== "staging") throw new Error("CLOUDFLARE_STAGING_DATABASE_NETWORK_REQUIRED");
+        const database = value.descriptor.nativeResources?.privateDatabase;
+        if (!database || database.plan.databaseName !== "smartspec") throw new Error("CLOUDFLARE_STAGING_DATABASE_NETWORK_REQUIRED");
+        const policy = { transport: "private-vpc-websocket-v1", environment: "staging", targetId: value.descriptor.targetId,
+          configurationRef: value.configurationRef, namespace: value.descriptor.applicationHttp!.namespace,
+          tunnelId: database.plan.tunnelId, hostname: database.plan.hostname, port: 5432,
+          expiresAt: value.descriptor.applicationHttp!.expiresAt };
+        return [
+          { name: "CLOUDFLARE_APPLICATION_DATABASE_POLICY", type: "plain_text", text: JSON.stringify(policy) },
+          { name: "DATABASE_NETWORK", type: "vpc_network", tunnel_id: database.plan.tunnelId },
+        ];
+      })() : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.runnerReleaseCatalog ? [
       { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },
@@ -133,11 +150,13 @@ export function assertCloudflareWorkflowVersionBindings(actual: unknown, value: 
   if (!Array.isArray(actual) || expected.some(binding => {
     const matches = actual.filter(item => item?.name === binding.name);
     return matches.length !== 1 || matches[0].type !== binding.type ||
-      (binding.type === "plain_text" && matches[0].text !== binding.text);
+      (binding.type === "plain_text" && matches[0].text !== binding.text) ||
+      (binding.type === "vpc_network" && matches[0].tunnel_id !== binding.tunnel_id);
   }) || actual.some(binding => (binding?.name?.startsWith("CLOUDFLARE_RUNNER_RELEASE_") || binding?.name === "CLOUDFLARE_WORKFLOW_DATABASE" || binding?.name === "CLOUDFLARE_MEDIA_PROBE" || binding?.name === "CLOUDFLARE_CONTAINER_POLICY" || binding?.name === "CLOUDFLARE_RUNNER_IMAGE_REF" ||
     binding?.name?.startsWith("CLOUDFLARE_NODE_HTTP_") || binding?.name?.startsWith("CLOUDFLARE_PYTHON_HTTP_") ||
     binding?.name === "CLOUDFLARE_APPLICATION_CANARY_TOKEN" ||
     binding?.name === "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC" || binding?.name === "CLOUDFLARE_INGRESS_MODE" ||
+    binding?.name === "CLOUDFLARE_APPLICATION_DATABASE_POLICY" || binding?.name === "DATABASE_NETWORK" ||
     binding?.name === "CLOUDFLARE_CONTAINER_REALTIME_ROUTES" || binding?.name === "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS" ||
     binding?.name?.startsWith("CLOUDFLARE_RETENTION_") || binding?.name === "PLATFORM_EDGE_TOKEN") &&
     !expected.some(item => item.name === binding.name))) throw new Error("CLOUDFLARE_WORKFLOW_VERSION_BINDINGS_MISMATCH");

@@ -1906,8 +1906,10 @@ export default function AdminDeploymentTargets() {
                 const configurationVerified = config?.status === "STORED" &&
                   (stagingPreparationProfile === "full-application-http" || Boolean(config?.descriptor?.nativeResources?.privateDatabase));
                 const applicationPreparation = config?.applicationPreparation;
-                const fullHttpInputsAvailable = applicationPreparation?.imageReceipts === "VERIFIED" &&
-                  applicationPreparation.encryptedApplicationSecrets === "STORED";
+                // Runtime secrets are resolved and encrypted by the existing
+                // server-side Staging preparation operation; the browser only
+                // needs to know that the immutable Node/Python image pair exists.
+                const fullHttpInputsAvailable = applicationPreparation?.imageReceipts === "VERIFIED";
                 const selectedActionNeeded = stagingPreparationProfile === "full-application-http"
                   ? applicationPreparation?.phase !== "FULL_HTTP" : activationRequired;
               return <VStack gap={2}>
@@ -1924,9 +1926,9 @@ export default function AdminDeploymentTargets() {
                       <SelectItem value="full-application-http">FULL_APPLICATION_HTTP · Node + Python + HTTP</SelectItem>
                     </SelectContent>
                   </Select>
-                  {stagingPreparationProfile === "full-application-http" && !fullHttpInputsAvailable ? <p role="alert"><code>STAGING_HTTP_CANDIDATE_INPUTS_MISSING</code> · {text(
-                    "The saved configuration does not have both a verified image pair and encrypted application secrets. Resolve the existing references before preparing this candidate.",
-                    "configuration ที่บันทึกไว้ไม่มีทั้ง image pair ที่ตรวจสอบแล้วและ application secret ที่เข้ารหัส ต้องแก้ reference เดิมให้ครบก่อนเตรียม candidate",
+                  {stagingPreparationProfile === "full-application-http" && !fullHttpInputsAvailable ? <p role="alert"><code>STAGING_HTTP_IMAGE_RECEIPTS_REQUIRED</code> · {text(
+                    "A verified Node/Python image pair is required. The server resolves application secrets from its protected runtime and stores them encrypted during preparation.",
+                    "ต้องมี image pair Node/Python ที่ตรวจสอบแล้ว ระบบจะ resolve application secret จาก runtime ที่ป้องกันไว้และบันทึกแบบเข้ารหัสระหว่างเตรียมการ",
                   )}</p> : null}
                   {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
                     <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
@@ -2147,7 +2149,7 @@ export default function AdminDeploymentTargets() {
                         ? text("Prepare Full Application HTTP for Staging", "เตรียม Full Application HTTP สำหรับ Staging")
                         : text("Prepare Staging control-plane profile", "เตรียม profile ของ Staging control plane"),
                       description: stagingPreparationProfile === "full-application-http"
-                        ? text("Save a new immutable Staging configuration using the verified Node/Python image receipts and already encrypted application secrets. This binds both Containers and staging-full-http-v1 to the existing Staging Worker. It does not change Production traffic.", "บันทึก Staging configuration แบบ immutable โดยใช้ image receipt Node/Python ที่ตรวจแล้วและ application secret ที่เข้ารหัสอยู่ ผูก Container ทั้งสองกับ staging-full-http-v1 บน Worker Staging เดิม โดยไม่เปลี่ยน Production traffic")
+                        ? text("Resolve the allowlisted application runtime values and existing read-only Staging database role on the server, then store a new immutable encrypted configuration with the verified Node/Python image receipts. This binds both Containers and staging-full-http-v1 to the existing Staging Worker. It does not change Production traffic.", "ให้ server resolve runtime value ที่อนุญาตและ read-only database role ของ Staging ที่มีอยู่ แล้วบันทึก configuration แบบ immutable และเข้ารหัสด้วย image receipt Node/Python ที่ตรวจแล้ว เพื่อผูก Container ทั้งสองกับ staging-full-http-v1 บน Worker Staging เดิม โดยไม่เปลี่ยน Production traffic")
                         : text("Save a new immutable Queue/control-plane Staging configuration and securely reuse or generate its internal secrets. This does not deploy a Worker, change DNS/routes, or affect Production traffic.", "บันทึก Queue/control-plane Staging config แบบ immutable และใช้หรือสร้าง secret ภายในอย่างปลอดภัย ขั้นตอนนี้ไม่ deploy Worker ไม่เปลี่ยน DNS/route และไม่กระทบ Production traffic"),
                       confirmLabel: stagingPreparationProfile === "full-application-http" ? text("Prepare Full HTTP candidate", "ยืนยันเตรียม Full HTTP candidate") : text("Prepare Staging", "ยืนยันเตรียม Staging"),
                       run: () => activateStagingProfile.mutateAsync({ tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: configRef,

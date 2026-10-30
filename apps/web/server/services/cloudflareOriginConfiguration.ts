@@ -11,6 +11,7 @@ import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings, httpA
 import { resolveVerifiedHttpImagePair, HttpPublishedPairRequired } from "./cloudflareHttpPublishedPair";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { getStagingApplicationPreparation } from "./cloudflareStagingApplicationPreparation";
+import { resolveStagingApplicationSecrets } from "./cloudflareStagingApplicationSecrets";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "./cloudflareOriginContracts";
@@ -216,21 +217,6 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
     if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) <= Date.now()) denied();
     const previous = stored.descriptor;
     if (input.profile === "full-application-http") {
-      const applicationSecrets = stored.secrets.applicationHttp;
-      if (!applicationSecrets) throw new Error("STAGING_HTTP_APPLICATION_SECRETS_NOT_CONFIGURED");
-      const databaseUrls = [applicationSecrets.node.DATABASE_URL, applicationSecrets.python.DATABASE_URL];
-      if (databaseUrls.some(value => !value)) throw new Error("STAGING_HTTP_DATABASE_REFERENCE_NOT_CONFIGURED");
-      try {
-        const parsed = databaseUrls.map(value => new URL(value!));
-        if (parsed.some(value => value.pathname !== "/smartspec" || !value.username || !value.password ||
-            !["postgres:", "postgresql:", "postgresql+asyncpg:"].includes(value.protocol)) ||
-            parsed[0]!.hostname !== parsed[1]!.hostname || parsed[0]!.port !== parsed[1]!.port) {
-          throw new Error("STAGING_HTTP_DATABASE_REFERENCE_INVALID");
-        }
-      } catch (error) {
-        if (error instanceof Error && error.message === "STAGING_HTTP_DATABASE_REFERENCE_INVALID") throw error;
-        throw new Error("STAGING_HTTP_DATABASE_REFERENCE_INVALID");
-      }
       const published = await resolveVerifiedHttpImagePair(tx as unknown as DrizzleDB, { ...input.identity, actorUserId: input.actorUserId });
       if (!published.pair) {
         if (published.diagnostics.length) throw new Error(published.diagnostics[0]!.code);
@@ -258,13 +244,20 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
         hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic", startupDiagnostics: "container-logs",
       };
       validateHttpApplicationSettings(applicationHttp, { ...input.identity, accountRef: target.accountRef }, issuedAt.getTime());
+      // Resolve the allowlisted app environment and the actor-owned Staging
+      // read-only DB role inside the existing Owner preparation operation.
+      // Plaintext stays in this process and is persisted only by encrypt() below.
+      const resolvedRuntime = await resolveStagingApplicationSecrets({ db: tx as unknown as DrizzleDB, identity: input.identity,
+        actorUserId: input.actorUserId, applicationHttp, configurationRef: input.configurationRef });
+      const applicationSecrets = resolvedRuntime.secrets;
       const { workflowRuntimeToken: _workflowRuntimeToken, controlPlaneToken: _controlPlaneToken, ...applicationBaseSecrets } = stored.secrets;
-      const secrets = cloudflareOriginSecretsSchema.parse({ ...applicationBaseSecrets, applicationHttp,
+      const secrets = cloudflareOriginSecretsSchema.parse({ ...applicationBaseSecrets, applicationHttp: applicationSecrets,
         applicationCanaryToken: stored.secrets.applicationCanaryToken ?? randomBytes(32).toString("hex") });
       const settings = cloudflareOriginSettingsSchema.parse({
         origin: previous.origin, allowedPublicOrigins: previous.allowedPublicOrigins,
         accessApplicationId: previous.accessApplicationId, accessTeamName: previous.accessTeamName,
         accessAudience: previous.accessAudience, expiresAt: previous.expiresAt,
+        ...(previous.nativeResources ? { nativeResources: previous.nativeResources } : {}),
         applicationHttp,
       });
       assertCloudflareWorkflowConfiguration(settings, secrets);
@@ -287,7 +280,8 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
       if (rebound.length !== 1) denied();
       return { status: "STORED_AND_BOUND" as const, profile: "FULL_APPLICATION_HTTP" as const, configurationRef,
         configurationDigest: digest(descriptor), descriptor, imagePair: { submissionId: published.pair.submissionId,
-        sourceSha: published.pair.sourceSha, verified: true as const }, deploymentAuthorized: false as const };
+        sourceSha: published.pair.sourceSha, verified: true as const }, secretResolution: resolvedRuntime.safeReceipt,
+        deploymentAuthorized: false as const };
     }
     const needsRuntimeSecrets = !stored.secrets.workflowRuntimeToken || !stored.secrets.controlPlaneToken;
     const suppliedAnyRuntimeSecret = Boolean(input.workflowRuntimeToken || input.controlPlaneToken);

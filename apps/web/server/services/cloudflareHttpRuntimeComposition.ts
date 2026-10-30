@@ -54,7 +54,8 @@ export function composeHttpRuntime(input: {
   Object.assign(python, common, { DATABASE_URL: address.href.replace("postgresql:", "postgresql+asyncpg:"),
     DATABASE_POOL_SIZE: "2", DATABASE_MAX_OVERFLOW: "0", SMARTSPEC_USE_WEB_GATEWAY: "true", LOG_LEVEL: "INFO" });
   const secrets = cloudflareHttpApplicationSecretsSchema.parse({ node, python });
-  const policy = { transport: network.transport, configurationRef: input.configurationRef, namespace: settings.namespace,
+  const policy = { transport: network.transport, environment: "production" as const, targetId: "smartspec-cloudflare-runtime" as const,
+    configurationRef: input.configurationRef, namespace: settings.namespace,
     tunnelId: network.tunnelId, hostname: network.hostname, port: network.port, expiresAt: settings.expiresAt };
   const bindings = [...httpApplicationVersionBindings(settings, { ...scope, configurationRef: input.configurationRef }, secrets),
     { name: "CLOUDFLARE_ENVIRONMENT", type: "plain_text", text: "production" },
