@@ -17,7 +17,7 @@ const secrets = (applicationHttp?: CloudflareOriginVersionBindings["secrets"]["a
 } as CloudflareOriginVersionBindings["secrets"]);
 
 describe("Staging Full Application preparation projection", () => {
-  it("keeps namespace-only configuration compatible and reports the exact missing app/database authority", () => {
+  it("keeps namespace-only configuration blocked by missing HTTP runtime fields, while reporting DB acceptance separately", () => {
     const value = getStagingApplicationPreparation(descriptor({
       applicationHttpPhase: "namespace-only",
       applicationHttp: { mode: "private-canary", namespace: "smartspec-staging-aaaaaaaaaaaa", sourceSha: "b".repeat(40),
@@ -30,14 +30,14 @@ describe("Staging Full Application preparation projection", () => {
     }), secrets({ node: { CONTROL_PLANE_API_KEY: "must-never-be-returned-this-is-secret" }, python: {} }), `cf-origin:${"1".repeat(64)}`);
     expect(value.phase).toBe("NAMESPACE_ONLY");
     expect(value.candidateStatus).toBe("BLOCKED");
-    expect(value.databaseAuthority).toMatchObject({ code: "STAGING_DB_AUTHORITY_MISSING", status: "MISSING",
+    expect(value.databaseAuthority).toMatchObject({ code: "STAGING_DB_WRITE_ACCEPTANCE_NOT_VERIFIED", status: "NOT_VERIFIED",
       existingRoleAccess: "READ_ONLY_PROBE_ONLY", host: "db-staging.smartaihub.app", databaseName: "staging_app" });
     expect(value.missingRuntimeFields).toContain("CLOUDFLARE_APPLICATION_HTTP_TRAFFIC");
     expect(value.missingRuntimeFields).toContain("NODE_HTTP");
     expect(JSON.stringify(value)).not.toContain("must-never-be-returned-this-is-secret");
   });
 
-  it("does not call an otherwise complete Full HTTP configuration deployable without database authority", () => {
+  it("recognizes complete runtime configuration without claiming DB acceptance or deployment", () => {
     const base = descriptor(), namespace = httpApplicationNamespace(base.tenantId, base.projectId, "staging");
     base.applicationHttp = { mode: "private-canary", namespace, sourceSha: "b".repeat(40), traffic: "staging-full-http-v1",
       node: { provisionJobId: "00000000-0000-4000-8000-000000000003", planDigest: "c".repeat(64), image: `registry.cloudflare.com/${base.accountRef}/${namespace}-node-http@sha256:${"d".repeat(64)}` },
@@ -46,8 +46,9 @@ describe("Staging Full Application preparation projection", () => {
       maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic" };
     const value = getStagingApplicationPreparation(base, secrets({ node: { CONTROL_PLANE_API_KEY: "fixture-secret-not-returned" }, python: {} }), `cf-origin:${"2".repeat(64)}`);
     expect(value.phase).toBe("FULL_HTTP");
-    expect(value.candidateStatus).toBe("BLOCKED");
-    expect(value.databaseAuthority.code).toBe("STAGING_DB_AUTHORITY_MISSING");
+    expect(value.candidateStatus).toBe("RUNTIME_CONFIGURED");
+    expect(value.databaseAuthority.code).toBe("STAGING_DB_WRITE_ACCEPTANCE_NOT_VERIFIED");
+    expect(value.databaseAuthority.status).toBe("NOT_VERIFIED");
     expect(value.missingRuntimeFields).toEqual([]);
     expect(value.deploymentAuthorized).toBe(false);
     expect(JSON.stringify(value)).not.toContain("fixture-secret-not-returned");

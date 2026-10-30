@@ -5,7 +5,9 @@ import { privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
 type OriginSecrets = CloudflareOriginVersionBindings["secrets"];
 
 /** Safe Admin projection of the existing Staging config. It never returns
- * secret material and deliberately does not imply a deployable candidate. */
+ * secret material. Container startup and read-only probes do not depend on
+ * Staging database write authority; database acceptance remains separately
+ * unverified until the runtime proves its actual connection and safe writes. */
 export function getStagingApplicationPreparation(descriptor: CloudflareOriginDescriptor, secrets: OriginSecrets, configurationRef: string) {
   const application = descriptor.applicationHttp;
   const namespaceOnly = descriptor.applicationHttpPhase === "namespace-only";
@@ -24,19 +26,19 @@ export function getStagingApplicationPreparation(descriptor: CloudflareOriginDes
     phase: !application ? "NOT_CONFIGURED" as const : namespaceOnly ? "NAMESPACE_ONLY" as const
       : fullHttp ? "FULL_HTTP" as const : "PRIVATE_CANARY" as const,
     sourceConfigurationRef: configurationRef,
-    candidateStatus: "BLOCKED" as const,
+    candidateStatus: (missingRuntimeFields.length === 0 ? "RUNTIME_CONFIGURED" : "BLOCKED") as "RUNTIME_CONFIGURED" | "BLOCKED",
     missingRuntimeFields,
     imageReceipts: application ? "VERIFIED" as const : "MISSING" as const,
     encryptedApplicationSecrets: applicationSecretsConfigured ? "STORED" as const : "MISSING" as const,
     containerBindings: application && !namespaceOnly ? "GENERATED_FROM_IMMUTABLE_CONFIGURATION" as const : "NOT_GENERATED" as const,
     databaseAuthority: {
-      status: "MISSING" as const,
-      code: "STAGING_DB_AUTHORITY_MISSING" as const,
+      status: "NOT_VERIFIED" as const,
+      code: "STAGING_DB_WRITE_ACCEPTANCE_NOT_VERIFIED" as const,
       existingRoleAccess: privateDatabase ? "READ_ONLY_PROBE_ONLY" as const : "NO_VERIFIED_BINDING" as const,
       ...(privateDatabase ? { host: privateDatabase.plan.hostname, databaseName: privateDatabase.plan.databaseName,
         readOnlyProbeRole: privateDatabaseRole(privateDatabase.plan.namespace) } : {}),
-      requiredPermissions: ["CONNECT", "SELECT/INSERT/UPDATE/DELETE on reviewed application tables", "USAGE/SELECT on required sequences"],
-      excludedPermissions: ["DDL", "OWNERSHIP", "ROLE ADMIN", "RLS BYPASS", "Production database access"],
+      requiredPermissions: ["Verify actual database identity and read access before database-dependent acceptance", "Verify reviewed write paths in an isolated test environment before accepting writes"],
+      excludedPermissions: ["No writes to an unverified target", "DDL", "OWNERSHIP", "ROLE ADMIN", "RLS BYPASS"],
     },
     deploymentAuthorized: false as const,
   };

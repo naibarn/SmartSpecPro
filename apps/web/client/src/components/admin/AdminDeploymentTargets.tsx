@@ -1828,7 +1828,7 @@ export default function AdminDeploymentTargets() {
           {stagingOriginConfiguration.data?.applicationPreparation ? (() => {
             const preparation = stagingOriginConfiguration.data.applicationPreparation;
             return <VStack gap={1} role="group" aria-label={text("Full Application Staging preparation", "เตรียม Staging สำหรับแอปเต็มรูปแบบ")}>
-              <h3>{text("Full Application Staging candidate", "Candidate Staging สำหรับแอปเต็มรูปแบบ")}</h3>
+              <h3>{text("Full Application Staging configuration", "การตั้งค่า Staging สำหรับแอปเต็มรูปแบบ")}</h3>
               <p><strong>{preparation.phase === "FULL_HTTP" ? text("FULL HTTP configuration", "ตั้งค่า FULL HTTP แล้ว")
                 : preparation.phase === "NAMESPACE_ONLY" ? text("NAMESPACE ONLY — not deployable as the application", "มีเฉพาะ NAMESPACE — ยัง deploy แอปไม่ได้")
                   : preparation.phase === "PRIVATE_CANARY" ? text("Private canary configuration", "ตั้งค่าเฉพาะ private canary")
@@ -1837,11 +1837,11 @@ export default function AdminDeploymentTargets() {
                 · {text("Encrypted app secrets", "secret แอปที่เข้ารหัส")}: {preparation.encryptedApplicationSecrets}
                 · {text("Container bindings", "binding ของ Container")}: {preparation.containerBindings}</p>
               {preparation.missingRuntimeFields.length ? <p>{text("Missing runtime configuration", "ค่าตั้งค่า runtime ที่ยังขาด")}: <code>{preparation.missingRuntimeFields.join(", ")}</code></p> : null}
-              <VStack gap={0} role="alert" aria-label={text("Staging database authority required", "ต้องมีสิทธิ์ฐานข้อมูล Staging")}>
-                <p><strong><code>{preparation.databaseAuthority.code}</code></strong> · {text("Full Application preparation is blocked", "ยังเตรียม Full Application ไม่ได้")}</p>
-                {preparation.databaseAuthority.host ? <p>{text("Exact Staging resource", "resource Staging ที่ระบุ")}: <code>{preparation.databaseAuthority.host}/{preparation.databaseAuthority.databaseName}</code>
+              <VStack gap={0} role="status" aria-label={text("Staging database acceptance status", "สถานะตรวจรับฐานข้อมูล Staging")}>
+                <p><strong><code>{preparation.databaseAuthority.code}</code></strong> · {text("Database identity and write paths are not verified yet. This does not block independent Container startup or read-only health checks.", "ยังไม่ได้ตรวจยืนยันฐานข้อมูลและเส้นทางเขียนข้อมูล แต่ไม่ขวางการเริ่ม Container แยกหรือ health check แบบอ่านอย่างเดียว")}</p>
+                {preparation.databaseAuthority.host ? <p>{text("Previously configured probe target (identity not verified)", "เป้าหมาย probe ที่ตั้งค่าไว้เดิม (ยังไม่ยืนยัน identity)")}: <code>{preparation.databaseAuthority.host}/{preparation.databaseAuthority.databaseName}</code>
                   · {text("Current role", "role ปัจจุบัน")}: <code>{preparation.databaseAuthority.readOnlyProbeRole}</code> ({preparation.databaseAuthority.existingRoleAccess})</p> : null}
-                <p>{text("Required scoped grants", "สิทธิ์แบบจำกัดที่ต้องมี")}: {preparation.databaseAuthority.requiredPermissions.join("; ")}</p>
+                <p>{text("Required before database-dependent acceptance", "ต้องตรวจให้ผ่านก่อนตรวจรับส่วนฐานข้อมูล")}: {preparation.databaseAuthority.requiredPermissions.join("; ")}</p>
                 <p>{text("Must remain excluded", "ต้องไม่มีสิทธิ์ต่อไปนี้")}: {preparation.databaseAuthority.excludedPermissions.join("; ")}</p>
               </VStack>
               <p>{text("The current Prepare Staging action only prepares the existing control-plane/Queue profile. It does not create a Full HTTP candidate or deploy application traffic. No Production database credential is reused.",
