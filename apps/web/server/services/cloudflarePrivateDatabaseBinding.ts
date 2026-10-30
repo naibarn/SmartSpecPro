@@ -18,6 +18,9 @@ export const privateDatabaseBindingSchema = z.object({
     .strict().refine(value => value.sourceConfigurationRef === `cf-origin:${value.sourceConfigurationDigest}`).optional(),
 }).strict().refine(value => value.planDigest === privateDatabasePlanDigest(value.plan));
 export type PrivateDatabaseBinding = z.infer<typeof privateDatabaseBindingSchema>;
+export function privateDatabaseEffectiveLeaseExpiresAt(descriptor: Pick<PrivateDatabaseBinding, "plan" | "leaseRenewal">): string {
+  return descriptor.leaseRenewal?.leaseExpiresAt ?? descriptor.plan.configurationExpiresAt;
+}
 const ids = ["hyperdriveId", "caId", "accessApplicationId", "accessPolicyId", "serviceTokenId", "dnsRecordId"] as const;
 function denied(code: string, diagnosticDetail?: string): never {
   throw Object.assign(new Error(code), { diagnosticCode: code, class: "permanent", ...(diagnosticDetail ? { diagnosticDetail } : {}) });
@@ -25,7 +28,7 @@ function denied(code: string, diagnosticDetail?: string): never {
 
 export function validatePrivateDatabaseBinding(value: PrivateDatabaseBinding, scope: { tenantId: string; projectId: string; expiresAt: string }, now = Date.now()) {
   const descriptor = privateDatabaseBindingSchema.parse(value);
-  const leaseExpiresAt = descriptor.leaseRenewal?.leaseExpiresAt ?? descriptor.plan.configurationExpiresAt;
+  const leaseExpiresAt = privateDatabaseEffectiveLeaseExpiresAt(descriptor);
   if (descriptor.plan.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId)
     // A renewal job has its own immutable operation-plan digest. It must not be
     // compared with the source database provisioning-plan digest above; the

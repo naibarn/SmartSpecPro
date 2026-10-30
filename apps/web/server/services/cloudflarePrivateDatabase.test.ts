@@ -19,7 +19,7 @@ import { provisionCloudflarePrivateDatabase, type PrivateDatabaseCheckpoint } fr
 import { createCloudflarePrivateDatabaseExecutor } from "./cloudflarePrivateDatabaseExecutor";
 import { redactJobPayload, validateJobDefinition } from "./jobCanonicalization";
 import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt, validatePrivateDatabaseBinding,
-  refreshPrivateDatabaseServiceToken, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
+  privateDatabaseEffectiveLeaseExpiresAt, refreshPrivateDatabaseServiceToken, verifyPrivateDatabaseProviderResources } from "./cloudflarePrivateDatabaseBinding";
 import { assertNativeWorkerBindings, nativeWorkerBindings } from "./cloudflareNativeBindingDescriptor";
 import { nativeProvisionPlanDigest } from "./cloudflareNativeProvisionContract";
 import { PUBLIC_RUNNER_RELEASE_PREDICATE as backendPredicate, PUBLIC_RUNNER_RELEASE_SELECT as backendSelect,
@@ -262,6 +262,8 @@ describe("private PostgreSQL staging provisioning", () => {
     const renewed = { ...descriptor, leaseRenewal: { jobId: renewalJobId, leaseExpiresAt: plan.leaseExpiresAt, planDigest,
       sourceConfigurationRef: configurationRef, sourceConfigurationDigest: configurationDigest } };
     expect(planDigest).not.toBe(descriptor.planDigest);
+    expect(privateDatabaseEffectiveLeaseExpiresAt(descriptor)).toBe(descriptor.plan.configurationExpiresAt);
+    expect(privateDatabaseEffectiveLeaseExpiresAt(renewed)).toBe(plan.leaseExpiresAt);
     expect(validatePrivateDatabaseBinding(renewed, { tenantId: f.grant.tenantId, projectId: f.grant.projectId,
       expiresAt: plan.leaseExpiresAt })).toEqual(renewed);
     const receipt = { id: renewalJobId, tenantId: f.grant.tenantId, requestedByUserId: f.grant.requesterUserId,

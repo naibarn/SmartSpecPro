@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { DrizzleDB } from "../db";
 import { providerDeploymentTargets, systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
-import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt } from "./cloudflarePrivateDatabaseBinding";
+import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt, privateDatabaseEffectiveLeaseExpiresAt } from "./cloudflarePrivateDatabaseBinding";
 import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB } from "./cloudflarePrivateDatabaseContract";
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings, httpApplicationNamespace,
   httpApplicationVersionBindings, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
@@ -252,12 +252,17 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
       // authenticated Owner operation. The read-only staging probe role is not
       // suitable for application DML. Role DDL and the encrypted config commit
       // share the outer transaction, so a failed profile never leaves a new login.
-      const privateDatabasePlan = previous.nativeResources?.privateDatabase?.plan;
-      if (!privateDatabasePlan || privateDatabasePlan.databaseName !== "smartspec")
+      const privateDatabase = previous.nativeResources?.privateDatabase;
+      const privateDatabasePlan = privateDatabase?.plan;
+      if (!privateDatabase || !privateDatabasePlan || privateDatabasePlan.databaseName !== "smartspec")
         throw new Error("STAGING_APPLICATION_DATABASE_IDENTITY_REQUIRED");
       const databaseName = privateDatabasePlan.databaseName;
+      // A finalized renewal is an immutable receipt layered over the original
+      // provisioning plan. Use its verified effective lease, not the source
+      // plan's historical expiry, when bounding the application role.
+      const databaseLeaseExpiresAt = privateDatabaseEffectiveLeaseExpiresAt(privateDatabase);
       const roleExpiresAt = Math.min(Date.now() + 30 * 86_400_000, Date.parse(previous.expiresAt),
-        Date.parse(privateDatabasePlan.configurationExpiresAt));
+        Date.parse(databaseLeaseExpiresAt));
       if (roleExpiresAt <= Date.now() + 7 * 86_400_000) throw new Error("STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT");
       const relations = await planHttpApplicationRelations(tx as unknown as DrizzleDB);
       const rolePlan = { tenantId: input.identity.tenantId, projectId: input.identity.projectId, databaseName,
