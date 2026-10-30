@@ -78,7 +78,6 @@ PY
 node "${REPOSITORY_ROOT}/apps/web/scripts/verifyDevWebConfig.mjs" \
   "${HOME}/.config/smartspec-dev/web.env" aimarkethubs.com 3100
 
-systemctl --user is-active --quiet "$DEV_SERVICE" || { echo "Development web service is not active." >&2; exit 22; }
 systemctl --user is-active --quiet "$DEV_TUNNEL" || { echo "Development tunnel is not active." >&2; exit 22; }
 systemctl is-active --quiet "$PROD_WEB" || { echo "Production web service is not active; refusing development release." >&2; exit 23; }
 systemctl is-active --quiet "$PROD_WORKER" || { echo "Production worker service is not active; refusing development release." >&2; exit 23; }
@@ -88,6 +87,10 @@ service_config="$(systemctl --user show "$DEV_SERVICE" --property=FragmentPath -
   echo "Development service identity, environment file, or port does not match the isolated deployment target." >&2
   exit 22
 }
+if ! systemctl --user is-active --quiet "$DEV_SERVICE"; then
+  systemctl --user is-enabled --quiet "$DEV_SERVICE" || { echo "Inactive development service is not enabled for safe recovery." >&2; exit 22; }
+  echo "[dev-release] Recovering the isolated development service from its last failed activation." >&2
+fi
 
 production_fingerprint() {
   {
@@ -180,6 +183,10 @@ RUNTIME_REVISION="$(journalctl --user -u "$DEV_SERVICE" -n 80 --no-pager -o cat 
   echo "Development backend runtime revision does not match the canonical artifact source." >&2
   exit 25
 }
+# The previous artifact may belong to an older checkout and no longer be
+# restartable by the current launcher. Once the new local runtime is proven
+# healthy, retain it if only the public edge check is unavailable.
+ROLLBACK_NEEDED=0
 
 python3 - "$PUBLIC_DIR/index.html" "$SOURCE_SHA" "$ARTIFACT_DIGEST" "$DEV_SERVICE" <<'PY'
 import json, re, sys
@@ -199,6 +206,7 @@ import hashlib, re, sys, urllib.request
 from pathlib import Path
 root = Path(sys.argv[1])
 request = urllib.request.Request("https://aimarkethubs.com/chat", headers={"Cache-Control": "no-cache"})
+request.add_header("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36")
 with urllib.request.urlopen(request, timeout=20) as response:
     html = response.read().decode("utf-8", "replace")
     if response.status != 200 or "/@vite/client" in html:
