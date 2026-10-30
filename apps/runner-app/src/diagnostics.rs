@@ -1570,6 +1570,18 @@ impl RotatingControlTransport {
     }
 
     fn refresh_credentials_from_store(&mut self) -> Result<bool, TransportError> {
+        self.refresh_credentials_from_store_inner(None)
+    }
+
+    fn refresh_credentials_after_rejection(&mut self) -> Result<bool, TransportError> {
+        let rejected_token = self.current_token.clone();
+        self.refresh_credentials_from_store_inner(Some(&rejected_token))
+    }
+
+    fn refresh_credentials_from_store_inner(
+        &mut self,
+        rejected_token: Option<&str>,
+    ) -> Result<bool, TransportError> {
         let (Some(data_root), Some(binding)) = (&self.data_root, &self.binding) else {
             return Ok(false);
         };
@@ -1594,14 +1606,20 @@ impl RotatingControlTransport {
         if !same_stored_connection_identity(binding, &latest) {
             return Err(TransportError::CredentialBindingMismatch);
         }
-        if !crate::connection::token_valid_for(&latest.control_token, 60) {
-            latest = match crate::connection::load_or_refresh_data_root(data_root) {
+        if rejected_token.is_some()
+            || !crate::connection::token_valid_for(&latest.control_token, 60)
+        {
+            latest = match if let Some(rejected_token) = rejected_token {
+                crate::connection::refresh_rejected_access_token(data_root, rejected_token)
+            } else {
+                crate::connection::load_or_refresh_data_root(data_root)
+            } {
                 Ok(Some(refreshed)) => refreshed,
                 Ok(None) => return Err(TransportError::CredentialStoreUnavailable),
                 Err(error) => {
-                    self.last_failure_code =
-                        Some(crate::connection::safe_refresh_error_code(&error));
-                    return Err(TransportError::CredentialInvalid);
+                    let safe_code = crate::connection::safe_refresh_error_code(&error);
+                    self.last_failure_code = Some(safe_code.clone());
+                    return Err(refresh_error_transport(&safe_code));
                 }
             };
             if !same_stored_connection_identity(binding, &latest) {
@@ -1653,6 +1671,27 @@ impl RotatingControlTransport {
         self.last_capability_error_code = None;
         self.wss_transport_recreated = true;
         Ok(true)
+    }
+
+    fn recover_rejected_access_token(&mut self) -> Result<bool, TransportError> {
+        match self.refresh_credentials_after_rejection() {
+            Ok(changed) => {
+                if changed {
+                    self.last_failure_code = None;
+                    self.last_failure_at = None;
+                }
+                self.publish_runtime_diagnostics();
+                Ok(changed)
+            }
+            Err(error) => {
+                self.last_failure_at = Some(current_time_iso());
+                if self.last_failure_code.is_none() {
+                    self.last_failure_code = Some(transport_error_code(error).to_owned());
+                }
+                self.publish_runtime_diagnostics();
+                Err(error)
+            }
+        }
     }
 
     fn publish_runtime_diagnostics(&self) {
@@ -1745,6 +1784,35 @@ fn transport_http_status(error: TransportError) -> Option<u16> {
     }
 }
 
+fn refresh_error_transport(safe_code: &str) -> TransportError {
+    if safe_code.starts_with("RUNNER_CONNECT_REQUEST_REJECTED_401")
+        || safe_code.starts_with("RUNNER_CONNECT_REQUEST_REJECTED_403")
+        || safe_code.starts_with("RUNNER_CONNECT_REQUEST_REJECTED_409")
+        || safe_code.contains("CREDENTIAL_EXPIRED")
+        || safe_code.contains("CREDENTIAL_REVOKED")
+        || safe_code.contains("SIGNATURE_INVALID")
+        || safe_code.contains("DEVICE_BINDING_MISMATCH")
+        || safe_code.contains("SESSION_MISMATCH")
+        || safe_code.contains("RUNNER_REVOKED")
+        || safe_code.contains("NOT_ENROLLED")
+        || safe_code.contains("SESSION_STALE")
+    {
+        TransportError::CredentialInvalid
+    } else if safe_code.starts_with("RUNNER_CONNECT_")
+        || safe_code == "RUNNER_REFRESH_SERVER_STATE_UNAVAILABLE"
+    {
+        TransportError::Unavailable
+    } else if safe_code == "RUNNER_CONNECTION_STORE_READ_FAILED"
+        || safe_code == "RUNNER_CONNECTION_STORE_CREATE_FAILED"
+        || safe_code == "RUNNER_CONNECTION_STORE_WRITE_FAILED"
+        || safe_code == "RUNNER_CONNECTION_STORE_REPLACE_FAILED"
+    {
+        TransportError::CredentialStoreUnavailable
+    } else {
+        TransportError::CredentialInvalid
+    }
+}
+
 impl ControlTransport for RotatingControlTransport {
     fn send_wss(&mut self, endpoint: &str, event: &Envelope) -> Result<AckState, TransportError> {
         self.refresh_credentials_if_changed()?;
@@ -1774,6 +1842,21 @@ impl ControlTransport for RotatingControlTransport {
         }
         let ack = match self.inner.send_wss(endpoint, event) {
             Ok(ack) => ack,
+            Err(TransportError::Unauthorized(401)) => match self.recover_rejected_access_token() {
+                Ok(true) => return Err(TransportError::Idle),
+                Ok(false) => return Err(TransportError::Unauthorized(401)),
+                Err(error) => {
+                    self.last_failure_code = Some(transport_error_code(error).to_owned());
+                    self.last_failure_at = Some(current_time_iso());
+                    if is_capability_publication {
+                        self.last_capability_http_status = Some(401);
+                        self.last_capability_error_code =
+                            Some(transport_error_code(error).to_owned());
+                    }
+                    self.publish_runtime_diagnostics();
+                    return Err(error);
+                }
+            },
             Err(error) => {
                 self.last_failure_code = Some(transport_error_code(error).to_owned());
                 self.last_failure_at = Some(current_time_iso());
@@ -1867,6 +1950,21 @@ impl ControlTransport for RotatingControlTransport {
                 self.publish_runtime_diagnostics();
                 Ok(ack)
             }
+            Err(TransportError::Unauthorized(401)) => match self.recover_rejected_access_token() {
+                Ok(true) => Err(TransportError::Idle),
+                Ok(false) => Err(TransportError::Unauthorized(401)),
+                Err(error) => {
+                    self.last_failure_code = Some(transport_error_code(error).to_owned());
+                    self.last_failure_at = Some(current_time_iso());
+                    if is_capability_publication {
+                        self.last_capability_http_status = Some(401);
+                        self.last_capability_error_code =
+                            Some(transport_error_code(error).to_owned());
+                    }
+                    self.publish_runtime_diagnostics();
+                    Err(error)
+                }
+            },
             Err(error) => {
                 self.last_failure_code = Some(transport_error_code(error).to_owned());
                 self.last_failure_at = Some(current_time_iso());
@@ -3564,17 +3662,41 @@ fn wait_for_control_retry(
 }
 
 fn control_retry_delay(refresh_interval: Duration, consecutive_failures: u32) -> Duration {
+    let mut random = [0_u8; 1];
+    let jitter_percent = if getrandom::fill(&mut random).is_ok() {
+        i16::from(random[0] % 41) - 20
+    } else {
+        0
+    };
+    control_retry_delay_with_jitter(refresh_interval, consecutive_failures, jitter_percent)
+}
+
+fn control_retry_delay_with_jitter(
+    refresh_interval: Duration,
+    consecutive_failures: u32,
+    jitter_percent: i16,
+) -> Duration {
     const FIRST_RETRY_SECONDS: u64 = 5;
     const MAX_RETRY_SECONDS: u64 = 300;
     let shift = consecutive_failures.saturating_sub(1).min(6);
-    let backoff_seconds = FIRST_RETRY_SECONDS
+    let base_seconds = FIRST_RETRY_SECONDS
         .saturating_mul(1_u64 << shift)
         .min(MAX_RETRY_SECONDS);
+    let adjusted = (i128::from(base_seconds) * i128::from(100 + jitter_percent) / 100)
+        .clamp(1, i128::from(MAX_RETRY_SECONDS)) as u64;
+    let backoff_seconds = adjusted;
     Duration::from_secs(backoff_seconds.min(refresh_interval.as_secs().max(1)))
 }
 
 fn runtime_error_reason(error: &str) -> &'static str {
-    if error.contains("CREDENTIAL_SESSION_BINDING_MISMATCH") {
+    if error.contains("UNSUPPORTED_RUNNER_CONTRACT")
+        || error.contains("RUNNER_UPGRADE_REQUIRED")
+        || error.contains("CONTROL_PLANE_TOO_OLD")
+        || error.contains("RUNNER_CONNECT_SCHEMA_INVALID")
+        || error.contains("RUNNER_TRANSPORT_PROTOCOL_ERROR")
+    {
+        "RUNNER_PROTOCOL_INCOMPATIBLE"
+    } else if error.contains("CREDENTIAL_SESSION_BINDING_MISMATCH") {
         "RUNNER_CONNECTION_REQUIRED"
     } else if error.contains("CREDENTIAL")
         || error.contains("ACCESS_TOKEN")
@@ -3598,7 +3720,11 @@ fn runtime_error_reason(error: &str) -> &'static str {
 
 #[cfg(test)]
 mod refresh_runtime_reason_tests {
-    use super::{control_retry_delay, runtime_error_reason, wait_for_control_retry};
+    use super::{
+        control_retry_delay, control_retry_delay_with_jitter, refresh_error_transport,
+        runtime_error_reason, wait_for_control_retry,
+    };
+    use crate::transport::TransportError;
     use std::sync::atomic::AtomicBool;
     use std::time::Duration;
 
@@ -3625,25 +3751,45 @@ mod refresh_runtime_reason_tests {
     #[test]
     fn control_reconnect_uses_bounded_backoff_and_resets_after_success() {
         let normal_refresh = Duration::from_secs(300);
-        assert_eq!(
-            control_retry_delay(normal_refresh, 1),
-            Duration::from_secs(5)
-        );
-        assert_eq!(
-            control_retry_delay(normal_refresh, 2),
-            Duration::from_secs(10)
-        );
-        assert_eq!(
-            control_retry_delay(normal_refresh, 3),
-            Duration::from_secs(20)
-        );
-        assert_eq!(
-            control_retry_delay(normal_refresh, 20),
-            Duration::from_secs(300)
-        );
+        assert!((4..=6).contains(&control_retry_delay(normal_refresh, 1).as_secs()));
+        assert!((8..=12).contains(&control_retry_delay(normal_refresh, 2).as_secs()));
+        assert!((16..=24).contains(&control_retry_delay(normal_refresh, 3).as_secs()));
+        assert!(control_retry_delay(normal_refresh, 20) <= Duration::from_secs(300));
         assert_eq!(
             control_retry_delay(Duration::from_secs(15), 20),
             Duration::from_secs(15)
+        );
+    }
+
+    #[test]
+    fn reconnect_jitter_is_bounded_and_protocol_mismatch_is_distinct() {
+        assert_eq!(
+            control_retry_delay_with_jitter(Duration::from_secs(300), 1, -20),
+            Duration::from_secs(4)
+        );
+        assert_eq!(
+            control_retry_delay_with_jitter(Duration::from_secs(300), 1, 20),
+            Duration::from_secs(6)
+        );
+        assert_eq!(
+            runtime_error_reason("UNSUPPORTED_RUNNER_CONTRACT"),
+            "RUNNER_PROTOCOL_INCOMPATIBLE"
+        );
+        assert_eq!(
+            runtime_error_reason("RUNNER_TRANSPORT_UNAVAILABLE"),
+            "RUNNER_CONNECTION_INTERRUPTED"
+        );
+        assert_eq!(
+            refresh_error_transport("RUNNER_REFRESH_CREDENTIAL_REVOKED"),
+            TransportError::CredentialInvalid
+        );
+        assert_eq!(
+            refresh_error_transport("RUNNER_CONNECT_REQUEST_REJECTED_503"),
+            TransportError::Unavailable
+        );
+        assert_eq!(
+            refresh_error_transport("RUNNER_CONNECTION_STORE_WRITE_FAILED"),
+            TransportError::CredentialStoreUnavailable
         );
     }
 
@@ -3677,6 +3823,7 @@ mod rotating_transport_tests {
     use rsa::pkcs8::DecodePublicKey;
     use rsa::signature::Verifier;
     use sha2::Sha256;
+    use std::io::{Read, Write};
     use std::net::TcpListener;
     use std::sync::{Arc, Mutex};
     use std::thread;
@@ -3942,6 +4089,130 @@ mod rotating_transport_tests {
         assert!(transport
             .last_control_plane_heartbeat_acknowledged_at_ms
             .is_some());
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn a_server_401_for_unexpired_access_token_rotates_and_reconnects_same_runner() {
+        let root = tempfile::tempdir().unwrap();
+        let old_token = token("jti-old");
+        let new_token = token("jti-new");
+        let mut saved = connection(old_token.clone());
+        saved.refresh_token = token("jti-refresh");
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        saved.server_url = format!("http://{}", listener.local_addr().unwrap());
+        let endpoint = format!(
+            "ws://{}/api/runners/control",
+            listener.local_addr().unwrap()
+        );
+        persist(root.path(), &saved);
+        let expected_new_token = new_token.clone();
+        let response_body = json!({
+            "controlToken": new_token,
+            "refreshToken": "rotated-refresh-token",
+            "runnerSessionId": "session-rotation-test"
+        })
+        .to_string();
+        let expected_old_token = old_token.clone();
+        let expected_refresh_token = saved.refresh_token.clone();
+        let server = thread::spawn(move || {
+            let (mut rejected_stream, _) = listener.accept().unwrap();
+            let mut request_buf = [0; 8192];
+            let length = rejected_stream.read(&mut request_buf).unwrap();
+            let request = String::from_utf8_lossy(&request_buf[..length]).to_ascii_lowercase();
+            assert!(request.starts_with("get /api/runners/control "));
+            assert!(request.contains(&format!(
+                "authorization: bearer {}",
+                expected_old_token.to_ascii_lowercase()
+            )));
+            rejected_stream
+                .write_all(
+                    b"HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                )
+                .unwrap();
+
+            let (mut refresh_stream, _) = listener.accept().unwrap();
+            let length = refresh_stream.read(&mut request_buf).unwrap();
+            let request = String::from_utf8_lossy(&request_buf[..length]).to_ascii_lowercase();
+            assert!(request.starts_with("post /api/runners/runner-rotation-test/access/refresh "));
+            assert!(request.contains(&format!(
+                "authorization: bearer {}",
+                expected_refresh_token.to_ascii_lowercase()
+            )));
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n{}",
+                response_body.len(), response_body
+            );
+            refresh_stream.write_all(response.as_bytes()).unwrap();
+
+            let (stream, _) = listener.accept().unwrap();
+            let mut socket = tungstenite::accept(stream).unwrap();
+            socket
+                .send(tungstenite::Message::Text(
+                    r#"{"ackState":"accepted"}"#.into(),
+                ))
+                .unwrap();
+            let _capabilities = socket.read().unwrap();
+            socket
+                .send(tungstenite::Message::Text(
+                    r#"{"ackState":"applied"}"#.into(),
+                ))
+                .unwrap();
+            let _heartbeat = socket.read().unwrap();
+            socket
+                .send(tungstenite::Message::Text(
+                    r#"{"ackState":"applied"}"#.into(),
+                ))
+                .unwrap();
+        });
+        let proof = DeviceProofSigner::from_material(
+            &crate::device_proof::DeviceProofMaterial {
+                device_id: saved.device_id.clone(),
+                machine_fingerprint: saved.machine_fingerprint.clone(),
+                public_key_pem: saved.public_key_pem.clone(),
+                private_key_pem: saved.private_key_pem.clone(),
+            },
+            &old_token,
+        )
+        .unwrap();
+        let native = NativeControlTransport::with_device_proof(
+            old_token.clone(),
+            Duration::from_secs(2),
+            Some(proof),
+        )
+        .unwrap();
+        let mut transport = RotatingControlTransport::new(
+            native,
+            Some(&saved),
+            root.path().to_str().unwrap(),
+            &old_token,
+        );
+
+        assert_eq!(
+            transport.send_wss(&endpoint, &capability_event()),
+            Err(TransportError::Idle)
+        );
+        assert_eq!(transport.current_token, expected_new_token);
+        assert_eq!(transport.credential_revision, 2);
+        assert_eq!(
+            transport.send_wss(&endpoint, &capability_event()),
+            Ok(AckState::Applied)
+        );
+        assert_eq!(
+            transport.send_wss(&endpoint, &heartbeat_event()),
+            Ok(AckState::Applied)
+        );
+        let persisted = crate::connection::load_connection(root.path().to_str().unwrap())
+            .unwrap()
+            .unwrap();
+        assert_eq!(persisted.runner_id, saved.runner_id);
+        assert_eq!(persisted.device_id, saved.device_id);
+        assert_eq!(persisted.runner_session_id, saved.runner_session_id);
+        assert_eq!(persisted.control_token, transport.current_token);
+        assert!(transport
+            .last_control_plane_heartbeat_acknowledged_at_ms
+            .is_some());
+        assert!(transport.last_capability_acknowledged_at.is_some());
         server.join().unwrap();
     }
 

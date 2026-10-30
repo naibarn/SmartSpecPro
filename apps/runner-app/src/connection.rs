@@ -10,11 +10,17 @@ use serde_json::json;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::{Mutex, OnceLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const CONNECTION_FILE_NAME: &str = "runner-connection.json";
 const MAX_RESPONSE_BYTES: usize = 128 * 1024;
 const MAX_PAIRING_ATTEMPTS: usize = 300;
+#[cfg(windows)]
+const WINDOWS_DPAPI_PREFIX: &[u8] = b"SAH-WIN-DPAPI-V1\0";
+static CREDENTIAL_REFRESH_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static CONNECTION_TEMP_SEQUENCE: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct StoredRunnerConnection {
@@ -166,9 +172,24 @@ pub fn load_connection(data_root: &str) -> Result<Option<StoredRunnerConnection>
         return Ok(None);
     }
     let bytes = fs::read(path).map_err(|_| "RUNNER_CONNECTION_STORE_READ_FAILED")?;
-    serde_json::from_slice(&bytes)
+    #[cfg(windows)]
+    let legacy_plaintext = !bytes.starts_with(WINDOWS_DPAPI_PREFIX);
+    #[cfg(windows)]
+    let bytes = if legacy_plaintext {
+        bytes
+    } else {
+        unprotect_windows_connection(&bytes[WINDOWS_DPAPI_PREFIX.len()..])?
+    };
+    let connection = serde_json::from_slice(&bytes)
         .map(Some)
-        .map_err(|_| "RUNNER_CONNECTION_STORE_INVALID".into())
+        .map_err(|_| "RUNNER_CONNECTION_STORE_INVALID".to_string())?;
+    #[cfg(windows)]
+    if legacy_plaintext {
+        if let Some(connection) = connection.as_ref() {
+            save_connection(data_root, connection)?;
+        }
+    }
+    Ok(connection)
 }
 
 fn save_connection(data_root: &str, connection: &StoredRunnerConnection) -> Result<(), String> {
@@ -176,12 +197,29 @@ fn save_connection(data_root: &str, connection: &StoredRunnerConnection) -> Resu
     fs::create_dir_all(root).map_err(|_| "RUNNER_CONNECTION_STORE_CREATE_FAILED")?;
     let path = connection_path(data_root);
     let temp = root.join(format!(
-        ".{CONNECTION_FILE_NAME}.tmp-{}",
-        std::process::id()
+        ".{CONNECTION_FILE_NAME}.tmp-{}-{}",
+        std::process::id(),
+        CONNECTION_TEMP_SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));
     let encoded =
         serde_json::to_vec(connection).map_err(|_| "RUNNER_CONNECTION_STORE_SERIALIZE_FAILED")?;
-    fs::write(&temp, encoded).map_err(|_| "RUNNER_CONNECTION_STORE_WRITE_FAILED")?;
+    #[cfg(windows)]
+    let encoded = {
+        let mut protected = WINDOWS_DPAPI_PREFIX.to_vec();
+        protected.extend_from_slice(&protect_windows_connection(&encoded)?);
+        protected
+    };
+    use std::io::Write as _;
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temp)
+        .map_err(|_| "RUNNER_CONNECTION_STORE_WRITE_FAILED")?;
+    file.write_all(&encoded)
+        .map_err(|_| "RUNNER_CONNECTION_STORE_WRITE_FAILED")?;
+    file.sync_all()
+        .map_err(|_| "RUNNER_CONNECTION_STORE_WRITE_FAILED")?;
+    drop(file);
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -189,10 +227,104 @@ fn save_connection(data_root: &str, connection: &StoredRunnerConnection) -> Resu
             .map_err(|_| "RUNNER_CONNECTION_STORE_PERMISSION_FAILED")?;
     }
     #[cfg(windows)]
-    if path.exists() {
-        fs::remove_file(&path).map_err(|_| "RUNNER_CONNECTION_STORE_REPLACE_FAILED")?;
+    {
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::Storage::FileSystem::{
+            MoveFileExW, MOVEFILE_REPLACE_EXISTING, MOVEFILE_WRITE_THROUGH,
+        };
+        let source = temp
+            .as_os_str()
+            .encode_wide()
+            .chain(Some(0))
+            .collect::<Vec<_>>();
+        let destination = path
+            .as_os_str()
+            .encode_wide()
+            .chain(Some(0))
+            .collect::<Vec<_>>();
+        let replaced = unsafe {
+            MoveFileExW(
+                source.as_ptr(),
+                destination.as_ptr(),
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH,
+            )
+        };
+        if replaced == 0 {
+            let _ = fs::remove_file(&temp);
+            return Err("RUNNER_CONNECTION_STORE_REPLACE_FAILED".into());
+        }
+        Ok(())
     }
+    #[cfg(not(windows))]
     fs::rename(temp, path).map_err(|_| "RUNNER_CONNECTION_STORE_REPLACE_FAILED".to_string())
+}
+
+#[cfg(windows)]
+fn protect_windows_connection(plaintext: &[u8]) -> Result<Vec<u8>, String> {
+    use windows_sys::Win32::Foundation::LocalFree;
+    use windows_sys::Win32::Security::Cryptography::{
+        CryptProtectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB,
+    };
+    let input = CRYPT_INTEGER_BLOB {
+        cbData: plaintext
+            .len()
+            .try_into()
+            .map_err(|_| "RUNNER_CONNECTION_STORE_SERIALIZE_FAILED")?,
+        pbData: plaintext.as_ptr() as *mut u8,
+    };
+    let mut output = CRYPT_INTEGER_BLOB::default();
+    let protected = unsafe {
+        CryptProtectData(
+            &input,
+            std::ptr::null(),
+            std::ptr::null(),
+            std::ptr::null(),
+            std::ptr::null(),
+            CRYPTPROTECT_UI_FORBIDDEN,
+            &mut output,
+        )
+    };
+    if protected == 0 || output.pbData.is_null() {
+        return Err("RUNNER_CONNECTION_STORE_PROTECT_FAILED".into());
+    }
+    let bytes =
+        unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize) }.to_vec();
+    unsafe { LocalFree(output.pbData.cast()) };
+    Ok(bytes)
+}
+
+#[cfg(windows)]
+fn unprotect_windows_connection(ciphertext: &[u8]) -> Result<Vec<u8>, String> {
+    use windows_sys::Win32::Foundation::LocalFree;
+    use windows_sys::Win32::Security::Cryptography::{
+        CryptUnprotectData, CRYPTPROTECT_UI_FORBIDDEN, CRYPT_INTEGER_BLOB,
+    };
+    let input = CRYPT_INTEGER_BLOB {
+        cbData: ciphertext
+            .len()
+            .try_into()
+            .map_err(|_| "RUNNER_CONNECTION_STORE_INVALID")?,
+        pbData: ciphertext.as_ptr() as *mut u8,
+    };
+    let mut output = CRYPT_INTEGER_BLOB::default();
+    let decrypted = unsafe {
+        CryptUnprotectData(
+            &input,
+            std::ptr::null_mut(),
+            std::ptr::null(),
+            std::ptr::null(),
+            std::ptr::null(),
+            CRYPTPROTECT_UI_FORBIDDEN,
+            &mut output,
+        )
+    };
+    if decrypted == 0 || output.pbData.is_null() {
+        return Err("RUNNER_CONNECTION_STORE_UNPROTECT_FAILED".into());
+    }
+    let bytes =
+        unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize) }.to_vec();
+    unsafe { LocalFree(output.pbData.cast()) };
+    Ok(bytes)
 }
 
 pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
@@ -741,6 +873,110 @@ mod tests {
             refreshed.control_token
         );
     }
+
+    #[test]
+    fn simultaneous_refreshes_share_one_rotation_and_preserve_runner_identity() {
+        let root = tempfile::tempdir().unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let address = listener.local_addr().unwrap();
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let material = generate_device_proof_material(Some("device-existing")).unwrap();
+        let connection = StoredRunnerConnection {
+            server_url: format!("http://{address}"),
+            runner_id: "runner-existing".into(),
+            display_name: "Existing Windows Runner".into(),
+            device_id: material.device_id.clone(),
+            machine_fingerprint: material.machine_fingerprint.clone(),
+            public_key_pem: material.public_key_pem,
+            private_key_pem: material.private_key_pem,
+            control_token: test_token("access-old", now),
+            refresh_token: test_token("refresh-old", u64::MAX),
+            runner_session_id: Some("session-existing".into()),
+            tenant_id: Some("tenant-existing".into()),
+        };
+        save_connection(root.path().to_str().unwrap(), &connection).unwrap();
+        let refreshed_control = test_token("access-new", u64::MAX);
+        let refreshed_token = test_token("refresh-new", u64::MAX);
+        let server = thread::spawn(move || {
+            let mut requests = 0;
+            let until = std::time::Instant::now() + Duration::from_millis(500);
+            while std::time::Instant::now() < until && requests < 2 {
+                match listener.accept() {
+                    Ok((mut stream, _)) => {
+                        requests += 1;
+                        let mut request = [0; 8192];
+                        let _ = stream.read(&mut request);
+                        let (status, body) = if requests == 1 {
+                            (
+                                "200 OK",
+                                json!({
+                                    "controlToken": refreshed_control.clone(),
+                                    "refreshToken": refreshed_token.clone(),
+                                    "runnerSessionId": "session-existing"
+                                })
+                                .to_string(),
+                            )
+                        } else {
+                            (
+                                "401 Unauthorized",
+                                r#"{"error":"runner_auth_invalid"}"#.into(),
+                            )
+                        };
+                        let response = format!(
+                            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\nContent-Type: application/json\r\n\r\n{body}",
+                            body.len()
+                        );
+                        let _ = stream.write_all(response.as_bytes());
+                    }
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        thread::sleep(Duration::from_millis(5));
+                    }
+                    Err(_) => break,
+                }
+            }
+            requests
+        });
+        let mut config = RunnerConfig::local(
+            &connection.runner_id,
+            &connection.device_id,
+            &connection.server_url,
+        );
+        config.data_root = root.path().to_string_lossy().into_owned();
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(3));
+        let first = {
+            let config = config.clone();
+            let barrier = barrier.clone();
+            thread::spawn(move || {
+                barrier.wait();
+                load_or_refresh(&config)
+            })
+        };
+        let second = {
+            let config = config.clone();
+            let barrier = barrier.clone();
+            thread::spawn(move || {
+                barrier.wait();
+                load_or_refresh(&config)
+            })
+        };
+        barrier.wait();
+        let first = first.join().unwrap().unwrap().unwrap();
+        let second = second.join().unwrap().unwrap().unwrap();
+        assert_eq!(server.join().unwrap(), 1);
+        for refreshed in [first, second] {
+            assert_eq!(refreshed.runner_id, "runner-existing");
+            assert_eq!(refreshed.device_id, "device-existing");
+            assert_eq!(
+                refreshed.runner_session_id.as_deref(),
+                Some("session-existing")
+            );
+            assert_eq!(refreshed.control_token, test_token("access-new", u64::MAX));
+        }
+    }
 }
 
 pub fn load_or_refresh(config: &RunnerConfig) -> Result<Option<StoredRunnerConnection>, String> {
@@ -753,12 +989,46 @@ pub fn load_or_refresh(config: &RunnerConfig) -> Result<Option<StoredRunnerConne
 pub fn load_or_refresh_data_root(
     data_root: &str,
 ) -> Result<Option<StoredRunnerConnection>, String> {
-    let Some(mut connection) = load_connection(data_root)? else {
+    let _refresh_guard = CREDENTIAL_REFRESH_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED")?;
+    let Some(connection) = load_connection(data_root)? else {
         return Ok(None);
     };
     if token_valid_for(&connection.control_token, 60) {
         return Ok(Some(connection));
     }
+    refresh_connection(data_root, connection).map(Some)
+}
+
+/// Rotate credentials after the server rejects the currently active access
+/// token, even if its local JWT expiration is still in the future. If another
+/// caller already rotated it, reuse that persisted token instead of rotating
+/// the same refresh credential twice.
+pub fn refresh_rejected_access_token(
+    data_root: &str,
+    rejected_access_token: &str,
+) -> Result<Option<StoredRunnerConnection>, String> {
+    let _refresh_guard = CREDENTIAL_REFRESH_LOCK
+        .get_or_init(|| Mutex::new(()))
+        .lock()
+        .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED")?;
+    let Some(connection) = load_connection(data_root)? else {
+        return Ok(None);
+    };
+    if connection.control_token != rejected_access_token
+        && token_valid_for(&connection.control_token, 60)
+    {
+        return Ok(Some(connection));
+    }
+    refresh_connection(data_root, connection).map(Some)
+}
+
+fn refresh_connection(
+    data_root: &str,
+    mut connection: StoredRunnerConnection,
+) -> Result<StoredRunnerConnection, String> {
     let material = DeviceProofMaterial {
         device_id: connection.device_id.clone(),
         machine_fingerprint: connection.machine_fingerprint.clone(),
@@ -789,7 +1059,7 @@ pub fn load_or_refresh_data_root(
         connection.runner_session_id = Some(runner_session_id);
     }
     save_connection(data_root, &connection)?;
-    Ok(Some(connection))
+    Ok(connection)
 }
 
 pub fn safe_refresh_error_code(error: &str) -> String {
@@ -808,6 +1078,10 @@ pub fn safe_refresh_error_code(error: &str) -> String {
         "RUNNER_CONNECT_RESPONSE_INVALID",
         "RUNNER_CONNECTION_STORE_READ_FAILED",
         "RUNNER_CONNECTION_STORE_INVALID",
+        "RUNNER_CONNECTION_STORE_REPLACE_FAILED",
+        "RUNNER_CONNECTION_STORE_PROTECT_FAILED",
+        "RUNNER_CONNECTION_STORE_UNPROTECT_FAILED",
+        "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED",
         "RUNNER_CONNECTION_STORE_CREATE_FAILED",
         "RUNNER_CONNECTION_STORE_WRITE_FAILED",
         "RUNNER_CONNECTION_STORE_SERIALIZE_FAILED",

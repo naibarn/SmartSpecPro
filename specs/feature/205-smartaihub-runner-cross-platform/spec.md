@@ -627,6 +627,34 @@ reauthentication deadline without exposing credentials. Access credentials
 should refresh automatically while the desktop app is open; browser re-pairing
 is required only when refresh cannot continue.
 
+### 2026-10-30 — Windows Runner credential and reconnect lifecycle
+
+The desktop status poll and the live control loop share the same persisted
+Runner credential and MUST serialize refresh-token rotation. An HTTP 401 from a
+WSS or HTTPS control request MUST be distinguished from a transport outage. If
+the existing refresh credential is still valid, the Runner MUST rotate it once,
+persist the new credential before reconnecting, and reuse the same Runner,
+device, tenant, and Runner-session binding. If another in-process caller has
+already rotated the rejected access token, the control loop MUST adopt the
+persisted replacement rather than replaying the old refresh token.
+
+Refresh-token rejection, revocation, device/session mismatch, or protocol
+incompatibility MUST remain distinct from temporary DNS, network, server, and
+WebSocket failures. Temporary failures MUST retry with bounded exponential
+backoff and jitter. A recovered authenticated socket MUST republish and receive
+acknowledgement for current capabilities before accepting work, then resume
+heartbeats. The UI MUST report Control Plane connection state separately from
+local process state and show the last acknowledged heartbeat and a sanitized
+recovery reason.
+
+On Windows, persisted Runner credentials MUST be protected with the current
+Windows user's DPAPI and replaced atomically. A legacy plaintext credential file
+may be read only to migrate it into the protected format without changing its
+Runner or session identity. DPAPI failure MUST fail closed without deleting the
+last valid credential. These source-level changes do not constitute acceptance
+on an installed Windows Runner; native review-build and owner-host evidence
+remain separately required.
+
 The UI MUST show “Runner unavailable”, “waiting for compatible Runner”,
 “waiting for external provider”, “reconciling”, “provider running”,
 “verification pending” and “completed” as distinct states. A `worker_jobs` row

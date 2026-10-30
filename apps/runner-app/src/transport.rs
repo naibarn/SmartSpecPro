@@ -115,6 +115,10 @@ fn classify_http_status(status: u16) -> Option<TransportError> {
     })
 }
 
+fn classify_wss_handshake_status(status: u16) -> TransportError {
+    classify_http_status(status).unwrap_or(TransportError::Protocol)
+}
+
 pub trait ControlTransport {
     fn send_wss(&mut self, endpoint: &str, event: &Envelope) -> Result<AckState, TransportError>;
     fn send_https(&mut self, endpoint: &str, event: &Envelope) -> Result<AckState, TransportError>;
@@ -308,10 +312,18 @@ impl NativeControlTransport {
                 .header("X-Runner-Body-Sha256", headers.body_hash.clone());
         }
         let request = request.body(()).map_err(|_| TransportError::Protocol)?;
-        let (mut socket, _) = tungstenite::client_tls(request, address).map_err(|error| {
-            eprintln!("runner WSS handshake failed: {error:?}");
-            TransportError::Unavailable
-        })?;
+        let (mut socket, _) =
+            tungstenite::client_tls(request, address).map_err(|error| match error {
+                tungstenite::HandshakeError::Failure(tungstenite::Error::Http(response)) => {
+                    let status = response.status().as_u16();
+                    eprintln!("runner WSS handshake rejected with HTTP {status}");
+                    classify_wss_handshake_status(status)
+                }
+                _ => {
+                    eprintln!("runner WSS handshake failed with a transport error");
+                    TransportError::Unavailable
+                }
+            })?;
         let handshake = socket.read().map_err(|error| {
             eprintln!("runner WSS handshake acknowledgement failed: {error:?}");
             TransportError::Unavailable
@@ -696,6 +708,14 @@ mod tests {
         assert_eq!(
             classify_http_status(503),
             Some(TransportError::HttpRejected(503))
+        );
+        assert_eq!(
+            classify_wss_handshake_status(401),
+            TransportError::Unauthorized(401)
+        );
+        assert_eq!(
+            classify_wss_handshake_status(503),
+            TransportError::HttpRejected(503)
         );
     }
     use crate::protocol::{Envelope, NodeKind};

@@ -185,7 +185,7 @@ pub fn generate_device_proof_material(
 pub fn canonical_body_hash(body: &[u8]) -> Result<String, String> {
     let value: Value = serde_json::from_slice(body)
         .map_err(|_| "RUNNER_DEVICE_PROOF_BODY_INVALID_JSON".to_string())?;
-    let canonical = serde_json::to_vec(&value)
+    let canonical = serde_json::to_vec(&canonicalize_json(value))
         .map_err(|_| "RUNNER_DEVICE_PROOF_BODY_NOT_SERIALIZABLE".to_string())?;
     Ok(hex_encode(Sha256::digest(canonical).as_slice()))
 }
@@ -195,7 +195,25 @@ pub fn canonical_json_bytes<T: Serialize>(value: &T) -> Result<Vec<u8>, String> 
         .map_err(|_| "RUNNER_DEVICE_PROOF_BODY_NOT_SERIALIZABLE".to_string())?;
     let value: Value = serde_json::from_slice(&encoded)
         .map_err(|_| "RUNNER_DEVICE_PROOF_BODY_INVALID_JSON".to_string())?;
-    serde_json::to_vec(&value).map_err(|_| "RUNNER_DEVICE_PROOF_BODY_NOT_SERIALIZABLE".to_string())
+    serde_json::to_vec(&canonicalize_json(value))
+        .map_err(|_| "RUNNER_DEVICE_PROOF_BODY_NOT_SERIALIZABLE".to_string())
+}
+
+fn canonicalize_json(value: Value) -> Value {
+    match value {
+        Value::Array(values) => Value::Array(values.into_iter().map(canonicalize_json).collect()),
+        Value::Object(values) => {
+            let sorted = values
+                .into_iter()
+                .collect::<std::collections::BTreeMap<_, _>>();
+            let mut canonical = serde_json::Map::new();
+            for (key, value) in sorted {
+                canonical.insert(key, canonicalize_json(value));
+            }
+            Value::Object(canonical)
+        }
+        scalar => scalar,
+    }
 }
 
 pub fn endpoint_path(endpoint: &str) -> Result<String, String> {
@@ -290,6 +308,10 @@ mod tests {
         assert_eq!(
             canonical_body_hash(br#"{"b":2,"a":1}"#).unwrap(),
             canonical_body_hash(br#"{"a":1,"b":2}"#).unwrap()
+        );
+        assert_eq!(
+            canonical_body_hash(br#"{"z":{"b":2,"a":1},"a":0}"#).unwrap(),
+            canonical_body_hash(br#"{"a":0,"z":{"a":1,"b":2}}"#).unwrap()
         );
     }
 

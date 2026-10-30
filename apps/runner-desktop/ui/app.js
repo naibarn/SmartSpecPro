@@ -116,6 +116,7 @@ function safeError(error) {
     RUNNER_WORKSPACE_REQUIRES_STOP: "หยุด Runner ก่อนนำ workspace ออก",
     RUNNER_CONNECTION_REQUIRED: "ไม่พบการเชื่อมต่อ Runner กรุณาเชื่อมต่อบัญชีก่อนเริ่มทำงาน",
     RUNNER_CONNECTION_INTERRUPTED: "การเชื่อมต่อขาดหาย Runner จะลองใหม่อัตโนมัติ ตรวจอินเทอร์เน็ตของเครื่องนี้",
+    RUNNER_PROTOCOL_INCOMPATIBLE: "Runner กับ Control Plane ใช้ protocol คนละรุ่น กรุณาอัปเดต Runner เป็นรุ่นที่รองรับ",
     RUNNER_UPDATE_FAILED: "ตรวจสอบหรืออัปเดต Runner ไม่สำเร็จ",
     RUNNER_OPERATION_FAILED: "Runner พบปัญหาระหว่างทำงาน กรุณาตรวจการเชื่อมต่อแล้วลองใหม่",
     RUNNER_AUTOSTART_FAILED: "เริ่ม Runner อัตโนมัติไม่สำเร็จ เปิดหน้าต่างเพื่อตรวจการตั้งค่า",
@@ -225,14 +226,17 @@ function applyRunnerStatus(status) {
       ? "ต้องเชื่อมต่อใหม่"
       : credentialState === "retrying"
         ? "ต่ออายุไม่สำเร็จ — จะลองใหม่"
-        : status.running && status.lastError ? "กำลังเชื่อมต่อใหม่"
+        : status.lastError === "RUNNER_PROTOCOL_INCOMPATIBLE" ? "Protocol ไม่เข้ากัน"
+          : status.running && status.lastError ? "กำลังเชื่อมต่อใหม่"
           : controlPlaneConnected ? "เชื่อมต่อแล้ว"
           : credentialsReady && status.running ? "รอ heartbeat จาก SmartAIHub"
-            : credentialsReady ? "บัญชีพร้อม · Runner หยุดอยู่" : "ยังไม่เชื่อมต่อ";
+            : credentialsReady ? "ออฟไลน์ · Runner หยุดอยู่" : "ยังไม่เชื่อมต่อ";
   elements["connection-state"].textContent = connectionLabel;
   elements["connection-state"].className = `state-pill${controlPlaneConnected && !status.lastError && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
-  elements["connection-detail"].textContent = status.running && status.lastError
-    ? `Runner กำลังเชื่อมต่อ Control Plane ใหม่ · heartbeat ล่าสุด ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
+  elements["connection-detail"].textContent = status.lastError === "RUNNER_PROTOCOL_INCOMPATIBLE"
+    ? "Control Plane ปฏิเสธ protocol ของ Runner รุ่นนี้ จึงหยุดส่ง capability และงานจนกว่าจะติดตั้งรุ่นที่รองรับ"
+    : status.running && status.lastError
+      ? `Runner กำลังเชื่อมต่อ Control Plane ใหม่ · heartbeat ล่าสุด ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
     : controlPlaneConnected
     ? `SmartAIHub ยืนยัน heartbeat ของ Runner ${status.runnerId} เวลา ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
     : credentialsReady && status.running
