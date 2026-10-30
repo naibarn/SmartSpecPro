@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { resolve, dirname, basename } from "node:path";
+import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, execFileSync } from "node:child_process";
 import { parse } from "dotenv";
@@ -49,18 +49,14 @@ const builtPublicDir = process.env.SMARTSPEC_DEV_BUILT_PUBLIC_DIR?.trim();
 if (builtPublicDir) {
   if (!builtPublicDir.startsWith("/")) throw new Error("Built development assets must use an absolute directory");
   const publicRoot = resolve(builtPublicDir);
-  const canonicalBuildRoot = resolve(appRoot, "../..");
-  if (publicRoot !== resolve(appRoot, "dist/public") || basename(canonicalBuildRoot) !== `${sourceSha}-build`) {
-    throw new Error("Built development assets must come from the matching immutable canonical build workspace");
-  }
-  const manifestPath = resolve(publicRoot, "release-manifest.json");
+  const buildResultFile = process.env.SMARTSPEC_DEV_BUILD_RESULT?.trim();
+  if (!buildResultFile || !buildResultFile.startsWith("/")) throw new Error("Canonical development build receipt is required");
   const indexPath = resolve(builtPublicDir, "index.html");
-  if (!existsSync(indexPath)) throw new Error("Built development assets are incomplete");
-  if (existsSync(manifestPath)) {
-    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-    if (manifest.frontend_source_revision !== sourceSha || manifest.backend_source_revision !== sourceSha) {
-      throw new Error("Built development assets do not match the running source revision");
-    }
+  if (!existsSync(indexPath) || !existsSync(buildResultFile)) throw new Error("Built development assets are incomplete");
+  const buildResult = JSON.parse(readFileSync(buildResultFile, "utf8"));
+  if (buildResult.status !== "BUILD_PASSED" || buildResult.source_revision !== sourceSha ||
+      resolve(buildResult.artifact?.artifact_path || "", "public") !== publicRoot) {
+    throw new Error("Built development assets do not match the verified canonical build receipt");
   }
 }
 const hostRuntimeEnv = Object.fromEntries(
