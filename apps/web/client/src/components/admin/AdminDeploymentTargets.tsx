@@ -705,7 +705,9 @@ export default function AdminDeploymentTargets() {
     tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: currentStagingConfigRef,
   }, { enabled: validScope && environment === "staging" && /^cf-origin:[a-f0-9]{64}$/.test(currentStagingConfigRef) });
   const stagingDatabaseValidityThreshold = Date.now() + 7 * 86_400_000;
-  const stagingDatabasePlanExpiry = Date.parse(stagingOriginConfiguration.data?.descriptor?.nativeResources?.privateDatabase?.plan?.configurationExpiresAt ?? "");
+  const stagingPrivateDatabase = stagingOriginConfiguration.data?.descriptor?.nativeResources?.privateDatabase;
+  const stagingDatabasePlanExpiry = Date.parse(stagingPrivateDatabase?.leaseRenewal?.leaseExpiresAt ??
+    stagingPrivateDatabase?.plan?.configurationExpiresAt ?? "");
   const stagingConfigurationExpiry = Date.parse(stagingOriginConfiguration.data?.descriptor?.expiresAt ?? "");
   const stagingDatabaseValidityTooShort = [stagingDatabasePlanExpiry, stagingConfigurationExpiry]
     .some(expiry => Number.isFinite(expiry) && expiry <= stagingDatabaseValidityThreshold);
