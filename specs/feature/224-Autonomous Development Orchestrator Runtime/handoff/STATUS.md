@@ -6,7 +6,7 @@
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 1304 unresolved of 1305
 - Next action: Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.
-- Manifest generation: 272
+- Manifest generation: 273
 
 ## Source-declared status and relationship claims
 

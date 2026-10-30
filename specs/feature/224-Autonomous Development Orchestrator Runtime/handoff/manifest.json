@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d",
+    "expected_canonical_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Continue the current external Codex implementation mission across any remaining independently actionable Guided First Run, Task Control and Mission Control activation gaps; do not wait for owner activity. If the authenticated owner starts the bounded Goal, resume and trace only its exact persisted Goal/Run/Job/Attempt through real Runner execution, Child 1/2 receipts and settlement, and Independent Final Verify.",
-    "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
+    "next_action": "Owner opens https://aimarkethubs.com/chat as Admin, starts the bounded First Run Goal, and asks a different authorized Admin to approve its Approval Authority request. Then resume that exact persisted DevelopmentRun and verify real Runner Child 1/2 receipts, settlement, Independent Final Verify and cross-surface identity.",
+    "next_ready_workunit": "SPEC224_FIRST_OWNER_START_AND_INDEPENDENT_GOAL_APPROVAL",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At 2026-10-30, canonical source bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d is deployed to aimarkethubs.com through isolated user-level smartspec-dev-web.service on port 3100; artifact, public asset, runtime, and unchanged production generation-251 fingerprints are recorded in the recovery evidence. A handoff-only commit followed by a real dev-service restart recovered the pinned artifact and returned local/public health 200. The launcher tolerates only intervening handoff-only commits. Guided First Run remains available; no owner Start/Approval or live Goal exists. Continue independent implementation work, then trace the exact owner-approved Goal through real Runner Child 1/2 execution, settlement, and Independent Final Verify.",
+    "resume_point": "Canonical source e01fb1395ae3b53c7b9a030d9375b550ea6f43c4 is deployed to isolated aimarkethubs.com via smartspec-dev-web.service:3100. Guided First Run recovery, approval review, and Chat/Task/Mission deep links were repaired and focused tests passed 93/93. Production generation-251 pointer and service fingerprints were unchanged. Start requires an authenticated Admin; Approval Authority prevents requester self-approval, so a different authorized Admin must decide. No live Goal exists yet. Continue only from that exact durable Run after owner Start.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:fa7453245cd2cc0714e466b1e0447fc8bba729afde30777c0a36e0d119a0263d",
+    "artifact_digest": "sha256:716174b80c72bf99e7a5893ccf3d31ef3e2c3e41eaa371248f00ac59e394eb00",
     "environment": "development_linux_user_systemd",
     "evidence": [
       {
@@ -1314,10 +1314,17 @@
         "scope": "Development source bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d built and served by smartspec-dev-web.service on aimarkethubs.com:3100; artifact sha256:fa7453245cd2cc0714e466b1e0447fc8bba729afde30777c0a36e0d119a0263d. Public JS hash matched and local/API/public health returned 200. Following handoff-only commit 3f35be219e815ed7b1d8883393f2874ca4cb22fd, the dev web unit restarted successfully with the older pinned artifact and public health/chat returned 200. Production generation-251 pointer and service fingerprint remained unchanged. Focused tests cover exact SHA, handoff-only ancestor acceptance, and runtime/diverged rejection. Live owner approval and Goal execution remain pending.",
         "source_sha": "bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d",
         "status": "PASS_PARTIAL"
+      },
+      {
+        "kind": "SPEC224_OWNER_ACTIONABLE_FIRST_RUN_DEV_RELEASE",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-owner-actionable-first-run-20261030.md",
+        "scope": "First Run now exposes a complete bounded Goal review, creates/reuses the durable DevelopmentRun, displays canonical Run/Approval IDs, offers Approval Authority actions only to accounts whose authenticated pending queue includes the request, and deep-links all views to the source conversation/thread/job. Isolated aimarkethubs.com dev artifact and unchanged production generation-251 fingerprints verified. Live Goal remains pending owner Start and independent approval.",
+        "source_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
+        "status": "PASS_PARTIAL"
       }
     ],
     "required": false,
-    "source_sha": "bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d",
+    "source_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
     "status": "PASS"
   },
   "disposition": {
@@ -1331,7 +1338,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 272,
+  "generation": 273,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1563,11 +1570,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d",
+    "canonical_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
     "integrated": true,
-    "integrated_at": "2026-10-30T10:38:22Z",
+    "integrated_at": "2026-10-30T12:38:13Z",
     "pull_request": null,
-    "source_sha": "bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d"
+    "source_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4081,7 +4088,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T10:49:44.998972Z",
+  "updated_at": "2026-10-30T12:39:13.642757Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4625,14 +4632,18 @@
         "scope": "Development source bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d built and served by smartspec-dev-web.service on aimarkethubs.com:3100; artifact sha256:fa7453245cd2cc0714e466b1e0447fc8bba729afde30777c0a36e0d119a0263d. Public JS hash matched and local/API/public health returned 200. Following handoff-only commit 3f35be219e815ed7b1d8883393f2874ca4cb22fd, the dev web unit restarted successfully with the older pinned artifact and public health/chat returned 200. Production generation-251 pointer and service fingerprint remained unchanged. Focused tests cover exact SHA, handoff-only ancestor acceptance, and runtime/diverged rejection. Live owner approval and Goal execution remain pending.",
         "source_sha": "bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d",
         "status": "PASS_PARTIAL"
-      }
+      },
+      "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx (focused SPEC-224 UI; included in 93/93 focused suite)",
+      "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts (focused durable Run projection; included in 93/93 focused suite)",
+      "apps/web/server/services/__tests__/spec224GoalDelegationGrant.test.ts (focused approval payload; included in 93/93 focused suite)",
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-owner-actionable-first-run-20261030.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "bb5c0746a3935acb0f6a8fb6fa11bda48ac0006d",
-    "status": "PARTIAL",
+    "sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
+    "status": "PASS_PARTIAL",
     "task_regressions": []
   }
 }
