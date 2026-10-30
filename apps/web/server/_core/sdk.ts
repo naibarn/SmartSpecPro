@@ -5,12 +5,12 @@ import { parse as parseCookieHeader } from "cookie";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
 import { randomUUID } from "node:crypto";
-import type { User } from "../../drizzle/schema";
-import * as db from "../db";
-import { ENV } from "./env";
-import { isJtiRevoked } from "./revocation";
-import { verifyBearerToken } from "./tokens";
-import { enforceFreeCreditPolicyForUser } from "../services/freeCreditInactivityService";
+import type { User } from "../../drizzle/schema.ts";
+import * as db from "../db.ts";
+import { ENV } from "./env.ts";
+import { isJtiRevoked } from "./revocation.ts";
+import { verifyBearerToken } from "./tokens.ts";
+import { enforceFreeCreditPolicyForUser } from "../services/freeCreditInactivityService.ts";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,

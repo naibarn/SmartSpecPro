@@ -1,9 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
-import { creditTransactions, tenants, users } from "../../drizzle/schema";
-import { ENV } from "../_core/env";
-import { sdk } from "../_core/sdk";
-import { revokeJti } from "../_core/revocation";
+import { creditTransactions, tenants, users } from "../../drizzle/schema.ts";
+// Keep the authenticated Playwright broker on the current TypeScript source.
+// An older generated env.js sibling is CommonJS and has no ESM named exports.
+import { ENV } from "../_core/env.ts";
+import { sdk } from "../_core/sdk.ts";
+import { revokeJti } from "../_core/revocation.ts";
 // Explicit source extension avoids Node's ESM resolver preferring the stale
 // generated CommonJS sibling (`db.js`) when Playwright loads this fixture.
 import { getDb } from "../db.ts";

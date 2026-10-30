@@ -115,20 +115,35 @@ test("Task Control opens the existing skill selector without executing work", as
 test("Mission Control opens the account-wide Project and Thread overview without starting work", async ({ page }) => {
   const executionRequests: string[] = [];
   const controlPlaneFailures: string[] = [];
+  const readModelResponses = new Map<string, number[]>();
+  await page.addInitScript(() => {
+    localStorage.setItem("smartspec_locale", "en");
+    localStorage.setItem("smartspec_locale_chosen", "true");
+  });
   page.on("request", request => {
     if (request.method() === "POST" && /spec226DevelopmentControl\.(?:create|startWorkspaceRun|resumeWorkspaceRun|command)/.test(request.url())) executionRequests.push(request.url().split("?")[0]);
   });
   page.on("response", response => {
+    const endpoint = ["chat.listRecentConversationThreads", "workerJobs.observability"].find(name => response.url().includes(name));
+    if (endpoint) readModelResponses.set(endpoint, [...(readModelResponses.get(endpoint) ?? []), response.status()]);
     if (response.status() >= 500 && /(?:chat\.listRecentConversationThreads|workerJobs\.observability)/.test(response.url())) controlPlaneFailures.push(`${response.status()} ${response.url().split("?")[0]}`);
   });
 
   await page.goto("/agent-monitor");
-  await expect(page.getByRole("heading", { name: "Task Control" })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Mission Control" })).toBeVisible({ timeout: 30_000 });
+  const workspaceNavigation = page.getByRole("navigation", { name: "Development workspace" });
+  await expect(workspaceNavigation.getByRole("button", { name: "Chat" })).toBeVisible();
+  await expect(workspaceNavigation.getByRole("button", { name: "Task Control" })).toBeVisible();
+  await expect(workspaceNavigation.getByRole("button", { name: "Mission Control" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("region", { name: "Thread overview" })).toBeVisible();
   await expect(page.getByText(/No work threads match this view|Recent implementation|Loading threads/)).toBeVisible({ timeout: 30_000 });
+  await expect.poll(() => [...readModelResponses.keys()].sort()).toEqual(["chat.listRecentConversationThreads", "workerJobs.observability"]);
+  for (const statuses of readModelResponses.values()) expect(statuses.every(status => status === 200)).toBe(true);
+  await workspaceNavigation.getByRole("button", { name: "Task Control" }).click();
+  await expect(page).toHaveURL(/panel=control-plane/);
+  await expect(page.getByTestId("control-plane-panel")).toBeVisible();
   for (const viewport of [{ width: 390, height: 844 }, { width: 768, height: 1024 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);
-    await expect(page.getByRole("region", { name: "Thread overview" })).toBeVisible();
     const dimensions = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth }));
     expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport + 1);
   }

@@ -6,13 +6,13 @@ import {
   lt,
   or,
 } from "drizzle-orm";
-import { getDb } from "../db";
+import { getDb } from "../db.ts";
 import {
   creditTransactions,
   systemSettings,
   users,
-} from "../../drizzle/schema";
-import { auditLogger } from "./auditLogger";
+} from "../../drizzle/schema.ts";
+import { auditLogger } from "./auditLogger.ts";
 
 export const DEFAULT_FREE_CREDIT_INACTIVITY_DAYS = 15;
 const DAY_MS = 24 * 60 * 60 * 1000;

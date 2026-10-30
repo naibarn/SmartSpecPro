@@ -9,7 +9,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { nanoid } from "nanoid";
-import { getTraceId } from "./traceContext";
+import { getTraceId } from "./traceContext.ts";
 
 // ---------------------------------------------------------------------------
 // Types

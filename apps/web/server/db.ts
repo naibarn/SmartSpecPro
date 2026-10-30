@@ -2,8 +2,8 @@ import { eq, desc, asc, and, sql, like, or, inArray, isNull, SQL } from "drizzle
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { createApplicationDatabaseTls } from "./_core/applicationDatabaseTls";
-import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages, type User } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { InsertUser, users, galleryItems, InsertGalleryItem, GalleryItem, creditTransactions, creditPackages, type User } from "../drizzle/schema.ts";
+import { ENV } from './_core/env.ts';
 import { normalizeAuthEmail } from "./services/emailNormalization";
 import { resolveApplicationDatabaseUrl } from "./_core/devDatabaseTarget";
 

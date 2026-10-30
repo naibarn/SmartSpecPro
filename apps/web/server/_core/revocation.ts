@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
-import { revokedTokenJtis } from "../../drizzle/schema";
+import { revokedTokenJtis } from "../../drizzle/schema.ts";
 import { getDb, type DrizzleDB } from "../db.ts";
 
 export type JtiRevocationRecord = {
