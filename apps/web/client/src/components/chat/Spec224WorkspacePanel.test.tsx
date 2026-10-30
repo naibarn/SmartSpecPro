@@ -136,6 +136,8 @@ describe("Core goal readiness feedback", () => {
     render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
 
     expect(await screen.findByText(/Goal \/ Run ที่บันทึกใน session นี้/)).toBeInTheDocument();
+    expect(screen.getByText("pilot-run-1")).toBeInTheDocument();
+    expect(screen.getByText("approval-1")).toBeInTheDocument();
     expect(screen.getByText(/Final Verify: pending/)).toBeInTheDocument();
     expect(screen.getByText(/execution evidence refs 1/)).toBeInTheDocument();
     expect(screen.getByText(/captured 0\.25 · held 1\.00/)).toBeInTheDocument();

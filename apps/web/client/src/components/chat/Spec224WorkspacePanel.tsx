@@ -920,7 +920,11 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         {pilotRuns.length ? <section className="space-y-2" aria-label="Pilot Goal และ execution ที่บันทึกไว้">
           <h3 className="font-semibold">Goal / Run ที่บันทึกใน session นี้</h3>
           {pilotRuns.map(run => <article key={run.runId} className="rounded-lg border border-[var(--color-border)] p-3 text-sm">
-            <p className="font-medium">{developmentRunStateLabel(run.state)}{!simpleMode ? ` · ${run.runId}` : ""}</p>
+            <p className="font-medium">{developmentRunStateLabel(run.state)}</p>
+            <VStack as="dl" gap={1} className="mt-2 text-xs text-[var(--color-text-secondary)]">
+              <HStack as="div" gap={2} wrap="wrap"><dt className="font-medium">DevelopmentRun:</dt><dd className="break-all font-mono">{run.runId}</dd></HStack>
+              {run.goalApproval?.approvalRef ? <HStack as="div" gap={2} wrap="wrap"><dt className="font-medium">Approval Authority request:</dt><dd className="break-all font-mono">{run.goalApproval.approvalRef}</dd></HStack> : null}
+            </VStack>
             <p className="text-[var(--color-text-secondary)]">{run.goalApproval?.status === "pending" ? "รออนุมัติจาก Approval Authority" : run.goalApproval?.status ? `สถานะ Approval: ${run.goalApproval.status}` : "สถานะ Goal แสดงจาก DevelopmentRun จริง"} · Final Verify: {run.finalVerifyStatus ?? "ยังไม่มีผล"} · execution evidence refs {run.intermediateReceipts?.length ?? 0}{run.budgetStatus ? ` · งบ ${run.budgetStatus.currency} ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)} · captured ${(run.budgetStatus.capturedMinorUnits / 100).toFixed(2)} · held ${(run.budgetStatus.heldMinorUnits / 100).toFixed(2)}` : ""}</p>
             {run.goalApproval?.status === "pending" ? <AstryxLink as={RouterLink} href="/admin/approvals" isStandalone>เปิด Approval Authority</AstryxLink> : null}
             <HStack as="nav" gap={3} wrap="wrap" aria-label="ดู Goal เดียวกันใน Workspace">
