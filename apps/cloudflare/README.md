@@ -97,8 +97,6 @@ encrypted configuration at deploy time, rather than checked into this repo:
 bindings are installed, the application ingress remains closed; the committed
 config contains no fake secret, expired profile, or placeholder origin.
 
-To package-validate the exact Staging Worker configuration locally:
-
 The copied `_headers` policy leaves the HTML shell revalidatable and gives Vite
 fingerprinted `/assets/*` files a one-year immutable cache. The shell still has
 SmartAIHub's production canonical metadata; client-side tenant SEO is not
@@ -107,7 +105,7 @@ remain origin-owned until a canonical tenant metadata adapter is designed and
 validated. The local static smoke proves routing and cache headers only; it is
 not live Cloudflare staging or browser authentication acceptance.
 
-Build and run the safe local Workers target with:
+To build assets and validate the exact Staging Worker configuration locally:
 
 ```sh
 pnpm --filter @smartspec/web exec vite build --configLoader runner
