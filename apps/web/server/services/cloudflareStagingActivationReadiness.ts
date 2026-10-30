@@ -3,6 +3,8 @@
  * These run before the Admin route creates any owner policy, grant, or job.
  */
 export type CloudflareStagingActivationProfile = {
+  applicationHttp?: { traffic?: string };
+  applicationSecretsConfigured?: boolean;
   workflowExecution?: string;
   jobTransport?: string;
   nativeResources?: { privateDatabase?: unknown };
@@ -34,6 +36,9 @@ export function cloudflareStagingOriginConfigurationBlocker(error: unknown): Clo
 export function cloudflareStagingActivationBlocker(
   profile: CloudflareStagingActivationProfile | null | undefined,
 ): CloudflareStagingActivationBlocker | null {
+  // M2 HTTP ingress uses its own verified images, secrets, and runtime path;
+  // it must not inherit M3 Queue/private-DB lease requirements.
+  if (profile?.applicationHttp?.traffic === "staging-full-http-v1" && profile.applicationSecretsConfigured === true) return null;
   if (profile?.workflowExecution !== "emergency-intake") {
     return "STAGING_ACTIVATION_PROFILE_REQUIRED";
   }

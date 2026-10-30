@@ -39,6 +39,17 @@ describe("Cloudflare Staging activation preflight", () => {
     })).toBeNull();
   });
 
+  it("accepts a verified Full HTTP profile without inheriting M3 Queue or private DB lease gates", () => {
+    expect(cloudflareStagingActivationBlocker({
+      applicationHttp: { traffic: "staging-full-http-v1" },
+      applicationSecretsConfigured: true,
+    })).toBeNull();
+    expect(cloudflareStagingActivationBlocker({
+      applicationHttp: { traffic: "staging-full-http-v1" },
+      applicationSecretsConfigured: false,
+    })).toBe("STAGING_ACTIVATION_PROFILE_REQUIRED");
+  });
+
   it("surfaces a precise private database receipt blocker without exposing provider details", () => {
     expect(cloudflareStagingOriginConfigurationBlocker(
       Object.assign(new Error("internal detail"), { diagnosticCode: "PRIVATE_DATABASE_PROVISION_RECEIPT_DENIED" }),

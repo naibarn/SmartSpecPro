@@ -571,11 +571,11 @@ describe("AdminDeploymentTargets", () => {
     await chooseScope(user);
 
     expect(await screen.findByText(/NAMESPACE ONLY — not deployable as the application/i)).toBeInTheDocument();
-    const databaseBlocker = screen.getByLabelText("Staging database authority required");
+    const databaseBlocker = screen.getByLabelText("Staging database acceptance status");
     expect(databaseBlocker).toHaveTextContent("STAGING_DB_AUTHORITY_MISSING");
     expect(databaseBlocker).toHaveTextContent("db-staging.smartaihub.app/staging_app");
     expect(databaseBlocker).toHaveTextContent("READ_ONLY_PROBE_ONLY");
-    expect(screen.getByText(/does not create a Full HTTP candidate or deploy application traffic/i)).toBeInTheDocument();
+    expect(screen.getByText(/Full HTTP requires the existing verified Node\/Python image receipts/i)).toBeInTheDocument();
   });
 
   it("probes the exact Production target credential and shows the permission to add", async () => {
@@ -674,7 +674,39 @@ describe("AdminDeploymentTargets", () => {
       environment: "staging",
       provider: "cloudflare",
       configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      profile: "namespace-only",
     });
+    expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
+  });
+
+  it("prepares the selected Full Application HTTP profile through the existing Staging action", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingRuntime = { status: "UNAVAILABLE", checkedAt: "2026-10-22T00:00:00.000Z", activation: null, transport: "queues", missing: [], reason: "STAGING_READINESS_PROBE_UNAVAILABLE" };
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_ACTIVATION_PROFILE_REQUIRED", artifact: null, baseline: null };
+    mocks.originConfiguration = {
+      status: "STORED", configurationRef: `cf-origin:${"a".repeat(64)}`,
+      workflowRuntimeTokenConfigured: true, controlPlaneTokenConfigured: true,
+      descriptor: { nativeResources: { privateDatabase: { provisionJobId: "private-db-receipt" } } },
+      applicationPreparation: {
+        phase: "NAMESPACE_ONLY", sourceConfigurationRef: `cf-origin:${"a".repeat(64)}`, candidateStatus: "READY",
+        missingRuntimeFields: [], imageReceipts: "VERIFIED", encryptedApplicationSecrets: "STORED",
+        containerBindings: "NOT_GENERATED",
+        databaseAuthority: { status: "MISSING", code: "STAGING_DB_AUTHORITY_MISSING", existingRoleAccess: "READ_ONLY_PROBE_ONLY",
+          host: null, databaseName: null, readOnlyProbeRole: null, requiredPermissions: [], excludedPermissions: [] },
+      },
+    };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    await user.click(screen.getByRole("combobox", { name: "Candidate profile" }));
+    await user.click(screen.getByRole("option", { name: /FULL_APPLICATION_HTTP/ }));
+    const prepare = screen.getByRole("button", { name: "Prepare Full Application HTTP candidate" });
+    expect(prepare).toBeEnabled();
+    await user.click(prepare);
+    expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Prepare Full HTTP candidate" }));
+    expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", provider: "cloudflare",
+      configurationRef: `cf-origin:${"a".repeat(64)}`, profile: "full-application-http" });
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
   });
 
@@ -701,7 +733,7 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.activateStagingProfile).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Prepare Staging" }));
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging", provider: "cloudflare",
-      configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" });
+      configurationRef: "cf-origin:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", profile: "namespace-only" });
     expect(cloudflareStagingActivationInputSchema.safeParse(mocks.activateStagingProfile.mock.lastCall?.[0]).success).toBe(true);
     expect(mocks.queueStagingDeploy).not.toHaveBeenCalled();
 

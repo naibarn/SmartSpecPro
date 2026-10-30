@@ -500,6 +500,7 @@ export default function AdminDeploymentTargets() {
   const [environment, setEnvironment] = useState("");
   const [workflowRuntimeToken, setWorkflowRuntimeToken] = useState("");
   const [controlPlaneToken, setControlPlaneToken] = useState("");
+  const [stagingPreparationProfile, setStagingPreparationProfile] = useState<"namespace-only" | "full-application-http">("namespace-only");
   const [productionQueueJobId, setProductionQueueJobId] = useState("");
   const [stagingRenewalJobId, setStagingRenewalJobId] = useState("");
   const [productionDatabaseSubmissions, setProductionDatabaseSubmissions] = useState<Record<string, string>>({});
@@ -1844,8 +1845,8 @@ export default function AdminDeploymentTargets() {
                 <p>{text("Required before database-dependent acceptance", "ต้องตรวจให้ผ่านก่อนตรวจรับส่วนฐานข้อมูล")}: {preparation.databaseAuthority.requiredPermissions.join("; ")}</p>
                 <p>{text("Must remain excluded", "ต้องไม่มีสิทธิ์ต่อไปนี้")}: {preparation.databaseAuthority.excludedPermissions.join("; ")}</p>
               </VStack>
-              <p>{text("The current Prepare Staging action only prepares the existing control-plane/Queue profile. It does not create a Full HTTP candidate or deploy application traffic. No Production database credential is reused.",
-                "ปุ่มเตรียม Staging ปัจจุบันเตรียมเฉพาะ profile ของ control plane/Queue เดิม ไม่ได้สร้าง Full HTTP candidate หรือ deploy traffic ของแอป และจะไม่ใช้ credential ของ Production ซ้ำ")}</p>
+              <p>{text("Choose a profile below. Full HTTP requires the existing verified Node/Python image receipts and encrypted application secrets. The saved runtime database URLs must point to the existing smartspec database. Preparing does not deploy or change Production traffic.",
+                "เลือก profile ด้านล่าง Full HTTP ต้องมี image receipt ของ Node/Python ที่ตรวจแล้วและ application secret ที่เข้ารหัสอยู่เดิม URL ฐานข้อมูลที่บันทึกไว้ต้องชี้ไปยังฐาน smartspec เดิม การเตรียมยังไม่ deploy หรือเปลี่ยน Production traffic")}</p>
             </VStack>;
           })() : null}
           <HStack gap={2} wrap="wrap">
@@ -1887,11 +1888,13 @@ export default function AdminDeploymentTargets() {
               </VStack> : null}
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
               {(stagingConfigurationExpired || activationRecoveryStatus ||
-                stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED") ? (() => {
+                stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED" ||
+                stagingOriginConfiguration.data?.applicationPreparation?.phase !== "FULL_HTTP") ? (() => {
               const configRef = currentStagingConfigRef;
               const config = stagingOriginConfiguration.data;
               const activationBlocker = stagingDeployPreflight.data?.reason;
-              const secretsMissing = config?.workflowRuntimeTokenConfigured === false || config?.controlPlaneTokenConfigured === false;
+                const secretsMissing = stagingPreparationProfile === "namespace-only" &&
+                  (config?.workflowRuntimeTokenConfigured === false || config?.controlPlaneTokenConfigured === false);
                 const suppliedRuntimeSecrets = Boolean(workflowRuntimeToken || controlPlaneToken);
                 const suppliedRuntimeSecretsValid = workflowRuntimeToken.length >= 32 && controlPlaneToken.length >= 32 &&
                   workflowRuntimeToken !== controlPlaneToken && /^[\x21-\x7e]+$/.test(workflowRuntimeToken) && /^[\x21-\x7e]+$/.test(controlPlaneToken);
@@ -1901,13 +1904,30 @@ export default function AdminDeploymentTargets() {
                   target?.deploymentTargetId === "smartspec-cloudflare-staging" &&
                   target.workerRef === "smartspec-cloudflare-staging" && !target.containerApplicationRef;
                 const configurationVerified = config?.status === "STORED" &&
-                  Boolean(config?.descriptor?.nativeResources?.privateDatabase);
+                  (stagingPreparationProfile === "full-application-http" || Boolean(config?.descriptor?.nativeResources?.privateDatabase));
+                const applicationPreparation = config?.applicationPreparation;
+                const fullHttpInputsAvailable = applicationPreparation?.imageReceipts === "VERIFIED" &&
+                  applicationPreparation.encryptedApplicationSecrets === "STORED";
+                const selectedActionNeeded = stagingPreparationProfile === "full-application-http"
+                  ? applicationPreparation?.phase !== "FULL_HTTP" : activationRequired;
               return <VStack gap={2}>
-                  <h4>{text("1. Prepare Staging control-plane profile", "1. เตรียม profile ของ Staging control plane")}</h4>
+                  <h4>{text("1. Prepare the Staging candidate", "1. เตรียม candidate ของ Staging")}</h4>
                   <p>{text(
-                    "This action prepares the existing Queue/control-plane profile only. It does not enable Full Application HTTP ingress. After saving, continue with “Authorize and deploy to staging” below.",
-                    "ปุ่มนี้เตรียมเฉพาะ Queue/control-plane profile เดิม ไม่ได้เปิด Full Application HTTP ingress เมื่อบันทึกสำเร็จ ให้ดำเนินการ “อนุมัติและ deploy ไป staging” ด้านล่าง",
+                    "Select NAMESPACE_ONLY for the existing Queue profile or FULL_APPLICATION_HTTP to bind the verified Node/Python Containers and staging HTTP ingress. Saving creates a new immutable configuration only; deployment uses the existing Staging executor.",
+                    "เลือก NAMESPACE_ONLY สำหรับ Queue profile เดิม หรือ FULL_APPLICATION_HTTP เพื่อผูก Node/Python Container ที่ตรวจสอบแล้วและ HTTP ingress ของ Staging การบันทึกสร้าง immutable configuration ใหม่เท่านั้น ส่วน deploy ใช้ Staging executor เดิม",
                   )}</p>
+                  <Label htmlFor="staging-candidate-profile">{text("Candidate profile", "profile ของ candidate")}</Label>
+                  <Select value={stagingPreparationProfile} onValueChange={value => setStagingPreparationProfile(value as "namespace-only" | "full-application-http")}>
+                    <SelectTrigger id="staging-candidate-profile"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="namespace-only">NAMESPACE_ONLY · Queue / control plane</SelectItem>
+                      <SelectItem value="full-application-http">FULL_APPLICATION_HTTP · Node + Python + HTTP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {stagingPreparationProfile === "full-application-http" && !fullHttpInputsAvailable ? <p role="alert"><code>STAGING_HTTP_CANDIDATE_INPUTS_MISSING</code> · {text(
+                    "The saved configuration does not have both a verified image pair and encrypted application secrets. Resolve the existing references before preparing this candidate.",
+                    "configuration ที่บันทึกไว้ไม่มีทั้ง image pair ที่ตรวจสอบแล้วและ application secret ที่เข้ารหัส ต้องแก้ reference เดิมให้ครบก่อนเตรียม candidate",
+                  )}</p> : null}
                   {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
                     <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
                   {stagingConfigurationExpired ? <VStack gap={1} role="alert" aria-label={text("Staging preparation is blocked", "หยุดการเตรียม Staging") }>
@@ -2080,7 +2100,7 @@ export default function AdminDeploymentTargets() {
                     })() : null}
                     </VStack> : null}
                   {stagingOriginConfiguration.data?.status === "REVOKED" ? <p role="alert"><code>STAGING_ORIGIN_CONFIGURATION_REVOKED</code> · {text("Save a new authorized immutable configuration before activation.", "บันทึก immutable configuration ชุดใหม่ที่ได้รับอนุญาตก่อน activate")}</p> : null}
-                  {stagingOriginConfiguration.data && !stagingOriginConfiguration.data.descriptor?.nativeResources?.privateDatabase ? <p role="alert"><code>STAGING_PRIVATE_DATABASE_BINDING_REQUIRED</code> · {text("The stored configuration has no verified private database receipt. Complete the authorized database binding workflow before activation.", "config ไม่มี receipt ของ private database ที่ตรวจสอบแล้ว ให้ทำขั้นตอนผูก database ที่ได้รับอนุญาตก่อน activate")}</p> : null}
+                  {stagingPreparationProfile === "namespace-only" && stagingOriginConfiguration.data && !stagingOriginConfiguration.data.descriptor?.nativeResources?.privateDatabase ? <p role="alert"><code>STAGING_PRIVATE_DATABASE_BINDING_REQUIRED</code> · {text("The stored Queue profile has no verified private database receipt. Complete the existing Queue binding workflow before activating that profile.", "Queue profile ที่บันทึกไว้ไม่มี private database receipt ที่ตรวจแล้ว ให้ทำขั้นตอนผูก Queue เดิมก่อน activate")}</p> : null}
                   {secretsMissing ? <VStack gap={2}>
                     <p>{text(
                       "You do not need to find or copy any tokens. The server generates two separate, secure internal secrets for Staging and stores them encrypted when you click the button below.",
@@ -2118,23 +2138,35 @@ export default function AdminDeploymentTargets() {
                   {stagingOriginConfiguration.isError ? <p role="alert"><code>{activationBlocker && activationBlocker.startsWith("STAGING_") ? activationBlocker : "STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE"}</code> · {text("Stored configuration or its resource receipts could not be verified. Use the authorized origin-configuration repair path, then refresh this registry.", "ตรวจสอบ config หรือ resource receipt ที่บันทึกไว้ไม่สำเร็จ ให้ใช้ขั้นตอนซ่อม origin-configuration ที่ได้รับอนุญาต แล้วรีเฟรช registry")}</p> : null}
                   <Button type="button" aria-describedby={stagingConfigurationExpired ? "staging-expired-config-help" : undefined}
                     variant={stagingConfigurationExpired ? "outline" : "default"}
-                    disabled={!activationRequired || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending || stagingActionRunning ||
+                    disabled={!selectedActionNeeded || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending || stagingActionRunning ||
                     stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
+                    (stagingPreparationProfile === "full-application-http" && !fullHttpInputsAvailable) ||
                     (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}
                     onClick={() => requestStagingConfirmation({
-                      title: text("Prepare Staging control-plane profile", "เตรียม profile ของ Staging control plane"),
-                      description: text("Save a new immutable Queue/control-plane Staging configuration and securely reuse or generate its internal secrets. This does not prepare Full Application HTTP ingress, deploy a Worker, change DNS/routes, or affect Production traffic.", "บันทึก Queue/control-plane Staging config แบบ immutable และใช้หรือสร้าง secret ภายในอย่างปลอดภัย ขั้นตอนนี้ไม่ได้เตรียม Full Application HTTP ingress ไม่ deploy Worker ไม่เปลี่ยน DNS/route และไม่กระทบ Production traffic"),
-                      confirmLabel: text("Prepare Staging", "ยืนยันเตรียม Staging"),
+                      title: stagingPreparationProfile === "full-application-http"
+                        ? text("Prepare Full Application HTTP for Staging", "เตรียม Full Application HTTP สำหรับ Staging")
+                        : text("Prepare Staging control-plane profile", "เตรียม profile ของ Staging control plane"),
+                      description: stagingPreparationProfile === "full-application-http"
+                        ? text("Save a new immutable Staging configuration using the verified Node/Python image receipts and already encrypted application secrets. This binds both Containers and staging-full-http-v1 to the existing Staging Worker. It does not change Production traffic.", "บันทึก Staging configuration แบบ immutable โดยใช้ image receipt Node/Python ที่ตรวจแล้วและ application secret ที่เข้ารหัสอยู่ ผูก Container ทั้งสองกับ staging-full-http-v1 บน Worker Staging เดิม โดยไม่เปลี่ยน Production traffic")
+                        : text("Save a new immutable Queue/control-plane Staging configuration and securely reuse or generate its internal secrets. This does not deploy a Worker, change DNS/routes, or affect Production traffic.", "บันทึก Queue/control-plane Staging config แบบ immutable และใช้หรือสร้าง secret ภายในอย่างปลอดภัย ขั้นตอนนี้ไม่ deploy Worker ไม่เปลี่ยน DNS/route และไม่กระทบ Production traffic"),
+                      confirmLabel: stagingPreparationProfile === "full-application-http" ? text("Prepare Full HTTP candidate", "ยืนยันเตรียม Full HTTP candidate") : text("Prepare Staging", "ยืนยันเตรียม Staging"),
                       run: () => activateStagingProfile.mutateAsync({ tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: configRef,
+                        profile: stagingPreparationProfile,
                         ...(secretsMissing && suppliedRuntimeSecrets ? { workflowRuntimeToken, controlPlaneToken } : {}) }),
                     })}>
                     {activateStagingProfile.isPending ? text("Preparing Staging…", "กำลังเตรียม Staging…") : secretsMissing
-                      ? suppliedRuntimeSecrets ? text("Use supplied secrets and prepare Staging control-plane profile", "ใช้ secret ที่ระบุและเตรียม Staging control-plane profile")
-                        : text("Generate secrets and prepare Staging control-plane profile", "สร้าง secret และเตรียม Staging control-plane profile อัตโนมัติ")
-                      : text("Prepare Staging control-plane profile with saved secrets", "เตรียม Staging control-plane profile ด้วย secret ที่บันทึกไว้")}
+                      ? suppliedRuntimeSecrets ? stagingPreparationProfile === "full-application-http"
+                        ? text("Use supplied secrets and prepare Full HTTP candidate", "ใช้ secret ที่ระบุและเตรียม Full HTTP candidate")
+                        : text("Use supplied secrets and prepare Staging control-plane profile", "ใช้ secret ที่ระบุและเตรียม Staging control-plane profile")
+                        : stagingPreparationProfile === "full-application-http"
+                          ? text("Generate secrets and prepare Full HTTP candidate", "สร้าง secret และเตรียม Full HTTP candidate อัตโนมัติ")
+                          : text("Generate secrets and prepare Staging control-plane profile", "สร้าง secret และเตรียม Staging control-plane profile อัตโนมัติ")
+                      : stagingPreparationProfile === "full-application-http"
+                        ? text("Prepare Full Application HTTP candidate", "เตรียม Full Application HTTP candidate")
+                        : text("Prepare Staging control-plane profile with saved secrets", "เตรียม Staging control-plane profile ด้วย secret ที่บันทึกไว้")}
                   </Button>
                   <p>{text("This step saves Staging settings only. Deployment and production traffic retain their separate approval steps.", "ขั้นตอนนี้บันทึกการตั้งค่า Staging เท่านั้น การ deploy และเปิด traffic production ยังใช้การอนุมัติแยกตามเดิม")}</p>
-                  {!activationRequired && configurationVerified ? <p role="status">{text("The stored configuration is verified. The server preflight has not identified profile activation as the current blocker.", "ตรวจ config ที่บันทึกไว้แล้ว แต่ server preflight ยังไม่ได้ระบุว่าการ activate profile เป็น blocker ปัจจุบัน")}</p> : null}
+                  {!selectedActionNeeded && configurationVerified ? <p role="status">{text("The selected Staging profile is already active in the saved configuration.", "profile Staging ที่เลือกถูกบันทึกไว้อยู่แล้ว")}</p> : null}
                   {activateStagingProfile.error ? <p role="alert"><code>{activateStagingProfile.error.message}</code></p> : null}
                 </VStack>;
               })() : null}

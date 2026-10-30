@@ -6,7 +6,10 @@ import { providerDeploymentTargets, systemSettings, workerJobs } from "../../dri
 import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
 import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt } from "./cloudflarePrivateDatabaseBinding";
 import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
-import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
+import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings, httpApplicationNamespace,
+  httpApplicationVersionBindings, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
+import { resolveVerifiedHttpImagePair, HttpPublishedPairRequired } from "./cloudflareHttpPublishedPair";
+import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { getStagingApplicationPreparation } from "./cloudflareStagingApplicationPreparation";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
@@ -190,6 +193,7 @@ export async function saveCloudflareOriginConfiguration(db: DrizzleDB, input: {
  */
 export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input: {
   identity: DeploymentTargetIdentity; configurationRef: string; actorUserId: number;
+  profile?: "namespace-only" | "full-application-http";
   workflowRuntimeToken?: string; controlPlaneToken?: string;
 }) {
   if (input.identity.provider !== "cloudflare" || input.identity.environment !== "staging" ||
@@ -211,14 +215,88 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
     const { stored } = await readVersion(tx, input.identity, input.configurationRef);
     if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) <= Date.now()) denied();
     const previous = stored.descriptor;
-    if (!previous.nativeResources?.privateDatabase) throw new Error("STAGING_PRIVATE_DATABASE_BINDING_REQUIRED");
+    if (input.profile === "full-application-http") {
+      const applicationSecrets = stored.secrets.applicationHttp;
+      if (!applicationSecrets) throw new Error("STAGING_HTTP_APPLICATION_SECRETS_NOT_CONFIGURED");
+      const databaseUrls = [applicationSecrets.node.DATABASE_URL, applicationSecrets.python.DATABASE_URL];
+      if (databaseUrls.some(value => !value)) throw new Error("STAGING_HTTP_DATABASE_REFERENCE_NOT_CONFIGURED");
+      try {
+        const parsed = databaseUrls.map(value => new URL(value!));
+        if (parsed.some(value => value.pathname !== "/smartspec" || !value.username || !value.password ||
+            !["postgres:", "postgresql:", "postgresql+asyncpg:"].includes(value.protocol)) ||
+            parsed[0]!.hostname !== parsed[1]!.hostname || parsed[0]!.port !== parsed[1]!.port) {
+          throw new Error("STAGING_HTTP_DATABASE_REFERENCE_INVALID");
+        }
+      } catch (error) {
+        if (error instanceof Error && error.message === "STAGING_HTTP_DATABASE_REFERENCE_INVALID") throw error;
+        throw new Error("STAGING_HTTP_DATABASE_REFERENCE_INVALID");
+      }
+      const published = await resolveVerifiedHttpImagePair(tx as unknown as DrizzleDB, { ...input.identity, actorUserId: input.actorUserId });
+      if (!published.pair) {
+        if (published.diagnostics.length) throw new Error(published.diagnostics[0]!.code);
+        throw new HttpPublishedPairRequired(published.diagnostics);
+      }
+      if (published.pair.accountRef !== target.accountRef) throw new Error("STAGING_HTTP_IMAGE_ACCOUNT_MISMATCH");
+      const imageJob = async (runtime: "node-http" | "python-http") => {
+        const receipt = published.pair!.jobs.find(item => item.runtime === runtime);
+        if (!receipt) throw new Error("STAGING_HTTP_IMAGE_RECEIPTS_REQUIRED");
+        const [job] = await tx.select().from(workerJobs).where(eq(workerJobs.id, receipt.jobId)).limit(1);
+        if (!job || job.status !== "succeeded" || job.operatorReviewRequired || job.tenantId !== input.identity.tenantId ||
+            job.requestedByUserId !== input.actorUserId || job.jobType !== HTTP_IMAGE_PROVISION_JOB || job.contractVersion !== HTTP_IMAGE_PROVISION_CONTRACT ||
+            typeof job.inputJson?.planDigest !== "string" || typeof job.outputJson?.image !== "string") {
+          throw new Error("STAGING_HTTP_IMAGE_RECEIPT_INVALID");
+        }
+        return { provisionJobId: job.id, planDigest: job.inputJson.planDigest, image: job.outputJson.image };
+      };
+      const issuedAt = new Date();
+      const expiresAt = new Date(Math.min(Date.parse(previous.expiresAt), issuedAt.getTime() + 30 * 60_000));
+      const applicationHttp: HttpApplicationSettings = {
+        mode: "private-canary", namespace: httpApplicationNamespace(input.identity.tenantId, input.identity.projectId, "staging"),
+        sourceSha: published.pair.sourceSha, traffic: "staging-full-http-v1",
+        node: await imageJob("node-http"), python: await imageJob("python-http"),
+        issuedAt: issuedAt.toISOString(), expiresAt: expiresAt.toISOString(), maxStarts: 2, maxComputeSeconds: 1200,
+        hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic", startupDiagnostics: "container-logs",
+      };
+      validateHttpApplicationSettings(applicationHttp, { ...input.identity, accountRef: target.accountRef }, issuedAt.getTime());
+      const { workflowRuntimeToken: _workflowRuntimeToken, controlPlaneToken: _controlPlaneToken, ...applicationBaseSecrets } = stored.secrets;
+      const secrets = cloudflareOriginSecretsSchema.parse({ ...applicationBaseSecrets, applicationHttp,
+        applicationCanaryToken: stored.secrets.applicationCanaryToken ?? randomBytes(32).toString("hex") });
+      const settings = cloudflareOriginSettingsSchema.parse({
+        origin: previous.origin, allowedPublicOrigins: previous.allowedPublicOrigins,
+        accessApplicationId: previous.accessApplicationId, accessTeamName: previous.accessTeamName,
+        accessAudience: previous.accessAudience, expiresAt: previous.expiresAt,
+        applicationHttp,
+      });
+      assertCloudflareWorkflowConfiguration(settings, secrets);
+      validateSettings(settings, Date.now());
+      const descriptor = descriptorSchema.parse({ ...settings, schemaVersion: "cloudflare.origin-configuration.v1",
+        versionId: randomUUID(), ...input.identity, accountRef: target.accountRef, targetId: "smartspec-cloudflare-staging" });
+      const configurationRef = reference(descriptor);
+      const existing = await tx.select({ id: systemSettings.id }).from(systemSettings)
+        .where(and(eq(systemSettings.category, category), eq(systemSettings.key, configurationRef))).limit(1);
+      if (existing.length) denied();
+      // Exercise the exact binding/profile validator now, while secrets remain
+      // server-side, so an incomplete Full HTTP config never becomes deployable.
+      httpApplicationVersionBindings(applicationHttp, { ...input.identity, accountRef: target.accountRef, configurationRef }, applicationSecrets);
+      await tx.insert(systemSettings).values({ category, key: configurationRef, isSensitive: true,
+        value: encrypt(JSON.stringify({ descriptor, secrets, revokedAt: null })), valueJson: null,
+        updatedBy: input.actorUserId, description: "Immutable Staging Full Application HTTP candidate; existing image receipts and encrypted app secrets" });
+      const rebound = await tx.update(providerDeploymentTargets).set({ runtimePolicy: configurationRef, updatedBy: input.actorUserId, updatedAt: new Date() })
+        .where(and(eq(providerDeploymentTargets.id, target.id), eq(providerDeploymentTargets.runtimePolicy, input.configurationRef)))
+        .returning({ id: providerDeploymentTargets.id });
+      if (rebound.length !== 1) denied();
+      return { status: "STORED_AND_BOUND" as const, profile: "FULL_APPLICATION_HTTP" as const, configurationRef,
+        configurationDigest: digest(descriptor), descriptor, imagePair: { submissionId: published.pair.submissionId,
+        sourceSha: published.pair.sourceSha, verified: true as const }, deploymentAuthorized: false as const };
+    }
     const needsRuntimeSecrets = !stored.secrets.workflowRuntimeToken || !stored.secrets.controlPlaneToken;
     const suppliedAnyRuntimeSecret = Boolean(input.workflowRuntimeToken || input.controlPlaneToken);
     if (suppliedAnyRuntimeSecret && (!input.workflowRuntimeToken || !input.controlPlaneToken)) throw new Error("STAGING_WORKFLOW_RUNTIME_SECRETS_REQUIRED");
     if (!needsRuntimeSecrets && suppliedAnyRuntimeSecret) throw new Error("STAGING_WORKFLOW_RUNTIME_SECRETS_ALREADY_CONFIGURED");
-    const secrets = needsRuntimeSecrets ? cloudflareOriginSecretsSchema.parse({ ...stored.secrets,
+    const baseSecrets = needsRuntimeSecrets ? cloudflareOriginSecretsSchema.parse({ ...stored.secrets,
       workflowRuntimeToken: input.workflowRuntimeToken ?? randomBytes(32).toString("hex"),
       controlPlaneToken: input.controlPlaneToken ?? randomBytes(32).toString("hex") }) : stored.secrets;
+    const secrets = baseSecrets;
     if (previous.workflowExecution === "emergency-intake" && previous.jobTransport === "queues") {
       return { status: "ALREADY_CONFIGURED" as const, configurationRef: input.configurationRef,
         configurationDigest: digest(previous), descriptor: previous, deploymentAuthorized: false as const };
@@ -252,7 +330,7 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
       .where(and(eq(providerDeploymentTargets.id, target.id), eq(providerDeploymentTargets.runtimePolicy, input.configurationRef)))
       .returning({ id: providerDeploymentTargets.id });
     if (rebound.length !== 1) denied();
-    return { status: "STORED_AND_BOUND" as const, configurationRef, configurationDigest: digest(descriptor), descriptor,
+    return { status: "STORED_AND_BOUND" as const, profile: "NAMESPACE_ONLY" as const, configurationRef, configurationDigest: digest(descriptor), descriptor,
       deploymentAuthorized: false as const };
   });
 }

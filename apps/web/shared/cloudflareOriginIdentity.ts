@@ -15,6 +15,7 @@ export const cloudflareOriginReferenceSchema = cloudflareOriginIdentitySchema.ex
 // not accept payloads that the serving mutation rejects.
 export const cloudflareStagingActivationInputSchema = cloudflareOriginReferenceSchema.extend({
   environment: z.literal("staging"),
+  profile: z.enum(["namespace-only", "full-application-http"]).default("namespace-only"),
   workflowRuntimeToken: z.string().min(32).max(4096).optional(),
   controlPlaneToken: z.string().min(32).max(4096).optional(),
 }).strict().superRefine((value, ctx) => {

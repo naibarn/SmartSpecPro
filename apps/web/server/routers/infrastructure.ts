@@ -487,7 +487,8 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
   if (originConfiguration.status !== "STORED" || originConfiguration.configurationDigest !== configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_INVALID");
   const activationBlocker = cloudflareStagingActivationBlocker({ ...originConfiguration.descriptor,
     workflowRuntimeTokenConfigured: originConfiguration.workflowRuntimeTokenConfigured,
-    controlPlaneTokenConfigured: originConfiguration.controlPlaneTokenConfigured });
+    controlPlaneTokenConfigured: originConfiguration.controlPlaneTokenConfigured,
+    applicationSecretsConfigured: originConfiguration.applicationPreparation?.encryptedApplicationSecrets === "STORED" });
   if (activationBlocker) return unavailable(activationBlocker);
   const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) return unavailable("PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE");
@@ -650,17 +651,17 @@ export const infrastructureRouter = router({
       if (!owner || owner.ownerId !== ctx.user!.id || !owner.active || owner.role !== "admin" || owner.disabled) {
         throw new TRPCError({ code: "FORBIDDEN", message: "CLOUDFLARE_STAGING_ACTIVE_TENANT_OWNER_REQUIRED" });
       }
-      const { configurationRef, workflowRuntimeToken, controlPlaneToken, ...identity } = input;
+      const { configurationRef, workflowRuntimeToken, controlPlaneToken, profile, ...identity } = input;
       let result: Awaited<ReturnType<typeof activateCloudflareStagingQueueProfile>>;
       try {
-        result = await activateCloudflareStagingQueueProfile(db, { identity, configurationRef, actorUserId: ctx.user!.id,
+        result = await activateCloudflareStagingQueueProfile(db, { identity, configurationRef, profile, actorUserId: ctx.user!.id,
           ...(workflowRuntimeToken ? { workflowRuntimeToken, controlPlaneToken } : {}) });
       } catch (error) {
         const code = error instanceof Error && /^[A-Z0-9_]+$/.test(error.message) ? error.message : "STAGING_PROFILE_ACTIVATION_FAILED";
         throw new TRPCError({ code: code.endsWith("_REQUIRED") ? "PRECONDITION_FAILED" : "BAD_REQUEST", message: code });
       }
-      auditLogger.log({ eventType: "cloudflare_staging_queue_profile_activated", userId: ctx.user!.id,
-        requestType: "cloudflare_staging_queue_profile_activate", responsePayload: { ...identity,
+      auditLogger.log({ eventType: profile === "full-application-http" ? "cloudflare_staging_full_http_candidate_prepared" : "cloudflare_staging_queue_profile_activated", userId: ctx.user!.id,
+        requestType: profile === "full-application-http" ? "cloudflare_staging_full_http_candidate_prepare" : "cloudflare_staging_queue_profile_activate", responsePayload: { ...identity, profile,
           previousConfigurationRef: configurationRef, configurationRef: result.configurationRef,
           configurationDigest: result.configurationDigest, deploymentAuthorized: false }, statusCode: 200 });
       return result;
