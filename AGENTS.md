@@ -90,6 +90,55 @@ the policy's explicit-path fallback.
 
 ## Outcome Completion
 
+### SmartAIHub Cloudflare Beta cutover — owner directive
+
+For the current Beta migration, prioritize moving `smartaihub.app` application
+execution to the existing Cloudflare Workers + Containers runtime. Keep the
+canonical PostgreSQL database `smartspec` as the database of record. Keep
+`aimarkethubs.com` on Debian Development, using its separate tenant in that same
+logical database. Do not reinterpret this as a database merge or require a new
+database provider. Neon migration and Production Hardening are deferred until
+Cloudflare Beta acceptance.
+
+- Reuse the existing Workers, Containers, image receipts, provider resources,
+  saved credentials, executors, deployment workflow and rollback baseline.
+  Recreate infrastructure only when a verified runtime dependency requires it.
+- A separate Staging database, new Database Owner framework, full M3
+  Queue/Recovery parity, SPEC-224 completion, unrelated Chat/Thread migrations,
+  new approval or credential systems, Neon, and Development superuser removal
+  are not unconditional M2 cutover gates. Do not disable genuine security or
+  data-integrity checks to get past a gate.
+- Keep the explicitly authorized Development database administration access
+  available for debugging, DDL, migrations and data repair. Do not repeatedly
+  propose removing that access as a migration prerequisite. Keep administrative
+  credentials out of public-facing runtime configuration when an appropriate
+  application credential is available.
+- Prepare and execute through the existing authorized server-side deployment
+  path. A credential stored in the platform is not automatically available to
+  the CLI, and missing CLI credentials alone do not prove the executor is
+  unavailable. Do not create another approval system or repeat browser/CLI
+  checks without new evidence. If authority is genuinely missing, state one
+  exact target, operation and required permission.
+- Start with real Container startup, health and read-only database checks.
+  Disable automatic schema creation, migrations and seeding during runtime
+  startup. Verify login/session behavior, critical APIs, Chat/model access,
+  existing-record reads and controlled tenant-scoped writes before production
+  traffic changes. Never use customer records for destructive tests.
+- Do not change Production traffic until Staging acceptance, database
+  connectivity, backup/recovery and rollback are verified. Cutover success
+  requires evidence that normal `smartaihub.app` requests execute on Cloudflare
+  without Debian application fallback; Worker health, dry-runs and source tests
+  alone are insufficient. Retain Debian for controlled rollback during
+  stabilization.
+- Report runtime hosting separately from database hosting. PostgreSQL may
+  remain on its existing host during this application cutover; that dependency
+  is not itself a failed Cloudflare runtime migration.
+- Continue from existing source and receipts. Do not repeat completed audits,
+  create checkpoint-only commits, or expand this cutover into unrelated
+  platform development. Fix the smallest demonstrated blocker and keep working
+  until live acceptance is proven or one concrete external authorization is
+  identified.
+
 ### Autonomous non-production approval across SPECs
 
 The user's instruction to start or continue a development task authorizes its
