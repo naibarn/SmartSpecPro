@@ -20,6 +20,19 @@ export type PrivateDatabaseRenewalPreflight = {
   existingJob: { jobId: string; status: string; errorCode: string | null; heartbeatAt: string | null; retryable: boolean;
     retryReason: "expired_before_claim" | "authority_rejected_before_provider" | "executor_binding_rejected_before_provider" | null; nextGeneration: number | null } | null;
 };
+const STAGING_PRIVATE_DATABASE_RENEWAL_WINDOW_MS = 7 * 86_400_000;
+
+export function isStagingPrivateDatabaseRenewalDue(input: {
+  configurationStatus: "STORED" | "EXPIRED" | "REVOKED";
+  configurationExpiresAt: string;
+  databaseLeaseExpiresAt: string;
+  now: number;
+}): boolean {
+  if (input.configurationStatus === "EXPIRED") return true;
+  if (input.configurationStatus === "REVOKED") return false;
+  const effectiveExpiry = Math.min(Date.parse(input.configurationExpiresAt), Date.parse(input.databaseLeaseExpiresAt));
+  return Number.isFinite(effectiveExpiry) && effectiveExpiry <= input.now + STAGING_PRIVATE_DATABASE_RENEWAL_WINDOW_MS;
+}
 
 export function nextPrivateDatabaseRenewalGeneration(idempotencyKey: string | null): number {
   const match = idempotencyKey?.match(/:generation:(\d+)$/);
@@ -132,7 +145,7 @@ async function atStage<T>(stage: string, operation: () => Promise<T>): Promise<T
 }
 }
 
-async function verifyExpiredRole(db: DrizzleDB, plan: PrivateDatabaseRenewalPlan["sourcePlan"], now = Date.now()) {
+async function verifyRenewableRole(db: DrizzleDB, plan: PrivateDatabaseRenewalPlan["sourcePlan"]) {
   const role = privateDatabaseRole(plan.namespace);
   const current: any = await db.execute(sql`SELECT current_database() AS name`);
   if (current[0]?.name !== plan.databaseName) throw new Error("PRIVATE_DATABASE_RENEWAL_DATABASE_SCOPE_DENIED");
@@ -140,7 +153,7 @@ async function verifyExpiredRole(db: DrizzleDB, plan: PrivateDatabaseRenewalPlan
   const r = roles[0];
   if (!r || r.rolsuper || r.rolcreaterole || r.rolcreatedb || r.rolreplication || r.rolbypassrls || !r.rolcanlogin || r.rolconnlimit !== 5
     || !r.rolconfig?.includes("default_transaction_read_only=on") || !r.rolvaliduntil
-    || Date.parse(r.rolvaliduntil) !== Date.parse(plan.configurationExpiresAt) || Date.parse(r.rolvaliduntil) > now)
+    || Date.parse(r.rolvaliduntil) !== Date.parse(plan.configurationExpiresAt))
     throw new Error("PRIVATE_DATABASE_RENEWAL_ROLE_DRIFT");
 }
 
@@ -158,9 +171,11 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
     getCloudflareOriginConfiguration(db, { identity: input.identity, configurationRef: input.configurationRef }));
   const base = { configurationRef: config.configurationRef, configurationDigest: config.configurationDigest, accountRef: config.descriptor.accountRef };
   if (config.status === "REVOKED") return result({ ...base, ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_REVOKED", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
-  if (config.status !== "EXPIRED") return result({ ...base, ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_NOT_EXPIRED", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
   const binding = config.descriptor.nativeResources?.privateDatabase as PrivateDatabaseBinding | undefined;
   if (!binding || binding.leaseRenewal) return result({ ...base, ready: false, reason: binding?.leaseRenewal ? "PRIVATE_DATABASE_RENEWAL_ALREADY_RECORDED" : "STAGING_PRIVATE_DATABASE_BINDING_REQUIRED", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
+  if (!isStagingPrivateDatabaseRenewalDue({ configurationStatus: config.status, configurationExpiresAt: config.descriptor.expiresAt,
+    databaseLeaseExpiresAt: binding.plan.configurationExpiresAt, now }))
+    return result({ ...base, ready: false, reason: "STAGING_ORIGIN_CONFIGURATION_NOT_EXPIRED", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
   const target = await atStage("STAGING_TARGET_READBACK", () => resolveProviderDeploymentTarget(db, input.identity));
   if (target.status !== "CONFIGURED" || target.target.deploymentTargetId !== "smartspec-cloudflare-staging"
     || target.target.workerRef !== "smartspec-cloudflare-staging" || target.target.containerApplicationRef
@@ -228,7 +243,7 @@ export async function getCloudflarePrivateDatabaseRenewalPreflight(db: DrizzleDB
     accountRef: config.descriptor.accountRef, actorUserId: input.actorUserId }, { jobId: binding.provisionJobId, actorUserId: input.actorUserId, state: checkpoint }));
   if (checkpoint.planDigest !== binding.planDigest || !checkpoint.databaseRolePrepared || !checkpoint.databasePassword)
     return result({ ...base, ready: false, reason: "PRIVATE_DATABASE_RENEWAL_SOURCE_RECEIPT_DENIED", plan: null, planDigest: null, leaseExpiresAt: null, existingJob: null });
-  await atStage("DATABASE_ROLE_READBACK", () => verifyExpiredRole(db, binding.plan, now));
+  await atStage("DATABASE_ROLE_READBACK", () => verifyRenewableRole(db, binding.plan));
   const providerState = await atStage("CLOUDFLARE_PROVIDER_READBACK", () => runtime.withCredential(scope, async token => verifyPrivateDatabaseProviderResources({ descriptor: binding,
     accountRef: config.descriptor.accountRef, token, fetchImpl: runtime.fetchImpl, effectiveLeaseExpiresAt: leaseExpiresAt, allowServiceTokenExpiryRefresh: true })));
   if (!providerState.serviceTokenExpiresAt) return result({ ...base, ready: false, reason: "PRIVATE_DATABASE_SERVICE_TOKEN_EXPIRY_UNAVAILABLE",

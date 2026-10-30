@@ -90,6 +90,28 @@ describe("expired Staging rollback configuration compatibility", () => {
     } } } })).toBe(false);
     expect(isCompatibleCloudflareOriginRenewalRevision({ ...input, previousRevokedAt: new Date().toISOString() })).toBe(false);
   });
+
+  it("accepts a verified renewal within seven days before expiry but rejects an early renewal", () => {
+    const now = Date.now();
+    const nearExpiry = { ...previous, expiresAt: new Date(now + 20 * 86_400_000).toISOString(),
+      nativeResources: { privateDatabase: { ...previous.nativeResources.privateDatabase,
+        plan: { ...previous.nativeResources.privateDatabase.plan, configurationExpiresAt: new Date(now + 5 * 86_400_000).toISOString() } } } } as any;
+    const nearExpiryRef = `cf-origin:${cloudflareOriginDescriptorDigest(nearExpiry)}`;
+    const renewed = { ...nearExpiry, versionId: "22222222-2222-4222-8222-222222222222", expiresAt: renewedUntil,
+      nativeResources: { privateDatabase: { ...nearExpiry.nativeResources.privateDatabase, leaseRenewal: {
+        jobId: "33333333-3333-4333-8333-333333333333", leaseExpiresAt: renewedUntil, planDigest: "d".repeat(64),
+        sourceConfigurationRef: nearExpiryRef, sourceConfigurationDigest: cloudflareOriginDescriptorDigest(nearExpiry),
+      } } } } as any;
+    const input = { previousRef: nearExpiryRef, previous: nearExpiry, previousSecrets: secrets, previousRevokedAt: null,
+      activeRef: `cf-origin:${cloudflareOriginDescriptorDigest(renewed)}`, active: renewed, activeSecrets: secrets,
+      activeRevokedAt: null, now };
+    expect(isCompatibleCloudflareOriginRenewalRevision(input)).toBe(true);
+
+    const notDue = { ...nearExpiry, nativeResources: { privateDatabase: { ...nearExpiry.nativeResources.privateDatabase,
+      plan: { ...nearExpiry.nativeResources.privateDatabase.plan, configurationExpiresAt: new Date(now + 10 * 86_400_000).toISOString() } } } } as any;
+    expect(isCompatibleCloudflareOriginRenewalRevision({ ...input, previous: notDue,
+      previousRef: `cf-origin:${cloudflareOriginDescriptorDigest(notDue)}` })).toBe(false);
+  });
 });
 
 const enabled = process.env.RUN_CLOUDFLARE_STAGING_DB_INTEGRATION === "true";

@@ -59,9 +59,9 @@ function canonicalJson(value: unknown): string {
 }
 
 /**
- * Expired Staging deployments remain usable as rollback baselines only across
- * the exact private-database lease renewal that produced the currently bound
- * immutable config. All other descriptor and secret fields must stay equal.
+ * Staging deployments at or within seven days of expiry remain usable as
+ * rollback baselines only across the exact private-database lease renewal that
+ * produced the currently bound immutable config. All other fields stay equal.
  */
 export function isCompatibleCloudflareOriginRenewalRevision(input: {
   previousRef: string; previous: Descriptor; previousSecrets: OriginSecrets; previousRevokedAt: string | null;
@@ -73,7 +73,7 @@ export function isCompatibleCloudflareOriginRenewalRevision(input: {
   const activeDatabase = input.active.nativeResources?.privateDatabase;
   const renewal = activeDatabase?.leaseRenewal;
   if (input.previous.environment !== "staging" || input.active.environment !== "staging" ||
-      input.previousRevokedAt || input.activeRevokedAt || Date.parse(input.previous.expiresAt) > now ||
+      input.previousRevokedAt || input.activeRevokedAt ||
       Date.parse(input.active.expiresAt) <= now || input.previousRef !== reference(input.previous) ||
       input.activeRef !== reference(input.active) || !previousDatabase || !activeDatabase ||
       previousDatabase.leaseRenewal || !renewal || renewal.sourceConfigurationRef !== input.previousRef ||
@@ -81,6 +81,8 @@ export function isCompatibleCloudflareOriginRenewalRevision(input: {
       !/^[a-f0-9]{64}$/.test(renewal.planDigest) || !z.string().uuid().safeParse(renewal.jobId).success ||
       (input.previous.applicationHttp && !input.previous.applicationHttpPhase && Date.parse(input.previous.applicationHttp.expiresAt) <= now) ||
       (input.active.applicationHttp && !input.active.applicationHttpPhase && Date.parse(input.active.applicationHttp.expiresAt) <= now)) return false;
+  const previousValidityExpiresAt = Math.min(Date.parse(input.previous.expiresAt), Date.parse(previousDatabase.plan.configurationExpiresAt));
+  if (previousValidityExpiresAt > now + 7 * 86_400_000) return false;
 
   const comparable = (descriptor: Descriptor) => {
     const value = structuredClone(descriptor) as Record<string, any>;
@@ -375,9 +377,11 @@ export async function saveCloudflareStagingConfigurationAfterDatabaseRenewal(db:
       || target.workerRef !== "smartspec-cloudflare-staging" || target.containerApplicationRef || authorizeDeploymentTarget({ target,
         callerTenantId: input.identity.tenantId, projectId: input.identity.projectId, environment: "staging", provider: "cloudflare" }) !== "AUTHORIZED") denied();
     const { stored } = await readVersion(tx as DrizzleDB, input.identity, input.configurationRef);
-    if (stored.revokedAt || Date.parse(stored.descriptor.expiresAt) > Date.now()) denied();
+    if (stored.revokedAt) denied();
     const sourceBinding = stored.descriptor.nativeResources?.privateDatabase;
     if (!sourceBinding || sourceBinding.leaseRenewal) throw new Error("PRIVATE_DATABASE_RENEWAL_SOURCE_BINDING_INVALID");
+    const sourceValidityExpiresAt = Math.min(Date.parse(stored.descriptor.expiresAt), Date.parse(sourceBinding.plan.configurationExpiresAt));
+    if (sourceValidityExpiresAt > Date.now() + 7 * 86_400_000) throw new Error("STAGING_ORIGIN_CONFIGURATION_NOT_EXPIRED");
     const [job] = await tx.select({ id: workerJobs.id, tenantId: workerJobs.tenantId, requestedByUserId: workerJobs.requestedByUserId,
       jobType: workerJobs.jobType, contractVersion: workerJobs.contractVersion, status: workerJobs.status,
       operatorReviewRequired: workerJobs.operatorReviewRequired, inputJson: workerJobs.inputJson, outputJson: workerJobs.outputJson })

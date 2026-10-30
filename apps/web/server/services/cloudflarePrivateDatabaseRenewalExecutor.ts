@@ -115,9 +115,9 @@ export function createCloudflarePrivateDatabaseRenewalRuntime(options: { fetchIm
         const roles: any = await tx.execute(sql`SELECT rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls, rolcanlogin, rolconnlimit, rolconfig, rolvaliduntil FROM pg_roles WHERE rolname=${role}`);
         const r = roles[0], oldExpiry = Date.parse(g.plan.sourcePlan.configurationExpiresAt);
         if (!r || r.rolsuper || r.rolcreaterole || r.rolcreatedb || r.rolreplication || r.rolbypassrls || !r.rolcanlogin || r.rolconnlimit !== 5
-          || !r.rolconfig?.includes("default_transaction_read_only=on") || !r.rolvaliduntil || Date.parse(expiresAt) <= Date.now()) fail("PRIVATE_DATABASE_RENEWAL_ROLE_DRIFT");
+          || !r.rolconfig?.includes("default_transaction_read_only=on") || !r.rolvaliduntil
+          || Date.parse(r.rolvaliduntil) !== oldExpiry || Date.parse(expiresAt) <= oldExpiry) fail("PRIVATE_DATABASE_RENEWAL_ROLE_DRIFT");
         if (Date.parse(r.rolvaliduntil) !== Date.parse(expiresAt)) {
-          if (Date.parse(r.rolvaliduntil) !== oldExpiry || Date.parse(r.rolvaliduntil) > Date.now()) fail("PRIVATE_DATABASE_RENEWAL_ROLE_DRIFT");
           const safeExpiry = expiresAt.replace(/'/g, "");
           await tx.execute(sql.raw(`ALTER ROLE "${role}" VALID UNTIL '${safeExpiry}'`));
         }
