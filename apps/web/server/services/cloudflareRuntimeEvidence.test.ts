@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { encrypt } from "./crypto";
-import { getAuthorizedCloudflareContainerEvidence, getAuthorizedCloudflareWorkerDeploymentEvidence, getCloudflareContainerInstanceEvidence, getCloudflareWorkerDeploymentEvidence, getPersistedCloudflareContainerEvidence, getPersistedCloudflareWorkerDeploymentEvidence, resolveCloudflareDeploymentTarget } from "./cloudflareRuntimeEvidence";
+import { getAuthorizedCloudflareContainerEvidence, getAuthorizedCloudflareWorkerDeploymentEvidence, getCloudflareContainerInstanceEvidence, getCloudflareWorkerDeploymentEvidence, getCloudflareWorkerDeploymentVersionEvidence, getPersistedCloudflareContainerEvidence, getPersistedCloudflareWorkerDeploymentEvidence, resolveCloudflareDeploymentTarget } from "./cloudflareRuntimeEvidence";
 import { deploymentCredentialRef } from "./providerDeploymentTargetAuthority";
 
 const encryptionKey = "wu4c-cloudflare-test-encryption-key";
@@ -79,6 +79,22 @@ describe("Cloudflare runtime evidence adapters", () => {
     });
     const result = await getCloudflareWorkerDeploymentEvidence({ db: credentialDb("secret-token"), accountId: "acct", scriptName: "worker", fetchImpl });
     expect(result).toMatchObject({ status: "OBSERVED", source: "cloudflare_workers_api", value: { deploymentId: "deployment-1", versions: [{ versionId: "version-1", percentage: 100 }] } });
+    expect(JSON.stringify(result)).not.toContain("secret-token");
+  });
+
+  it("reads the immutable version behind a deployment with the scoped credential", async () => {
+    process.env.LLM_ENCRYPTION_KEY = encryptionKey;
+    const deploymentId = "11111111-1111-4111-8111-111111111111";
+    const versionId = "22222222-2222-4222-8222-222222222222";
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      expect(url).toContain(`/scripts/worker-a/deployments/${deploymentId}`);
+      expect(new Headers(init.headers).get("authorization")).toBe("Bearer secret-token");
+      return new Response(JSON.stringify({ success: true, result: {
+        id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }],
+      } }), { status: 200 });
+    });
+    const result = await getCloudflareWorkerDeploymentVersionEvidence({ db: credentialDb("secret-token"), accountId: "acct", scriptName: "worker-a", deploymentId, fetchImpl });
+    expect(result).toMatchObject({ status: "OBSERVED", value: { deploymentId, versions: [{ versionId, percentage: 100 }] } });
     expect(JSON.stringify(result)).not.toContain("secret-token");
   });
 

@@ -218,6 +218,31 @@ export function getCloudflareWorkerDeploymentEvidence(input: {
   });
 }
 
+/** Resolve the immutable version behind a specific deployment ID. Used to
+ * reconcile a newly-created rollback deployment with a previously verified
+ * deployment without trusting annotations alone. */
+export function getCloudflareWorkerDeploymentVersionEvidence(input: {
+  db: DrizzleDB; accountId: string; scriptName: string; deploymentId: string; fetchImpl?: CloudflareFetch; now?: Date; credentialBinding?: CredentialBinding;
+}) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.deploymentId)) {
+    return Promise.resolve({ status: "INVALID_TARGET_CONFIGURATION" as const, observedAt: (input.now ?? new Date()).toISOString(),
+      source: "cloudflare_workers_api", value: null });
+  }
+  const path = `/accounts/${encodeURIComponent(input.accountId)}/workers/scripts/${encodeURIComponent(input.scriptName)}/deployments/${encodeURIComponent(input.deploymentId)}`;
+  return cloudflareQuery({
+    db: input.db, profile: "deployment", path, source: "cloudflare_workers_api", fetchImpl: input.fetchImpl, now: input.now,
+    credentialBinding: input.credentialBinding,
+    normalize: body => {
+      const result = body.result as Record<string, unknown> | null;
+      if (result?.id !== input.deploymentId || !Array.isArray(result.versions)) return null;
+      const versions = result.versions as Array<Record<string, unknown>>;
+      return { accountId: input.accountId, scriptName: input.scriptName, deploymentId: input.deploymentId,
+        versions: versions.map(version => ({ versionId: typeof version.version_id === "string" ? version.version_id : null,
+          percentage: typeof version.percentage === "number" ? version.percentage : null })) };
+    },
+  });
+}
+
 export function getCloudflareContainerInstanceEvidence(input: {
   db: DrizzleDB; accountId: string; applicationId: string; fetchImpl?: CloudflareFetch; now?: Date; credentialBinding?: CredentialBinding;
 }) {

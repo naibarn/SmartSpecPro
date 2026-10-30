@@ -109,7 +109,7 @@ import { productionDatabaseResourcePlanDigest, productionDatabaseResourcePlanSch
 import { cloudflareApprovalFailureCode, cloudflareApprovalResponseObject } from "../services/cloudflareApprovalFailure";
 import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalPlanSchema, privateDatabaseRenewalPlanDigest } from "../services/cloudflarePrivateDatabaseContract";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
-import { getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
+import { getCloudflareWorkerDeploymentVersionEvidence, getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
 import { findVerifiedStagingRollbackBaseline } from "../services/cloudflareStagingRollbackBaseline";
 import { admitM3ParityOperation, getM3ParityOperation, getM3ParityPreflight } from "../services/cloudflareM3ParityAdmission";
 import { cloudflareOriginIdentitySchema as originIdentitySchema, cloudflareOriginReferenceSchema as originReferenceSchema,
@@ -509,7 +509,14 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
     if (typeof active?.deploymentId === "string" && deploymentIsSingleVersion) {
       const baseline = await findVerifiedStagingRollbackBaseline({
         candidates: baselineCandidates, projectId: identity.projectId, activeDeploymentId: active.deploymentId,
-        activeDeploymentIsSingleVersion: deploymentIsSingleVersion,
+        activeDeploymentIsSingleVersion: deploymentIsSingleVersion, activeVersionId: versions[0]!.versionId as string,
+        isActiveVersionFromVerifiedDeployment: async (deploymentId, activeVersionId) => {
+          const deployedVersion = await getCloudflareWorkerDeploymentVersionEvidence({ db, accountId: target.accountRef, scriptName: target.workerRef,
+            deploymentId, credentialBinding: { identity: { ...identity, environment: "staging", provider: "cloudflare" },
+              credentialRef: target.credentialRef } });
+          return deployedVersion.status === "OBSERVED" && deployedVersion.value?.versions.length === 1 &&
+            deployedVersion.value.versions[0]?.percentage === 100 && deployedVersion.value.versions[0]?.versionId === activeVersionId;
+        },
         isConfigurationUsable: async (candidateRef, candidateDigest) => {
           const stored = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef: candidateRef })
             .catch(() => null);

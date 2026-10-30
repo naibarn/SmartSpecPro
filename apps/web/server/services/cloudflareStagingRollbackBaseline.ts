@@ -14,7 +14,8 @@ export type VerifiedStagingRollbackBaseline = {
 
 /**
  * Resolve a rollback baseline only when a succeeded canonical job's immutable
- * receipt identifies the deployment that is currently serving at Cloudflare.
+ * receipt identifies the active deployment or Cloudflare confirms that a new
+ * deployment ID serves the exact same immutable Worker version.
  * The baseline may use an older still-valid origin configuration, or an expired
  * version only when the active immutable config is its exact verified DB-lease
  * renewal. Changing the candidate config must not turn an existing deployment
@@ -25,6 +26,8 @@ export async function findVerifiedStagingRollbackBaseline(input: {
   projectId: string;
   activeDeploymentId: string;
   activeDeploymentIsSingleVersion: boolean;
+  activeVersionId?: string | null;
+  isActiveVersionFromVerifiedDeployment?: (deploymentId: string, activeVersionId: string) => Promise<boolean>;
   isConfigurationUsable: (configurationRef: string, configurationDigest: string) => Promise<boolean>;
 }): Promise<VerifiedStagingRollbackBaseline | null> {
   for (const candidate of input.candidates) {
@@ -33,14 +36,24 @@ export async function findVerifiedStagingRollbackBaseline(input: {
     const configurationDigest = output.configurationDigest;
     if (job.projectId !== input.projectId || job.environment !== "staging" ||
         job.contractVersion !== "cloudflare-staging-origin-v2" || output.runtimeVerified !== true ||
-        output.deploymentId !== input.activeDeploymentId || output.configurationRef !== configurationRef || !input.activeDeploymentIsSingleVersion ||
+        typeof input.activeDeploymentId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.activeDeploymentId) ||
+        typeof output.deploymentId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(output.deploymentId) ||
+        output.configurationRef !== configurationRef || !input.activeDeploymentIsSingleVersion ||
         output.sourceSha !== job.sourceSha || output.buildDigest !== job.buildDigest ||
-        typeof job.artifactRef !== "string" || typeof job.sourceSha !== "string" || typeof job.buildDigest !== "string" ||
+        typeof job.artifactRef !== "string" || typeof job.sourceSha !== "string" || !/^[a-f0-9]{40}$/i.test(job.sourceSha) ||
+        typeof job.buildDigest !== "string" || !/^[a-f0-9]{64}$/i.test(job.buildDigest) ||
         job.artifactRef !== `sha256:${job.buildDigest}` ||
         typeof configurationRef !== "string" || typeof configurationDigest !== "string" || !/^cf-origin:[a-f0-9]{64}$/.test(configurationRef) ||
         job.configurationDigest !== configurationDigest || configurationDigest !== configurationRef.slice("cf-origin:".length)) continue;
-
     if (!await input.isConfigurationUsable(configurationRef, configurationDigest)) continue;
+
+    const sameActiveDeployment = output.deploymentId === input.activeDeploymentId;
+    const sameVerifiedVersion = !sameActiveDeployment &&
+      typeof input.activeVersionId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.activeVersionId) &&
+      input.isActiveVersionFromVerifiedDeployment
+      ? await input.isActiveVersionFromVerifiedDeployment(output.deploymentId, input.activeVersionId)
+      : false;
+    if (!sameActiveDeployment && !sameVerifiedVersion) continue;
     // Rollback reuses the immutable deployed Worker version by deployment ID.
     // The executor verifies its SHA/digest/config annotations against this
     // canonical runtime-verified receipt, so the old upload bundle need not be
