@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { resolve, dirname } from "node:path";
+import { resolve, dirname, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, execFileSync } from "node:child_process";
 import { parse } from "dotenv";
@@ -48,12 +48,19 @@ const revision = `${sourceSha}${dirty ? "-dirty" : ""}`;
 const builtPublicDir = process.env.SMARTSPEC_DEV_BUILT_PUBLIC_DIR?.trim();
 if (builtPublicDir) {
   if (!builtPublicDir.startsWith("/")) throw new Error("Built development assets must use an absolute directory");
-  const manifestPath = resolve(builtPublicDir, "release-manifest.json");
+  const publicRoot = resolve(builtPublicDir);
+  const canonicalBuildRoot = resolve(appRoot, "../..");
+  if (publicRoot !== resolve(appRoot, "dist/public") || basename(canonicalBuildRoot) !== `${sourceSha}-build`) {
+    throw new Error("Built development assets must come from the matching immutable canonical build workspace");
+  }
+  const manifestPath = resolve(publicRoot, "release-manifest.json");
   const indexPath = resolve(builtPublicDir, "index.html");
-  if (!existsSync(manifestPath) || !existsSync(indexPath)) throw new Error("Built development assets are incomplete");
-  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  if (manifest.frontend_source_revision !== sourceSha || manifest.backend_source_revision !== sourceSha) {
-    throw new Error("Built development assets do not match the running source revision");
+  if (!existsSync(indexPath)) throw new Error("Built development assets are incomplete");
+  if (existsSync(manifestPath)) {
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    if (manifest.frontend_source_revision !== sourceSha || manifest.backend_source_revision !== sourceSha) {
+      throw new Error("Built development assets do not match the running source revision");
+    }
   }
 }
 const hostRuntimeEnv = Object.fromEntries(
