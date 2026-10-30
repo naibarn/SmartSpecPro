@@ -392,6 +392,22 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     { conversationId: conversationId ?? 0 },
     { enabled: conversationId !== null, refetchInterval: 15_000 }
   );
+  const pendingPilotApprovalRefs = (workspaceQuery.data?.developmentRuns ?? [])
+    .filter(run => run.isFirstRunPilot && run.goalApproval?.status === "pending")
+    .map(run => run.goalApproval?.approvalRef)
+    .filter((value): value is string => Boolean(value));
+  const pilotApprovalsQuery = trpc.approvals.getPending.useQuery(
+    { limit: 100 },
+    { enabled: pilotMode && isAdmin && pendingPilotApprovalRefs.length > 0, refetchInterval: 15_000 }
+  );
+  const approvePilotMutation = trpc.approvals.submitDecision.useMutation({
+    onSuccess: async () => {
+      await Promise.all([
+        workspaceQuery.refetch(),
+        trpcUtils.approvals.getPending.invalidate(),
+      ]);
+    },
+  });
   const bindMutation = trpc.spec226DevelopmentControl.bindConversationWorkspace.useMutation();
   const ingestMutation = trpc.spec226DevelopmentControl.ingestSpecSet.useMutation();
   const featureSpecsQuery = trpc.spec226DevelopmentControl.listFeatureSpecs.useQuery(
@@ -856,10 +872,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     }
   }
 
-  async function resumeExistingRun(runId: string) {
-    if (!conversationId || resumeRunMutation.isPending) return;
+  async function resumeExistingRun(runId: string, targetConversationId = conversationId) {
+    if (!targetConversationId || resumeRunMutation.isPending) return;
     try {
-      const result = await resumeRunMutation.mutateAsync({ conversationId, runId, budgetCapMinorUnits });
+      const result = await resumeRunMutation.mutateAsync({ conversationId: targetConversationId, runId, budgetCapMinorUnits });
       await workspaceQuery.refetch();
       if (result.dispatchStatus === "ENQUEUED") {
         toast.success(simpleMode ? "ส่งงานเดิมเข้าคิวเพื่อทำต่อแล้ว" : `ทำงานต่อจาก DevelopmentRun เดิมแล้ว · ${result.runId}`);
@@ -876,7 +892,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   }
 
   if (pilotMode) {
-    const pilotRuns = workspaceQuery.data?.developmentRuns ?? [];
+    const pilotRuns = (workspaceQuery.data?.developmentRuns ?? []).filter(run => run.isFirstRunPilot);
     const pilotRunners = platformWorkspace ? runners.filter(runner => runner.runnerId === platformWorkspace.runnerId) : [];
     const pilotWorkspaces = platformWorkspace && selectedRunnerId === platformWorkspace.runnerId ? [platformWorkspace] : [];
     const pilotHarnesses = catalogHarnesses.filter(adapterId => ["codex.v1", "microsoft-copilot.v1"].includes(adapterId));
@@ -892,11 +908,14 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             <AstryxText as="p"><strong>Project:</strong> {platformWorkspace?.canonicalProjectTitle ?? platformWorkspace?.displayName ?? "กำลังอ่านข้อมูลที่ได้รับอนุญาต…"}</AstryxText>
             <AstryxText as="p"><strong>Runner:</strong> {selectedRunner?.displayName ?? "กำลังโหลด Runner…"}</AstryxText>
             <AstryxText as="p"><strong>Workspace:</strong> {selectedWorkspace?.displayName ?? "กำลังโหลด Workspace…"}</AstryxText>
-            <AstryxText as="p"><strong>Write scope:</strong> apps/runner-app/tests/spec224-live-pilot/ เท่านั้น</AstryxText>
+            <AstryxText as="p"><strong>Write scope:</strong> apps/runner-app/tests/spec224-live-pilot/** เท่านั้น</AstryxText>
+            <AstryxText as="p"><strong>Harness:</strong> {effectiveHarnessAdapterId ? harnessLabel(effectiveHarnessAdapterId) : "ยังไม่พบ Harness จาก Runner"}</AstryxText>
+            <AstryxText as="p"><strong>Model:</strong> {activeModel?.displayName ?? "ยังไม่พบ Model จาก Runner"}</AstryxText>
+            <AstryxText as="p"><strong>Budget cap:</strong> {budgetCapMinorUnits > 0 ? `USD ${(budgetCapMinorUnits / 100).toFixed(2)} · ครอบคลุมทั้งสอง Child และ Final Verify` : "ระบุวงเงินที่ถูกต้องก่อนตรวจสอบ"}</AstryxText>
           </VStack>
           {!platformWorkspace ? <p className="text-sm text-amber-800" role="status">ไม่พบ Platform Project Workspace ที่ได้รับอนุญาต ระบบจะไม่เริ่มงานจนกว่า registry จะพร้อม</p> : null}
           {!isAdmin ? <p className="text-sm text-rose-700" role="alert">ต้องใช้บัญชี Admin เพื่อเริ่ม First Run Pilot</p> : null}
-          {pilotRuns.length > 0 ? <AstryxText as="p" type="supporting" role="status">มี Goal/Run ของ First Run Pilot อยู่ใน session นี้แล้ว ระบบปิดการเริ่มซ้ำเพื่อป้องกันงานและค่าใช้จ่ายซ้ำ</AstryxText> : null}
+          {pilotRuns.length > 0 ? <AstryxText as="p" type="supporting" role="status">พบ Goal/Run ของ First Run Pilot ที่บันทึกไว้แล้ว ระบบปิดการสร้าง Goal ซ้ำและแสดง Run เดิมเพื่อทำงานต่อ</AstryxText> : null}
           <VStack as="section" gap={3} aria-label="เลือกเครื่องมือที่ยืนยันจาก Runner">
             <Selector label="Runner" value={selectedRunnerId} options={pilotRunners.map(runner => ({ value: runner.runnerId, label: runner.displayName }))} onChange={value => { setSelectedRunnerId(value); setSelected(""); setPreparation(null); }} isDisabled={runnersQuery.isLoading || creatingTask || pilotRunners.length <= 1} disabledMessage="ใช้ Runner ที่ได้รับอนุญาตสำหรับ Project นี้" placeholder="เลือก Runner ที่ได้รับอนุญาต" emptyText="ไม่พบ Runner ที่ได้รับอนุญาต" width="100%" />
             <Selector label="Project Workspace" value={selected} options={pilotWorkspaces.map(workspace => ({ value: selectionKey(workspace), label: workspace.displayName }))} onChange={value => void bindWorkspace(value)} isDisabled={!selectedRunnerId || workspacesQuery.isLoading || bindMutation.isPending} disabledMessage="โหลดเฉพาะ Workspace ที่อนุญาตสำหรับ Runner นี้" placeholder="เลือก Workspace ที่ได้รับอนุญาต" emptyText="ไม่พบ Workspace ที่ได้รับอนุญาต" width="100%" />
@@ -940,7 +959,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           <p className="text-[var(--color-text-secondary)]">กำลังซิงก์สถานะและหลักฐานจาก Run ที่บันทึกไว้ ปุ่มเริ่มซ้ำถูกปิดเพื่อป้องกัน Goal ซ้ำ</p>
         </section> : null}
         {pilotRuns.length ? <section className="space-y-2" aria-label="Pilot Goal และ execution ที่บันทึกไว้">
-          <h3 className="font-semibold">Goal / Run ที่บันทึกใน session นี้</h3>
+          <h3 className="font-semibold">Goal / Run ของ First Run Pilot ที่บันทึกไว้</h3>
           {pilotRuns.map(run => <article key={run.runId} className="rounded-lg border border-[var(--color-border)] p-3 text-sm">
             <p className="font-medium">{developmentRunStateLabel(run.state)}</p>
             <VStack as="dl" gap={1} className="mt-2 text-xs text-[var(--color-text-secondary)]">
@@ -948,7 +967,27 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               {run.goalApproval?.approvalRef ? <HStack as="div" gap={2} wrap="wrap"><dt className="font-medium">Approval Authority request:</dt><dd className="break-all font-mono">{run.goalApproval.approvalRef}</dd></HStack> : null}
             </VStack>
             <p className="text-[var(--color-text-secondary)]">{run.goalApproval?.status === "pending" ? "รออนุมัติจาก Approval Authority" : run.goalApproval?.status ? `สถานะ Approval: ${run.goalApproval.status}` : "สถานะ Goal แสดงจาก DevelopmentRun จริง"} · Final Verify: {run.finalVerifyStatus ?? "ยังไม่มีผล"} · execution evidence refs {run.intermediateReceipts?.length ?? 0}{run.budgetStatus ? ` · งบ ${run.budgetStatus.currency} ${(run.budgetStatus.limitMinorUnits / 100).toFixed(2)} · captured ${(run.budgetStatus.capturedMinorUnits / 100).toFixed(2)} · held ${(run.budgetStatus.heldMinorUnits / 100).toFixed(2)}` : ""}</p>
-            {run.goalApproval?.status === "pending" ? <AstryxLink as={RouterLink} href="/admin/approvals" isStandalone>เปิด Approval Authority</AstryxLink> : null}
+            {run.goalApproval?.status === "pending" ? (() => {
+              const request = pilotApprovalsQuery.data?.requests?.find((item: any) => item.id === run.goalApproval?.approvalRef);
+              return (
+                <section className="mt-3 space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-3" aria-label="อนุมัติ Goal Pilot">
+                  <p className="font-medium">รอผู้อนุมัติที่มีสิทธิ์ตรวจสอบ Goal นี้</p>
+                  <p className="text-xs text-[var(--color-text-secondary)]">Approval Authority ป้องกันผู้ส่งคำขออนุมัติ Goal ของตนเอง หากคุณเป็นผู้เริ่มงาน ให้ผู้ดูแลระบบอีกคนเปิด SmartAIHub ด้วยบัญชีที่อนุมัติได้</p>
+                  {request ? (
+                    <VStack as="div" gap={2}>
+                      <p className="text-sm">{request.title}</p>
+                      <p className="break-all font-mono text-xs">Approval Request: {request.id}</p>
+                      <HStack gap={2} wrap="wrap">
+                        <Button type="button" size="sm" disabled={approvePilotMutation.isPending} onClick={() => approvePilotMutation.mutate({ requestId: request.id, decision: "approved", comment: "Approved bounded SPEC-224 First Run Goal." })}>อนุมัติ Goal</Button>
+                        <Button type="button" size="sm" variant="destructive" disabled={approvePilotMutation.isPending} onClick={() => approvePilotMutation.mutate({ requestId: request.id, decision: "rejected", comment: "Rejected bounded SPEC-224 First Run Goal." })}>ปฏิเสธ Goal</Button>
+                      </HStack>
+                    </VStack>
+                  ) : (
+                    <AstryxLink as={RouterLink} href="/dashboard#pending-approvals" isStandalone>เปิดคิว Approval Authority ของบัญชีผู้อนุมัติ</AstryxLink>
+                  )}
+                </section>
+              );
+            })() : null}
             {run.goalApproval?.status !== "pending" && !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state) ? (
               <Button
                 type="button"
@@ -956,15 +995,15 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                 size="sm"
                 className="mt-2"
                 disabled={resumeRunMutation.isPending || !workspaceQuery.data?.workspace}
-                onClick={() => void resumeExistingRun(run.runId)}
+                onClick={() => void resumeExistingRun(run.runId, run.conversationId ?? conversationId)}
               >
                 {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : "ทำงานเดิมต่อ"}
               </Button>
             ) : null}
             <HStack as="nav" gap={3} wrap="wrap" aria-label="ดู Goal เดียวกันใน Workspace">
-              <AstryxLink as={RouterLink} href={`/chat?c=${conversationId}`} isStandalone>Chat session</AstryxLink>
-              <AstryxLink as={RouterLink} href={`/chat?mode=tasks&c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}${run.jobId ? `&jobId=${encodeURIComponent(run.jobId)}` : ""}`} isStandalone>Task Control</AstryxLink>
-              <AstryxLink as={RouterLink} href={`/chat?mode=mission&c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}${run.jobId ? `&jobId=${encodeURIComponent(run.jobId)}` : ""}`} isStandalone>Mission Control</AstryxLink>
+              <AstryxLink as={RouterLink} href={`/chat?c=${run.conversationId ?? conversationId}${run.threadId ? `&t=${encodeURIComponent(run.threadId)}` : ""}`} isStandalone>Chat session</AstryxLink>
+              <AstryxLink as={RouterLink} href={`/chat?mode=tasks&c=${run.conversationId ?? conversationId}${run.threadId ? `&t=${encodeURIComponent(run.threadId)}` : ""}${run.jobId ? `&jobId=${encodeURIComponent(run.jobId)}` : ""}`} isStandalone>Task Control</AstryxLink>
+              <AstryxLink as={RouterLink} href={`/chat?mode=mission&c=${run.conversationId ?? conversationId}${run.threadId ? `&t=${encodeURIComponent(run.threadId)}` : ""}${run.jobId ? `&jobId=${encodeURIComponent(run.jobId)}` : ""}`} isStandalone>Mission Control</AstryxLink>
             </HStack>
           </article>)}
         </section> : null}

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel, readinessMessage } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), refetchWorkspaces: vi.fn(), availableWorkspacesQueryOptions: undefined as any, info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), approve: vi.fn(), pendingApprovals: { requests: [] as any[] }, bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), invalidatePendingApprovals: vi.fn(), refetchWorkspaces: vi.fn(), availableWorkspacesQueryOptions: undefined as any, info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/i18n/useScopedTranslation", () => ({ useScopedTranslation: () => ({
   t: (key: string) => ({
     "taskControl.singleHarnessGoal": "เลือก Harness หนึ่งรายการสำหรับ Goal นี้จาก capability ที่ Runner ยืนยัน งานจะไม่ถูกส่งไปหลาย Harness โดยอัตโนมัติ",
@@ -12,7 +12,10 @@ vi.mock("@/i18n/useScopedTranslation", () => ({ useScopedTranslation: () => ({
 }) }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "user-test", currentTenantId: "tenant-test", role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
-vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } } }), runnerNodes: {
+vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } }, approvals: { getPending: { invalidate: mocks.invalidatePendingApprovals } } }), approvals: {
+  getPending: { useQuery: () => ({ data: mocks.pendingApprovals }) },
+  submitDecision: { useMutation: (options: any) => ({ isPending: false, mutate: async (input: any) => { await mocks.approve(input); await options?.onSuccess?.(); } }) },
+}, runnerNodes: {
   list: { useQuery: () => ({ data: { runners: [{ runnerId: "runner-test", displayName: "Test Runner", status: "online", trustState: "trusted", displayState: "ready", readinessStatus: "online", lastSeenAt: new Date().toISOString(), capabilitySnapshotPersisted: true, capabilitySnapshotCurrent: true, capabilityAckState: "applied", snapshotRevision: "r1", platform: { os: "windows", architecture: "x86_64", target: "x86_64-pc-windows-msvc", machineName: "DEV-PC-01" } }] } }) },
   workspaceReadiness: { useQuery: () => ({ data: mocks.readiness, isLoading: false, error: null }) },
 }, spec226DevelopmentControl: {
@@ -56,6 +59,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
   vi.clearAllMocks();
   mocks.readiness = undefined;
+  mocks.pendingApprovals = { requests: [] };
   mocks.bindWorkspace.mockResolvedValue({ conversationId: 47 });
   mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null };
   mocks.role = "admin";
@@ -69,6 +73,7 @@ beforeEach(() => {
     authorization: { reasons: ["SPEC224_NONPRODUCTION_POLICY_NOT_CONFIGURED"] } });
   mocks.resume.mockResolvedValue({ runId: "run-existing", jobId: "job-existing", dispatchStatus: "PENDING_AUTHORIZATION",
     authorization: { status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_REQUIRED"] } });
+  mocks.approve.mockResolvedValue({ status: "approved" });
 });
 
 async function preparePanel(simpleMode = false) {
@@ -100,6 +105,10 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByRole("list")).toHaveTextContent("Review & edge cases");
     expect(screen.getByText(/apps\/runner-app\/tests\/spec224-live-pilot/)).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Project Workspace" })).toHaveTextContent("SmartAIHub Development Workspace");
+    const goalReview = screen.getByRole("region", { name: "ขอบเขต Goal ที่จะอนุมัติ" });
+    expect(goalReview).toHaveTextContent("Harness: Codex");
+    expect(goalReview).toHaveTextContent("Model: Test Model");
+    expect(goalReview).toHaveTextContent("Budget cap: USD 1.00");
     expect(screen.queryByRole("radio", { name: /อนุญาตทุกไฟล์/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" }));
@@ -155,7 +164,7 @@ describe("Core goal readiness feedback", () => {
       workspace: { runnerId: "runner-test", workspaceId: "platform-source" },
       availability: { available: true, status: "current" }, specSet: null,
       developmentRuns: [{
-        runId: "pilot-run-1", jobId: "pilot-job-1", state: "IMPLEMENT", finalVerifyStatus: "pending",
+        runId: "pilot-run-1", jobId: "pilot-job-1", isFirstRunPilot: true, conversationId: 46, threadId: "thread-origin", state: "IMPLEMENT", finalVerifyStatus: "pending",
         goalApproval: { status: "approved", approvalRef: "approval-1" },
         budgetStatus: { limitMinorUnits: 500, heldMinorUnits: 100, capturedMinorUnits: 25, availableMinorUnits: 375, currency: "USD" },
         intermediateReceipts: ["evidence-ref-1"],
@@ -164,13 +173,35 @@ describe("Core goal readiness feedback", () => {
 
     render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
 
-    expect(await screen.findByText(/Goal \/ Run ที่บันทึกใน session นี้/)).toBeInTheDocument();
+    expect(await screen.findByText(/Goal \/ Run ของ First Run Pilot ที่บันทึกไว้/)).toBeInTheDocument();
     expect(screen.getByText("pilot-run-1")).toBeInTheDocument();
     expect(screen.getByText("approval-1")).toBeInTheDocument();
     expect(screen.getByText(/Final Verify: pending/)).toBeInTheDocument();
     expect(screen.getByText(/execution evidence refs 1/)).toBeInTheDocument();
     expect(screen.getByText(/captured 0\.25 · held 1\.00/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Chat session" })).toHaveAttribute("href", "/chat?c=46&t=thread-origin");
+    expect(screen.getByRole("link", { name: "Task Control" })).toHaveAttribute("href", "/chat?mode=tasks&c=46&t=thread-origin&jobId=pilot-job-1");
+    expect(screen.getByRole("link", { name: "Mission Control" })).toHaveAttribute("href", "/chat?mode=mission&c=46&t=thread-origin&jobId=pilot-job-1");
     expect(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" })).toBeDisabled();
+  });
+
+  it("lets an authorized approver act on the canonical pending Goal request", async () => {
+    usePlatformSourceWorkspace();
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "platform-source" },
+      availability: { available: true, status: "current" }, specSet: null,
+      developmentRuns: [{ runId: "pilot-run-approval", isFirstRunPilot: true, conversationId: 47, state: "IMPLEMENT",
+        goalApproval: { status: "pending", approvalRef: "approval-uuid" } }],
+    };
+    mocks.pendingApprovals = { requests: [{ id: "approval-uuid", title: "Approve bounded First Run Goal" }] };
+    render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
+
+    expect(await screen.findByText("Approve bounded First Run Goal")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "อนุมัติ Goal" }));
+    await waitFor(() => expect(mocks.approve).toHaveBeenCalledWith({
+      requestId: "approval-uuid", decision: "approved", comment: "Approved bounded SPEC-224 First Run Goal.",
+    }));
+    expect(mocks.invalidatePendingApprovals).toHaveBeenCalled();
   });
 
   it("resumes the same persisted Pilot DevelopmentRun after approval without creating a new Goal", async () => {
@@ -179,7 +210,7 @@ describe("Core goal readiness feedback", () => {
       workspace: { runnerId: "runner-test", workspaceId: "platform-source" },
       availability: { available: true, status: "current" }, specSet: null,
       developmentRuns: [{
-        runId: "pilot-run-resume", jobId: "pilot-job-resume", state: "IMPLEMENT",
+        runId: "pilot-run-resume", jobId: "pilot-job-resume", isFirstRunPilot: true, conversationId: 46, state: "IMPLEMENT",
         goalApproval: { status: "approved", approvalRef: "approval-resume" },
         finalVerifyStatus: "pending", intermediateReceipts: [],
       }],
@@ -189,7 +220,7 @@ describe("Core goal readiness feedback", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "ทำงานเดิมต่อ" }));
     await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith(expect.objectContaining({
-      conversationId: 47,
+      conversationId: 46,
       runId: "pilot-run-resume",
     })));
     expect(mocks.start).not.toHaveBeenCalled();

@@ -558,7 +558,9 @@ export const spec226DevelopmentControlRouter = router({
         if (!workspaceState) return null;
         const runs = await defaultSpec226DevelopmentControlBridge.list({
           ...scope,
-          limit: 20,
+          // First Run recovery must not disappear behind unrelated recent
+          // workspace executions. The bridge caps this to its bounded list.
+          limit: 100,
           workspaceId: workspaceState.workspace.workspaceId,
         });
         const developmentRuns = await Promise.all(runs
@@ -572,6 +574,18 @@ export const spec226DevelopmentControlRouter = router({
               ? metadata.spec224GoalGrantPayload as Record<string, unknown> : {};
             const runner = metadata.spec224Workspace && typeof metadata.spec224Workspace === "object"
               ? metadata.spec224Workspace as Record<string, unknown> : {};
+            const execution = metadata.spec224Execution && typeof metadata.spec224Execution === "object"
+              ? metadata.spec224Execution as Record<string, unknown> : {};
+            const allowedWriteSet = Array.isArray(execution.allowedWriteSet)
+              ? execution.allowedWriteSet.filter((value): value is string => typeof value === "string")
+              : [];
+            const grantWriteScope = Array.isArray(grant.writeScope)
+              ? grant.writeScope.filter((value): value is string => typeof value === "string")
+              : [];
+            const isFirstRunPilot = allowedWriteSet.length === 1
+              && allowedWriteSet[0] === "apps/runner-app/tests/spec224-live-pilot/**"
+              && grantWriteScope.length === 1
+              && grantWriteScope[0] === "apps/runner-app/tests/spec224-live-pilot/**";
             const readiness = typeof runner.runnerId === "string" ? await defaultSpec224AuthorizationService.runnerReadiness({
               context: scope, runnerId: runner.runnerId, workspaceId: run.workspaceId,
               sourceCommit: /^git:([a-f0-9]{40})$/i.exec(record?.run.baseRevision ?? "")?.[1],
@@ -592,6 +606,15 @@ export const spec226DevelopmentControlRouter = router({
             return {
               runId: run.runId,
               jobId: record?.run.workerJobId ?? null,
+              isFirstRunPilot,
+              conversationId: Number.isSafeInteger(Number(metadata.conversationId)) && Number(metadata.conversationId) > 0
+                ? Number(metadata.conversationId) : null,
+              threadId: typeof metadata.chatThreadId === "string" ? metadata.chatThreadId : null,
+              runnerId: typeof runner.runnerId === "string" ? runner.runnerId : null,
+              provider: typeof grant.provider === "string" ? grant.provider : null,
+              modelSelection: metadata.spec224ModelSelection ?? grant.modelSelection ?? null,
+              writeScope: allowedWriteSet,
+              budgetLimitMinorUnits: typeof grant.budgetLimitMinorUnits === "number" ? grant.budgetLimitMinorUnits : null,
               state: record?.run.state ?? run.state,
               workPackageId: run.workPackageId,
               workPackageExternalId: run.workPackageExternalId,
@@ -1308,6 +1331,7 @@ export const spec226DevelopmentControlRouter = router({
           goalId,
           actorId: scope.actorId,
           provider: input.provider ?? "codex",
+          runnerId: prepared.runner.runnerId,
           workspaceId: prepared.workspace.workspaceId,
           repositoryRef: prepared.repositoryRef,
           sourceSha: sourceShaForGrant,

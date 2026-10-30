@@ -385,15 +385,19 @@ describe("spec226DevelopmentControlRouter", () => {
       { runId: "run-in-scope", workspaceId: "workspace-a", state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3 },
       { runId: "run-other-workspace", workspaceId: "workspace-b", state: "COMPLETED", workPackageId: null, workPackageExternalId: null, specSetRevision: null },
     ]);
-    mocks.developmentRunService.get.mockResolvedValueOnce({ run: { workerJobId: "canonical-job-1", evidenceRefs: ["receipt-ref-1"], metadata: {} } });
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: { workerJobId: "canonical-job-1", evidenceRefs: ["receipt-ref-1"], metadata: {
+      conversationId: 71, chatThreadId: "thread-71", spec224ModelSelection: { provider: "codex", modelId: "gpt-test" },
+      spec224Execution: { allowedWriteSet: ["apps/runner-app/tests/spec224-live-pilot/**"] },
+      spec224GoalGrantPayload: { writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"], provider: "codex", budgetLimitMinorUnits: 100 },
+    } } });
 
     await expect((spec226DevelopmentControlRouter.getConversationWorkspace as unknown as Function)({
       ctx: CTX,
       input: { conversationId: 8 },
     })).resolves.toMatchObject({
-      developmentRuns: [{ runId: "run-in-scope", jobId: "canonical-job-1", state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3, intermediateReceipts: ["receipt-ref-1"] }],
+      developmentRuns: [{ runId: "run-in-scope", jobId: "canonical-job-1", isFirstRunPilot: true, conversationId: 71, threadId: "thread-71", provider: "codex", modelSelection: { provider: "codex", modelId: "gpt-test" }, writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"], budgetLimitMinorUnits: 100, state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3, intermediateReceipts: ["receipt-ref-1"] }],
     });
-    expect(mocks.bridge.list).toHaveBeenCalledWith({ tenantId: CTX.tenantId, actorId: CTX.user.id, limit: 20, workspaceId: "workspace-a" });
+    expect(mocks.bridge.list).toHaveBeenCalledWith({ tenantId: CTX.tenantId, actorId: CTX.user.id, limit: 100, workspaceId: "workspace-a" });
   });
 
   it("keeps workspace binding and Spec Set preparation scoped to the authenticated conversation", async () => {

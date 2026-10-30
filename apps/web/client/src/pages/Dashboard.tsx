@@ -3042,6 +3042,16 @@ export default function Dashboard() {
                                 {request.description}
                               </p>
                             )}
+                            {request.payload?.kind === "spec224_goal_delegation_grant" && (
+                              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-slate-700" aria-label="ขอบเขต Goal ที่ขออนุมัติ">
+                                <p><strong>Project:</strong> {request.project_id ?? "ไม่ระบุ"}</p>
+                                <p><strong>Runner:</strong> {request.payload.runnerId ?? "ไม่ระบุในคำขอนี้"}</p>
+                                <p><strong>Harness:</strong> {request.payload.provider ?? "ไม่ระบุ"} · <strong>Workspace:</strong> {request.payload.workspaceId ?? "ไม่ระบุ"}</p>
+                                <p><strong>Model:</strong> {request.payload.modelSelection?.resolvedModelId ?? "Auto"}</p>
+                                <p className="break-all"><strong>Write scope:</strong> {Array.isArray(request.payload.writeScope) ? request.payload.writeScope.join(", ") : "ไม่ระบุ"}</p>
+                                <p><strong>Budget cap:</strong> {request.payload.currency ?? "USD"} {typeof request.payload.budgetLimitMinorUnits === "number" ? (request.payload.budgetLimitMinorUnits / 100).toFixed(2) : "ไม่ระบุ"}</p>
+                              </div>
+                            )}
                             <div className="flex items-center gap-2 mt-2">
                               <span
                                 className={`px-2 py-0.5 text-xs font-medium rounded-full ${

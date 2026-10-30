@@ -37,6 +37,8 @@ export type Spec224GoalGrantScope = {
   goalId: string;
   actorId: number;
   provider: "codex" | "claude_code" | "microsoft_copilot";
+  /** Inventory identity for human review; authorization still binds workspace and capabilities. */
+  runnerId?: string;
   workspaceId: string;
   repositoryRef: string;
   sourceSha: string;
@@ -72,6 +74,7 @@ export function buildSpec224GoalGrantApprovalPayload(
     !Number.isSafeInteger(scope.actorId) ||
     scope.actorId <= 0 ||
     !["codex", "claude_code", "microsoft_copilot"].includes(scope.provider) ||
+    (scope.runnerId !== undefined && !isText(scope.runnerId, 160)) ||
     !isText(scope.workspaceId, 200) ||
     !isText(scope.repositoryRef, 255) ||
     !SHA.test(scope.sourceSha) ||
