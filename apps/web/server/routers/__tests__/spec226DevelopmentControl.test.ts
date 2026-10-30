@@ -385,12 +385,13 @@ describe("spec226DevelopmentControlRouter", () => {
       { runId: "run-in-scope", workspaceId: "workspace-a", state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3 },
       { runId: "run-other-workspace", workspaceId: "workspace-b", state: "COMPLETED", workPackageId: null, workPackageExternalId: null, specSetRevision: null },
     ]);
+    mocks.developmentRunService.get.mockResolvedValueOnce({ run: { workerJobId: "canonical-job-1", evidenceRefs: ["receipt-ref-1"], metadata: {} } });
 
     await expect((spec226DevelopmentControlRouter.getConversationWorkspace as unknown as Function)({
       ctx: CTX,
       input: { conversationId: 8 },
     })).resolves.toMatchObject({
-      developmentRuns: [{ runId: "run-in-scope", state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3 }],
+      developmentRuns: [{ runId: "run-in-scope", jobId: "canonical-job-1", state: "IMPLEMENT", workPackageId: "wp:api", workPackageExternalId: "api", specSetRevision: 3, intermediateReceipts: ["receipt-ref-1"] }],
     });
     expect(mocks.bridge.list).toHaveBeenCalledWith({ tenantId: CTX.tenantId, actorId: CTX.user.id, limit: 20, workspaceId: "workspace-a" });
   });

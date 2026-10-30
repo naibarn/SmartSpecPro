@@ -10,6 +10,7 @@ const state = vi.hoisted(() => ({
   goals: [] as Array<Record<string, any>>,
   runners: [] as Array<Record<string, any>>,
   create: vi.fn(async () => ({ id: 902 })),
+  user: { role: "admin" } as { role: string } | null,
 }));
 
 vi.mock("wouter", () => ({
@@ -74,6 +75,16 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
   },
+}));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: state.user }),
+}));
+
+vi.mock("@/components/chat/Spec224WorkspacePanel", () => ({
+  Spec224WorkspacePanel: ({ conversationId, pilotMode }: { conversationId: number; pilotMode?: boolean }) => (
+    <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))}</section>
+  ),
 }));
 
 vi.mock("@/lib/useTaskHarnessOutputEvents", () => ({
@@ -161,6 +172,7 @@ describe("UnifiedWorkspace", () => {
         trustState: "trusted",
       },
     ];
+    state.user = { role: "admin" };
     window.localStorage.clear();
   });
 
@@ -193,6 +205,27 @@ describe("UnifiedWorkspace", () => {
     expect(
       screen.getByRole("region", { name: "Run inspector for session" })
     ).toBeTruthy();
+  });
+
+  it("lets an admin open a first-run pilot bound to a newly persisted chat session", async () => {
+    render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "ทดสอบการทำงานจริง" }));
+    expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
+    expect(screen.getByText("Pilot 902 · true")).toBeTruthy();
+    expect(state.location).toHaveBeenCalledWith("/chat?c=902&pilot=1");
+  });
+
+  it("restores the pilot review from its durable conversation URL after remount", async () => {
+    state.search = "c=902&pilot=1";
+    render(<UnifiedWorkspace />);
+    expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
+    expect(screen.getByText("Pilot 902 · true")).toBeTruthy();
+  });
+
+  it("does not expose the first-run pilot entry point to non-admin users", () => {
+    state.user = { role: "user" };
+    render(<UnifiedWorkspace />);
+    expect(screen.queryByRole("button", { name: "ทดสอบการทำงานจริง" })).toBeNull();
   });
 
   it("organizes Task Control by project and reports absent lifecycle evidence honestly", () => {

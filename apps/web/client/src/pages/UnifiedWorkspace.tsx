@@ -33,6 +33,8 @@ import { UnifiedWorkspaceInspector } from "@/components/chat/UnifiedWorkspaceIns
 import { ProjectExecutionWorkspace } from "@/components/chat/ProjectExecutionWorkspace";
 import { MissionControlWorkspace } from "@/components/chat/MissionControlWorkspace";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/contexts/AuthContext";
+import { Spec224WorkspacePanel } from "@/components/chat/Spec224WorkspacePanel";
 
 type WorkspaceMode = "chat" | "tasks" | "mission";
 type PresentationMode = "simple" | "developer";
@@ -60,6 +62,7 @@ export default function UnifiedWorkspace() {
       ? conversationValue
       : null;
   const threadId = params.get("t");
+  const pilotRequested = params.get("pilot") === "1";
   const [presentationMode, setPresentationMode] = useState<PresentationMode>(
     () =>
       window.localStorage.getItem("smartaihub-workspace-mode") === "developer"
@@ -67,8 +70,12 @@ export default function UnifiedWorkspace() {
         : "simple"
   );
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [mobileSessionsOpen, setMobileSessionsOpen] = useState(false);
   const [mobileInspectorOpen, setMobileInspectorOpen] = useState(false);
+  const [pilotOpen, setPilotOpen] = useState(false);
+  const [pilotConversationId, setPilotConversationId] = useState<number | null>(null);
   const createConversation = trpc.chat.createConversation.useMutation();
   const titleQuery = trpc.chat.getConversation.useQuery(
     { id: conversationId ?? 0 },
@@ -89,6 +96,11 @@ export default function UnifiedWorkspace() {
     }
     setLocation(`/chat-legacy${window.location.search}`);
   }, [search, params, setLocation]);
+  useEffect(() => {
+    if (!isAdmin || !pilotRequested || !conversationId) return;
+    setPilotConversationId(conversationId);
+    setPilotOpen(true);
+  }, [isAdmin, conversationId, pilotRequested]);
   const navigate = (
     nextMode: WorkspaceMode,
     id = conversationId,
@@ -119,6 +131,18 @@ export default function UnifiedWorkspace() {
   const newChat = async () => {
     const created = await createConversation.mutateAsync({ title: "New chat" });
     navigate("chat", created.id, null);
+  };
+  const startFirstRunPilot = async () => {
+    if (!isAdmin || createConversation.isPending) return;
+    try {
+      const created = await createConversation.mutateAsync({ title: "Autonomous development pilot" });
+      setPilotConversationId(created.id);
+      setLocation(`/chat?c=${created.id}&pilot=1`);
+      setPilotOpen(true);
+    } catch {
+      // The conversation mutation surfaces its standard error state; do not open
+      // a pilot review without a durable canonical conversation to bind to.
+    }
   };
   const setMode = (next: PresentationMode) => {
     setPresentationMode(next);
@@ -202,6 +226,14 @@ export default function UnifiedWorkspace() {
       }
       endContent={
         <HStack gap={1}>
+          {isAdmin ? (
+            <Button
+              label="ทดสอบการทำงานจริง"
+              variant="primary"
+              disabled={createConversation.isPending}
+              onClick={() => void startFirstRunPilot()}
+            />
+          ) : null}
           <Button
             label="Simple"
             variant={presentationMode === "simple" ? "primary" : "secondary"}
@@ -353,6 +385,7 @@ export default function UnifiedWorkspace() {
       {mode === "tasks" ? (
         <ProjectExecutionWorkspace
           initialProjectId={params.get("projectId")}
+          initialJobId={params.get("jobId")}
           onSelectProject={selectProject}
           onOpenConversation={(id, thread) => navigate("chat", id, thread)}
           presentationMode={presentationMode}
@@ -369,6 +402,27 @@ export default function UnifiedWorkspace() {
             .filter(Boolean)}
         />
       ) : null}
+      <Dialog open={pilotOpen} onOpenChange={open => {
+        setPilotOpen(open);
+        if (!open && pilotRequested) navigate("chat", pilotConversationId ?? conversationId, null);
+      }}>
+        <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>ทดสอบการทำงานจริง · First Run Pilot</DialogTitle>
+          </DialogHeader>
+          {pilotConversationId ? (
+            <Spec224WorkspacePanel
+              conversationId={pilotConversationId}
+              simpleMode
+              pilotMode
+              onCreateConversation={async title => {
+                const created = await createConversation.mutateAsync({ title });
+                return created.id;
+              }}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

@@ -18,6 +18,7 @@ import { trpc } from "@/lib/trpc";
 
 type ProjectExecutionWorkspaceProps = {
   initialProjectId: string | null;
+  initialJobId?: string | null;
   onSelectProject: (projectId: string) => void;
   onOpenConversation: (conversationId: number, threadId: string | null) => void;
   presentationMode: "simple" | "developer";
@@ -98,6 +99,7 @@ function nextActionLabel(action: any): string {
 
 export function ProjectExecutionWorkspace({
   initialProjectId,
+  initialJobId = null,
   onSelectProject,
   onOpenConversation,
   presentationMode,
@@ -210,6 +212,15 @@ export function ProjectExecutionWorkspace({
   }, [goals, jobs, projectNames]);
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId);
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!initialJobId) return;
+    const match = projects.find(([, project]) => project.goals.some(goal => goal.workerJobId === initialJobId || goal.goalId === initialJobId));
+    const goal = match?.[1].goals.find(item => item.workerJobId === initialJobId || item.goalId === initialJobId);
+    if (match && goal) {
+      setSelectedProjectId(match[0]);
+      setSelectedGoalId(goal.goalId);
+    }
+  }, [initialJobId, projects]);
   const selectedProject =
     projects.find(([id]) => id === selectedProjectId) ?? projects[0] ?? null;
   const selectedGoals = selectedProject?.[1].goals ?? [];
@@ -219,6 +230,7 @@ export function ProjectExecutionWorkspace({
   const selectedGoalJob = selectedGoal
     ? (selectedJobs.find(job => job.id === selectedGoal.workerJobId) ?? null)
     : null;
+
   const activeCount = selectedJobs.filter(job => ACTIVE.has(job.status)).length;
   const waitingCount = selectedJobs.filter(
     job => WAITING.has(job.status) || job.operatorAttention.required

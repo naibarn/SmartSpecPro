@@ -591,6 +591,7 @@ export const spec226DevelopmentControlRouter = router({
             }
             return {
               runId: run.runId,
+              jobId: record?.run.workerJobId ?? null,
               state: record?.run.state ?? run.state,
               workPackageId: run.workPackageId,
               workPackageExternalId: run.workPackageExternalId,

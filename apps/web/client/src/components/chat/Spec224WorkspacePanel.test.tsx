@@ -85,6 +85,63 @@ describe("Core goal readiness feedback", () => {
     expect(screen.getByRole("combobox", { name: "Harness" })).not.toHaveAttribute("aria-disabled", "true");
   });
 
+  it("prepares and starts the bounded Pilot through the existing Goal/Run mutations", async () => {
+    usePlatformSourceWorkspace();
+    mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
+    mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "platform-source" }, availability: { available: true, status: "current" }, specSet: null };
+    mocks.prepare.mockResolvedValue({
+      ...preparation(true),
+      workPackages: [{ id: "prompt", externalId: "prompt", readiness: "READY", blockers: [], sourceAdmission: { status: "SAFE_CLEAN" } }],
+    });
+    render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
+
+    expect(await screen.findByRole("region", { name: "First Run Pilot goal review" })).toBeInTheDocument();
+    expect(screen.getByRole("list")).toHaveTextContent("Implement:");
+    expect(screen.getByRole("list")).toHaveTextContent("Review & edge cases");
+    expect(screen.getByText(/apps\/runner-app\/tests\/spec224-live-pilot/)).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Project Workspace" })).toHaveTextContent("SmartAIHub Development Workspace");
+    expect(screen.queryByRole("radio", { name: /อนุญาตทุกไฟล์/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" }));
+    await screen.findByRole("region", { name: "ผลการตรวจความพร้อม Pilot" });
+    expect(mocks.prepare).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 47,
+      mode: "prompt",
+      writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"],
+    }));
+
+    fireEvent.click(screen.getByRole("button", { name: "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot" }));
+    await waitFor(() => expect(mocks.start).toHaveBeenCalledWith(expect.objectContaining({
+      conversationId: 47,
+      mode: "prompt",
+      writeScope: ["apps/runner-app/tests/spec224-live-pilot/**"],
+      budgetCapMinorUnits: 100,
+    })));
+  });
+
+  it("restores a persisted Pilot result and prevents starting a duplicate Goal", async () => {
+    usePlatformSourceWorkspace();
+    mocks.readiness = { ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null };
+    mocks.workspace = {
+      workspace: { runnerId: "runner-test", workspaceId: "platform-source" },
+      availability: { available: true, status: "current" }, specSet: null,
+      developmentRuns: [{
+        runId: "pilot-run-1", jobId: "pilot-job-1", state: "IMPLEMENT", finalVerifyStatus: "pending",
+        goalApproval: { status: "approved", approvalRef: "approval-1" },
+        budgetStatus: { limitMinorUnits: 500, heldMinorUnits: 100, capturedMinorUnits: 25, availableMinorUnits: 375, currency: "USD" },
+        intermediateReceipts: ["evidence-ref-1"],
+      }],
+    };
+
+    render(<Spec224WorkspacePanel conversationId={47} simpleMode pilotMode />);
+
+    expect(await screen.findByText(/Goal \/ Run ที่บันทึกใน session นี้/)).toBeInTheDocument();
+    expect(screen.getByText(/Final Verify: pending/)).toBeInTheDocument();
+    expect(screen.getByText(/execution evidence refs 1/)).toBeInTheDocument();
+    expect(screen.getByText(/captured 0\.25 · held 1\.00/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ตรวจสอบความพร้อมและแผน Pilot" })).toBeDisabled();
+  });
+
   it("explains Runner source and online state without exposing machine name in Simple mode", () => {
     render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
     expect(screen.getByRole("option", { name: "Test Runner · Windows · ออนไลน์" })).toBeInTheDocument();
