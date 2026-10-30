@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb",
+    "expected_canonical_sha": "f9cb31483b6fa409a86cc86ed4e4dedb5979baf5",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
     "next_action": "Continue the current external Codex implementation mission across any remaining independently actionable Guided First Run, Task Control and Mission Control activation gaps; do not wait for owner activity. If the authenticated owner starts the bounded Goal, resume and trace only its exact persisted Goal/Run/Job/Attempt through real Runner execution, Child 1/2 receipts and settlement, and Independent Final Verify.",
     "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At 2026-10-30, integrated source e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb is serving the Guided First Run UI from a verified immutable canonical build through the isolated aimarkethubs.com development tunnel on port 3100; no Vite dev client is served. Duplicate Start now retains the idempotency key and returned Run/Approval references, same-Run resume is available when policy allows, and Mission Control harness launches preserve the current session and selected harness. Production shared Linux service is restored to generation 251 after a prior brief accidental generation-252 promotion. Continue independently actionable development work without waiting for the owner Goal. No authenticated owner Start/Approval or genuine Goal/Job/Attempt exists; after it occurs, trace the exact durable identity through real Runner execution, Child 1/2 receipts and settlement, and Independent Final Verify.",
+    "resume_point": "At 2026-10-30, canonical source f9cb31483b6fa409a86cc86ed4e4dedb5979baf5 is deployed on aimarkethubs.com through its dedicated user-level smartspec-dev-web.service on port 3100; the pinned public artifact and backend runtime commit identity are recorded separately, and the production generation-251 service/pointer fingerprints were unchanged. release:dev:web now builds, verifies, activates and records only the development target. Guided First Run remains available to an authenticated Admin; no owner Start/Approval, Goal, DevelopmentRun, Job, Attempt or simulated receipt was created. Continue independently actionable implementation; once the owner starts a real Goal, trace that same identity through Runner execution, Child 1/2 receipts and settlement, and Independent Final Verify.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1242,8 +1242,8 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:e3a3da178751e41a55bc340e7bf3cad839b1e5e57e7e3624fb79087b4a3520c9",
-    "environment": "production_linux_systemd",
+    "artifact_digest": "sha256:86acf83cb6ddb6380af88fe95693c075f62548b57f0d6973689b553aa1080f7a",
+    "environment": "development_linux_user_systemd",
     "evidence": [
       {
         "kind": "LINUX_PRODUCTION_RELEASE_VERIFIED",
@@ -1300,10 +1300,17 @@
         "scope": "Integrated Guided First Run resume/idempotency and Mission Control harness deep links; isolated aimarkethubs named tunnel serves immutable canonical SPA assets on port 3100 and dev API runtime on shared-tenant configuration. Production shared release restored to generation 251 after an unintended brief generation-252 promotion; no owner Goal/Approval was created. Live acceptance remains pending.",
         "source_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_DEV_PROD_ISOLATION_AND_RELEASE_VERIFIED",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-dev-prod-isolation-and-release-20261030.md",
+        "scope": "Canonical source f9cb31483b6fa409a86cc86ed4e4dedb5979baf5 built to artifact sha256:86acf83cb6ddb6380af88fe95693c075f62548b57f0d6973689b553aa1080f7a and served by user-level smartspec-dev-web.service on port 3100 through aimarkethubs.com. Public JS hash matched artifact; local web/API and public health returned 200. Production web/worker fingerprints and generation-251 pointer were identical before/after. No live owner Goal was created.",
+        "source_sha": "f9cb31483b6fa409a86cc86ed4e4dedb5979baf5",
+        "status": "PASS"
       }
     ],
     "required": false,
-    "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3",
+    "source_sha": "f9cb31483b6fa409a86cc86ed4e4dedb5979baf5",
     "status": "PASS"
   },
   "disposition": {
@@ -1317,7 +1324,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 269,
+  "generation": 270,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1549,11 +1556,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb",
+    "canonical_sha": "f9cb31483b6fa409a86cc86ed4e4dedb5979baf5",
     "integrated": true,
-    "integrated_at": "2026-10-30T10:04:19Z",
+    "integrated_at": "2026-10-30T10:38:22Z",
     "pull_request": null,
-    "source_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb"
+    "source_sha": "f9cb31483b6fa409a86cc86ed4e4dedb5979baf5"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4067,7 +4074,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T10:08:01.128559Z",
+  "updated_at": "2026-10-30T10:39:34.381318Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4597,13 +4604,20 @@
         "scope": "Focused Admin First Run panel and unified workspace verification: 2 test files / 42 tests passed; visible persisted DevelopmentRun and Approval Authority reference rendering is covered. Authenticated browser UAT and live execution were not performed.",
         "source_sha": "e301b10804724e365de43ad91948b92d9f402e88",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_DEV_RELEASE_AND_GUIDED_FIRST_RUN_FOCUSED_CHECKS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-dev-prod-isolation-and-release-20261030.md",
+        "scope": "Canonical build BUILD_PASSED; First Run/UnifiedWorkspace/release config and Vite tests passed 60/60 across five focused files. Public /chat was HTTP 200 without Vite HMR and its JS asset SHA matched the immutable artifact. Authenticated owner UAT and live runner execution remain pending.",
+        "source_sha": "f9cb31483b6fa409a86cc86ed4e4dedb5979baf5",
+        "status": "PARTIAL"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "e301b10804724e365de43ad91948b92d9f402e88",
+    "sha": "f9cb31483b6fa409a86cc86ed4e4dedb5979baf5",
     "status": "PARTIAL",
     "task_regressions": []
   }
