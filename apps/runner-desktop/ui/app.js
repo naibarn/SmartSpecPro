@@ -235,6 +235,10 @@ function applyRunnerStatus(status) {
   elements["connection-state"].className = `state-pill${controlPlaneConnected && !status.lastError && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
   elements["connection-detail"].textContent = status.lastError === "RUNNER_PROTOCOL_INCOMPATIBLE"
     ? "Control Plane ปฏิเสธ protocol ของ Runner รุ่นนี้ จึงหยุดส่ง capability และงานจนกว่าจะติดตั้งรุ่นที่รองรับ"
+    : credentialState === "reauth_required"
+      ? status.credentialErrorCode === "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID"
+        ? "SmartAIHub ปฏิเสธลายเซ็น refresh credential ต้องยืนยันบัญชีผ่านเบราว์เซอร์ Runner จะหยุดและกลับมาทำงานต่อด้วยอุปกรณ์เดิมหลังยืนยันสำเร็จ"
+        : "ต้องยืนยันบัญชีผ่านเบราว์เซอร์ Runner จะหยุดและกลับมาทำงานต่อด้วยอุปกรณ์เดิมหลังยืนยันสำเร็จ"
     : status.running && status.lastError
       ? `Runner กำลังเชื่อมต่อ Control Plane ใหม่ · heartbeat ล่าสุด ${formatDate(status.lastControlPlaneHeartbeatAcknowledgedAtMs)}`
     : controlPlaneConnected
@@ -254,7 +258,9 @@ function applyRunnerStatus(status) {
   if (credentialState === "reauth_required") {
     const notice = status.credentialErrorCode === "RUNNER_CONNECT_REQUEST_REJECTED_409"
       ? "SmartAIHub ปฏิเสธคำขอต่ออายุด้วย HTTP 409 กรุณาเชื่อมต่อผ่านเบราว์เซอร์เพื่อยืนยัน session ใหม่"
-      : "Refresh token หมดอายุหรือถูกเพิกถอน กรุณาเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง";
+      : status.credentialErrorCode === "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID"
+        ? "SmartAIHub ปฏิเสธลายเซ็นของ refresh credential กรุณายืนยันบัญชีผ่านเบราว์เซอร์ Runner เดิมจะกลับมาทำงานหลังอนุมัติ"
+        : "Refresh token หมดอายุหรือถูกเพิกถอน กรุณาเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง";
     setNotice(elements["connection-notice"], notice);
   } else if (credentialState === "retrying") {
     setNotice(elements["connection-notice"], refreshFailureMessage(status.credentialErrorCode));
@@ -276,7 +282,10 @@ function applyRunnerStatus(status) {
     setNotice(elements["runtime-notice"]);
   }
 
-  const canChangeAccount = !status.running && !status.stopping && !capabilitySyncing;
+  const canReauthorizeRunningRunner = status.running && credentialState === "reauth_required";
+  const canChangeAccount = (!status.running || canReauthorizeRunningRunner)
+    && !status.stopping
+    && (!capabilitySyncing || canReauthorizeRunningRunner);
   updateButton(elements["connect-button"], {
     disabled: !canChangeAccount || connectPending || credentialState === "renewing",
     pending: connectPending || credentialState === "renewing",
@@ -284,10 +293,14 @@ function applyRunnerStatus(status) {
       ? "กำลังเชื่อมต่อ…"
       : credentialState === "renewing"
         ? "กำลังต่ออายุ token…"
+        : canReauthorizeRunningRunner
+          ? "ยืนยันบัญชีใหม่ผ่านเบราว์เซอร์"
         : credentialState === "reauth_required" || !credentialsReady
           ? "เชื่อมต่อผ่านเบราว์เซอร์"
           : "เปลี่ยนบัญชี / เชื่อมต่อใหม่",
-    title: status.running ? "หยุด Runner ก่อนเปลี่ยนบัญชี" : "",
+    title: canReauthorizeRunningRunner
+      ? "Runner จะหยุดอย่างปลอดภัย ยืนยันบัญชีเดิมผ่านเบราว์เซอร์ แล้วเริ่มทำงานต่อด้วยอุปกรณ์เดิม"
+      : status.running ? "หยุด Runner ก่อนเปลี่ยนบัญชี" : "",
   });
   updateButton(elements["refresh-button"], {
     disabled: refreshPending,
@@ -671,7 +684,10 @@ elements["connect-button"].addEventListener("click", async () => {
     label: "กำลังเชื่อมต่อ…",
   });
   elements["connection-state"].textContent = "รออนุมัติในเบราว์เซอร์";
-  setNotice(elements["connection-notice"], "เปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์นี้");
+  const reauthorizing = latestRunnerStatus?.credentialState === "reauth_required";
+  setNotice(elements["connection-notice"], reauthorizing
+    ? "Runner จะหยุดก่อน จากนั้นเปิด SmartAIHub ในเบราว์เซอร์เพื่อยืนยันบัญชีเดิม ระบบจะไม่สร้าง Runner ID หรืออุปกรณ์ใหม่"
+    : "เปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์นี้");
   try {
     await invoke("connect_runner");
     setNotice(elements["connection-notice"], "อนุมัติแล้ว Runner เชื่อมต่อสำเร็จ");

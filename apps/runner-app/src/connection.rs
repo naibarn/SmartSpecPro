@@ -336,7 +336,7 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
         .as_deref()
         .ok_or_else(|| "RUNNER_CONTROL_URL_REQUIRED".to_string())?;
     let server_url = server_base_url(control_url)?;
-    let material = generate_device_proof_material(config.device_id.as_deref())?;
+    let material = reconnect_device_proof_material(config)?;
     let display_name =
         std::env::var("SAH_RUNNER_DISPLAY_NAME").unwrap_or_else(|_| "SmartAIHub Runner".into());
     let supported_runner_contract_versions = [RUNNER_CONTROL_CONTRACT_VERSION];
@@ -433,6 +433,28 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
     .to_string())
 }
 
+fn reconnect_device_proof_material(config: &RunnerConfig) -> Result<DeviceProofMaterial, String> {
+    let Some(saved) = load_connection(&config.data_root)? else {
+        return generate_device_proof_material(config.device_id.as_deref());
+    };
+    let configured_device_id = config.device_id.as_deref().unwrap_or_default();
+    if saved.runner_id != config.runner_id || saved.device_id != configured_device_id {
+        return Err("RUNNER_CONNECTION_IDENTITY_MISMATCH".into());
+    }
+    if saved.machine_fingerprint.trim().is_empty()
+        || saved.public_key_pem.trim().is_empty()
+        || saved.private_key_pem.trim().is_empty()
+    {
+        return Err("RUNNER_DEVICE_PROOF_CONFIGURATION_INCOMPLETE".into());
+    }
+    Ok(DeviceProofMaterial {
+        device_id: saved.device_id,
+        machine_fingerprint: saved.machine_fingerprint,
+        public_key_pem: saved.public_key_pem,
+        private_key_pem: saved.private_key_pem,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -499,6 +521,75 @@ mod tests {
     #[test]
     fn accepts_the_current_connect_contract() {
         assert!(validate_start_pairing_response(&current_response()).is_ok());
+    }
+
+    #[test]
+    fn browser_reauthorization_reuses_the_existing_runner_device_key() {
+        let dir = tempfile::tempdir().unwrap();
+        let material = generate_device_proof_material(Some("device-existing")).unwrap();
+        let saved = StoredRunnerConnection {
+            server_url: "https://smartaihub.app".into(),
+            runner_id: "runner-existing".into(),
+            display_name: "Existing Runner".into(),
+            device_id: material.device_id.clone(),
+            machine_fingerprint: material.machine_fingerprint.clone(),
+            public_key_pem: material.public_key_pem.clone(),
+            private_key_pem: material.private_key_pem.clone(),
+            control_token: "expired-access".into(),
+            refresh_token: "invalid-refresh-signature".into(),
+            runner_session_id: Some("old-session".into()),
+            tenant_id: Some("tenant-existing".into()),
+        };
+        save_connection(dir.path().to_str().unwrap(), &saved).unwrap();
+        let config = RunnerConfig::local(
+            "runner-existing",
+            "device-existing",
+            "https://smartaihub.app/api/runners/runner-existing/control",
+        );
+        let mut config = config;
+        config.data_root = dir.path().to_string_lossy().into_owned();
+
+        let reauth_material = super::reconnect_device_proof_material(&config).unwrap();
+        assert_eq!(reauth_material.device_id, saved.device_id);
+        assert_eq!(
+            reauth_material.machine_fingerprint,
+            saved.machine_fingerprint
+        );
+        assert_eq!(reauth_material.public_key_pem, saved.public_key_pem);
+        assert_eq!(reauth_material.private_key_pem, saved.private_key_pem);
+    }
+
+    #[test]
+    fn browser_reauthorization_rejects_identity_drift_instead_of_enrolling_another_device() {
+        let dir = tempfile::tempdir().unwrap();
+        let material = generate_device_proof_material(Some("device-existing")).unwrap();
+        let saved = StoredRunnerConnection {
+            server_url: "https://smartaihub.app".into(),
+            runner_id: "runner-existing".into(),
+            display_name: "Existing Runner".into(),
+            device_id: material.device_id,
+            machine_fingerprint: material.machine_fingerprint,
+            public_key_pem: material.public_key_pem,
+            private_key_pem: material.private_key_pem,
+            control_token: "expired-access".into(),
+            refresh_token: "invalid-refresh-signature".into(),
+            runner_session_id: Some("old-session".into()),
+            tenant_id: Some("tenant-existing".into()),
+        };
+        save_connection(dir.path().to_str().unwrap(), &saved).unwrap();
+        let mut config = RunnerConfig::local(
+            "runner-different",
+            "device-existing",
+            "https://smartaihub.app/api/runners/runner-different/control",
+        );
+        config.data_root = dir.path().to_string_lossy().into_owned();
+
+        assert_eq!(
+            super::reconnect_device_proof_material(&config)
+                .err()
+                .as_deref(),
+            Some("RUNNER_CONNECTION_IDENTITY_MISMATCH")
+        );
     }
 
     #[test]

@@ -319,9 +319,18 @@ fn reset_refresh_backoff_for_manual_retry(
 }
 
 fn refresh_requires_browser_reauthorization(error: &str) -> bool {
-    ["_401", "_403", "_409", "REVOKED", "runner_revoked"]
-        .iter()
-        .any(|marker| error.contains(marker))
+    [
+        "_401",
+        "_403",
+        "_409",
+        "_SIGNATURE_INVALID",
+        "_CREDENTIAL_EXPIRED",
+        "_CREDENTIAL_REVOKED",
+        "REVOKED",
+        "runner_revoked",
+    ]
+    .iter()
+    .any(|marker| error.contains(marker))
 }
 
 #[tauri::command]
@@ -496,6 +505,26 @@ async fn retry_runner_credentials(state: State<'_, RunnerState>) -> Result<Runne
 
 #[tauri::command]
 async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String> {
+    let previous_refresh_error = state
+        .last_refresh_error
+        .lock()
+        .map_err(|_| "RUNNER_CREDENTIAL_REFRESH_LOCK_FAILED")?
+        .clone();
+    let resume_after_reauthorization = state.lifecycle.running.load(Ordering::Acquire)
+        && previous_refresh_error
+            .as_deref()
+            .is_some_and(refresh_requires_browser_reauthorization);
+    if state.lifecycle.running.load(Ordering::Acquire) && !resume_after_reauthorization {
+        return Err("RUNNER_STOP_BEFORE_ACCOUNT_CHANGE".into());
+    }
+    if resume_after_reauthorization {
+        let lifecycle = state.lifecycle.clone();
+        lifecycle.stopping.store(true, Ordering::Release);
+        lifecycle.sync_stop.store(true, Ordering::Release);
+        tauri::async_runtime::spawn_blocking(move || stop_runner_inner(lifecycle))
+            .await
+            .map_err(|_| "RUNNER_STOP_TASK_FAILED".to_string())??;
+    }
     let config = state.config.clone();
     let result = tauri::async_runtime::spawn_blocking(move || connect_local_runner(&config))
         .await
@@ -510,6 +539,17 @@ async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String>
         }
         if let Ok(mut last_error) = state.last_refresh_error.lock() {
             *last_error = None;
+        }
+        if resume_after_reauthorization {
+            let settings = setting_lock(&state)?.clone();
+            let config = state.config.clone();
+            let lifecycle = state.lifecycle.clone();
+            let readiness = state.readiness.clone();
+            tauri::async_runtime::spawn_blocking(move || {
+                start_runner_parts(config, settings, lifecycle, readiness)
+            })
+            .await
+            .map_err(|_| "RUNNER_RESTART_AFTER_REAUTH_TASK_FAILED".to_string())??;
         }
     }
     result
@@ -1461,6 +1501,15 @@ mod credential_retry_tests {
         ));
         assert!(refresh_requires_browser_reauthorization(
             "RUNNER_CONNECT_REQUEST_REJECTED_401"
+        ));
+        assert!(refresh_requires_browser_reauthorization(
+            "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID"
+        ));
+        assert!(refresh_requires_browser_reauthorization(
+            "RUNNER_REFRESH_CREDENTIAL_EXPIRED"
+        ));
+        assert!(refresh_requires_browser_reauthorization(
+            "RUNNER_REFRESH_CREDENTIAL_REVOKED"
         ));
         assert!(!refresh_requires_browser_reauthorization(
             "RUNNER_CONNECT_REQUEST_REJECTED_503"
