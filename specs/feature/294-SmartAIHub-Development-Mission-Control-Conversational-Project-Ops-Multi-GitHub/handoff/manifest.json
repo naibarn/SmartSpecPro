@@ -35,6 +35,13 @@
         "scope": "Restored existing Browser control entry in full-page Chat with a regression assertion. Focused workspace tests 6/6, production-mode main+widget build and MapLibre verification passed; aimarkethubs.com dev service restarted at this revision, and all three workspace routes plus transformed workspace modules returned HTTP 200. Owner visual/functional UAT and SPEC-224 live Harness acceptance remain pending.",
         "source_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "OWNER_WORKSPACE_THEME_MODE_AND_GOAL_VISIBILITY_DEV_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md",
+        "scope": "Readable Goal fallback, shared SmartAIHub semantic colors, visible Simple/Developer behavior in Task Control and Mission Control. Focused workspace tests 7/7 and production-mode build passed. Dev runtime restarted at integrated revision; public routes and transformed workspace modules returned HTTP 200. Owner visual UAT and SPEC-224 live execution remain pending.",
+        "source_sha": "430d4553eb58335e57cbe41ba5e8f4cf22f52b4f",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -57,7 +64,7 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
+    "expected_canonical_sha": "430d4553eb58335e57cbe41ba5e8f4cf22f52b4f",
     "expected_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b"
   },
   "continuation": {
@@ -182,7 +189,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 149,
+  "generation": 150,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
@@ -330,9 +337,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
+    "canonical_sha": "430d4553eb58335e57cbe41ba5e8f4cf22f52b4f",
     "integrated": true,
-    "integrated_at": "2026-10-30T10:44:15+07:00"
+    "integrated_at": "2026-10-30T13:39:30+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1869,7 +1876,7 @@
     "unresolved": 547
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T04:44:23.953546Z",
+  "updated_at": "2026-10-30T06:40:33.441725Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [

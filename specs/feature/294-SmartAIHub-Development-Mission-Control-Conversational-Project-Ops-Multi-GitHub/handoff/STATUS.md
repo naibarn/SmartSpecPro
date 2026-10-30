@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
 - Requirements: 0 pass / 547 unresolved of 547
 - Next action: Authenticated Workspace 2.0 UAT remains open: public dev browser acceptance stopped on tenant Home/logo 404 and synthetic dev Admin login returned 401. Restore an authorized dev login, then verify Chat, Task Control and Mission Control at desktop/mobile widths. Afterwards validate live lifecycle evidence, multi-Harness targeting, and execution tabs from canonical records. SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify remain separate required evidence.
-- Manifest generation: 149
+- Manifest generation: 150
 
 ## Source-declared status and relationship claims
 

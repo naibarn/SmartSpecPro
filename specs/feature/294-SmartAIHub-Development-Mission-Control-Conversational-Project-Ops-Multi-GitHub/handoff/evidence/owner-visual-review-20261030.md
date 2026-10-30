@@ -28,3 +28,11 @@ The images and brief were supplied directly in the owner conversation on 2026-10
 ## Follow-up: Browser control preserved — `dd411780ea4b378e69ce314af267145e93ad99fb`
 
 The full-page Chat had disabled its existing Browser session entry point. It is visible again, and a regression assertion now verifies that Chat keeps the Browser control reachable. The focused workspace test remains 6/6 passing; the production-mode app/widget build passed with the same existing large-chunk warning. `smartspec-dev-web.service` restarted successfully at `dd411780ea4b378e69ce314af267145e93ad99fb`; the public `/chat`, `?mode=tasks`, and `?mode=mission` routes and the transformed workspace modules returned HTTP 200. Authenticated owner visual/functional UAT and live Harness acceptance are still pending.
+
+## Follow-up: readable Goal selection, shared SmartAIHub colors, and mode-specific views — `430d4553eb58335e57cbe41ba5e8f4cf22f52b4f`
+
+- Replaced the blank Goal label case with a readable title fallback (`เป้าหมาย <short id>`); selected Project, Goal, and Mission Control navigation now use shared semantic theme tokens for foreground, selected background, borders, and hover state.
+- Task Control now receives Simple/Developer mode: Simple emphasizes progress and omits internal run identifiers; Developer adds Goal, Worker Job, Run, and evidence-reference diagnostics. Mission Control likewise distinguishes the modes: Simple hides technical filters and uses user-facing guidance; Developer exposes filters and the detailed inspector.
+- Focused verification: `pnpm exec vitest run client/src/pages/UnifiedWorkspace.test.tsx --reporter=dot` (7/7 passed); `pnpm run build` (main app, widget, and MapLibre worker checks passed; existing large-chunk warning remains); `git diff --check` passed.
+- Integrated on `main` at `430d4553eb58335e57cbe41ba5e8f4cf22f52b4f` and confirmed local `HEAD` equals `origin/main`. Restarted `smartspec-dev-web.service` for the development runtime. The public Task Control and Mission Control routes and their transformed modules returned HTTP 200; served modules contain the updated mode copy and Goal diagnostics.
+- Remaining: authenticated owner visual/functional UAT and SPEC-224 live Harness execution acceptance. This checkpoint does not mark `OWNER_UAT_ACCEPTED`.
