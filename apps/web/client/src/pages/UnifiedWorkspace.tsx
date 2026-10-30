@@ -97,10 +97,13 @@ export default function UnifiedWorkspace() {
     setLocation(`/chat-legacy${window.location.search}`);
   }, [search, params, setLocation]);
   useEffect(() => {
-    if (!isAdmin || !pilotRequested || !conversationId) return;
+    if (!isAdmin || !pilotRequested || !conversationId || mode !== "chat") return;
     setPilotConversationId(conversationId);
     setPilotOpen(true);
-  }, [isAdmin, conversationId, pilotRequested]);
+  }, [isAdmin, conversationId, mode, pilotRequested]);
+  useEffect(() => {
+    if (mode !== "chat") setPilotOpen(false);
+  }, [mode]);
   const navigate = (
     nextMode: WorkspaceMode,
     id = conversationId,
@@ -404,7 +407,7 @@ export default function UnifiedWorkspace() {
       ) : null}
       <Dialog open={pilotOpen} onOpenChange={open => {
         setPilotOpen(open);
-        if (!open && pilotRequested) navigate("chat", pilotConversationId ?? conversationId, null);
+        if (!open && pilotRequested && mode === "chat") navigate("chat", pilotConversationId ?? conversationId, null);
       }}>
         <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
           <DialogHeader>

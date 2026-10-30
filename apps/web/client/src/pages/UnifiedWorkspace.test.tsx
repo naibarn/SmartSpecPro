@@ -222,6 +222,13 @@ describe("UnifiedWorkspace", () => {
     expect(screen.getByText("Pilot 902 · true")).toBeTruthy();
   });
 
+  it("does not reopen the Pilot dialog while navigating to Task Control", () => {
+    state.search = "mode=tasks&c=902&pilot=1";
+    render(<UnifiedWorkspace />);
+    expect(screen.queryByRole("region", { name: "First Run Pilot panel" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Task Control" })).toBeTruthy();
+  });
+
   it("does not expose the first-run pilot entry point to non-admin users", () => {
     state.user = { role: "user" };
     render(<UnifiedWorkspace />);
