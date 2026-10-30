@@ -79,6 +79,12 @@ async function preparePanel(simpleMode = false) {
 }
 
 describe("Core goal readiness feedback", () => {
+  it("preselects a Mission Control Harness target only when the selected Runner catalog confirms it", async () => {
+    render(<Spec224WorkspacePanel conversationId={8} requestedHarnessAdapterId="codex.v1" />);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Harness" })).toHaveTextContent("Codex"));
+    expect(screen.getByRole("combobox", { name: "Harness" })).not.toHaveAttribute("aria-disabled", "true");
+  });
+
   it("explains Runner source and online state without exposing machine name in Simple mode", () => {
     render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
     expect(screen.getByRole("option", { name: "Test Runner · Windows · ออนไลน์" })).toBeInTheDocument();

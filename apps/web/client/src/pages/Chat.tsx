@@ -312,7 +312,7 @@ export default function Chat() {
       originLabel: t("chat.browserSession"),
       sourceId: String(conversationId),
       returnContext: {
-        path: `/chat?c=${conversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}&browserSessionId=${encodeURIComponent(sessionId)}`,
+        path: `/chat-legacy?c=${conversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}&browserSessionId=${encodeURIComponent(sessionId)}`,
         label: t("chat.browserSession.returnLabel"),
       },
     };
@@ -444,7 +444,7 @@ export default function Chat() {
     setSelectedThreadId(null);
     setFullControlPlane(true);
     setRightPanel("control-plane");
-    setLocation(`/chat?panel=control-plane&view=full&c=${result.id}`);
+    setLocation(`/chat-legacy?panel=control-plane&view=full&c=${result.id}`);
     return result.id;
   };
 
@@ -457,7 +457,7 @@ export default function Chat() {
     setChatPromptRequest(null);
     setFullControlPlane(false);
     setRightPanel("none");
-    setLocation(`/chat?c=${conversationId}`);
+    setLocation(`/chat-legacy?c=${conversationId}`);
     if (options?.closeSidebar ?? window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
@@ -469,7 +469,7 @@ export default function Chat() {
     setChatPromptRequest(null);
     setFullControlPlane(false);
     setRightPanel("none");
-    setLocation(`/chat?c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`);
+    setLocation(`/chat-legacy?c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`);
     if (window.innerWidth < 1024) setSidebarOpen(false);
   };
 
@@ -488,7 +488,7 @@ export default function Chat() {
       setChatPromptRequest({ id: Date.now(), text: prompt });
       setFullControlPlane(false);
       setRightPanel("none");
-      if (fullControlPlane) setLocation(`/chat?c=${conversationId}`);
+      if (fullControlPlane) setLocation(`/chat-legacy?c=${conversationId}`);
       toast.success("เพิ่มงานใน Chat composer แล้ว ตรวจสอบก่อนส่งได้เลย");
     } catch (error) {
       toast.error(
@@ -503,7 +503,7 @@ export default function Chat() {
       setSkillSelectorRequest({ id: Date.now() });
       setFullControlPlane(false);
       setRightPanel("none");
-      if (fullControlPlane) setLocation(`/chat?c=${conversationId}`);
+      if (fullControlPlane) setLocation(`/chat-legacy?c=${conversationId}`);
     } catch {
       toast.error(t("taskControl.openSkillFailed"));
     }
@@ -750,7 +750,7 @@ export default function Chat() {
 
     setSelectedConversationId(result.id);
     setSelectedThreadId(null);
-    setLocation(`/chat?c=${result.id}`);
+    setLocation(`/chat-legacy?c=${result.id}`);
     // Open Memory panel so user can see the carried-over context
     setRightPanel("memory");
   };
@@ -829,7 +829,7 @@ export default function Chat() {
             onClick={() => {
               setFullControlPlane(false);
               setRightPanel("none");
-              setLocation(selectedConversationId ? `/chat?c=${selectedConversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}` : "/chat");
+              setLocation(selectedConversationId ? `/chat-legacy?c=${selectedConversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}` : "/chat-legacy");
             }}
             className="h-9 shrink-0 rounded-lg px-3 sm:px-5"
           >{t("workspaceNav.chat")}</Button>
@@ -841,7 +841,7 @@ export default function Chat() {
             onClick={() => {
               setRightPanel("control-plane");
               setFullControlPlane(true);
-              setLocation(`/chat?panel=control-plane&view=full${selectedConversationId ? `&c=${selectedConversationId}` : ""}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}`);
+              setLocation(`/chat-legacy?panel=control-plane&view=full${selectedConversationId ? `&c=${selectedConversationId}` : ""}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}`);
             }}
             className="h-9 shrink-0 rounded-lg px-3 sm:px-5"
           >{t("workspaceNav.taskControl")}</Button>
@@ -1312,7 +1312,7 @@ export default function Chat() {
                 if (fullControlPlane) {
                   setFullControlPlane(false);
                   setRightPanel("none");
-                  setLocation(selectedConversationId ? `/chat?c=${selectedConversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}` : "/chat");
+                  setLocation(selectedConversationId ? `/chat-legacy?c=${selectedConversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}` : "/chat-legacy");
                 } else {
                   setRightPanel("none");
                 }

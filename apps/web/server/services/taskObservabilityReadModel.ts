@@ -776,6 +776,10 @@ export async function listTaskObservability(input: { scope: Scope; cursor?: stri
       threadTitle: thread ? safeText(thread.title, 160) : conversation ? safeText(conversation.title, 255) : null,
       runnerId: runnerByJob.get(job.id)?.runnerId ?? null,
       runnerSessionState: runnerByJob.get(job.id)?.state ?? null,
+      // Keep Harness/model identity on the list projection so fleet views can
+      // group sessions without issuing an N+1 detail read or guessing from a
+      // Runner's installed capability inventory.
+      executionIdentity: projectExecutionIdentity(inputMetadata, job.jobType),
       projectId,
       specId,
       identityBinding: { status: projectId || specId ? "UNVERIFIED" as const : "UNKNOWN" as const, source: development?.projectId || development?.specId ? "spec224_run_projection" : projectId || specId ? "worker_job_metadata" : null },

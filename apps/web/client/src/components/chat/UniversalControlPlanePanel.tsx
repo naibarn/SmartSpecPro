@@ -850,7 +850,7 @@ export function UniversalControlPlanePanel({
           </Button>
           {!fullPage ? (
             <Link
-              href={`/chat?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`}
+              href={`/chat-legacy?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex min-h-9 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium text-foreground shadow-sm hover:bg-accent"
@@ -934,6 +934,7 @@ export function UniversalControlPlanePanel({
         <Spec224WorkspacePanel
               conversationId={conversationId}
               threadId={threadId}
+          requestedHarnessAdapterId={new URLSearchParams(window.location.search).get("harness")}
           simpleMode={fullPage && runnerViewMode === "simple"}
           onCreateConversation={onCreateConversation}
         />

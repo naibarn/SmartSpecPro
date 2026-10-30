@@ -932,7 +932,7 @@ export function ChatView({
           sourceId: conversationId ? String(conversationId) : undefined,
           returnContext: conversationId
             ? {
-                path: `/chat?c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}&browserSessionId=${encodeURIComponent(artifact.sessionId)}`,
+                path: `/chat-legacy?c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}&browserSessionId=${encodeURIComponent(artifact.sessionId)}`,
                 label: "Return to Chat",
               }
             : undefined,

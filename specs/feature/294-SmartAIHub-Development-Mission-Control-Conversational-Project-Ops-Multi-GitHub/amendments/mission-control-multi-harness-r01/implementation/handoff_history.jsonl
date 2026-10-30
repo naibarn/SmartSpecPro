@@ -1,0 +1,2 @@
+{"generation": 1, "at": "2026-10-30T02:32:06.575347+00:00", "reason": "config_save", "active_section": null, "merged_main_sha": null, "next_action": null, "open_gap_count": 0}
+{"generation": 2, "at": "2026-10-30T02:32:25.052301+00:00", "reason": "section:section-01-fleet-state-and-entry", "active_section": "section-01-fleet-state-and-entry", "merged_main_sha": null, "next_action": "Inspect the Runner projection fields, then implement truthful fleet counts and a canonical Task Control start entry.", "open_gap_count": 0}

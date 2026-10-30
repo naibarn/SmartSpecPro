@@ -1,0 +1,12 @@
+{
+  "context": {
+    "check_enabled": false
+  },
+  "external_review": {
+    "alert_if_missing": false
+  },
+  "plugin_root": "/home/dev/.codex/skills/deep-plan",
+  "planning_dir": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01",
+  "initial_file": "/mnt/SmartSpecDev/projects/SmartSpecPro/specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/amendment.md",
+  "review_mode": "self_review"
+}

@@ -227,7 +227,8 @@ const DomainAdminContent = lazy(() => import("./pages/DomainAdminContent"));
 const DomainUsers = lazy(() => import("./pages/DomainUsers"));
 const TenantSettings = lazy(() => import("./pages/TenantSettings"));
 const TenantDataTransfer = lazy(() => import("./pages/TenantDataTransfer"));
-const Chat = lazy(() => import("./pages/Chat"));
+const Chat = lazy(() => import("./pages/UnifiedWorkspace"));
+const LegacyChat = lazy(() => import("./pages/Chat"));
 const Finance = lazy(() => import("./pages/Finance"));
 const FinanceReports = lazy(() => import("./pages/FinanceReports"));
 const SocialChannels = lazy(() => import("./pages/SocialChannels"));
@@ -1109,6 +1110,11 @@ function Router() {
           <Route path="/chat">
             <RequireAuth>
               <Chat />
+            </RequireAuth>
+          </Route>
+          <Route path="/chat-legacy">
+            <RequireAuth>
+              <LegacyChat />
             </RequireAuth>
           </Route>
           <Route path="/finance/reports">

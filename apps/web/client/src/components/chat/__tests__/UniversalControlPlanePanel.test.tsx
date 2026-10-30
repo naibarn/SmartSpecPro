@@ -276,7 +276,7 @@ describe("UniversalControlPlanePanel", () => {
     expect(screen.getByRole("option", { name: "Windows Runner · Linux · ออนไลน์" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute(
       "href",
-      "/chat?panel=control-plane&view=full&c=42",
+      "/chat-legacy?panel=control-plane&view=full&c=42",
     );
     expect(screen.getByRole("link", { name: "Open full workspace" })).toHaveAttribute("target", "_blank");
     expect(screen.getByRole("link", { name: /Inspect this Chat’s model, usage, and Runner evidence/ })).toHaveAttribute("href", "/agent-monitor?conversationId=42&threadId=main");

@@ -227,11 +227,12 @@ async function encodeFile(file: File): Promise<{ path: string; contentBase64: st
 }
 
 /** Workspace and evolving SpecSet controls for the active Chat section. */
-export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation }: {
+export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleMode = false, onCreateConversation, requestedHarnessAdapterId = null }: {
   conversationId: number | null;
   threadId?: string | null;
   simpleMode?: boolean;
   onCreateConversation?: (title: string) => Promise<number>;
+  requestedHarnessAdapterId?: string | null;
 }) {
   const { t } = useScopedTranslation("chat");
   const { user } = useAuth();
@@ -266,6 +267,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const [budgetCapUsd, setBudgetCapUsd] = useState("1.00");
   const [harnessPolicy, setHarnessPolicy] = useState<"auto" | "explicit">("auto");
   const [selectedHarnessAdapterId, setSelectedHarnessAdapterId] = useState("");
+  const requestedHarnessApplied = useRef(false);
   const [modelPolicy, setModelPolicy] = useState<"auto" | "explicit">("auto");
   const [selectedModelId, setSelectedModelId] = useState("");
   const [reasoningEffort, setReasoningEffort] = useState("");
@@ -430,6 +432,14 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const catalogHarnesses = availableCatalogs
     .map(catalog => catalog.adapterId)
     .filter(adapterId => adapterId === "codex.v1" || adapterId === "microsoft-copilot.v1");
+  useEffect(() => {
+    if (!requestedHarnessAdapterId || requestedHarnessApplied.current || !selectedWorkspace || workspacesQuery.isLoading) return;
+    requestedHarnessApplied.current = true;
+    if (catalogHarnesses.includes(requestedHarnessAdapterId)) {
+      setHarnessPolicy("explicit");
+      setSelectedHarnessAdapterId(requestedHarnessAdapterId);
+    }
+  }, [requestedHarnessAdapterId, selectedWorkspace, workspacesQuery.isLoading, catalogHarnesses.join("|")]);
   const effectiveHarnessAdapterId = harnessPolicy === "explicit"
     ? selectedHarnessAdapterId
     : catalogHarnesses.includes("codex.v1") ? "codex.v1" : catalogHarnesses[0] ?? "";

@@ -88,7 +88,7 @@ describe("ConversationExecutionActivity", () => {
     expect(screen.getByText(/Progress received/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open Task Control" })).toHaveAttribute(
       "href",
-      "/chat?panel=control-plane&view=full&c=241",
+      "/chat?mode=tasks&c=241",
     );
     expect(screen.queryByText("private phase value")).not.toBeInTheDocument();
     expect(screen.queryByText("Codex executed the test suite.")).not.toBeInTheDocument();

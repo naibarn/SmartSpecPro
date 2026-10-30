@@ -30,7 +30,7 @@ function activityLabel(type: string, t: (key: string) => string): string {
 }
 
 function taskControlHref(conversationId: number, threadId?: string | null): string {
-  return `/chat?panel=control-plane&view=full&c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`;
+  return `/chat?mode=tasks&c=${conversationId}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`;
 }
 
 function isAuthorizationReadFailure(code: string | undefined): boolean {

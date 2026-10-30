@@ -433,7 +433,7 @@ describe("Chat Browser Session entry", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Open saved thread" })[0]);
 
-    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=42&t=thread-42");
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat-legacy?c=42&t=thread-42");
     expect(screen.getByTestId("chat-primary-content")).not.toHaveClass("hidden");
   });
 
@@ -467,7 +467,7 @@ describe("Chat Browser Session entry", () => {
       });
     });
 
-    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=88");
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat-legacy?c=88");
   });
 
   it("creates a personal chat from the sidebar shortcut", async () => {
@@ -482,7 +482,7 @@ describe("Chat Browser Session entry", () => {
       });
     });
 
-    expect(mockSetLocation).toHaveBeenCalledWith("/chat?c=89");
+    expect(mockSetLocation).toHaveBeenCalledWith("/chat-legacy?c=89");
   });
 
   it("creates and opens a Browser Session from Chat", async () => {

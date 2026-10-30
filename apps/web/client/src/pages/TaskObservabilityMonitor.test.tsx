@@ -149,7 +149,7 @@ describe("TaskObservabilityMonitor", () => {
     renderMonitor();
     expect(screen.getByRole("navigation", { name: "Development workspace" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Task Control" }));
-    expect(setLocation).toHaveBeenCalledWith("/chat?panel=control-plane&view=full");
+    expect(setLocation).toHaveBeenCalledWith("/chat?mode=tasks");
   });
 
   it("opens the originating Chat thread from the same task in both Task Control views", () => {

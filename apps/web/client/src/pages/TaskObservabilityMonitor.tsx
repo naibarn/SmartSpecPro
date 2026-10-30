@@ -135,7 +135,7 @@ export default function TaskObservabilityMonitor() {
       <VStack gap={1}>
         <HStack as="nav" aria-label="Development workspace" gap={1} wrap="wrap">
           <Button label={t("workspaceNav.chat")} variant="secondary" onClick={() => setLocation(conversationId ? chatHref(conversationId, threadId ?? null) : "/chat")} />
-          <Button label={t("workspaceNav.taskControl")} variant="secondary" onClick={() => setLocation(`/chat?panel=control-plane&view=full${conversationId ? `&c=${conversationId}` : ""}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`)} />
+          <Button label={t("workspaceNav.taskControl")} variant="secondary" onClick={() => setLocation(`/chat?mode=tasks${conversationId ? `&c=${conversationId}` : ""}${threadId ? `&t=${encodeURIComponent(threadId)}` : ""}`)} />
           <Button label={t("workspaceNav.missionControl")} variant="primary" aria-current="page" />
         </HStack>
         <Heading level={1}>Mission Control</Heading>
