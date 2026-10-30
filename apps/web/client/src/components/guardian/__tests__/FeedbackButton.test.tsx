@@ -85,6 +85,10 @@ vi.mock("@/components/chat/ChatSidebar", () => ({
   ),
 }));
 
+vi.mock("@/components/chat/UnifiedWorkspaceInspector", () => ({
+  UnifiedWorkspaceInspector: () => <aside aria-label="Execution inspector">Inspector</aside>,
+}));
+
 vi.mock("@/pages/TaskObservabilityMonitor", () => ({
   default: () => <section aria-label="Mission Control view">All connected task activity</section>,
 }));
@@ -340,6 +344,20 @@ describe("FeedbackButton placement", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Show sessions" }));
     fireEvent.click(await screen.findByRole("button", { name: "Open saved session" }));
     expect(screen.getByText("ChatView conversation 73 thread saved-thread")).toBeTruthy();
+  });
+
+  it("keeps the same Chat surface in the modal and lets users expand its inspector", async () => {
+    feedbackMocks.user = { role: "member" };
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
+    await screen.findByRole("textbox", { name: "Chat draft test" });
+
+    expect(screen.getByRole("button", { name: "Show sessions" })).toBeInTheDocument();
+    expect(screen.queryByText("Inspector")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show sessions" }));
+    expect(await screen.findByRole("button", { name: "Open saved session" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show inspector" }));
+    expect(screen.getByText("Inspector")).toBeInTheDocument();
   });
 
   it("opens the full Mission Control workspace from the dashboard assistant", async () => {

@@ -4,10 +4,7 @@ import { getLoginUrl } from "@/const";
 import { useScopedTranslation } from "@/i18n/useScopedTranslation";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
-import { ChatView } from "@/components/chat/ChatView";
-import { ChatSidebar } from "@/components/chat/ChatSidebar";
-import { UniversalControlPlanePanel } from "@/components/chat/UniversalControlPlanePanel";
-import TaskObservabilityMonitor from "@/pages/TaskObservabilityMonitor";
+import { UnifiedChatSurface } from "@/components/chat/UnifiedChatSurface";
 import { useConfirm } from "@/components/ui/confirm/ConfirmProvider";
 import { Button } from "@smartspec/ui/src/components/ui/button";
 import {
@@ -33,8 +30,6 @@ import {
   Loader2,
   MessageSquarePlus,
   Network,
-  PanelLeftClose,
-  PanelLeftOpen,
   Paperclip,
   RefreshCw,
   Settings2,
@@ -302,11 +297,6 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
   const helpTabRefs = useRef<Partial<Record<HelpPanel, HTMLButtonElement>>>({});
   const [chatConversationId, setChatConversationId] = useState<number | null>(initialConversationIdFromUrl);
   const [chatThreadId, setChatThreadId] = useState<string | null>(initialThreadIdFromUrl);
-  const [chatSessionsOpen, setChatSessionsOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1200);
-  const [chatPromptRequest, setChatPromptRequest] = useState<{
-    id: number;
-    text: string;
-  } | null>(null);
   const [mapContextDraft, setMapContextDraft] = useState<{ id: number; contextText: string } | null>(null);
   const [ticketType, setTicketType] = useState<string>("bug");
   const [title, setTitle] = useState("");
@@ -424,7 +414,6 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
     chatConversationPromiseRef.current = null;
     setChatConversationId(null);
     setChatThreadId(null);
-    setChatPromptRequest(null);
     setMapContextDraft(null);
     setOpen(false);
     setActivePanel("chat");
@@ -847,7 +836,7 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
 
   const selectHelpPanel = useCallback(
     (panel: HelpPanel) => {
-      if (panel === "control-plane" && (!user || authLoading)) return;
+      if ((panel === "control-plane" || panel === "mission-control") && (!user || authLoading)) return;
       if (panel === "control-plane" || panel === "mission-control") {
         const params = new URLSearchParams();
         params.set("mode", panel === "control-plane" ? "tasks" : "mission");
@@ -901,25 +890,6 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
     }
   };
 
-  const handleOpenTaskPrompt = useCallback(
-    async (prompt: string) => {
-      const requestScopeGeneration = chatConversationScopeGenerationRef.current;
-      const requestIdentity = conversationIdentity;
-      const conversationId = await ensureChatConversation();
-      if (
-        requestScopeGeneration !== chatConversationScopeGenerationRef.current ||
-        requestIdentity !== conversationIdentityRef.current
-      ) {
-        throw new Error("Conversation scope changed while opening Task Control");
-      }
-      setChatPromptRequest({ id: Date.now(), text: prompt });
-      setActivePanel("chat");
-      setOpen(true);
-      return conversationId;
-    },
-    [ensureChatConversation, conversationIdentity],
-  );
-
   useEffect(() => {
     function handleEmergencyMapChat(event: Event) {
       const request = parseEmergencyMapChatRequest((event as CustomEvent<unknown>).detail);
@@ -941,7 +911,6 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
   const resetForm = useCallback(() => {
     setOpen(false);
     setActivePanel("chat");
-    setChatPromptRequest(null);
     setMapContextDraft(null);
     setTitle("");
     setDescription("");
@@ -1573,63 +1542,23 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
               </Button>
             </section>
           ) : (
-            <section className="flex h-full min-h-0 min-w-0" aria-label={t("feedback.chatSection")}>
-              {chatSessionsOpen ? <aside className="flex min-h-0 w-64 shrink-0 flex-col border-r border-border bg-muted/20" aria-label={t("threads.overviewTitle")}>
-                <ChatSidebar
-                  selectedConversationId={chatConversationId}
-                  selectedThreadId={chatThreadId}
-                  onSelectConversation={id => { setChatConversationId(id); setChatThreadId(null); }}
-                  onSelectThread={(conversationId, threadId) => { setChatConversationId(conversationId); setChatThreadId(threadId); }}
-                  onNewChat={() => { setChatConversationId(null); setChatThreadId(null); }}
-                />
-              </aside> : null}
-              <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <header className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
-                  <Button type="button" size="sm" variant="ghost" aria-pressed={chatSessionsOpen} aria-label={chatSessionsOpen ? "Hide sessions" : "Show sessions"} onClick={() => setChatSessionsOpen(value => !value)}>
-                    {chatSessionsOpen ? <PanelLeftClose className="mr-2 h-4 w-4" /> : <PanelLeftOpen className="mr-2 h-4 w-4" />}
-                    {chatSessionsOpen ? t("sessionDock.hide", { defaultValue: "Hide sessions" }) : t("sessionDock.show", { defaultValue: "Sessions" })}
-                  </Button>
-                  <span className="truncate text-xs text-muted-foreground">{chatConversationId ? `Session ${chatConversationId}${chatThreadId ? ` · Thread ${chatThreadId}` : ""}` : "New session"}</span>
-                </header>
-                <ChatView
-                  conversationId={chatConversationId}
-                  threadId={chatThreadId}
-                  density="compact"
-                  showExecutionActivity={activePanel === "chat"}
-                  composerPrompt={chatPromptRequest}
-                  mapContextDraft={mapContextDraft}
-                  onRemoveMapContext={() => {
-                    setMapContextDraft(null);
-                    setChatPromptRequest(null);
-                  }}
-                  onUserMessageSent={() => {
-                    setMapContextDraft(null);
-                    setChatPromptRequest(null);
-                  }}
-                  showBrowserSessionEntry={false}
-                />
-              </section>
-            </section>
-          )}
-        </section>
-
-        {user && !authLoading && activePanel === "control-plane" && (
-          <section id="assistant-help-panel-control-plane" role="tabpanel" aria-labelledby="assistant-help-tab-control-plane" tabIndex={0} className="min-h-0 flex-1 overflow-hidden" aria-label={t("feedback.taskControlSection")}>
-            <UniversalControlPlanePanel
+            <UnifiedChatSurface
               conversationId={chatConversationId}
-              onClose={() => selectHelpPanel("chat")}
-              onOpenPrompt={prompt => {
-                void handleOpenTaskPrompt(prompt).catch(() => undefined);
+              threadId={chatThreadId}
+              compact
+              onSelectConversation={id => { setChatConversationId(id); setChatThreadId(null); }}
+              onSelectThread={(conversationId, threadId) => { setChatConversationId(conversationId); setChatThreadId(threadId); }}
+              onNewChat={() => { setChatConversationId(null); setChatThreadId(null); }}
+              mapContextDraft={mapContextDraft}
+              onRemoveMapContext={() => {
+                setMapContextDraft(null);
+              }}
+              onUserMessageSent={() => {
+                setMapContextDraft(null);
               }}
             />
-          </section>
-        )}
-
-        {user && !authLoading && activePanel === "mission-control" && (
-          <section id="assistant-help-panel-mission-control" role="tabpanel" aria-labelledby="assistant-help-tab-mission-control" tabIndex={0} className="min-h-0 flex-1 overflow-y-auto" aria-label={t("workspaceNav.missionControl")}>
-            <TaskObservabilityMonitor />
-          </section>
-        )}
+          )}
+        </section>
 
         {activePanel === "feedback" && <section id="assistant-help-panel-feedback" role="tabpanel" aria-labelledby="assistant-help-tab-feedback" tabIndex={0} className="space-y-4 p-4 sm:p-5">
           {/* Show retry banner if ticket created but upload failed */}

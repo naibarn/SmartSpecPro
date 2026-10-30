@@ -7,9 +7,7 @@ import { HStack } from "@astryxdesign/core/HStack";
 import { VStack } from "@astryxdesign/core/VStack";
 import { Button } from "@astryxdesign/core/Button";
 import { Activity, Bot, MessageSquare, Radio, Workflow } from "lucide-react";
-import { ChatSidebar } from "@/components/chat/ChatSidebar";
-import { ChatView } from "@/components/chat/ChatView";
-import { UnifiedWorkspaceInspector } from "@/components/chat/UnifiedWorkspaceInspector";
+import { UnifiedChatSurface } from "@/components/chat/UnifiedChatSurface";
 import { trpc } from "@/lib/trpc";
 import { useTaskHarnessOutputEvents } from "@/lib/useTaskHarnessOutputEvents";
 
@@ -25,32 +23,6 @@ function modeFromSearch(search: string): WorkspaceMode {
 
 function statusLabel(status: string): string {
   return status.replaceAll("_", " ");
-}
-
-function ChatWorkspace({
-  conversationId,
-  threadId,
-  onSelectConversation,
-  onSelectThread,
-  onNewChat,
-  title,
-}: {
-  conversationId: number | null;
-  threadId: string | null;
-  onSelectConversation: (id: number) => void;
-  onSelectThread: (id: number, thread: string | null) => void;
-  onNewChat: () => void;
-  title: string | null;
-}) {
-  return (
-    <Layout
-      height="fill"
-      padding={0}
-      start={<LayoutPanel label="Projects, sessions, and threads" width="18rem" hasDivider><ChatSidebar selectedConversationId={conversationId} selectedThreadId={threadId} onSelectConversation={onSelectConversation} onSelectThread={onSelectThread} onNewChat={onNewChat} /></LayoutPanel>}
-      content={<LayoutContent isScrollable={false} padding={0}><ChatView conversationId={conversationId} threadId={threadId} showExecutionActivity={false} /></LayoutContent>}
-      end={<LayoutPanel label="Thread and execution inspector" width="21rem" hasDivider><UnifiedWorkspaceInspector conversationId={conversationId} threadId={threadId} conversationTitle={title} /></LayoutPanel>}
-    />
-  );
 }
 
 function ProjectTaskControl({ onOpenConversation }: { onOpenConversation: (id: number, threadId: string | null) => void }) {
@@ -244,7 +216,7 @@ export default function UnifiedWorkspace() {
 
   return (
     <AppShell height="fill" contentPadding={0} variant="surface" topNav={<TopNav label="SmartAIHub workspace navigation" heading={<TopNavHeading href="/chat">SmartAIHub</TopNavHeading>} startContent={<HStack gap={1} wrap="wrap"><TopNavItem label="Chat" href="/chat" icon={<MessageSquare aria-hidden="true" />} isSelected={mode === "chat"} /><TopNavItem label="Task Control" href={`/chat?mode=tasks${conversationId ? `&c=${conversationId}` : ""}`} icon={<Workflow aria-hidden="true" />} isSelected={mode === "tasks"} /><TopNavItem label="Mission Control" href={`/chat?mode=mission${conversationId ? `&c=${conversationId}` : ""}`} icon={<Radio aria-hidden="true" />} isSelected={mode === "mission"} /></HStack>} endContent={<HStack gap={2}><Button label="Simple" variant={presentationMode === "simple" ? "primary" : "secondary"} onClick={() => setMode("simple")} /><Button label="Developer" variant={presentationMode === "developer" ? "primary" : "secondary"} onClick={() => setMode("developer")} /><a href="/chat-legacy?panel=control-plane&view=full">Advanced Goal admission and legacy tools</a></HStack>} />}>
-      {mode === "chat" ? <ChatWorkspace conversationId={conversationId} threadId={threadId} title={title} onNewChat={() => void newChat()} onSelectConversation={id => navigate("chat", id, null)} onSelectThread={(id, thread) => navigate("chat", id, thread)} /> : null}
+      {mode === "chat" ? <UnifiedChatSurface conversationId={conversationId} threadId={threadId} title={title} onNewChat={() => void newChat()} onSelectConversation={id => navigate("chat", id, null)} onSelectThread={(id, thread) => navigate("chat", id, thread)} /> : null}
       {mode === "tasks" ? <ProjectTaskControl onOpenConversation={(id, thread) => navigate("chat", id, thread)} /> : null}
       {mode === "mission" ? <MissionControl onOpenConversation={(id, thread) => navigate("chat", id, thread)} onSelectExecutions={selectExecutions} presentationMode={presentationMode} initialJobId={params.get("jobId")} initialJobIds={(params.get("jobIds") ?? "").split(",").filter(Boolean)} /> : null}
     </AppShell>
