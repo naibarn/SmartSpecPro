@@ -109,6 +109,8 @@ To build assets and validate the exact Staging Worker configuration locally:
 
 ```sh
 pnpm --filter @smartspec/web exec vite build --configLoader runner
+private_maps=$(mktemp -d)
+node apps/cloudflare/scripts/prepare-worker-assets.mjs apps/web/client/public apps/web/dist/public "$private_maps"
 pnpm --filter @smartspec/cloudflare-runtime exec wrangler --version
 pnpm --filter @smartspec/cloudflare-runtime exec wrangler deploy --config wrangler.staging.jsonc --dry-run
 pnpm --filter @smartspec/cloudflare-runtime exec wrangler dev --config wrangler.staging.jsonc --local
