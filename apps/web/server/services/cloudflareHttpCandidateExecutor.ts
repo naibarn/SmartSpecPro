@@ -59,9 +59,10 @@ export const createHttpCandidateExecutor = (): JobExecutor => withCloudflareStag
         if (!response.ok || body.success !== true) fail(`PROVIDER_HTTP_${response.status}`);
         return { result: body.result, page: body.result_info?.page, totalPages: body.result_info?.total_pages ?? 1 };
       };
-      const first = await fetchPage(path.endsWith("/deployments") ? 1 : undefined);
+      const collection = /\/(?:deployments|applications|routes)(?:\?|$)/.test(path);
+      const first = await fetchPage(collection ? 1 : undefined);
       if (first === null) return null;
-      if (!path.endsWith("/deployments")) return first.result;
+      if (!collection) return first.result;
       if (!Number.isInteger(first.totalPages) || first.totalPages < 1 || first.totalPages > 20 ||
           (first.page !== undefined && first.page !== 1)) fail("PROVIDER_INVENTORY_INCOMPLETE");
       const pages = [first.result];
@@ -72,7 +73,10 @@ export const createHttpCandidateExecutor = (): JobExecutor => withCloudflareStag
           fail("PROVIDER_INVENTORY_INCOMPLETE");
         pages.push(next.result);
       }
-      return { deployments: pages.flatMap((result: any) => Array.isArray(result?.deployments) ? result.deployments : []) };
+      if (path.endsWith("/deployments"))
+        return { deployments: pages.flatMap((result: any) => Array.isArray(result?.deployments) ? result.deployments : []) };
+      if (pages.some((result: unknown) => !Array.isArray(result))) fail("PROVIDER_INVENTORY_INCOMPLETE");
+      return pages.flatMap((result: any) => result);
     };
     const root = `/accounts/${target.accountRef}`, script = `${root}/workers/scripts/${packet.config.name}`;
     // An existing deterministic candidate Worker may be updated only while its

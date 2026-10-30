@@ -45,6 +45,24 @@ describe("isolated candidate provider readiness", () => {
     expect(historyRequests.map(url => url.searchParams.get("page"))).toEqual(["1", "2"]);
     expect(historyRequests.every(url => url.searchParams.get("per_page") === "100")).toBe(true);
   });
+  it("reads every Container application inventory page before classifying name collisions", async () => {
+    const f = fixture();
+    f.fetchImpl.mockImplementation(async (url: any) => {
+      const parsed = new URL(String(url));
+      if (parsed.pathname.endsWith("/deployments")) return Response.json({ success: false }, { status: 404 });
+      if (parsed.pathname.endsWith("/applications")) {
+        const page = Number(parsed.searchParams.get("page"));
+        return Response.json({ success: true, result: page === 1 ? [] : [{ name: "native-python" }],
+          result_info: { page, total_pages: 2 } });
+      }
+      const key = Object.keys(f.values).find(item => parsed.pathname.endsWith(item));
+      return Response.json({ success: true, result: key ? f.values[key] : null });
+    });
+    await expect(probeHttpCandidateProvider(f.input)).rejects.toThrow("HTTP_CANDIDATE_APPLICATION_COLLISION_OR_UNKNOWN");
+    const requests = f.fetchImpl.mock.calls.map(([url]) => new URL(String(url)))
+      .filter(url => url.pathname.endsWith("/applications"));
+    expect(requests.map(url => url.searchParams.get("page"))).toEqual(["1", "2"]);
+  });
   it("rejects a baseline that changed after candidate review", async () => {
     const f = fixture();
     f.fetchImpl.mockImplementation(async (url: any) => {

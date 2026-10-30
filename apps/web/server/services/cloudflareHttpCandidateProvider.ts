@@ -22,12 +22,13 @@ export async function probeHttpCandidateProvider(input: { accountRef: string; wo
       return { result: body.result, page: body.result_info?.page, totalPages: body.result_info?.total_pages ?? 1 };
     };
 
-    // Worker deployment history is paginated; read every bounded page before
-    // capturing an existing Worker as the reviewed update baseline.
-    const first = await requestPage(path.includes("/deployments") ? 1 : undefined);
+    // Cloudflare deployment, Container application, and route collections are
+    // paginated. Read every bounded page before treating inventory as complete.
+    const collection = /\/(?:deployments|applications|routes)(?:\?|$)/.test(path);
+    const first = await requestPage(collection ? 1 : undefined);
     if (first === null) return null;
-    if (!path.includes("/deployments")) {
-      if (first.totalPages > 1) throw Error(`HTTP_CANDIDATE_PROVIDER_HTTP_200`);
+    if (!collection) {
+      if (first.totalPages > 1) throw Error("HTTP_CANDIDATE_PROVIDER_INVENTORY_INCOMPLETE");
       return first.result;
     }
     if (!Number.isInteger(first.totalPages) || first.totalPages < 1 || first.totalPages > 20 ||
@@ -39,7 +40,10 @@ export async function probeHttpCandidateProvider(input: { accountRef: string; wo
         throw Error("HTTP_CANDIDATE_PROVIDER_INVENTORY_INCOMPLETE");
       pages.push(next.result);
     }
-    return pages.some(result => result !== null && result !== undefined) ? { pages } : null;
+    if (path.includes("/deployments"))
+      return pages.some(result => result !== null && result !== undefined) ? { pages } : null;
+    if (pages.some(result => !Array.isArray(result))) throw Error("HTTP_CANDIDATE_PROVIDER_INVENTORY_INCOMPLETE");
+    return pages.flatMap(result => result);
   };
   const root = `/accounts/${input.accountRef}`;
   const [account, candidate, applications, subdomain, routes] = await Promise.all([
