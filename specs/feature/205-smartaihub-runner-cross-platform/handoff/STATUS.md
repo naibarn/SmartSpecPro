@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 201 unresolved of 201
-- Next action: The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.
-- Manifest generation: 42
+- Next action: Wait for owner-host installation of the verified review artifact, then perform runtime acceptance on the existing Runner identity. Do not claim completion from build or unit tests.
+- Manifest generation: 43
 
 ## Source-declared status and relationship claims
 

@@ -139,11 +139,11 @@
     "expected_spec_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf"
   },
   "continuation": {
-    "next_action": "The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.",
-    "next_ready_workunit": "WINDOWS_WSS_ROTATION_REVIEW_BUILD_AND_ACCEPTANCE",
+    "next_action": "Windows x64 Runner 0.2.49 review installer is verified: GitHub Actions run 41071803159 at source 50df3ea7c09476ed9ea706747977fd0ecbf414ff, artifact smartaihub-runner-windows-x64-0.2.49-unsigned-review (ID 12985264751, expires 2027-01-28), installer SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2, signingStatus unsigned-review. Download only from the workflow Artifacts UI; this manual run is not a public release or correlated Admin build. Before owner installs over the existing current-user install, back up the Tauri app-data folder for com.smartaihub.runner; do not uninstall, clear data, or re-pair. After installation, collect Windows host evidence for 0.2.49, unchanged Runner/device/session identity, refresh/rotation, transient reconnect, fresh capability ACK, heartbeat, workspace continuity, and no duplicate registration/session. Acceptance remains UNKNOWN until then; keep Debian SPEC-224 separate.",
+    "next_ready_workunit": "WINDOWS_0_2_49_OWNER_HOST_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Source fix integrated at 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Linux verification: 244 runner unit tests passed, 8 runner integration tests passed, 4 focused desktop credential retry tests passed; 3 tests ignored and 8 unrelated desktop tests filtered. Node UI syntax and diff checks pass. Runner release UI/API GitHub checks passed. Windows x64 review workflow 41071803159 is in progress after its full-SHA checkout; owner-host runtime acceptance remains open. See specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-auth-reconnect-fix-20261030.md.",
-    "waiting_predicate": "Reactivate when the owner authorizes the manual unsigned Windows review build for exact source SHA 79805356f9252e1ba6858d993dbcc42476788745; then build from that SHA and obtain native Windows acceptance evidence."
+    "resume_point": "Artifact and in-place upgrade configuration verified; no owner Windows installation performed. Resume after owner installs review build on the existing enrollment and provide Windows runtime diagnostics. Record only redacted IDs and evidence; never collect access or refresh tokens.",
+    "waiting_predicate": "Owner installs the verified unsigned 0.2.49 review artifact over the existing Windows Runner installation and supplies/authorizes host-side verification evidence; then verify identity continuity, authorized refresh, reconnect, capability acknowledgement, heartbeat, workspace continuity, and duplicate-session absence."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -255,7 +255,7 @@
         "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
       }
     ],
-    "next_action": "The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.",
+    "next_action": "Wait for owner-host installation of the verified review artifact, then perform runtime acceptance on the existing Runner identity. Do not claim completion from build or unit tests.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -380,7 +380,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 42,
+  "generation": 43,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
@@ -649,7 +649,7 @@
           "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
         }
       ],
-      "next_action": "The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.",
+      "next_action": "Wait for owner-host installation of the verified review artifact, then perform runtime acceptance on the existing Runner identity. Do not claim completion from build or unit tests.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -1601,7 +1601,7 @@
     "unresolved": 201
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T14:54:30.306634Z",
+  "updated_at": "2026-10-30T15:08:09.749280Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
