@@ -194,7 +194,7 @@ jobs:
       - name: Compile Cloudflare runtime package
         run: npm --workspace @smartspec/cloudflare-runtime run check
       - name: Bundle Cloudflare Worker with Wrangler
-        run: pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.jsonc --dry-run --outdir /tmp/smartspec-cloudflare-worker-build
+        run: pnpm --filter @smartspec/cloudflare-runtime exec wrangler deploy --config wrangler.jsonc --dry-run --outdir /tmp/smartspec-cloudflare-worker-build
       - name: Build shared Remotion schema package
         run: pnpm --filter @smartspec/remotion-render run build
       - name: Build Vite SPA for staging assets
@@ -205,7 +205,7 @@ jobs:
       - name: Copy and validate website assets, excluding downloadable release artifacts
         run: node apps/cloudflare/scripts/prepare-worker-assets.mjs apps/web/client/public apps/web/dist/public
       - name: Bundle staging Worker and static assets
-        run: pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.staging.jsonc --dry-run --outdir /tmp/smartspec-cloudflare-staging-build
+        run: pnpm --filter @smartspec/cloudflare-runtime exec wrangler deploy --config wrangler.staging.jsonc --dry-run --outdir /tmp/smartspec-cloudflare-staging-build
       - name: Guard staging config isolation
         run: node --test apps/cloudflare/wrangler.staging.config.test.mjs
       - name: Test canonical staging artifact packager
@@ -215,7 +215,7 @@ jobs:
       - name: Smoke test Cloudflare Worker in local workerd
         run: |
           set -euo pipefail
-          pnpm dlx wrangler@4.151.1 dev --config apps/cloudflare/wrangler.jsonc --local --port 8799 > "$RUNNER_TEMP/wrangler-hono.log" 2>&1 &
+          pnpm --filter @smartspec/cloudflare-runtime exec wrangler dev --config wrangler.jsonc --local --port 8799 > "$RUNNER_TEMP/wrangler-hono.log" 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           ready=false
@@ -234,7 +234,7 @@ jobs:
       - name: Smoke test staging SPA and API routing in local workerd
         run: |
           set -euo pipefail
-          pnpm dlx wrangler@4.151.1 dev --config apps/cloudflare/wrangler.staging.jsonc --local --port 8800 > "$RUNNER_TEMP/wrangler-staging.log" 2>&1 &
+          pnpm --filter @smartspec/cloudflare-runtime exec wrangler dev --config wrangler.staging.jsonc --local --port 8800 > "$RUNNER_TEMP/wrangler-staging.log" 2>&1 &
           worker_pid=$!
           trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
           ready=false

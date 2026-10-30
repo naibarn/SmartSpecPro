@@ -16,6 +16,8 @@ test("staging and production use separate GitHub environments and secrets", () =
   assert.equal(Object.hasOwn(stagingConfig, "routes"), false);
   assert.equal(stagingConfig.vars.CLOUDFLARE_ACTIVATION, "disabled");
   assert.equal(productionConfig.routes.some(route => route.pattern === "smartaihub.app/*"), false);
+  assert.doesNotMatch(workflow, /pnpm dlx wrangler/);
+  assert.doesNotMatch(localReadinessWorkflow, /pnpm dlx wrangler/);
 });
 
 test("Cloudflare build copies only validated website assets and excludes downloadable runtime archives", () => {
@@ -23,18 +25,18 @@ test("Cloudflare build copies only validated website assets and excludes downloa
   assert.match(workflow, /pnpm --filter @smartspec\/remotion-render run build\s+pnpm --filter @smartspec\/web exec vite build/);
   assert.match(workflow, /prepare-worker-assets\.mjs apps\/web\/client\/public apps\/web\/dist\/public "\$RUNNER_TEMP\/cloudflare-private-source-maps"/);
   assert.match(workflow, /cloudflare-private-sourcemaps-\$\{\{ github\.sha \}\}/);
-  assert.match(workflow, /prepare-worker-assets\.mjs[\s\S]*?wrangler@[\s\S]*?--dry-run/);
+  assert.match(workflow, /prepare-worker-assets\.mjs[\s\S]*?pnpm --filter @smartspec\/cloudflare-runtime exec wrangler[\s\S]*?--config wrangler\.staging\.jsonc[\s\S]*?--dry-run/);
   assert.match(localReadinessWorkflow, /SSP_SKIP_PUBLIC_COPY:\s*"1"/);
-  assert.match(localReadinessWorkflow, /prepare-worker-assets\.mjs apps\/web\/client\/public apps\/web\/dist\/public[\s\S]*?wrangler@[\s\S]*?--dry-run/);
+  assert.match(localReadinessWorkflow, /prepare-worker-assets\.mjs apps\/web\/client\/public apps\/web\/dist\/public[\s\S]*?pnpm --filter @smartspec\/cloudflare-runtime exec wrangler[\s\S]*?--config wrangler\.staging\.jsonc[\s\S]*?--dry-run/);
 });
 
 test("production promotion requires staging and a typed confirmation; the uploaded version is promoted without route editing", () => {
   assert.match(workflow, /needs:\s*\[guard,\s*build,\s*staging\]/);
   assert.match(workflow, /DEPLOY_SMARTAIHUB_PRODUCTION/);
-  assert.match(workflow, /versions upload --config apps\/cloudflare\/wrangler\.production\.jsonc/);
+  assert.match(workflow, /versions upload --config wrangler\.production\.jsonc/);
   assert.match(workflow, /Promote only the uploaded Worker version; do not edit routes/);
   assert.match(workflow, /cloudflare-deploy-control\.mjs deploy/);
-  assert.doesNotMatch(workflow, /wrangler@[^\s]+\s+deploy\s+--config\s+apps\/cloudflare\/wrangler\.production\.jsonc/);
+  assert.doesNotMatch(workflow, /wrangler@[^\s]+\s+deploy\s+--config\s+wrangler\.production\.jsonc/);
   assert.doesNotMatch(workflow, /--route(?:s)?\s/);
 });
 

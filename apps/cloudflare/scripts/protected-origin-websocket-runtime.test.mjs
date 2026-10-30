@@ -41,7 +41,7 @@ export default { async fetch(request) {
   await writeFile(join(directory, "wrangler.json"), JSON.stringify({
     name: "smartspec-origin-websocket-fixture", main: "worker.ts", compatibility_date: "2026-10-17",
   }));
-  const child = spawn("pnpm", ["dlx", "wrangler@4.151.1", "dev", "--config", join(directory, "wrangler.json"), "--local", "--port", String(port), "--inspector-port", "0", "--persist-to", join(directory, "state")], {
+  const child = spawn("pnpm", ["--filter", "@smartspec/cloudflare-runtime", "exec", "wrangler", "dev", "--config", join(directory, "wrangler.json"), "--local", "--port", String(port), "--inspector-port", "0", "--persist-to", join(directory, "state")], {
     detached: true, stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
   });

@@ -119,8 +119,8 @@ jobs:
         run: node apps/cloudflare/scripts/prepare-worker-assets.mjs apps/web/client/public apps/web/dist/public "$RUNNER_TEMP/cloudflare-private-source-maps"
       - name: Fail before credentials if either Wrangler target cannot package the exact assets
         run: |
-          pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.staging.jsonc --dry-run --outdir "$RUNNER_TEMP/staging-worker-check"
-          pnpm dlx wrangler@4.151.1 versions upload --config apps/cloudflare/wrangler.production.jsonc --dry-run --outdir "$RUNNER_TEMP/production-worker-check"
+          pnpm --filter @smartspec/cloudflare-runtime exec wrangler deploy --config wrangler.staging.jsonc --dry-run --outdir "$RUNNER_TEMP/staging-worker-check"
+          pnpm --filter @smartspec/cloudflare-runtime exec wrangler versions upload --config wrangler.production.jsonc --dry-run --outdir "$RUNNER_TEMP/production-worker-check"
       - uses: actions/upload-artifact@v4
         with:
           name: cloudflare-assets-${{ github.sha }}
@@ -167,7 +167,7 @@ jobs:
         id: upload
         run: |
           set -euo pipefail
-          pnpm dlx wrangler@4.151.1 versions upload --config apps/cloudflare/wrangler.staging.jsonc --keep-vars --strict --message "SmartAIHub staging $GITHUB_SHA" > "$RUNNER_TEMP/staging-upload.log" 2>&1 || { echo "STAGING_VERSION_UPLOAD_FAILED"; exit 1; }
+          pnpm --filter @smartspec/cloudflare-runtime exec wrangler versions upload --config wrangler.staging.jsonc --keep-vars --strict --message "SmartAIHub staging $GITHUB_SHA" > "$RUNNER_TEMP/staging-upload.log" 2>&1 || { echo "STAGING_VERSION_UPLOAD_FAILED"; exit 1; }
           node apps/cloudflare/scripts/cloudflare-deploy-control.mjs uploaded-version "$RUNNER_TEMP/staging-upload.log" "$GITHUB_OUTPUT"
       - name: Deploy uploaded version to isolated staging Worker traffic
         id: traffic
@@ -225,7 +225,7 @@ jobs:
         id: upload
         run: |
           set -euo pipefail
-          pnpm dlx wrangler@4.151.1 versions upload --config apps/cloudflare/wrangler.production.jsonc --keep-vars --strict --message "SmartAIHub production $GITHUB_SHA" > "$RUNNER_TEMP/production-upload.log" 2>&1 || { echo "PRODUCTION_VERSION_UPLOAD_FAILED"; exit 1; }
+          pnpm --filter @smartspec/cloudflare-runtime exec wrangler versions upload --config wrangler.production.jsonc --keep-vars --strict --message "SmartAIHub production $GITHUB_SHA" > "$RUNNER_TEMP/production-upload.log" 2>&1 || { echo "PRODUCTION_VERSION_UPLOAD_FAILED"; exit 1; }
           node apps/cloudflare/scripts/cloudflare-deploy-control.mjs uploaded-version "$RUNNER_TEMP/production-upload.log" "$GITHUB_OUTPUT"
       - name: Promote only the uploaded Worker version; do not edit routes
         id: traffic

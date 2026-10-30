@@ -96,8 +96,9 @@ Build and run the safe local Workers target with:
 
 ```sh
 pnpm --filter @smartspec/web exec vite build --configLoader runner
-pnpm dlx wrangler@4.151.1 deploy --config apps/cloudflare/wrangler.staging.jsonc --dry-run
-pnpm dlx wrangler@4.151.1 dev --config apps/cloudflare/wrangler.staging.jsonc --local
+pnpm --filter @smartspec/cloudflare-runtime exec wrangler --version
+pnpm --filter @smartspec/cloudflare-runtime exec wrangler deploy --config wrangler.staging.jsonc --dry-run
+pnpm --filter @smartspec/cloudflare-runtime exec wrangler dev --config wrangler.staging.jsonc --local
 ```
 
 Rollback is isolated to the staging Worker: disable/remove its staging Worker
