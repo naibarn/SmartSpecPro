@@ -322,16 +322,14 @@ describe("FeedbackButton placement", () => {
     expect(screen.getByLabelText("Open AI Chat & Feedback")).toBeTruthy();
   });
 
-  it("preserves the existing Chat draft when switching to Task Control and back", async () => {
+  it("opens the full Task Control workspace with the current Chat session", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
     fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
-    const draft = await screen.findByRole("textbox", { name: "Chat draft test" });
-    fireEvent.change(draft, { target: { value: "Keep this unsent message" } });
+    await screen.findByRole("textbox", { name: "Chat draft test" });
     fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
-    fireEvent.click(screen.getByRole("tab", { name: "AI Chat" }));
-    const restoredDraft = await screen.findByRole("textbox", { name: "Chat draft test" });
-    expect((restoredDraft as HTMLTextAreaElement).value).toBe("Keep this unsent message");
+    expect(mockRoute.setLocation).toHaveBeenCalledWith("/chat?mode=tasks&c=42");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows saved sessions in the Chat dock and opens the exact saved thread", async () => {
@@ -344,12 +342,14 @@ describe("FeedbackButton placement", () => {
     expect(screen.getByText("ChatView conversation 73 thread saved-thread")).toBeTruthy();
   });
 
-  it("exposes Mission Control as a distinct workspace tab", async () => {
+  it("opens the full Mission Control workspace from the dashboard assistant", async () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
     fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
+    await screen.findByRole("textbox", { name: "Chat draft test" });
     fireEvent.click(await screen.findByRole("tab", { name: "Mission Control" }));
-    expect(screen.getByRole("region", { name: "Mission Control view" })).toBeTruthy();
+    expect(mockRoute.setLocation).toHaveBeenCalledWith("/chat?mode=mission&c=42");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("attaches map context without replacing the draft and removes only the context", async () => {
@@ -547,16 +547,13 @@ describe("FeedbackButton placement", () => {
     });
   });
 
-  it("keeps Task Control Center in the same combined panel", () => {
+  it("provides a direct entry to the full Chat workspace", () => {
     feedbackMocks.user = { role: "member" };
     render(<FeedbackButton />);
     fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
-    fireEvent.click(screen.getByRole("tab", { name: "Task Control" }));
-
-    expect(screen.getByTestId("global-control-plane")).toBeInTheDocument();
-    expect(mockRoute.setLocation).not.toHaveBeenCalledWith(
-      "/chat?panel=control-plane",
-    );
+    fireEvent.click(screen.getByRole("button", { name: "เปิด Workspace เต็มหน้า" }));
+    expect(mockRoute.setLocation).toHaveBeenCalledWith("/chat");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows the Feedback Hub link only to admins", () => {

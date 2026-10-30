@@ -22,3 +22,10 @@ Observed: 2026-10-30 UTC. Canonical source commit: `092d284ee582237e43959b9b092b
 - A direct development Admin browser login attempt returned HTTP 401. Authenticated Chat/Task Control/Mission Control visual interaction, mobile layout, and screenshots therefore remain unverified; no owner UAT is claimed.
 - No real active execution was available as evidence for populated live output or a full project lifecycle. UI stage facts remain explicitly `Not recorded` when the canonical task record does not report them. Multi-execution and Harness targeting still require owner UAT against authorized live records.
 - This checkpoint does not complete SPEC-224: real Child 1/2 execution, receipts, settlement, automatic Child 2 continuation, and independent Final Verify remain outstanding.
+
+## Follow-up: Dashboard modal still exposed legacy control surfaces
+
+- Root cause: the Dashboard assistant modal is rendered by `FeedbackButton`. Its Task Control and Mission Control tabs mounted `UniversalControlPlanePanel` and `TaskObservabilityMonitor` directly, so navigating from Dashboard never entered the new `/chat?mode=tasks|mission` Workspace routes. The full-page implementation existed, but the primary dashboard entry point still presented the old UI.
+- Repair: Task Control and Mission Control tabs now open the corresponding full-page Workspace route while preserving the selected conversation and thread. The Chat modal also has an explicit `เปิด Workspace เต็มหน้า` action. The legacy Goal-admission panel remains available at `/chat-legacy`.
+- Focused verification: `vitest run client/src/components/guardian/__tests__/FeedbackButton.test.tsx` passed (45 tests).
+- Deployment and authenticated browser verification are pending for this follow-up; do not claim the new entry-point behavior is live until the dev service is restarted and checked.

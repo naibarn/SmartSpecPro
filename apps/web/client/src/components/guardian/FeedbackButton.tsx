@@ -39,6 +39,7 @@ import {
   RefreshCw,
   Settings2,
   Siren,
+  ExternalLink,
   X,
 } from "lucide-react";
 import { Switch } from "@smartspec/ui/src/components/ui/switch";
@@ -847,13 +848,32 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
   const selectHelpPanel = useCallback(
     (panel: HelpPanel) => {
       if (panel === "control-plane" && (!user || authLoading)) return;
+      if (panel === "control-plane" || panel === "mission-control") {
+        const params = new URLSearchParams();
+        params.set("mode", panel === "control-plane" ? "tasks" : "mission");
+        if (chatConversationId) params.set("c", String(chatConversationId));
+        if (chatThreadId) params.set("t", chatThreadId);
+        setOpen(false);
+        setLocation(`/chat?${params.toString()}`);
+        return;
+      }
       setActivePanel(panel);
       if (panel === "chat" && user && !authLoading) {
         void ensureChatConversation().catch(() => undefined);
       }
     },
-    [authLoading, ensureChatConversation, user],
+    [authLoading, chatConversationId, chatThreadId, ensureChatConversation, setLocation, user],
   );
+
+  const openFullWorkspace = () => {
+    const params = new URLSearchParams();
+    const mode = activePanel === "control-plane" ? "tasks" : activePanel === "mission-control" ? "mission" : null;
+    if (mode) params.set("mode", mode);
+    if (chatConversationId) params.set("c", String(chatConversationId));
+    if (chatThreadId) params.set("t", chatThreadId);
+    setOpen(false);
+    setLocation(`/chat${params.size ? `?${params.toString()}` : ""}`);
+  };
 
   const handleHelpTabKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
     const panels: HelpPanel[] = user && !authLoading
@@ -1438,10 +1458,14 @@ function FeedbackButtonContent({ mascotEnabled, initiallyOpen }: { mascotEnabled
         }
         onPaste={handleDialogPaste}
       >
-        <DialogHeader className="shrink-0 border-b border-border px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-5">
+        <DialogHeader className="flex shrink-0 flex-row items-center justify-between border-b border-border px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:pb-4 sm:pt-5">
           <DialogTitle className="pr-10 text-left text-base sm:text-lg">
             {user && !authLoading ? t("feedback.panelTitle") : t("chat.guest.panelTitle")}
           </DialogTitle>
+          {user && !authLoading && <Button type="button" size="sm" variant="outline" onClick={openFullWorkspace}>
+            <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
+            เปิด Workspace เต็มหน้า
+          </Button>}
         </DialogHeader>
         <nav
           aria-label={t("feedback.sections")}
