@@ -20,6 +20,7 @@ type ProjectExecutionWorkspaceProps = {
   initialProjectId: string | null;
   onSelectProject: (projectId: string) => void;
   onOpenConversation: (conversationId: number, threadId: string | null) => void;
+  presentationMode: "simple" | "developer";
 };
 
 const ACTIVE = new Set([
@@ -49,6 +50,13 @@ const LIFECYCLE = ["PLAN", "IMPLEMENT", "REVIEW", "UAT", "BUGS", "COMPLETE"];
 
 function label(value: string | null | undefined, fallback = "ยังไม่มีข้อมูล") {
   return value ? value.replaceAll("_", " ") : fallback;
+}
+
+function goalTitle(goal: any): string {
+  const value = [goal.goal, goal.title, goal.objective, goal.summary].find(
+    candidate => typeof candidate === "string" && candidate.trim()
+  );
+  return value?.trim() ?? `เป้าหมาย ${String(goal.goalId).slice(0, 8)}`;
 }
 
 const CONTROL_PHASE: Record<string, string> = {
@@ -92,6 +100,7 @@ export function ProjectExecutionWorkspace({
   initialProjectId,
   onSelectProject,
   onOpenConversation,
+  presentationMode,
 }: ProjectExecutionWorkspaceProps) {
   const jobsQuery = trpc.workerJobs.observability.useQuery(
     {},
@@ -247,13 +256,16 @@ export function ProjectExecutionWorkspace({
     >
       <header className="flex flex-wrap items-center justify-between gap-3 border-b bg-background px-5 py-4">
         <section>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            PROJECT EXECUTION
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+            {presentationMode === "simple"
+              ? "PROJECT PROGRESS"
+              : "PROJECT EXECUTION"}
           </p>
           <h1 className="text-2xl font-semibold">Task Control</h1>
           <p className="text-sm text-muted-foreground">
-            ดู Project, เป้าหมายจริง, ขั้นตอนที่มีหลักฐาน
-            และสิ่งที่รอการตัดสินใจ
+            {presentationMode === "simple"
+              ? "ดูว่าแต่ละ Project กำลังทำอะไร เสร็จถึงไหน และต้องทำอะไรต่อ"
+              : "ดูสถานะ execution, lifecycle evidence, worker binding และข้อมูลตรวจสอบของ Project"}
           </p>
         </section>
         <Button asChild variant="default">
@@ -289,8 +301,9 @@ export function ProjectExecutionWorkspace({
             {projects.map(([id, project]) => (
               <Button
                 key={id}
-                variant={selectedProject?.[0] === id ? "secondary" : "ghost"}
-                className="mb-1 h-auto w-full justify-start whitespace-normal py-2 text-left"
+                variant="ghost"
+                aria-pressed={selectedProject?.[0] === id}
+                className={`mb-1 h-auto w-full justify-start whitespace-normal py-2 text-left text-foreground ${selectedProject?.[0] === id ? "border border-primary/30 bg-primary/10" : "hover:bg-accent"}`}
                 onClick={() => selectProject(id)}
               >
                 <FolderKanban className="mr-2 h-4 w-4 shrink-0" />
@@ -316,18 +329,16 @@ export function ProjectExecutionWorkspace({
                 {selectedGoals.map(goal => (
                   <Button
                     key={goal.goalId}
-                    variant={
-                      selectedGoal?.goalId === goal.goalId
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="mb-1 h-auto w-full justify-start whitespace-normal py-2 text-left"
+                    variant="ghost"
+                    aria-label={goalTitle(goal)}
+                    aria-pressed={selectedGoal?.goalId === goal.goalId}
+                    className={`mb-1 h-auto w-full justify-start whitespace-normal py-2 text-left text-foreground ${selectedGoal?.goalId === goal.goalId ? "border border-primary/30 bg-primary/10" : "hover:bg-accent"}`}
                     onClick={() => setSelectedGoalId(goal.goalId)}
                   >
                     <GitPullRequest className="mr-2 h-4 w-4 shrink-0" />
-                    <strong className="line-clamp-2 flex-1 font-normal">
-                      {goal.goal}
-                    </strong>
+                    <span className="line-clamp-2 min-w-0 flex-1 text-left text-foreground">
+                      {goalTitle(goal)}
+                    </span>
                   </Button>
                 ))}
                 {!selectedGoals.length ? (
@@ -366,7 +377,7 @@ export function ProjectExecutionWorkspace({
                 </header>
                 {selectedProject[0] === "unassigned" ||
                 selectedProject[0] === "unmapped-goals" ? (
-                  <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  <p className="mb-4 rounded-md border border-accent bg-accent/50 p-3 text-sm text-accent-foreground">
                     รายการนี้ยังไม่มีหลักฐานยืนยันการผูกกับ Project จึงแยกไว้
                     ไม่รวมเข้า Goal ของ Project อื่น
                   </p>
@@ -380,7 +391,7 @@ export function ProjectExecutionWorkspace({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <p className="font-medium">{selectedGoal.goal}</p>
+                      <p className="font-medium">{goalTitle(selectedGoal)}</p>
                       <section
                         className="grid grid-cols-2 gap-2 sm:grid-cols-3"
                         aria-label="Goal lifecycle evidence"
@@ -392,7 +403,7 @@ export function ProjectExecutionWorkspace({
                           return (
                             <section
                               key={stage}
-                              className={`rounded-md border p-2 ${current ? "border-primary bg-primary/5" : observed ? "border-emerald-300 bg-emerald-50" : "border-dashed bg-muted/30"}`}
+                              className={`rounded-md border p-2 ${current ? "border-primary bg-primary/10" : observed ? "border-secondary bg-secondary/50" : "border-dashed bg-muted/30"}`}
                             >
                               <p className="text-sm font-medium">{stage}</p>
                               <p className="text-xs text-muted-foreground">
@@ -407,8 +418,10 @@ export function ProjectExecutionWorkspace({
                         })}
                       </section>
                       <p className="text-sm text-muted-foreground">
-                        สถานะ Goal: {label(selectedGoal.state)} · Run{" "}
-                        {selectedGoal.runId}
+                        สถานะ Goal: {label(selectedGoal.state)}
+                        {presentationMode === "developer" && selectedGoal.runId
+                          ? ` · Run ${selectedGoal.runId}`
+                          : null}
                       </p>
                       {selectedGoalJob ? (
                         <section className="grid gap-2 rounded-md border bg-muted/20 p-3 text-sm sm:grid-cols-2">
@@ -446,6 +459,44 @@ export function ProjectExecutionWorkspace({
                         ขั้นตอนถัดไป:{" "}
                         {nextActionLabel(selectedGoal.nextSafeAction)}
                       </p>
+                      {presentationMode === "developer" ? (
+                        <section
+                          className="rounded-md border bg-muted/30 p-3 text-sm"
+                          aria-label="Developer execution details"
+                        >
+                          <h3 className="mb-2 font-semibold">
+                            ข้อมูลตรวจสอบสำหรับนักพัฒนา
+                          </h3>
+                          <dl className="grid gap-2 sm:grid-cols-2">
+                            <section>
+                              <dt className="text-muted-foreground">Goal ID</dt>
+                              <dd className="break-all">
+                                {selectedGoal.goalId}
+                              </dd>
+                            </section>
+                            <section>
+                              <dt className="text-muted-foreground">
+                                Worker Job ID
+                              </dt>
+                              <dd className="break-all">
+                                {selectedGoal.workerJobId ?? "ยังไม่ผูก"}
+                              </dd>
+                            </section>
+                            <section>
+                              <dt className="text-muted-foreground">Run ID</dt>
+                              <dd className="break-all">
+                                {selectedGoal.runId ?? "ยังไม่มี"}
+                              </dd>
+                            </section>
+                            <section>
+                              <dt className="text-muted-foreground">
+                                Evidence refs
+                              </dt>
+                              <dd>{selectedGoal.evidenceRefs?.length ?? 0}</dd>
+                            </section>
+                          </dl>
+                        </section>
+                      ) : null}
                       {selectedGoal.workerJobId ? (
                         <Link
                           className="inline-flex items-center text-sm text-primary underline"
@@ -465,7 +516,9 @@ export function ProjectExecutionWorkspace({
                               .slice(0, 6)
                               .map((ref: string) => (
                                 <li key={ref} className="break-all">
-                                  {ref}
+                                  {presentationMode === "developer"
+                                    ? ref
+                                    : ref.split(/[/:]/).at(-1)}
                                 </li>
                               ))}
                           </ul>
@@ -531,7 +584,7 @@ export function ProjectExecutionWorkspace({
                       <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                         <section className="min-w-0 flex-1">
                           <p className="line-clamp-2 font-medium">
-                            {goal.goal}
+                            {goalTitle(goal)}
                           </p>
                           <p className="mt-1 text-sm text-muted-foreground">
                             Goal · {label(goal.state)} ·{" "}
@@ -577,7 +630,7 @@ export function ProjectExecutionWorkspace({
                                 : `สถานะ ${label(job.status)} · ไม่มี Task group ที่ยืนยันได้`}
                             </p>
                             {job.operatorAttention.required ? (
-                              <p className="mt-1 flex items-center gap-1 text-sm text-amber-700">
+                              <p className="mt-1 flex items-center gap-1 text-sm text-accent-foreground">
                                 <CircleAlert className="h-4 w-4" />
                                 {job.operatorAttention.reason ??
                                   "ต้องการการตัดสินใจ"}
@@ -643,7 +696,9 @@ export function ProjectExecutionWorkspace({
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   GOAL INSPECTOR
                 </p>
-                <h2 className="mt-1 font-semibold">{selectedGoal.goal}</h2>
+                <h2 className="mt-1 font-semibold">
+                  {goalTitle(selectedGoal)}
+                </h2>
                 <Separator className="my-3" />
                 <dl className="space-y-3 text-sm">
                   <section>
@@ -681,7 +736,7 @@ export function ProjectExecutionWorkspace({
                     {activeCount} กำลังทำ
                   </li>
                   <li className="flex items-center gap-2">
-                    <Clock3 className="h-4 w-4 text-amber-600" />
+                    <Clock3 className="h-4 w-4 text-accent-foreground" />
                     {waitingCount} รอหรือรอการตัดสินใจ
                   </li>
                   <li className="flex items-center gap-2">
@@ -695,7 +750,7 @@ export function ProjectExecutionWorkspace({
                 </ul>
                 {selectedProject?.[0] === "unassigned" ||
                 selectedProject?.[0] === "unmapped-goals" ? (
-                  <p className="mt-4 text-sm text-amber-700">
+                  <p className="mt-4 text-sm text-accent-foreground">
                     Project binding is missing or unverified.
                     รายการจะไม่ถูกรวมกับ Project อื่น
                   </p>

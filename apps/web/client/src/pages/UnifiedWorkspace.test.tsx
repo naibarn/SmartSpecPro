@@ -7,6 +7,7 @@ const state = vi.hoisted(() => ({
   search: "",
   location: vi.fn(),
   jobs: [] as Array<Record<string, any>>,
+  goals: [] as Array<Record<string, any>>,
   runners: [] as Array<Record<string, any>>,
   create: vi.fn(async () => ({ id: 902 })),
 }));
@@ -44,7 +45,9 @@ vi.mock("@/lib/trpc", () => ({
       },
     },
     spec226DevelopmentControl: {
-      list: { useQuery: () => ({ data: [], isLoading: false, error: null }) },
+      list: {
+        useQuery: () => ({ data: state.goals, isLoading: false, error: null }),
+      },
     },
     runnerNodes: {
       list: {
@@ -148,6 +151,7 @@ describe("UnifiedWorkspace", () => {
     state.location.mockClear();
     state.create.mockClear();
     state.jobs = [job];
+    state.goals = [];
     state.runners = [
       {
         runnerId: "runner-1",
@@ -203,6 +207,38 @@ describe("UnifiedWorkspace", () => {
     );
     expect(screen.getAllByText("ยังไม่มีหลักฐาน").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "เปิด Session" })).toBeTruthy();
+  });
+
+  it("keeps Goal names visible and gives Developer mode additional diagnostics", () => {
+    state.search = "mode=tasks";
+    state.goals = [
+      {
+        goalId: "goal-visible-123",
+        goal: "",
+        state: "DISCOVERY",
+        workerJobId: job.id,
+        runId: "run-1",
+        evidenceRefs: ["artifact:plan.md"],
+        nextSafeAction: { command: "run", phase: "discovery" },
+      },
+    ];
+    render(<UnifiedWorkspace />);
+    const goalRow = screen.getByRole("button", { name: "เป้าหมาย goal-vis" });
+    expect(goalRow.className).toContain("text-foreground");
+    fireEvent.click(goalRow);
+    expect(goalRow.className).toContain("bg-primary/10");
+    expect(
+      screen.queryByRole("region", { name: "Developer execution details" })
+    ).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Developer" }));
+    expect(
+      screen.getByRole("region", { name: "Developer execution details" })
+    ).toBeTruthy();
+    expect(screen.getByText("goal-visible-123")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Simple" }));
+    expect(
+      screen.queryByRole("region", { name: "Developer execution details" })
+    ).toBeNull();
   });
 
   it("groups Mission Control by Harness, supports independent tabs, and opens the exact selected Run inspector", () => {
@@ -268,6 +304,7 @@ describe("UnifiedWorkspace", () => {
   it("filters mission executions by harness, agent, and runner", () => {
     state.search = "mode=mission";
     render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Developer" }));
     fireEvent.change(
       screen.getByRole("combobox", { name: "Filter by runner" }),
       { target: { value: "runner-1" } }

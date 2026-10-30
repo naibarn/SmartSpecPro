@@ -245,12 +245,15 @@ export function MissionControlWorkspace({
     >
       <header className="border-b bg-background px-5 py-4">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
-          MULTI-HARNESS OPERATIONS
+          {presentationMode === "simple"
+            ? "TEAM WORK STATUS"
+            : "MULTI-HARNESS OPERATIONS"}
         </p>
         <h1 className="text-2xl font-semibold">Mission Control</h1>
         <p className="text-sm text-muted-foreground">
-          ติดตาม Harness, Agent, Runner และงานที่กำลังทำจาก execution
-          ชุดเดียวกับ Task Control
+          {presentationMode === "simple"
+            ? "ดูว่า AI แต่ละตัวกำลังทำงานอะไร งานใดเสร็จแล้ว และงานใดต้องการความช่วยเหลือ"
+            : "ติดตาม Harness, Agent, Runner และ execution จากแหล่งข้อมูลเดียวกับ Task Control พร้อมรายละเอียดตรวจสอบ"}
         </p>
       </header>
       <section className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[14rem_minmax(0,1fr)_21rem]">
@@ -263,8 +266,9 @@ export function MissionControlWorkspace({
             return (
               <Button
                 key={item.id}
-                variant={section === item.id ? "secondary" : "ghost"}
-                className="justify-start"
+                variant="ghost"
+                aria-pressed={section === item.id}
+                className={`justify-start text-foreground ${section === item.id ? "border border-primary/30 bg-primary/10" : "hover:bg-accent"}`}
                 onClick={() => setSection(item.id)}
               >
                 <Icon className="mr-2 h-4 w-4" />
@@ -303,9 +307,13 @@ export function MissionControlWorkspace({
                 {nav.find(item => item.id === section)?.label}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {section === "overview"
-                  ? "ภาพรวมงานที่กำลังทำและสิ่งที่ต้องดูแล"
-                  : "รายการและสถานะจากข้อมูลที่รายงานโดยระบบ"}
+                {presentationMode === "simple"
+                  ? section === "overview"
+                    ? "งานที่กำลังทำและงานที่รอความช่วยเหลือ"
+                    : "เลือกงานเพื่อกลับไปดูรายละเอียดหรือเปิด Session เดิม"
+                  : section === "overview"
+                    ? "Execution state และงานที่ต้องตรวจสอบจาก runtime"
+                    : "รายการ สถานะ และตัวกรองจากข้อมูลที่รายงานโดยระบบ"}
               </p>
             </section>
             <section
@@ -545,63 +553,65 @@ export function MissionControlWorkspace({
             </section>
           ) : null}
 
-          <section
-            className="mb-3 flex flex-wrap items-end gap-2"
-            aria-label="Execution filters"
-          >
-            <label className="grid gap-1 text-xs text-muted-foreground">
-              Harness
-              <select
-                className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
-                aria-label="Filter by harness"
-                value={harnessFilter}
-                onChange={event => setHarnessFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                {harnesses.map(value => (
-                  <option key={value} value={value}>
-                    {value === "unknown" ? "Not reported" : value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-xs text-muted-foreground">
-              Agent
-              <select
-                className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
-                aria-label="Filter by agent"
-                value={agentFilter}
-                onChange={event => setAgentFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                {agents.map(value => (
-                  <option key={value} value={value}>
-                    {value === "unknown" ? "Not reported" : value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-xs text-muted-foreground">
-              Runner
-              <select
-                className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
-                aria-label="Filter by runner"
-                value={runnerFilter}
-                onChange={event => setRunnerFilter(event.target.value)}
-              >
-                <option value="all">All</option>
-                <option value="unassigned">Not assigned</option>
-                {runners.map((runner: any) => (
-                  <option key={runner.runnerId} value={runner.runnerId}>
-                    {runner.displayName ?? runner.runnerId}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <p className="ml-auto self-end text-xs text-muted-foreground">
-              {filteredJobs.length} matching executions
-            </p>
-          </section>
+          {presentationMode === "developer" ? (
+            <section
+              className="mb-3 flex flex-wrap items-end gap-2"
+              aria-label="Execution filters"
+            >
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                Harness
+                <select
+                  className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+                  aria-label="Filter by harness"
+                  value={harnessFilter}
+                  onChange={event => setHarnessFilter(event.target.value)}
+                >
+                  <option value="all">All</option>
+                  {harnesses.map(value => (
+                    <option key={value} value={value}>
+                      {value === "unknown" ? "Not reported" : value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                Agent
+                <select
+                  className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+                  aria-label="Filter by agent"
+                  value={agentFilter}
+                  onChange={event => setAgentFilter(event.target.value)}
+                >
+                  <option value="all">All</option>
+                  {agents.map(value => (
+                    <option key={value} value={value}>
+                      {value === "unknown" ? "Not reported" : value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs text-muted-foreground">
+                Runner
+                <select
+                  className="h-9 rounded-md border bg-background px-2 text-sm text-foreground"
+                  aria-label="Filter by runner"
+                  value={runnerFilter}
+                  onChange={event => setRunnerFilter(event.target.value)}
+                >
+                  <option value="all">All</option>
+                  <option value="unassigned">Not assigned</option>
+                  {runners.map((runner: any) => (
+                    <option key={runner.runnerId} value={runner.runnerId}>
+                      {runner.displayName ?? runner.runnerId}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="ml-auto self-end text-xs text-muted-foreground">
+                {filteredJobs.length} matching executions
+              </p>
+            </section>
+          ) : null}
           {openTabs.length ? (
             <nav
               className="mb-3 flex gap-2 overflow-x-auto border-b pb-2"
@@ -613,7 +623,7 @@ export function MissionControlWorkspace({
                 return (
                   <section
                     key={id}
-                    className={`flex shrink-0 items-center rounded-md border ${selected?.id === id ? "border-primary bg-primary/5" : "bg-background"}`}
+                    className={`flex shrink-0 items-center rounded-md border ${selected?.id === id ? "border-primary/30 bg-primary/10" : "bg-background"}`}
                   >
                     <Button
                       size="sm"
@@ -673,7 +683,7 @@ export function MissionControlWorkspace({
                           "time not reported"}
                       </p>
                       {job.operatorAttention.required ? (
-                        <p className="mt-1 flex items-center gap-1 text-sm text-amber-700">
+                        <p className="mt-1 flex items-center gap-1 text-sm text-accent-foreground">
                           <CircleAlert className="h-4 w-4" />
                           {job.operatorAttention.reason ?? "Needs attention"}
                         </p>

@@ -355,6 +355,7 @@ export default function UnifiedWorkspace() {
           initialProjectId={params.get("projectId")}
           onSelectProject={selectProject}
           onOpenConversation={(id, thread) => navigate("chat", id, thread)}
+          presentationMode={presentationMode}
         />
       ) : null}
       {mode === "mission" ? (
