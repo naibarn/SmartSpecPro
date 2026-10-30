@@ -87,15 +87,15 @@ export function assertCloudflareWorkflowConfiguration(settings: z.infer<typeof c
  * by the deployment grant, never inferred from a caller's runtime flags. */
 export function cloudflareWorkflowVersionBindings(value: CloudflareOriginVersionBindings) {
   assertCloudflareWorkflowConfiguration(value.descriptor, value.secrets);
-  if (!value.descriptor.workflowExecution && !value.descriptor.retentionSchedule && !value.descriptor.runnerReleaseCatalog && !value.descriptor.applicationHttp && !value.descriptor.ingressMode) return [];
   return [
+    // This immutable allowlist is part of every origin configuration, including
+    // namespace-only Container preparation. Keep it in the readback contract
+    // exactly once rather than duplicating it in uploadVersion's base bindings.
+    { name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text", text: JSON.stringify(value.descriptor.allowedPublicOrigins) },
     ...(value.descriptor.ingressMode ? [{ name: "CLOUDFLARE_INGRESS_MODE", type: "plain_text", text: value.descriptor.ingressMode },
       { name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? httpApplicationVersionBindings(value.descriptor.applicationHttp,
       { ...value.descriptor, configurationRef: value.configurationRef }, value.secrets.applicationHttp!) : []),
-    ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{
-      name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text", text: JSON.stringify(value.descriptor.allowedPublicOrigins),
-    }] : []),
     ...(value.descriptor.applicationHttp && !value.descriptor.applicationHttpPhase ? [{ name: "CLOUDFLARE_APPLICATION_CANARY_TOKEN", type: "secret_text", text: value.secrets.applicationCanaryToken! }] : []),
     ...(value.descriptor.runnerReleaseCatalog ? [
       { name: "CLOUDFLARE_RUNNER_RELEASE_CATALOG", type: "plain_text", text: value.descriptor.runnerReleaseCatalog },

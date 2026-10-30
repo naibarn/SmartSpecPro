@@ -609,7 +609,8 @@ describe("Cloudflare version-scoped origin transport", () => {
       expect(f.metadata().exports.StagingNodeHttpContainer.container).toBe(`${namespace}-node-http`);
       expect(f.metadata().containers).toHaveLength(2);
       const { cloudflareWorkflowVersionBindings, assertCloudflareWorkflowConfiguration } = await import("./cloudflareOriginVersionBindings");
-      expect(cloudflareWorkflowVersionBindings(f.config)).toEqual([]);
+      expect(cloudflareWorkflowVersionBindings(f.config)).toEqual([{ name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text",
+        text: JSON.stringify(f.config.descriptor.allowedPublicOrigins) }]);
       expect(() => assertCloudflareWorkflowConfiguration(f.config.descriptor, { ...f.config.secrets, applicationCanaryToken: "unapproved-canary-" + "a".repeat(32) })).toThrow("CONFIGURATION_DENIED");
       const changed = { ...f.config.descriptor }; delete changed.applicationHttpPhase;
       expect(cloudflareOriginDescriptorDigest(changed)).not.toBe(f.config.configurationDigest);
@@ -619,6 +620,7 @@ describe("Cloudflare version-scoped origin transport", () => {
       expect(f.metadata().observability).toMatchObject({ enabled: true, logs: { enabled: true, invocation_logs: false } });
       expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS").type).toBe("secret_text");
     }
+    expect(f.metadata().bindings.filter((b: any) => b.name === "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS")).toHaveLength(1);
     expect(f.metadata().bindings.find((b: any) => b.name === "CLOUDFLARE_ACTIVATION").text).toBe("disabled");
   });
 

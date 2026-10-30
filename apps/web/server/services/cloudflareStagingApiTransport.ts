@@ -366,7 +366,6 @@ export function createCloudflareStagingApiTransport(input: {
         ...(origin ? [
           { name: "AUTH_ORIGIN", type: "plain_text", text: origin.descriptor.origin },
           { name: "AUTH_ORIGIN_PRIVATE_HOST", type: "plain_text", text: new URL(origin.descriptor.origin).host },
-          { name: "AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS", type: "plain_text", text: JSON.stringify(origin.descriptor.allowedPublicOrigins) },
           { name: "AUTH_ORIGIN_TOKEN", type: "secret_text", text: origin.secrets.token },
           { name: "AUTH_ORIGIN_ACCESS_CLIENT_ID", type: "secret_text", text: origin.secrets.clientId },
           { name: "AUTH_ORIGIN_ACCESS_CLIENT_SECRET", type: "secret_text", text: origin.secrets.secret },
