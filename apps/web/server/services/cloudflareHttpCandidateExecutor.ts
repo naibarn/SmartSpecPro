@@ -10,6 +10,7 @@ import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter
 import { CANDIDATE_MODULE, HTTP_CANDIDATE_CONTRACT, HTTP_CANDIDATE_JOB, httpCandidateJobSchema } from "./cloudflareHttpCandidateContract";
 import { assertHttpCandidateOwner, readHttpCandidateIntent, resolveHttpCandidatePackage } from "./cloudflareHttpCandidatePreparation";
 import { classifyHttpCandidateWranglerFailure } from "./cloudflareHttpCandidateDiagnostics";
+import { probeHttpCandidateProvider } from "./cloudflareHttpCandidateProvider";
 
 function fail(code: string): never { const diagnosticCode = `HTTP_CANDIDATE_${code}`;
   throw Object.assign(Error(diagnosticCode), { diagnosticCode, class: "permanent" }); }
@@ -48,18 +49,40 @@ export const createHttpCandidateExecutor = (): JobExecutor => withCloudflareStag
     let requests = 0;
     const get = async (path: string, allowAbsent = false) => {
       await assertAuthorized(); if (++requests > 16) fail("READ_BUDGET_EXCEEDED");
-      const response = await fetch(`https://api.cloudflare.com/client/v4${path}`, { method: "GET", headers: { authorization: `Bearer ${token}` },
+      const fetchPage = async (page?: number) => {
+        const url = new URL(`https://api.cloudflare.com/client/v4${path}`);
+        if (page !== undefined) { url.searchParams.set("page", String(page)); url.searchParams.set("per_page", "100"); }
+        const response = await fetch(url, { method: "GET", headers: { authorization: `Bearer ${token}` },
         redirect: "error", cache: "no-store", signal: AbortSignal.timeout(15_000) });
-      const body = await response.json();
-      if (allowAbsent && response.status === 404 && body.success === false) return null;
-      if (!response.ok || body.success !== true || (body.result_info?.total_pages ?? 1) > 1) fail(`PROVIDER_HTTP_${response.status}`);
-      return body.result;
+        const body = await response.json();
+        if (allowAbsent && page === 1 && response.status === 404 && body.success === false) return null;
+        if (!response.ok || body.success !== true) fail(`PROVIDER_HTTP_${response.status}`);
+        return { result: body.result, page: body.result_info?.page, totalPages: body.result_info?.total_pages ?? 1 };
+      };
+      const first = await fetchPage(path.endsWith("/deployments") ? 1 : undefined);
+      if (first === null) return null;
+      if (!path.endsWith("/deployments")) return first.result;
+      if (!Number.isInteger(first.totalPages) || first.totalPages < 1 || first.totalPages > 20 ||
+          (first.page !== undefined && first.page !== 1)) fail("PROVIDER_INVENTORY_INCOMPLETE");
+      const pages = [first.result];
+      for (let page = 2; page <= first.totalPages; page += 1) {
+        if (++requests > 16) fail("READ_BUDGET_EXCEEDED");
+        const next = await fetchPage(page);
+        if (next === null || next.totalPages !== first.totalPages || (next.page !== undefined && next.page !== page))
+          fail("PROVIDER_INVENTORY_INCOMPLETE");
+        pages.push(next.result);
+      }
+      return { deployments: pages.flatMap((result: any) => Array.isArray(result?.deployments) ? result.deployments : []) };
     };
     const root = `/accounts/${target.accountRef}`, script = `${root}/workers/scripts/${packet.config.name}`;
-    // Never adopt an unrelated Worker or application based on a matching name.
-    if (await get(`${script}/deployments`, true) !== null) fail("WORKER_ALREADY_EXISTS_RECONCILE_REQUIRED");
+    // An existing deterministic candidate Worker may be updated only while its
+    // exact account/name and active deployment still match the prepared baseline.
+    const workerBaseline = await probeHttpCandidateProvider({ accountRef: target.accountRef, workerName: packet.config.name,
+      applications: packet.config.containers, token,
+      expectedWorkerBaseline: intent.plan.workerBaseline ?? null });
+    if (!workerBaseline.readAccessVerified) fail("WORKER_BASELINE_UNVERIFIED");
     const apps = await get(`${root}/containers/applications?per_page=100`);
-    if (!Array.isArray(apps) || packet.config.containers.some(expected => apps.some(app => app.name === expected.name))) fail("APPLICATION_COLLISION");
+    if (!Array.isArray(apps)) fail("APPLICATION_INVENTORY_UNVERIFIED");
     const before = await get(`/zones/9acd8fe46851607de0919f2b6a462911/workers/routes`);
     const baseline = Array.isArray(before) ? before.filter(item => item.pattern === "smartaihub.app/*") : [];
     if (baseline.length !== 1 || baseline[0].script !== "smartspec-cloudflare-runtime") fail("M2_BASELINE_DENIED");
@@ -78,6 +101,9 @@ export const createHttpCandidateExecutor = (): JobExecutor => withCloudflareStag
       // Docker operation, ambient credential, secret file, route or VM profile.
       await runHttpImageOperatorCommand({ command: "pnpm", args: ["dlx", "wrangler@4.151.1", "deploy", "--dry-run", "--config", configPath],
         cwd: directory, env, timeoutMs: 60_000, assertAuthorized, classifyFailure: classifyHttpCandidateWranglerFailure });
+      await assertAuthorized();
+      await probeHttpCandidateProvider({ accountRef: target.accountRef, workerName: packet.config.name,
+        applications: packet.config.containers, token, expectedWorkerBaseline: intent.plan.workerBaseline ?? null });
       await reporter.progress(lease, { progress: 20, stage: "NATIVE_CANDIDATE_PROVIDER_WRITE_INTENT",
         measured: { workerName: packet.config.name, manifestDigest: packet.manifestDigest, containerStarts: 0 } });
       await runHttpImageOperatorCommand({ command: "pnpm", args: ["dlx", "wrangler@4.151.1", "deploy", "--config", configPath,

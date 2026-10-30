@@ -36,13 +36,16 @@ beforeEach(() => {
   state.intent = { tenantId: "tenant-fixture", projectId: "project-fixture", actorUserId: 17,
     submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "e".repeat(64), expiresAt: new Date(Date.now() + 300000).toISOString(), revokedAt: null,
     containerStarts: 0, dnsMutation: false, trafficMutation: false, plan: { ...state.target, executorId: "fixture-executor", workerName: "isolated-candidate",
-      artifactRef: `sha256:${"f".repeat(64)}`, workerSourceSha: "1".repeat(40), manifestDigest: state.packet.manifestDigest, imageSourceSha: state.packet.imageSourceSha } };
+      artifactRef: `sha256:${"f".repeat(64)}`, workerSourceSha: "1".repeat(40), manifestDigest: state.packet.manifestDigest, imageSourceSha: state.packet.imageSourceSha,
+      workerBaseline: null } };
   vi.stubGlobal("fetch", vi.fn(async (request: any, init: any) => {
     expect(init.method).toBe("GET"); const path = new URL(String(request)).pathname;
     if (path.includes("dns_records")) throw Error("DNS_MUST_NOT_BE_REQUIRED");
+    if (path.endsWith(`/accounts/${state.target.accountRef}`)) return Response.json({ success: true, result: { id: state.target.accountRef } });
     if (path.endsWith("/deployments")) return state.deployed ? Response.json({ success: true, result: { deployments: [{ id: "deployment-receipt", versions: [{ version_id: "version-receipt", percentage: 100 }] }] } })
       : Response.json({ success: false }, { status: 404 });
     if (path.endsWith("/workers/routes")) return Response.json({ success: true, result: [{ id: "accepted-route", pattern: "smartaihub.app/*", script: "smartspec-cloudflare-runtime" }] });
+    if (path.endsWith("/workers/subdomain")) return Response.json({ success: true, result: { subdomain: "fixture" } });
     if (path.endsWith("/containers/applications")) return Response.json({ success: true, result: state.deployed ? ["node", "python"].map((runtime, index) => ({
       id: `application-${runtime}`, name: `fixture-${runtime}`, scheduling_policy: "durable_object", durable_objects: { namespace_id: String(index + 1).repeat(32) } })) : [] });
     if (path.endsWith("/versions/version-receipt")) return Response.json({ success: true, result: { resources: {

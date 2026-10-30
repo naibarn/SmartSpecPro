@@ -66,12 +66,12 @@ export async function getHttpCandidatePreparationPreflight(db: DrizzleDB, scope:
     if (!executorId) throw Error("HTTP_CANDIDATE_EXECUTOR_REQUIRED");
     const access = await withCloudflareDeploymentCredential(db, { identity: { tenantId: scope.tenantId, projectId: scope.projectId,
       environment: "production", provider: "cloudflare" }, credentialRef: target.credentialRef }, token => probeHttpCandidateProvider({
-        accountRef: target.accountRef, workerName: packet.config.name, applicationNames: packet.config.containers.map(item => item.name), token }));
+        accountRef: target.accountRef, workerName: packet.config.name, applications: packet.config.containers, token }));
     if (access.status !== "CONFIGURED" || !access.value) throw Error("HTTP_CANDIDATE_CREDENTIAL_REQUIRED");
     const plan = { accountRef: target.accountRef, credentialRef: target.credentialRef, executorId,
       artifactRef: artifact.artifactRef, workerSourceSha: artifact.sourceSha,
       manifestDigest: packet.manifestDigest, workerName: packet.config.name, imageSourceSha: packet.imageSourceSha,
-      images: packet.config.containers.map(item => Object.values(item.images)[0].image) };
+      images: packet.config.containers.map(item => Object.values(item.images)[0].image), workerBaseline: access.value.workerBaseline };
     return { ready: true as const, reason: null, plan, publishedPair, providerAccess: access.value, planDigest: digest(plan), dnsRequired: false,
       trafficMutation: false, containerStarts: 0, runtimeAcceptance: false };
   } catch (error) {
