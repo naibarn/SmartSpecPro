@@ -16,6 +16,7 @@ import { TaskAcceptanceEvidence } from "@/components/task-control/TaskAcceptance
 import { ThreadOverviewSidebarPanel } from "@/components/chat/ThreadOverviewSidebarPanel";
 import { formatVerifiedPercentLabel } from "@shared/taskAcceptanceProjection";
 import { useTranslation } from "react-i18next";
+import { useTaskHarnessOutputEvents } from "@/lib/useTaskHarnessOutputEvents";
 
 const metricLabel = (value: number | null): string => value === null ? "Unknown" : `${value.toFixed(1)}%`;
 const tokenLabel = (value: number | null): string => value === null ? "Unknown" : value.toLocaleString();
@@ -96,7 +97,16 @@ export default function TaskObservabilityMonitor() {
     { jobId: selected?.id ?? "", ...((query.data?.snapshot.projectionToken ?? projectionToken) ? { projectionToken: query.data?.snapshot.projectionToken ?? projectionToken! } : {}) },
     { enabled: Boolean(selected), staleTime: 15_000, refetchInterval: 15_000, retry: false },
   );
+  const conversationMessagesQuery = trpc.chat.getMessages.useQuery(
+    { conversationId: selected?.conversationId ?? 0, threadId: selected?.threadId ?? null, limit: 50 },
+    { enabled: Boolean(selected?.conversationId), staleTime: 15_000, retry: false },
+  );
+  const originalRequest = conversationMessagesQuery.data
+    ?.filter((message) => message.role === "user")
+    .at(-1)?.content;
   const detail = detailQuery.error ? undefined : detailQuery.data;
+  const harnessOutput = useTaskHarnessOutputEvents(selected?.id ?? null, mode === "developer");
+  const outputEvents = harnessOutput.eventsJobId === selected?.id ? harnessOutput.events : [];
   const runners = runnerQuery.error ? [] : runnerQuery.data?.runners ?? [];
   const aggregate = aggregateQuery.error ? undefined : aggregateQuery.data;
   const activeRunCount = items.filter((item) => ["running", "claimed", "leased", "preparing", "uploading", "indexing"].includes(item.status)).length;
@@ -153,6 +163,34 @@ export default function TaskObservabilityMonitor() {
           <VStack gap={0}><Text type="supporting">Connected Runners</Text><Heading level={2}>{runnerQuery.isLoading ? "—" : connectedRunnerCount}</Heading></VStack>
           <VStack gap={0}><Text type="supporting">Observed agents</Text><Heading level={2}>{query.isLoading ? "—" : observedAgentCount}</Heading></VStack>
         </HStack>
+      </Section>
+
+      <Section>
+        <VStack gap={2}>
+          <VStack gap={1}>
+            <Heading level={2}>Connected Runners &amp; Harnesses</Heading>
+            <Text type="supporting">Live inventory from each authorized Runner snapshot. A listed capability shows discovery, not permission to execute a task.</Text>
+          </VStack>
+          {runnerQuery.isLoading ? <Text role="status">Loading connected Runner inventory…</Text> : null}
+          {runnerQuery.error ? <Text role="alert">Connected Runner inventory is unavailable in this account scope.</Text> : null}
+          {!runnerQuery.isLoading && !runnerQuery.error && runners.length === 0 ? <Text>No connected Runner is visible in this account scope.</Text> : null}
+          {runners.map((runner) => {
+            const harnessCapabilities = (runner.capabilityInventory ?? []).filter((capability) => /harness|codex|claude|copilot|\bpi\b/i.test(`${capability.id} ${capability.label}`));
+            return <VStack as="article" key={`connected-${runner.runnerId}`} gap={1} padding={2}>
+              <HStack gap={2} wrap="wrap">
+                <Heading level={3}>{runner.displayName ?? runner.runnerId}</Heading>
+                <Badge label={runner.displayState} variant={runner.displayState === "ready" ? "success" : "neutral"} />
+                <Text type="supporting">{runner.toolCount ?? 0} tools · {runner.capabilityCount ?? 0} capabilities · snapshot {runner.snapshotExpiresAt ?? "expiry unknown"}</Text>
+              </HStack>
+              {harnessCapabilities.length ? <VStack as="ul" gap={1}>
+                {harnessCapabilities.map((capability) => <HStack as="li" key={`${runner.runnerId}:${capability.id}`} gap={2} wrap="wrap">
+                  <Text>{capability.label} · {capability.id}</Text>
+                  <Badge label={`${capability.status} · ${capability.availability}`} variant={capability.availability === "available" ? "success" : "neutral"} />
+                </HStack>)}
+              </VStack> : <Text type="supporting">No Codex/Claude/Copilot/Pi harness capability is identified in this Runner snapshot.</Text>}
+            </VStack>;
+          })}
+        </VStack>
       </Section>
 
       {mode === "simple" && items.length > 0 ? <Section>
@@ -324,8 +362,10 @@ export default function TaskObservabilityMonitor() {
                 <Heading level={2}>Your task</Heading>
                 <Badge label={simpleStatusLabel(selected.status)} variant={selected.operatorAttention.required ? "warning" : "neutral"} />
               </HStack>
-              <Text>Goal summary is not included in this task view.</Text>
+              <Heading level={3}>What you asked</Heading>
+              {conversationMessagesQuery.isLoading ? <Text role="status">Loading the latest request…</Text> : originalRequest ? <Text>{String(originalRequest).slice(0, 700)}{String(originalRequest).length > 700 ? "…" : ""}</Text> : <Text>The original request is unavailable for this task.</Text>}
               <Text>Current step: {simpleStepLabel(selected.stage)}</Text>
+              <Text>Verified criteria remaining: {detail.goal.status === "PROJECTED" ? detail.goal.remainingScope.length : "Unknown until trusted goal progress is available"}</Text>
               <Text>Job status: {simpleStatusLabel(selected.status)} · Runner status: {detail.runner?.status ? simpleStatusLabel(detail.runner.status) : "Unknown"} · verification: {detail.goal.status === "PROJECTED" ? (detail.goal.verifiedGoalCompletion.percent === 100 ? "verified complete" : "in progress or pending evidence") : "Unknown"}</Text>
               {detail.goal.status === "PROJECTED" && detail.goal.verifiedGoalCompletion.percent !== null ? (
                 <ProgressBar label="Verified progress" value={detail.goal.verifiedGoalCompletion.percent} hasValueLabel formatValueLabel={() => formatVerifiedPercentLabel(detail.goal)} variant={detail.goal.verifiedGoalCompletion.percent === 100 ? "success" : "accent"} />
@@ -340,8 +380,26 @@ export default function TaskObservabilityMonitor() {
             </VStack>
           </Section> : null}
           {detail ? <>
-          {mode === "developer" ? <Text type="supporting">Developer telemetry refreshes from the canonical read model every 15 seconds. A live terminal stream, file diffs and harness identity are not exposed by this view; unavailable telemetry is not inferred.</Text> : null}
+          {mode === "developer" ? <Text type="supporting">Harness output below is replayed from authorized, durable Runner events and refreshes while this task is selected. Missing output stays explicit.</Text> : null}
           {mode === "developer" ? <>
+          <Section>
+            <VStack gap={2}>
+              <Heading level={2}>Live Harness Output</Heading>
+              {!selected ? <Text>No task is selected.</Text> : null}
+              {selected && harnessOutput.query.isLoading && outputEvents.length === 0 ? <Text role="status">Loading Runner output…</Text> : null}
+              {selected && harnessOutput.query.error ? <Text role="alert">Runner output is unavailable in this account scope.</Text> : null}
+              {selected && !harnessOutput.query.isLoading && !harnessOutput.query.error && outputEvents.length === 0 ? <Text>No output events have been recorded for this task yet.</Text> : null}
+              {outputEvents.length > 0 ? <VStack as="ol" gap={2} padding={2} className="max-h-96 overflow-y-auto rounded-[var(--radius-element)] border border-[var(--color-border)] bg-[var(--color-background)]" aria-live="polite">
+                {outputEvents.map((event) => <VStack as="li" key={event.id} gap={1} className="border-b border-[var(--color-border)] pb-2 last:border-b-0">
+                  <Text type="supporting">{event.kind.replaceAll("_", " ")}{event.name ? ` · ${event.name}` : ""}{event.status ? ` · ${event.status}` : ""} · {event.at}</Text>
+                  {event.path ? <Text>{event.path}</Text> : null}
+                  {event.text ? <Text>{event.text}</Text> : null}
+                  {event.detail ? <Text>{event.detail}</Text> : null}
+                  {event.diff ? <details><summary>View diff</summary><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words font-mono text-xs">{event.diff}</pre></details> : null}
+                </VStack>)}
+              </VStack> : null}
+            </VStack>
+          </Section>
           <Section>
             <VStack gap={3}>
               <HStack gap={2} wrap="wrap">

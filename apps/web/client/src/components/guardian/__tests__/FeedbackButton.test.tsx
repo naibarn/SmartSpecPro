@@ -45,11 +45,13 @@ vi.mock("@/lib/trpc", () => ({
 vi.mock("@/components/chat/ChatView", () => ({
   ChatView: ({
     conversationId,
+    threadId,
     density,
     mapContextDraft,
     onRemoveMapContext,
   }: {
     conversationId: number | null;
+    threadId?: string | null;
     density?: "default" | "compact";
     mapContextDraft?: { id: number; contextText: string } | null;
     onRemoveMapContext?: () => void;
@@ -57,7 +59,7 @@ vi.mock("@/components/chat/ChatView", () => ({
     const [draft, setDraft] = useState("");
     return (
       <section data-testid="global-chat-view" data-chat-density={density ?? "default"}>
-        ChatView conversation {conversationId ?? "pending"}
+        ChatView conversation {conversationId ?? "pending"}{threadId ? ` thread ${threadId}` : ""}
         <textarea aria-label="Chat draft test" value={draft} onChange={event => setDraft(event.target.value)} />
         {mapContextDraft && <>
           <p>{mapContextDraft.contextText}</p>
@@ -72,6 +74,19 @@ vi.mock("@/components/chat/UniversalControlPlanePanel", () => ({
   UniversalControlPlanePanel: () => (
     <section data-testid="global-control-plane">Task Control Center</section>
   ),
+}));
+
+vi.mock("@/components/chat/ChatSidebar", () => ({
+  ChatSidebar: ({ onSelectThread, onNewChat }: { onSelectThread: (conversationId: number, threadId: string) => void; onNewChat: () => void }) => (
+    <aside aria-label="Session history">
+      <button type="button" onClick={() => onSelectThread(73, "saved-thread")}>Open saved session</button>
+      <button type="button" onClick={onNewChat}>New session</button>
+    </aside>
+  ),
+}));
+
+vi.mock("@/pages/TaskObservabilityMonitor", () => ({
+  default: () => <section aria-label="Mission Control view">All connected task activity</section>,
 }));
 
 vi.mock("@/components/ui/confirm/ConfirmProvider", () => ({
@@ -95,7 +110,11 @@ vi.mock("@/i18n/useScopedTranslation", () => ({
       "feedback.panelTitle": "AI Chat & Feedback",
       "feedback.chatTab": "AI Chat",
       "feedback.taskControlTab": "Task Control",
+      "feedback.missionControlTab": "Mission Control",
       "feedback.feedbackTab": "Send Feedback",
+      "sessionDock.show": "Sessions",
+      "sessionDock.hide": "Hide sessions",
+      "threads.overviewTitle": "Session history",
       "feedback.sections": "Help sections",
       "feedback.chatSection": "AI Chat",
       "feedback.taskControlSection": "Task Control",
@@ -313,6 +332,24 @@ describe("FeedbackButton placement", () => {
     fireEvent.click(screen.getByRole("tab", { name: "AI Chat" }));
     const restoredDraft = await screen.findByRole("textbox", { name: "Chat draft test" });
     expect((restoredDraft as HTMLTextAreaElement).value).toBe("Keep this unsent message");
+  });
+
+  it("shows saved sessions in the Chat dock and opens the exact saved thread", async () => {
+    feedbackMocks.user = { role: "member" };
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
+    await screen.findByRole("textbox", { name: "Chat draft test" });
+    fireEvent.click(await screen.findByRole("button", { name: "Show sessions" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open saved session" }));
+    expect(screen.getByText("ChatView conversation 73 thread saved-thread")).toBeTruthy();
+  });
+
+  it("exposes Mission Control as a distinct workspace tab", async () => {
+    feedbackMocks.user = { role: "member" };
+    render(<FeedbackButton />);
+    fireEvent.click(screen.getByLabelText("Open AI Chat & Feedback"));
+    fireEvent.click(await screen.findByRole("tab", { name: "Mission Control" }));
+    expect(screen.getByRole("region", { name: "Mission Control view" })).toBeTruthy();
   });
 
   it("attaches map context without replacing the draft and removes only the context", async () => {

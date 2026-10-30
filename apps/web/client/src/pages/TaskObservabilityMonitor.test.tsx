@@ -3,7 +3,7 @@ import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 
-const { listQuery, detailQuery, runnerQuery, aggregateQuery, threadQuery, listArgs, detailArgs, aggregateArgs, aggregateOptions, setLocation } = vi.hoisted(() => ({
+const { listQuery, detailQuery, runnerQuery, aggregateQuery, threadQuery, listArgs, detailArgs, aggregateArgs, aggregateOptions, setLocation, harnessOutput, conversationMessagesQuery } = vi.hoisted(() => ({
   listQuery: { current: {} as Record<string, unknown> },
   detailQuery: { current: {} as Record<string, unknown> },
   runnerQuery: { current: {} as Record<string, unknown> },
@@ -14,6 +14,8 @@ const { listQuery, detailQuery, runnerQuery, aggregateQuery, threadQuery, listAr
   aggregateArgs: { current: [] as unknown[] },
   aggregateOptions: { current: {} as Record<string, unknown> },
   setLocation: vi.fn(),
+  harnessOutput: { current: { events: [], eventsJobId: null, query: { isLoading: false, error: null } } as Record<string, unknown> },
+  conversationMessagesQuery: { current: { data: [{ id: 1, role: "user", content: "Improve the SPEC-224 pilot UI" }], isLoading: false, error: null } as Record<string, unknown> },
 }));
 
 vi.mock("@/lib/trpc", () => ({
@@ -23,6 +25,7 @@ vi.mock("@/lib/trpc", () => ({
     observabilityAggregate: { useQuery: (...args: unknown[]) => { aggregateArgs.current = args; aggregateOptions.current = args[1] as Record<string, unknown>; return aggregateQuery.current; } },
   }, runnerNodes: { list: { useQuery: () => runnerQuery.current } }, chat: {
     listRecentConversationThreads: { useInfiniteQuery: () => threadQuery.current },
+    getMessages: { useQuery: () => conversationMessagesQuery.current },
   } },
 }));
 
@@ -56,6 +59,10 @@ vi.mock("wouter", () => ({
   Link: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement>) => React.createElement("a", { ...props, href }, children),
 }));
 
+vi.mock("@/lib/useTaskHarnessOutputEvents", () => ({
+  useTaskHarnessOutputEvents: () => harnessOutput.current,
+}));
+
 import TaskObservabilityMonitor from "./TaskObservabilityMonitor";
 
 function renderMonitor(mode: "simple" | "developer" = "simple") {
@@ -73,7 +80,7 @@ beforeEach(() => {
   detailArgs.current = [];
   aggregateArgs.current = [];
   aggregateOptions.current = {};
-  runnerQuery.current = { data: { runners: [{ runnerId: "runner-1", displayName: "Runner One", displayState: "ready", trustState: "trusted", status: "online", lastSeenAt: "2026-10-17T00:00:00Z", snapshotExpiresAt: "2026-10-17T00:10:00Z", workspaceCount: 0, toolCount: 2, capabilityCount: 3 }] }, isLoading: false, error: null };
+  runnerQuery.current = { data: { runners: [{ runnerId: "runner-1", displayName: "Runner One", displayState: "ready", trustState: "trusted", status: "online", lastSeenAt: "2026-10-17T00:00:00Z", snapshotExpiresAt: "2026-10-17T00:10:00Z", workspaceCount: 0, toolCount: 2, capabilityCount: 3, capabilityInventory: [{ id: "harness.codex", label: "Codex CLI", status: "ready", availability: "available" }] }] }, isLoading: false, error: null };
   aggregateQuery.current = { data: null, isLoading: false, error: null };
   threadQuery.current = {
     data: { pages: [{ items: [{
@@ -97,6 +104,8 @@ beforeEach(() => {
     quotaCoverage: { status: "UNKNOWN", reason: "No linked quota observation." },
     timeline: [{ id: "event-1", at: "2026-10-17T00:01:00Z", type: "CODEX_MODEL_USAGE_CORRECTED", attempt: 1, phase: null, reasonCode: null, correction: { modelCallId: "call-1", previousUsage: { inputTokens: 18447, cachedInputTokens: 18176, outputTokens: 122 }, correctedUsage: { inputTokens: 36933, cachedInputTokens: 18176, outputTokens: 122 }, additionalCharge: 18486 } }],
   }, isLoading: false, error: null };
+  harnessOutput.current = { events: [], eventsJobId: null, query: { isLoading: false, error: null } };
+  conversationMessagesQuery.current = { data: [{ id: 1, role: "user", content: "Improve the SPEC-224 pilot UI" }], isLoading: false, error: null };
 });
 
 describe("TaskObservabilityMonitor", () => {
@@ -112,13 +121,28 @@ describe("TaskObservabilityMonitor", () => {
   it("defaults to a simple evidence summary and keeps unknown progress explicit", () => {
     renderMonitor();
     expect(screen.getByRole("heading", { name: "Mission Control" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Connected Runners & Harnesses" })).toBeTruthy();
+    expect(screen.getByText("Codex CLI · harness.codex")).toBeTruthy();
     expect(screen.getByRole("button", { name: "SPEC-224 pilot · In progress" })).toBeTruthy();
     expect(screen.getByText("Chat: Authorized pilot")).toBeTruthy();
     expect(screen.getAllByText("Current step: implement").length).toBeGreaterThan(0);
     expect(screen.getByText(/Verified progress: Unknown · trusted_baseline_missing/)).toBeTruthy();
     expect(screen.getByText("Action needed: Please review this task.")).toBeTruthy();
+    expect(screen.getByText("Improve the SPEC-224 pilot UI")).toBeTruthy();
+    expect(screen.getByText(/Verified criteria remaining: Unknown until trusted goal progress/)).toBeTruthy();
     expect(screen.getByText("No final deliverable references are recorded in this task view.")).toBeTruthy();
     expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
+  });
+
+  it("shows durable harness output in Developer mode for the selected task", () => {
+    harnessOutput.current = {
+      events: [{ id: "output-1", sequence: 1, at: "2026-10-30T01:00:00.000Z", attempt: 1, kind: "PROGRESS", text: "Running focused tests", chunkIndex: 0, chunkCount: 1 }],
+      eventsJobId: "job-1",
+      query: { isLoading: false, error: null },
+    };
+    renderMonitor("developer");
+    expect(screen.getByRole("heading", { name: "Live Harness Output" })).toBeTruthy();
+    expect(screen.getByText("Running focused tests")).toBeTruthy();
   });
 
   it("provides obvious navigation between Chat, Task Control, and Mission Control", () => {
@@ -154,7 +178,7 @@ describe("TaskObservabilityMonitor", () => {
     renderMonitor();
     fireEvent.click(screen.getByText("Developer"));
     expect(screen.getByText(/Current UI Session Model: ui-model/)).toBeTruthy();
-    expect(screen.getByText(/canonical read model every 15 seconds/)).toBeTruthy();
+    expect(screen.getByText(/durable Runner events and refreshes/)).toBeTruthy();
     fireEvent.click(screen.getByText("Simple"));
     expect(screen.queryByText(/Current UI Session Model:/)).toBeNull();
     expect(screen.getAllByText("Current step: implement").length).toBeGreaterThan(0);
@@ -178,7 +202,7 @@ describe("TaskObservabilityMonitor", () => {
   it("shows runner fleet state from the canonical runner read model", () => {
     renderMonitor("developer");
     expect(screen.getByText(/Available runner fleet/)).toBeTruthy();
-    expect(screen.getAllByText(/Runner One/)).toHaveLength(3);
+    expect(screen.getAllByText(/Runner One/)).toHaveLength(4);
     expect(screen.getAllByText(/snapshot expires 2026-10-17T00:10:00Z/)).toHaveLength(2);
     expect(screen.getByRole("button", { name: /↳ spec224\.development · running · job-1/ })).toBeTruthy();
   });
