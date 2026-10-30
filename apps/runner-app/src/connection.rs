@@ -328,6 +328,13 @@ fn unprotect_windows_connection(ciphertext: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
+    connect_local_runner_with_progress(config, |_| {})
+}
+
+pub fn connect_local_runner_with_progress(
+    config: &RunnerConfig,
+    on_pairing_started: impl FnOnce(&str),
+) -> Result<String, String> {
     if config.profile != RunnerProfile::LocalDevice {
         return Err("RUNNER_CONNECT_REQUIRES_LOCAL_DEVICE".into());
     }
@@ -362,6 +369,7 @@ pub fn connect_local_runner(config: &RunnerConfig) -> Result<String, String> {
         .runner_session_id
         .as_deref()
         .ok_or_else(|| "RUNNER_CONNECT_SCHEMA_INVALID".to_string())?;
+    on_pairing_started(&start.verification_uri_complete);
     open_browser(&start.verification_uri_complete).map_err(|error| {
         format!(
             "{error}; open this URL to approve the Runner: {}",
@@ -1535,9 +1543,29 @@ fn server_base_url(control_url: &str) -> Result<String, String> {
 
 fn open_browser(url: &str) -> Result<(), String> {
     #[cfg(target_os = "windows")]
-    let result = Command::new("rundll32")
-        .args(["url.dll,FileProtocolHandler", url])
-        .spawn();
+    let result = {
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+
+        let verb: Vec<u16> = OsStr::new("open").encode_wide().chain(Some(0)).collect();
+        let target: Vec<u16> = OsStr::new(url).encode_wide().chain(Some(0)).collect();
+        let result = unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                verb.as_ptr(),
+                target.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                SW_SHOWNORMAL,
+            )
+        };
+        if result as isize > 32 {
+            Ok(())
+        } else {
+            Err(std::io::Error::last_os_error())
+        }
+    };
     #[cfg(target_os = "macos")]
     let result = Command::new("open").arg(url).spawn();
     #[cfg(all(unix, not(target_os = "macos")))]

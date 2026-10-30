@@ -17,6 +17,7 @@ const verifiedTools = new Map();
 const verifyingTools = new Set();
 let capabilitySyncing = false;
 let connectPending = false;
+let pendingVerificationUrl = "";
 let refreshPending = false;
 let scanPending = false;
 let startPending = false;
@@ -255,7 +256,9 @@ function applyRunnerStatus(status) {
               ? "ต้องยืนยันบัญชีผ่านเบราว์เซอร์ เนื่องจาก refresh token ใช้ต่อไม่ได้แล้ว"
               : "กดเชื่อมต่อเพื่อเปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์";
 
-  if (credentialState === "reauth_required") {
+  if (pendingVerificationUrl && (connectPending || credentialState === "reauth_required")) {
+    setNotice(elements["connection-notice"], `คำขอเชื่อมต่อพร้อมแล้ว กรุณาอนุมัติในเบราว์เซอร์ หากไม่เปิดอัตโนมัติ ให้คัดลอก URL นี้ไปเปิดเอง:\n${pendingVerificationUrl}`);
+  } else if (credentialState === "reauth_required") {
     const notice = status.credentialErrorCode === "RUNNER_CONNECT_REQUEST_REJECTED_409"
       ? "SmartAIHub ปฏิเสธคำขอต่ออายุด้วย HTTP 409 กรุณาเชื่อมต่อผ่านเบราว์เซอร์เพื่อยืนยัน session ใหม่"
       : status.credentialErrorCode === "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID"
@@ -677,6 +680,7 @@ function renderTools(tools, status = latestRunnerStatus) {
 elements["connect-button"].addEventListener("click", async () => {
   if (connectPending) return;
   invalidatePendingStatus();
+  pendingVerificationUrl = "";
   connectPending = true;
   updateButton(elements["connect-button"], {
     disabled: true,
@@ -690,18 +694,29 @@ elements["connect-button"].addEventListener("click", async () => {
     : "เปิด SmartAIHub ในเบราว์เซอร์ แล้วกดยอมรับการติดต่ออุปกรณ์นี้");
   try {
     await invoke("connect_runner");
+    pendingVerificationUrl = "";
     setNotice(elements["connection-notice"], "อนุมัติแล้ว Runner เชื่อมต่อสำเร็จ");
     await refreshStatus();
     await scanTools();
     await syncCapabilities();
   } catch (error) {
-    setNotice(elements["connection-notice"], safeError(error));
+    const message = safeError(error);
+    setNotice(elements["connection-notice"], pendingVerificationUrl
+      ? `${message}\nหากยังไม่ได้อนุมัติ ให้เปิด URL นี้ในเบราว์เซอร์:\n${pendingVerificationUrl}`
+      : message);
     elements["connection-state"].textContent = "เชื่อมต่อไม่สำเร็จ";
   } finally {
     connectPending = false;
     if (latestRunnerStatus) applyRunnerStatus(latestRunnerStatus);
     else updateButton(elements["connect-button"], { disabled: false, pending: false, label: "เชื่อมต่อผ่านเบราว์เซอร์" });
   }
+});
+
+window.__TAURI__.event.listen("runner-connect-progress", event => {
+  const verificationUrl = String(event.payload ?? "");
+  if (!verificationUrl.startsWith("https://") && !verificationUrl.startsWith("http://")) return;
+  pendingVerificationUrl = verificationUrl;
+  setNotice(elements["connection-notice"], `คำขอเชื่อมต่อพร้อมแล้ว กรุณาอนุมัติในเบราว์เซอร์ หากไม่เปิดอัตโนมัติ ให้คัดลอก URL นี้ไปเปิดเอง:\n${verificationUrl}`);
 });
 
 elements["refresh-button"].addEventListener("click", async () => {

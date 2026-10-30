@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use smartaihub_runner::{
     config::RunnerConfig,
     connection::{
-        connect_local_runner, load_connection, load_or_refresh, safe_connect_error_code,
-        safe_refresh_error_code, token_expiry_ms,
+        connect_local_runner_with_progress, load_connection, load_or_refresh,
+        safe_connect_error_code, safe_refresh_error_code, token_expiry_ms,
     },
     diagnostics::{
         connection_status_cancellable, discover_local_tools, request_control_retry,
@@ -31,7 +31,7 @@ use std::{
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    Manager, State, WindowEvent,
+    Emitter, Manager, State, WindowEvent,
 };
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_dialog::DialogExt;
@@ -504,7 +504,10 @@ async fn retry_runner_credentials(state: State<'_, RunnerState>) -> Result<Runne
 }
 
 #[tauri::command]
-async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String> {
+async fn connect_runner(
+    app: tauri::AppHandle,
+    state: State<'_, RunnerState>,
+) -> Result<String, String> {
     let previous_refresh_error = state
         .last_refresh_error
         .lock()
@@ -526,10 +529,14 @@ async fn connect_runner(state: State<'_, RunnerState>) -> Result<String, String>
             .map_err(|_| "RUNNER_STOP_TASK_FAILED".to_string())??;
     }
     let config = state.config.clone();
-    let result = tauri::async_runtime::spawn_blocking(move || connect_local_runner(&config))
-        .await
-        .map_err(|_| "RUNNER_CONNECT_TASK_FAILED".to_string())?
-        .map_err(|error| safe_connect_error_code(&error));
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        connect_local_runner_with_progress(&config, |verification_url| {
+            let _ = app.emit("runner-connect-progress", verification_url);
+        })
+    })
+    .await
+    .map_err(|_| "RUNNER_CONNECT_TASK_FAILED".to_string())?
+    .map_err(|error| safe_connect_error_code(&error));
     if let Ok(mut last_error) = state.last_connect_error_code.lock() {
         *last_error = result.as_ref().err().cloned();
     }

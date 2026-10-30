@@ -86,7 +86,7 @@ h2 { font-size: 1.2rem; }
 .state-pill.good { color: darkgreen; background: honeydew; }
 .state-pill.warn { color: saddlebrown; background: moccasin; }
 .count-pill { min-width: 2rem; text-align: center; }
-.notice, .global-notice { display: block; margin-top: 0.75rem; color: var(--color-text-secondary, slategray); }
+.notice, .global-notice { display: block; margin-top: 0.75rem; color: var(--color-text-secondary, slategray); white-space: pre-wrap; overflow-wrap: anywhere; }
 .notice:empty, .global-notice:empty { display: none; }
 .field-label { display: block; margin-top: 1rem; margin-bottom: 0.4rem; font-weight: 650; }
 .select-control { width: min(100%, 34rem); min-height: 2.6rem; padding: 0.55rem 0.75rem; border: 0.0625rem solid var(--color-border-subtle, lightsteelblue); border-radius: 0.65rem; color: inherit; background: white; }
