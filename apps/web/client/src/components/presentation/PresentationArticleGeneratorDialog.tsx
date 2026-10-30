@@ -1010,6 +1010,9 @@ export function getErrorMessage(error: unknown, fallback: string, topicLengthMes
       : "";
   if (rawMessage) {
     const normalized = rawMessage.toLowerCase();
+    if (normalized.includes("unable to transform response from server")) {
+      return "การเชื่อมต่อเซิร์ฟเวอร์ขัดข้องชั่วคราว ระบบอาจยังประมวลผลคำสั่งอยู่ กรุณารอสักครู่และตรวจผลก่อนลองใหม่";
+    }
     if (
       topicLengthMessage
       && (normalized.includes("too_big") || normalized.includes("at most 2000") || normalized.includes("maximum of 2000"))

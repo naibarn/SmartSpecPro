@@ -103,6 +103,7 @@ function getTrpcData(error: unknown): TrpcErrorData | undefined {
 export function isTransientSystemError(error: unknown): boolean {
   if (isNetworkFailure(error)) return true;
   if (error instanceof Error && error.name === "AbortError") return true;
+  if (isResponseTransformFailure(error)) return true;
 
   const data = getTrpcData(error);
   if (
@@ -128,6 +129,21 @@ export function isTransientSystemError(error: unknown): boolean {
     hasTransientContext ||
     (hasTransientStatus &&
       /provider|task|poll|status|upstream|gateway/i.test(message))
+  );
+}
+
+/**
+ * tRPC emits this message when a response cannot be deserialized. During a
+ * rolling restart the response can come from a process with a different
+ * transformer/schema version, so reads should use the normal transient retry
+ * policy instead of treating the message as a user-input error.
+ */
+export function isResponseTransformFailure(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message
+      .toLowerCase()
+      .includes("unable to transform response from server")
   );
 }
 
@@ -164,6 +180,7 @@ export function classifyError(error: unknown): ErrorClass {
 
   if (
     isNetworkFailure(error) ||
+    isResponseTransformFailure(error) ||
     isHtmlInsteadOfJsonError(error) ||
     isTransientReconnectClass(error) ||
     isTransientTenantServiceError(error)
@@ -205,13 +222,16 @@ function currentUrl(): string {
  * losing the upstream connection mid-request (Cloudflare 502/503/504/522/
  * 524 HTML instead of JSON — see `isLostUpstreamApiErrorMessage`, matched
  * against the exact message `assertJsonApiResponse` throws for those
- * statuses). Used only to pick the softer "reconnecting" toast copy in
- * `handleError` below — it does NOT affect `classifyError`'s system/user/
- * auth classification, so query-retry behavior is unchanged.
+ * statuses). Used to select the temporary-connection guidance in
+ * `handleError` below; retry classification remains owned by
+ * `classifyError` and the React Query retry policy.
  */
 function isTransientReconnectClass(error: unknown): boolean {
   if (isTransientTenantServiceError(error)) return true;
-  return error instanceof Error && isLostUpstreamApiErrorMessage(error.message);
+  return (
+    isResponseTransformFailure(error) ||
+    (error instanceof Error && isLostUpstreamApiErrorMessage(error.message))
+  );
 }
 
 /**
@@ -237,11 +257,11 @@ export function handleError(error: unknown, path?: string): void {
   // report action. A gateway restart still gets the existing soft info toast.
   if (isTransientSystemError(error)) {
     if (isTransientReconnectClass(error)) {
-      toast.info("กำลังเชื่อมต่อใหม่...", {
+      toast.info("ระบบยังเชื่อมต่อไม่สำเร็จ", {
         id: "system-error",
-        duration: 8000,
+        duration: 10000,
         description:
-          "เซิร์ฟเวอร์กำลังรีสตาร์ทหรือขัดข้องชั่วคราว ระบบกำลังลองเชื่อมต่อให้อัตโนมัติ",
+          "อาจมีการปรับปรุงหรือรีสตาร์ทเซิร์ฟเวอร์ กรุณารอสักครู่แล้วลองอีกครั้ง",
       });
     }
     return;
