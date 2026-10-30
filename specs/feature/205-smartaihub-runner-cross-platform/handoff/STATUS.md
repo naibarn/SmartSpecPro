@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 201 unresolved of 201
 - Next action: Wait for owner-host installation of the verified review artifact, then perform runtime acceptance on the existing Runner identity. Do not claim completion from build or unit tests.
-- Manifest generation: 43
+- Manifest generation: 45
 
 ## Source-declared status and relationship claims
 
