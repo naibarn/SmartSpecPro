@@ -5772,7 +5772,7 @@
       },
       {
         "configured_root": "specs/feature",
-        "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+        "digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
         "problem": null,
         "record_key": "canonical:specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
@@ -5781,7 +5781,7 @@
           "duplicate_ids": [],
           "duplicate_revisions": []
         },
-        "revision": "1.7",
+        "revision": "2.0",
         "root_kind": "CANONICAL",
         "slug": "294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
         "spec_id": "294",
@@ -138044,9 +138044,9 @@
       "verification": "UNKNOWN"
     },
     {
-      "acceptance": "UNKNOWN",
+      "acceptance": "PARTIAL",
       "authority": "UNRESOLVED",
-      "canonical_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
+      "canonical_sha": "961f94291517e372281a1d46b4cc35dc2a6fc5ae",
       "completion_eligible": false,
       "completion_reasons": [
         "reconciliation confidence is LOW or UNRESOLVED",
@@ -138557,6 +138557,45 @@
         "requirement REQ-294-THR-02 is PARTIAL",
         "requirement REQ-294-THR-03 is PARTIAL",
         "requirement REQ-38B60BA02161 is PARTIAL",
+        "requirement REQ-F7FDF8338856 is PARTIAL",
+        "requirement REQ-AC3C84209F40 is OPEN",
+        "requirement REQ-A0CFFA0CCCFA is OPEN",
+        "requirement REQ-89FA68FFF671 is OPEN",
+        "requirement REQ-D83CE8D786E7 is OPEN",
+        "requirement REQ-414237D782D8 is OPEN",
+        "requirement REQ-F07F3A0E0273 is OPEN",
+        "requirement REQ-6548CDC46442 is OPEN",
+        "requirement REQ-CF331B00F880 is OPEN",
+        "requirement REQ-503665ECFEB2 is OPEN",
+        "requirement REQ-3BE83A44EA58 is OPEN",
+        "requirement REQ-53CC17697A54 is OPEN",
+        "requirement REQ-DC04BC74BFCF is OPEN",
+        "requirement REQ-294-MH-01 is OPEN",
+        "requirement REQ-294-MH-02 is OPEN",
+        "requirement REQ-294-MH-03 is OPEN",
+        "requirement REQ-294-MH-04 is OPEN",
+        "requirement REQ-294-MH-05 is OPEN",
+        "requirement REQ-294-MH-06 is OPEN",
+        "requirement REQ-294-MH-07 is OPEN",
+        "requirement REQ-294-MH-08 is OPEN",
+        "requirement REQ-294-MH-09 is OPEN",
+        "requirement REQ-E617237AD0F9 is OPEN",
+        "requirement REQ-9908552D2487 is OPEN",
+        "requirement REQ-B7C74FD98C9D is OPEN",
+        "requirement REQ-294-UW2-01 is OPEN",
+        "requirement REQ-294-UW2-02 is OPEN",
+        "requirement REQ-294-UW2-03 is OPEN",
+        "requirement REQ-294-UW2-04 is OPEN",
+        "requirement REQ-294-UW2-05 is OPEN",
+        "requirement REQ-294-UW2-07 is OPEN",
+        "requirement REQ-33C28A0EC8F8 is OPEN",
+        "requirement REQ-8C7DC22EFFBD is OPEN",
+        "requirement REQ-5F115F5D83E1 is OPEN",
+        "requirement REQ-294-P0-WORKSPACE-01 is PARTIAL",
+        "requirement REQ-294-P0-WORKSPACE-02 is PARTIAL",
+        "requirement REQ-294-P0-WORKSPACE-03 is PARTIAL",
+        "requirement REQ-294-P0-WORKSPACE-04 is PARTIAL",
+        "requirement REQ-294-P0-WORKSPACE-05 is PARTIAL",
         "required verification evidence is missing"
       ],
       "confidence": "LOW",
@@ -138568,6 +138607,45 @@
         "TEST": 0
       },
       "declared_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-fleet-state-and-entry: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-fleet-state-and-entry",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+          "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-multi-session-tabs-and-output: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-multi-session-tabs-and-output",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+          "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-controls-tests-and-handoff: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-controls-tests-and-handoff",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+          "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+          "value": "checkpointed"
+        },
         {
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "SECTION_STATUS_ASSERTION",
@@ -138601,7 +138679,7 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+          "source_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
@@ -138614,18 +138692,18 @@
           "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
           "line": 4,
           "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-          "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+          "source_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
           "value": "Proposed / Additive implementation-ready specification"
         }
       ],
-      "deployment": "UNKNOWN",
-      "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+      "deployment": "PASS",
+      "digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
       "disposition": "DORMANT_UNRESOLVED",
-      "evidence_freshness": "UNKNOWN",
+      "evidence_freshness": "FRESH",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-10-29T16:42:45.114793Z",
+      "last_reconciled": "2026-10-30T03:46:41.311662Z",
       "lifecycle": "PARTIAL_INTEGRATED",
-      "next_action": "Local authenticated development UAT now passes for exact-thread restore and the account-wide Mission Control overview, including zero 5xx from chat.listRecentConversationThreads and workerJobs.observability. Continue the global cross-host Thread/Agent graph with immutable multi-source replay/gap recovery. For the hosted 500, obtain authenticated correlated server traces plus immutable serving revision; do not infer from local UAT. SPEC-224 has no durable Goal/Run/Job in smartspec_dev tenant-001; resume only an existing real Task Control Goal, then verify live Child 1/2 receipts, settlement, automatic continuation, and Independent Final Verify.",
+      "next_action": "Authenticated Workspace 2.0 UAT remains open: public dev browser acceptance stopped on tenant Home/logo 404 and synthetic dev Admin login returned 401. Restore an authorized dev login, then verify Chat, Task Control and Mission Control at desktop/mobile widths. Afterwards validate live lifecycle evidence, multi-Harness targeting, and execution tabs from canonical records. SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify remain separate required evidence.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "primary_blocker": null,
       "problem": null,
@@ -138643,6 +138721,45 @@
         "current_product_relevance": "UNASSESSED",
         "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
         "declared_claims": [
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-01-fleet-state-and-entry: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-01-fleet-state-and-entry",
+            "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+            "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-02-multi-session-tabs-and-output: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-02-multi-session-tabs-and-output",
+            "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+            "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+            "value": "checkpointed"
+          },
+          {
+            "authority": "AUTHOR_ASSERTION_CANDIDATE",
+            "claim_kind": "SECTION_STATUS_ASSERTION",
+            "commit_hash": null,
+            "commit_hash_length": 0,
+            "confidence": "LOW",
+            "excerpt": "sections_state.section-03-controls-tests-and-handoff: checkpointed; commit_hash=missing",
+            "line": null,
+            "section": "section-03-controls-tests-and-handoff",
+            "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+            "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+            "value": "checkpointed"
+          },
           {
             "authority": "AUTHOR_ASSERTION_CANDIDATE",
             "claim_kind": "SECTION_STATUS_ASSERTION",
@@ -138676,16 +138793,66 @@
             "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
             "line": 4,
             "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-            "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+            "source_digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
             "value": "Proposed / Additive implementation-ready specification"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+            "digest": "41451c9edf1cad69c6622556bbc81bc8af56fafc5e8270521879f2e2e59b3aeb",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
+          },
+          {
+            "digest": "3c96eb0994c966f9fc035e5c2212d9c4a14e450a5766731dd6d944b40820b87e",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/claude-plan.md"
+          },
+          {
+            "digest": "d6c6984e66f1f06fab70f9842e5317c7665902108b587d09ac45549e813807ce",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/claude-spec.md"
+          },
+          {
+            "digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/.deep_implement_state.lock"
+          },
+          {
+            "digest": "a0d28916089ab4b3dcee26df053d08b89a69138575d9e763d367b88c6a9ee789",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/HANDOFF.md"
+          },
+          {
+            "digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json"
+          },
+          {
+            "digest": "936b835c82e996a8cd6d38ba849fa2a7f074fbc85616bfb5aa7ac35555892317",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/handoff_history.jsonl"
+          },
+          {
+            "digest": "bb6adbf31fb6e872a798218d80bd5455225b44ac9c6d080651dc3f65929f17b6",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/sections/index.md"
+          },
+          {
+            "digest": "0e0c9c2a3f6a5c176d28a8439fa5d838a6b3f5774bea554257b3ae8c4a92f595",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/sections/section-01-fleet-state-and-entry.md"
+          },
+          {
+            "digest": "b7d03cd30bd4bfee211821137117eeb0681d7686ab5092c3b6d3bcef78d85398",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/sections/section-02-multi-session-tabs-and-output.md"
+          },
+          {
+            "digest": "32e2a9f96e5baf2cc8c2e621258c31e99d78cf5feac72938914259e42d0b14c4",
+            "kind": "SUPPORTING_ARTIFACT",
+            "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/sections/section-03-controls-tests-and-handoff.md"
           },
           {
             "digest": "a84a76a4d407d11b82a4938254086cb4b847e9f18a01b323ec35bf1e656a9ee2",
@@ -138779,13 +138946,52 @@
         "successor_or_supersession": "UNASSESSED"
       },
       "requirements": {
-        "open": 504,
+        "open": 543,
         "pass": 0,
-        "total": 504
+        "total": 543
       },
-      "revision": "1.7",
+      "revision": "2.0",
       "root_kind": "CANONICAL",
       "section_status_claims": [
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-01-fleet-state-and-entry: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-01-fleet-state-and-entry",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+          "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-02-multi-session-tabs-and-output: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-02-multi-session-tabs-and-output",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+          "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+          "value": "checkpointed"
+        },
+        {
+          "authority": "AUTHOR_ASSERTION_CANDIDATE",
+          "claim_kind": "SECTION_STATUS_ASSERTION",
+          "commit_hash": null,
+          "commit_hash_length": 0,
+          "confidence": "LOW",
+          "excerpt": "sections_state.section-03-controls-tests-and-handoff: checkpointed; commit_hash=missing",
+          "line": null,
+          "section": "section-03-controls-tests-and-handoff",
+          "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/amendments/mission-control-multi-harness-r01/implementation/deep_implement_config.json",
+          "source_digest": "adcbb92e458d562c2b368d928c8f2341424f4e6835bcfdb294880f31dba821cb",
+          "value": "checkpointed"
+        },
         {
           "authority": "AUTHOR_ASSERTION_CANDIDATE",
           "claim_kind": "SECTION_STATUS_ASSERTION",

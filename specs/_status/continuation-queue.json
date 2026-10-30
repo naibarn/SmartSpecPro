@@ -3779,8 +3779,8 @@
     {
       "authority": "UNRESOLVED",
       "confidence": "LOW",
-      "declared_claim_count": 3,
-      "next_action": "Local authenticated development UAT now passes for exact-thread restore and the account-wide Mission Control overview, including zero 5xx from chat.listRecentConversationThreads and workerJobs.observability. Continue the global cross-host Thread/Agent graph with immutable multi-source replay/gap recovery. For the hosted 500, obtain authenticated correlated server traces plus immutable serving revision; do not infer from local UAT. SPEC-224 has no durable Goal/Run/Job in smartspec_dev tenant-001; resume only an existing real Task Control Goal, then verify live Child 1/2 receipts, settlement, automatic continuation, and Independent Final Verify.",
+      "declared_claim_count": 6,
+      "next_action": "Authenticated Workspace 2.0 UAT remains open: public dev browser acceptance stopped on tenant Home/logo 404 and synthetic dev Admin login returned 401. Restore an authorized dev login, then verify Chat, Task Control and Mission Control at desktop/mobile widths. Afterwards validate live lifecycle evidence, multi-Harness targeting, and execution tabs from canonical records. SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify remain separate required evidence.",
       "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub",
