@@ -24,7 +24,8 @@ const INSPECTOR_TABS = [
   { id: "diff", label: "Diff", icon: GitBranch },
   { id: "tests", label: "Tests", icon: FlaskConical },
   { id: "artifacts", label: "Artifacts", icon: Package },
-  { id: "usage", label: "Usage & receipts", icon: ReceiptText },
+  { id: "usage", label: "Usage", icon: Gauge },
+  { id: "receipts", label: "Receipts", icon: ReceiptText },
 ] as const;
 
 type InspectorTab = (typeof INSPECTOR_TABS)[number]["id"];
@@ -414,7 +415,16 @@ export function UnifiedWorkspaceInspector({
                     {detail.usage.coverage.reason}
                   </p>
                 </section>
-                {detail.usage.receipts.map(receipt => (
+              </>
+            ) : (
+              <EmptyEvidence label={job ? unavailable : noRun} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="receipts" className="mt-0 space-y-3">
+            {job && detail ? (
+              detail.usage.receipts.length ? (
+                detail.usage.receipts.map(receipt => (
                   <section
                     key={`${receipt.identity.scope}:${receipt.identity.consumptionId}`}
                     className="rounded-lg border border-border p-3"
@@ -428,13 +438,28 @@ export function UnifiedWorkspaceInspector({
                       {receipt.asOf}
                     </p>
                   </section>
-                ))}
-                {!detail.usage.receipts.length ? (
-                  <EmptyEvidence label="No execution receipts have been recorded." />
-                ) : null}
-              </>
+                ))
+              ) : (
+                <EmptyEvidence label="No execution receipts have been recorded." />
+              )
             ) : (
               <EmptyEvidence label={job ? unavailable : noRun} />
+            )}
+          </TabsContent>
+
+          <TabsContent value="verify" className="mt-0 space-y-3">
+            {job && detail?.acceptance?.evidence?.length ? (
+              <>
+                <h3 className="font-medium">Recorded verification evidence</h3>
+                {detail.acceptance.evidence.map((item, index) => (
+                  <section key={`${item.kind}-${index}`} className="rounded-lg border border-border p-3">
+                    <p className="text-sm font-medium">{item.kind}</p>
+                    <p className="mt-1 break-all text-xs text-muted-foreground">{item.reference}</p>
+                  </section>
+                ))}
+              </>
+            ) : (
+              <EmptyEvidence label={job ? "Independent verification has not been reported for this run." : noRun} />
             )}
           </TabsContent>
         </VStack>

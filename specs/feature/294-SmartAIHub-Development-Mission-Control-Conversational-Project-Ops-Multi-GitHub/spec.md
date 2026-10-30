@@ -4,8 +4,8 @@
 **Status:** Proposed / Additive implementation-ready specification  
 **Spec ID:** 294  
 **Stable semantic identity:** `smartaihub.development-mission-control-conversational-project-ops`  
-**Revision:** R1.7 — 74-pass cumulative production audit; evidence-grade correlation, bulk-action fencing, non-authoritative operator annotations, Mission-Control/Platform-Operations UI ownership, source-trust readiness, governance-fenced merge readiness, operational-change linkage, incident causality confidence, bitemporal history and durable proof snapshots hardened
-**Date:** 2026-10-06  
+**Revision:** R2.0 — full-page application workspace correction and primary entry-point replacement
+**Date:** 2026-10-30
 **Target repository path:** `specs/feature/294-development-mission-control-conversational-project-ops/spec.md`  
 **Primary product surface:** SmartAIHub Task Control / Development Mission Control + SmartAIHub Chat  
 **Primary architectural role:** Federated operations read-model, status intelligence, query and control façade  
@@ -4165,3 +4165,19 @@ REQ-294-UW2-04: Mission Control SHALL expose concurrently active authorized Harn
 REQ-294-UW2-05: The right inspector SHALL expose available timeline/activity, terminal, files/diff, tests, artifacts, browser controls, usage/receipts, and final verification through existing authorities; absent evidence SHALL be labeled rather than synthesized.
 REQ-294-UW2-06: The prior application remains accessible through a named advanced/legacy entry while replacement functionality is migrated. Production behavior and canonical runtime authorities remain unchanged.
 REQ-294-UW2-07: Development publication and source readiness shall be reported independently from owner visual/functional acceptance and SPEC-224 live acceptance. Production deployment is out of scope.
+
+## 63. P0 application entry-point correction (2026-10-30)
+
+The owner rejected the prior visible delivery because the assistant modal could remain mounted over `/chat`, hiding the full-page route and making its implementation appear unchanged. This section clarifies delivery for Sections 61–62 and supersedes any UI implementation that routes primary Chat, Task Control, or Mission Control navigation through the assistant modal.
+
+The authenticated `/chat` route is the primary application workspace. The global assistant launcher MUST unmount on `/chat` so an already-open modal cannot cover or reopen over the workspace after navigation. It may remain a compact quick-chat surface on embedded, non-workspace routes. Primary application navigation MUST resolve to full-page Chat, Task Control, or Mission Control views; legacy `panel=control-plane` and `panel=mission-control` Chat URLs MUST resolve to the equivalent full-page view while preserving conversation/thread identity. Browser-session and other explicitly legacy functions may retain their named legacy route.
+
+The full-page shell MUST provide persistent application navigation, visible Project/Session navigation in Chat, a flexible primary pane, and a contextual inspector. At narrow widths, application navigation MUST use the AppShell mobile navigation and Session/Inspector panels MUST open on demand without retaining a multi-column squeeze or nested modal-sized page. Chat's empty state MUST offer an actionable start/resume instruction rather than a large blank card.
+
+Task Control MUST select a Project before showing its Goal/execution lifecycle. Mission Control MUST let the operator filter the same canonical execution records by Harness, Agent, and Runner, select any matching Run, and preserve selected/open Run identity in the URL. The event/output inspector MUST show the available canonical evidence and truthful empty states, including a distinct Verify view. Filters and tabs are views only and MUST NOT create or dispatch work.
+
+REQ-294-P0-WORKSPACE-01: Main navigation and old Chat-control links MUST open the full-page workspace; the global assistant modal MUST NOT cover `/chat`.
+REQ-294-P0-WORKSPACE-02: Chat MUST render independently from the modal wrapper while reusing the established persisted conversation, thread, ChatView, and inspector contracts.
+REQ-294-P0-WORKSPACE-03: Desktop MUST expose application navigation, Project/Session navigation, work area, and contextual inspector; narrow screens MUST switch secondary panes to on-demand drawers.
+REQ-294-P0-WORKSPACE-04: Mission Control's Harness/Agent/Runner filters MUST change the visible canonical Run set, and a Run selection MUST be directly addressable and restorable.
+REQ-294-P0-WORKSPACE-05: Delivery reporting MUST distinguish integrated source, development runtime, owner UAT, and SPEC-224 live acceptance. No production deployment is authorized by this correction.

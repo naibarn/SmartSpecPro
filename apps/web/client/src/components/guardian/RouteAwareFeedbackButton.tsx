@@ -18,6 +18,11 @@ function RouteAwareFeedbackButtonContent() {
   const [loginAssistantRequested, setLoginAssistantRequested] = useState(false);
   const pathname = location.split(/[?#]/, 1)[0].replace(/\/+$/, "") || "/";
 
+  // /chat is the primary full-page workspace. Keeping the floating assistant
+  // mounted there can reopen its modal over the page after navigation from an
+  // embedded chat entry, making the real workspace appear unchanged.
+  if (pathname === "/chat") return null;
+
   if (pathname.toLowerCase() === "/login") {
     if (loginAssistantRequested) {
       return <FeedbackButton initiallyOpen />;

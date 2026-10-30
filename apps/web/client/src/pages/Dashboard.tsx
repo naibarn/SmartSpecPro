@@ -3267,7 +3267,7 @@ export default function Dashboard() {
                   chatData.conversations.slice(0, 5).map((conv, index) => (
                     <button
                       key={conv.id}
-                      onClick={() => setLocation("/chat")}
+                      onClick={() => setLocation(`/chat?c=${conv.id}`)}
                       className={`w-full text-left px-4 py-3 transition-colors hover:bg-slate-50/70 ${
                         index !== Math.min(chatData.conversations.length, 5) - 1
                           ? "border-b border-gray-100"

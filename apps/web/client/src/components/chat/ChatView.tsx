@@ -6182,10 +6182,10 @@ export function ChatView({
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : messagesQuery.error && !messagesData ? null : messages.length === 0 && !streamingContent ? (
-            <div className="flex min-h-[55vh] flex-col items-center justify-center rounded-[var(--radius-page)] border border-dashed border-[var(--color-border)] bg-[var(--color-background-surface)] px-4 py-10 text-center shadow-[var(--shadow-low)] sm:py-16">
-              <h3 className="text-lg font-medium">Start a conversation</h3>
-              <p className="text-sm text-muted-foreground">
-                Type a message below to begin
+            <section aria-label="New conversation" className="flex min-h-[30vh] flex-col items-center justify-center px-6 py-8 text-center">
+              <h3 className="text-xl font-semibold">What would you like to work on?</h3>
+              <p className="mt-2 max-w-lg text-sm text-muted-foreground">
+                Send a prompt to start this session, or choose a saved thread from the left. Your run, files, tests, and receipts will appear in the inspector when available.
               </p>
               {showBrowserSessionEntry ? (
                 <div className="mt-4 flex w-full flex-col items-stretch justify-center gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
@@ -6211,7 +6211,7 @@ export function ChatView({
                   />
                 </div>
               ) : null}
-            </div>
+            </section>
           ) : (
             <>
               {messages.map(m => {

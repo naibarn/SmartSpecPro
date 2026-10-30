@@ -58,8 +58,8 @@ describe("UnifiedWorkspace", () => {
   it("renders the full workspace navigation and persistent session/inspector panes", () => {
     render(<UnifiedWorkspace />);
     expect(screen.getByRole("navigation", { name: "SmartAIHub workspace navigation" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Task Control" })).toHaveAttribute("href", "/chat?mode=tasks");
-    expect(screen.getByRole("link", { name: "Mission Control" })).toHaveAttribute("href", "/chat?mode=mission");
+    expect(screen.getAllByRole("link", { name: "Task Control" }).some(link => link.getAttribute("href") === "/chat?mode=tasks")).toBe(true);
+    expect(screen.getAllByRole("link", { name: "Mission Control" }).some(link => link.getAttribute("href") === "/chat?mode=mission")).toBe(true);
     expect(screen.getByRole("navigation", { name: "Saved sessions" })).toBeTruthy();
     expect(screen.getByRole("region", { name: "Conversation canvas" })).toBeTruthy();
     expect(screen.getByRole("complementary", { name: "Execution inspector" })).toBeTruthy();
@@ -79,7 +79,7 @@ describe("UnifiedWorkspace", () => {
     state.search = "mode=mission";
     render(<UnifiedWorkspace />);
     expect(screen.getByRole("heading", { name: "Mission Control" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Pilot implementation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Pilot implementation · running" }));
     expect(screen.getByRole("heading", { name: "Pilot implementation" })).toBeTruthy();
     expect(state.location).toHaveBeenCalledWith(expect.stringContaining("jobId=job-secret-id"));
     expect(state.location).toHaveBeenCalledWith(expect.stringContaining("jobIds=job-secret-id"));
@@ -87,6 +87,29 @@ describe("UnifiedWorkspace", () => {
     expect(screen.getByText("Running verified tests")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Close view Pilot implementation" }));
     expect(screen.queryByRole("button", { name: "Close view Pilot implementation" })).toBeNull();
-    expect(screen.getByText("Debian Development Runner")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Debian Development Runner" })).toBeTruthy();
+  });
+
+  it("routes legacy Task Control URLs into the full-page workspace", () => {
+    state.search = "panel=control-plane&view=full&c=901";
+    render(<UnifiedWorkspace />);
+    expect(state.location).toHaveBeenCalledWith("/chat?view=full&c=901&mode=tasks");
+  });
+
+  it("persists the selected Project in the URL while retaining its conversation and thread", () => {
+    state.search = "mode=tasks&c=901&t=thread-1";
+    state.jobs = [job, { ...job, id: "job-2", projectId: "Other project", threadTitle: "Other project task", conversationId: null }];
+    render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Other project" }));
+    expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&projectId=Other+project&c=901&t=thread-1");
+  });
+
+  it("filters mission executions by harness, agent, and runner", () => {
+    state.search = "mode=mission";
+    render(<UnifiedWorkspace />);
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by runner" }), { target: { value: "runner-1" } });
+    expect(screen.getByRole("button", { name: "Pilot implementation · running" })).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter by agent" }), { target: { value: "different agent" } });
+    expect(screen.getByText("ไม่มี Run ตรงกับตัวกรองนี้")).toBeTruthy();
   });
 });

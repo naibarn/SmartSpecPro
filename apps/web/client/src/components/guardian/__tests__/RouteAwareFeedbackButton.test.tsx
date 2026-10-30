@@ -59,4 +59,10 @@ describe("RouteAwareFeedbackButton", () => {
       ).toBeInTheDocument()
     );
   });
+
+  it("does not mount the quick-chat modal over the primary full-page workspace", () => {
+    routeState.location = "/chat?c=249";
+    render(<RouteAwareFeedbackButton />);
+    expect(screen.queryByRole("button", { name: "Feedback launcher" })).not.toBeInTheDocument();
+  });
 });
