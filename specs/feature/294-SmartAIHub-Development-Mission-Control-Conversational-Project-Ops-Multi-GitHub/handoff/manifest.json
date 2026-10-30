@@ -2,31 +2,10 @@
   "acceptance": {
     "evidence": [
       {
-        "kind": "THREAD_OBSERVABILITY_REGRESSION_AND_RUNTIME_RECHECK",
-        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/thread-observability-db-and-uat-recheck-20261029.md",
-        "scope": "Focused PostgreSQL thread/observability tests 12/12; local authenticated Mission Control overview UAT 1/1; both service schemas contain required thread tables/columns; hosted authenticated browser unavailable; no real SPEC-224 Goal exists in tenant-001.",
-        "source_sha": "731ac46ebb62f9775b98947edcf9d5f248662b83",
-        "status": "PARTIAL"
-      },
-      {
-        "kind": "SPEC_HANDOFF_LARGE_JSON_ARGUMENT_FIX",
-        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/spec-handoff-large-json-cli-fix-20261029.md",
-        "scope": "CLI safely accepts large inline changes JSON or a file path; 17 focused handoff CLI/store tests passed. The broad tools/spec_handoff suite retains six pre-existing classification/skill-contract failures.",
-        "source_sha": "bf3172b169cb3c637e6c04c6b645a4d88f5c8ad7",
-        "status": "PARTIAL"
-      },
-      {
-        "kind": "SPEC_HANDOFF_TOOLCHAIN_REGRESSION_RECHECK",
-        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/thread-observability-db-and-uat-recheck-20261029.md",
-        "scope": "Spec Handoff unit suite 86/86; local Mission Control overview UAT 1/1; live schemas complete. Hosted authenticated browser unavailable; SPEC-256 duplicate canonical ID remains an explicit cross-repository classification blocker.",
-        "source_sha": "aaed89a5e4bb0235232ddb7a5c88839c5013e234",
-        "status": "PARTIAL"
-      },
-      {
-        "kind": "UNIFIED_WORKSPACE_RUNTIME_UAT_RECHECK",
-        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-runtime-uat-20261030.md",
-        "scope": "Authenticated synthetic development session verified Mission Control navigation, Task Control route, child-thread transcript restore after reload, and HTTP 200 from chat.getMessages, chat.listRecentConversationThreads, and workerJobs.observability. Hosted authentication/500 reproduction and real live execution remain unverified.",
-        "source_sha": "6e2b61929a019abaf9e332adaa35ac36c8036d93",
+        "kind": "CHAT_RIGHT_OUTPUT_DOCK_FOCUSED_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/chat-output-dock-20261030.md",
+        "scope": "Integrated persistent desktop Inspector dock and responsive Inspector/Artifacts/Browser controls; existing authorized read models/session authority; focused 41/41 tests and production-mode Vite build. Hosted browser acceptance and live execution evidence remain unverified.",
+        "source_sha": "beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41",
         "status": "PARTIAL"
       }
     ],
@@ -50,14 +29,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "6e2b61929a019abaf9e332adaa35ac36c8036d93",
-    "expected_spec_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a"
+    "expected_canonical_sha": "beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41",
+    "expected_spec_digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f"
   },
   "continuation": {
-    "next_action": "Use a valid authenticated development browser session on aimarkethubs.com to reproduce chat.getMessages and workerJobs.observability, capture request IDs and dev-service exceptions, and repair the first failing hosted boundary. Then validate execution evidence panels against a real authorized Run. Keep SPEC-224 open until genuine Child 1/2 receipts, settlement, and independent Final Verify exist. Do not deploy production.",
+    "next_action": "Run authenticated development browser acceptance at desktop and mobile widths for the integrated Chat Inspector/Artifacts/Browser dock, then validate populated panels against a real authorized Run. Do not claim hosted serving or SPEC-224 execution acceptance until verified; keep genuine Child 1/2 receipts, settlement and Independent Final Verify as SPEC-224 exit criteria.",
     "next_ready_workunit": "P0_INTERNAL_GAP_CLOSURE",
     "reactivation_predicate": null,
-    "resume_point": "Code checkpoint 6e2b61929a019abaf9e332adaa35ac36c8036d93 is integrated. Local authenticated UAT confirms Chat thread restore, Mission Control navigation to Task Control, and HTTP 200 for chat.getMessages, chat.listRecentConversationThreads, and workerJobs.observability using the development UAT broker. UAT no longer fails on stale CommonJS source resolution. The reported hosted 500s remain unreproduced because a valid hosted authenticated development session and correlated server exceptions are unavailable; hosted acceptance is still PARTIAL. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-runtime-uat-20261030.md. No live Goal or SPEC-224 execution receipts were observed.",
+    "resume_point": "Final Chat output dock source is integrated at beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41. Focused tests passed 41/41 and a Vite client build passed to /tmp. Hosted authenticated browser acceptance and service deployment are not verified. See handoff/evidence/chat-output-dock-20261030.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -168,13 +147,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 130,
+  "generation": 136,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-    "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+    "digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-29T16:42:45.114793Z",
+      "last_evidence_at": "2026-10-30T00:47:06.068494Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-10-06T16:35:35+07:00",
       "spec_last_changed_at": "2026-10-07T00:34:05+07:00"
@@ -303,9 +282,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6e2b61929a019abaf9e332adaa35ac36c8036d93",
+    "canonical_sha": "beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41",
     "integrated": true,
-    "integrated_at": "2026-10-30T00:17:30Z"
+    "integrated_at": "2026-10-30T08:06:00+07:00"
   },
   "lifecycle": {
     "current_state": "PARTIAL_INTEGRATED",
@@ -1189,6 +1168,32 @@
           }
         ],
         "verification_method": "Run authenticated isolated development Playwright at desktop/tablet/mobile and assert zero 5xx for chat.listRecentConversationThreads and workerJobs.observability; hosted errors require correlated authenticated traces and immutable serving revision."
+      },
+      "REQ-F7FDF8338856": {
+        "applicability": "APPLICABLE",
+        "authority_refs": [
+          "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4095"
+        ],
+        "authority_source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#L4095",
+        "blocker": "Hosted authenticated browser acceptance and validation against a populated real authorized Run remain pending.",
+        "current_relevance": "CURRENT",
+        "evidence_freshness": "FRESH",
+        "evidence_sha": "beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41",
+        "final_state": "PARTIAL",
+        "implementation_evidence": [
+          "Integrated at beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41: Chat has a persistent responsive Inspector/Artifacts/Browser dock, backed by existing thread/worker observability and browser-session authorities. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/chat-output-dock-20261030.md."
+        ],
+        "implementation_status": "PARTIAL",
+        "next_action": "Perform authenticated development browser acceptance at desktop and mobile widths; verify exact-thread scoping and live Artifacts/Browser controls against a real authorized run.",
+        "requirement_digest": "660a5e42a53cc05e601732c7b8e896463f6469c798042d34d84ec13496575e66",
+        "requirement_id": "REQ-F7FDF8338856",
+        "requirement_text": "Chat's desktop workspace SHALL reserve a persistent far-right dock for the selected thread's live execution inspector and output surfaces. The dock SHALL provide direct access to verified artifacts and Browser Control alongside run overview, activity, terminal, changed files, diff, tests, usage and receipts. Smaller screens SHALL retain equivalent controls through an accessible panel launcher. Every panel MUST use the existing authorized conversation/thread/run read models and browser-session authority; empty, stale, unavailable or unauthorized evidence MUST be labeled accurately. This is a presentation surface only and MUST NOT create a second artifact store, browser runtime, job ledger or execution authority.",
+        "source_spec_digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f",
+        "successor_mapping": [],
+        "verification_evidence": [
+          "Focused Vitest 3 files / 41 tests passed; Vite production-mode build passed to /tmp/smartspec-ui-p0-build-final2. Hosted authenticated desktop/mobile acceptance and populated real-run evidence are not yet verified. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/chat-output-dock-20261030.md."
+        ],
+        "verification_method": "Focused Vitest for Chat browser-session/dock behavior, Task Control observability summary and execution activity; production-mode Vite build. Hosted browser acceptance remains separately required."
       }
     }
   },
@@ -1200,10 +1205,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-29T16:42:45.114793Z",
+    "reconciled_at": "2026-10-30T00:47:06.068494Z",
     "sources": [
       {
-        "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+        "digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
       },
@@ -1328,7 +1333,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 4,
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-        "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+        "source_digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
@@ -1385,14 +1390,14 @@
         "excerpt": "**Status:** Proposed / Additive implementation-ready specification",
         "line": 4,
         "source": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
-        "source_digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+        "source_digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f",
         "value": "Proposed / Additive implementation-ready specification"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "5ad280c6169ca56cad76d9e1d13c197fceb3d0531d05f66f3d4396d22fa6094a",
+        "digest": "e3da54f7fd4705e1b86d7182b9623a6bc0b0bd9d676e4ebf260c4825482e216f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md"
       },
@@ -1488,27 +1493,27 @@
     "successor_or_supersession": "UNASSESSED"
   },
   "requirements_summary": {
-    "applicable": 11,
+    "applicable": 12,
     "blocked_true_external": 0,
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 504,
-    "unresolved": 504
+    "total": 505,
+    "unresolved": 505
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T00:18:28.679140Z",
+  "updated_at": "2026-10-30T00:55:23.433394Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
-      "Focused Vitest: 5 files / 49 tests passed on implementation commit b0639dcd3c3ac3b7cbeedc7bdcdb427a458fda64; canonical tip 982ed9760c63ce57d12a5d9f7dc5cb4a3c55f94b contains the same source plus this handoff update.",
-      "Development runtime restarted at 2026-10-30 07:02:58 +07; journal reports source revision 982ed9760c63ce57d12a5d9f7dc5cb4a3c55f94b-dirty on port 3100/databaseMode=development. The dirty suffix is due to preserved unrelated edits.",
-      "Hosted development health HTTP 200 and transformed client module confirmed at aimarkethubs.com; authenticated UI acceptance remains BROWSER_UAT_BLOCKED after auth.login HTTP 401.",
-      "Authenticated local Chromium UAT run b22cecf9-7641-43ba-87c9-6a344f2a8f41: Mission Control navigation and chat.getMessages/chat.listRecentConversationThreads/workerJobs.observability returned HTTP 200; 2/2 browser tests and 11/11 focused Vitest passed. This does not reproduce the hosted 500s or prove live execution. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/unified-workspace-runtime-uat-20261030.md."
+      "Chat right output dock checkpoint beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41: focused Vitest 3 files / 41 tests passed; Vite production-mode client build passed to /tmp/smartspec-ui-p0-build-final2. Build warning is a duplicate object key in unrelated dirty VerticalDramaEpisodePage.tsx; no source changes made there.",
+      "No service restart/deployment or hosted authenticated browser acceptance was performed. See specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/chat-output-dock-20261030.md."
     ],
-    "freshness": "UNKNOWN",
-    "required_profiles": [],
-    "sha": "6e2b61929a019abaf9e332adaa35ac36c8036d93",
+    "freshness": "FRESH",
+    "required_profiles": [
+      "package"
+    ],
+    "sha": "beb65b4fdf6821a5dd2aa453483d7fa55a4d4c41",
     "status": "PARTIAL",
     "task_regressions": []
   }
