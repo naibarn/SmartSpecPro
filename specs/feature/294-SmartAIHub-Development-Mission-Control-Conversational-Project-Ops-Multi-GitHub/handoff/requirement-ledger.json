@@ -1,5 +1,5 @@
 {
-  "generation": 27,
+  "generation": 28,
   "reconciliation_version": 3,
   "requirements": [
     {
@@ -12223,7 +12223,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+      "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -12249,7 +12249,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+      "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -12275,7 +12275,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+      "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -12301,7 +12301,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+      "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -12327,7 +12327,7 @@
       "blocker": null,
       "current_relevance": "ACTIVE",
       "evidence_freshness": "FRESH",
-      "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+      "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
       "final_state": "PARTIAL",
       "implementation_evidence": [
         "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."

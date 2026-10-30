@@ -28,6 +28,13 @@
         "scope": "Project/Goal Task Control and multi-Harness Mission Control UI implemented in the full-page AppShell. Focused workspace tests 6/6 and production-mode main+widget build passed. smartspec-dev-web.service restarted on aimarkethubs development checkout; public route and task-owned Vite modules returned HTTP 200. Authenticated owner visual/functional UAT and live Harness execution remain pending.",
         "source_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "OWNER_WORKSPACE_2_BROWSER_CONTROL_AND_FINAL_DEV_RUNTIME_CHECKPOINT",
+        "path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md",
+        "scope": "Restored existing Browser control entry in full-page Chat with a regression assertion. Focused workspace tests 6/6, production-mode main+widget build and MapLibre verification passed; aimarkethubs.com dev service restarted at this revision, and all three workspace routes plus transformed workspace modules returned HTTP 200. Owner visual/functional UAT and SPEC-224 live Harness acceptance remain pending.",
+        "source_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -50,14 +57,14 @@
   },
   "blockers": [],
   "concurrency": {
-    "expected_canonical_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+    "expected_canonical_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
     "expected_spec_digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b"
   },
   "continuation": {
-    "next_action": "OWNER_UAT_PENDING: review the updated full-page Chat, Project/Goal Task Control, and Mission Control sections on https://aimarkethubs.com/chat. Verify project/session/thread navigation, Harness/Agent/Runner filters and run inspector using authenticated records, then report visual/functional feedback. Keep SPEC-224 live Harness acceptance tracked separately.",
+    "next_action": "OWNER_UAT_PENDING: review Chat, Project/Goal Task Control, Mission Control, and the restored Browser control on https://aimarkethubs.com/chat. Verify saved Session/Thread navigation, Project assignment and lifecycle mapping, Harness/Agent/Runner filters, and contextual run evidence using authorized records. Keep SPEC-224 live Harness acceptance separate.",
     "next_ready_workunit": "WORKSPACE_2_OWNER_VISUAL_UAT_AND_REMAINING_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Workspace 2.0 Project/Goal Task Control and multi-Harness Mission Control implementation is integrated at ae0e4e688724f859a8faaf70d06ebec2835caaac. smartspec-dev-web.service restarted successfully for the aimarkethubs.com development tenant; /chat and task-owned transformed modules returned HTTP 200. Focused tests passed 6/6 and the main+widget production build passed. Authenticated owner visual/functional UAT, authorized record mapping confirmation, and live Harness execution remain pending. Evidence: handoff/evidence/owner-visual-review-20261030.md.",
+    "resume_point": "Final development UI revision dd411780ea4b378e69ce314af267145e93ad99fb is integrated and served by smartspec-dev-web.service for aimarkethubs.com. Full-page Chat includes its existing Browser control; Project/Goal Task Control and multi-Harness Mission Control are available. Focused test 6/6 and production-mode main+widget build passed; routes and transformed source modules returned HTTP 200. Authenticated owner visual/functional UAT and SPEC-224 live Harness acceptance remain pending. See handoff/evidence/owner-visual-review-20261030.md.",
     "waiting_predicate": null
   },
   "continuation_assessment": {
@@ -175,7 +182,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 147,
+  "generation": 149,
   "identity": {
     "canonical_path": "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md",
     "digest": "c6e2c49052a2c008a2bf9d19cca47f4a43a07909dc559d52798e45c7d0c2d18b",
@@ -323,7 +330,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+    "canonical_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
     "integrated": true,
     "integrated_at": "2026-10-30T10:44:15+07:00"
   },
@@ -981,7 +988,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+        "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -1007,7 +1014,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+        "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -1033,7 +1040,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+        "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -1059,7 +1066,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+        "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -1085,7 +1092,7 @@
         "blocker": null,
         "current_relevance": "ACTIVE",
         "evidence_freshness": "FRESH",
-        "evidence_sha": "ae0e4e688724f859a8faaf70d06ebec2835caaac",
+        "evidence_sha": "dd411780ea4b378e69ce314af267145e93ad99fb",
         "final_state": "PARTIAL",
         "implementation_evidence": [
           "specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/handoff/evidence/owner-visual-review-20261030.md# Project/Goal Task Control and multi-Harness Mission Control are implemented in the full-page AppShell; legacy work stays separate and lifecycle states remain evidence-based."
@@ -1862,7 +1869,7 @@
     "unresolved": 547
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T04:39:07.776890Z",
+  "updated_at": "2026-10-30T04:44:23.953546Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
