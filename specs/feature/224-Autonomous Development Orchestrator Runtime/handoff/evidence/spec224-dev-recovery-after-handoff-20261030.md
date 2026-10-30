@@ -21,3 +21,7 @@ A handoff-only commit after a dev deployment advances `HEAD` without changing ru
 ## Acceptance boundary
 
 This release contains the Guided First Run and recovery changes; it does not claim authenticated Admin UAT or a live execution. No Goal, Approval, DevelopmentRun, Job, Attempt, grant, or simulated receipt was created. Maintain `FEATURE_DEPLOYED / LIVE_GOAL_PENDING` until a genuine owner-approved Goal produces real Child 1/2 receipts, settlement, and Independent Final Verify.
+
+## Restart recovery verification
+
+After the evidence/handoff-only commit `3f35be219e815ed7b1d8883393f2874ca4cb22fd` advanced `HEAD` beyond the deployed artifact source, `systemctl --user restart smartspec-dev-web.service` completed. The launcher accepted the pinned `bb5c0746…` artifact, the unit became active, local `/healthz` returned `{"status":"ok"}`, and public `aimarkethubs.com/healthz` and `/chat` returned HTTP 200. This validates the handoff-only restart path against the running development service; production units and the generation-251 pointer were not restarted or changed.
