@@ -706,18 +706,29 @@ export function createCloudflareStagingApiTransport(input: {
       }
       let spaReady = false;
       if (healthy) {
-        try {
-          const page = await fetchImpl(baseUrl, { redirect: "manual", signal: AbortSignal.timeout(10000) });
-          if (page.status === 200 && page.headers.get("content-type")?.startsWith("text/html")) {
-            const html = await page.text();
-            const script = /<script[^>]+src=["'](\/assets\/[^"']+\.js)["']/i.exec(html)?.[1];
-            if (html.includes('id="root"') && script && !script.includes("..") && !script.includes("\\")) {
-              const javascript = await fetchImpl(new URL(script, baseUrl), { redirect: "manual", signal: AbortSignal.timeout(10000) });
-              spaReady = javascript.status === 200 && /(?:javascript|ecmascript)/i.test(javascript.headers.get("content-type") ?? "");
-              await javascript.body?.cancel();
+        // Cloudflare can report a newly-created Worker healthy before its
+        // uploaded static assets are available at the workers.dev edge. Retry
+        // only transient transport/propagation failures; malformed HTML and
+        // incorrect MIME types remain immediate acceptance failures.
+        for (let attempt = 0; attempt < 4; attempt++) {
+          let retryable = false;
+          try {
+            const page = await fetchImpl(baseUrl, { redirect: "manual", signal: AbortSignal.timeout(10000) });
+            if (page.status === 404 || page.status >= 500) retryable = true;
+            if (page.status === 200 && page.headers.get("content-type")?.startsWith("text/html")) {
+              const html = await page.text();
+              const script = /<script[^>]+src=["'](\/assets\/[^"']+\.js)["']/i.exec(html)?.[1];
+              if (html.includes('id="root"') && script && !script.includes("..") && !script.includes("\\")) {
+                const javascript = await fetchImpl(new URL(script, baseUrl), { redirect: "manual", signal: AbortSignal.timeout(10000) });
+                spaReady = javascript.status === 200 && /(?:javascript|ecmascript)/i.test(javascript.headers.get("content-type") ?? "");
+                retryable = javascript.status === 404 || javascript.status >= 500;
+                await javascript.body?.cancel();
+              }
             }
-          }
-        } catch { /* An inaccessible or download-only SPA is not accepted. */ }
+          } catch { retryable = true; }
+          if (spaReady || !retryable || attempt === 3) break;
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
         const after = await api<{ deployments?: Deployment[] }>(token,
           `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
         if (after.deployments?.[0]?.id !== deploymentId) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");

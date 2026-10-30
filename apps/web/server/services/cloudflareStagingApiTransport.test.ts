@@ -476,6 +476,30 @@ describe("Cloudflare staging API transport", () => {
       url: "https://smartspec-cloudflare-staging.account-test.workers.dev" })).toMatchObject({ reachable: false, verificationFailure: "spa", healthStatus: 200 });
   });
 
+  it("retries a transient SPA asset propagation failure after the Worker is healthy", async () => {
+    let assetAttempts = 0;
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/workers/subdomain")) return json({ subdomain: "account-test" });
+      if (url.endsWith(`/deployments/${deploymentId}`)) return json({ id: deploymentId, versions: [{ version_id: versionId, percentage: 100 }] });
+      if (url.endsWith(`/versions/${versionId}`)) return json({ id: versionId, annotations: { "workers/message": `SmartAIHub staging ${sourceSha} ${buildDigest}` } });
+      if (url.endsWith("/deployments")) return json({ deployments: [{ id: deploymentId }] });
+      if (url.endsWith("/healthz")) return Response.json({ ok: true, service: "smartspec-cloudflare-runtime" });
+      if (url.endsWith("/")) return new Response(assetBytes, { headers: { "Content-Type": "text/html" } });
+      if (url.endsWith("/assets/app.js")) {
+        assetAttempts += 1;
+        if (assetAttempts === 1) return new Response("Not ready", { status: 503 });
+        return new Response("export default {}", { headers: { "Content-Type": "application/javascript" } });
+      }
+      throw new Error(`Unexpected request ${url}`);
+    }) as typeof fetch;
+    const transport = createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl });
+    const result = await transport.verifyRuntime({ token: "private", target, deploymentId, sourceSha, buildDigest,
+      url: "https://smartspec-cloudflare-staging.account-test.workers.dev" });
+    expect(result).toMatchObject({ reachable: true, deploymentId, sourceSha, buildDigest });
+    expect(assetAttempts).toBe(2);
+  });
+
 });
 
 
