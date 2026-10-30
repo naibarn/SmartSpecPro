@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 201 unresolved of 201
-- Next action: Windows review workflow 41071803159 is queued for full source SHA 50df3ea7c09476ed9ea706747977fd0ecbf414ff, unsigned version 0.2.49. Record native test results and artifact SHA-256, then validate the candidate on the already enrolled Windows host without replacing/re-enrolling the Runner. Confirm access refresh/rotation, reconnect, capability ACK, heartbeat, and preserved Runner/device/session identity. Historical 0.2.48 logs/source mapping remain unavailable; do not over-attribute the incident. Keep Debian SPEC-224 Pilot separate.
-- Manifest generation: 41
+- Next action: The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.
+- Manifest generation: 42
 
 ## Source-declared status and relationship claims
 

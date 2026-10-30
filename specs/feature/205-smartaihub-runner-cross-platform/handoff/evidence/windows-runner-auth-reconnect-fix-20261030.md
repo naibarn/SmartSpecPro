@@ -3,7 +3,7 @@
 - WorkUnit: `SPEC205_WINDOWS_RUNNER_AUTH_RECONNECT_20261030`
 - Integrated source: `origin/main` at `50df3ea7c09476ed9ea706747977fd0ecbf414ff`
 - Installed owner Runner observed: `0.2.48`; exact source commit for that binary is not available in this checkout.
-- Windows review build: [workflow run 41071803159](https://github.com/naibarn/SmartSpecPro/actions/runs/41071803159), requested from full source SHA `50df3ea7c09476ed9ea706747977fd0ecbf414ff`, version `0.2.49`, platform `windows` (unsigned artifact only; queued/in progress).
+- Windows review build: [workflow run 41071803159](https://github.com/naibarn/SmartSpecPro/actions/runs/41071803159), source SHA `50df3ea7c09476ed9ea706747977fd0ecbf414ff`, version `0.2.49`, platform `windows` — succeeded. The unsigned review artifact is `SmartAIHub Runner_0.2.49_x64-setup.exe`, SHA-256 `cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2`.
 - Initial workflow attempt [41071550316](https://github.com/naibarn/SmartSpecPro/actions/runs/41071550316) failed at checkout because the short ref `50df3ea7c` was interpreted as a branch/tag pattern; no build or test step ran. Retried with the full SHA above.
 
 ## Failure boundary established from source and reproduction
@@ -43,6 +43,6 @@ The lifecycle regression simulates a real loopback WSS 401 with an unexpired loc
 
 ## Acceptance still outstanding
 
-- Confirm the Windows review workflow passed and record its installer SHA-256 and manifest.
-- The owner or authorized Windows host must install/test the candidate as a review build without overwriting or enrolling a different Runner. Verify refresh-token rotation, restart/network recovery, fresh heartbeat and capability acknowledgement on the existing enrollment. Do not mark runtime acceptance from CI/unit tests alone.
+- Download the unsigned review artifact from workflow run 41071803159. Verify its supplied checksum before use. The artifact is for the already enrolled Windows host only; owner/authorized installation is still needed.
+- On the existing enrollment, verify refresh-token rotation, restart/network recovery, fresh heartbeat and capability acknowledgement while preserving Runner/device/session identity. Do not mark runtime acceptance from CI/unit tests alone.
 - Keep the Debian SPEC-224 Pilot separate. Do not create a Goal or use its execution receipts as Windows lifecycle evidence.

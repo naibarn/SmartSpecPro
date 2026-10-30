@@ -35,3 +35,4 @@
 {"changes": ["continuation.next_action"], "event_type": "CURRENT_TRANSITION", "generation": 39, "observed_at": "2026-10-30T14:29:14.247018Z", "provenance": "OBSERVED"}
 {"changes": ["blockers", "continuation_assessment.next_action"], "event_type": "CURRENT_TRANSITION", "generation": 40, "observed_at": "2026-10-30T14:30:08.057165Z", "provenance": "OBSERVED"}
 {"changes": ["continuation.resume_point"], "event_type": "CURRENT_TRANSITION", "generation": 41, "observed_at": "2026-10-30T14:31:55.017810Z", "provenance": "OBSERVED"}
+{"changes": ["blockers", "continuation.next_action", "continuation_assessment.next_action"], "event_type": "CURRENT_TRANSITION", "generation": 42, "observed_at": "2026-10-30T14:54:30.306634Z", "provenance": "OBSERVED"}

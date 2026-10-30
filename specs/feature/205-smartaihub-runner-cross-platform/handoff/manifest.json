@@ -130,8 +130,8 @@
     {
       "class": "ACCEPTANCE",
       "id": "WINDOWS_WSS_ROTATION_REVIEW_CANDIDATE_PENDING",
-      "next_action": "Track workflow 41071803159 at full source SHA 50df3ea7c09476ed9ea706747977fd0ecbf414ff; after the unsigned review artifact and Windows tests pass, validate it on the existing enrolled Runner and capture fresh token refresh/rotation, reconnect, capability ACK, heartbeat, and identity-preservation evidence.",
-      "root_cause": "Current source defects at the reported boundary were reproduced and fixed in 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Windows review workflow 41071803159 is queued. Historical installed 0.2.48 logs and source mapping are unavailable, so the precise historical trigger and runtime acceptance remain unverified."
+      "next_action": "Use the unsigned review artifact from workflow 41071803159 after checksum verification; owner/authorized action is required to test on the existing Windows Runner enrollment. Capture refresh/rotation, reconnect, capability ACK, heartbeat, and identity-preservation evidence.",
+      "root_cause": "Source defects at the reported boundary were reproduced and fixed in 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Windows native tests, workspace binding, and unsigned review installer build passed in workflow 41071803159; artifact SHA-256 is cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2. Historical installed 0.2.48 logs/source mapping and live acceptance on the existing host remain unavailable."
     }
   ],
   "concurrency": {
@@ -139,7 +139,7 @@
     "expected_spec_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf"
   },
   "continuation": {
-    "next_action": "Track Windows review workflow 41071803159 at full source SHA 50df3ea7c09476ed9ea706747977fd0ecbf414ff (unsigned version 0.2.49). Record native test result and artifact SHA-256. Then perform runtime acceptance on the already enrolled Windows host without replacing or re-enrolling the Runner: verify access refresh/rotation, network and Control Plane reconnect, capability ACK, heartbeat, and preserved Runner/device/session identity. Historical 0.2.48 host logs/source mapping remain unavailable, so do not attribute the exact incident beyond reproduced source defects. Keep Debian SPEC-224 Pilot separate.",
+    "next_action": "The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.",
     "next_ready_workunit": "WINDOWS_WSS_ROTATION_REVIEW_BUILD_AND_ACCEPTANCE",
     "reactivation_predicate": null,
     "resume_point": "Source fix integrated at 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Linux verification: 244 runner unit tests passed, 8 runner integration tests passed, 4 focused desktop credential retry tests passed; 3 tests ignored and 8 unrelated desktop tests filtered. Node UI syntax and diff checks pass. Runner release UI/API GitHub checks passed. Windows x64 review workflow 41071803159 is in progress after its full-SHA checkout; owner-host runtime acceptance remains open. See specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-auth-reconnect-fix-20261030.md.",
@@ -255,7 +255,7 @@
         "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
       }
     ],
-    "next_action": "Windows review workflow 41071803159 is queued for full source SHA 50df3ea7c09476ed9ea706747977fd0ecbf414ff, unsigned version 0.2.49. Record native test results and artifact SHA-256, then validate the candidate on the already enrolled Windows host without replacing/re-enrolling the Runner. Confirm access refresh/rotation, reconnect, capability ACK, heartbeat, and preserved Runner/device/session identity. Historical 0.2.48 logs/source mapping remain unavailable; do not over-attribute the incident. Keep Debian SPEC-224 Pilot separate.",
+    "next_action": "The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -380,7 +380,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 41,
+  "generation": 42,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
@@ -649,7 +649,7 @@
           "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
         }
       ],
-      "next_action": "Windows review workflow 41071803159 is queued for full source SHA 50df3ea7c09476ed9ea706747977fd0ecbf414ff, unsigned version 0.2.49. Record native test results and artifact SHA-256, then validate the candidate on the already enrolled Windows host without replacing/re-enrolling the Runner. Confirm access refresh/rotation, reconnect, capability ACK, heartbeat, and preserved Runner/device/session identity. Historical 0.2.48 logs/source mapping remain unavailable; do not over-attribute the incident. Keep Debian SPEC-224 Pilot separate.",
+      "next_action": "The Windows review workflow 41071803159 passed for source 50df3ea7c09476ed9ea706747977fd0ecbf414ff. Unsigned review installer SmartAIHub Runner_0.2.49_x64-setup.exe is available in that workflow artifact; verify its SHA-256 cdf25374b26585200340ffe19c9f3fbe2c6a9bdd516fab316897d5f8ec31dcd2 before use. Owner/authorized installation and live reconnect validation on the already enrolled Windows Runner remain outstanding. Preserve Runner/device/session identity; verify token refresh, transient network/control-plane recovery, capability ACK, and heartbeat. Do not install another Runner or claim runtime acceptance from CI. Keep Debian SPEC-224 Pilot separate.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -1601,7 +1601,7 @@
     "unresolved": 201
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T14:31:55.017810Z",
+  "updated_at": "2026-10-30T14:54:30.306634Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
