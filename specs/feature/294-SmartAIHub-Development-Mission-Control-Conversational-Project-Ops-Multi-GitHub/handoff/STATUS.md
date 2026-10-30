@@ -4,13 +4,13 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `PARTIAL_INTEGRATED`
 - Continuation: `RECONCILIATION_REQUIRED` (HIGH)
-- Requirements: 0 pass / 505 unresolved of 505
-- Next action: Local authenticated development UAT now passes for exact-thread restore and the account-wide Mission Control overview, including zero 5xx from chat.listRecentConversationThreads and workerJobs.observability. Continue the global cross-host Thread/Agent graph with immutable multi-source replay/gap recovery. For the hosted 500, obtain authenticated correlated server traces plus immutable serving revision; do not infer from local UAT. SPEC-224 has no durable Goal/Run/Job in smartspec_dev tenant-001; resume only an existing real Task Control Goal, then verify live Child 1/2 receipts, settlement, automatic continuation, and Independent Final Verify.
-- Manifest generation: 137
+- Requirements: 0 pass / 535 unresolved of 535
+- Next action: Authenticated Workspace 2.0 UAT remains open: public dev browser acceptance stopped on tenant Home/logo 404 and synthetic dev Admin login returned 401. Restore an authorized dev login, then verify Chat, Task Control and Mission Control at desktop/mobile widths. Afterwards validate live lifecycle evidence, multi-Harness targeting, and execution tabs from canonical records. SPEC-224 Child 1/2 receipts, settlement, automatic continuation and Independent Final Verify remain separate required evidence.
+- Manifest generation: 140
 
 ## Source-declared status and relationship claims
 
 These are cited author/artifact claims for review; they do not set canonical status by themselves.
 
 - Status claim: `Proposed / Additive implementation-ready specification` — `specs/feature/294-SmartAIHub-Development-Mission-Control-Conversational-Project-Ops-Multi-GitHub/spec.md#4`
-- Deep-implement section claims (2): CHECKPOINTED: 2
+- Deep-implement section claims (3): CHECKPOINTED: 2, IN_PROGRESS: 1

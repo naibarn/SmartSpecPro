@@ -13,8 +13,22 @@
   ],
   "sections_state": {
     "section-01-fleet-state-and-entry": {
-      "status": "in_progress",
-      "next_action": "Inspect the Runner projection fields, then implement truthful fleet counts and a canonical Task Control start entry."
+      "status": "checkpointed",
+      "next_action": "Run authenticated owner UAT for Chat session/thread navigation and desktop/mobile layout; authenticate before claiming UI acceptance.",
+      "checkpoint_sha": "092d284ee582237e43959b9b092b3547b7a5fd7d",
+      "merged_main_sha": "092d284ee582237e43959b9b092b3547b7a5fd7d"
+    },
+    "section-02-multi-session-tabs-and-output": {
+      "checkpoint_sha": "092d284ee582237e43959b9b092b3547b7a5fd7d",
+      "status": "checkpointed",
+      "merged_main_sha": "092d284ee582237e43959b9b092b3547b7a5fd7d",
+      "next_action": "Validate project lifecycle evidence and at least ten execution views against canonical live records; add only data-backed actions and stages."
+    },
+    "section-03-controls-tests-and-handoff": {
+      "checkpoint_sha": "092d284ee582237e43959b9b092b3547b7a5fd7d",
+      "status": "checkpointed",
+      "merged_main_sha": "092d284ee582237e43959b9b092b3547b7a5fd7d",
+      "next_action": "Resolve the existing dev tenant Home/logo 404 and synthetic login 401, then complete authenticated owner UAT on aimarkethubs.com; keep SPEC-224 Child 1/2 and Final Verify open."
     }
   },
   "pre_commit": {
@@ -26,10 +40,16 @@
     "detected_formatters": []
   },
   "created_at": "2026-10-30T02:32:06.575240+00:00",
-  "generation": 2,
-  "updated_at": "2026-10-30T02:32:25.052301+00:00",
+  "generation": 5,
+  "updated_at": "2026-10-30T02:58:16.137881+00:00",
   "progress": {
-    "active_section": "section-01-fleet-state-and-entry",
-    "next_action": "Inspect the Runner projection fields, then implement truthful fleet counts and a canonical Task Control start entry."
+    "active_section": "section-03-controls-tests-and-handoff",
+    "next_action": "Resolve the existing dev tenant Home/logo 404 and synthetic login 401, then complete authenticated owner UAT on aimarkethubs.com; keep SPEC-224 Child 1/2 and Final Verify open.",
+    "merged_main_sha": "092d284ee582237e43959b9b092b3547b7a5fd7d",
+    "gaps": [
+      "Authenticated Chat shell visual UAT remains open because development admin login returned HTTP 401.",
+      "No real live execution is available for populated output; generalized Harness dispatch and full lifecycle stage evidence remain unverified.",
+      "The standard dev browser verifier fails its unrelated tenant Home/logo prerequisites (HTTP 404); authenticated UI acceptance is pending."
+    ]
   }
 }
