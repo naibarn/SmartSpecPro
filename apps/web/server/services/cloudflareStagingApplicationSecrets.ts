@@ -5,6 +5,7 @@ import { systemSettings } from "../../drizzle/schema";
 import { decrypt } from "./crypto";
 import { nativeProvisionCredentialRef } from "./cloudflareNativeProvisionExecutor";
 import { privateDatabaseInputKey } from "./cloudflarePrivateDatabaseExecutor";
+import { privateDatabaseBindingSchema, privateDatabaseEffectiveLeaseExpiresAt } from "./cloudflarePrivateDatabaseBinding";
 import { certificateDigest, privateDatabasePlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, applicationDatabaseRolePlanSchema } from "./cloudflareApplicationDatabaseRole";
@@ -50,8 +51,10 @@ export async function resolveStagingApplicationSecrets(input: {
       stored?.descriptor?.provider !== "cloudflare" || stored?.descriptor?.environment !== "staging" || stored?.revokedAt !== null ||
       stored?.descriptor?.accountRef !== target.accountRef || `cf-origin:${cloudflareOriginDescriptorDigest(stored.descriptor)}` !== input.configurationRef ||
       !privateDatabase) deny();
-  const plan = privateDatabasePlanSchema.parse(privateDatabase.plan);
-  if (plan.databaseName !== "smartspec" || plan.namespace !== receipt.namespace || Date.parse(plan.configurationExpiresAt) <= Date.now() ||
+  const databaseBinding = privateDatabaseBindingSchema.parse(privateDatabase);
+  const plan = privateDatabasePlanSchema.parse(databaseBinding.plan);
+  const databaseLeaseExpiresAt = privateDatabaseEffectiveLeaseExpiresAt(databaseBinding);
+  if (plan.databaseName !== "smartspec" || plan.namespace !== receipt.namespace || Date.parse(databaseLeaseExpiresAt) <= Date.now() ||
       !/^[a-f0-9]{64}$/.test(privateDatabase.planDigest) || !/^[a-f0-9]{64}$/.test(plan.caSha256)) deny();
 
   const [checkpointRow, certificateRow] = await Promise.all([
@@ -76,7 +79,7 @@ export async function resolveStagingApplicationSecrets(input: {
       certificateInput.planDigest !== privateDatabase.planDigest || typeof certificateInput.caCertificate !== "string") deny();
   try {
     const ca = new X509Certificate(certificateInput.caCertificate);
-    if (!ca.ca || certificateDigest(ca.raw) !== plan.caSha256 || Date.parse(ca.validTo) < Date.parse(plan.configurationExpiresAt) ||
+    if (!ca.ca || certificateDigest(ca.raw) !== plan.caSha256 || Date.parse(ca.validTo) < Date.parse(databaseLeaseExpiresAt) ||
         Date.parse(ca.validFrom) > Date.now()) deny();
   } catch { return deny(); }
 
@@ -85,6 +88,7 @@ export async function resolveStagingApplicationSecrets(input: {
   const roleExpiresAt = Date.parse(rolePlan.expiresAt), now = Date.now();
   if (rolePlan.tenantId !== input.identity.tenantId || rolePlan.projectId !== input.identity.projectId ||
       rolePlan.databaseName !== plan.databaseName || roleExpiresAt <= now + 7 * 86_400_000 || roleExpiresAt > now + 30 * 86_400_000 ||
+      roleExpiresAt > Date.parse(databaseLeaseExpiresAt) || roleExpiresAt > Date.parse(stored.descriptor.expiresAt) ||
       applicationDatabaseRoleName(input.identity) !== applicationRole.role || applicationDatabaseRolePlanDigest(rolePlan) !== applicationRole.planDigest ||
       !/^[a-f0-9]{64}$/.test(applicationRole.password)) deny();
 
