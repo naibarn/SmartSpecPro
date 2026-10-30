@@ -73,16 +73,31 @@ values out of source control. The Worker forwards requests to the canonical
 app auth/service boundary and does not validate session tokens itself. Missing
 origin/token produces a closed 503.
 
-## Static SPA staging configuration
+## Full HTTP staging configuration
 
-`wrangler.staging.jsonc` is a separate Workers Dev deployment target with no
-custom domain, cron, queue, KV, Hyperdrive, or activation. It serves the Vite
-build from `apps/web/dist/public`; `run_worker_first` reserves API, auth,
-OAuth, upload, internal, health, metrics, WebSocket, and well-known paths for
-the Worker so an API miss cannot be rewritten to `index.html`. All other
-unmatched browser navigation requests use the asset SPA fallback. A failed or
-unconfigured Origin Proxy remains a closed 503. Do not use the production
-template to deploy this staging target.
+`wrangler.staging.jsonc` is the application-capable Staging target for the
+existing `smartspec-cloudflare-staging` Worker. It binds the verified,
+digest-pinned Node/Python images to `StagingNodeHttpContainer` and
+`StagingPythonHttpContainer`, exports the private HTTP/database bridge
+entrypoints, and binds the existing Staging Tunnel through `DATABASE_NETWORK`.
+The application controller probes Node at `:3000/readyz` and Python at
+`:8000/health` before forwarding requests. The Worker serves the Vite build
+from `apps/web/dist/public`; `run_worker_first` reserves API, auth, OAuth,
+upload, internal, health, metrics, WebSocket, and well-known paths for the
+Worker so an API miss cannot be rewritten to `index.html`.
+
+The former namespace-only profile is retained as
+`wrangler.staging.namespace-only.jsonc`. Neither file changes Production.
+Full HTTP runtime bindings are intentionally generated from the scoped,
+encrypted configuration at deploy time, rather than checked into this repo:
+`CLOUDFLARE_NODE_HTTP_PROFILE`, `CLOUDFLARE_PYTHON_HTTP_PROFILE`,
+`CLOUDFLARE_NODE_HTTP_SECRETS`, `CLOUDFLARE_PYTHON_HTTP_SECRETS`,
+`CLOUDFLARE_APPLICATION_DATABASE_POLICY`, `AUTH_ORIGIN_TOKEN`, and
+`AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS`. Until those current, target-scoped
+bindings are installed, the application ingress remains closed; the committed
+config contains no fake secret, expired profile, or placeholder origin.
+
+To package-validate the exact Staging Worker configuration locally:
 
 The copied `_headers` policy leaves the HTML shell revalidatable and gives Vite
 fingerprinted `/assets/*` files a one-year immutable cache. The shell still has
@@ -100,6 +115,14 @@ pnpm --filter @smartspec/cloudflare-runtime exec wrangler --version
 pnpm --filter @smartspec/cloudflare-runtime exec wrangler deploy --config wrangler.staging.jsonc --dry-run
 pnpm --filter @smartspec/cloudflare-runtime exec wrangler dev --config wrangler.staging.jsonc --local
 ```
+
+The first authorized full application deployment command is
+`pnpm --filter @smartspec/cloudflare-runtime exec wrangler deploy --config wrangler.staging.jsonc`.
+It targets only the existing Staging Worker; do not run it until the secure
+runtime bindings above have been generated for the same image/config scope.
+Wrangler's declarative `exports` map creates the two SQLite Durable Object
+classes and attaches their Containers; it is mutually exclusive with legacy
+`migrations` in the installed Wrangler schema.
 
 Rollback is isolated to the staging Worker: disable/remove its staging Worker
 deployment or revert the staging asset configuration. No production hostname,

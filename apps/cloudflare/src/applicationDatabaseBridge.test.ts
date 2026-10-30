@@ -13,6 +13,10 @@ function profile(targetId: "smartspec-cloudflare-staging" | "smartspec-cloudflar
 describe("private application database bridge policy", () => {
   it("allows the exact Staging target and private tunnel endpoint", () => {
     const node = profile("smartspec-cloudflare-staging", "node-http"), python = profile("smartspec-cloudflare-staging", "python-http");
+    // A valid profile pair is minted atomically; separate Date.now() calls
+    // must not make the fixture disagree on its shared capability lifetime.
+    python.issuedAt = node.issuedAt;
+    python.expiresAt = node.expiresAt;
     const policy = { transport: "private-vpc-websocket-v1" as const, environment: "staging" as const,
       targetId: "smartspec-cloudflare-staging" as const, configurationRef: node.configurationRef, namespace: node.namespace,
       tunnelId: "11111111-1111-4111-8111-111111111111", hostname: "db-staging.smartaihub.app" as const,

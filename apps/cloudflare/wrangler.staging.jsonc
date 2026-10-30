@@ -1,6 +1,7 @@
 {
   "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
   "name": "smartspec-cloudflare-staging",
+  "account_id": "f3fb0b6858e186fcc36be105bfa00243",
   "main": "src/entrypoint.ts",
   "compatibility_date": "2026-10-17",
   "compatibility_flags": ["nodejs_compat"],
@@ -9,8 +10,55 @@
   "vars": {
     "CLOUDFLARE_ACTIVATION": "disabled",
     "CLOUDFLARE_ENVIRONMENT": "staging",
-    "CLOUDFLARE_JOB_TRANSPORT": "queues"
+    "CLOUDFLARE_JOB_TRANSPORT": "queues",
+    "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC": "staging-full-http-v1",
+    "CLOUDFLARE_CONTAINER_POLICY": "on-demand"
   },
+  "durable_objects": {
+    "bindings": [
+      { "name": "NODE_HTTP", "class_name": "StagingNodeHttpContainer" },
+      { "name": "PYTHON_HTTP", "class_name": "StagingPythonHttpContainer" }
+    ]
+  },
+  "exports": {
+    "StagingNodeHttpContainer": {
+      "type": "durable-object",
+      "storage": "sqlite",
+      "container": "smartspec-staging-55e4a9dcc9d9-node-http"
+    },
+    "StagingPythonHttpContainer": {
+      "type": "durable-object",
+      "storage": "sqlite",
+      "container": "smartspec-staging-55e4a9dcc9d9-python-http"
+    },
+    "ApplicationHttpBridge": { "type": "worker" },
+    "ApplicationDatabaseBridge": { "type": "worker" }
+  },
+  "containers": [
+    {
+      "name": "smartspec-staging-55e4a9dcc9d9-node-http",
+      "class_name": "StagingNodeHttpContainer",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "node": {
+          "image": "registry.cloudflare.com/f3fb0b6858e186fcc36be105bfa00243/smartspec-staging-55e4a9dcc9d9-node-http@sha256:03a6cc55482417c12bc2b45a0c93dd28423fdf21e1da7716637fe13213dc2324"
+        }
+      }
+    },
+    {
+      "name": "smartspec-staging-55e4a9dcc9d9-python-http",
+      "class_name": "StagingPythonHttpContainer",
+      "scheduling_policy": "durable_object",
+      "images": {
+        "python": {
+          "image": "registry.cloudflare.com/f3fb0b6858e186fcc36be105bfa00243/smartspec-staging-55e4a9dcc9d9-python-http@sha256:75cb7d4b203d29a14e19348d4f35e1990e861aaada3c0442ffc9d120eddfc300"
+        }
+      }
+    }
+  ],
+  "vpc_networks": [
+    { "binding": "DATABASE_NETWORK", "tunnel_id": "191d047e-674a-48f4-b105-b37269c2dad6" }
+  ],
   "assets": {
     "directory": "../web/dist/public",
     "binding": "ASSETS",

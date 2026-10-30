@@ -1,0 +1,24 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+  "name": "smartspec-cloudflare-staging",
+  "main": "src/entrypoint.ts",
+  "compatibility_date": "2026-10-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "CLOUDFLARE_ACTIVATION": "disabled",
+    "CLOUDFLARE_ENVIRONMENT": "staging",
+    "CLOUDFLARE_JOB_TRANSPORT": "queues"
+  },
+  "assets": {
+    "directory": "../web/dist/public",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": [
+      "/api", "/api/*", "/v1", "/v1/*", "/trpc", "/trpc/*", "/auth", "/auth/*",
+      "/oauth", "/oauth/*", "/uploads", "/uploads/*", "/internal", "/internal/*",
+      "/.well-known/*", "/healthz", "/readyz", "/metrics", "/socket.io*", "/ws*", "/widget/v1/ws"
+    ]
+  }
+}
