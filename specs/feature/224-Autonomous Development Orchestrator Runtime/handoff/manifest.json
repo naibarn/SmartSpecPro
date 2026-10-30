@@ -1124,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "e301b10804724e365de43ad91948b92d9f402e88",
+    "expected_canonical_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
-    "next_action": "Wait for the authenticated owner to use the deployed Admin Guided First Run action, review and start the bounded Goal, and approve its real Goal Grant through Approval Authority. Once persisted, identify the same Goal/DevelopmentRun/Job/Attempt and follow it through lease/fencing, Runner ACK, genuine Child 1/Child 2 receipts and settlement, and Independent Final Verify. Ignore historical expired anchors; do not create a Goal or synthetic evidence.",
+    "next_action": "Continue the current external Codex implementation mission across any remaining independently actionable Guided First Run, Task Control and Mission Control activation gaps; do not wait for owner activity. If the authenticated owner starts the bounded Goal, resume and trace only its exact persisted Goal/Run/Job/Attempt through real Runner execution, Child 1/2 receipts and settlement, and Independent Final Verify.",
     "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At 2026-10-30, source e301b10804724e365de43ad91948b92d9f402e88 was deployed to aimarkethubs.com development release generation 251. The Admin Guided First Run persisted-run list now displays the DevelopmentRun ID and Approval Authority request reference from the server response; focused panel/workspace tests passed 42/42. No authenticated owner Start or approval has occurred, so there is still no pilot Goal/Run/Job/Attempt to trace. Continue only after the owner starts and approves the bounded Goal; follow its exact durable identities through real Runner receipts, settlement, automatic Child 2 and Independent Final Verify.",
+    "resume_point": "At 2026-10-30, integrated source e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb is serving the Guided First Run UI from a verified immutable canonical build through the isolated aimarkethubs.com development tunnel on port 3100; no Vite dev client is served. Duplicate Start now retains the idempotency key and returned Run/Approval references, same-Run resume is available when policy allows, and Mission Control harness launches preserve the current session and selected harness. Production shared Linux service is restored to generation 251 after a prior brief accidental generation-252 promotion. Continue independently actionable development work without waiting for the owner Goal. No authenticated owner Start/Approval or genuine Goal/Job/Attempt exists; after it occurs, trace the exact durable identity through real Runner execution, Child 1/2 receipts and settlement, and Independent Final Verify.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1293,6 +1293,13 @@
         "scope": "Development generation 251 deployed from exact integrated source; immutable artifact and runtime health verified on aimarkethubs.com. Authenticated Admin UAT and live Goal execution are not claimed.",
         "source_sha": "e301b10804724e365de43ad91948b92d9f402e88",
         "status": "PASS"
+      },
+      {
+        "kind": "GUIDED_FIRST_RUN_UI_AND_ISOLATED_DEV_ARTIFACT_DELIVERY",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-autonomous-dev-ui-and-runtime-20261030.md",
+        "scope": "Integrated Guided First Run resume/idempotency and Mission Control harness deep links; isolated aimarkethubs named tunnel serves immutable canonical SPA assets on port 3100 and dev API runtime on shared-tenant configuration. Production shared release restored to generation 251 after an unintended brief generation-252 promotion; no owner Goal/Approval was created. Live acceptance remains pending.",
+        "source_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb",
+        "status": "PASS"
       }
     ],
     "required": false,
@@ -1310,7 +1317,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 265,
+  "generation": 267,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1542,11 +1549,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e301b10804724e365de43ad91948b92d9f402e88",
+    "canonical_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb",
     "integrated": true,
-    "integrated_at": "2026-10-30T09:05:48Z",
+    "integrated_at": "2026-10-30T10:04:19Z",
     "pull_request": null,
-    "source_sha": "e301b10804724e365de43ad91948b92d9f402e88"
+    "source_sha": "e8884d66ac82ab8adbba9f6c7fb1ad5c1cab44fb"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4060,7 +4067,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T09:14:53.746470Z",
+  "updated_at": "2026-10-30T10:05:34.515821Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
