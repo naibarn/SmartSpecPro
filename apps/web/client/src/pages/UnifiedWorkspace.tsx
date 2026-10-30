@@ -126,13 +126,20 @@ export default function UnifiedWorkspace() {
   const navigate = (
     nextMode: WorkspaceMode,
     id = conversationId,
-    thread = threadId
+    thread = threadId,
+    selectedJobId?: string | null
   ) => {
     const next = new URLSearchParams();
     if (id) next.set("c", String(id));
     if (thread) next.set("t", thread);
-    const selectedJobId = params.get("jobId");
-    if (selectedJobId) next.set("jobId", selectedJobId);
+    const sameExecutionContext = id === conversationId && thread === threadId;
+    const jobId =
+      selectedJobId === undefined
+        ? sameExecutionContext
+          ? params.get("jobId")
+          : null
+        : selectedJobId;
+    if (jobId) next.set("jobId", jobId);
     const selectedProject = params.get("projectId");
     if (selectedProject) next.set("projectId", selectedProject);
     if (nextMode !== "chat") next.set("mode", nextMode);
@@ -154,7 +161,6 @@ export default function UnifiedWorkspace() {
     next.set("projectId", projectId);
     if (conversationId) next.set("c", String(conversationId));
     if (threadId) next.set("t", threadId);
-    if (params.get("jobId")) next.set("jobId", params.get("jobId")!);
     setLocation(`/chat?${next.toString()}`);
   };
   const newChat = async () => {
@@ -517,13 +523,17 @@ export default function UnifiedWorkspace() {
           initialProjectId={params.get("projectId")}
           initialJobId={params.get("jobId")}
           onSelectProject={selectProject}
-          onOpenConversation={(id, thread) => navigate("chat", id, thread)}
+          onOpenConversation={(id, thread, jobId) =>
+            navigate("chat", id, thread, jobId)
+          }
           presentationMode={presentationMode}
         />
       ) : null}
       {mode === "mission" ? (
         <MissionControlWorkspace
-          onOpenConversation={(id, thread) => navigate("chat", id, thread)}
+          onOpenConversation={(id, thread, jobId) =>
+            navigate("chat", id, thread, jobId)
+          }
           onSelectExecutions={selectExecutions}
           presentationMode={presentationMode}
           initialJobId={params.get("jobId")}

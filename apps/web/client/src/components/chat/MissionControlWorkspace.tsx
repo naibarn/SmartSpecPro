@@ -26,7 +26,11 @@ type MissionSection =
   | "waiting"
   | "history";
 type Props = {
-  onOpenConversation: (id: number, threadId: string | null) => void;
+  onOpenConversation: (
+    id: number,
+    threadId: string | null,
+    jobId?: string
+  ) => void;
   onSelectExecutions: (jobIds: string[], selectedJobId: string | null) => void;
   presentationMode: PresentationMode;
   initialJobId: string | null;
@@ -811,7 +815,8 @@ export function MissionControlWorkspace({
                     onClick={() =>
                       onOpenConversation(
                         selected.conversationId,
-                        selected.threadId
+                        selected.threadId,
+                        selected.id
                       )
                     }
                   >

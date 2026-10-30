@@ -20,7 +20,11 @@ type ProjectExecutionWorkspaceProps = {
   initialProjectId: string | null;
   initialJobId?: string | null;
   onSelectProject: (projectId: string) => void;
-  onOpenConversation: (conversationId: number, threadId: string | null) => void;
+  onOpenConversation: (
+    conversationId: number,
+    threadId: string | null,
+    jobId?: string
+  ) => void;
   presentationMode: "simple" | "developer";
 };
 
@@ -670,7 +674,8 @@ export function ProjectExecutionWorkspace({
                                 onClick={() =>
                                   onOpenConversation(
                                     job.conversationId!,
-                                    job.threadId
+                                    job.threadId,
+                                    job.id
                                   )
                                 }
                               >

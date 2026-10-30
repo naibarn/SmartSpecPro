@@ -100,9 +100,9 @@ vi.mock("@/lib/useTaskHarnessOutputEvents", () => ({
 }));
 
 vi.mock("@/components/chat/ChatSidebar", () => ({
-  ChatSidebar: () => (
+  ChatSidebar: ({ onSelectConversation }: { onSelectConversation: (id: number) => void }) => (
     <nav aria-label="Saved sessions">
-      <button type="button" onClick={() => undefined}>
+      <button type="button" onClick={() => onSelectConversation(902)}>
         Saved session
       </button>
     </nav>
@@ -229,6 +229,13 @@ describe("UnifiedWorkspace", () => {
     expect(state.create).toHaveBeenCalledWith({ title: "Summarize this project" });
     expect(state.location).toHaveBeenCalledWith("/chat?c=902");
     expect(screen.getByText("Summarize this project").getAttribute("data-auto-send")).toBe("true");
+  });
+
+  it("clears a stale Run when switching to another saved session", () => {
+    state.search = "c=901&jobId=stale-run";
+    render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Saved session" }));
+    expect(state.location).toHaveBeenCalledWith("/chat?c=902");
   });
 
   it("lets an admin open a first-run pilot bound to a newly persisted chat session", async () => {
