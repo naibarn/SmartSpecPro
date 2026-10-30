@@ -68,6 +68,10 @@ export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value
  * leave an unowned login, and no password appears in a job receipt or error. */
 export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
   plan: ApplicationDatabaseRolePlan;
+  /** Persistent application activation is allowed only from an existing
+   * authenticated Full HTTP preparation path. The default remains the short
+   * bounded probe used by synthetic runtime acceptance. */
+  purpose?: "bounded-test" | "staging-application";
   /** Reviewed, exact read-only dependency of Python session authentication. */
   pythonAuthReadOnly?: boolean;
   /** Trusted canonical compensation evidence; never supplied by an API caller. */
@@ -77,8 +81,10 @@ export async function prepareApplicationDatabaseRole(db: DrizzleDB, input: {
 }) {
   const plan = applicationDatabaseRolePlanSchema.parse(input.plan), role = applicationDatabaseRoleName({ tenantId: plan.tenantId, projectId: plan.projectId });
   const expires = Date.parse(plan.expiresAt), now = Date.now();
-  // First live runtime test only. Long-lived activation has separate authority.
-  if (expires <= now + 60_000 || expires > now + 3_600_000) deny();
+  const purpose = input.purpose ?? "bounded-test";
+  const maxLifetime = purpose === "staging-application" ? 30 * 86_400_000 : 3_600_000;
+  const minimumLifetime = purpose === "staging-application" ? 7 * 86_400_000 : 60_000;
+  if (expires <= now + minimumLifetime || expires > now + maxLifetime) deny();
   const planDigest = applicationDatabaseRolePlanDigest(plan), password = randomBytes(32).toString("hex");
   await input.assertAuthorized();
   try {

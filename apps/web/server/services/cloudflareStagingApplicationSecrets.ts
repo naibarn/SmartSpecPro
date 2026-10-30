@@ -5,8 +5,9 @@ import { systemSettings } from "../../drizzle/schema";
 import { decrypt } from "./crypto";
 import { nativeProvisionCredentialRef } from "./cloudflareNativeProvisionExecutor";
 import { privateDatabaseInputKey } from "./cloudflarePrivateDatabaseExecutor";
-import { certificateDigest, privateDatabasePlanSchema, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
+import { certificateDigest, privateDatabasePlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
+import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, applicationDatabaseRolePlanSchema } from "./cloudflareApplicationDatabaseRole";
 import { cloudflareHttpApplicationSecretsSchema, httpApplicationVersionBindings, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { cloudflareOriginDescriptorDigest } from "./cloudflareOriginVersionBindings";
 import { loadHttpRuntimeEnvironments } from "./cloudflareHttpRuntimePlan";
@@ -29,6 +30,8 @@ export async function resolveStagingApplicationSecrets(input: {
   actorUserId: number;
   applicationHttp: HttpApplicationSettings;
   configurationRef: string;
+  applicationDatabaseRole: { role: string; password: string; planDigest: string };
+  applicationDatabaseRolePlan: unknown;
   nodeEnvironment?: Record<string, string | undefined>;
   pythonEnvironment?: Record<string, string | undefined>;
 }) {
@@ -66,7 +69,7 @@ export async function resolveStagingApplicationSecrets(input: {
     checkpoint = privateDatabaseCheckpointSchema.parse(JSON.parse(decrypt(checkpointRow[0]!.value)));
     certificateInput = JSON.parse(decrypt(certificateRow[0]!.value));
   } catch { return deny(); }
-  if (checkpoint.planDigest !== privateDatabase.planDigest || !checkpoint.databaseRolePrepared || !checkpoint.databasePassword ||
+  if (checkpoint.planDigest !== privateDatabase.planDigest || !checkpoint.databaseRolePrepared ||
       checkpoint.pending || checkpoint.continuedByJobId || !checkpoint.caId || certificateInput.tenantId !== input.identity.tenantId ||
       certificateInput.projectId !== input.identity.projectId || certificateInput.actorUserId !== input.actorUserId ||
       certificateInput.provider !== "cloudflare" || certificateInput.environment !== "staging" ||
@@ -76,6 +79,14 @@ export async function resolveStagingApplicationSecrets(input: {
     if (!ca.ca || certificateDigest(ca.raw) !== plan.caSha256 || Date.parse(ca.validTo) < Date.parse(plan.configurationExpiresAt) ||
         Date.parse(ca.validFrom) > Date.now()) deny();
   } catch { return deny(); }
+
+  const rolePlan = applicationDatabaseRolePlanSchema.parse(input.applicationDatabaseRolePlan);
+  const applicationRole = input.applicationDatabaseRole;
+  const roleExpiresAt = Date.parse(rolePlan.expiresAt), now = Date.now();
+  if (rolePlan.tenantId !== input.identity.tenantId || rolePlan.projectId !== input.identity.projectId ||
+      rolePlan.databaseName !== plan.databaseName || roleExpiresAt <= now + 7 * 86_400_000 || roleExpiresAt > now + 30 * 86_400_000 ||
+      applicationDatabaseRoleName(input.identity) !== applicationRole.role || applicationDatabaseRolePlanDigest(rolePlan) !== applicationRole.planDigest ||
+      !/^[a-f0-9]{64}$/.test(applicationRole.password)) deny();
 
   const existingEnvironments = input.nodeEnvironment && input.pythonEnvironment ? undefined : await loadHttpRuntimeEnvironments();
   const pythonEnvironment = input.pythonEnvironment ?? existingEnvironments!.pythonEnvironment;
@@ -87,7 +98,7 @@ export async function resolveStagingApplicationSecrets(input: {
   if (required.some(([value, minimum]) => !value || value.length < minimum) || node.JWT_SECRET !== python.JWT_SECRET ||
       /change.this.in.production|dev.secret|dev_jwt|dev_token/i.test([node.JWT_SECRET, node.LLM_ENCRYPTION_KEY, python.SECRET_KEY, python.ENCRYPTION_MASTER_KEY].join(" ")) ||
       python.STRIPE_SECRET_KEY?.startsWith("sk_test_")) deny();
-  const host = "db-staging.smartaihub.app", role = privateDatabaseRole(plan.namespace), password = checkpoint.databasePassword;
+  const host = "db-staging.smartaihub.app", role = applicationRole.role, password = applicationRole.password;
   const database = new URL(`postgresql://${host}:5432/${plan.databaseName}`);
   database.username = role; database.password = password;
   const common = { DATABASE_SSL_MODE: "verify-full", DATABASE_SSL_CA: certificateInput.caCertificate,
@@ -100,6 +111,7 @@ export async function resolveStagingApplicationSecrets(input: {
   const fingerprint = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
   return { secrets, safeReceipt: { configurationRef: input.configurationRef, role, databaseName: plan.databaseName,
     databaseHost: host, tunnelId: plan.tunnelId, tls: "verify-full" as const, credentialFingerprint: fingerprint({ role, password }),
-    resolvedKeys: { node: Object.keys(node).length, python: Object.keys(python).length }, readOnlyRole: true as const,
-    databaseIdentityVerified: false as const, writeAcceptance: false as const } };
+    rolePlanDigest: applicationRole.planDigest, roleExpiresAt: rolePlan.expiresAt,
+    resolvedKeys: { node: Object.keys(node).length, python: Object.keys(python).length }, readOnlyRole: false as const,
+    databaseIdentityVerified: false as const, networkConnectivityVerified: false as const, writeAcceptance: false as const } };
 }

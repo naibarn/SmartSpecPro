@@ -3,9 +3,10 @@ import { cloudflareOriginDescriptorDigest } from "./cloudflareOriginVersionBindi
 import { resolveStagingApplicationSecrets } from "./cloudflareStagingApplicationSecrets";
 import { encrypt } from "./crypto";
 import { HTTP_DATABASE_ORIGIN_CA } from "./cloudflareHttpDatabaseTrust";
-import { privateDatabasePlanDigest, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
+import { privateDatabasePlanDigest } from "./cloudflarePrivateDatabaseContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
+import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest } from "./cloudflareApplicationDatabaseRole";
 
 const previousEncryptionKey = process.env.LLM_ENCRYPTION_KEY;
 beforeAll(() => { process.env.LLM_ENCRYPTION_KEY = "staging-secret-resolution-test-encryption-key"; });
@@ -34,6 +35,10 @@ function fixture(databaseName = "smartspec") {
     python: { provisionJobId: "99999999-9999-4999-8999-999999999999", planDigest: "2".repeat(64), image: `registry.cloudflare.com/${accountRef}/${namespace}-python-http@sha256:${imageDigest}` },
     issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 8 * 60_000).toISOString(),
     maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic" as const };
+  const applicationDatabaseRolePlan = { tenantId: identity.tenantId, projectId: identity.projectId, databaseName: "smartspec",
+    tables: ["users"], sequences: ["users_id_seq"], expiresAt: new Date(Date.now() + 29 * 86_400_000).toISOString(), connectionLimit: 10 as const };
+  const applicationDatabaseRole = { role: applicationDatabaseRoleName(identity), password: "a".repeat(64),
+    planDigest: applicationDatabaseRolePlanDigest(applicationDatabaseRolePlan) };
   const secret = "fixture-secret-at-least-thirty-two-characters";
   const nodeEnvironment = { JWT_SECRET: secret, API_KEY_HMAC_SECRET: secret, LLM_ENCRYPTION_KEY: secret, CONTROL_PLANE_API_KEY: secret,
     DATABASE_URL: "must-not-be-copied", CLOUDFLARE_API_TOKEN: "must-not-be-copied" };
@@ -48,29 +53,41 @@ function fixture(databaseName = "smartspec") {
     [{ isSensitive: true, updatedBy: 17, value: encrypt(JSON.stringify(certificateInput)) }],
   ];
   const db = { select: () => ({ from: () => ({ where: () => ({ limit: async () => rows.shift() }) }) }) };
-  return { identity, applicationHttp, configurationRef, nodeEnvironment, pythonEnvironment, db };
+  return { identity, applicationHttp, configurationRef, applicationDatabaseRole, applicationDatabaseRolePlan,
+    nodeEnvironment, pythonEnvironment, db };
 }
 
 describe("server-side Staging application secret resolution", () => {
-  it("composes the private read-only role and runtime allowlist without returning plaintext in the receipt", async () => {
+  it("composes the prepared application role and runtime allowlist without returning plaintext in the receipt", async () => {
     const f = fixture();
     const result = await resolveStagingApplicationSecrets({ ...f, actorUserId: 17 });
     const database = new URL(result.secrets.node.DATABASE_URL);
     expect(database.hostname).toBe("db-staging.smartaihub.app");
     expect(database.port).toBe("5432");
     expect(database.pathname).toBe("/smartspec");
-    expect(database.username).toBe(privateDatabaseRole(nativeProvisionNamespace(f.identity.tenantId, f.identity.projectId)));
+    expect(database.username).toBe(applicationDatabaseRoleName(f.identity));
     expect(result.secrets.node.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT).toBe("private-vpc-websocket-v1");
     expect(result.secrets.node.DATABASE_SSL_MODE).toBe("verify-full");
     expect(result.secrets.node).not.toHaveProperty("CLOUDFLARE_API_TOKEN");
     expect(result.secrets.python).not.toHaveProperty("PYTHONPATH");
     expect(JSON.stringify(result.safeReceipt)).not.toContain(database.password);
     expect(JSON.stringify(result.safeReceipt)).not.toContain(f.nodeEnvironment.LLM_ENCRYPTION_KEY);
-    expect(result.safeReceipt).toMatchObject({ databaseName: "smartspec", readOnlyRole: true, databaseIdentityVerified: false, writeAcceptance: false });
+    expect(result.safeReceipt).toMatchObject({ databaseName: "smartspec", readOnlyRole: false, databaseIdentityVerified: false,
+      networkConnectivityVerified: false, writeAcceptance: false });
   });
 
   it("rejects a database other than the canonical logical database before producing a bundle", async () => {
     const f = fixture("smartspec_dev");
     await expect(resolveStagingApplicationSecrets({ ...f, actorUserId: 17 })).rejects.toThrow("STAGING_HTTP_RUNTIME_SECRET_RESOLUTION_DENIED");
+  });
+
+  it("rejects a mismatched or near-expiry application role before producing a bundle", async () => {
+    const mismatch = fixture();
+    mismatch.applicationDatabaseRole.role = "sah_cf_staging_invalid";
+    await expect(resolveStagingApplicationSecrets({ ...mismatch, actorUserId: 17 })).rejects.toThrow("STAGING_HTTP_RUNTIME_SECRET_RESOLUTION_DENIED");
+    const short = fixture();
+    short.applicationDatabaseRolePlan.expiresAt = new Date(Date.now() + 6 * 86_400_000).toISOString();
+    short.applicationDatabaseRole.planDigest = applicationDatabaseRolePlanDigest(short.applicationDatabaseRolePlan);
+    await expect(resolveStagingApplicationSecrets({ ...short, actorUserId: 17 })).rejects.toThrow("STAGING_HTTP_RUNTIME_SECRET_RESOLUTION_DENIED");
   });
 });

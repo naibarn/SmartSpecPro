@@ -1,17 +1,19 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { DrizzleDB } from "../db";
 import { providerDeploymentTargets, systemSettings, workerJobs } from "../../drizzle/schema";
 import { assertNativeProvisionReceipt, validateNativeBindingScope } from "./cloudflareNativeBindingDescriptor";
 import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalReceipt } from "./cloudflarePrivateDatabaseBinding";
-import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRole } from "./cloudflarePrivateDatabaseContract";
+import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB } from "./cloudflarePrivateDatabaseContract";
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings, httpApplicationNamespace,
   httpApplicationVersionBindings, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { resolveVerifiedHttpImagePair, HttpPublishedPairRequired } from "./cloudflareHttpPublishedPair";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { getStagingApplicationPreparation } from "./cloudflareStagingApplicationPreparation";
 import { resolveStagingApplicationSecrets } from "./cloudflareStagingApplicationSecrets";
+import { applicationDatabaseRoleName, prepareApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
+import { planHttpApplicationRelations } from "./cloudflareHttpRuntimePlan";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
 import { parseCloudflarePublicOrigin, parseCloudflarePublicOrigins } from "./cloudflareOriginContracts";
@@ -244,11 +246,40 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
         hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic", startupDiagnostics: "container-logs",
       };
       validateHttpApplicationSettings(applicationHttp, { ...input.identity, accountRef: target.accountRef }, issuedAt.getTime());
-      // Resolve the allowlisted app environment and the actor-owned Staging
-      // read-only DB role inside the existing Owner preparation operation.
-      // Plaintext stays in this process and is persisted only by encrypt() below.
+      // Prepare the existing least-privilege application identity inside this
+      // authenticated Owner operation. The read-only staging probe role is not
+      // suitable for application DML. Role DDL and the encrypted config commit
+      // share the outer transaction, so a failed profile never leaves a new login.
+      const privateDatabasePlan = previous.nativeResources?.privateDatabase?.plan;
+      if (!privateDatabasePlan || privateDatabasePlan.databaseName !== "smartspec")
+        throw new Error("STAGING_APPLICATION_DATABASE_IDENTITY_REQUIRED");
+      const databaseName = privateDatabasePlan.databaseName;
+      const roleExpiresAt = Math.min(Date.now() + 30 * 86_400_000, Date.parse(previous.expiresAt),
+        Date.parse(privateDatabasePlan.configurationExpiresAt));
+      if (roleExpiresAt <= Date.now() + 7 * 86_400_000) throw new Error("STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT");
+      const relations = await planHttpApplicationRelations(tx as unknown as DrizzleDB);
+      const rolePlan = { tenantId: input.identity.tenantId, projectId: input.identity.projectId, databaseName,
+        tables: relations.tables, sequences: relations.sequences, expiresAt: new Date(roleExpiresAt).toISOString(), connectionLimit: 10 as const };
+      const roleName = applicationDatabaseRoleName(input.identity);
+      const existingRole = await tx.execute(sql`SELECT 1 FROM pg_roles WHERE rolname=${roleName}`);
+      const roleSecretHolder: { value?: { role: string; password: string; planDigest: string } } = {};
+      await prepareApplicationDatabaseRole(tx as unknown as DrizzleDB, { plan: rolePlan, purpose: "staging-application",
+        pythonAuthReadOnly: true, ...(existingRole.length ? { reuse: rolePlan } : {}),
+        assertAuthorized: async () => {
+          const current = await tx.select({ id: providerDeploymentTargets.id }).from(providerDeploymentTargets).where(and(
+            eq(providerDeploymentTargets.id, target.id), eq(providerDeploymentTargets.runtimePolicy, input.configurationRef),
+            eq(providerDeploymentTargets.enabled, true))).limit(1);
+          if (current.length !== 1) denied();
+        },
+        saveSecret: async (_roleTx, secret) => { roleSecretHolder.value = secret; },
+      });
+      const applicationRole = roleSecretHolder.value;
+      if (!applicationRole) throw new Error("STAGING_APPLICATION_DATABASE_ROLE_SECRET_REQUIRED");
+      // Resolve the allowlisted app environment and verified app-role secret
+      // server-side. Plaintext is persisted only inside the encrypted config.
       const resolvedRuntime = await resolveStagingApplicationSecrets({ db: tx as unknown as DrizzleDB, identity: input.identity,
-        actorUserId: input.actorUserId, applicationHttp, configurationRef: input.configurationRef });
+        actorUserId: input.actorUserId, applicationHttp, configurationRef: input.configurationRef,
+        applicationDatabaseRole: applicationRole, applicationDatabaseRolePlan: rolePlan });
       const applicationSecrets = resolvedRuntime.secrets;
       const { workflowRuntimeToken: _workflowRuntimeToken, controlPlaneToken: _controlPlaneToken, ...applicationBaseSecrets } = stored.secrets;
       const secrets = cloudflareOriginSecretsSchema.parse({ ...applicationBaseSecrets, applicationHttp: applicationSecrets,
