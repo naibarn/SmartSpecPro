@@ -91,8 +91,17 @@ vi.mock("@/components/chat/ChatSidebar", () => ({
   ),
 }));
 vi.mock("@/components/chat/ChatView", () => ({
-  ChatView: () => (
-    <section aria-label="Conversation canvas">Conversation canvas</section>
+  ChatView: ({
+    showBrowserSessionEntry,
+  }: {
+    showBrowserSessionEntry?: boolean;
+  }) => (
+    <section aria-label="Conversation canvas">
+      Conversation canvas
+      {showBrowserSessionEntry ? (
+        <button type="button">Browser control</button>
+      ) : null}
+    </section>
   ),
 }));
 vi.mock("@/components/chat/UnifiedWorkspaceInspector", () => ({
@@ -173,6 +182,9 @@ describe("UnifiedWorkspace", () => {
     ).toBeTruthy();
     expect(
       screen.getByRole("region", { name: "Conversation canvas" })
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Browser control" })
     ).toBeTruthy();
     expect(
       screen.getByRole("region", { name: "Run inspector for session" })

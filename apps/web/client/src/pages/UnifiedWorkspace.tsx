@@ -280,7 +280,7 @@ export default function UnifiedWorkspace() {
                       threadId={threadId}
                       density="default"
                       showExecutionActivity
-                      showBrowserSessionEntry={false}
+                      showBrowserSessionEntry
                     />
                   </section>
                 </VStack>
