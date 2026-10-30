@@ -99,6 +99,11 @@ export default function TaskObservabilityMonitor() {
   const detail = detailQuery.error ? undefined : detailQuery.data;
   const runners = runnerQuery.error ? [] : runnerQuery.data?.runners ?? [];
   const aggregate = aggregateQuery.error ? undefined : aggregateQuery.data;
+  const activeRunCount = items.filter((item) => ["running", "claimed", "leased", "preparing", "uploading", "indexing"].includes(item.status)).length;
+  const waitingCount = items.filter((item) => ["pending", "queued", "retry_scheduled", "waiting_external", "waiting_approval"].includes(item.status)).length;
+  const attentionCount = items.filter((item) => item.operatorAttention.required).length;
+  const connectedRunnerCount = runners.filter((runner) => runner.displayState === "ready").length;
+  const observedAgentCount = new Set(items.map((item) => item.workerId).filter(Boolean)).size;
   const filtered = projectFilter || specFilter;
   const snapshotExpired = query.error?.data?.code === "PRECONDITION_FAILED";
   const threadGroups = new Map<string, { title: string; conversationTitle: string | null; conversationId: number | null; threadId: string | null; jobs: typeof items }>();
@@ -139,6 +144,16 @@ export default function TaskObservabilityMonitor() {
         selectedConversationId={conversationId ?? null}
         selectedThreadId={selectedThreadId}
       />
+
+      <Section>
+        <HStack gap={4} wrap="wrap">
+          <VStack gap={0}><Text type="supporting">Active runs</Text><Heading level={2}>{query.isLoading ? "—" : activeRunCount}</Heading></VStack>
+          <VStack gap={0}><Text type="supporting">Waiting</Text><Heading level={2}>{query.isLoading ? "—" : waitingCount}</Heading></VStack>
+          <VStack gap={0}><Text type="supporting">Needs attention</Text><Heading level={2}>{query.isLoading ? "—" : attentionCount}</Heading></VStack>
+          <VStack gap={0}><Text type="supporting">Connected Runners</Text><Heading level={2}>{runnerQuery.isLoading ? "—" : connectedRunnerCount}</Heading></VStack>
+          <VStack gap={0}><Text type="supporting">Observed agents</Text><Heading level={2}>{query.isLoading ? "—" : observedAgentCount}</Heading></VStack>
+        </HStack>
+      </Section>
 
       {mode === "simple" && items.length > 0 ? <Section>
         <VStack gap={2}>

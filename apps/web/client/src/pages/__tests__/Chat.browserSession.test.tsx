@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { trackBrowserSessionOpened, trackBrowserSessionReopened } = vi.hoisted(() => ({
@@ -206,6 +206,10 @@ vi.mock("@/components/chat/UniversalControlPlanePanel", () => ({
   ),
 }));
 
+vi.mock("@/components/chat/UnifiedWorkspaceInspector", () => ({
+  UnifiedWorkspaceInspector: () => <aside>Thread inspector</aside>,
+}));
+
 vi.mock("@/components/finance/FinanceHub", () => ({
   FinanceHub: () => <div>Finance Hub</div>,
 }));
@@ -375,19 +379,19 @@ describe("Chat Browser Session entry", () => {
     expect(screen.queryByText(/Let AI work in a live browser directly from this chat\./i)).not.toBeInTheDocument();
   });
 
-  it("keeps the right panel collapsed until a panel is opened", () => {
+  it("shows the right-side workspace dock for Inspector, Artifacts, and Browser", () => {
     render(<Chat />);
 
     const rightPanel = screen.getByTestId("chat-right-panel");
-    expect(rightPanel).toHaveAttribute("aria-hidden", "true");
-    expect(rightPanel).toHaveClass("w-0");
-    expect(rightPanel).toHaveClass("pointer-events-none");
-    expect(rightPanel).not.toHaveClass("sm:w-96");
-    expect(rightPanel).not.toHaveClass("lg:w-[28rem]");
+    const dock = screen.getByRole("navigation", { name: "Workspace side panel" });
+    expect(within(dock).getByRole("button", { name: "Inspector" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(dock).getByRole("button", { name: /Artifacts/ })).toBeInTheDocument();
+    expect(within(dock).getByRole("button", { name: "Browser" })).toBeInTheDocument();
+    expect(rightPanel).toHaveClass("xl:flex");
 
     fireEvent.click(screen.getByRole("button", { name: "Memory" }));
 
-    expect(rightPanel).toHaveAttribute("aria-hidden", "false");
+    expect(rightPanel).toContainElement(screen.getByText("Memory Panel"));
     expect(rightPanel).toHaveClass("fixed");
     expect(rightPanel).toHaveClass("lg:w-[32rem]");
     expect(rightPanel).toHaveClass("xl:w-[38rem]");
@@ -399,7 +403,7 @@ describe("Chat Browser Session entry", () => {
     fireEvent.click(screen.getByTestId("task-control-toolbar-button"));
 
     expect(screen.getByTestId("mock-control-plane")).toBeInTheDocument();
-    expect(screen.getByTestId("chat-right-panel")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("chat-right-panel")).toContainElement(screen.getByTestId("mock-control-plane"));
   });
 
   it("opens the Task Control Center from its deep link", () => {
@@ -448,7 +452,7 @@ describe("Chat Browser Session entry", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Finance$/i }));
 
     expect(screen.getByText("Finance Hub")).toBeInTheDocument();
-    expect(screen.getByTestId("chat-right-panel")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("chat-right-panel")).toContainElement(screen.getByText("Finance Hub"));
   });
 
   it("creates a new chat from the sidebar shortcut", async () => {
@@ -484,7 +488,8 @@ describe("Chat Browser Session entry", () => {
   it("creates and opens a Browser Session from Chat", async () => {
     render(<Chat />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Open Browser Session/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Browser" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Browser control" })).getByRole("button", { name: "Start Browser Session" }));
 
     await waitFor(() => {
       expect(createLiveBrowserSessionMutateAsync).toHaveBeenCalledWith({
@@ -587,7 +592,8 @@ describe("Chat Browser Session entry", () => {
 
     render(<Chat />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /Continue in Browser/i })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Browser" }));
+    fireEvent.click(within(screen.getByRole("region", { name: "Browser control" })).getByRole("button", { name: /Continue in Browser/i }));
 
     await waitFor(() => {
       expect(mockSetLocation).toHaveBeenCalledWith(

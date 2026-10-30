@@ -13,6 +13,7 @@ import {
   type Artifact,
 } from "@/components/chat";
 import { UniversalControlPlanePanel } from "@/components/chat/UniversalControlPlanePanel";
+import { UnifiedWorkspaceInspector } from "@/components/chat/UnifiedWorkspaceInspector";
 import { FinanceHub } from "@/components/finance/FinanceHub";
 import FinanceAccessGate from "@/components/finance/FinanceAccessGate";
 import { CanvasPane } from "@/components/chat/canvas/CanvasPane";
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Activity,
   ChevronLeft,
   PanelLeftClose,
   Brain,
@@ -79,6 +81,8 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 
 type RightPanel =
   | "none"
+  | "inspector"
+  | "browser"
   | "memory"
   | "skills"
   | "artifacts"
@@ -775,7 +779,7 @@ export default function Chat() {
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-[var(--color-background-body)] text-[var(--color-text-primary)]">
       {/* Top Bar */}
-      <div className="relative z-50 flex min-h-14 shrink-0 items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-background-surface)] px-2 shadow-sm sm:px-4">
+      <div className="relative z-50 flex min-h-16 shrink-0 items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[var(--color-background-surface)] px-2 shadow-sm sm:px-4">
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
@@ -809,11 +813,14 @@ export default function Chat() {
               <Menu className="h-5 w-5" />
             )}
           </Button>
-          <h1 className="hidden truncate text-base font-semibold sm:block sm:text-lg">
-            {fullControlPlane ? t("taskControl.title") : t("chat.title")}
-          </h1>
+          <div className="hidden min-w-0 sm:block">
+            <p className="truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">SmartAIHub Workspace</p>
+            <h1 className="truncate text-base font-semibold sm:text-lg">
+              {fullControlPlane ? t("taskControl.title") : t("chat.title")}
+            </h1>
+          </div>
         </div>
-        <nav aria-label="Development workspace" data-testid="development-workspace-navigation" className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav aria-label="Development workspace" data-testid="development-workspace-navigation" className="flex min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Button
             type="button"
             size="sm"
@@ -824,7 +831,7 @@ export default function Chat() {
               setRightPanel("none");
               setLocation(selectedConversationId ? `/chat?c=${selectedConversationId}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}` : "/chat");
             }}
-            className="h-9 shrink-0 px-2 sm:px-3"
+            className="h-9 shrink-0 rounded-lg px-3 sm:px-5"
           >{t("workspaceNav.chat")}</Button>
           <Button
             type="button"
@@ -836,7 +843,7 @@ export default function Chat() {
               setFullControlPlane(true);
               setLocation(`/chat?panel=control-plane&view=full${selectedConversationId ? `&c=${selectedConversationId}` : ""}${selectedThreadId ? `&t=${encodeURIComponent(selectedThreadId)}` : ""}`);
             }}
-            className="h-9 shrink-0 px-2 sm:px-3"
+            className="h-9 shrink-0 rounded-lg px-3 sm:px-5"
           >{t("workspaceNav.taskControl")}</Button>
           <Button
             type="button"
@@ -849,7 +856,7 @@ export default function Chat() {
               const query = params.toString();
               setLocation(`/agent-monitor${query ? `?${query}` : ""}`);
             }}
-            className="h-9 shrink-0 px-2 sm:px-3"
+            className="h-9 shrink-0 rounded-lg px-3 sm:px-5"
           >{t("workspaceNav.missionControl")}</Button>
         </nav>
         <div className={cn("flex min-w-0 flex-1 basis-0 items-center justify-start gap-1 overflow-x-auto pl-2 md:justify-end [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", fullControlPlane && "hidden")}>
@@ -870,6 +877,15 @@ export default function Chat() {
             <Network className="h-4 w-4" />
             <span className="hidden md:inline">{t("taskControl.openButton")}</span>
           </Button>
+          <Button type="button" variant={rightPanel === "inspector" ? "secondary" : "ghost"} size="sm" className="h-9 shrink-0 gap-2 xl:hidden" onClick={() => setRightPanel(rightPanel === "inspector" ? "none" : "inspector")} aria-label="Open thread inspector">
+            <Activity className="h-4 w-4" /><span className="hidden md:inline">Inspector</span>
+          </Button>
+          <Button type="button" variant={rightPanel === "artifacts" ? "secondary" : "ghost"} size="sm" className="h-9 shrink-0 gap-2 xl:hidden" onClick={() => setRightPanel("artifacts")} aria-label={t("chat.artifacts")}>
+            <Layers className="h-4 w-4" /><span className="hidden md:inline">{t("chat.artifacts")}</span>
+          </Button>
+          <Button type="button" variant={rightPanel === "browser" ? "secondary" : "ghost"} size="sm" className="h-9 shrink-0 gap-2 xl:hidden" onClick={() => setRightPanel("browser")} aria-label="Open browser control">
+            <MonitorPlay className="h-4 w-4" /><span className="hidden md:inline">Browser</span>
+          </Button>
           <Button
             variant={rightPanel === "skills" ? "secondary" : "ghost"}
             size="sm"
@@ -882,24 +898,6 @@ export default function Chat() {
           >
             <Wand2 className="h-4 w-4" />
             <span className="hidden md:inline">{t("chat.skills")}</span>
-          </Button>
-          <Button
-            variant={rightPanel === "artifacts" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() =>
-              setRightPanel(rightPanel === "artifacts" ? "none" : "artifacts")
-            }
-            className="h-9 shrink-0 gap-2"
-            disabled={!selectedConversationId || artifacts.length === 0}
-            aria-label={t("chat.artifacts")}
-          >
-            <Layers className="h-4 w-4" />
-            <span className="hidden md:inline">{t("chat.artifacts")}</span>
-            {artifacts.length > 0 && (
-              <span className="rounded-full bg-primary/20 px-1.5 text-xs">
-                {artifacts.length}
-              </span>
-            )}
           </Button>
           <Button
             variant={rightPanel === "schedule" ? "secondary" : "ghost"}
@@ -937,25 +935,6 @@ export default function Chat() {
             <ReceiptText className="h-4 w-4" />
             <span className="hidden lg:inline">{t("chat.finance")}</span>
           </Button>
-          {chatBrowserSessionEnabled && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void handleOpenBrowserSession()}
-              className="h-9 shrink-0 gap-2"
-              disabled={createLiveBrowserSessionMutation.isPending}
-              aria-label={
-                latestBrowserSessionArtifact?.summary.primaryActionLabel ??
-                t("chat.openBrowserSession")
-              }
-            >
-              <MonitorPlay className="h-4 w-4" />
-              <span className="hidden xl:inline">
-                {latestBrowserSessionArtifact?.summary.primaryActionLabel ??
-                  t("chat.openBrowserSession")}
-              </span>
-            </Button>
-          )}
         </div>
       </div>
 
@@ -1154,7 +1133,7 @@ export default function Chat() {
                 <ChatView
                   conversationId={selectedConversationId}
                   threadId={selectedThreadId}
-                  showExecutionActivity={!fullControlPlane && rightPanel !== "control-plane"}
+                  showExecutionActivity={false}
                   onTitleUpdate={handleTitleUpdate}
                   browserSessionSuggestion={browserSessionSuggestion}
                   showBrowserSessionEntry={chatBrowserSessionEnabled}
@@ -1233,16 +1212,38 @@ export default function Chat() {
         ) : null}
         <div
           data-testid="chat-right-panel"
-          aria-hidden={rightPanel === "none"}
           className={cn(
             "min-h-0 flex-col overflow-hidden bg-[var(--color-background-surface)] transition-all duration-200",
             fullControlPlane
               ? "fixed inset-x-0 bottom-0 top-14 z-[60] flex min-w-0 bg-[var(--color-background-surface)] lg:relative lg:inset-auto lg:h-full lg:flex-1"
               : rightPanel !== "none"
               ? "fixed bottom-2 left-2 right-2 top-16 z-[60] flex-shrink-0 flex rounded-[var(--radius-container)] border border-[var(--color-border)] shadow-[var(--shadow-high)] lg:relative lg:h-full lg:w-[32rem] lg:translate-x-0 lg:rounded-none lg:border-y-0 lg:border-r-0 lg:border-l xl:w-[38rem]"
-              : "pointer-events-none hidden w-0 translate-x-full border-l-0 lg:flex"
+              : "hidden min-h-0 w-0 shrink-0 overflow-hidden border-l border-border xl:flex xl:w-[24rem]"
           )}
         >
+          {!fullControlPlane && !["control-plane", "memory", "skills", "schedule", "finance", "canvas"].includes(rightPanel) ? (
+            <nav aria-label="Workspace side panel" className="grid shrink-0 grid-cols-3 gap-1 border-b border-border bg-background p-2">
+              <Button type="button" size="sm" variant={rightPanel === "none" || rightPanel === "inspector" ? "secondary" : "ghost"} aria-pressed={rightPanel === "none" || rightPanel === "inspector"} onClick={() => setRightPanel("inspector")} className="min-w-0 gap-1 px-2 text-xs"><Activity className="h-4 w-4 shrink-0" /><span className="truncate">Inspector</span></Button>
+              <Button type="button" size="sm" variant={rightPanel === "artifacts" ? "secondary" : "ghost"} aria-pressed={rightPanel === "artifacts"} onClick={() => setRightPanel("artifacts")} className="min-w-0 gap-1 px-2 text-xs"><Layers className="h-4 w-4 shrink-0" /><span className="truncate">Artifacts{artifacts.length ? ` · ${artifacts.length}` : ""}</span></Button>
+              <Button type="button" size="sm" variant={rightPanel === "browser" ? "secondary" : "ghost"} aria-pressed={rightPanel === "browser"} onClick={() => setRightPanel("browser")} className="min-w-0 gap-1 px-2 text-xs"><MonitorPlay className="h-4 w-4 shrink-0" /><span className="truncate">Browser</span></Button>
+            </nav>
+          ) : null}
+          {(rightPanel === "none" || rightPanel === "inspector") && !fullControlPlane ? <UnifiedWorkspaceInspector conversationId={selectedConversationId} threadId={selectedThreadId} /> : null}
+          {rightPanel === "browser" && !fullControlPlane ? (
+            <section className="min-h-0 flex-1 overflow-y-auto p-4" aria-label="Browser control">
+              <header className="mb-4 border-b border-border pb-3"><p className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">Workspace tools</p><h2 className="mt-1 text-base font-semibold">Browser control</h2><p className="mt-1 text-sm text-muted-foreground">Control the browser session attached to this chat.</p></header>
+              {!chatBrowserSessionEnabled ? <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">Browser sessions are not enabled for this workspace.</p> : activeBrowserSessionArtifact ? (
+                <BrowserSessionSummaryCard artifact={activeBrowserSessionArtifact} onOpen={() => void handleOpenBrowserSession()}>
+                  <div className="space-y-3">
+                    <label className="block space-y-1 text-sm font-medium"><span>{t("chat.chooseBrowserSkill")}</span><Select value={browserCommandSkillId} onValueChange={value => handleBrowserCommandSkillChange(value as typeof browserCommandSkillId)}><SelectTrigger><SelectValue placeholder={t("chat.chooseBrowserSkill")} /></SelectTrigger><SelectContent>{BROWSER_SKILL_PRESETS.map(preset => <SelectItem key={preset.id} value={preset.id}>{preset.label}</SelectItem>)}</SelectContent></Select></label>
+                    <label className="block space-y-1 text-sm font-medium"><span>{t("chat.quickBrowserInstruction")}</span><Textarea value={browserCommandDraft} onChange={event => handleBrowserCommandDraftChange(event.target.value)} placeholder={t("chat.browserInstructionPlaceholder")} className="min-h-28" /></label>
+                    {browserCommandNotice ? <p role="status" className="text-sm text-muted-foreground">{browserCommandNotice}</p> : null}
+                    <Button type="button" className="w-full gap-2" onClick={() => void handleSendBrowserSessionCommand()} disabled={!browserCommandDraft.trim() || browserCommandBusy}>{browserCommandBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{browserCommandBusy ? t("chat.queuingInstruction") : t("chat.sendBrowserInstruction")}</Button>
+                  </div>
+                </BrowserSessionSummaryCard>
+              ) : <div className="space-y-3 rounded-lg border border-dashed border-border p-4"><p className="text-sm text-muted-foreground">No browser session is attached to this chat yet.</p><Button type="button" className="gap-2" onClick={() => void handleOpenBrowserSession()} disabled={createLiveBrowserSessionMutation.isPending}>{createLiveBrowserSessionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MonitorPlay className="h-4 w-4" />}{t("chat.startBrowserSession")}</Button></div>}
+            </section>
+          ) : null}
           {rightPanel === "memory" && (
             <MemoryPanel
               onClose={() => setRightPanel("none")}
@@ -1261,7 +1262,7 @@ export default function Chat() {
           {rightPanel === "artifacts" && (
             <ArtifactPanel
               artifacts={artifacts}
-              onClose={() => setRightPanel("none")}
+              onClose={() => setRightPanel("inspector")}
             />
           )}
           {rightPanel === "canvas" && selectedConversationId && (
