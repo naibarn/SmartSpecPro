@@ -186,6 +186,13 @@
         "scope": "Read-only development DB query found zero SPEC-224 Goal Grant approvals and no canonical DevelopmentRun job; five matching historical jobs are expired anchors/tasks, not an owner-approved pilot. Current generation-250 development release serves Guided First Run UI through aimarkethubs.com. No Goal or execution evidence was created; remain FEATURE_DEPLOYED / LIVE_GOAL_PENDING.",
         "source_sha": "4f0b3d77e1be3eec45e2625c9f6c12134709065d",
         "status": "PARTIAL"
+      },
+      {
+        "kind": "GUIDED_FIRST_RUN_OWNER_ACTIVATION_PENDING",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-guided-first-run-activation-deployment-20261030.md",
+        "scope": "Release exposes the persisted DevelopmentRun and Approval Authority request references in the Admin First Run panel. No owner-authenticated Start/approval was performed; no Goal/Run/receipts/settlement/Independent Final Verify evidence exists for this pilot. Live acceptance remains pending.",
+        "source_sha": "e301b10804724e365de43ad91948b92d9f402e88",
+        "status": "PARTIAL"
       }
     ],
     "required": false,
@@ -1117,14 +1124,14 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "4f0b3d77e1be3eec45e2625c9f6c12134709065d",
+    "expected_canonical_sha": "e301b10804724e365de43ad91948b92d9f402e88",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
     "next_action": "Wait for the authenticated owner to use the deployed Admin Guided First Run action, review and start the bounded Goal, and approve its real Goal Grant through Approval Authority. Once persisted, identify the same Goal/DevelopmentRun/Job/Attempt and follow it through lease/fencing, Runner ACK, genuine Child 1/Child 2 receipts and settlement, and Independent Final Verify. Ignore historical expired anchors; do not create a Goal or synthetic evidence.",
     "next_ready_workunit": "SPEC224_AUTHENTICATED_TASK_CONTROL_AND_OWNER_GOAL_APPROVAL",
     "reactivation_predicate": "A fresh applied ACK from the unchanged Runner includes the account-bound Codex Model Catalog; the owner-approved Goal Grant and durable DevelopmentRun/Job/Attempt are visible in smartspec_dev; Source Admission is revalidated immediately before the existing fenced writer lease is acquired.",
-    "resume_point": "At 2026-10-30T08:18Z, development release generation 250 (source 4f0b3d77e1be3eec45e2625c9f6c12134709065d) is active and aimarkethubs.com/chat returns the built Guided First Run app. A read-only query against the web runtime development database found zero SPEC-224 Goal Grant approval_requests and no current canonical DevelopmentRun worker_job; only five historical matching jobs, all expired (four Mini App anchors and one external task). No run exists to resume or inspect for Writer Lease/Fencing, dispatch, receipts, settlement, Child 2 or Final Verify. Wait for the authenticated owner to start and approve the pilot, then trace that same persisted Run.",
+    "resume_point": "At 2026-10-30, source e301b10804724e365de43ad91948b92d9f402e88 was deployed to aimarkethubs.com development release generation 251. The Admin Guided First Run persisted-run list now displays the DevelopmentRun ID and Approval Authority request reference from the server response; focused panel/workspace tests passed 42/42. No authenticated owner Start or approval has occurred, so there is still no pilot Goal/Run/Job/Attempt to trace. Continue only after the owner starts and approves the bounded Goal; follow its exact durable identities through real Runner receipts, settlement, automatic Child 2 and Independent Final Verify.",
     "waiting_predicate": "An owner-authenticated Start and Approval Authority decision create the real SPEC-224 Goal Grant and durable DevelopmentRun/Job/Attempt in the development database; resume only those exact persisted identities."
   },
   "continuation_assessment": {
@@ -1279,6 +1286,13 @@
         "scope": "Web/API/Node Job Worker generation 194 and Python Approval Authority are serving immutable release source 1dc96665bd352418169b35aba79156b140ef82e3. Web artifact sha256:e3a3da178751e41a55bc340e7bf3cad839b1e5e57e7e3624fb79087b4a3520c9; Python artifact sha256:78c509c4d854dca15c0e82c536576d4d07235f52f057fd5cbbb1e50fac565a04. Python Goal Grant route is registered; health/readiness and public Linux-origin health passed. No Cloudflare Worker promotion, live Goal approval, Windows execution or LIVE_VERIFIED claim.",
         "source_sha": "1dc96665bd352418169b35aba79156b140ef82e3",
         "status": "PASS"
+      },
+      {
+        "kind": "GUIDED_FIRST_RUN_DEVELOPMENT_RELEASE_251",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-guided-first-run-activation-deployment-20261030.md",
+        "scope": "Development generation 251 deployed from exact integrated source; immutable artifact and runtime health verified on aimarkethubs.com. Authenticated Admin UAT and live Goal execution are not claimed.",
+        "source_sha": "e301b10804724e365de43ad91948b92d9f402e88",
+        "status": "PASS"
       }
     ],
     "required": false,
@@ -1296,7 +1310,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 263,
+  "generation": 265,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1528,11 +1542,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "4f0b3d77e1be3eec45e2625c9f6c12134709065d",
+    "canonical_sha": "e301b10804724e365de43ad91948b92d9f402e88",
     "integrated": true,
-    "integrated_at": "2026-10-30T08:09:09Z",
+    "integrated_at": "2026-10-30T09:05:48Z",
     "pull_request": null,
-    "source_sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6"
+    "source_sha": "e301b10804724e365de43ad91948b92d9f402e88"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4046,7 +4060,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T08:19:14.828033Z",
+  "updated_at": "2026-10-30T09:14:53.746470Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4569,13 +4583,20 @@
         "scope": "On integrated source 3677fca92b9b5cf8afa490cc42a927cb5b986aa6, focused Spec224WorkspacePanel component suite passed 24/24. Simple Mode and Developer Mode both render a selectable Harness backed only by the selected Runner account-bound fresh catalog; Auto is default, explicit Codex is sent as provider=codex, and explicit model/reasoning selection is preserved. No authenticated browser interaction or live Goal execution was performed.",
         "source_sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6",
         "status": "PASS_PARTIAL"
+      },
+      {
+        "kind": "GUIDED_FIRST_RUN_ACTIVATION_UI_FOCUSED_TESTS",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-guided-first-run-activation-deployment-20261030.md",
+        "scope": "Focused Admin First Run panel and unified workspace verification: 2 test files / 42 tests passed; visible persisted DevelopmentRun and Approval Authority reference rendering is covered. Authenticated browser UAT and live execution were not performed.",
+        "source_sha": "e301b10804724e365de43ad91948b92d9f402e88",
+        "status": "PASS"
       }
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "3677fca92b9b5cf8afa490cc42a927cb5b986aa6",
+    "sha": "e301b10804724e365de43ad91948b92d9f402e88",
     "status": "PARTIAL",
     "task_regressions": []
   }
