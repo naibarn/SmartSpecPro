@@ -950,3 +950,33 @@ Acceptance coverage: `UW-10 UW-11 UW-18 UW-22 UW-31` in the shared scenario cata
 ## Presentation identity amendment — Runner workspace disclosure
 
 Runner workspace identity and source bindings remain immutable execution inputs. The customer-facing Runner MUST default to Simple presentation and omit absolute paths, Project/Repository binding IDs, Git branch/HEAD details, and platform-engineering repository identity from the returned presentation projection. Developer presentation may expose path/Git/binding diagnostics for locally authorized user-owned workspaces. Platform-engineering details require separate operator authorization; a UI toggle is not authorization. Do not classify or mask a workspace from its display name alone, and preserve user-owned workspace names that match historical internal identifiers.
+
+## 2026-10-31 — Explicit Runner website environment selection
+
+The desktop Runner MUST let the user choose and persist one of the two supported
+SmartAIHub website environments:
+
+- **Production** — `https://smartaihub.app`
+- **Developer** — `https://aimarkethubs.com`
+
+The connection settings MUST show both the selected target for the next launch
+and the target used by the running process. Saving a changed target MUST NOT
+silently move a live connection; it takes effect after restart, and the Runner
+MUST prevent connecting to a different target than the active process target.
+Production and Developer authentication credentials and device/session identity
+MUST be isolated in separate local stores so switching environments cannot send
+one environment's credential to the other. Workspace permissions and local
+workspace configuration MUST remain intact across a target change. A legacy
+installation MUST infer its current target from its existing canonical server
+URL and preserve its existing Runner identity when migrating that credential
+into the corresponding environment store. Unknown or custom server overrides
+MUST NOT be interpreted as either supported website or share either site's
+credentials.
+
+Acceptance requires focused coverage for selection persistence, legacy target
+migration with identity retention, per-environment credential isolation,
+shared workspace preservation, and refusal to connect from a process whose
+active target differs from the saved target. Owner-host runtime acceptance is a
+separate gate and requires an installer containing this implementation plus
+observed successful authentication, capability acknowledgement and heartbeat
+for the selected environment.

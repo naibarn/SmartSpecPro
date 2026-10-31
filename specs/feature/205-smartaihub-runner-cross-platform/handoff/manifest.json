@@ -116,140 +116,39 @@
   },
   "blockers": [
     {
-      "class": "DEPLOYMENT",
-      "id": "WINDOWS_RUNNER_PRODUCTION_TARGET_UNVERIFIED",
-      "next_action": "Determine the existing Windows Runner Control Plane target. If it is smartaihub.app, the fix requires the existing production release authority; this task deployed only aimarkethubs.com development.",
-      "root_cause": "A sanitized owner Debug Report proves the start endpoint returned RUNNER_CONNECT_START_REJECTED_403. Code inspection identified Cloudflare-edge CSRF rejection of native no-Origin POSTs before the pairing handler. The fix is deployed and runtime-probed on aimarkethubs.com only; the Runner target is not in the report."
-    },
-    {
       "class": "ACCEPTANCE",
-      "id": "WINDOWS_0_2_52_OWNER_HOST_RUNTIME_ACCEPTANCE_PENDING",
-      "next_action": "Use the existing installed 0.2.52 Runner against aimarkethubs.com, approve the real pairing page, and verify unchanged Runner/device identity, fresh capability ACK and heartbeat. Do not create a second enrollment.",
-      "root_cause": "No valid pairing request was created during verification and owner host acceptance has not yet been observed."
+      "id": "WINDOWS_RUNNER_0_2_53_OWNER_HOST_RUNTIME_ACCEPTANCE_PENDING",
+      "next_action": "Complete the existing Runner Release workflow, verify artifact manifest and SHA-256, then install the unsigned review build over the existing current-user Runner installation. Select/save the desired environment and verify authentication, Runner identity, capability ACK and heartbeat on the owner host.",
+      "root_cause": "The owner-installed 0.2.52 predates explicit environment selection. Source implementation is integrated, but native Windows install and runtime verification have not occurred."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "6d9d829bdb4bc46474b68e3d21bec46626a8a77b",
-    "expected_spec_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf"
+    "expected_canonical_sha": "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
+    "expected_spec_digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f"
   },
   "continuation": {
-    "next_action": "Windows Runner 0.2.52 is already installed. First confirm its Control Plane target. If it targets https://aimarkethubs.com, click browser reconnect and approve the request; then capture same Runner/device identity, capability ACK and heartbeat. If it targets smartaihub.app, this development-only repair is not active there; do not claim runtime acceptance until the authorized production release path is separately resolved.",
-    "next_ready_workunit": "WINDOWS_0_2_52_OWNER_HOST_RUNTIME_ACCEPTANCE",
+    "next_action": "Install the SHA-verified Windows Runner 0.2.53 unsigned review installer over the existing current-user installation without enrolling a new device. In Settings choose Developer (aimarkethubs.com) or Production (smartaihub.app), save, restart, then verify the selected target, existing identity where valid, fresh capability ACK and heartbeat. Do not claim host acceptance from source tests.",
+    "next_ready_workunit": "WINDOWS_RUNNER_0_2_53_WEBSITE_TARGET_OWNER_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Root cause for the no-browser symptom is identified and fixed: native POST /api/runners/connect/start had no Origin and was rejected by CSRF at Cloudflare ingress before pairing URL creation. Source 6d9d829bdb4bc46474b68e3d21bec46626a8a77b is integrated and development release is active on aimarkethubs.com. Non-mutating runtime probe reaches route validation (HTTP 400 RUNNER_REQUEST_INVALID, rather than CSRF 403). Owner must retry using the existing 0.2.52 Runner against the development endpoint and approve the real request. Runtime acceptance remains pending.",
-    "waiting_predicate": "Owner confirms the installed Runner points to aimarkethubs.com, approves the browser pairing request through the existing account, and supplies fresh Runner/device identity, capability ACK and heartbeat evidence; otherwise a production-specific release decision remains outside the current dev-only authorization."
+    "resume_point": "Explicit Production/Developer target selection is integrated at source ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0. SPEC-205 now requires allowlisted website targets, persisted preference, distinct active/next-launch display, environment-isolated credentials, legacy identity migration, and shared workspace preservation. Focused Rust/UI checks pass; full Runner suite is running. Windows review workflow 41155738291 is building version 0.2.53 from this source. Existing installed 0.2.52 has not been changed; owner-host runtime acceptance, pairing/refresh, capability ACK and heartbeat remain pending.",
+    "waiting_predicate": "The 0.2.53 review artifact is built and SHA-verified, the owner installs it over the existing installation, selects and saves one supported website, restarts, and runtime evidence confirms the selected environment and expected existing device identity, successful authentication, capability acknowledgement and heartbeat."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
     "decision": "RECONCILIATION_REQUIRED",
     "evidence": [
       {
-        "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+        "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
       {
-        "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
+        "digest": "333c10bc16787f3bc4cb214a1c0ca94012bf23f0ab725feee93f8a1005e891ab",
         "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
-      },
-      {
-        "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
-      },
-      {
-        "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
-      },
-      {
-        "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
-      },
-      {
-        "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
-      },
-      {
-        "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
-      },
-      {
-        "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
-      },
-      {
-        "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
-      },
-      {
-        "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
-      },
-      {
-        "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
-      },
-      {
-        "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
-      },
-      {
-        "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
-      },
-      {
-        "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
-      },
-      {
-        "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
-      },
-      {
-        "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
-      },
-      {
-        "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
-      },
-      {
-        "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
-      },
-      {
-        "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
-      },
-      {
-        "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
-      },
-      {
-        "digest": "9b48f3be051c0ff3bb8580c16be550444f25bf2053535d97494bb5b91c48f7fd",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
+        "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-website-target-selector-20261031.md"
       }
     ],
-    "next_action": "Owner action: install the SHA-verified Windows Runner 0.2.52 review build over the existing current-user installation, complete the browser pairing request shown in the Runner UI, and capture same-Runner identity, capability acknowledgement, and heartbeat evidence.",
+    "next_action": "Install the upcoming SHA-verified Runner 0.2.53 review build over the existing installation, select/save Production or Developer, restart, and capture same-device identity plus fresh auth, capability acknowledgement and heartbeat. The existing 0.2.52 binary does not contain the website selector.",
     "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
     "residual_requirements": []
   },
@@ -374,13 +273,13 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 49,
+  "generation": 52,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-    "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
+    "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-10-30T14:27:28.504291Z",
+      "last_evidence_at": "2026-10-31T01:31:06.686996Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-09-18T14:42:46+07:00",
       "spec_last_changed_at": "2026-10-05T06:44:29+07:00"
@@ -395,7 +294,8 @@
       "f072ec8448884b88970310fab954c97a465fc6b9",
       "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
       "96e1ce9f190148627bc5c9d84252e19da8323d85",
-      "0f70bb90c2443b09ec36d09b958636bd609e91b0"
+      "0f70bb90c2443b09ec36d09b958636bd609e91b0",
+      "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0"
     ],
     "mapping": [],
     "source_paths": [
@@ -406,14 +306,15 @@
       "apps/runner-desktop/ui/app.js",
       "apps/web/shared/runnerCompanion.ts",
       "apps/web/server/services/runnerCompanionViewState.ts",
-      "apps/web/server/routers/runnerNodes.ts"
+      "apps/web/server/routers/runnerNodes.ts",
+      "apps/runner-app/src/config.rs"
     ],
     "started": true,
     "status": "PARTIAL"
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6d9d829bdb4bc46474b68e3d21bec46626a8a77b",
+    "canonical_sha": "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
     "integrated": true,
     "integrated_at": "2026-10-30T14:22:00Z"
   },
@@ -541,112 +442,17 @@
       "decision": "RECONCILIATION_REQUIRED",
       "evidence": [
         {
-          "digest": "8b650e09b4ee3361ef3757b04cf29425a2aa3136b73a49b641e1fe673aa71fae",
+          "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
           "kind": "NORMATIVE_SPEC",
           "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
         },
         {
-          "digest": "accd72c40c5e4c58fc7da3ee37010e6b090a61d3e91e6c437110392a05aae95f",
+          "digest": "333c10bc16787f3bc4cb214a1c0ca94012bf23f0ab725feee93f8a1005e891ab",
           "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-plan.md"
-        },
-        {
-          "digest": "9c6018f70db8c3c9722f7729589b5c913eb0d2a253acf05b2e4814cd8d84e68a",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/claude-spec.md"
-        },
-        {
-          "digest": "1a213b33ffa7234d835c23474666eaf6494bdd3dcf66f727b0aa28f09d3fdb67",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/completion.md"
-        },
-        {
-          "digest": "78df9ed8bfc86fc273ea44ea694a3cf9a8fe5244c12189f8dbcbbf3401ffd5c7",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/deep_implement_config.json"
-        },
-        {
-          "digest": "7d813d2fe21bafc5126ce44c0cd4ae9b573b72156db838e36c626cf6aeb86ea2",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/evidence.json"
-        },
-        {
-          "digest": "693a9424f57c041796a7a6cf910be496e2bef7707f488e993b2aa28fbf2e5bb7",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/review.md"
-        },
-        {
-          "digest": "b8f94d704e514f112e8e5f3940f3d41a59565cda04f930012a99f7b37bc4ef61",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/implementation/section-status.md"
-        },
-        {
-          "digest": "7004f1d6f845875145b0aec3f2dbf3d013e37699e7f144f75dfe6a99c27d5e0f",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/final-quality-20-pass.md"
-        },
-        {
-          "digest": "d5bcf5fcea426c79cb79a36ac1013f05eb7c75063e47fc5fcf7704de796d4c62",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/implementation-audit-10-rounds-2026-09-18.md"
-        },
-        {
-          "digest": "a87f70751ff8eda0c8037a6da392e17bfaef3b45efe5bac615149565ba30f954",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/release-management-audit-2026-09-18.md"
-        },
-        {
-          "digest": "cbbba414ecd58e1455ddabd5c83d28e45c43edfc5a94b4058033430baadc1e13",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/section-cross-consistency-round-1.md"
-        },
-        {
-          "digest": "6371c8f4cb4071e4b8fe9c0192d223dafbbb1bdc041c599c3bb531e494a1ce8c",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-1.md"
-        },
-        {
-          "digest": "f862db44cd29f9478459be57b620f9c488bf4a5a5fdc68c3107b9e024d1ff80b",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/self-review-round-2.md"
-        },
-        {
-          "digest": "8e08fe6d88da6fcbbbb65bf7fb703ec2d95ee52f12a34c21b309cb7c4b3860ac",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/spec-audit-10-rounds-2026-09-18.md"
-        },
-        {
-          "digest": "7ab7c7a4c387530dbc0cd159841195db0049987c8e3f32f689a0f6be46a8fa6e",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/reviews/tool-gateway-audit-10-rounds-2026-09-18.md"
-        },
-        {
-          "digest": "622842d502df6fcc4f170af8a5f4138ee61fe7a5c465fa2863aae7766c9f996b",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/index.md"
-        },
-        {
-          "digest": "ebdb085301320429b9726ca40804c15f17e97aa7f49c7643dcf1a36af28e2761",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-01-contracts-and-profile-boundary.md"
-        },
-        {
-          "digest": "8821b0fbedf353bd15a13445a9209c522bb502d3d927e5d9576c815a7aec9839",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-02-backend-registry-and-gateway.md"
-        },
-        {
-          "digest": "d9ce30340b8689f70f56878ba0ad2e7a2693da8a1b2b0d02e568ace90073a9ae",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/sections/section-03-runner-foundation-and-local-journal.md"
-        },
-        {
-          "digest": "9b48f3be051c0ff3bb8580c16be550444f25bf2053535d97494bb5b91c48f7fd",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-wss-credential-rotation-20261009.md"
+          "path": "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-website-target-selector-20261031.md"
         }
       ],
-      "next_action": "Owner action: install the SHA-verified Windows Runner 0.2.52 review build over the existing current-user installation, complete the browser pairing request shown in the Runner UI, and capture same-Runner identity, capability acknowledgement, and heartbeat evidence.",
+      "next_action": "Install the upcoming SHA-verified Runner 0.2.53 review build over the existing installation, select/save Production or Developer, restart, and capture same-device identity plus fresh auth, capability acknowledgement and heartbeat. The existing 0.2.52 binary does not contain the website selector.",
       "rationale": "Incomplete status, file age, and Spec number are insufficient to justify continuation.",
       "residual_requirements": []
     },
@@ -847,10 +653,10 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-10-30T14:27:28.504291Z",
+    "reconciled_at": "2026-10-31T01:31:06.686996Z",
     "sources": [
       {
-        "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
+        "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -1208,7 +1014,7 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 5,
         "source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-        "source_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
+        "source_digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
         "value": "Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates"
       }
     ],
@@ -1421,14 +1227,14 @@
         "excerpt": "**Status:** Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates",
         "line": 5,
         "source": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
-        "source_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
+        "source_digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
         "value": "Runner runtime/control-plane and release-portal implementation complete in the repository; native-host, signing, deployment and provider/session acceptance remain external gates"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
+        "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md"
       },
@@ -1594,22 +1400,23 @@
     "fail": 0,
     "not_applicable": 0,
     "pass": 0,
-    "total": 201,
-    "unresolved": 201
+    "total": 209,
+    "unresolved": 209
   },
   "schema_version": 1,
-  "updated_at": "2026-10-31T00:51:35.532383Z",
+  "updated_at": "2026-10-31T01:32:59.319171Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-auth-reconnect-fix-20261030.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-reauthorization-button-20261030.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-browser-reconnect-ux-20261031.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-connect-start-csrf-403-20261031.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-connect-start-csrf-403-20261031.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-website-target-selector-20261031.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "6d9d829bdb4bc46474b68e3d21bec46626a8a77b",
+    "sha": "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
     "status": "PARTIAL",
     "task_regressions": []
   }

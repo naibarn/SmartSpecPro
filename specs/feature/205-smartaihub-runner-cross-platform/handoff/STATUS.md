@@ -4,9 +4,9 @@
 - Disposition: `DORMANT_UNRESOLVED` (UNRESOLVED)
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
-- Requirements: 0 pass / 201 unresolved of 201
-- Next action: Owner action: install the SHA-verified Windows Runner 0.2.52 review build over the existing current-user installation, complete the browser pairing request shown in the Runner UI, and capture same-Runner identity, capability acknowledgement, and heartbeat evidence.
-- Manifest generation: 49
+- Requirements: 0 pass / 209 unresolved of 209
+- Next action: Install the upcoming SHA-verified Runner 0.2.53 review build over the existing installation, select/save Production or Developer, restart, and capture same-device identity plus fresh auth, capability acknowledgement and heartbeat. The existing 0.2.52 binary does not contain the website selector.
+- Manifest generation: 52
 
 ## Source-declared status and relationship claims
 
