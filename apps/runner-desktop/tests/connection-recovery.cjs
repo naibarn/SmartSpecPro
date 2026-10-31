@@ -124,6 +124,57 @@ test('a confirmed reconnect clears the error and restores the running UI without
   }
 });
 
+test('a connected Runner with a missing default workspace is shown as connected with a workspace warning', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.addInitScript(() => {
+      window.__TAURI__ = { core: { invoke: async name => {
+        if (name === 'runner_status') return {
+          credentialsReady: true, controlPlaneConnected: true, running: true, stopping: false,
+          runnerId: 'local-runner', credentialState: 'valid',
+          lastError: 'RUNNER_WORKSPACE_NEEDS_RESELECT',
+          readiness: { capabilityPublicationState: 'acknowledged', capabilityPublicationAcknowledgedAt: new Date().toISOString() },
+        };
+        if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
+        return null;
+      } }, event: { listen: async () => {} } };
+    });
+    await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
+    await page.waitForFunction(() => document.getElementById('connection-state').textContent.includes('เชื่อมต่อแล้ว'));
+    assert.equal(await page.locator('#runtime-state').textContent(), 'ต้องเลือก Workspace');
+    assert.match(await page.locator('#runtime-notice').textContent(), /กรุณาเลือก workspace ใหม่/);
+    assert.match(await page.locator('#readiness-detail').textContent(), /CAPABILITY_ACKNOWLEDGED/);
+    assert.equal(await page.locator('#start-button').isDisabled(), true);
+  } finally {
+    await browser.close();
+  }
+});
+
+test('unknown safe Runner error codes remain visible instead of collapsing to a generic message', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.addInitScript(() => {
+      window.__TAURI__ = { core: { invoke: async name => {
+        if (name === 'runner_status') return {
+          credentialsReady: true, controlPlaneConnected: false, running: false, stopping: false,
+          runnerId: 'local-runner', credentialState: 'valid', readiness: {},
+        };
+        if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
+        if (name === 'start_runner') throw 'RUNNER_NEW_CONTROL_HANDSHAKE_FAILED';
+        return null;
+      } }, event: { listen: async () => {} } };
+    });
+    await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
+    await page.locator('#start-button').click();
+    await page.waitForFunction(() => document.getElementById('runtime-notice').textContent.includes('RUNNER_NEW_CONTROL_HANDSHAKE_FAILED'));
+    assert.doesNotMatch(await page.locator('#runtime-notice').textContent(), /ดำเนินการไม่สำเร็จ ตรวจการเชื่อมต่อ/);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('the automatic Runner loop setting can be saved independently of login startup', async () => {
   const browser = await chromium.launch({ headless: true });
   try {

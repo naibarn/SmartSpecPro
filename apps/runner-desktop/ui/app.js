@@ -166,6 +166,7 @@ function safeError(error) {
     if (status >= 500) return `SmartAIHub ขัดข้องชั่วคราว (${code}) รอสักครู่แล้วลองใหม่`;
     return `SmartAIHub ปฏิเสธคำขอเชื่อมต่อ (${code})`;
   }
+  if (/^RUNNER_[A-Z0-9_]{2,96}$/.test(code)) return `Runner แจ้งรหัส ${code} — ตรวจไฟล์ Debug เพื่อดูรายละเอียดเพิ่มเติม`;
   return "ดำเนินการไม่สำเร็จ ตรวจการเชื่อมต่อแล้วลองอีกครั้ง";
 }
 
@@ -299,11 +300,12 @@ function applyRunnerStatus(status) {
 
   const runtimeLabel = stopPending || status.stopping
     ? "กำลังหยุด…"
-    : status.lastError ? "พบข้อผิดพลาด"
+    : workspaceUnavailable && controlPlaneConnected ? "ต้องเลือก Workspace"
+      : status.lastError ? "พบข้อผิดพลาด"
       : status.running && !controlPlaneConnected ? "รอ heartbeat"
         : status.running ? "กำลังทำงาน" : "หยุดอยู่";
   elements["runtime-state"].textContent = runtimeLabel;
-  elements["runtime-state"].className = `state-pill${status.running && controlPlaneConnected && !status.stopping && !status.lastError ? " good" : status.stopping || status.lastError || status.running && !controlPlaneConnected ? " warn" : ""}`;
+  elements["runtime-state"].className = `state-pill${status.running && controlPlaneConnected && !status.stopping && (!status.lastError || workspaceUnavailable) ? " good" : status.stopping || status.lastError || status.running && !controlPlaneConnected ? " warn" : ""}`;
   if (status.lastError) setNotice(elements["runtime-notice"], safeError(status.lastError));
   else if (previousError && elements["runtime-notice"].textContent === safeError(previousError)) {
     setNotice(elements["runtime-notice"]);
