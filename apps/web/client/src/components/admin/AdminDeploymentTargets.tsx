@@ -92,8 +92,8 @@ function stagingActionFailureText(code: string, text: (en: string, th: string) =
   };
   if (prerequisites[code]) return text(...prerequisites[code]);
   if (code === "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" || code === "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED") return text(
-    "The saved HTTP profile has too little time remaining. Prepare a fresh Full Application HTTP candidate above, then authorize deployment.",
-    "อายุ HTTP profile ที่เหลือไม่พอ ให้กดเตรียม Full Application HTTP candidate ใหม่ด้านบน แล้วจึงอนุมัติ deploy",
+    "The saved HTTP profile has too little time remaining. Prepare a fresh Full Application HTTP candidate in step 1, then authorize deployment.",
+    "อายุ HTTP profile ที่เหลือไม่พอ ให้กดเตรียม Full Application HTTP candidate ใหม่ในขั้นตอนที่ 1 แล้วจึงอนุมัติ deploy",
   );
   if (code === "STAGING_DEPLOYMENT_IN_PROGRESS") return text(
     "A deployment is queued or running. Open Worker Jobs to follow its progress; wait for its result before preparing or deploying again.",
@@ -1886,6 +1886,7 @@ export default function AdminDeploymentTargets() {
             {stagingOriginConfiguration.data?.applicationPreparation?.applicationHttpExpiresAt ? <p>{text("HTTP profile expires", "HTTP profile หมดอายุ")}: {new Date(stagingOriginConfiguration.data.applicationPreparation.applicationHttpExpiresAt).toLocaleString()}
               {text(" · Deployment requires at least 4 hours 45 minutes remaining. Prepare again when less time remains.", " · เริ่ม deploy ได้เมื่อเหลืออย่างน้อย 4 ชั่วโมง 45 นาที หากเหลือน้อยกว่านี้ ให้กดเตรียมใหม่ได้ทันที")}</p> : null}
             <HStack gap={2} wrap="wrap">
+              {stagingHttpRefreshRequired ? <Button asChild><a href="#staging-prepare">{text("Go to Prepare", "ไปเตรียม profile ใหม่")}</a></Button> : null}
               <Button type="button" variant="outline" disabled={stagingDeployPreflight.isFetching || stagingOriginConfiguration.isFetching || stagingActionRunning}
                 onClick={async () => { await Promise.all([stagingDeployPreflight.refetch(), stagingOriginConfiguration.refetch(), stagingRuntimeReadiness.refetch()]); setStagingClock(Date.now()); }}>
                 {stagingDeployPreflight.isFetching ? text("Checking…", "กำลังตรวจ…") : text("Refresh readiness", "ตรวจความพร้อมซ้ำ")}
@@ -2023,7 +2024,7 @@ export default function AdminDeploymentTargets() {
                   : secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid ? text("Both supplied secrets must be valid and different, or clear them to use automatic setup.", "secret ที่กรอกทั้งสองค่าต้องถูกต้องและต่างกัน หรือให้ล้างช่องเพื่อใช้การตั้งค่าอัตโนมัติ")
                   : !selectedActionNeeded ? text("This profile is already prepared and has enough time remaining. Continue with step 2.", "profile นี้เตรียมไว้แล้วและเหลือเวลาเพียงพอ ให้ไปขั้นตอนที่ 2") : null;
               return <VStack gap={2}>
-                  <h4>{text("1. Prepare the Staging candidate", "1. เตรียม candidate ของ Staging")}</h4>
+                  <h4 id="staging-prepare">{text("1. Prepare the Staging candidate", "1. เตรียม candidate ของ Staging")}</h4>
                   <p>{text(
                     "Select NAMESPACE_ONLY for the existing Queue profile or FULL_APPLICATION_HTTP to bind the verified Node/Python Containers and staging HTTP ingress. Saving creates a new immutable configuration only; deployment uses the existing Staging executor.",
                     "เลือก NAMESPACE_ONLY สำหรับ Queue profile เดิม หรือ FULL_APPLICATION_HTTP เพื่อผูก Node/Python Container ที่ตรวจสอบแล้วและ HTTP ingress ของ Staging การบันทึกสร้าง immutable configuration ใหม่เท่านั้น ส่วน deploy ใช้ Staging executor เดิม",
