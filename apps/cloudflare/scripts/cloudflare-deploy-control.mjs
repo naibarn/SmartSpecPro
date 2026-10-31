@@ -39,11 +39,9 @@ export function parseUploadedVersion(output) {
   return unique[0];
 }
 
-async function providerRequest(path, init = {}) {
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID?.trim();
-  const token = process.env.CLOUDFLARE_API_TOKEN;
+async function requestWithCredentials(path, { accountId, token, fetchImpl = fetch }, init = {}) {
   if (!accountId || !/^[0-9a-f]{32}$/i.test(accountId) || !token) throw new Error("CF_DEPLOY_CREDENTIALS_MISSING");
-  const response = await fetch(`${API}${path.replaceAll("{account}", accountId)}`, {
+  const response = await fetchImpl(`${API}${path.replaceAll("{account}", accountId)}`, {
     ...init,
     headers: { authorization: `Bearer ${token}`, ...(init.body ? { "content-type": "application/json" } : {}), ...init.headers },
   });
@@ -56,6 +54,26 @@ async function providerRequest(path, init = {}) {
   return payload;
 }
 
+async function providerRequest(path, init = {}) {
+  return requestWithCredentials(path, {
+    accountId: process.env.CLOUDFLARE_ACCOUNT_ID?.trim(),
+    token: process.env.CLOUDFLARE_API_TOKEN,
+  }, init);
+}
+
+export async function verifyCloudflareToken(token, accountId, fetchImpl = fetch) {
+  const credentials = { accountId: accountId?.trim(), token, fetchImpl };
+  let verification;
+  try {
+    verification = await requestWithCredentials("/user/tokens/verify", credentials);
+  } catch (error) {
+    if (!(error instanceof Error) || !/^CF_API_REJECTED_401_\d+$/.test(error.message)) throw error;
+    verification = await requestWithCredentials("/accounts/{account}/tokens/verify", credentials);
+  }
+  if (verification.result?.status !== "active") throw new Error("CF_TOKEN_INACTIVE");
+  return verification;
+}
+
 function workerName() {
   const name = process.env.CLOUDFLARE_WORKER_NAME?.trim();
   if (!name || !/^[a-z0-9-]{1,63}$/.test(name)) throw new Error("CF_WORKER_NAME_INVALID");
@@ -63,8 +81,7 @@ function workerName() {
 }
 
 async function checkIdentity() {
-  const verify = await providerRequest("/user/tokens/verify");
-  if (verify.result?.status !== "active") throw new Error("CF_TOKEN_INACTIVE");
+  await verifyCloudflareToken(process.env.CLOUDFLARE_API_TOKEN, process.env.CLOUDFLARE_ACCOUNT_ID);
   const account = await providerRequest("/accounts/{account}");
   if (account.result?.id !== process.env.CLOUDFLARE_ACCOUNT_ID) throw new Error("CF_ACCOUNT_ID_MISMATCH");
   const script = await providerRequest(`/accounts/{account}/workers/scripts/${encodeURIComponent(workerName())}`);

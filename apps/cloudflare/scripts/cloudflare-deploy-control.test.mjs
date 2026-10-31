@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { buildDeploymentPayload, parseDeploymentList, parseUploadedVersion, sameVersionWeights, smokeTest } from "./cloudflare-deploy-control.mjs";
+import { buildDeploymentPayload, parseDeploymentList, parseUploadedVersion, sameVersionWeights, smokeTest, verifyCloudflareToken } from "./cloudflare-deploy-control.mjs";
 
 const first = "11111111-1111-4111-8111-111111111111";
 const second = "22222222-2222-4222-8222-222222222222";
@@ -33,6 +33,31 @@ test("Cloudflare deployment API payload uses percentage strategy and carries exa
     versions: [{ version_id: first, percentage: 100 }],
     annotations: { "workers/message": "test deploy", "workers/triggered_by": "github-actions" },
   });
+});
+
+test("Cloudflare token verification supports account-owned API tokens after user-token verification rejects them", async () => {
+  const accountId = "a".repeat(32);
+  const requestedPaths = [];
+  const fetchImpl = async (input, init) => {
+    const path = new URL(input).pathname;
+    requestedPaths.push(path);
+    assert.equal(init.headers.authorization, "Bearer account-owned-token");
+    if (path === "/client/v4/user/tokens/verify") {
+      return Response.json({ success: false, errors: [{ code: 1000, message: "Unable to extract bearer token" }] }, { status: 401 });
+    }
+    if (path === `/client/v4/accounts/${accountId}/tokens/verify`) {
+      return Response.json({ success: true, result: { status: "active" } });
+    }
+    throw new Error(`Unexpected verification path: ${path}`);
+  };
+
+  const result = await verifyCloudflareToken("account-owned-token", accountId, fetchImpl);
+
+  assert.equal(result.result.status, "active");
+  assert.deepEqual(requestedPaths, [
+    "/client/v4/user/tokens/verify",
+    `/client/v4/accounts/${accountId}/tokens/verify`,
+  ]);
 });
 
 test("staging smoke requires Worker readiness and confirms the API session route is served by a Container", async () => {
