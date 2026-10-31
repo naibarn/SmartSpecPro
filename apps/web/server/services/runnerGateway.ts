@@ -72,8 +72,11 @@ export function runnerReadinessForDisplay(row: {
   const snapshotCurrent = sessionMatches && observed <= now && expires > now;
   const fresh = seen <= now && now - seen < 5 * 60_000;
   const status = row.revokedAt || row.status === "revoked" ? "revoked"
-    : !fresh || row.status === "offline" ? "offline"
-    : !snapshotCurrent ? "degraded" : row.status;
+    : !fresh ? "offline"
+    : !snapshotCurrent || row.status === "degraded" ? "degraded"
+    // A heartbeat is the current liveness signal. The persisted status can lag
+    // behind it during reconnect, so a stale "offline" value must not win.
+    : "online";
   return { status, snapshotCurrent: snapshotCurrent && status !== "revoked" };
 }
 

@@ -550,6 +550,10 @@ describe("RunnerGateway", () => {
       currentSnapshotJson: { runnerSessionId: "current-session" },
     };
     expect(runnerReadinessForDisplay(row, at)).toEqual({ status: "online", snapshotCurrent: true });
+    // A recent authenticated heartbeat is fresher evidence than a stale
+    // persisted offline projection; don't show an actively connected Runner offline.
+    expect(runnerReadinessForDisplay({ ...row, status: "offline" }, at))
+      .toEqual({ status: "online", snapshotCurrent: true });
     expect(runnerReadinessForDisplay({ ...row, snapshotExpiresAt: new Date(at - 1) }, at))
       .toEqual({ status: "degraded", snapshotCurrent: false });
     expect(runnerReadinessForDisplay({ ...row, currentSnapshotJson: { runnerSessionId: "previous-session" } }, at))
