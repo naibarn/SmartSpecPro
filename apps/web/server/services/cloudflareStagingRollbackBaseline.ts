@@ -12,6 +12,19 @@ export type VerifiedStagingRollbackBaseline = {
   configurationDigest: string;
 };
 
+/** A Full HTTP profile can expire before its enclosing origin configuration.
+ * Such a config is not a directly usable rollback baseline; expired versions
+ * must pass the separate exact-renewal compatibility check. */
+export function isStoredStagingRollbackConfigurationUsable(stored: {
+  status?: unknown;
+  configurationRef?: unknown;
+  configurationDigest?: unknown;
+  applicationPreparation?: { applicationHttpExpired?: unknown } | null;
+} | null | undefined, configurationRef: string, configurationDigest: string): boolean {
+  return stored?.status === "STORED" && stored.configurationRef === configurationRef &&
+    stored.configurationDigest === configurationDigest && stored.applicationPreparation?.applicationHttpExpired === false;
+}
+
 /**
  * Resolve a rollback baseline only when a succeeded canonical job's immutable
  * receipt identifies the active deployment or Cloudflare confirms that a new

@@ -110,7 +110,7 @@ import { cloudflareApprovalFailureCode, cloudflareApprovalResponseObject } from 
 import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalPlanSchema, privateDatabaseRenewalPlanDigest } from "../services/cloudflarePrivateDatabaseContract";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
 import { getCloudflareWorkerDeploymentVersionEvidence, getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
-import { findVerifiedStagingRollbackBaseline } from "../services/cloudflareStagingRollbackBaseline";
+import { findVerifiedStagingRollbackBaseline, isStoredStagingRollbackConfigurationUsable } from "../services/cloudflareStagingRollbackBaseline";
 import { admitM3ParityOperation, getM3ParityOperation, getM3ParityPreflight } from "../services/cloudflareM3ParityAdmission";
 import { cloudflareOriginIdentitySchema as originIdentitySchema, cloudflareOriginReferenceSchema as originReferenceSchema,
   cloudflareStagingActivationInputSchema } from "../../shared/cloudflareOriginIdentity";
@@ -523,7 +523,7 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
         isConfigurationUsable: async (candidateRef, candidateDigest) => {
           const stored = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef: candidateRef })
             .catch(() => null);
-          if (stored?.status === "STORED" && stored.configurationRef === candidateRef && stored.configurationDigest === candidateDigest) return true;
+          if (isStoredStagingRollbackConfigurationUsable(stored, candidateRef, candidateDigest)) return true;
           return isCloudflareOriginRollbackConfigurationUsable(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" },
             rollbackConfigurationRef: candidateRef, rollbackConfigurationDigest: candidateDigest,
             activeConfigurationRef: configurationRef, activeConfigurationDigest: configurationDigest });

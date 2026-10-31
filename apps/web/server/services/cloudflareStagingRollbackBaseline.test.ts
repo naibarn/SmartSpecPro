@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import * as rollbackBaseline from "./cloudflareStagingRollbackBaseline";
 import { findVerifiedStagingRollbackBaseline, type StagingRollbackCandidate } from "./cloudflareStagingRollbackBaseline";
 
 const digest = "a".repeat(64);
@@ -53,5 +54,26 @@ describe("findVerifiedStagingRollbackBaseline", () => {
   it("rejects an artifact reference that is not bound to its canonical content digest", async () => {
     const input = fixture({ input: { ...candidate.input, artifactRef: `sha256:${"c".repeat(64)}` } });
     await expect(findVerifiedStagingRollbackBaseline(input)).resolves.toBeNull();
+  });
+});
+
+describe("isStoredStagingRollbackConfigurationUsable", () => {
+  const configurationRef = `cf-origin:${digest}`;
+
+  it("does not treat a stored config with an expired Full HTTP profile as a usable rollback", () => {
+    expect(rollbackBaseline.isStoredStagingRollbackConfigurationUsable({
+      status: "STORED", configurationRef, configurationDigest: digest,
+      applicationPreparation: { applicationHttpExpired: true },
+    }, configurationRef, digest)).toBe(false);
+  });
+
+  it("accepts only a matching stored config whose application profile was checked and is still valid", () => {
+    expect(rollbackBaseline.isStoredStagingRollbackConfigurationUsable({
+      status: "STORED", configurationRef, configurationDigest: digest,
+      applicationPreparation: { applicationHttpExpired: false },
+    }, configurationRef, digest)).toBe(true);
+    expect(rollbackBaseline.isStoredStagingRollbackConfigurationUsable({
+      status: "STORED", configurationRef, configurationDigest: digest,
+    }, configurationRef, digest)).toBe(false);
   });
 });
