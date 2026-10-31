@@ -60,6 +60,23 @@ test("Cloudflare token verification supports account-owned API tokens after user
   ]);
 });
 
+test("Cloudflare token verification failure identifies endpoints and format without exposing the token", async () => {
+  const accountId = "a".repeat(32);
+  const rawToken = "Bearer cfat_account-token-secret";
+  const fetchImpl = async () => Response.json({
+    success: false,
+    errors: [{ code: 1000, message: "Unable to extract bearer token" }],
+  }, { status: 401 });
+
+  await assert.rejects(verifyCloudflareToken(rawToken, accountId, fetchImpl), error => {
+    assert.match(error.message, /user=401_1000/);
+    assert.match(error.message, /account=401_1000/);
+    assert.match(error.message, /format=ACCOUNT_API_TOKEN,bearer_prefix=present/);
+    assert.equal(error.message.includes("account-token-secret"), false);
+    return true;
+  });
+});
+
 test("staging smoke requires Worker readiness and confirms the API session route is served by a Container", async () => {
   const fetchOk = async input => {
     const path = new URL(input).pathname;

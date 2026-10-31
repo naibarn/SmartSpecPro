@@ -68,7 +68,23 @@ export async function verifyCloudflareToken(token, accountId, fetchImpl = fetch)
     verification = await requestWithCredentials("/user/tokens/verify", credentials);
   } catch (error) {
     if (!(error instanceof Error) || !/^CF_API_REJECTED_401_\d+$/.test(error.message)) throw error;
-    verification = await requestWithCredentials("/accounts/{account}/tokens/verify", credentials);
+    try {
+      verification = await requestWithCredentials("/accounts/{account}/tokens/verify", credentials);
+    } catch (accountError) {
+      const errorCode = value => {
+        const match = value instanceof Error && value.message.match(/^CF_API_REJECTED_(\d+)_(\d+)$/);
+        return match ? `${match[1]}_${match[2]}` : "OTHER";
+      };
+      const rawToken = typeof token === "string" ? token : "";
+      const trimmedToken = rawToken.trim();
+      const bearerPrefixed = /^Bearer\s+/i.test(trimmedToken);
+      const tokenValue = trimmedToken.replace(/^Bearer\s+/i, "");
+      const tokenKind = tokenValue.startsWith("cfat_") ? "ACCOUNT_API_TOKEN"
+        : tokenValue.startsWith("cfut_") ? "USER_API_TOKEN"
+          : tokenValue.startsWith("cfoat_") ? "WRANGLER_OAUTH_TOKEN"
+            : tokenValue.startsWith("cfk_") ? "GLOBAL_API_KEY" : "UNRECOGNIZED_OR_LEGACY";
+      throw new Error(`CF_TOKEN_VERIFY_FAILED:user=${errorCode(error)};account=${errorCode(accountError)};format=${tokenKind},bearer_prefix=${bearerPrefixed ? "present" : "absent"},outer_whitespace=${rawToken === trimmedToken ? "none" : "present"},newline=${/[\r\n]/.test(rawToken) ? "present" : "none"}`);
+    }
   }
   if (verification.result?.status !== "active") throw new Error("CF_TOKEN_INACTIVE");
   return verification;
