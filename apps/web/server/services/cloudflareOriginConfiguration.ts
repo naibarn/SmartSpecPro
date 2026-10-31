@@ -283,12 +283,21 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
       const allowExpiredStagingProfileRotation = canRotateExpiredStagingApplicationRole(priorHttp);
       const roleSecretHolder: { value?: { role: string; password: string; planDigest: string } } = {};
       if (existingRole.length && stored.secrets.applicationHttp) {
-        const reused = await reuseStagingApplicationDatabaseCredential(tx as unknown as DrizzleDB, { plan: rolePlan,
-          nodeDatabaseUrl: stored.secrets.applicationHttp.node.DATABASE_URL ?? "",
-          pythonDatabaseUrl: stored.secrets.applicationHttp.python.DATABASE_URL ?? "" });
-        rolePlan.expiresAt = reused.plan.expiresAt;
-        roleSecretHolder.value = reused.secret;
-      } else await prepareApplicationDatabaseRole(tx as unknown as DrizzleDB, { plan: rolePlan, purpose: "staging-application",
+        try {
+          const reused = await reuseStagingApplicationDatabaseCredential(tx as unknown as DrizzleDB, { plan: rolePlan,
+            nodeDatabaseUrl: stored.secrets.applicationHttp.node.DATABASE_URL ?? "",
+            pythonDatabaseUrl: stored.secrets.applicationHttp.python.DATABASE_URL ?? "" });
+          rolePlan.expiresAt = reused.plan.expiresAt;
+          roleSecretHolder.value = reused.secret;
+        } catch (error) {
+          // Retain the existing guarded rotation path when the old HTTP
+          // profile has expired and its role credential cannot outlive a new
+          // profile. Unsafe bindings/grants never fall back to rotation.
+          if (!allowExpiredStagingProfileRotation || !(error instanceof Error) ||
+              error.message !== "APPLICATION_DATABASE_ROLE_PREPARATION_DENIED_ROLE_VALIDITY_TOO_SHORT_OR_UNBOUND") throw error;
+        }
+      }
+      if (!roleSecretHolder.value) await prepareApplicationDatabaseRole(tx as unknown as DrizzleDB, { plan: rolePlan, purpose: "staging-application",
         pythonAuthReadOnly: true, ...(existingRole.length ? { reuse: rolePlan } : {}),
         ...(allowExpiredStagingProfileRotation ? { allowExpiredStagingProfileRotation: true } : {}),
         assertAuthorized: async () => {
