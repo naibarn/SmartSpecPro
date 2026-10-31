@@ -123,15 +123,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9",
+    "expected_canonical_sha": "9503ac2a23fd7d9cc4cf5d4b81c31474f70e83a0",
     "expected_spec_digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f"
   },
   "continuation": {
-    "next_action": "Use the authenticated Runner Releases UI on aimarkethubs.com to build and download the review installer from the integrated source. Install over the existing Windows Runner (preserve app data/enrollment), then capture same Runner ID, refresh/reconnect, fresh capability ACK, heartbeat, workspace readiness, and long-idle runtime evidence.",
-    "next_ready_workunit": "WINDOWS_RUNNER_IDLE_RECOVERY_RELEASE_AND_RUNTIME_ACCEPTANCE",
+    "next_action": "Build and download the review installer from the authenticated Runner Releases website flow using integrated source 9503ac2a23fd7d9cc4cf5d4b81c31474f70e83a0. Upgrade the existing Windows installation, verify autostart/heartbeat despite the missing saved workspace, select an authorized workspace, then collect safe near-expiry refresh and long-idle recovery evidence.",
+    "next_ready_workunit": "WINDOWS_RUNNER_AUTOSTART_WORKSPACE_AND_REFRESH_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Control-loop recovery fix 6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9 is integrated. 250 Runner library tests and 14 desktop tests pass. The externally dispatched artifact workflow was canceled before build; no installer was produced. Use the existing authenticated Runner Releases website flow. Owner-device installation and 24-hour runtime acceptance remain pending.",
-    "waiting_predicate": "Owner builds/downloads the integrated review installer through the Runner Releases UI, installs it over the existing enrolled Windows Runner, and provides fresh same-identity heartbeat/capability evidence after idle/reconnect."
+    "resume_point": "Source revision 9503ac2a23fd7d9cc4cf5d4b81c31474f70e83a0 allows the authenticated Runner control loop to start when the saved default workspace is no longer resolvable, while clearing the stale local workspace selection and retaining a warning. UI/API tests: 17 desktop tests pass; JS syntax, formatting, and diff checks pass. The owner-provided 0.2.56 diagnostic confirms a stored developer connection and a still-valid token but fails autostart at RUNNER_WORKSPACE_NEEDS_RESELECT. No installer was built and no post-expiry/long-idle owner runtime acceptance is available.",
+    "waiting_predicate": "Owner builds/downloads this integrated source through Runner Releases, upgrades the existing enrolled Windows Runner, confirms authenticated heartbeat with the unresolved workspace condition, then records refresh and idle-reconnect evidence on the same Runner ID."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -273,7 +273,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 55,
+  "generation": 56,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
@@ -296,7 +296,8 @@
       "96e1ce9f190148627bc5c9d84252e19da8323d85",
       "0f70bb90c2443b09ec36d09b958636bd609e91b0",
       "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
-      "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9"
+      "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9",
+      "9503ac2a23fd7d9cc4cf5d4b81c31474f70e83a0"
     ],
     "mapping": [],
     "source_paths": [
@@ -315,9 +316,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9",
+    "canonical_sha": "9503ac2a23fd7d9cc4cf5d4b81c31474f70e83a0",
     "integrated": true,
-    "integrated_at": "2026-10-31T12:18:00Z"
+    "integrated_at": "2026-10-31T12:50:54Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -1405,7 +1406,7 @@
     "unresolved": 209
   },
   "schema_version": 1,
-  "updated_at": "2026-10-31T12:19:54.141148Z",
+  "updated_at": "2026-10-31T12:51:09.969640Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1415,11 +1416,12 @@
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-connect-start-csrf-403-20261031.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-website-target-selector-20261031.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-save-website-while-running-20261031.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-idle-control-loop-recovery-20261031.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-idle-control-loop-recovery-20261031.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-autostart-missing-workspace-20261031.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9",
+    "sha": "9503ac2a23fd7d9cc4cf5d4b81c31474f70e83a0",
     "status": "PARTIAL",
     "task_regressions": []
   }

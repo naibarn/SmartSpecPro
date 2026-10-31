@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 209 unresolved of 209
 - Next action: Owner-host acceptance only: install the SHA-verified 0.2.53 unsigned-review artifact over the existing Runner; choose/save Production or Developer; restart; verify authentication, unchanged expected device identity, capability acknowledgement and fresh heartbeat. Do not treat CI or local tests as runtime acceptance.
-- Manifest generation: 55
+- Manifest generation: 56
 
 ## Source-declared status and relationship claims
 
