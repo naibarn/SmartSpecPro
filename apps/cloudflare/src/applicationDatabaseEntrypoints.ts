@@ -27,7 +27,7 @@ export const NODE_VPC_DATABASE_ENTRYPOINT = NODE_DATABASE_CARRIER_SOURCE + Strin
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 const env={...process.env},end=Date.parse(env.CLOUDFLARE_APPLICATION_EXPIRES_AT??'');
-let carrier,app;
+let carrier,app,failureStage='configuration';
 function stop(){app?.kill('SIGKILL');void carrier?.close();}
 try{
  const db=new URL(env.DATABASE_URL),host=env.DATABASE_CONNECTOR_HOSTNAME??'',staging=host==='db-staging.smartaihub.app';
@@ -41,17 +41,22 @@ try{
  for(const k of ['DATABASE_ACCESS_CLIENT_ID','DATABASE_ACCESS_CLIENT_SECRET','TUNNEL_SERVICE_TOKEN_ID','TUNNEL_SERVICE_TOKEN_SECRET'])delete env[k];
  const timer=setTimeout(()=>{stop();process.exit(0);},end-Date.now());
  process.once('SIGTERM',()=>{stop();process.exit(0);});process.once('SIGINT',()=>{stop();process.exit(0);});
+ failureStage='database-bridge';
  carrier=await createDatabaseCarrier('ws://database.application.internal/',15432);
  const {createApplicationDatabaseTls}=await import('/app/server/_core/applicationDatabaseTls.ts');
  const {default:postgres}=await import('postgres');
- const client=postgres(env.DATABASE_URL,{ssl:createApplicationDatabaseTls(env.DATABASE_URL,env),max:1,connect_timeout:8});
+ failureStage='database-tls';
+ const ssl=createApplicationDatabaseTls(env.DATABASE_URL,env);
+ failureStage='database-connect';
+ const client=postgres(env.DATABASE_URL,{ssl,max:1,connect_timeout:8});
  let ready=false;
  try{for(let n=0;n<3;n++){let timeout;try{await Promise.race([client.unsafe('SELECT 1'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error()),10000);})]);ready=true;break;}catch{await new Promise(r=>setTimeout(r,200));}finally{clearTimeout(timeout);}}}
  finally{await client.end({timeout:1});}
  if(!ready)throw Error();
+ failureStage='application-start';
  app=spawn(process.execPath,['/app/server/_core/cloudflare-http-api/index.mjs'],{env,stdio:['ignore','inherit','inherit']});
  await once(app,'exit');clearTimeout(timer);stop();
-}catch{stop();console.error('APPLICATION_VPC_DATABASE_START_FAILED');process.exit(1);}
+}catch{stop();console.error('APPLICATION_VPC_DATABASE_START_FAILED:'+failureStage);process.exit(1);}
 `;
 export const PYTHON_DATABASE_CARRIER_SOURCE = String.raw`
 async def forward_database(reader,writer,session,endpoint):
@@ -89,6 +94,7 @@ import os,sys,re,signal,threading,asyncio,aiohttp,functools
 from datetime import datetime,timezone
 from urllib.parse import urlsplit,urlunsplit,parse_qsl
 ` + PYTHON_DATABASE_CARRIER_SOURCE + String.raw`
+failure_stage='configuration'
 try:
  env=dict(os.environ);end=datetime.fromisoformat(env.get('CLOUDFLARE_APPLICATION_EXPIRES_AT','').replace('Z','+00:00'))
  remaining=end.timestamp()-datetime.now(timezone.utc).timestamp();db=urlsplit(env['DATABASE_URL'])
@@ -101,14 +107,16 @@ try:
  timer=threading.Timer(remaining,lambda:os._exit(0));timer.daemon=True;timer.start()
  for sig in (signal.SIGTERM,signal.SIGINT):signal.signal(sig,lambda *_:os._exit(0))
  from app.core.cloudflare_http_entrypoint import DatabaseConnectorEventLoop,serve_http
+ failure_stage='database-bridge'
  async def main():
   async with aiohttp.ClientSession() as session:
    server=await asyncio.start_server(functools.partial(forward_database,session=session,endpoint='http://database.application.internal/'),'127.0.0.1',15432)
    async with server:await serve_http()
- asyncio.run(main(),loop_factory=lambda:DatabaseConnectorEventLoop('db.smartaihub.app'))
+ failure_stage='database-connect'
+ asyncio.run(main(),loop_factory=lambda:DatabaseConnectorEventLoop(host))
  timer.cancel()
 except Exception:
- sys.stderr.write('APPLICATION_VPC_DATABASE_START_FAILED\n');sys.exit(1)
+ sys.stderr.write('APPLICATION_VPC_DATABASE_START_FAILED:'+failure_stage+'\n');sys.exit(1)
 `;
 export function applicationVpcDatabaseEntrypoint(runtime: "node-http" | "python-http") {
   return runtime === "node-http" ? ["node", "--import=tsx", "--input-type=module", "-e", NODE_VPC_DATABASE_ENTRYPOINT]

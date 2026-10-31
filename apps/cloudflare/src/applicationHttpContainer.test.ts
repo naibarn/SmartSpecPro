@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApplicationHttpContainerController, validateApplicationHttpProfile, type ApplicationHttpProfile } from "./applicationHttpContainer";
+import { NODE_VPC_DATABASE_ENTRYPOINT, PYTHON_VPC_DATABASE_ENTRYPOINT } from "./applicationDatabaseEntrypoints";
 
 function fixture() {
   let now = Date.now();
@@ -76,6 +77,12 @@ describe("bounded private application HTTP compute", () => {
     await f.controller.ensureRunning();
     expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.profile.image,
       entrypoint: ["python", "-c", expect.stringContaining("role_pattern=r'sah_cf_app_[a-f0-9]{12}'")] }));
+  });
+  it("uses the selected staging DB hostname for Python TLS/SNI and emits only safe startup phase diagnostics", () => {
+    expect(PYTHON_VPC_DATABASE_ENTRYPOINT).toContain("DatabaseConnectorEventLoop(host)");
+    expect(PYTHON_VPC_DATABASE_ENTRYPOINT).not.toContain("DatabaseConnectorEventLoop('db.smartaihub.app')");
+    expect(NODE_VPC_DATABASE_ENTRYPOINT).toContain("APPLICATION_VPC_DATABASE_START_FAILED:'+failureStage");
+    expect(PYTHON_VPC_DATABASE_ENTRYPOINT).toContain("APPLICATION_VPC_DATABASE_START_FAILED:'+failure_stage");
   });
   it("rejects a foreign database role before reserving or starting a paid VM", async () => {
     const f = fixture();
