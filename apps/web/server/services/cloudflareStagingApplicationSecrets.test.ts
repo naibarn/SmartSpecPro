@@ -7,6 +7,7 @@ import { privateDatabasePlanDigest } from "./cloudflarePrivateDatabaseContract";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { httpApplicationNamespace } from "./cloudflareHttpApplicationBindings";
 import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest } from "./cloudflareApplicationDatabaseRole";
+import { resolveCloudflareOriginIngress } from "../_core/cloudflareOriginIngress";
 
 const previousEncryptionKey = process.env.LLM_ENCRYPTION_KEY;
 beforeAll(() => { process.env.LLM_ENCRYPTION_KEY = "staging-secret-resolution-test-encryption-key"; });
@@ -43,6 +44,7 @@ function fixture(databaseName = "smartspec", renewedLeaseExpiresAt?: string) {
   const applicationDatabaseRole = { role: applicationDatabaseRoleName(identity), password: "a".repeat(64),
     planDigest: applicationDatabaseRolePlanDigest(applicationDatabaseRolePlan) };
   const secret = "fixture-secret-at-least-thirty-two-characters";
+  const originToken = "fixture-origin-token-that-is-private-and-over-32-characters";
   const nodeEnvironment = { JWT_SECRET: secret, API_KEY_HMAC_SECRET: secret, LLM_ENCRYPTION_KEY: secret, CONTROL_PLANE_API_KEY: secret,
     DATABASE_URL: "must-not-be-copied", CLOUDFLARE_API_TOKEN: "must-not-be-copied" };
   const pythonEnvironment = { JWT_SECRET: secret, SECRET_KEY: secret, ENCRYPTION_MASTER_KEY: secret, SMARTSPEC_WEB_GATEWAY_TOKEN: secret,
@@ -51,13 +53,13 @@ function fixture(databaseName = "smartspec", renewedLeaseExpiresAt?: string) {
     databasePassword: "fixture-database-password-not-real-00000", caId: privateDatabase.caId };
   const certificateInput = { ...identity, actorUserId: 17, planDigest: privateDatabase.planDigest, caCertificate: HTTP_DATABASE_ORIGIN_CA };
   const rows = [
-    [{ isSensitive: true, updatedBy: 17, value: encrypt(JSON.stringify({ descriptor, secrets: {}, revokedAt: null })) }],
+    [{ isSensitive: true, updatedBy: 17, value: encrypt(JSON.stringify({ descriptor, secrets: { token: originToken }, revokedAt: null })) }],
     [{ isSensitive: true, updatedBy: 17, value: encrypt(JSON.stringify(databaseCheckpoint)) }],
     [{ isSensitive: true, updatedBy: 17, value: encrypt(JSON.stringify(certificateInput)) }],
   ];
   const db = { select: () => ({ from: () => ({ where: () => ({ limit: async () => rows.shift() }) }) }) };
   return { identity, applicationHttp, configurationRef, applicationDatabaseRole, applicationDatabaseRolePlan,
-    nodeEnvironment, pythonEnvironment, db };
+    nodeEnvironment, pythonEnvironment, originToken, db };
 }
 
 describe("server-side Staging application secret resolution", () => {
@@ -71,10 +73,20 @@ describe("server-side Staging application secret resolution", () => {
     expect(database.username).toBe(applicationDatabaseRoleName(f.identity));
     expect(result.secrets.node.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT).toBe("private-vpc-websocket-v1");
     expect(result.secrets.node.DATABASE_SSL_MODE).toBe("verify-full");
+    expect(result.secrets.node.AUTH_ORIGIN_TOKEN).toBe(f.originToken);
+    expect(result.secrets.node.AUTH_ORIGIN_PRIVATE_HOST).toBe("origin.example.com");
+    expect(result.secrets.node.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS).toBe(JSON.stringify(["https://staging.example.workers.dev"]));
+    expect(resolveCloudflareOriginIngress({
+      host: result.secrets.node.AUTH_ORIGIN_PRIVATE_HOST,
+      "x-cloudflare-origin-token": result.secrets.node.AUTH_ORIGIN_TOKEN,
+      "x-smartaihub-public-origin": "https://staging.example.workers.dev",
+    }, result.secrets.node)).toMatchObject({ status: 200, publicOrigin: "https://staging.example.workers.dev" });
+    expect(result.secrets.python).not.toHaveProperty("AUTH_ORIGIN_TOKEN");
     expect(result.secrets.node).not.toHaveProperty("CLOUDFLARE_API_TOKEN");
     expect(result.secrets.python).not.toHaveProperty("PYTHONPATH");
     expect(JSON.stringify(result.safeReceipt)).not.toContain(database.password);
     expect(JSON.stringify(result.safeReceipt)).not.toContain(f.nodeEnvironment.LLM_ENCRYPTION_KEY);
+    expect(JSON.stringify(result.safeReceipt)).not.toContain(f.originToken);
     expect(result.safeReceipt).toMatchObject({ databaseName: "smartspec", readOnlyRole: false, databaseIdentityVerified: false,
       networkConnectivityVerified: false, writeAcceptance: false });
   });

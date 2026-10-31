@@ -96,6 +96,19 @@ export async function resolveStagingApplicationSecrets(input: {
   const pythonEnvironment = input.pythonEnvironment ?? existingEnvironments!.pythonEnvironment;
   const nodeEnvironment = input.nodeEnvironment ?? existingEnvironments!.nodeEnvironment;
   const node = pick(nodeEnvironment, nodeKeys), python = pick(pythonEnvironment, pythonKeys);
+  // The Worker attests its request with this same encrypted origin credential.
+  // The Node container must validate that attestation and the forwarded public
+  // origin; omitting these fields makes the origin middleware reject every
+  // proxied request with 403 even though the Worker bindings are correct.
+  const originUrl = new URL(stored.descriptor.origin);
+  if (originUrl.protocol !== "https:" || originUrl.username || originUrl.password || originUrl.search || originUrl.hash ||
+      !Array.isArray(stored.descriptor.allowedPublicOrigins) || stored.descriptor.allowedPublicOrigins.length === 0 ||
+      stored.descriptor.allowedPublicOrigins.some((value: unknown) => typeof value !== "string")) deny();
+  Object.assign(node, {
+    AUTH_ORIGIN_TOKEN: stored.secrets.token,
+    AUTH_ORIGIN_PRIVATE_HOST: originUrl.host,
+    AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(stored.descriptor.allowedPublicOrigins),
+  });
   const required: Array<[string | undefined, number]> = [[node.JWT_SECRET, 32], [node.API_KEY_HMAC_SECRET, 32], [node.LLM_ENCRYPTION_KEY, 32],
     [node.CONTROL_PLANE_API_KEY, 24], [python.JWT_SECRET, 32], [python.SECRET_KEY, 32], [python.ENCRYPTION_MASTER_KEY, 32],
     [python.SMARTSPEC_WEB_GATEWAY_TOKEN, 24]];
