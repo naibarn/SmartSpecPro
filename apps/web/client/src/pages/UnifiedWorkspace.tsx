@@ -38,6 +38,7 @@ import { Spec224WorkspacePanel } from "@/components/chat/Spec224WorkspacePanel";
 import { Textarea } from "@/components/ui/textarea";
 
 type StartIntent = "chat" | "development" | "mini_app" | "agent_task";
+type ChatCommandIntent = "chat" | "development" | "mini_app";
 
 type WorkspaceMode = "chat" | "tasks" | "mission";
 type PresentationMode = "simple" | "developer";
@@ -52,6 +53,13 @@ function modeFromSearch(search: string): WorkspaceMode {
   if (params.get("mode") === "tasks" || params.get("panel") === "control-plane")
     return "tasks";
   return "chat";
+}
+
+function addSkillFirstGuidance(prompt: string, intent: ChatCommandIntent) {
+  const cleanPrompt = prompt.trim();
+  if (!cleanPrompt || intent !== "development") return cleanPrompt;
+  if (cleanPrompt.length > 3_700) return cleanPrompt;
+  return `${cleanPrompt}\n\nแนวทาง Skill-first: ตรวจ AGENTS.md และค้นหา/อ่าน Skill ที่เกี่ยวข้องก่อนทำงาน หากไม่มีให้ทำตามมาตรฐาน repository สรุปเกณฑ์ตรวจรับจากคำขอและบริบทจริง แก้เฉพาะขอบเขตที่อนุมัติ รันทดสอบที่เหมาะสม และรายงานไฟล์กับผลทดสอบ หากขอบเขตไม่ชัดหรือเกินสิทธิ์ ให้หยุดขอการตัดสินใจในขั้น review`;
 }
 
 export default function UnifiedWorkspace() {
@@ -82,6 +90,7 @@ export default function UnifiedWorkspace() {
   const [pilotConversationId, setPilotConversationId] = useState<number | null>(null);
   const [startPrompt, setStartPrompt] = useState("");
   const [startIntent, setStartIntent] = useState<StartIntent>("chat");
+  const [chatCommandIntent, setChatCommandIntent] = useState<ChatCommandIntent>("chat");
   const [selectedProjectId, setSelectedProjectId] = useState(projectParam);
   const [firstMessage, setFirstMessage] = useState<{ id: number; text: string; autoSend: true } | null>(null);
   const createInFlight = useRef(false);
@@ -96,6 +105,7 @@ export default function UnifiedWorkspace() {
       .filter(thread => thread.projectId && thread.projectTitle)
       .map(thread => [thread.projectId!, thread.projectTitle!] as const)
   )];
+  useEffect(() => setChatCommandIntent("chat"), [conversationId, threadId]);
   const titleQuery = trpc.chat.getConversation.useQuery(
     { id: conversationId ?? 0 },
     { enabled: Boolean(conversationId), staleTime: 30_000, retry: false }
@@ -183,13 +193,30 @@ export default function UnifiedWorkspace() {
         ...(selectedProjectId && authorizedProjects.some(([id]) => id === selectedProjectId) ? { projectId: selectedProjectId } : {}),
       });
       setPilotConversationId(created.id);
-      sessionStorage.setItem(`workspace-goal-draft:${created.id}`, JSON.stringify({ prompt, intent }));
+      sessionStorage.setItem(`workspace-goal-draft:${created.id}`, JSON.stringify({ prompt: addSkillFirstGuidance(prompt, intent), intent }));
       setLocation(`/chat?mode=tasks&c=${created.id}&newGoal=1`);
     } catch {
       // Keep the current page and draft intact when persistence fails.
     } finally {
       createInFlight.current = false;
     }
+  };
+  const openGoalReviewFromChat = (prompt: string, intent: Exclude<ChatCommandIntent, "chat">) => {
+    if (!isAdmin || !conversationId || !prompt.trim()) return;
+    setChatCommandIntent("chat");
+    sessionStorage.setItem(`workspace-goal-draft:${conversationId}`, JSON.stringify({
+      prompt: addSkillFirstGuidance(prompt, intent),
+      intent,
+      returnToChat: true,
+      originalPrompt: prompt.trim(),
+    }));
+    const next = new URLSearchParams();
+    next.set("mode", "tasks");
+    next.set("c", String(conversationId));
+    if (threadId) next.set("t", threadId);
+    if (params.get("projectId")) next.set("projectId", params.get("projectId")!);
+    next.set("newGoal", "1");
+    setLocation(`/chat?${next.toString()}`);
   };
   const submitStartCommand = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -313,8 +340,8 @@ export default function UnifiedWorkspace() {
         <HStack gap={1}>
           {isAdmin ? (
             <Button
-              label="ทดสอบการทำงานจริง"
-              variant="primary"
+              label="First Run Pilot · ทดสอบระบบครั้งแรก"
+              variant="secondary"
               disabled={createConversation.isPending}
               onClick={() => void startFirstRunPilot()}
             />
@@ -403,7 +430,7 @@ export default function UnifiedWorkspace() {
                         <header className="space-y-2">
                           <p className="text-sm font-medium text-primary">SmartAIHub Workspace</p>
                           <h1 id="workspace-start-heading" className="text-2xl font-semibold tracking-tight sm:text-3xl">ต้องการให้ AI ช่วยทำอะไร?</h1>
-                          <p className="max-w-2xl text-sm text-muted-foreground">เริ่มแชตได้ทันที หรือเลือกชนิดงานเพื่อเปิด Goal review ก่อนส่งให้ Harness ทำงาน</p>
+                          <p className="max-w-2xl text-sm text-muted-foreground">พิมพ์สั้น ๆ ได้ เลือก Development เพื่อให้ระบบตรวจคำสั่ง, Skill และขอบเขตก่อนเปิด Goal review; Chat ปกติจะส่งข้อความเข้าบทสนทนา</p>
                         </header>
                         <form onSubmit={event => void submitStartCommand(event)} className="space-y-3 rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5" aria-label="Start work">
                           <label htmlFor="workspace-first-prompt" className="sr-only">คำสั่งเริ่มต้น</label>
@@ -431,7 +458,7 @@ export default function UnifiedWorkspace() {
                           {startIntent !== "chat" && !isAdmin ? <p role="status" className="text-sm text-muted-foreground">การสร้าง Goal ต้องใช้บัญชี Admin ที่ได้รับอนุญาต</p> : null}
                         </form>
                         <HStack gap={2} wrap="wrap" aria-label="Quick start actions">
-                          {isAdmin ? <Button variant="secondary" onClick={() => void startFirstRunPilot()}>Develop SmartAIHub</Button> : null}
+                          {isAdmin ? <Button variant="secondary" onClick={() => void startFirstRunPilot()}>First Run Pilot · SmartAIHub</Button> : null}
                           <Button variant="secondary" onClick={() => { setStartIntent("mini_app"); document.getElementById("workspace-first-prompt")?.focus(); }}>Develop an App</Button>
                           <Button variant="secondary" onClick={() => { setStartIntent("agent_task"); document.getElementById("workspace-first-prompt")?.focus(); }}>Run Agent Task</Button>
                         </HStack>
@@ -445,6 +472,9 @@ export default function UnifiedWorkspace() {
                       showExecutionActivity
                       showBrowserSessionEntry
                       composerPrompt={firstMessage}
+                      workspaceCommandMode={isAdmin ? chatCommandIntent : undefined}
+                      onWorkspaceCommandModeChange={isAdmin ? setChatCommandIntent : undefined}
+                      onWorkspaceGoalSubmit={isAdmin ? openGoalReviewFromChat : undefined}
                       onUserMessageSent={() => setFirstMessage(null)}
                     />
                     )}
@@ -547,14 +577,22 @@ export default function UnifiedWorkspace() {
         try { draft = JSON.parse(sessionStorage.getItem(`workspace-goal-draft:${conversationId}`) ?? "{}"); } catch { /* ignore corrupt local draft */ }
         return <Dialog open={params.get("newGoal") === "1"} onOpenChange={open => {
           if (!open) {
+            const returnToChat = draft.returnToChat === true;
+            const originalPrompt = typeof draft.originalPrompt === "string" ? draft.originalPrompt : "";
             sessionStorage.removeItem(`workspace-goal-draft:${conversationId}`);
-            navigate("tasks", conversationId, threadId);
+            if (returnToChat) {
+              setFirstMessage({ id: Date.now(), text: originalPrompt, autoSend: false });
+              navigate("chat", conversationId, threadId);
+            } else {
+              navigate("tasks", conversationId, threadId);
+            }
           }
         }}>
           <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
             <DialogHeader><DialogTitle>ตรวจสอบ Goal ก่อนส่งอนุมัติ</DialogTitle></DialogHeader>
             <Spec224WorkspacePanel
               conversationId={conversationId}
+              threadId={threadId}
               simpleMode
               initialPrompt={draft.prompt}
               initialRequestKind={draft.intent === "mini_app" ? "mini_app" : "development"}
@@ -572,7 +610,7 @@ export default function UnifiedWorkspace() {
       }}>
         <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>ทดสอบการทำงานจริง · First Run Pilot</DialogTitle>
+            <DialogTitle>First Run Pilot · ทดสอบระบบครั้งแรก</DialogTitle>
           </DialogHeader>
           {pilotConversationId ? (
             <Spec224WorkspacePanel

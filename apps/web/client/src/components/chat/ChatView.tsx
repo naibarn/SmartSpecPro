@@ -784,6 +784,9 @@ interface ChatViewProps {
   ) => void;
   onDismissBrowserSessionSuggestion?: (suggestionId: string) => void;
   onOpenFinancePanel?: () => void;
+  workspaceCommandMode?: "chat" | "development" | "mini_app";
+  onWorkspaceCommandModeChange?: (mode: "chat" | "development" | "mini_app") => void;
+  onWorkspaceGoalSubmit?: (prompt: string, intent: "development" | "mini_app") => void;
 }
 
 type LibraryRecentDaysFilter = "all" | 1 | 3 | 7 | 15 | 30;
@@ -807,6 +810,9 @@ export function ChatView({
   onConfirmBrowserSessionSuggestion,
   onDismissBrowserSessionSuggestion,
   onOpenFinancePanel,
+  workspaceCommandMode,
+  onWorkspaceCommandModeChange,
+  onWorkspaceGoalSubmit,
 }: ChatViewProps) {
   const isCompact = density === "compact";
   const [, navigate] = useLocation();
@@ -4192,6 +4198,15 @@ export function ChatView({
       return;
     }
 
+    if (workspaceCommandMode && workspaceCommandMode !== "chat" && onWorkspaceGoalSubmit) {
+      if (messageAttachments.length > 0 || messageSelectedLibrarySources.length > 0) {
+        toast.error("Goal review ยังรับเฉพาะคำสั่งข้อความ กรุณานำไฟล์แนบออกก่อนเริ่ม Goal");
+        return;
+      }
+      onWorkspaceGoalSubmit(text, workspaceCommandMode);
+      return;
+    }
+
     const textWithLibraryContext = appendLibraryContextToMessage(
       text,
       messageSelectedLibrarySources
@@ -6773,6 +6788,20 @@ export function ChatView({
       >
         <VoiceAgentPanel conversationId={conversation?.id ?? null} />
 
+        {workspaceCommandMode && onWorkspaceCommandModeChange ? (
+          <div className="mb-2 flex flex-wrap items-center gap-2" role="group" aria-label="วิธีส่งคำสั่ง">
+            <span className="text-xs text-muted-foreground">ส่งเป็น</span>
+            <Button type="button" size="sm" variant={workspaceCommandMode === "chat" ? "default" : "outline"} aria-pressed={workspaceCommandMode === "chat"} onClick={() => onWorkspaceCommandModeChange("chat")}>Chat</Button>
+            <Button type="button" size="sm" variant={workspaceCommandMode === "development" ? "default" : "outline"} aria-pressed={workspaceCommandMode === "development"} onClick={() => onWorkspaceCommandModeChange("development")}>Development Goal</Button>
+            <Button type="button" size="sm" variant={workspaceCommandMode === "mini_app" ? "default" : "outline"} aria-pressed={workspaceCommandMode === "mini_app"} onClick={() => onWorkspaceCommandModeChange("mini_app")}>Mini App Goal</Button>
+            <span className="text-xs text-muted-foreground">
+              {workspaceCommandMode === "chat"
+                ? "ส่งข้อความเข้า Chat ตามปกติ"
+                : "คำสั่งสั้นได้ ระบบจะให้ตรวจ Skill และขอบเขตใน Goal review ก่อนเริ่มงาน"}
+            </span>
+          </div>
+        ) : null}
+
         {/* Quick Actions for Generation */}
         {!isStreaming && messages.length === 0 && (
           <div
@@ -7465,8 +7494,11 @@ export function ChatView({
             aria-label={
               isStreaming && activeLocalReplyKind
                 ? "Cancel local reply"
-                : "Send message"
+                : workspaceCommandMode && workspaceCommandMode !== "chat"
+                  ? "Review Goal before starting"
+                  : "Send message"
             }
+            title={workspaceCommandMode && workspaceCommandMode !== "chat" ? "Review Goal before starting" : "Send message"}
             title={
               isStreaming && activeLocalReplyKind
                 ? "Cancel local reply"

@@ -83,9 +83,10 @@ vi.mock("@/contexts/AuthContext", () => ({
 }));
 
 vi.mock("@/components/chat/Spec224WorkspacePanel", () => ({
-  Spec224WorkspacePanel: ({ conversationId, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind }: { conversationId: number; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string }) => (
+  Spec224WorkspacePanel: ({ conversationId, threadId, pilotMode, requestedHarnessAdapterId, initialPrompt, initialRequestKind }: { conversationId: number; threadId?: string | null; pilotMode?: boolean; requestedHarnessAdapterId?: string | null; initialPrompt?: string; initialRequestKind?: string }) => (
     <>
       <section aria-label="First Run Pilot panel">Pilot {conversationId} · {String(Boolean(pilotMode))} · {requestedHarnessAdapterId ?? "auto"}</section>
+      {threadId ? <p data-testid="goal-review-thread">{threadId}</p> : null}
       {initialPrompt ? <p data-testid="goal-review-prompt">{initialRequestKind}: {initialPrompt}</p> : null}
     </>
   ),
@@ -112,13 +113,25 @@ vi.mock("@/components/chat/ChatView", () => ({
   ChatView: ({
     showBrowserSessionEntry,
     composerPrompt,
+    workspaceCommandMode,
+    onWorkspaceCommandModeChange,
+    onWorkspaceGoalSubmit,
   }: {
     showBrowserSessionEntry?: boolean;
     composerPrompt?: { id: number; text: string; autoSend?: boolean } | null;
+    workspaceCommandMode?: string;
+    onWorkspaceCommandModeChange?: (mode: string) => void;
+    onWorkspaceGoalSubmit?: (prompt: string, intent: string) => void;
   }) => (
     <section aria-label="Conversation canvas">
       Conversation canvas
       {composerPrompt ? <p role="status" data-auto-send={String(Boolean(composerPrompt.autoSend))}>{composerPrompt.text}</p> : null}
+      {workspaceCommandMode ? (
+        <div aria-label="Chat command mode">
+          <button type="button" onClick={() => onWorkspaceCommandModeChange?.("development")}>Development task mode</button>
+          <button type="button" onClick={() => onWorkspaceGoalSubmit?.("fix login", workspaceCommandMode)}>Review current chat as Goal</button>
+        </div>
+      ) : null}
       {showBrowserSessionEntry ? (
         <button type="button">Browser control</button>
       ) : null}
@@ -240,7 +253,7 @@ describe("UnifiedWorkspace", () => {
 
   it("lets an admin open a first-run pilot bound to a newly persisted chat session", async () => {
     render(<UnifiedWorkspace />);
-    fireEvent.click(screen.getByRole("button", { name: "ทดสอบการทำงานจริง" }));
+    fireEvent.click(screen.getByRole("button", { name: "First Run Pilot · ทดสอบระบบครั้งแรก" }));
     expect(await screen.findByRole("region", { name: "First Run Pilot panel" })).toBeTruthy();
     expect(screen.getByText("Pilot 902 · true · auto")).toBeTruthy();
     expect(state.location).toHaveBeenCalledWith("/chat?c=902&pilot=1");
@@ -263,7 +276,7 @@ describe("UnifiedWorkspace", () => {
   it("does not expose the first-run pilot entry point to non-admin users", () => {
     state.user = { role: "user" };
     render(<UnifiedWorkspace />);
-    expect(screen.queryByRole("button", { name: "ทดสอบการทำงานจริง" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "First Run Pilot · ทดสอบระบบครั้งแรก" })).toBeNull();
   });
 
   it("offers an obvious New Goal action in Task Control and opens the existing review route", async () => {
@@ -294,7 +307,27 @@ describe("UnifiedWorkspace", () => {
     expect(screen.queryByRole("region", { name: "Conversation canvas" })).toBeNull();
     act(() => { state.search = "mode=tasks&c=902&newGoal=1"; });
     view.rerender(<UnifiedWorkspace />);
-    expect((await screen.findByTestId("goal-review-prompt")).textContent).toBe("development: Create a small utility");
+    expect((await screen.findByTestId("goal-review-prompt")).textContent).toContain("development: Create a small utility");
+    expect(screen.getByTestId("goal-review-prompt").textContent).toContain("แนวทาง Skill-first");
+  });
+
+  it("opens a skill-first Goal review from the active Chat without creating another conversation", async () => {
+    state.search = "c=901&t=thread-55&projectId=project-1";
+    const view = render(<UnifiedWorkspace />);
+    fireEvent.click(screen.getByRole("button", { name: "Development task mode" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review current chat as Goal" }));
+
+    await waitFor(() => expect(state.location).toHaveBeenCalledWith(
+      "/chat?mode=tasks&c=901&t=thread-55&projectId=project-1&newGoal=1",
+    ));
+    expect(state.create).not.toHaveBeenCalled();
+    expect(JSON.parse(sessionStorage.getItem("workspace-goal-draft:901") ?? "{}"))
+      .toMatchObject({ intent: "development", returnToChat: true, originalPrompt: "fix login" });
+    expect(JSON.parse(sessionStorage.getItem("workspace-goal-draft:901") ?? "{}").prompt)
+      .toContain("แนวทาง Skill-first");
+    act(() => { state.search = "mode=tasks&c=901&t=thread-55&projectId=project-1&newGoal=1"; });
+    view.rerender(<UnifiedWorkspace />);
+    expect((await screen.findByTestId("goal-review-thread")).textContent).toBe("thread-55");
   });
 
   it("binds a first Chat conversation to a project selected from authorized session context", async () => {
