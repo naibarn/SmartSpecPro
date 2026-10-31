@@ -36,6 +36,50 @@ mod tests {
     }
 
     #[test]
+    fn shares_explicitly_registered_workspace_across_site_runner_identities() {
+        let temp = tempfile::tempdir().unwrap();
+        let project = temp.path().join("shared-project");
+        let data_root = temp.path().join("runner-data");
+        fs::create_dir_all(&project).unwrap();
+        let developer = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local(
+                "developer-runner",
+                "developer-device",
+                "https://aimarkethubs.com",
+            )
+        };
+        let production = RunnerConfig {
+            data_root: data_root.to_string_lossy().into_owned(),
+            ..RunnerConfig::local(
+                "production-runner",
+                "production-device",
+                "https://smartaihub.app",
+            )
+        };
+
+        let registered = workspace_registry::register(&developer, &project).unwrap();
+        // Existing installations have schema-v2 files scoped to the website's
+        // Runner identity. A site switch must keep their selected folders.
+        let registry_path = workspace_registry::registry_file(&developer);
+        let mut legacy: serde_json::Value =
+            serde_json::from_slice(&fs::read(&registry_path).unwrap()).unwrap();
+        legacy["schema_version"] = serde_json::json!(2);
+        legacy["runner_id"] = serde_json::json!(developer.runner_id);
+        legacy["device_id"] = serde_json::json!(developer.device_id);
+        fs::write(&registry_path, serde_json::to_vec(&legacy).unwrap()).unwrap();
+
+        assert_eq!(
+            workspace_registry::list(&production).unwrap(),
+            vec![registered.clone()]
+        );
+        assert_eq!(
+            workspace_registry::resolve(&production, &registered.workspace_id).unwrap(),
+            project.canonicalize().unwrap()
+        );
+    }
+
+    #[test]
     fn publishes_only_explicit_project_repository_and_current_task_identity() {
         let temp = tempfile::tempdir().unwrap();
         let project = temp.path().join("private-project-folder");
@@ -439,7 +483,7 @@ mod tests {
         );
         workspace_registry::register_root(&config, &root).unwrap();
         let migrated: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
-        assert_eq!(migrated["schema_version"], 2);
+        assert_eq!(migrated["schema_version"], 3);
         assert_eq!(
             workspace_registry::list(&config).unwrap()[0].workspace_id,
             "legacy-id"
@@ -2233,14 +2277,13 @@ fn load_records(config: &RunnerConfig) -> Result<Vec<WorkspaceRecord>, String> {
     } else {
         let state: WorkspaceRegistryFile = serde_json::from_value(value)
             .map_err(|_| "RUNNER_WORKSPACE_REGISTRY_INVALID".to_string())?;
-        if state.schema_version != 2 {
+        if !matches!(state.schema_version, 2 | 3) {
             return Err("RUNNER_WORKSPACE_REGISTRY_VERSION_UNSUPPORTED".into());
         }
-        if (!state.runner_id.is_empty() && state.runner_id != config.runner_id)
-            || (state.device_id.is_some() && state.device_id != config.device_id)
-        {
-            return Err("RUNNER_WORKSPACE_REGISTRY_SCOPE_MISMATCH".into());
-        }
+        // Workspace consent belongs to this local Runner installation, not to
+        // a website-specific Runner/device identity. Production and Developer
+        // have separate credentials and remote authorization, but intentionally
+        // share the folders the user selected on this machine.
         state.records
     };
     if records.len() > 1024 {
@@ -2268,9 +2311,11 @@ fn save_records(config: &RunnerConfig, records: &[WorkspaceRecord]) -> Result<()
     set_private_directory_permissions(parent)?;
     let temporary = parent.join(format!(".workspace_registry.{}.tmp", std::process::id()));
     let file = WorkspaceRegistryFile {
-        schema_version: 2,
-        runner_id: config.runner_id.clone(),
-        device_id: config.device_id.clone(),
+        schema_version: 3,
+        // Kept as empty legacy fields so schema-v2 installations migrate
+        // without changing their authorized folder records.
+        runner_id: String::new(),
+        device_id: None,
         records: records.to_vec(),
     };
     let bytes = serde_json::to_vec(&file)
