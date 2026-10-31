@@ -1,7 +1,7 @@
 import { DurableObject, WorkerEntrypoint } from "cloudflare:workers";
 import { ApplicationHttpContainerController, applicationHttpInstanceName, validateApplicationHttpProfilePair, type ApplicationHttpProfile } from "./applicationHttpContainer";
 import { applicationHttpHostname, forwardApplicationHttpBridge, validateApplicationHttpWebSocket, type ApplicationHttpBindings } from "./applicationHttpBridge";
-import { APPLICATION_DATABASE_HOST, APPLICATION_DATABASE_TRANSPORT, acceptApplicationDatabaseWebSocket, pipeApplicationDatabase, validateApplicationDatabasePolicy } from "./applicationDatabaseBridge";
+import { APPLICATION_DATABASE_HOST, APPLICATION_DATABASE_TRANSPORT, acceptApplicationDatabaseWebSocket, applicationDatabaseConnectionDeadline, pipeApplicationDatabase, validateApplicationDatabasePolicy } from "./applicationDatabaseBridge";
 
 type ApplicationEnvironment = ApplicationHttpBindings & {
   CLOUDFLARE_NODE_HTTP_SECRETS?: string;
@@ -24,7 +24,8 @@ export class ApplicationDatabaseBridge extends WorkerEntrypoint<ApplicationEnvir
       if (this.ctx.props.configurationRef !== policy.configurationRef || !this.env.DATABASE_NETWORK) throw Error();
       socket = await this.env.DATABASE_NETWORK.connect({ hostname: policy.hostname, port: policy.port });
       const pair = new WebSocketPair(), client = pair[0], server = pair[1]; acceptApplicationDatabaseWebSocket(server);
-      this.ctx.waitUntil(pipeApplicationDatabase(socket, server, Date.parse(policy.expiresAt)));
+      const profile = this.ctx.props.runtime === "node-http" ? node : python;
+      this.ctx.waitUntil(pipeApplicationDatabase(socket, server, applicationDatabaseConnectionDeadline(policy, profile)));
       return new Response(null, { status: 101, webSocket: client });
     } catch {
       await socket?.close().catch(() => undefined);

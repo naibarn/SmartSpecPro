@@ -17,9 +17,17 @@ export function validateApplicationDatabasePolicy(policy: ApplicationDatabasePol
       policy.configurationRef !== node.configurationRef || policy.namespace !== node.namespace ||
       !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(policy.tunnelId) ||
       policy.hostname !== (staging ? "db-staging.smartaihub.app" : "db.smartaihub.app") || policy.port !== (staging ? 5432 : 5433) ||
-      policy.expiresAt !== node.expiresAt || Date.parse(policy.expiresAt) - now > 600_000)
+      policy.expiresAt !== node.expiresAt)
     throw Error("APPLICATION_DATABASE_POLICY_DENIED");
   return policy;
+}
+
+/** Configuration validity can span several bounded Container starts. Each
+ * database socket still ends within this runtime's hard lifetime and may
+ * never outlive the exact validated configuration. */
+export function applicationDatabaseConnectionDeadline(policy: Pick<ApplicationDatabasePolicy, "expiresAt">,
+  profile: Pick<ApplicationHttpProfile, "hardLifetimeSeconds">, now = Date.now()) {
+  return Math.min(Date.parse(policy.expiresAt), now + profile.hardLifetimeSeconds * 1000);
 }
 
 type Socket = { readable: ReadableStream<Uint8Array>; writable: WritableStream<Uint8Array>; close(): Promise<void> };
