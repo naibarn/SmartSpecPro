@@ -292,6 +292,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22.23.4"
+      - name: Install Cloudflare runtime dependencies for workerd fixtures
+        run: pnpm install --frozen-lockfile --filter @smartspec/cloudflare-runtime...
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
