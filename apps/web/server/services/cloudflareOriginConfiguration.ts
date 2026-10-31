@@ -269,9 +269,17 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
         tables: relations.tables, sequences: relations.sequences, expiresAt: new Date(roleExpiresAt).toISOString(), connectionLimit: 10 as const };
       const roleName = applicationDatabaseRoleName(input.identity);
       const existingRole = await tx.execute(sql`SELECT 1 FROM pg_roles WHERE rolname=${roleName}`);
+      // Full HTTP profiles are deliberately short lived. If a previous profile
+      // has expired and its maximum Container lifetime has elapsed, allow the
+      // exact scoped role to rotate on refresh, but only after the role helper
+      // proves there are no live DB sessions and no grants outside this plan.
+      const priorHttp = previous.applicationHttp;
+      const allowExpiredStagingProfileRotation = Boolean(priorHttp &&
+        Date.parse(priorHttp.expiresAt) + priorHttp.hardLifetimeSeconds * 1000 <= Date.now());
       const roleSecretHolder: { value?: { role: string; password: string; planDigest: string } } = {};
       await prepareApplicationDatabaseRole(tx as unknown as DrizzleDB, { plan: rolePlan, purpose: "staging-application",
         pythonAuthReadOnly: true, ...(existingRole.length ? { reuse: rolePlan } : {}),
+        ...(allowExpiredStagingProfileRotation ? { allowExpiredStagingProfileRotation: true } : {}),
         assertAuthorized: async () => {
           const current = await tx.select({ id: providerDeploymentTargets.id }).from(providerDeploymentTargets).where(and(
             eq(providerDeploymentTargets.id, target.id), eq(providerDeploymentTargets.runtimePolicy, input.configurationRef),

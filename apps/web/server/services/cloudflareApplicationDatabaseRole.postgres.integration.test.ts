@@ -134,6 +134,33 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
     try { expect((await connection`SELECT current_user AS role`)[0].role).toBe(role); }
     finally { await connection.end({ timeout: 2 }); }
   });
+  it("refreshes an expired bounded Staging profile by rotating an exact active role only when it has no live sessions", async () => {
+    const p = { ...plan(), projectId: "project-expired-staging-profile",
+      expiresAt: new Date(Date.now() + 14 * 86_400_000).toISOString() };
+    const role = applicationDatabaseRoleName(p);
+    let first: any, rotated: any;
+    await prepareApplicationDatabaseRole(db, { plan: p, purpose: "staging-application",
+      assertAuthorized: async () => {}, saveSecret: async (_tx, secret) => { first = secret; } });
+    await expect(prepareApplicationDatabaseRole(db, { plan: p, purpose: "staging-application", reuse: p,
+      assertAuthorized: async () => {}, saveSecret: async () => {} }))
+      .rejects.toThrow("APPLICATION_DATABASE_ROLE_PREPARATION_DENIED_ROLE_LOGIN_ACTIVE");
+    await prepareApplicationDatabaseRole(db, { plan: p, purpose: "staging-application", reuse: p,
+      allowExpiredStagingProfileRotation: true, assertAuthorized: async () => {},
+      saveSecret: async (_tx, secret) => { rotated = secret; } });
+    expect(rotated.role).toBe(role);
+    expect(rotated.password).not.toBe(first.password);
+    await expect(assertReusableApplicationDatabaseRole(db, p))
+      .rejects.toThrow("APPLICATION_DATABASE_ROLE_PREPARATION_DENIED_ROLE_LOGIN_ACTIVE");
+
+    const url = new URL(disposable.databaseUrl); url.username = role; url.password = rotated.password;
+    const connection = (await import("postgres")).default(url.toString(), { max: 1 });
+    try {
+      await connection`SELECT current_user`;
+      await expect(prepareApplicationDatabaseRole(db, { plan: p, purpose: "staging-application", reuse: p,
+        allowExpiredStagingProfileRotation: true, assertAuthorized: async () => {}, saveSecret: async () => {} }))
+        .rejects.toThrow("APPLICATION_DATABASE_ROLE_PREPARATION_DENIED_ROLE_HAS_ACTIVE_SESSIONS");
+    } finally { await connection.end({ timeout: 2 }); }
+  });
   it("reconciles missing privileges only inside the current application allowlist", async () => {
     const p = { ...plan(), projectId: "project-role-grant-reconciliation" }, role = applicationDatabaseRoleName(p);
     let first: any, rotated: any;
