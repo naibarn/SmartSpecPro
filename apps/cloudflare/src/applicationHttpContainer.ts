@@ -231,6 +231,7 @@ export class ApplicationHttpContainerController {
     const production = this.profile.targetId === "smartspec-cloudflare-runtime";
     const maxLifetimeStarts = production ? 600 : 2;
     const maxLifetimeCompute = production ? 360_000 : 1200;
+    const windowMs = production ? 31 * 86_400_000 : 3_600_000;
     if (previous && (!/^[a-f0-9]{64}$/.test(previous.scope) || !Number.isFinite(previous.issuedAt) ||
         !Number.isSafeInteger(previous.starts) || previous.starts < 0 || previous.starts > maxLifetimeStarts ||
         !Number.isSafeInteger(previous.reservedSeconds) || previous.reservedSeconds < 0 || previous.reservedSeconds > maxLifetimeCompute ||
@@ -253,11 +254,18 @@ export class ApplicationHttpContainerController {
       // changing its secrets, image or issuedAt.
       if (previous.operationRef === this.profile.configurationRef) throw new Error("APPLICATION_HTTP_CONFIGURATION_CHANGED");
       const budgetWindowStartedAt = previous.budgetWindowStartedAt ?? previous.issuedAt;
-      const windowMs = production ? 31 * 86_400_000 : 3_600_000;
       previous = this.now() - budgetWindowStartedAt >= windowMs
         ? { scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt: this.now(), starts: 0, reservedSeconds: 0, activeUntil: null }
         : { ...previous, scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt, activeUntil: null,
           ...(production ? { operationRef: this.profile.configurationRef, operationStarts: 0, operationReservedSeconds: 0 } : {}) };
+    } else if (previous) {
+      const budgetWindowStartedAt = previous.budgetWindowStartedAt ?? previous.issuedAt;
+      const activeUntil = previous.activeUntil ?? 0;
+      if (this.now() - budgetWindowStartedAt >= windowMs && activeUntil <= this.now()) {
+        if (this.container.running) await this.container.destroy("application compute budget window expired");
+        previous = { scope, issuedAt: Date.parse(this.profile.issuedAt), budgetWindowStartedAt: this.now(),
+          starts: 0, reservedSeconds: 0, activeUntil: null };
+      }
     }
     if (this.container.running) {
       if (!previous?.activeUntil || previous.activeUntil <= this.now()) {

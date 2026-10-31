@@ -30,6 +30,14 @@ import {
 type Channel = 'email' | 'backup_email' | 'sms';
 type Step = 'choose' | 'input' | 'sent' | 'reset' | 'success';
 
+function readMutationResult(data: any) {
+  return data?.result?.data?.json ?? data?.result?.data;
+}
+
+function readMutationError(data: any) {
+  return data?.error?.json?.message ?? data?.error?.message;
+}
+
 export default function ForgotPassword() {
   // Pre-auth pages have no language selector, so they always render English
   // and translate="no" keeps browser auto-translate from mutating the DOM.
@@ -67,13 +75,13 @@ export default function ForgotPassword() {
         credentials: 'include',
       });
       const data = await response.json();
-      const errorMsg = data.error?.json?.message;
-      if (errorMsg) {
-        toast.error(errorMsg);
-      } else {
-        setStep('sent');
-        toast.success(channel === 'sms' ? 'Reset code sent via SMS!' : 'Reset code sent! Check your email inbox.');
+      const errorMsg = readMutationError(data);
+      if (!response.ok || errorMsg || readMutationResult(data)?.success !== true) {
+        toast.error(errorMsg || t('forgot.toast.sendFailed'));
+        return;
       }
+      setStep('sent');
+      toast.success(channel === 'sms' ? 'Reset code sent via SMS!' : 'Reset code requested. If this email is registered, check your inbox and spam folder.');
     } catch {
       toast.error(t('forgot.toast.sendFailed'));
     } finally {
@@ -97,8 +105,12 @@ export default function ForgotPassword() {
         credentials: 'include',
       });
       const data = await response.json();
-      const errorMsg = data.error?.json?.message;
-      if (errorMsg) { toast.error(errorMsg); } else { setStep('reset'); }
+      const errorMsg = readMutationError(data);
+      if (!response.ok || errorMsg || readMutationResult(data)?.success !== true) {
+        toast.error(errorMsg || t('forgot.toast.verifyFailed'));
+        return;
+      }
+      setStep('reset');
     } catch {
       toast.error(t('forgot.toast.verifyFailed'));
     } finally {
@@ -123,8 +135,13 @@ export default function ForgotPassword() {
         credentials: 'include',
       });
       const data = await response.json();
-      const errorMsg = data.error?.json?.message;
-      if (errorMsg) { toast.error(errorMsg); } else { setStep('success'); toast.success(t('forgot.toast.resetSuccess')); }
+      const errorMsg = readMutationError(data);
+      if (!response.ok || errorMsg || readMutationResult(data)?.success !== true) {
+        toast.error(errorMsg || t('forgot.toast.resetFailed'));
+        return;
+      }
+      setStep('success');
+      toast.success(t('forgot.toast.resetSuccess'));
     } catch {
       toast.error(t('forgot.toast.resetFailed'));
     } finally {

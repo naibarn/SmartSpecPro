@@ -308,6 +308,27 @@ describe("bounded private application HTTP compute", () => {
     expect(f.container.start).toHaveBeenCalledOnce();
   });
 
+  it("resets the Staging budget for the same configuration after its one-hour window", async () => {
+    const f = fixture();
+    const issuedAt = Date.now() - 1000;
+    f.profile.issuedAt = new Date(issuedAt).toISOString();
+    f.profile.expiresAt = new Date(issuedAt + 6 * 60 * 60_000).toISOString();
+    await f.controller.ensureRunning();
+    f.container.running = false;
+    f.advance(1000);
+    await f.controller.ensureRunning();
+    f.container.running = false;
+    await expect(f.controller.ensureRunning()).rejects.toThrow("COMPUTE_BUDGET_EXHAUSTED");
+
+    f.advance(60 * 60_000);
+    await f.controller.ensureRunning();
+    expect(f.records.get("application-http-lifecycle-v1")).toMatchObject({
+      starts: 1,
+      reservedSeconds: 60,
+    });
+    expect(f.container.start).toHaveBeenCalledTimes(3);
+  });
+
   it("preserves the production usage budget across config revisions and resets only after 31 days", async () => {
     const f = fixture();
     let now = Date.now();
