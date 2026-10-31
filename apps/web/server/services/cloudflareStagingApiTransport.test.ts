@@ -771,6 +771,17 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect((await verify(f)).reachable).toBe(false);
   });
 
+  it("allows the on-demand application Container cold-start window for auth verification", async () => {
+    const f = fixture();
+    const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(new AbortController().signal);
+    try {
+      expect(await verify(f)).toMatchObject({ reachable: true, deploymentId, sourceSha, buildDigest });
+      expect(timeout).toHaveBeenCalledWith(180_000);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
   it("reconciles an origin rollback retry without creating another deployment", async () => {
     const f = fixture({ prior: true });
     const result = await f.api.rollback({ token: "provider-token", target: f.originTarget, deploymentId, sourceSha, buildDigest,

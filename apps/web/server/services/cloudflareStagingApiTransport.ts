@@ -13,6 +13,10 @@ import type {
 } from "./cloudflareStagingDeploymentExecutor";
 
 const API_ROOT = "https://api.cloudflare.com/client/v4";
+// The staging HTTP Container is started on demand and its bounded readiness
+// window is 150 seconds. The auth-origin acceptance probe must outlast that
+// cold start, or a healthy deployment can be rolled back as an auth failure.
+const STAGING_ORIGIN_AUTH_VERIFICATION_TIMEOUT_MS = 180_000;
 
 /** Production Queue is provisioned by its own canonical job. Bind the exact
  * immutable queue name when preparing a Production version; never infer or
@@ -739,7 +743,7 @@ export function createCloudflareStagingApiTransport(input: {
           // Exercise the real Linux auth authority, not the Worker's native
           // health endpoint or an HTML Access login page. No user credentials.
           const response = await fetchImpl(new URL("/trpc/auth.me", baseUrl), {
-            redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(10000),
+            redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(STAGING_ORIGIN_AUTH_VERIFICATION_TIMEOUT_MS),
           });
           if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
             const body = await response.json() as { result?: { data?: { json?: unknown } }; error?: unknown };
