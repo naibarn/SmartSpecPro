@@ -5,7 +5,8 @@ import { nativeProvisionNamespace, nativeProvisionPlanDigest, nativeResourceName
 import { cloudflareOriginDescriptorDigest } from "./cloudflareOriginVersionBindings";
 import { saveCloudflareOriginConfiguration, getCloudflareOriginConfiguration,
   withCloudflareOriginConfiguration, withCloudflareOriginConfigurationForTransition, revokeCloudflareOriginConfiguration,
-  activateCloudflareStagingQueueProfile, isCompatibleCloudflareOriginRenewalRevision } from "./cloudflareOriginConfiguration";
+  activateCloudflareStagingQueueProfile, isCompatibleCloudflareOriginRenewalRevision,
+  canRotateExpiredStagingApplicationRole } from "./cloudflareOriginConfiguration";
 
 const identity = { tenantId: "origin-test", projectId: "origin-project", environment: "staging", provider: "cloudflare" };
 const settings = () => ({ origin: "https://origin-staging.smartaihub.app", allowedPublicOrigins: ["https://staging.account.workers.dev"],
@@ -111,6 +112,20 @@ describe("expired Staging rollback configuration compatibility", () => {
       plan: { ...nearExpiry.nativeResources.privateDatabase.plan, configurationExpiresAt: new Date(now + 10 * 86_400_000).toISOString() } } } } as any;
     expect(isCompatibleCloudflareOriginRenewalRevision({ ...input, previous: notDue,
       previousRef: `cf-origin:${cloudflareOriginDescriptorDigest(notDue)}` })).toBe(false);
+  });
+});
+
+describe("expired Staging application role rotation", () => {
+  it("allows rotation as soon as the bounded profile expires", () => {
+    const expiresAt = Date.parse("2026-10-31T03:52:19.781Z");
+    expect(canRotateExpiredStagingApplicationRole({ expiresAt: new Date(expiresAt).toISOString() }, expiresAt + 1))
+      .toBe(true);
+  });
+
+  it("does not allow rotation while the Staging profile is still active", () => {
+    const expiresAt = Date.parse("2026-10-31T03:52:19.781Z");
+    expect(canRotateExpiredStagingApplicationRole({ expiresAt: new Date(expiresAt).toISOString() }, expiresAt - 1))
+      .toBe(false);
   });
 });
 

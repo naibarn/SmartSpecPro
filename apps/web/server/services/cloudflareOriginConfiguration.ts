@@ -36,6 +36,12 @@ const storedSchema = z.object({ descriptor: descriptorSchema, secrets: cloudflar
   revokedAt: z.string().datetime({ offset: true }).nullable() }).strict();
 
 function denied(): never { throw new Error("CLOUDFLARE_ORIGIN_CONFIGURATION_DENIED"); }
+export function canRotateExpiredStagingApplicationRole(
+  profile: Pick<HttpApplicationSettings, "expiresAt"> | undefined, now = Date.now(),
+): boolean {
+  const expiresAt = profile ? Date.parse(profile.expiresAt) : Number.NaN;
+  return Number.isFinite(expiresAt) && expiresAt <= now;
+}
 function validateSettings(settings: OriginSettings, now: number) {
   const parsed = cloudflareOriginSettingsSchema.parse(settings);
   const origin = parseCloudflarePublicOrigin(parsed.origin);
@@ -269,13 +275,11 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
         tables: relations.tables, sequences: relations.sequences, expiresAt: new Date(roleExpiresAt).toISOString(), connectionLimit: 10 as const };
       const roleName = applicationDatabaseRoleName(input.identity);
       const existingRole = await tx.execute(sql`SELECT 1 FROM pg_roles WHERE rolname=${roleName}`);
-      // Full HTTP profiles are deliberately short lived. If a previous profile
-      // has expired and its maximum Container lifetime has elapsed, allow the
-      // exact scoped role to rotate on refresh, but only after the role helper
-      // proves there are no live DB sessions and no grants outside this plan.
+      // The Container deadline is bounded by profile.expiresAt. Once that
+      // deadline passes, allow the exact scoped role to rotate immediately;
+      // the role helper still rejects live DB sessions and grants outside plan.
       const priorHttp = previous.applicationHttp;
-      const allowExpiredStagingProfileRotation = Boolean(priorHttp &&
-        Date.parse(priorHttp.expiresAt) + priorHttp.hardLifetimeSeconds * 1000 <= Date.now());
+      const allowExpiredStagingProfileRotation = canRotateExpiredStagingApplicationRole(priorHttp);
       const roleSecretHolder: { value?: { role: string; password: string; planDigest: string } } = {};
       await prepareApplicationDatabaseRole(tx as unknown as DrizzleDB, { plan: rolePlan, purpose: "staging-application",
         pythonAuthReadOnly: true, ...(existingRole.length ? { reuse: rolePlan } : {}),
