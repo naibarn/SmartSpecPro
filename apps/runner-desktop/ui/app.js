@@ -221,9 +221,12 @@ function applyRunnerStatus(status) {
   if (!connectionEnvironmentDirty) elements["connection-environment"].value = selectedEnvironment;
   const environmentLabel = selectedEnvironment === "developer"
     ? "Developer · aimarkethubs.com" : "Production · smartaihub.app";
+  const activeEnvironment = (status.activeServerUrl ?? "").includes("aimarkethubs.com")
+    ? "developer"
+    : (status.activeServerUrl ?? "").includes("smartaihub.app") ? "production" : null;
+  const environmentNeedsRestart = activeEnvironment !== null && activeEnvironment !== selectedEnvironment;
   elements["connection-target-detail"].textContent = `เว็บไซต์ที่บันทึกไว้: ${environmentLabel} · แอปที่เปิดอยู่เชื่อมต่อกับ ${status.activeServerUrl ?? "ไม่ทราบเว็บไซต์"}`
-    + ((status.activeServerUrl ?? "").includes(selectedEnvironment === "developer" ? "aimarkethubs.com" : "smartaihub.app")
-      ? "" : " · ต้องปิดแล้วเปิด Runner ใหม่เพื่อใช้ค่าที่บันทึก");
+    + (environmentNeedsRestart ? " · กดปุ่มด้านล่างเพื่อเริ่ม Runner ใหม่ด้วยเว็บไซต์ที่บันทึก" : "");
   elements["credential-detail"].textContent = status.credentialState === "reauth_required"
     ? `การต่ออายุอัตโนมัติไม่สำเร็จ ต้องเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง${status.credentialErrorCode ? ` (${status.credentialErrorCode})` : ""}`
     : status.credentialState === "retrying"
@@ -302,22 +305,27 @@ function applyRunnerStatus(status) {
   }
 
   const canReauthorizeRunningRunner = status.running && credentialState === "reauth_required";
-  const canChangeAccount = (!status.running || canReauthorizeRunningRunner)
-    && !status.stopping
-    && (!capabilitySyncing || canReauthorizeRunningRunner);
+  const canChangeAccount = environmentNeedsRestart
+    || ((!status.running || canReauthorizeRunningRunner)
+      && !status.stopping
+      && (!capabilitySyncing || canReauthorizeRunningRunner));
   updateButton(elements["connect-button"], {
-    disabled: !canChangeAccount || connectPending || credentialState === "renewing",
+    disabled: !canChangeAccount || status.stopping || connectPending || credentialState === "renewing",
     pending: connectPending || credentialState === "renewing",
     label: connectPending
-      ? "กำลังเชื่อมต่อ…"
+      ? environmentNeedsRestart ? "กำลังเริ่ม Runner ใหม่…" : "กำลังเชื่อมต่อ…"
       : credentialState === "renewing"
         ? "กำลังต่ออายุ token…"
+        : environmentNeedsRestart
+          ? `เริ่มใหม่เพื่อใช้ ${selectedEnvironment === "developer" ? "Developer" : "Production"}`
         : canReauthorizeRunningRunner
           ? "ยืนยันบัญชีใหม่ผ่านเบราว์เซอร์"
         : credentialState === "reauth_required" || !credentialsReady
           ? "เชื่อมต่อผ่านเบราว์เซอร์"
           : "เปลี่ยนบัญชี / เชื่อมต่อใหม่",
-    title: canReauthorizeRunningRunner
+    title: environmentNeedsRestart
+      ? `หยุด Runner อย่างปลอดภัยและเปิดใหม่เพื่อเชื่อมต่อ ${environmentLabel} โดยใช้ credential ของเว็บไซต์นั้น`
+      : canReauthorizeRunningRunner
       ? "Runner จะหยุดอย่างปลอดภัย ยืนยันบัญชีเดิมผ่านเบราว์เซอร์ แล้วเริ่มทำงานต่อด้วยอุปกรณ์เดิม"
       : status.running ? "หยุด Runner ก่อนเปลี่ยนบัญชี" : "",
   });
@@ -695,6 +703,29 @@ function renderTools(tools, status = latestRunnerStatus) {
 
 elements["connect-button"].addEventListener("click", async () => {
   if (connectPending) return;
+  const selectedEnvironment = latestRunnerStatus?.connectionEnvironment ?? "production";
+  const activeServerUrl = latestRunnerStatus?.activeServerUrl ?? "";
+  const activeEnvironment = activeServerUrl.includes("aimarkethubs.com")
+    ? "developer"
+    : activeServerUrl.includes("smartaihub.app") ? "production" : null;
+  if (activeEnvironment !== null && activeEnvironment !== selectedEnvironment) {
+    const selectedLabel = selectedEnvironment === "developer" ? "Developer · aimarkethubs.com" : "Production · smartaihub.app";
+    if (!window.confirm(`Runner กำลังเชื่อมต่อ ${activeServerUrl}\nต้องการหยุดและเปิด Runner ใหม่เพื่อใช้ ${selectedLabel} หรือไม่?`)) return;
+    invalidatePendingStatus();
+    connectAttemptError = "";
+    connectPending = true;
+    updateButton(elements["connect-button"], { disabled: true, pending: true, label: "กำลังเริ่ม Runner ใหม่…" });
+    setNotice(elements["connection-notice"], `กำลังหยุด Runner และเริ่มใหม่เพื่อเชื่อมต่อ ${selectedLabel} โดยใช้บัญชีของเว็บไซต์นั้น`);
+    try {
+      await invoke("restart_runner_for_saved_environment");
+    } catch (error) {
+      connectAttemptError = safeError(error);
+      setNotice(elements["connection-notice"], connectAttemptError);
+      connectPending = false;
+      await refreshStatus();
+    }
+    return;
+  }
   invalidatePendingStatus();
   connectAttemptError = "";
   pendingVerificationUrl = "";
@@ -914,7 +945,7 @@ elements["save-connection-environment"].addEventListener("click", async () => {
   try {
     await invoke("save_connection_environment", { environment: selected });
     connectionEnvironmentDirty = false;
-    setNotice(elements["global-notice"], "บันทึกเว็บไซต์แล้ว ปิดและเปิด SmartAIHub Runner ใหม่เพื่อเชื่อมต่อกับเว็บไซต์ที่เลือก");
+    setNotice(elements["global-notice"], "บันทึกเว็บไซต์แล้ว กดปุ่มเชื่อมต่อเพื่อเริ่ม Runner ใหม่ด้วยเว็บไซต์ที่เลือก");
     await refreshStatus();
   } catch (error) {
     setNotice(elements["global-notice"], safeError(error));

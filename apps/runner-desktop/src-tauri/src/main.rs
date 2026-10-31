@@ -584,6 +584,26 @@ fn save_connection_environment(
 }
 
 #[tauri::command]
+async fn restart_runner_for_saved_environment(
+    app: tauri::AppHandle,
+    state: State<'_, RunnerState>,
+) -> Result<(), String> {
+    let selected = setting_lock(&state)?
+        .connection_environment
+        .unwrap_or_default();
+    if active_environment(&state.config).is_none_or(|active| active == selected) {
+        return Err("RUNNER_ENVIRONMENT_ALREADY_ACTIVE".into());
+    }
+    let lifecycle = state.lifecycle.clone();
+    lifecycle.stopping.store(true, Ordering::Release);
+    lifecycle.sync_stop.store(true, Ordering::Release);
+    tauri::async_runtime::spawn_blocking(move || stop_runner_inner(lifecycle))
+        .await
+        .map_err(|_| "RUNNER_STOP_TASK_FAILED".to_string())??;
+    app.restart();
+}
+
+#[tauri::command]
 async fn connect_runner(
     app: tauri::AppHandle,
     state: State<'_, RunnerState>,
@@ -1547,6 +1567,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             runner_status,
             save_connection_environment,
+            restart_runner_for_saved_environment,
             retry_runner_credentials,
             retry_runner_control,
             connect_runner,
