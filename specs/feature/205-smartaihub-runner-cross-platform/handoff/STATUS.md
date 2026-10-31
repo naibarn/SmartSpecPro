@@ -5,8 +5,8 @@
 - Lifecycle: `VALIDATION_PENDING`
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 209 unresolved of 209
-- Next action: Install the upcoming SHA-verified Runner 0.2.53 review build over the existing installation, select/save Production or Developer, restart, and capture same-device identity plus fresh auth, capability acknowledgement and heartbeat. The existing 0.2.52 binary does not contain the website selector.
-- Manifest generation: 52
+- Next action: Owner-host acceptance only: install the SHA-verified 0.2.53 unsigned-review artifact over the existing Runner; choose/save Production or Developer; restart; verify authentication, unchanged expected device identity, capability acknowledgement and fresh heartbeat. Do not treat CI or local tests as runtime acceptance.
+- Manifest generation: 53
 
 ## Source-declared status and relationship claims
 

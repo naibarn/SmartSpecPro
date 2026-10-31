@@ -22,9 +22,19 @@ Verification:
 - `cargo fmt --manifest-path apps/runner-app/Cargo.toml -- --check` and `cargo fmt --manifest-path apps/runner-desktop/src-tauri/Cargo.toml -- --check` — passed.
 - `node --check apps/runner-desktop/ui/app.js` and `git diff --check` — passed.
 
-Windows review build `41155738291` was dispatched for version `0.2.53` from
-source SHA `ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0`; it must complete before
-the artifact or its checksum can be claimed. The workflow produces an
-unsigned-review installer, not a public release. Runtime acceptance remains
-pending: the installer has not been installed on the existing owner device,
-and neither target has been reconnected from that device after this change.
+Windows review workflow `41155738291` completed successfully from source SHA
+`ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0`. Its authenticated Actions artifact
+is `smartaihub-runner-windows-x64-0.2.53-unsigned-review` and contains
+`SmartAIHub Runner_0.2.53_x64-setup.exe` plus `manifest.json` and `SHA256SUMS`.
+The manifest marks it `unsigned-review`; it is a workflow artifact, not a
+public release. SHA-256 is
+`b40a03c046c5df19ce1132b7e0fd3959d8946e0da1768c62c3d2b9b8ae8d13c1`; local
+verification matched both the manifest and `SHA256SUMS`. The artifact is
+available from the Actions run:
+https://github.com/naibarn/SmartSpecPro/actions/runs/41155738291
+
+Workflow gates passed: Runner release UI/API checks, native Windows Runner
+boundary tests, desktop workspace binding tests, and the unsigned NSIS build.
+Runtime acceptance remains pending: the installer has not been installed on
+the existing owner device, and neither target has been reconnected from that
+device after this change.
