@@ -8,7 +8,7 @@ export const HTTP_IMAGE_PROVISION_CONTRACT = "cloudflare-staging-http-image-v1";
 export const HTTP_IMAGE_PROVISION_JOB = "cloudflare.staging.http.image.provision";
 export const HTTP_IMAGE_PROVISION_GRANT = "cloudflare.staging-http-image-provision-grant.v1";
 export const HTTP_IMAGE_BASES = {
-  "node-http": "docker.io/library/node@sha256:16d364eebf6b62da439dc993d9b80940c78b0ca38438452f011ab9a25c752644",
+  "node-http": "docker.io/library/node@sha256:ea11b74b986d520137cdef9a5346e447a00f275ecc4abc0055b7151226231e09",
   "python-http": "docker.io/library/python@sha256:f040863673aea2570c3ff6a5c3fb4c673a016cbc5375005ad145915922b6b78a",
 } as const;
 export const HTTP_IMAGE_CONNECTOR = "docker.io/cloudflare/cloudflared@sha256:e6aba36f47b17ba21c62404f826e7be09f089dc0d8978732752204a75d9d7375";
