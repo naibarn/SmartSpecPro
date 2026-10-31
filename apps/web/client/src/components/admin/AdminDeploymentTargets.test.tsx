@@ -772,6 +772,31 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
   });
 
+  it.each([false, true])("allows preparing again before expiry when the deploy window is too short (probe unavailable: %s)", async probeUnavailable => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT", artifact: null, baseline: null };
+    mocks.originConfiguration = {
+      status: "STORED", configurationRef: `cf-origin:${"a".repeat(64)}`,
+      workflowRuntimeTokenConfigured: true, controlPlaneTokenConfigured: true,
+      applicationPreparation: { phase: "FULL_HTTP", applicationHttpExpired: false,
+        applicationHttpExpiresAt: new Date(Date.now() + 2 * 60 * 60_000).toISOString(),
+        imageReceipts: "VERIFIED", encryptedApplicationSecrets: "STORED", missingRuntimeFields: [],
+        databaseAuthority: { requiredPermissions: [], excludedPermissions: [] } },
+    };
+    if (probeUnavailable) mocks.stagingRuntime = null as never;
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    expect(await screen.findByText("Refresh the Staging profile before deploying")).toBeInTheDocument();
+    const prepare = screen.getByRole("button", { name: "Prepare Full Application HTTP candidate" });
+    expect(prepare).toBeEnabled();
+    expect(screen.queryByText(/selected Staging profile is already active/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
+    await user.click(prepare);
+    await user.click(screen.getByRole("button", { name: "Prepare Full HTTP candidate" }));
+    expect(mocks.activateStagingProfile).toHaveBeenCalledWith(expect.objectContaining({ profile: "full-application-http" }));
+  });
+
   it("offers automatic internal secret setup without asking the owner to supply tokens", async () => {
     const user = userEvent.setup();
     mocks.targets = [stagingActivationTarget];

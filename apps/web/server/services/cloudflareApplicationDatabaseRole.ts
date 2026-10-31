@@ -32,16 +32,18 @@ const deny = (reason = "SAFE_CHECK_FAILED"): never => { throw Error(`APPLICATION
  * live sessions. Missing grants are safe to reconcile because the
  * caller subsequently grants only this exact plan inside the same transaction.
  * Extra grants, ownership, memberships and default privileges remain denied.
- * This function never mutates. */
+ * Credential preservation instead allows live sessions, requires LOGIN and
+ * complete grants, and never changes the credential. This function never mutates. */
 export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value: ApplicationDatabaseRolePlan,
-  options: { allowActiveLoginRotation?: boolean } = {}) {
+  options: { allowActiveLoginRotation?: boolean; preserveCredential?: boolean } = {}) {
   const plan = applicationDatabaseRolePlanSchema.parse(value), role = applicationDatabaseRoleName(plan);
   const [identity] = await db.execute(sql`SELECT current_database() AS name`);
   const [observed] = await db.execute(sql`SELECT oid,rolcanlogin,rolsuper,rolcreatedb,rolcreaterole,rolinherit,rolreplication,rolbypassrls,rolconnlimit
     FROM pg_roles WHERE rolname=${role}`);
   if (identity?.name !== plan.databaseName) deny("DATABASE_IDENTITY_MISMATCH");
   if (!observed) deny("ROLE_MISSING");
-  if (observed.rolcanlogin && !options.allowActiveLoginRotation) deny("ROLE_LOGIN_ACTIVE");
+  if (observed.rolcanlogin && !options.allowActiveLoginRotation && !options.preserveCredential) deny("ROLE_LOGIN_ACTIVE");
+  if (options.preserveCredential && !observed.rolcanlogin) deny("ROLE_LOGIN_DISABLED");
   if (observed.rolsuper || observed.rolcreatedb || observed.rolcreaterole || observed.rolinherit || observed.rolreplication ||
       observed.rolbypassrls || observed.rolconnlimit !== 10) deny("ROLE_ATTRIBUTES_UNSAFE");
   const unexpected = await db.execute(sql`SELECT 1 FROM pg_auth_members WHERE roleid=${observed.oid} OR member=${observed.oid}
@@ -51,8 +53,12 @@ export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value
       AND (classid NOT IN ('pg_class'::regclass,'pg_namespace'::regclass,'pg_database'::regclass) OR
         dbid NOT IN (0,(SELECT oid FROM pg_database WHERE datname=current_database())))`);
   if (unexpected.length) deny("ROLE_OWNERSHIP_OR_MEMBERSHIP_UNSAFE");
-  const sessions = await db.execute(sql`SELECT 1 FROM pg_stat_activity WHERE usename=${role} LIMIT 1`);
-  if (sessions.length) deny("ROLE_HAS_ACTIVE_SESSIONS");
+  // Preserving an existing credential performs no role mutation, so live
+  // sessions are safe. Password rotation still requires zero live sessions.
+  if (!options.preserveCredential) {
+    const sessions = await db.execute(sql`SELECT 1 FROM pg_stat_activity WHERE usename=${role} LIMIT 1`);
+    if (sessions.length) deny("ROLE_HAS_ACTIVE_SESSIONS");
+  }
   const grants = await db.execute(sql`SELECT n.nspname,c.relname,c.relkind,a.privilege_type,a.is_grantable
     FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace CROSS JOIN LATERAL aclexplode(c.relacl) a
     WHERE a.grantee=${observed.oid} ORDER BY n.nspname,c.relname,a.privilege_type`);
@@ -61,6 +67,7 @@ export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value
   const actual = grants.map(g => `${g.relname}:${g.privilege_type}`);
   if (grants.some(g => g.nspname !== "public" || g.is_grantable || !["r", "p", "S"].includes(String(g.relkind))) ||
       actual.some(grant => !expected.has(grant))) deny("GRANTS_OUTSIDE_CURRENT_PLAN");
+  if (options.preserveCredential && [...expected].some(grant => !actual.includes(grant))) deny("REQUIRED_GRANTS_MISSING");
   const schemas = await db.execute(sql`SELECT n.nspname,a.privilege_type,a.is_grantable FROM pg_namespace n,
     LATERAL aclexplode(n.nspacl) a WHERE a.grantee=${observed.oid}`);
   const databases = await db.execute(sql`SELECT d.datname,a.privilege_type,a.is_grantable FROM pg_database d,
@@ -69,6 +76,37 @@ export async function assertReusableApplicationDatabaseRole(db: DrizzleDB, value
   if (schemas.length !== 1 || schemas[0].nspname !== "public" || schemas[0].privilege_type !== "USAGE" || schemas[0].is_grantable ||
       databases.length !== 1 || databases[0].datname !== plan.databaseName || databases[0].privilege_type !== "CONNECT" || databases[0].is_grantable || functions.length)
     deny("SCHEMA_DATABASE_OR_FUNCTION_GRANTS_UNSAFE");
+}
+
+/** Refresh only the HTTP profile, preserving the exact encrypted Staging
+ * credential. Read back its scope, expiry and privileges without changing
+ * passwords, grants or active sessions. Never used for credential rotation. */
+export async function reuseStagingApplicationDatabaseCredential(db: DrizzleDB, input: {
+  plan: ApplicationDatabaseRolePlan; nodeDatabaseUrl: string; pythonDatabaseUrl: string;
+}) {
+  const proposed = applicationDatabaseRolePlanSchema.parse(input.plan);
+  const role = applicationDatabaseRoleName(proposed);
+  let node: URL, python: URL, password: string;
+  try {
+    node = new URL(input.nodeDatabaseUrl);
+    python = new URL(input.pythonDatabaseUrl.replace(/^postgresql\+asyncpg:/, "postgresql:"));
+    password = decodeURIComponent(node.password);
+    if ([node, python].some(url => url.protocol !== "postgresql:" || url.hostname !== "db-staging.smartaihub.app" ||
+        url.port !== "5432" || url.pathname !== `/${proposed.databaseName}` || decodeURIComponent(url.username) !== role ||
+        decodeURIComponent(url.password) !== password) || !/^[a-f0-9]{64}$/.test(password)) deny("CREDENTIAL_BINDING_MISMATCH");
+  } catch { return deny("CREDENTIAL_BINDING_MISMATCH"); }
+  await db.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`cloudflare-app-role:${role}`}))`);
+  const [observed] = await db.execute(sql`SELECT rolvaliduntil FROM pg_roles WHERE rolname=${role}`);
+  const expiry = observed?.rolvaliduntil instanceof Date ? observed.rolvaliduntil.getTime() : Date.parse(String(observed?.rolvaliduntil));
+  if (!Number.isFinite(expiry) || expiry <= Date.now() + 7 * 86_400_000 || expiry > Date.parse(proposed.expiresAt)) deny("ROLE_VALIDITY_TOO_SHORT_OR_UNBOUND");
+  const plan = { ...proposed, expiresAt: new Date(expiry).toISOString() };
+  await assertReusableApplicationDatabaseRole(db, plan, { preserveCredential: true });
+  const unsafeSchemas = await db.execute(sql`SELECT nspname FROM pg_namespace WHERE nspname NOT LIKE 'pg_%'
+    AND nspname<>'information_schema' AND has_schema_privilege(${role},oid,'CREATE')`);
+  const definers = await db.execute(sql`SELECT p.oid FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+    WHERE p.prosecdef AND n.nspname NOT IN ('pg_catalog','information_schema') AND has_function_privilege(${role},p.oid,'EXECUTE')`);
+  if (unsafeSchemas.length || definers.length) deny("INHERITED_PRIVILEGES_UNSAFE");
+  return { plan, secret: { role, password, planDigest: applicationDatabaseRolePlanDigest(plan) } };
 }
 
 /** A trusted canonical runtime executor supplies BOTH checks and checkpoint

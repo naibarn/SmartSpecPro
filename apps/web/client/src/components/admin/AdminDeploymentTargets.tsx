@@ -3,6 +3,7 @@ import type { ChangeEvent } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { trpc } from "@/lib/trpc";
+import { hasStagingDeploymentProfileRunway } from "@shared/cloudflareStagingReadiness";
 import { verifyCloudflareIngressInBrowser } from "@/lib/cloudflareIngressAcceptance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,38 @@ type StagingConfirmation = {
 type StagingActionStatus = { state: "running" | "accepted" | "succeeded" | "failed"; action: string; detail?: string; at: string };
 
 function stagingActionFailureText(code: string, text: (en: string, th: string) => string) {
+  const prerequisites: Record<string, [string, string]> = {
+    STAGING_EXECUTOR_NOT_CONFIGURED: ["The Staging executor is not configured on the server. Restore the existing executor configuration, then recheck readiness.", "server ยังไม่พบการตั้งค่า executor ของ Staging ต้องคืนค่าการตั้งค่า executor เดิม แล้วตรวจความพร้อมซ้ำ"],
+    APPROVAL_AUTHORITY_UNAVAILABLE: ["The authorization service is unavailable. Restore the existing backend connection before deploying.", "ยังเชื่อมต่อบริการอนุมัติไม่ได้ ต้องแก้การเชื่อมต่อ backend เดิมก่อน deploy"],
+    STAGING_ORIGIN_CONFIGURATION_EXPIRED: ["The parent configuration and database lease expired. Renew the existing lease below and save its verified configuration first.", "config หลักและ lease ฐานข้อมูลหมดอายุ ต้องต่ออายุ lease เดิมด้านล่างและบันทึก config ที่ตรวจแล้วก่อน"],
+    STAGING_ORIGIN_CONFIGURATION_REVOKED: ["The saved configuration was revoked. Select an authorized configuration before preparing or deploying.", "config ที่บันทึกไว้ถูกเพิกถอน ต้องเลือก config ที่ได้รับอนุญาตก่อนเตรียมหรือ deploy"],
+    STAGING_ORIGIN_CONFIGURATION_REQUIRED: ["No Staging configuration is bound to this target. Configure the existing target before preparing.", "target นี้ยังไม่ได้ผูก Staging config ต้องตั้งค่า target เดิมก่อนเตรียม"],
+    STAGING_TARGET_NOT_READY: ["Select one enabled Staging Worker target with the correct account binding.", "ต้องมี Staging Worker target ที่เปิดใช้งานและผูกกับบัญชีที่ถูกต้องหนึ่งรายการ"],
+    STAGING_TARGET_AUTHORITY_CONFLICT: ["Multiple or conflicting target bindings were found. Resolve the existing target bindings before deploying.", "พบ target ซ้ำหรือข้อมูลสิทธิ์ขัดแย้ง ต้องแก้รายการ target เดิมให้ตรงกันก่อน deploy"],
+    STAGING_ACTIVATION_PROFILE_REQUIRED: ["Prepare the Staging profile in step 1. Once it passes, step 2 will allow authorization.", "กดเตรียม profile ในขั้นตอนที่ 1 เมื่อผ่านแล้ว ขั้นตอนที่ 2 จะเปิดให้อนุมัติ"],
+    STAGING_BOOTSTRAP_REQUIRED: ["The first deployment has no rollback baseline yet. Review the one-time bootstrap operation in step 2.", "การ deploy ครั้งแรกยังไม่มีรุ่น rollback ให้ตรวจคำสั่งเริ่ม deploy ครั้งแรกในขั้นตอนที่ 2"],
+  };
+  if (prerequisites[code]) return text(...prerequisites[code]);
+  if (code === "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" || code === "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED") return text(
+    "The saved HTTP profile has too little time remaining. Prepare a fresh Full Application HTTP candidate above, then authorize deployment.",
+    "อายุ HTTP profile ที่เหลือไม่พอ ให้กดเตรียม Full Application HTTP candidate ใหม่ด้านบน แล้วจึงอนุมัติ deploy",
+  );
+  if (code === "STAGING_DEPLOYMENT_IN_PROGRESS") return text(
+    "A deployment is queued or running. Open Worker Jobs to follow its progress; wait for its result before preparing or deploying again.",
+    "มีงาน deploy อยู่ในคิวหรือกำลังทำงาน เปิดหน้าคิวงานเพื่อติดตามผล และรอให้งานจบก่อนเตรียมหรือ deploy ใหม่",
+  );
+  if (code === "STAGING_ACTIVE_DEPLOYMENT_UNVERIFIED" || code === "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE") return text(
+    "The active deployment cannot yet be matched to a verified rollback release. Recheck readiness and review the latest deployment job before authorizing another deployment.",
+    "ยังจับคู่ deployment ปัจจุบันกับรุ่น rollback ที่ตรวจแล้วไม่ได้ ให้ตรวจความพร้อมซ้ำและดูผล deploy ล่าสุดในหน้าคิวงานก่อนอนุมัติงานใหม่",
+  );
+  if (code === "PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE") return text(
+    "No verified published build is available. Build and publish the current source, then refresh this page.",
+    "ยังไม่มี build ที่ publish และตรวจสอบแล้ว ต้องสร้างและ publish build จาก source ปัจจุบัน แล้วรีเฟรชหน้านี้",
+  );
+  if (code.startsWith("APPLICATION_DATABASE_ROLE_PREPARATION_DENIED_")) return text(
+    "The saved database credential could not be safely reused. Preparation stopped without changing the active credential. Review the database role check in technical details.",
+    "ตรวจสอบเพื่อนำ credential ฐานข้อมูลเดิมกลับมาใช้ไม่ผ่าน จึงหยุดเตรียมโดยไม่เปลี่ยน credential ที่ใช้งานอยู่ ดูผลตรวจ database role ในรายละเอียดทางเทคนิค",
+  );
   if (code === "STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT") return text(
     "The current Staging configuration or database lease has less than 7 days remaining. Renew the existing Staging database lease and save its verified configuration before preparing Full Application HTTP.",
     "config หรือ lease ฐานข้อมูล Staging เหลืออายุน้อยกว่า 7 วัน ให้ต่ออายุ lease เดิมและบันทึก config ที่ตรวจสอบแล้วก่อนเตรียม Full Application HTTP",
@@ -90,7 +123,8 @@ function stagingActionFailureText(code: string, text: (en: string, th: string) =
     "The confirmation window expired. No renewal Job was admitted. Refresh the read-only Staging check before confirming again.",
     "ช่วงเวลายืนยันหมดอายุ ระบบยังไม่ได้รับ Job ต่ออายุ ให้ตรวจ Staging แบบอ่านอย่างเดียวอีกครั้งก่อนยืนยันใหม่",
   );
-  return code;
+  return text("This prerequisite has not passed. Refresh the readiness check; if it persists, use the diagnostic code in technical details to repair this specific prerequisite.",
+    "เงื่อนไขก่อนเริ่มงานยังไม่ผ่าน ให้ตรวจความพร้อมซ้ำ หากยังติดอยู่ ต้องแก้เงื่อนไขตามรหัสในรายละเอียดทางเทคนิคก่อนเริ่มงาน");
 }
 
 function productionDatabaseAdmissionStorageKey(scopeKey: string) {
@@ -704,6 +738,22 @@ export default function AdminDeploymentTargets() {
   const stagingOriginConfiguration = trpc.infrastructure.getCloudflareOriginConfiguration.useQuery({
     tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: currentStagingConfigRef,
   }, { enabled: validScope && environment === "staging" && /^cf-origin:[a-f0-9]{64}$/.test(currentStagingConfigRef) });
+  const [stagingClock, setStagingClock] = useState(Date.now);
+  const stagingProfileScope = useRef("");
+  useEffect(() => {
+    if (!validScope || environment !== "staging") return;
+    const timer = window.setInterval(() => setStagingClock(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, [validScope, environment]);
+  useEffect(() => {
+    const scope = `${tenantId}:${projectId}:${environment}`;
+    const phase = stagingOriginConfiguration.data?.applicationPreparation?.phase;
+    if (!phase || stagingProfileScope.current === scope) return;
+    stagingProfileScope.current = scope;
+    setStagingPreparationProfile(phase === "FULL_HTTP" ? "full-application-http" : "namespace-only");
+  }, [tenantId, projectId, environment, stagingOriginConfiguration.data?.applicationPreparation?.phase]);
+  const stagingHttpRefreshRequired = stagingOriginConfiguration.data?.applicationPreparation?.phase === "FULL_HTTP" &&
+    !hasStagingDeploymentProfileRunway(stagingOriginConfiguration.data.applicationPreparation.applicationHttpExpiresAt, stagingClock);
   const stagingDatabaseValidityThreshold = Date.now() + 7 * 86_400_000;
   const stagingPrivateDatabase = stagingOriginConfiguration.data?.descriptor?.nativeResources?.privateDatabase;
   const stagingDatabasePlanExpiry = Date.parse(stagingPrivateDatabase?.leaseRenewal?.leaseExpiresAt ??
@@ -1823,6 +1873,27 @@ export default function AdminDeploymentTargets() {
 
       {validScope && environment === "staging" ? (
         <VStack as="section" gap={2}>
+          <VStack as="section" gap={2} role="status" aria-live="polite" aria-label={text("Staging next step", "ขั้นตอนถัดไปของ Staging")}
+            style={{ padding: "var(--spacing-4)", borderWidth: "thin", borderStyle: "solid", borderColor: "var(--color-border)", borderRadius: "var(--radius-container)" }}>
+            <h3>{stagingDeployPreflight.isLoading ? text("Checking Staging prerequisites…", "กำลังตรวจเงื่อนไข Staging…")
+              : stagingHttpRefreshRequired || stagingDeployPreflight.data?.reason === "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT"
+                ? text("Refresh the Staging profile before deploying", "ต้องเตรียม Staging profile ใหม่ก่อน deploy")
+                : stagingDeployPreflight.data?.ready ? text("Ready to authorize Staging deployment", "พร้อมอนุมัติ deploy ไป Staging")
+                  : text("Staging is waiting for a prerequisite", "Staging ยังติดเงื่อนไขก่อนเริ่มงาน")}</h3>
+            <p>{stagingDeployPreflight.data?.ready && !stagingHttpRefreshRequired
+              ? text("Preparation is complete. Continue with step 2 below to authorize this candidate.", "เตรียมข้อมูลครบแล้ว ไปขั้นตอนที่ 2 ด้านล่างเพื่ออนุมัติ candidate นี้")
+              : stagingActionFailureText(stagingHttpRefreshRequired ? "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" : stagingDeployPreflight.data?.reason ?? "STAGING_READINESS_UNAVAILABLE", text)}</p>
+            {stagingOriginConfiguration.data?.applicationPreparation?.applicationHttpExpiresAt ? <p>{text("HTTP profile expires", "HTTP profile หมดอายุ")}: {new Date(stagingOriginConfiguration.data.applicationPreparation.applicationHttpExpiresAt).toLocaleString()}
+              {text(" · Deployment requires at least 4 hours 45 minutes remaining. Prepare again when less time remains.", " · เริ่ม deploy ได้เมื่อเหลืออย่างน้อย 4 ชั่วโมง 45 นาที หากเหลือน้อยกว่านี้ ให้กดเตรียมใหม่ได้ทันที")}</p> : null}
+            <HStack gap={2} wrap="wrap">
+              <Button type="button" variant="outline" disabled={stagingDeployPreflight.isFetching || stagingOriginConfiguration.isFetching || stagingActionRunning}
+                onClick={async () => { await Promise.all([stagingDeployPreflight.refetch(), stagingOriginConfiguration.refetch(), stagingRuntimeReadiness.refetch()]); setStagingClock(Date.now()); }}>
+                {stagingDeployPreflight.isFetching ? text("Checking…", "กำลังตรวจ…") : text("Refresh readiness", "ตรวจความพร้อมซ้ำ")}
+              </Button>
+              <a href="/worker-jobs">{text("Open Worker Jobs", "เปิดหน้าคิวงาน")}</a>
+            </HStack>
+            {stagingDeployPreflight.data?.reason ? <details><summary>{text("Technical details", "รายละเอียดทางเทคนิค")}</summary><code>{stagingDeployPreflight.data.reason}</code></details> : null}
+          </VStack>
           {stagingActionStatus ? <VStack gap={0} role={stagingActionStatus.state === "failed" ? "alert" : "status"} aria-live="polite">
             <p><strong>{stagingActionStatus.state === "running" ? text("Action started", "เริ่มดำเนินการแล้ว")
               : stagingActionStatus.state === "accepted" ? text("Canonical Job accepted", "ระบบรับ Job กลางแล้ว")
@@ -1842,6 +1913,7 @@ export default function AdminDeploymentTargets() {
             const preparation = stagingOriginConfiguration.data.applicationPreparation;
             return <VStack gap={1} role="group" aria-label={text("Full Application Staging preparation", "เตรียม Staging สำหรับแอปเต็มรูปแบบ")}>
               <h3>{text("Full Application Staging configuration", "การตั้งค่า Staging สำหรับแอปเต็มรูปแบบ")}</h3>
+              <details><summary>{text("Configuration and database verification details", "รายละเอียดการตั้งค่าและการตรวจฐานข้อมูล")}</summary><VStack gap={2}>
               <p><strong>{preparation.phase === "FULL_HTTP" ? text("FULL HTTP configuration", "ตั้งค่า FULL HTTP แล้ว")
                 : preparation.phase === "NAMESPACE_ONLY" ? text("NAMESPACE ONLY — not deployable as the application", "มีเฉพาะ NAMESPACE — ยัง deploy แอปไม่ได้")
                   : preparation.phase === "PRIVATE_CANARY" ? text("Private canary configuration", "ตั้งค่าเฉพาะ private canary")
@@ -1857,6 +1929,7 @@ export default function AdminDeploymentTargets() {
                 <p>{text("Required before database-dependent acceptance", "ต้องตรวจให้ผ่านก่อนตรวจรับส่วนฐานข้อมูล")}: {preparation.databaseAuthority.requiredPermissions.join("; ")}</p>
                 <p>{text("Must remain excluded", "ต้องไม่มีสิทธิ์ต่อไปนี้")}: {preparation.databaseAuthority.excludedPermissions.join("; ")}</p>
               </VStack>
+              </VStack></details>
               <p>{text("Choose a profile below. Full HTTP requires the existing verified Node/Python image receipts and encrypted application secrets. The saved runtime database URLs must point to the existing smartspec database. Preparing does not deploy or change Production traffic.",
                 "เลือก profile ด้านล่าง Full HTTP ต้องมี image receipt ของ Node/Python ที่ตรวจแล้วและ application secret ที่เข้ารหัสอยู่เดิม URL ฐานข้อมูลที่บันทึกไว้ต้องชี้ไปยังฐาน smartspec เดิม การเตรียมยังไม่ deploy หรือเปลี่ยน Production traffic")}</p>
             </VStack>;
@@ -1874,8 +1947,9 @@ export default function AdminDeploymentTargets() {
           </HStack>
           {stagingRuntimeReadiness.isLoading ? <p role="status">{text("Checking the exact staging Worker’s /readyz endpoint…", "กำลังตรวจ /readyz ของ staging Worker เป้าหมาย…")}</p> : null}
           {stagingRuntimeReadiness.isError ? <p role="alert">{text("Live runtime readiness could not be checked. Artifact deploy readiness does not prove Worker readiness.", "ตรวจความพร้อม runtime ไม่สำเร็จ การพร้อม deploy artifact ไม่ได้ยืนยันว่า Worker พร้อมใช้งาน")}</p> : null}
-          {stagingRuntimeReadiness.data ? (() => {
-            const runtime = stagingRuntimeReadiness.data;
+          {stagingRuntimeReadiness.data || stagingOriginConfiguration.data ? (() => {
+            const runtime = { status: "UNAVAILABLE", checkedAt: new Date(stagingClock).toISOString(), missing: [] as string[],
+              reason: "STAGING_READINESS_PROBE_UNAVAILABLE", ...stagingRuntimeReadiness.data };
             const ready = runtime.status === "READY";
             const activationRecoveryStatus = runtime.status === "ACTIVATION_DISABLED" || runtime.status === "UNAVAILABLE" ||
               runtime.status === "NOT_DEPLOYED" || runtime.status === "NOT_READY";
@@ -1892,6 +1966,10 @@ export default function AdminDeploymentTargets() {
                 {runtime.jobHandlerConfigured !== undefined ? <Badge variant="outline">{text("Job handler", "ตัวจัดการงาน")}: {runtime.jobHandlerConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
                 {runtime.controlPlaneConfigured !== undefined ? <Badge variant="outline">{text("Control plane", "control plane")}: {runtime.controlPlaneConfigured ? text("configured", "ตั้งค่าแล้ว") : text("missing", "ยังไม่ตั้งค่า")}</Badge> : null}
               </HStack>
+              {runtime.activation === "disabled" && runtime.applicationIngress?.ready ? <p>{text(
+                "HTTP bindings are configured. Background job activation is disabled; this is separate from application login and email availability, which must be checked with live application requests.",
+                "ตั้งค่า HTTP binding แล้ว ส่วนระบบงานเบื้องหลังยังปิดอยู่ สถานะนี้แยกจากการเข้าแอปและการส่งอีเมล ซึ่งต้องตรวจจากคำขอใช้งานจริง",
+              )}</p> : null}
               {runtime.missing.length > 0 ? <p>{text("Missing runtime bindings", "binding ที่ runtime ยังขาด")}: <code>{runtime.missing.join(", ")}</code></p> : null}
               {runtime.applicationIngress ? <VStack gap={0} role="status" aria-label={text("Application HTTP ingress readiness", "ความพร้อม HTTP ingress ของแอป") }>
                 <p><strong>{text("Application HTTP ingress", "HTTP ingress ของแอป")}</strong>: {runtime.applicationIngress.ready
@@ -1906,8 +1984,8 @@ export default function AdminDeploymentTargets() {
                   ? <p>{text("Application HTTP profile is missing or invalid. Review the saved Staging configuration before dispatching.",
                     "Application HTTP profile ไม่มีหรือไม่ถูกต้อง ให้ตรวจ Staging configuration ที่บันทึกไว้ก่อนส่งงาน")}</p> : null}
               </VStack> : null}
-              {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
-              {(stagingConfigurationExpired || activationRecoveryStatus ||
+              {runtime.reason ? <details><summary>{text("Runtime diagnostic code", "รหัสตรวจสอบ runtime")}</summary><code>{runtime.reason}</code></details> : null}
+              {(stagingHttpRefreshRequired || stagingConfigurationExpired || activationRecoveryStatus ||
                 stagingDeployPreflight.data?.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED" ||
                 stagingDeployPreflight.data?.reason === "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED" ||
                 stagingOriginConfiguration.data?.applicationPreparation?.phase !== "FULL_HTTP") ? (() => {
@@ -1932,7 +2010,18 @@ export default function AdminDeploymentTargets() {
                 // needs to know that the immutable Node/Python image pair exists.
                 const fullHttpInputsAvailable = applicationPreparation?.imageReceipts === "VERIFIED";
                 const selectedActionNeeded = stagingPreparationProfile === "full-application-http"
-                  ? applicationPreparation?.phase !== "FULL_HTTP" || applicationPreparation?.applicationHttpExpired === true : activationRequired;
+                  ? applicationPreparation?.phase !== "FULL_HTTP" || applicationPreparation?.applicationHttpExpired === true || stagingHttpRefreshRequired || activationBlocker === "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" : activationRequired;
+                const preparationDisabledReason = activateStagingProfile.isPending || stagingActionRunning ? text("A requested operation is still running.", "คำสั่งก่อนหน้ายังทำงานอยู่")
+                  : activationBlocker === "STAGING_DEPLOYMENT_IN_PROGRESS" ? stagingActionFailureText(activationBlocker, text)
+                  : stagingOriginConfiguration.isLoading ? text("Loading the saved configuration.", "กำลังโหลดการตั้งค่าที่บันทึกไว้")
+                  : stagingOriginConfiguration.isError || !config ? text("The saved configuration could not be verified. Refresh readiness first.", "ยังตรวจสอบการตั้งค่าเดิมไม่ได้ ให้ตรวจความพร้อมซ้ำก่อน")
+                  : !targetAllowsActivation ? text("Select one enabled Staging Worker target before preparing.", "ต้องเลือก Staging Worker target ที่เปิดใช้งานเพียงรายการเดียวก่อนเตรียม")
+                  : stagingConfigurationExpired ? text("The parent configuration expired. Renew its database lease below first.", "config หลักหมดอายุ ต้องต่ออายุ lease ฐานข้อมูลด้านล่างก่อน")
+                  : stagingPreparationProfile === "full-application-http" && stagingApplicationDatabaseRoleValidityTooShort ? stagingActionFailureText("STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT", text)
+                  : stagingPreparationProfile === "full-application-http" && !fullHttpInputsAvailable ? text("Verified Node and Python images are required.", "ต้องมี image Node และ Python ที่ตรวจสอบแล้ว")
+                  : !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) ? text("The configuration reference or database receipt is not verified.", "ยังตรวจสอบรหัส config หรือ receipt ฐานข้อมูลไม่ผ่าน")
+                  : secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid ? text("Both supplied secrets must be valid and different, or clear them to use automatic setup.", "secret ที่กรอกทั้งสองค่าต้องถูกต้องและต่างกัน หรือให้ล้างช่องเพื่อใช้การตั้งค่าอัตโนมัติ")
+                  : !selectedActionNeeded ? text("This profile is already prepared and has enough time remaining. Continue with step 2.", "profile นี้เตรียมไว้แล้วและเหลือเวลาเพียงพอ ให้ไปขั้นตอนที่ 2") : null;
               return <VStack gap={2}>
                   <h4>{text("1. Prepare the Staging candidate", "1. เตรียม candidate ของ Staging")}</h4>
                   <p>{text(
@@ -1952,7 +2041,7 @@ export default function AdminDeploymentTargets() {
                     "ต้องมี image pair Node/Python ที่ตรวจสอบแล้ว ระบบจะ resolve application secret จาก runtime ที่ป้องกันไว้และบันทึกแบบเข้ารหัสระหว่างเตรียมการ",
                   )}</p> : null}
                   {activationBlocker && activationBlocker !== "STAGING_ACTIVATION_PROFILE_REQUIRED" ?
-                    <p role="status">{text("Configuration or deployment blocker", "สาเหตุที่ config หรือการ deploy ยังติดอยู่")}: <code>{activationBlocker}</code></p> : null}
+                    <p role="status">{stagingActionFailureText(activationBlocker, text)}</p> : null}
                   {stagingConfigurationExpired || stagingApplicationDatabaseRoleValidityTooShort ? <VStack gap={1} role="alert" aria-label={text("Staging preparation is blocked", "หยุดการเตรียม Staging") }>
                     <p><strong><code>{stagingConfigurationExpired ? "STAGING_ORIGIN_CONFIGURATION_EXPIRED" : "STAGING_APPLICATION_DATABASE_ROLE_VALIDITY_TOO_SHORT"}</code></strong></p>
                     <p id="staging-expired-config-help">{stagingConfigurationExpired ? text(
@@ -2162,19 +2251,16 @@ export default function AdminDeploymentTargets() {
                     "มี secret ภายในที่บันทึกไว้อย่างปลอดภัยแล้ว ระบบจะใช้ค่าเดิมโดยไม่สร้างใหม่",
                   )}</p>}
                   {stagingOriginConfiguration.isError ? <p role="alert"><code>{activationBlocker && activationBlocker.startsWith("STAGING_") ? activationBlocker : "STAGING_ORIGIN_CONFIGURATION_UNAVAILABLE"}</code> · {text("Stored configuration or its resource receipts could not be verified. Use the authorized origin-configuration repair path, then refresh this registry.", "ตรวจสอบ config หรือ resource receipt ที่บันทึกไว้ไม่สำเร็จ ให้ใช้ขั้นตอนซ่อม origin-configuration ที่ได้รับอนุญาต แล้วรีเฟรช registry")}</p> : null}
-                  <Button type="button" aria-describedby={stagingConfigurationExpired ? "staging-expired-config-help" : undefined}
+                  {preparationDisabledReason ? <p id="staging-prepare-disabled-reason" role="status"><strong>{text("Prepare is unavailable", "ยังเตรียมไม่ได้")}: </strong>{preparationDisabledReason}</p> : null}
+                  <Button type="button" aria-describedby={preparationDisabledReason ? "staging-prepare-disabled-reason" : undefined}
                     variant={stagingConfigurationExpired ? "outline" : "default"}
-                    disabled={!selectedActionNeeded || !targetAllowsActivation || !configurationVerified || !/^cf-origin:[a-f0-9]{64}$/.test(configRef) || activateStagingProfile.isPending || stagingActionRunning ||
-                    stagingOriginConfiguration.isLoading || !config || stagingOriginConfiguration.isError ||
-                    stagingConfigurationExpired || (stagingPreparationProfile === "full-application-http" && stagingApplicationDatabaseRoleValidityTooShort) ||
-                    (stagingPreparationProfile === "full-application-http" && !fullHttpInputsAvailable) ||
-                    (secretsMissing && suppliedRuntimeSecrets && !suppliedRuntimeSecretsValid)}
+                    disabled={Boolean(preparationDisabledReason)}
                     onClick={() => requestStagingConfirmation({
                       title: stagingPreparationProfile === "full-application-http"
                         ? text("Prepare Full Application HTTP for Staging", "เตรียม Full Application HTTP สำหรับ Staging")
                         : text("Prepare Staging control-plane profile", "เตรียม profile ของ Staging control plane"),
                       description: stagingPreparationProfile === "full-application-http"
-                        ? text("Resolve the allowlisted application runtime values and existing read-only Staging database role on the server, then store a new immutable encrypted configuration with the verified Node/Python image receipts. This binds both Containers and staging-full-http-v1 to the existing Staging Worker. It does not change Production traffic.", "ให้ server resolve runtime value ที่อนุญาตและ read-only database role ของ Staging ที่มีอยู่ แล้วบันทึก configuration แบบ immutable และเข้ารหัสด้วย image receipt Node/Python ที่ตรวจแล้ว เพื่อผูก Container ทั้งสองกับ staging-full-http-v1 บน Worker Staging เดิม โดยไม่เปลี่ยน Production traffic")
+                        ? text("Save a fresh Staging HTTP profile using verified Node/Python images and the saved application credential after checking its database permissions. Reusable credentials keep their current password and active sessions. This prepares settings; deployment follows in step 2.", "บันทึก Staging HTTP profile ชุดใหม่ด้วย image Node/Python ที่ตรวจแล้ว และ credential แอปเดิมหลังตรวจสิทธิ์ฐานข้อมูล หากนำกลับมาใช้ได้ ระบบจะคงรหัสผ่านและ session เดิม ขั้นตอนนี้เตรียมการตั้งค่า ส่วน deploy อยู่ในขั้นตอนที่ 2")
                         : text("Save a new immutable Queue/control-plane Staging configuration and securely reuse or generate its internal secrets. This does not deploy a Worker, change DNS/routes, or affect Production traffic.", "บันทึก Queue/control-plane Staging config แบบ immutable และใช้หรือสร้าง secret ภายในอย่างปลอดภัย ขั้นตอนนี้ไม่ deploy Worker ไม่เปลี่ยน DNS/route และไม่กระทบ Production traffic"),
                       confirmLabel: stagingPreparationProfile === "full-application-http" ? text("Prepare Full HTTP candidate", "ยืนยันเตรียม Full HTTP candidate") : text("Prepare Staging", "ยืนยันเตรียม Staging"),
                       run: () => activateStagingProfile.mutateAsync({ tenantId, projectId, environment: "staging", provider: "cloudflare", configurationRef: configRef,
@@ -2214,7 +2300,7 @@ export default function AdminDeploymentTargets() {
                 "One owner action opens a four-hour campaign for up to four staging jobs, bound to this exact candidate, configuration, target, executor, and verified rollback release. Every job receives a fresh one-job grant. A different artifact or configuration requires new owner authorization. This cannot change production DNS or routes.",
                 "การอนุมัติของ owner หนึ่งครั้งเปิด campaign 4 ชั่วโมง สูงสุด 4 staging jobs โดยผูกกับ candidate, configuration, target, executor และ rollback release ที่ตรวจแล้วชุดนี้เท่านั้น แต่ละ job ได้ grant ใหม่ที่ใช้ได้งานเดียว หาก artifact หรือ configuration เปลี่ยนต้องอนุมัติ scope ใหม่ และคำสั่งนี้เปลี่ยน DNS หรือ route ของ production ไม่ได้",
               )}</p>
-              <Button type="button" disabled={stagingDeployPreflight.isFetching || stagingDeployPreflight.isError || stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
+              <Button type="button" disabled={stagingHttpRefreshRequired || stagingDeployPreflight.isFetching || stagingDeployPreflight.isError || stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
                 title: text("Authorize Staging deployment campaign", "อนุมัติ campaign deploy ไป Staging"),
                 description: text(`Deploy the exact reviewed candidate ${stagingDeployPreflight.data.artifact!.sourceSha} to the Staging Worker only. The current rollback baseline is ${stagingDeployPreflight.data.baseline.deploymentId}. Production DNS/routes and traffic will not change.`, `deploy candidate ${stagingDeployPreflight.data.artifact!.sourceSha} ที่ตรวจแล้วไปยัง Staging Worker เท่านั้น โดยมี rollback baseline ${stagingDeployPreflight.data.baseline.deploymentId} ไม่เปลี่ยน DNS/route หรือ traffic ของ Production`),
                 confirmLabel: text("Authorize and queue Staging deploy", "อนุมัติและส่งงาน deploy Staging"),
@@ -2235,7 +2321,7 @@ export default function AdminDeploymentTargets() {
               <p>{text("This is the first Staging deployment, so Cloudflare has no verified Staging deployment to use as a rollback baseline yet.", "นี่คือการ deploy Staging ครั้งแรก จึงยังไม่มี deployment ที่ตรวจสอบแล้วสำหรับใช้ rollback")}</p>
               <p>{text("The one-time bootstrap below is limited to this published artifact, saved origin configuration, Staging Worker, Cloudflare account, and registered executor. It allows one job, creates no production DNS or route changes, and fails closed if the Worker is already owned by a different deployment.", "bootstrap ครั้งเดียวนี้จำกัดเฉพาะ artifact, origin config ที่บันทึกไว้, Staging Worker, บัญชี Cloudflare และ executor ที่ลงทะเบียน อนุญาตเพียงหนึ่ง job ไม่เปลี่ยน DNS หรือ route ของ production และจะหยุดทันทีหาก Worker มี deployment ที่ไม่ตรงกับงานนี้")}</p>
               <p>{text("Candidate", "รุ่นที่จะ deploy")}: <code>{stagingDeployPreflight.data.artifact.sourceSha}</code> · <code>{stagingDeployPreflight.data.artifact.artifactRef}</code></p>
-              <Button type="button" disabled={stagingDeployPreflight.isFetching || stagingDeployPreflight.isError || stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
+              <Button type="button" disabled={stagingHttpRefreshRequired || stagingDeployPreflight.isFetching || stagingDeployPreflight.isError || stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
                 title: text("Authorize first Staging deployment", "อนุมัติ deploy Staging ครั้งแรก"),
                 description: text(`Deploy the exact reviewed candidate ${stagingDeployPreflight.data.artifact!.sourceSha} to the Staging Worker only. This is a one-time bootstrap with no Production DNS/route or traffic changes.`, `deploy candidate ${stagingDeployPreflight.data.artifact!.sourceSha} ที่ตรวจแล้วไปยัง Staging Worker เท่านั้น เป็น bootstrap ครั้งเดียว ไม่เปลี่ยน DNS/route หรือ traffic ของ Production`),
                 confirmLabel: text("Authorize first Staging deploy", "อนุมัติ deploy Staging ครั้งแรก"),
@@ -2246,7 +2332,7 @@ export default function AdminDeploymentTargets() {
             </> : stagingDeployPreflight.data.reason === "STAGING_ACTIVATION_PROFILE_REQUIRED" ? <>
               <p role="status">{text("Complete the Staging setup above first. The deployment button becomes available after the settings are saved and verified.", "กดปุ่มเตรียม Staging ด้านบนก่อน เมื่อบันทึกและตรวจสอบการตั้งค่าผ่านแล้ว ปุ่มอนุมัติ deploy จะแสดงที่นี่")}</p>
               <details><summary>{text("Technical details", "รายละเอียดทางเทคนิค")}</summary><code>{stagingDeployPreflight.data.reason}</code></details>
-            </> : <p role="status">{stagingDeployPreflight.data.reason ?? text("Staging deploy is not ready.", "staging ยังไม่พร้อม deploy")}</p>}
+            </> : <p role="status">{stagingActionFailureText(stagingDeployPreflight.data.reason ?? "STAGING_NOT_READY", text)}</p>}
           </> : null}
           {stagingDeployMutation.data ? <p role="status">{text("Staging deployment queued", "ส่งงาน deploy staging แล้ว")}: <code>{stagingDeployMutation.data.jobId}</code></p> : null}
           {stagingDeployMutation.error ? <p role="alert">{stagingDeployMutation.error.message}</p> : null}

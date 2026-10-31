@@ -13,7 +13,7 @@ import { resolveVerifiedHttpImagePair, HttpPublishedPairRequired } from "./cloud
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { getStagingApplicationPreparation } from "./cloudflareStagingApplicationPreparation";
 import { resolveStagingApplicationSecrets } from "./cloudflareStagingApplicationSecrets";
-import { applicationDatabaseRoleName, prepareApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
+import { applicationDatabaseRoleName, prepareApplicationDatabaseRole, reuseStagingApplicationDatabaseCredential } from "./cloudflareApplicationDatabaseRole";
 import { planHttpApplicationRelations } from "./cloudflareHttpRuntimePlan";
 import { encrypt, decrypt } from "./crypto";
 import { authorizeDeploymentTarget, resolveProviderDeploymentTarget, type DeploymentTargetIdentity } from "./providerDeploymentTargetAuthority";
@@ -282,7 +282,13 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
       const priorHttp = previous.applicationHttp;
       const allowExpiredStagingProfileRotation = canRotateExpiredStagingApplicationRole(priorHttp);
       const roleSecretHolder: { value?: { role: string; password: string; planDigest: string } } = {};
-      await prepareApplicationDatabaseRole(tx as unknown as DrizzleDB, { plan: rolePlan, purpose: "staging-application",
+      if (existingRole.length && stored.secrets.applicationHttp) {
+        const reused = await reuseStagingApplicationDatabaseCredential(tx as unknown as DrizzleDB, { plan: rolePlan,
+          nodeDatabaseUrl: stored.secrets.applicationHttp.node.DATABASE_URL ?? "",
+          pythonDatabaseUrl: stored.secrets.applicationHttp.python.DATABASE_URL ?? "" });
+        rolePlan.expiresAt = reused.plan.expiresAt;
+        roleSecretHolder.value = reused.secret;
+      } else await prepareApplicationDatabaseRole(tx as unknown as DrizzleDB, { plan: rolePlan, purpose: "staging-application",
         pythonAuthReadOnly: true, ...(existingRole.length ? { reuse: rolePlan } : {}),
         ...(allowExpiredStagingProfileRotation ? { allowExpiredStagingProfileRotation: true } : {}),
         assertAuthorized: async () => {

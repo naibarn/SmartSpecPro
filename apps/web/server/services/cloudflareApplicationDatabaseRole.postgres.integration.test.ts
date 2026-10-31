@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, applicationDatabaseRolePlanSchema, prepareApplicationDatabaseRole, assertReusableApplicationDatabaseRole } from "./cloudflareApplicationDatabaseRole";
+import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, applicationDatabaseRolePlanSchema, prepareApplicationDatabaseRole, assertReusableApplicationDatabaseRole, reuseStagingApplicationDatabaseCredential } from "./cloudflareApplicationDatabaseRole";
 const suite = process.env.RUN_CLOUDFLARE_PRODUCTION_DB_INTEGRATION === "true" ? describe : describe.skip;
 suite("native application role with real PostgreSQL and synthetic tenant RLS", () => {
   let disposable: any, client: any, db: any, closeDb: any, app: any;
@@ -25,6 +25,41 @@ suite("native application role with real PostgreSQL and synthetic tenant RLS", (
   afterAll(async () => { if (app) await app.end({ timeout: 2 }); if (closeDb) await closeDb(); if (client) await client.end({ timeout: 2 }); if (disposable) await disposable.close();
     if (prior.database === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL=prior.database;
     if (prior.env === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV=prior.env; }, 20_000);
+  it("refreshes a Staging profile with the same verified credential while sessions remain active", async () => {
+    const p = { ...plan(), projectId: "project-profile-refresh", expiresAt: new Date(Date.now() + 8 * 86_400_000).toISOString() };
+    let secret: any;
+    await prepareApplicationDatabaseRole(db, { plan: p, purpose: "staging-application", pythonAuthReadOnly: true,
+      assertAuthorized: async () => {}, saveSecret: async (_tx, value) => { secret = value; } });
+    const local = new URL(disposable.databaseUrl); local.username = secret.role; local.password = secret.password;
+    const active = (await import("postgres")).default(local.href, { max: 1 });
+    try {
+      await active`SELECT 1`;
+      const [before] = await client`SELECT rolpassword,rolvaliduntil FROM pg_authid WHERE rolname=${secret.role}`;
+      const node = new URL(`postgresql://db-staging.smartaihub.app:5432/${p.databaseName}`);
+      node.username = secret.role; node.password = secret.password;
+      const input = { plan: { ...p, expiresAt: new Date(Date.now() + 9 * 86_400_000).toISOString() },
+        nodeDatabaseUrl: node.href, pythonDatabaseUrl: node.href.replace("postgresql:", "postgresql+asyncpg:") };
+      const reused = await reuseStagingApplicationDatabaseCredential(db, input);
+      expect(reused.secret).toEqual(secret);
+      expect(reused.plan.expiresAt).toBe(p.expiresAt);
+      const [after] = await client`SELECT rolpassword,rolvaliduntil FROM pg_authid WHERE rolname=${secret.role}`;
+      expect(before.rolpassword === after.rolpassword).toBe(true);
+      expect(before.rolvaliduntil).toEqual(after.rolvaliduntil);
+      expect(await active`SELECT 1 AS alive`).toEqual([{ alive: 1 }]);
+      await expect(reuseStagingApplicationDatabaseCredential(db, { ...input,
+        pythonDatabaseUrl: input.pythonDatabaseUrl.replace(secret.password, "f".repeat(64)) })).rejects.toThrow("CREDENTIAL_BINDING_MISMATCH");
+      await client.unsafe(`GRANT SELECT ON runtime_unselected_fixture TO "${secret.role}"`);
+      await expect(reuseStagingApplicationDatabaseCredential(db, input)).rejects.toThrow("GRANTS_OUTSIDE_CURRENT_PLAN");
+      await client.unsafe(`REVOKE SELECT ON runtime_unselected_fixture FROM "${secret.role}"`);
+      await client.unsafe(`REVOKE UPDATE ON runtime_role_fixture FROM "${secret.role}"`);
+      await expect(reuseStagingApplicationDatabaseCredential(db, input)).rejects.toThrow("REQUIRED_GRANTS_MISSING");
+      await client.unsafe(`GRANT UPDATE ON runtime_role_fixture TO "${secret.role}"`);
+      await expect(reuseStagingApplicationDatabaseCredential(db, { ...input,
+        plan: { ...input.plan, expiresAt: new Date(Date.now() + 7.5 * 86_400_000).toISOString() } }))
+        .rejects.toThrow("ROLE_VALIDITY_TOO_SHORT_OR_UNBOUND");
+    } finally { await active.end({ timeout: 2 }); }
+  });
+
   it("prepares exact selected DML grants with no privileged attributes, preserves Linux roles and excludes secrets from receipts", async () => {
     let secret: any;
     const baseline = await client`SELECT rolname,rolsuper,rolbypassrls FROM pg_roles WHERE rolname=current_user`;
