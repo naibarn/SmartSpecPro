@@ -7498,11 +7498,12 @@ export function ChatView({
                   ? "Review Goal before starting"
                   : "Send message"
             }
-            title={workspaceCommandMode && workspaceCommandMode !== "chat" ? "Review Goal before starting" : "Send message"}
             title={
               isStreaming && activeLocalReplyKind
                 ? "Cancel local reply"
-                : undefined
+                : workspaceCommandMode && workspaceCommandMode !== "chat"
+                  ? "Review Goal before starting"
+                  : "Send message"
             }
             className={cn(
               "shrink-0",
