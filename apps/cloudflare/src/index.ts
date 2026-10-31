@@ -51,8 +51,12 @@ async function publishCanonicalQueueRequest(
   publicationRegistry?: CanonicalPublicationRegistry,
 ): Promise<Response> {
   const syntheticOnly = isM3SyntheticQueueAcceptanceEnabled(env);
-  if ((!syntheticOnly && env.CLOUDFLARE_JOB_TRANSPORT !== undefined && env.CLOUDFLARE_JOB_TRANSPORT !== "queues") ||
-      (!syntheticOnly && env.CLOUDFLARE_JOB_TRANSPORT === "queues" && !isCanonicalIntakeTransportEnabled(env, "queues"))) {
+  const alternateTransportSelected = env.CLOUDFLARE_JOB_TRANSPORT !== undefined && env.CLOUDFLARE_JOB_TRANSPORT !== "queues";
+  const retentionOnlySelected = env.CLOUDFLARE_JOB_TRANSPORT === undefined && env.CLOUDFLARE_RETENTION_SCHEDULE !== undefined;
+  if (!syntheticOnly && (alternateTransportSelected || retentionOnlySelected)) {
+    return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 409);
+  }
+  if (!syntheticOnly && env.CLOUDFLARE_JOB_TRANSPORT === "queues" && !isCanonicalIntakeTransportEnabled(env, "queues")) {
     return json({ error: "CLOUDFLARE_QUEUE_TRANSPORT_DISABLED" }, 503);
   }
   if (!syntheticOnly && env.CLOUDFLARE_ACTIVATION !== "enabled") return json({ error: "CLOUDFLARE_RUNTIME_DISABLED" }, 503);
