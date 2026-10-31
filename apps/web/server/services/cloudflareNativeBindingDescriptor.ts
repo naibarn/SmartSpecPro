@@ -19,8 +19,8 @@ export function validateNativeBindingScope(value: CloudflareNativeBindingDescrip
   const descriptor = cloudflareNativeBindingDescriptorSchema.parse(value);
   // The immutable native provisioning authorization is historical evidence;
   // its grant expiry does not expire already-created Queue/R2/Vectorize IDs.
-  // The active configuration expiry and the separately leased DB binding are
-  // enforced below, while the original provision receipt remains mandatory.
+  // The caller validates active configuration expiry, while a separately
+  // leased DB binding is enforced below and the original receipt stays required.
   if (descriptor.plan.namespace !== nativeProvisionNamespace(scope.tenantId, scope.projectId))
     denied("CLOUDFLARE_NATIVE_BINDING_SCOPE_DENIED");
   if (descriptor.privateDatabase) validatePrivateDatabaseBinding(descriptor.privateDatabase, scope, now);

@@ -8,8 +8,8 @@ import type { CloudflareOriginVersionBindings } from "./cloudflareOriginVersionB
 import {
   getAppRuntimeConfig,
 } from "./appRuntimeConfig";
+import { CLOUDFLARE_STAGING_TARGET_ID } from "./cloudflareStagingDeploymentContract";
 import {
-  CLOUDFLARE_STAGING_TARGET_ID,
   bindCloudflareStagingDeploymentAuthorities,
   type CloudflareStagingDeploymentRuntime,
   type CloudflareStagingGrant,

@@ -10,25 +10,22 @@ import {
 import { withCloudflareOriginConfigurationForTransition, withCloudflareOriginRollbackConfiguration } from "./cloudflareOriginConfiguration";
 import type { CloudflareOriginVersionBindings } from "./cloudflareOriginVersionBindings";
 import { withCloudflareDeploymentCredential } from "./cloudflareCredentialCenter";
-import type { RetryPolicy } from "./jobControlPlaneTypes";
 import {
   authorizeDeploymentTarget,
   deploymentCredentialRef,
   resolveProviderDeploymentTarget,
 } from "./providerDeploymentTargetAuthority";
-
-export const CLOUDFLARE_STAGING_DEPLOYMENT_JOB = "cloudflare.staging.deploy";
-export const CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT =
-  "cloudflare-staging-deploy-v1";
-export const CLOUDFLARE_STAGING_TARGET_ID = "smartspec-cloudflare-staging";
-export const CLOUDFLARE_STAGING_RETRY_POLICY: RetryPolicy = {
-  maxAttempts: 2,
-  baseDelayMs: 2_000,
-  maxDelayMs: 5_000,
-  jitter: "bounded",
-  deadlineMs: 15 * 60_000,
-  allowedErrorClasses: ["retryable"],
-};
+import {
+  CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+  CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
+  CLOUDFLARE_STAGING_TARGET_ID,
+} from "./cloudflareStagingDeploymentContract";
+export {
+  CLOUDFLARE_STAGING_DEPLOYMENT_CONTRACT,
+  CLOUDFLARE_STAGING_DEPLOYMENT_JOB,
+  CLOUDFLARE_STAGING_RETRY_POLICY,
+  CLOUDFLARE_STAGING_TARGET_ID,
+} from "./cloudflareStagingDeploymentContract";
 
 const SHA = /^[a-f0-9]{40}$/i;
 const SHA256 = /^[a-f0-9]{64}$/i;

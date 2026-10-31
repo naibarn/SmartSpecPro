@@ -55,10 +55,11 @@ describe("immutable native binding descriptors", () => {
     { outputJson: { ...receipt.outputJson, queue: { ...receipt.outputJson.queue, id: "c".repeat(32) } } }])("refuses receipt substitution: %j", changes => {
     expect(() => assertNativeProvisionReceipt(descriptor, { ...receipt, ...changes }, scope)).toThrow("RECEIPT_DENIED");
   });
-  it("bounds resources to their tenant/project and configuration lifetime", () => {
-    for (const change of [{ tenantId: "foreign" }, { projectId: "foreign" }, { expiresAt: new Date(Date.now() + 7200_000).toISOString() }])
+  it("keeps provisioned resources scoped after the original authorization expires", () => {
+    for (const change of [{ tenantId: "foreign" }, { projectId: "foreign" }])
       expect(() => validateNativeBindingScope(descriptor, { ...scope, ...change })).toThrow("SCOPE_DENIED");
-    expect(() => validateNativeBindingScope(descriptor, scope, Date.now() + 7200_000)).toThrow("SCOPE_DENIED");
+    expect(validateNativeBindingScope(descriptor, { ...scope, expiresAt: new Date(Date.now() - 1000).toISOString() })).toEqual(descriptor);
+    expect(validateNativeBindingScope(descriptor, scope, Date.now() + 7200_000)).toEqual(descriptor);
   });
   it("rejects a right annotation with missing, substituted, duplicate or extra native bindings", () => {
     const bindings = [...nativeWorkerBindings(descriptor), { name: "CLOUDFLARE_ACTIVATION", type: "plain_text", text: "disabled" }];
