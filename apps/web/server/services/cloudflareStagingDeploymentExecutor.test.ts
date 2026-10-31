@@ -683,6 +683,19 @@ describe("explicit Cloudflare origin v2 executor", () => {
     expect(f.cloudflare.rollback).toHaveBeenCalledOnce();
   });
 
+  it("retains the initial verification and safe rollback failure codes without provider secrets", async () => {
+    const f = originRuntime();
+    f.cloudflare.verifyRuntime.mockImplementation(async input => ({ ...input, reachable: false, verificationFailure: "origin-auth" }));
+    f.cloudflare.rollback.mockRejectedValue(Object.assign(new Error("secret provider response"), {
+      diagnosticCode: "CLOUDFLARE_ROLLBACK_ORIGIN_MISMATCH",
+    }));
+    await expect(createCloudflareStagingDeploymentExecutor(f.dependencies)(f.call)).rejects.toMatchObject({
+      diagnosticCode: "CLOUDFLARE_STAGING_ROLLBACK_FAILED",
+      diagnosticStage: "origin-auth/CLOUDFLARE_ROLLBACK_ORIGIN_MISMATCH",
+      message: "CLOUDFLARE_STAGING_ROLLBACK_FAILED",
+    });
+  });
+
   it("automatically restores the explicitly origin-free recovery baseline without claiming origin health", async () => {
     const f = originRuntime();
     f.cloudflare.verifyRuntime.mockImplementation(async input => ({ ...input, reachable: input.buildDigest === rollbackDigest }));

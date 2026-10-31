@@ -91,6 +91,10 @@ function stagingActionFailureText(code: string, text: (en: string, th: string) =
     STAGING_BOOTSTRAP_REQUIRED: ["The first deployment has no rollback baseline yet. Review the one-time bootstrap operation in step 2.", "การ deploy ครั้งแรกยังไม่มีรุ่น rollback ให้ตรวจคำสั่งเริ่ม deploy ครั้งแรกในขั้นตอนที่ 2"],
   };
   if (prerequisites[code]) return text(...prerequisites[code]);
+  if (code === "STAGING_APPLICATION_HTTP_BROWSER_ORIGIN_REFRESH_REQUIRED") return text(
+    "The saved configuration is missing the browser origin policy required for login and email requests. Prepare a new Full Application HTTP candidate in step 1, then authorize it. Existing credentials are retained.",
+    "configuration เดิมยังไม่มีนโยบาย origin สำหรับ login และคำขออีเมล ให้กดเตรียม Full Application HTTP candidate ใหม่ในขั้นตอนที่ 1 แล้วจึงอนุมัติ ระบบจะคง credential เดิม",
+  );
   if (code === "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" || code === "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED") return text(
     "The saved HTTP profile has too little time remaining. Prepare a fresh Full Application HTTP candidate in step 1, then authorize deployment.",
     "อายุ HTTP profile ที่เหลือไม่พอ ให้กดเตรียม Full Application HTTP candidate ใหม่ในขั้นตอนที่ 1 แล้วจึงอนุมัติ deploy",
@@ -752,8 +756,13 @@ export default function AdminDeploymentTargets() {
     stagingProfileScope.current = scope;
     setStagingPreparationProfile(phase === "FULL_HTTP" ? "full-application-http" : "namespace-only");
   }, [tenantId, projectId, environment, stagingOriginConfiguration.data?.applicationPreparation?.phase]);
-  const stagingHttpRefreshRequired = stagingOriginConfiguration.data?.applicationPreparation?.phase === "FULL_HTTP" &&
-    !hasStagingDeploymentProfileRunway(stagingOriginConfiguration.data.applicationPreparation.applicationHttpExpiresAt, stagingClock);
+  const stagingHttpRefreshReason = stagingOriginConfiguration.data?.applicationPreparation?.phase === "FULL_HTTP"
+    ? stagingOriginConfiguration.data.applicationPreparation.browserOriginPolicyConfigured === false
+      ? "STAGING_APPLICATION_HTTP_BROWSER_ORIGIN_REFRESH_REQUIRED"
+      : !hasStagingDeploymentProfileRunway(stagingOriginConfiguration.data.applicationPreparation.applicationHttpExpiresAt, stagingClock)
+        ? "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" : null
+    : null;
+  const stagingHttpRefreshRequired = Boolean(stagingHttpRefreshReason);
   const stagingDatabaseValidityThreshold = Date.now() + 7 * 86_400_000;
   const stagingPrivateDatabase = stagingOriginConfiguration.data?.descriptor?.nativeResources?.privateDatabase;
   const stagingDatabasePlanExpiry = Date.parse(stagingPrivateDatabase?.leaseRenewal?.leaseExpiresAt ??
@@ -1882,7 +1891,7 @@ export default function AdminDeploymentTargets() {
                   : text("Staging is waiting for a prerequisite", "Staging ยังติดเงื่อนไขก่อนเริ่มงาน")}</h3>
             <p>{stagingDeployPreflight.data?.ready && !stagingHttpRefreshRequired
               ? text("Preparation is complete. Continue with step 2 below to authorize this candidate.", "เตรียมข้อมูลครบแล้ว ไปขั้นตอนที่ 2 ด้านล่างเพื่ออนุมัติ candidate นี้")
-              : stagingActionFailureText(stagingHttpRefreshRequired ? "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" : stagingDeployPreflight.data?.reason ?? "STAGING_READINESS_UNAVAILABLE", text)}</p>
+              : stagingActionFailureText(stagingHttpRefreshReason ?? stagingDeployPreflight.data?.reason ?? "STAGING_READINESS_UNAVAILABLE", text)}</p>
             {stagingOriginConfiguration.data?.applicationPreparation?.applicationHttpExpiresAt ? <p>{text("HTTP profile expires", "HTTP profile หมดอายุ")}: {new Date(stagingOriginConfiguration.data.applicationPreparation.applicationHttpExpiresAt).toLocaleString()}
               {text(" · Deployment requires at least 4 hours 45 minutes remaining. Prepare again when less time remains.", " · เริ่ม deploy ได้เมื่อเหลืออย่างน้อย 4 ชั่วโมง 45 นาที หากเหลือน้อยกว่านี้ ให้กดเตรียมใหม่ได้ทันที")}</p> : null}
             <HStack gap={2} wrap="wrap">

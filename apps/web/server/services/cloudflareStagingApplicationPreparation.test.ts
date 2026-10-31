@@ -37,20 +37,21 @@ describe("Staging Full Application preparation projection", () => {
     expect(JSON.stringify(value)).not.toContain("must-never-be-returned-this-is-secret");
   });
 
-  it("recognizes complete runtime configuration without claiming DB acceptance or deployment", () => {
+  it.each([true, false])("recognizes browser origin completeness without claiming DB acceptance (configured: %s)", configured => {
     const base = descriptor(), namespace = httpApplicationNamespace(base.tenantId, base.projectId, "staging");
     base.applicationHttp = { mode: "private-canary", namespace, sourceSha: "b".repeat(40), traffic: "staging-full-http-v1",
       node: { provisionJobId: "00000000-0000-4000-8000-000000000003", planDigest: "c".repeat(64), image: `registry.cloudflare.com/${base.accountRef}/${namespace}-node-http@sha256:${"d".repeat(64)}` },
       python: { provisionJobId: "00000000-0000-4000-8000-000000000004", planDigest: "e".repeat(64), image: `registry.cloudflare.com/${base.accountRef}/${namespace}-python-http@sha256:${"f".repeat(64)}` },
       issuedAt: new Date(Date.now() - 1000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(),
       maxStarts: 2, maxComputeSeconds: 1200, hardLifetimeSeconds: 600, idleTimeoutSeconds: 10, instance: "basic" };
-    const value = getStagingApplicationPreparation(base, secrets({ node: { CONTROL_PLANE_API_KEY: "fixture-secret-not-returned" }, python: {} }), `cf-origin:${"2".repeat(64)}`);
+    const value = getStagingApplicationPreparation(base, secrets({ node: { CONTROL_PLANE_API_KEY: "fixture-secret-not-returned", ...(configured ? { SMARTSPEC_ALLOWED_ORIGINS: base.allowedPublicOrigins.join(",") } : {}) }, python: {} }), `cf-origin:${"2".repeat(64)}`);
     expect(value.phase).toBe("FULL_HTTP");
-    expect(value.candidateStatus).toBe("RUNTIME_CONFIGURED");
+    expect(value.candidateStatus).toBe(configured ? "RUNTIME_CONFIGURED" : "BLOCKED");
+    expect(value.browserOriginPolicyConfigured).toBe(configured);
     expect(value.applicationHttpExpired).toBe(false);
     expect(value.databaseAuthority.code).toBe("STAGING_DB_WRITE_ACCEPTANCE_NOT_VERIFIED");
     expect(value.databaseAuthority.status).toBe("NOT_VERIFIED");
-    expect(value.missingRuntimeFields).toEqual([]);
+    expect(value.missingRuntimeFields).toEqual(configured ? [] : ["Node browser origin policy; prepare a fresh configuration"]);
     expect(value.deploymentAuthorized).toBe(false);
     expect(JSON.stringify(value)).not.toContain("fixture-secret-not-returned");
   });

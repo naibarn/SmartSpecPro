@@ -107,22 +107,21 @@ export function httpApplicationWorkerMetadata(value: HttpApplicationSettings, sc
   };
 }
 
+/** Called only while preparing a NEW immutable configuration, never while
+ * re-materializing an existing deployment or rollback environment. */
+export function httpApplicationBrowserOrigins(reviewedOrigins: string): string {
+  let origins: unknown;
+  try { origins = JSON.parse(reviewedOrigins); } catch { /* rejected below */ }
+  if (!Array.isArray(origins) || origins.length === 0 || origins.some(origin => {
+    if (typeof origin !== "string" || origin.includes(",")) return true;
+    try { const url = new URL(origin); return url.protocol !== "https:" || url.origin !== origin; } catch { return true; }
+  })) throw new Error("CLOUDFLARE_HTTP_APPLICATION_BROWSER_ORIGINS_DENIED");
+  return origins.join(",");
+}
+
 export function httpApplicationVersionBindings(value: HttpApplicationSettings, scope: Scope & { configurationRef: string }, secrets: z.infer<typeof cloudflareHttpApplicationSecretsSchema>) {
   validateHttpApplicationSettings(value, scope);
   const secret = cloudflareHttpApplicationSecretsSchema.parse(secrets);
-  // The edge attestation and Express CORS/CSRF policies must use the same
-  // reviewed origins. Derive this when materializing bindings so existing
-  // encrypted configurations are repaired without rotating their credentials
-  // or rebuilding the immutable Container image. Never inherit a shell list.
-  if (secret.node.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS !== undefined) {
-    let origins: unknown;
-    try { origins = JSON.parse(secret.node.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS); } catch { /* rejected below */ }
-    if (!Array.isArray(origins) || origins.length === 0 || origins.some(origin => {
-      if (typeof origin !== "string" || origin.includes(",")) return true;
-      try { const url = new URL(origin); return url.protocol !== "https:" || url.origin !== origin; } catch { return true; }
-    })) throw new Error("CLOUDFLARE_HTTP_APPLICATION_BROWSER_ORIGINS_DENIED");
-    secret.node.SMARTSPEC_ALLOWED_ORIGINS = origins.join(",");
-  }
   // The packaged server validates this bootstrap setting during module load.
   // Reject an incomplete API deployment before it can consume a paid VM start;
   // namespace-only preparation never injects application secrets.

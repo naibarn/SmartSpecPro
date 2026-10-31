@@ -76,6 +76,7 @@ describe("server-side Staging application secret resolution", () => {
     expect(result.secrets.node.AUTH_ORIGIN_TOKEN).toBe(f.originToken);
     expect(result.secrets.node.AUTH_ORIGIN_PRIVATE_HOST).toBe("origin.example.com");
     expect(result.secrets.node.AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS).toBe(JSON.stringify(["https://staging.example.workers.dev"]));
+    expect(result.secrets.node.SMARTSPEC_ALLOWED_ORIGINS).toBe("https://staging.example.workers.dev");
     expect(resolveCloudflareOriginIngress({
       host: result.secrets.node.AUTH_ORIGIN_PRIVATE_HOST,
       "x-cloudflare-origin-token": result.secrets.node.AUTH_ORIGIN_TOKEN,

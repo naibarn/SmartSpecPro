@@ -12,6 +12,22 @@ export type VerifiedStagingRollbackBaseline = {
   configurationDigest: string;
 };
 
+/** Provider labels alone cannot establish ownership. Match the failed canonical
+ * job and its exact artifact/configuration as well; no success is inferred. */
+export function ownsFailedStagingDeployment(input: {
+  projectId: string; providerJobId: string;
+  job: { id: unknown; status: unknown; errorCode: unknown; input: Record<string, unknown> };
+  version: { sourceSha: string; buildDigest: string; configurationDigest: string };
+}): boolean {
+  const { job, version } = input, value = job.input;
+  return job.id === input.providerJobId && job.status === "failed" && job.errorCode === "CLOUDFLARE_STAGING_ROLLBACK_FAILED" &&
+    value.projectId === input.projectId && value.targetId === "smartspec-cloudflare-staging" && value.environment === "staging" &&
+    value.contractVersion === "cloudflare-staging-origin-v2" && value.action === "deploy" &&
+    /^[a-f0-9]{40}$/.test(version.sourceSha) && /^[a-f0-9]{64}$/.test(version.buildDigest) && /^[a-f0-9]{64}$/.test(version.configurationDigest) &&
+    value.sourceSha === version.sourceSha && value.buildDigest === version.buildDigest && value.artifactRef === `sha256:${version.buildDigest}` &&
+    value.configurationDigest === version.configurationDigest && value.configurationRef === `cf-origin:${version.configurationDigest}`;
+}
+
 /** A Full HTTP profile can expire before its enclosing origin configuration.
  * Such a config is not a directly usable rollback baseline; expired versions
  * must pass the separate exact-renewal compatibility check. */
@@ -26,8 +42,8 @@ export function isStoredStagingRollbackConfigurationUsable(stored: {
 }
 
 /**
- * Prove the active Worker belongs to a succeeded canonical receipt, then select
- * the newest available verified release whose origin configuration remains a
+ * Prove the active Worker belongs to a verified receipt or an independently
+ * matched failed canonical deployment, then select a succeeded release whose origin configuration remains a
  * safe rollback target. An expired active Full HTTP config must not hide an
  * earlier valid Queue release or turn an existing Worker into first-deploy
  * bootstrap. Unowned active deployments still fail closed.
@@ -39,6 +55,9 @@ export async function findVerifiedStagingRollbackBaseline(input: {
   activeDeploymentIsSingleVersion: boolean;
   activeVersionId?: string | null;
   isActiveVersionFromVerifiedDeployment?: (deploymentId: string, activeVersionId: string) => Promise<boolean>;
+  /** Independently cross-check provider deployment + version identity against
+   * the exact tenant/project failed canonical job. Never a rollback receipt. */
+  isActiveDeploymentFromFailedCanonicalJob?: () => Promise<boolean>;
   isRollbackDeploymentAvailable: (deploymentId: string) => Promise<boolean>;
   isConfigurationUsable: (configurationRef: string, configurationDigest: string) => Promise<boolean>;
 }): Promise<VerifiedStagingRollbackBaseline | null> {
@@ -77,6 +96,9 @@ export async function findVerifiedStagingRollbackBaseline(input: {
       activeDeploymentOwned = true;
       break;
     }
+  }
+  if (!activeDeploymentOwned && input.isActiveDeploymentFromFailedCanonicalJob) {
+    activeDeploymentOwned = await input.isActiveDeploymentFromFailedCanonicalJob();
   }
   if (!activeDeploymentOwned) return null;
 

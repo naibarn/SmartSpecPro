@@ -772,15 +772,16 @@ describe("AdminDeploymentTargets", () => {
     expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
   });
 
-  it.each([false, true])("allows preparing again before expiry when the deploy window is too short (probe unavailable: %s)", async probeUnavailable => {
+  it.each([{ probeUnavailable: false, browserRefresh: false }, { probeUnavailable: true, browserRefresh: false },
+    { probeUnavailable: false, browserRefresh: true }, { probeUnavailable: true, browserRefresh: true }])("allows refreshing a stale immutable profile before expiry: %j", async ({ probeUnavailable, browserRefresh }) => {
     const user = userEvent.setup();
     mocks.targets = [stagingActivationTarget];
-    mocks.stagingPreflight = { ready: false, reason: "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT", artifact: null, baseline: null };
+    mocks.stagingPreflight = { ready: false, reason: browserRefresh ? "STAGING_APPLICATION_HTTP_BROWSER_ORIGIN_REFRESH_REQUIRED" : "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT", artifact: null, baseline: null };
     mocks.originConfiguration = {
       status: "STORED", configurationRef: `cf-origin:${"a".repeat(64)}`,
       workflowRuntimeTokenConfigured: true, controlPlaneTokenConfigured: true,
-      applicationPreparation: { phase: "FULL_HTTP", applicationHttpExpired: false,
-        applicationHttpExpiresAt: new Date(Date.now() + 2 * 60 * 60_000).toISOString(),
+      applicationPreparation: { phase: "FULL_HTTP", applicationHttpExpired: false, ...(browserRefresh ? { browserOriginPolicyConfigured: false } : {}),
+        applicationHttpExpiresAt: new Date(Date.now() + (browserRefresh ? 6 : 2) * 60 * 60_000).toISOString(),
         imageReceipts: "VERIFIED", encryptedApplicationSecrets: "STORED", missingRuntimeFields: [],
         databaseAuthority: { requiredPermissions: [], excludedPermissions: [] } },
     };

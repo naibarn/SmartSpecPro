@@ -9,7 +9,7 @@ import { privateDatabaseBindingSchema, privateDatabaseEffectiveLeaseExpiresAt } 
 import { certificateDigest, privateDatabasePlanSchema } from "./cloudflarePrivateDatabaseContract";
 import { privateDatabaseCheckpointSchema } from "./cloudflarePrivateDatabaseTransport";
 import { applicationDatabaseRoleName, applicationDatabaseRolePlanDigest, applicationDatabaseRolePlanSchema } from "./cloudflareApplicationDatabaseRole";
-import { cloudflareHttpApplicationSecretsSchema, httpApplicationVersionBindings, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
+import { cloudflareHttpApplicationSecretsSchema, httpApplicationVersionBindings, httpApplicationBrowserOrigins, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
 import { cloudflareOriginDescriptorDigest } from "./cloudflareOriginVersionBindings";
 import { loadHttpRuntimeEnvironments } from "./cloudflareHttpRuntimePlan";
 
@@ -108,6 +108,7 @@ export async function resolveStagingApplicationSecrets(input: {
     AUTH_ORIGIN_TOKEN: stored.secrets.token,
     AUTH_ORIGIN_PRIVATE_HOST: originUrl.host,
     AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify(stored.descriptor.allowedPublicOrigins),
+    SMARTSPEC_ALLOWED_ORIGINS: httpApplicationBrowserOrigins(JSON.stringify(stored.descriptor.allowedPublicOrigins)),
   });
   const required: Array<[string | undefined, number]> = [[node.JWT_SECRET, 32], [node.API_KEY_HMAC_SECRET, 32], [node.LLM_ENCRYPTION_KEY, 32],
     [node.CONTROL_PLANE_API_KEY, 24], [python.JWT_SECRET, 32], [python.SECRET_KEY, 32], [python.ENCRYPTION_MASTER_KEY, 32],

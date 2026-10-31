@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import * as rollbackBaseline from "./cloudflareStagingRollbackBaseline";
-import { findVerifiedStagingRollbackBaseline, type StagingRollbackCandidate } from "./cloudflareStagingRollbackBaseline";
+import { findVerifiedStagingRollbackBaseline, ownsFailedStagingDeployment, type StagingRollbackCandidate } from "./cloudflareStagingRollbackBaseline";
 
 const digest = "a".repeat(64);
 const candidate: StagingRollbackCandidate = {
@@ -15,7 +15,30 @@ const fixture = (changes: { input?: Record<string, unknown>; output?: Record<str
   isConfigurationUsable: vi.fn(async () => true), isRollbackDeploymentAvailable: vi.fn(async () => true),
 });
 
+describe("failed Staging deployment ownership", () => {
+  const owned = { projectId: "project-1", providerJobId: "job-1",
+    job: { id: "job-1", status: "failed", errorCode: "CLOUDFLARE_STAGING_ROLLBACK_FAILED",
+      input: { ...candidate.input, action: "deploy", targetId: "smartspec-cloudflare-staging" } },
+    version: { sourceSha: "1".repeat(40), buildDigest: "b".repeat(64), configurationDigest: digest } };
+  it("requires canonical identity and provider artifact/config identity together", () => {
+    expect(ownsFailedStagingDeployment(owned)).toBe(true);
+    expect(ownsFailedStagingDeployment({ ...owned, providerJobId: "other-job" })).toBe(false);
+    expect(ownsFailedStagingDeployment({ ...owned, job: { ...owned.job, status: "running" } })).toBe(false);
+    expect(ownsFailedStagingDeployment({ ...owned, version: { ...owned.version, sourceSha: "2".repeat(40) } })).toBe(false);
+  });
+  it.each(["projectId", "environment", "targetId", "artifactRef", "buildDigest", "configurationRef", "configurationDigest", "contractVersion", "action"])("rejects a different %s", key => {
+    expect(ownsFailedStagingDeployment({ ...owned, job: { ...owned.job, input: { ...owned.job.input, [key]: "mismatch" } } })).toBe(false);
+  });
+});
+
 describe("findVerifiedStagingRollbackBaseline", () => {
+  it("recovers an exactly owned failed deployment using a separately runtime-verified baseline", async () => {
+    const input = { ...fixture(), activeDeploymentId: "77777777-7777-4777-8777-777777777777",
+      isActiveDeploymentFromFailedCanonicalJob: vi.fn(async () => true) };
+    await expect(findVerifiedStagingRollbackBaseline(input)).resolves.toMatchObject({ deploymentId: candidate.output.deploymentId });
+    await expect(findVerifiedStagingRollbackBaseline({ ...input, candidates: [] })).resolves.toBeNull();
+    await expect(findVerifiedStagingRollbackBaseline({ ...input, isActiveDeploymentFromFailedCanonicalJob: async () => false })).resolves.toBeNull();
+  });
   it("accepts an active verified deployment from its canonical receipt without requiring its old bundle to remain cached", async () => {
     const input = fixture();
     await expect(findVerifiedStagingRollbackBaseline(input)).resolves.toMatchObject({

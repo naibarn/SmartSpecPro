@@ -210,10 +210,31 @@ export function getCloudflareWorkerDeploymentEvidence(input: {
       const deployments = result?.deployments;
       if (!Array.isArray(deployments) || deployments.length === 0) return null;
       const deployment = deployments[0] as Record<string, unknown>;
+      const annotations = deployment.annotations as Record<string, unknown> | undefined;
+      const canonicalJobId = typeof annotations?.["workers/message"] === "string"
+        ? /^SmartAIHub staging idempotency cloudflare-staging:([0-9a-f-]{36})$/i.exec(annotations["workers/message"])?.[1] : undefined;
       const versions = Array.isArray(deployment.versions) ? deployment.versions as Array<Record<string, unknown>> : [];
       return { accountId: input.accountId, scriptName: input.scriptName, deploymentId: typeof deployment.id === "string" ? deployment.id : null,
         createdAt: typeof deployment.created_on === "string" ? deployment.created_on : null,
+        ...(canonicalJobId ? { canonicalJobId } : {}),
         versions: versions.map(version => ({ versionId: typeof version.version_id === "string" ? version.version_id : null, percentage: typeof version.percentage === "number" ? version.percentage : null })) };
+    },
+  });
+}
+
+/** Exact immutable version identity for recovery ownership; not a health receipt. */
+export function getCloudflareWorkerVersionArtifactEvidence(input: {
+  db: DrizzleDB; accountId: string; scriptName: string; versionId: string; fetchImpl?: CloudflareFetch; credentialBinding?: CredentialBinding;
+}) {
+  const path = `/accounts/${encodeURIComponent(input.accountId)}/workers/scripts/${encodeURIComponent(input.scriptName)}/versions/${encodeURIComponent(input.versionId)}`;
+  return cloudflareQuery({ ...input, profile: "deployment", path, source: "cloudflare_workers_api",
+    normalize: body => {
+      const result = body.result as Record<string, unknown> | null;
+      const annotations = result?.annotations as Record<string, unknown> | undefined;
+      const message = annotations?.["workers/message"];
+      const match = typeof message === "string" ? /^SmartAIHub staging ([a-f0-9]{40}) ([a-f0-9]{64}) origin ([a-f0-9]{64})$/i.exec(message) : null;
+      return result?.id === input.versionId && match
+        ? { versionId: input.versionId, sourceSha: match[1]!, buildDigest: match[2]!, configurationDigest: match[3]! } : null;
     },
   });
 }

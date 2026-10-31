@@ -273,12 +273,14 @@ export type CloudflareStagingApi = Readonly<{
 export class CloudflareStagingDeploymentError extends Error {
   readonly diagnosticCode: string;
   readonly class: "permanent" | "retryable";
+  readonly diagnosticStage?: string;
 
-  constructor(code: string, failureClass: "permanent" | "retryable" = "permanent") {
+  constructor(code: string, failureClass: "permanent" | "retryable" = "permanent", diagnosticStage?: string) {
     super(code);
     this.name = "CloudflareStagingDeploymentError";
     this.diagnosticCode = code;
     this.class = failureClass;
+    this.diagnosticStage = diagnosticStage;
   }
 }
 
@@ -758,9 +760,13 @@ export function createCloudflareStagingDeploymentExecutor(
                       "CLOUDFLARE_STAGING_ROLLBACK_VERIFICATION_FAILED"
                     );
                   }
-                } catch {
+                } catch (error) {
+                  const rollbackCode = error instanceof Error && "diagnosticCode" in error &&
+                    typeof error.diagnosticCode === "string" && /^CLOUDFLARE_[A-Z0-9_]{1,80}$/.test(error.diagnosticCode)
+                    ? error.diagnosticCode : "CLOUDFLARE_STAGING_ROLLBACK_TRANSPORT_FAILED";
                   throw new CloudflareStagingDeploymentError(
-                    "CLOUDFLARE_STAGING_ROLLBACK_FAILED"
+                    "CLOUDFLARE_STAGING_ROLLBACK_FAILED", "permanent",
+                    `${verification.verificationFailure ?? "runtime"}/${rollbackCode}`,
                   );
                 }
               }
@@ -813,6 +819,7 @@ export function createCloudflareStagingDeploymentExecutor(
               failureClass: error instanceof Error && "class" in error && error.class === "retryable"
                 ? "retryable" as const
                 : "permanent" as const,
+              diagnosticStage: error instanceof CloudflareStagingDeploymentError ? error.diagnosticStage : undefined,
             };
           }
         };
@@ -833,6 +840,7 @@ export function createCloudflareStagingDeploymentExecutor(
       throw new CloudflareStagingDeploymentError(
         credential.value.diagnosticCode,
         credential.value.failureClass,
+        credential.value.diagnosticStage,
       );
     await reporter.assertActive(lease);
     return { output: credential.value.receipt };

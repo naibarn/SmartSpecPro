@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { encrypt } from "./crypto";
-import { getAuthorizedCloudflareContainerEvidence, getAuthorizedCloudflareWorkerDeploymentEvidence, getCloudflareContainerInstanceEvidence, getCloudflareWorkerDeploymentEvidence, getCloudflareWorkerDeploymentVersionEvidence, getPersistedCloudflareContainerEvidence, getPersistedCloudflareWorkerDeploymentEvidence, resolveCloudflareDeploymentTarget } from "./cloudflareRuntimeEvidence";
+import { getAuthorizedCloudflareContainerEvidence, getAuthorizedCloudflareWorkerDeploymentEvidence, getCloudflareContainerInstanceEvidence, getCloudflareWorkerDeploymentEvidence, getCloudflareWorkerDeploymentVersionEvidence, getCloudflareWorkerVersionArtifactEvidence, getPersistedCloudflareContainerEvidence, getPersistedCloudflareWorkerDeploymentEvidence, resolveCloudflareDeploymentTarget } from "./cloudflareRuntimeEvidence";
 import { deploymentCredentialRef } from "./providerDeploymentTargetAuthority";
 
 const encryptionKey = "wu4c-cloudflare-test-encryption-key";
@@ -79,6 +79,31 @@ describe("Cloudflare runtime evidence adapters", () => {
     });
     const result = await getCloudflareWorkerDeploymentEvidence({ db: credentialDb("secret-token"), accountId: "acct", scriptName: "worker", fetchImpl });
     expect(result).toMatchObject({ status: "OBSERVED", source: "cloudflare_workers_api", value: { deploymentId: "deployment-1", versions: [{ versionId: "version-1", percentage: 100 }] } });
+    expect(JSON.stringify(result)).not.toContain("secret-token");
+  });
+
+  it.each([true, false])("reads an exact version artifact identity without treating it as health (matches: %s)", async matches => {
+    process.env.LLM_ENCRYPTION_KEY = encryptionKey;
+    const versionId = "22222222-2222-4222-8222-222222222222";
+    const result = await getCloudflareWorkerVersionArtifactEvidence({ db: credentialDb("secret-token"), accountId: "acct", scriptName: "worker-a", versionId,
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ success: true, result: {
+        id: matches ? versionId : "different-version",
+        annotations: { "workers/message": `SmartAIHub staging ${"a".repeat(40)} ${"b".repeat(64)} origin ${"c".repeat(64)}` },
+      } }), { status: 200 })) });
+    if (matches) expect(result).toMatchObject({ status: "OBSERVED", value: { versionId, sourceSha: "a".repeat(40), buildDigest: "b".repeat(64), configurationDigest: "c".repeat(64) } });
+    else expect(result.value).toBeNull();
+    expect(JSON.stringify(result)).not.toContain("secret-token");
+  });
+
+  it("extracts only the exact canonical job identity from the active provider deployment", async () => {
+    process.env.LLM_ENCRYPTION_KEY = encryptionKey;
+    const canonicalJobId = "11111111-1111-4111-8111-111111111111";
+    const result = await getCloudflareWorkerDeploymentEvidence({ db: credentialDb("secret-token"), accountId: "acct", scriptName: "worker-a",
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ success: true, result: { deployments: [{ id: "deployment-1",
+        annotations: { "workers/message": `SmartAIHub staging idempotency cloudflare-staging:${canonicalJobId}` },
+        versions: [{ version_id: "version-1", percentage: 100 }],
+      }] } }), { status: 200 })) });
+    expect(result).toMatchObject({ status: "OBSERVED", value: { canonicalJobId } });
     expect(JSON.stringify(result)).not.toContain("secret-token");
   });
 

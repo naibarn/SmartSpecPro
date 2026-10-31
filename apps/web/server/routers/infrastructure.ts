@@ -111,8 +111,8 @@ import { productionDatabaseResourcePlanDigest, productionDatabaseResourcePlanSch
 import { cloudflareApprovalFailureCode, cloudflareApprovalResponseObject } from "../services/cloudflareApprovalFailure";
 import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB, privateDatabaseRenewalPlanSchema, privateDatabaseRenewalPlanDigest } from "../services/cloudflarePrivateDatabaseContract";
 import { cloudflareStagingActivationBlocker, cloudflareStagingOriginConfigurationBlocker } from "../services/cloudflareStagingActivationReadiness";
-import { getCloudflareWorkerDeploymentVersionEvidence, getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
-import { findVerifiedStagingRollbackBaseline, isStoredStagingRollbackConfigurationUsable } from "../services/cloudflareStagingRollbackBaseline";
+import { getCloudflareWorkerDeploymentVersionEvidence, getCloudflareWorkerVersionArtifactEvidence, getPersistedCloudflareWorkerDeploymentEvidence } from "../services/cloudflareRuntimeEvidence";
+import { findVerifiedStagingRollbackBaseline, isStoredStagingRollbackConfigurationUsable, ownsFailedStagingDeployment } from "../services/cloudflareStagingRollbackBaseline";
 import { admitM3ParityOperation, getM3ParityOperation, getM3ParityPreflight } from "../services/cloudflareM3ParityAdmission";
 import { cloudflareOriginIdentitySchema as originIdentitySchema, cloudflareOriginReferenceSchema as originReferenceSchema,
   cloudflareStagingActivationInputSchema } from "../../shared/cloudflareOriginIdentity";
@@ -502,6 +502,10 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
     controlPlaneTokenConfigured: originConfiguration.controlPlaneTokenConfigured,
     applicationSecretsConfigured: originConfiguration.applicationPreparation?.encryptedApplicationSecrets === "STORED" });
   if (activationBlocker) return unavailable(activationBlocker);
+  if (originConfiguration.applicationPreparation?.phase === "FULL_HTTP" &&
+      originConfiguration.applicationPreparation.browserOriginPolicyConfigured === false) {
+    return unavailable("STAGING_APPLICATION_HTTP_BROWSER_ORIGIN_REFRESH_REQUIRED");
+  }
   if (originConfiguration.applicationPreparation?.applicationHttpExpired) {
     return unavailable("STAGING_APPLICATION_HTTP_PROFILE_EXPIRED");
   }
@@ -522,13 +526,26 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
     const evidence = await getPersistedCloudflareWorkerDeploymentEvidence({ db, callerTenantId: identity.tenantId,
       projectId: identity.projectId, environment: "staging" });
     const active = evidence.status === "OBSERVED" && evidence.value && typeof evidence.value === "object"
-      ? evidence.value as { deploymentId?: unknown; versions?: unknown } : null;
+      ? evidence.value as { deploymentId?: unknown; versions?: unknown; canonicalJobId?: unknown } : null;
     const versions = Array.isArray(active?.versions) ? active.versions as Array<{ versionId?: unknown; percentage?: unknown }> : [];
     const deploymentIsSingleVersion = versions.length === 1 && versions[0]?.percentage === 100 && typeof versions[0]?.versionId === "string";
     if (typeof active?.deploymentId === "string" && deploymentIsSingleVersion) {
       const baseline = await findVerifiedStagingRollbackBaseline({
         candidates: baselineCandidates, projectId: identity.projectId, activeDeploymentId: active.deploymentId,
         activeDeploymentIsSingleVersion: deploymentIsSingleVersion, activeVersionId: versions[0]!.versionId as string,
+        isActiveDeploymentFromFailedCanonicalJob: async () => {
+          if (typeof active.canonicalJobId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(active.canonicalJobId)) return false;
+          const [failed] = await db.select({ id: workerJobs.id, status: workerJobs.status, errorCode: workerJobs.errorCode, input: workerJobs.inputJson })
+            .from(workerJobs).where(and(eq(workerJobs.id, active.canonicalJobId), eq(workerJobs.tenantId, identity.tenantId),
+              eq(workerJobs.jobType, CLOUDFLARE_STAGING_DEPLOYMENT_JOB), eq(workerJobs.status, "failed"))).limit(1);
+          if (!failed?.input) return false;
+          const observed = await getCloudflareWorkerVersionArtifactEvidence({ db, accountId: target.accountRef, scriptName: target.workerRef,
+            versionId: versions[0]!.versionId as string,
+            credentialBinding: { identity: { ...identity, environment: "staging", provider: "cloudflare" }, credentialRef: target.credentialRef } });
+          return observed.status === "OBSERVED" && observed.value !== null && ownsFailedStagingDeployment({
+            projectId: identity.projectId, providerJobId: active.canonicalJobId,
+            job: { ...failed, input: failed.input as Record<string, unknown> }, version: observed.value });
+        },
         isActiveVersionFromVerifiedDeployment: async (deploymentId, activeVersionId) => {
           const deployedVersion = await getCloudflareWorkerDeploymentVersionEvidence({ db, accountId: target.accountRef, scriptName: target.workerRef,
             deploymentId, credentialBinding: { identity: { ...identity, environment: "staging", provider: "cloudflare" },
