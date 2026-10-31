@@ -917,7 +917,6 @@ elements["save-connection-environment"].addEventListener("click", async () => {
     setNotice(elements["global-notice"], "บันทึกเว็บไซต์แล้ว ปิดและเปิด SmartAIHub Runner ใหม่เพื่อเชื่อมต่อกับเว็บไซต์ที่เลือก");
     await refreshStatus();
   } catch (error) {
-    connectionEnvironmentDirty = false;
     setNotice(elements["global-notice"], safeError(error));
     await refreshStatus();
   } finally {

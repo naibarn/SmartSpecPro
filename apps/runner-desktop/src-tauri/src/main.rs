@@ -243,6 +243,20 @@ fn ensure_selected_environment_is_active(state: &RunnerState) -> Result<(), Stri
     Ok(())
 }
 
+fn persist_connection_environment(
+    settings_path: &PathBuf,
+    settings: &mut DesktopSettings,
+    environment: &str,
+) -> Result<(), String> {
+    let selected = match environment {
+        "production" => RunnerEnvironment::Production,
+        "developer" => RunnerEnvironment::Developer,
+        _ => return Err("RUNNER_CONNECTION_ENVIRONMENT_INVALID".into()),
+    };
+    settings.connection_environment = Some(selected);
+    write_settings(settings_path, settings)
+}
+
 fn set_readiness_publication_pending(
     readiness: &Arc<Mutex<RunnerReadinessStatus>>,
 ) -> Result<(), String> {
@@ -564,17 +578,9 @@ fn save_connection_environment(
     environment: String,
     state: State<'_, RunnerState>,
 ) -> Result<(), String> {
-    if state.lifecycle.running.load(Ordering::Acquire) {
-        return Err("RUNNER_STOP_BEFORE_ENVIRONMENT_CHANGE".into());
-    }
-    let selected = match environment.as_str() {
-        "production" => RunnerEnvironment::Production,
-        "developer" => RunnerEnvironment::Developer,
-        _ => return Err("RUNNER_CONNECTION_ENVIRONMENT_INVALID".into()),
-    };
     let mut settings = setting_lock(&state)?;
-    settings.connection_environment = Some(selected);
-    write_settings(&state.settings_path, &settings)
+    // Save the next-launch target; the current process keeps its existing config.
+    persist_connection_environment(&state.settings_path, &mut settings, &environment)
 }
 
 #[tauri::command]
@@ -1568,6 +1574,31 @@ fn main() {
 #[cfg(test)]
 mod connection_environment_tests {
     use super::*;
+
+    #[test]
+    fn saving_next_launch_target_persists_without_replacing_active_config() {
+        let directory = std::env::temp_dir().join(format!(
+            "smartaihub-runner-environment-save-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        let settings_path = directory.join("desktop_settings.json");
+        let mut settings = DesktopSettings::default();
+
+        persist_connection_environment(&settings_path, &mut settings, "developer").unwrap();
+
+        assert_eq!(
+            settings.connection_environment,
+            Some(RunnerEnvironment::Developer)
+        );
+        assert_eq!(
+            read_settings(&settings_path)
+                .unwrap()
+                .connection_environment,
+            Some(RunnerEnvironment::Developer)
+        );
+        let _ = std::fs::remove_dir_all(directory);
+    }
 
     #[test]
     fn saved_website_selection_survives_app_restart() {
