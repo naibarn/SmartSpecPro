@@ -42,6 +42,16 @@
         </header>
         <p class="body-copy" id="connection-detail">เมื่อเชื่อมต่อ Runner แล้ว งานที่อนุมัติจะส่งมายังเครื่องนี้</p>
         <p class="body-copy" id="credential-detail">Access token ต่ออายุให้อัตโนมัติเมื่อใกล้หมดอายุขณะเปิดแอป</p>
+        <section class="environment-setting" aria-label="เว็บไซต์ SmartAIHub ที่ Runner จะเชื่อมต่อครั้งถัดไป">
+          <label class="field-label" for="connection-environment">เว็บไซต์ที่ Runner จะเชื่อมต่อ</label>
+          <select id="connection-environment" class="select-control">
+            <option value="production">Production · smartaihub.app</option>
+            <option value="developer">Developer · aimarkethubs.com</option>
+          </select>
+          <p class="body-copy" id="connection-target-detail" aria-live="polite">เว็บไซต์ที่ใช้อยู่: กำลังตรวจสอบ…</p>
+          <button class="button quiet" id="save-connection-environment" type="button">บันทึกเว็บไซต์</button>
+          <p class="body-copy">เปลี่ยนเว็บไซต์แล้วบันทึก จากนั้นปิดและเปิด Runner ใหม่ ระบบจะแยกบัญชีและ credential ของแต่ละเว็บไซต์ แต่ใช้โฟลเดอร์ Workspace ในเครื่องชุดเดิม</p>
+        </section>
         <section class="button-row">
           <button class="button primary" id="connect-button" type="button">เชื่อมต่อผ่านเบราว์เซอร์</button>
           <button class="button quiet" id="refresh-button" type="button">รีเฟรชสถานะ</button>

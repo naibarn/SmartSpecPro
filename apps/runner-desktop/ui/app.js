@@ -9,7 +9,8 @@ const elements = Object.fromEntries(
     "app-version", "app-build-date", "first-launch-date", "access-token-expiry", "reauth-deadline",
     "credential-detail", "export-debug-button", "open-debug-folder-button", "debug-file-path",
     "workspace-simple-mode", "workspace-developer-mode",
-    "workspace-acceptance-button", "workspace-acceptance-report",
+    "workspace-acceptance-button", "workspace-acceptance-report", "connection-environment",
+    "save-connection-environment", "connection-target-detail",
   ].map(id => [id, document.getElementById(id)])
 );
 
@@ -18,6 +19,7 @@ const verifyingTools = new Set();
 let capabilitySyncing = false;
 let connectPending = false;
 let connectAttemptError = "";
+let connectionEnvironmentDirty = false;
 let pendingVerificationUrl = "";
 let refreshPending = false;
 let scanPending = false;
@@ -132,6 +134,10 @@ function safeError(error) {
     RUNNER_WORKSPACE_REGISTRY_INVALID: "ข้อมูล workspace ในเครื่องเสียหาย กรุณาส่งไฟล์ Debug ให้ทีมตรวจสอบ",
     RUNNER_WORKSPACE_REGISTRY_LIMIT_EXCEEDED: "เพิ่ม workspace เกินจำนวนที่ Runner รองรับแล้ว",
     RUNNER_WORKSPACE_REGISTRY_PATH_INVALID: "ตำแหน่งจัดเก็บรายการ workspace ไม่ถูกต้อง",
+    RUNNER_STOP_BEFORE_ENVIRONMENT_CHANGE: "หยุด Runner ก่อน แล้วบันทึกเว็บไซต์ใหม่อีกครั้ง",
+    RUNNER_CONNECTION_ENVIRONMENT_INVALID: "เลือกเว็บไซต์ที่รองรับก่อนบันทึก",
+    RUNNER_CONNECTION_ENVIRONMENT_MISMATCH: "ข้อมูลเชื่อมต่อที่จัดเก็บไม่ตรงกับเว็บไซต์ที่เลือก กรุณาส่งไฟล์ Debug ให้ทีมตรวจสอบ",
+    RUNNER_RESTART_REQUIRED_FOR_ENVIRONMENT_CHANGE: "บันทึกเว็บไซต์ใหม่แล้ว กรุณาปิดและเปิด SmartAIHub Runner ก่อนเชื่อมต่อหรือเริ่ม Runner",
     RUNNER_WORKSPACE_REGISTRY_WRITE_FAILED: "บันทึกรายการ workspace ในเครื่องไม่ได้ ตรวจสอบสิทธิ์โฟลเดอร์ของ Runner",
     RUNNER_WORKSPACE_REGISTRY_SERIALIZE_FAILED: "จัดทำข้อมูล workspace เพื่อบันทึกไม่ได้",
     RUNNER_WORKSPACE_REGISTRY_COMMIT_FAILED: "ยืนยันการบันทึก workspace ไม่สำเร็จ",
@@ -211,6 +217,13 @@ function applyRunnerStatus(status) {
   elements["first-launch-date"].textContent = formatDate(status.firstLaunchAtMs);
   elements["access-token-expiry"].textContent = formatDate(status.accessTokenExpiresAtMs);
   elements["reauth-deadline"].textContent = formatDate(status.reauthRequiredByMs);
+  const selectedEnvironment = status.connectionEnvironment ?? "production";
+  if (!connectionEnvironmentDirty) elements["connection-environment"].value = selectedEnvironment;
+  const environmentLabel = selectedEnvironment === "developer"
+    ? "Developer · aimarkethubs.com" : "Production · smartaihub.app";
+  elements["connection-target-detail"].textContent = `เว็บไซต์ที่บันทึกไว้: ${environmentLabel} · แอปที่เปิดอยู่เชื่อมต่อกับ ${status.activeServerUrl ?? "ไม่ทราบเว็บไซต์"}`
+    + ((status.activeServerUrl ?? "").includes(selectedEnvironment === "developer" ? "aimarkethubs.com" : "smartaihub.app")
+      ? "" : " · ต้องปิดแล้วเปิด Runner ใหม่เพื่อใช้ค่าที่บันทึก");
   elements["credential-detail"].textContent = status.credentialState === "reauth_required"
     ? `การต่ออายุอัตโนมัติไม่สำเร็จ ต้องเชื่อมต่อผ่านเบราว์เซอร์อีกครั้ง${status.credentialErrorCode ? ` (${status.credentialErrorCode})` : ""}`
     : status.credentialState === "retrying"
@@ -889,6 +902,26 @@ elements["auto-start-loop"].addEventListener("change", async event => {
     autoStartLoopPending = false;
     event.target.disabled = false;
     await refreshStatus();
+  }
+});
+elements["connection-environment"].addEventListener("change", () => {
+  connectionEnvironmentDirty = true;
+});
+elements["save-connection-environment"].addEventListener("click", async () => {
+  if (!latestRunnerStatus || elements["save-connection-environment"].disabled) return;
+  const selected = elements["connection-environment"].value;
+  updateButton(elements["save-connection-environment"], { disabled: true, pending: true, label: "กำลังบันทึก…" });
+  try {
+    await invoke("save_connection_environment", { environment: selected });
+    connectionEnvironmentDirty = false;
+    setNotice(elements["global-notice"], "บันทึกเว็บไซต์แล้ว ปิดและเปิด SmartAIHub Runner ใหม่เพื่อเชื่อมต่อกับเว็บไซต์ที่เลือก");
+    await refreshStatus();
+  } catch (error) {
+    connectionEnvironmentDirty = false;
+    setNotice(elements["global-notice"], safeError(error));
+    await refreshStatus();
+  } finally {
+    updateButton(elements["save-connection-environment"], { disabled: false, pending: false, label: "บันทึกเว็บไซต์" });
   }
 });
 elements["quit-button"].addEventListener("click", async () => {

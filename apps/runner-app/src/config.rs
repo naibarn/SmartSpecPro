@@ -1,5 +1,29 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RunnerEnvironment {
+    #[default]
+    Production,
+    Developer,
+}
+
+impl RunnerEnvironment {
+    pub fn server_url(self) -> &'static str {
+        match self {
+            Self::Production => "https://smartaihub.app",
+            Self::Developer => "https://aimarkethubs.com",
+        }
+    }
+
+    fn key(self) -> &'static str {
+        match self {
+            Self::Production => "production",
+            Self::Developer => "developer",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RunnerProfile {
@@ -76,6 +100,73 @@ impl RunnerConfig {
         Ok(())
     }
 
+    /// Credentials are isolated by website while workspaces stay shared on
+    /// this device. The folder name comes from a fixed SmartAIHub endpoint,
+    /// never from user-provided URL text.
+    pub fn connection_store_root(&self) -> String {
+        let host = self
+            .control_url
+            .as_deref()
+            .and_then(|url| url.split_once("://").map(|(_, rest)| rest))
+            .map(|rest| rest.split('/').next().unwrap_or_default())
+            .unwrap_or("unknown");
+        let key = match host.to_ascii_lowercase().as_str() {
+            "smartaihub.app" | "www.smartaihub.app" => "production",
+            "aimarkethubs.com" | "www.aimarkethubs.com" => "developer",
+            _ => "custom",
+        };
+        format!("{}/connections/{key}", self.data_root)
+    }
+
+    pub fn local_for_environment(
+        data_root: &str,
+        environment: RunnerEnvironment,
+    ) -> Result<Self, String> {
+        let control_url_override = std::env::var("SAH_RUNNER_CONTROL_URL").ok();
+        let connection_root = if control_url_override.is_some() {
+            format!("{data_root}/connections/custom")
+        } else {
+            format!("{data_root}/connections/{}", environment.key())
+        };
+        let saved = crate::connection::load_connection(&connection_root)?;
+        let expected_server_url = control_url_override
+            .as_deref()
+            .map(|url| url.split('/').take(3).collect::<Vec<_>>().join("/"))
+            .unwrap_or_else(|| environment.server_url().to_string());
+        if saved.as_ref().is_some_and(|connection| {
+            connection.server_url.trim_end_matches('/') != expected_server_url
+        }) {
+            return Err("RUNNER_CONNECTION_ENVIRONMENT_MISMATCH".into());
+        }
+        let mut random = [0_u8; 16];
+        getrandom::fill(&mut random).map_err(|_| "RUNNER_IDENTITY_GENERATION_FAILED")?;
+        let suffix = random
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        let runner_id = std::env::var("SAH_RUNNER_ID").unwrap_or_else(|_| {
+            saved
+                .as_ref()
+                .map(|value| value.runner_id.clone())
+                .unwrap_or_else(|| format!("runner-{suffix}"))
+        });
+        let device_id = std::env::var("SAH_RUNNER_DEVICE_ID").unwrap_or_else(|_| {
+            saved
+                .as_ref()
+                .map(|value| value.device_id.clone())
+                .unwrap_or_else(|| format!("runner-device-{suffix}"))
+        });
+        let control_url = control_url_override.unwrap_or_else(|| {
+            format!(
+                "{}/api/runners/{runner_id}/control",
+                environment.server_url()
+            )
+        });
+        let mut config = Self::local(&runner_id, &device_id, &control_url);
+        config.data_root = data_root.to_string();
+        config.validate().map(|_| config)
+    }
+
     pub fn from_env() -> Result<Self, String> {
         let profile = match std::env::var("SAH_RUNNER_PROFILE").ok().as_deref() {
             Some("shared_container") => RunnerProfile::SharedContainer,
@@ -97,7 +188,13 @@ impl RunnerConfig {
     /// local-device placeholders shared by every machine. A new pairing writes
     /// these generated IDs into the existing connection store on approval.
     pub fn local_from_env(data_root: &str) -> Result<Self, String> {
-        let saved = crate::connection::load_connection(data_root)?;
+        let legacy = crate::connection::load_connection(data_root)?;
+        let saved = match legacy {
+            Some(connection) => Some(connection),
+            None => {
+                crate::connection::load_connection(&format!("{data_root}/connections/production"))?
+            }
+        };
         let mut random = [0_u8; 16];
         getrandom::fill(&mut random).map_err(|_| "RUNNER_IDENTITY_GENERATION_FAILED")?;
         let suffix = random
@@ -128,6 +225,13 @@ impl RunnerConfig {
         });
         let mut config = Self::local(&runner_id, &device_id, &control_url);
         config.data_root = data_root.to_string();
+        if std::env::var("SAH_RUNNER_CONTROL_URL").is_err() {
+            let _ = crate::connection::migrate_legacy_connection(
+                data_root,
+                &config.connection_store_root(),
+                server_url,
+            )?;
+        }
         config.validate().map(|_| config)
     }
 }
@@ -139,6 +243,107 @@ fn default_data_root() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn developer_environment_uses_development_website_and_isolates_connection_store() {
+        let root = tempfile::tempdir().unwrap();
+        let production = RunnerConfig::local_for_environment(
+            root.path().to_str().unwrap(),
+            RunnerEnvironment::Production,
+        )
+        .unwrap();
+        let developer = RunnerConfig::local_for_environment(
+            root.path().to_str().unwrap(),
+            RunnerEnvironment::Developer,
+        )
+        .unwrap();
+
+        assert!(production
+            .control_url
+            .as_deref()
+            .unwrap()
+            .starts_with("https://smartaihub.app/"));
+        assert!(developer
+            .control_url
+            .as_deref()
+            .unwrap()
+            .starts_with("https://aimarkethubs.com/"));
+        assert_ne!(
+            production.connection_store_root(),
+            developer.connection_store_root()
+        );
+        assert_eq!(production.data_root, developer.data_root);
+    }
+
+    #[test]
+    fn existing_connection_is_migrated_to_its_matching_environment_store() {
+        let root = tempfile::tempdir().unwrap();
+        let legacy_path = root.path().join("runner-connection.json");
+        std::fs::write(
+            &legacy_path,
+            serde_json::json!({
+                "runner_id": "existing-runner", "device_id": "existing-device",
+                "server_url": "https://aimarkethubs.com", "display_name": "Existing",
+                "machine_fingerprint": "fixture", "public_key_pem": "TEST_ONLY",
+                "private_key_pem": "TEST_ONLY", "control_token": "TEST_ONLY",
+                "refresh_token": "TEST_ONLY"
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let target_root = root.path().join("connections/developer");
+        assert!(crate::connection::migrate_legacy_connection(
+            root.path().to_str().unwrap(),
+            target_root.to_str().unwrap(),
+            "https://aimarkethubs.com"
+        )
+        .unwrap());
+        let migrated = crate::connection::load_connection(target_root.to_str().unwrap())
+            .unwrap()
+            .unwrap();
+        assert_eq!(migrated.runner_id, "existing-runner");
+        assert_eq!(migrated.device_id, "existing-device");
+        assert!(!legacy_path.exists());
+    }
+
+    #[test]
+    fn switching_environment_does_not_reuse_another_sites_runner_identity() {
+        let root = tempfile::tempdir().unwrap();
+        let production_root = root.path().join("connections/production");
+        std::fs::create_dir_all(&production_root).unwrap();
+        std::fs::write(
+            production_root.join("runner-connection.json"),
+            serde_json::json!({
+                "runner_id": "production-runner", "device_id": "production-device",
+                "server_url": "https://smartaihub.app", "display_name": "Production",
+                "machine_fingerprint": "fixture", "public_key_pem": "TEST_ONLY",
+                "private_key_pem": "TEST_ONLY", "control_token": "PRODUCTION_SECRET",
+                "refresh_token": "PRODUCTION_REFRESH_SECRET"
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let production = RunnerConfig::local_for_environment(
+            root.path().to_str().unwrap(),
+            RunnerEnvironment::Production,
+        )
+        .unwrap();
+        let developer = RunnerConfig::local_for_environment(
+            root.path().to_str().unwrap(),
+            RunnerEnvironment::Developer,
+        )
+        .unwrap();
+        assert_eq!(production.runner_id, "production-runner");
+        assert_ne!(developer.runner_id, "production-runner");
+        assert!(
+            crate::connection::load_connection(&developer.connection_store_root())
+                .unwrap()
+                .is_none()
+        );
+        assert_eq!(production.data_root, developer.data_root);
+    }
     #[test]
     fn profiles_cannot_be_mixed() {
         let mut config = RunnerConfig::local("r", "d", "https://example.test");

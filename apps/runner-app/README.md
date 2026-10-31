@@ -37,8 +37,13 @@ if reload/restart fails; `uninstall` removes only those installed files and
 preserves enrollment and workspace data.
 
 `SAH_RUNNER_PROFILE=shared_container` requires a Job/attempt/lease scope and
-cannot persist a user-device identity. The local control URL defaults to
-`https://smartaihub.app` and may be overridden with `SAH_RUNNER_CONTROL_URL`.
+cannot persist a user-device identity. The desktop app lets the user save
+either Production (`https://smartaihub.app`)
+or Developer (`https://aimarkethubs.com`) as the next-launch connection target.
+Each website has its own credential and device identity store; authorized local
+workspace folders remain shared. Legacy installations retain their existing
+website on first launch. `SAH_RUNNER_CONTROL_URL` remains available for managed
+or local development builds and takes precedence over the desktop selection.
 After approval, `connect`, `rescan`, and `run` scan the bounded known-tool
 catalog and run bounded adapter probes before sending one sequenced capability
 snapshot plus reconciliation event over authenticated WSS. A network failure

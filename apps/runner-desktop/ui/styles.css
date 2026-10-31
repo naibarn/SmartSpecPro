@@ -111,6 +111,7 @@ h2 { font-size: 1.2rem; }
 .settings { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 1rem; }
 .settings-toggles { display: grid; gap: var(--spacing-2, 0.5rem); }
 .settings-toggles .toggle-row { white-space: normal; }
+.environment-setting { display: grid; gap: var(--spacing-2, 0.5rem); margin-block: var(--spacing-4, 1rem); }
 .toggle-row { justify-content: flex-start; white-space: nowrap; font-weight: 650; }
 .toggle-row input { width: 1.2rem; height: 1.2rem; accent-color: royalblue; }
 .empty { color: var(--color-text-secondary, slategray); padding: 0.75rem; }

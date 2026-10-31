@@ -192,7 +192,10 @@ pub fn load_connection(data_root: &str) -> Result<Option<StoredRunnerConnection>
     Ok(connection)
 }
 
-fn save_connection(data_root: &str, connection: &StoredRunnerConnection) -> Result<(), String> {
+pub(crate) fn save_connection(
+    data_root: &str,
+    connection: &StoredRunnerConnection,
+) -> Result<(), String> {
     let root = Path::new(data_root);
     fs::create_dir_all(root).map_err(|_| "RUNNER_CONNECTION_STORE_CREATE_FAILED")?;
     let path = connection_path(data_root);
@@ -257,6 +260,34 @@ fn save_connection(data_root: &str, connection: &StoredRunnerConnection) -> Resu
     }
     #[cfg(not(windows))]
     fs::rename(temp, path).map_err(|_| "RUNNER_CONNECTION_STORE_REPLACE_FAILED".to_string())
+}
+
+pub fn migrate_legacy_connection(
+    data_root: &str,
+    target_root: &str,
+    expected_server_url: &str,
+) -> Result<bool, String> {
+    let Some(connection) = load_connection(data_root)? else {
+        return Ok(false);
+    };
+    if connection.server_url.trim_end_matches('/') != expected_server_url.trim_end_matches('/') {
+        return Ok(false);
+    }
+    if connection_path(target_root).exists() {
+        let scoped = load_connection(target_root)?;
+        if !scoped.as_ref().is_some_and(|value| {
+            value.server_url.trim_end_matches('/') == expected_server_url.trim_end_matches('/')
+        }) {
+            return Err("RUNNER_CONNECTION_ENVIRONMENT_MISMATCH".into());
+        }
+        fs::remove_file(connection_path(data_root))
+            .map_err(|_| "RUNNER_CONNECTION_STORE_MIGRATION_FAILED".to_string())?;
+        return Ok(false);
+    }
+    save_connection(target_root, &connection)?;
+    fs::remove_file(connection_path(data_root))
+        .map_err(|_| "RUNNER_CONNECTION_STORE_MIGRATION_FAILED".to_string())?;
+    Ok(true)
 }
 
 #[cfg(windows)]
@@ -431,7 +462,7 @@ pub fn connect_local_runner_with_progress(
             .tenant_id
             .or_else(|| token_tenant_id(&control_token)),
     };
-    save_connection(&config.data_root, &connection)?;
+    save_connection(&config.connection_store_root(), &connection)?;
     Ok(json!({
         "state": "connected",
         "runnerId": connection.runner_id,
@@ -442,7 +473,7 @@ pub fn connect_local_runner_with_progress(
 }
 
 fn reconnect_device_proof_material(config: &RunnerConfig) -> Result<DeviceProofMaterial, String> {
-    let Some(saved) = load_connection(&config.data_root)? else {
+    let Some(saved) = load_connection(&config.connection_store_root())? else {
         return generate_device_proof_material(config.device_id.as_deref());
     };
     let configured_device_id = config.device_id.as_deref().unwrap_or_default();
@@ -548,7 +579,6 @@ mod tests {
             runner_session_id: Some("old-session".into()),
             tenant_id: Some("tenant-existing".into()),
         };
-        save_connection(dir.path().to_str().unwrap(), &saved).unwrap();
         let config = RunnerConfig::local(
             "runner-existing",
             "device-existing",
@@ -556,6 +586,7 @@ mod tests {
         );
         let mut config = config;
         config.data_root = dir.path().to_string_lossy().into_owned();
+        save_connection(&config.connection_store_root(), &saved).unwrap();
 
         let reauth_material = super::reconnect_device_proof_material(&config).unwrap();
         assert_eq!(reauth_material.device_id, saved.device_id);
@@ -584,13 +615,13 @@ mod tests {
             runner_session_id: Some("old-session".into()),
             tenant_id: Some("tenant-existing".into()),
         };
-        save_connection(dir.path().to_str().unwrap(), &saved).unwrap();
         let mut config = RunnerConfig::local(
             "runner-different",
             "device-existing",
             "https://smartaihub.app/api/runners/runner-different/control",
         );
         config.data_root = dir.path().to_string_lossy().into_owned();
+        save_connection(&config.connection_store_root(), &saved).unwrap();
 
         assert_eq!(
             super::reconnect_device_proof_material(&config)
@@ -956,7 +987,7 @@ mod tests {
             &connection.server_url,
         );
         config.data_root = root.path().to_string_lossy().into_owned();
-        save_connection(&config.data_root, &connection).unwrap();
+        save_connection(&config.connection_store_root(), &connection).unwrap();
 
         let refreshed = load_or_refresh(&config).unwrap().unwrap();
         server.join().unwrap();
@@ -965,7 +996,7 @@ mod tests {
         assert_eq!(refreshed.refresh_token, test_token("refresh-new", u64::MAX));
         assert_eq!(refreshed.runner_session_id.as_deref(), Some("session-next"));
         assert_eq!(
-            load_connection(&config.data_root)
+            load_connection(&config.connection_store_root())
                 .unwrap()
                 .unwrap()
                 .control_token,
@@ -997,7 +1028,6 @@ mod tests {
             runner_session_id: Some("session-existing".into()),
             tenant_id: Some("tenant-existing".into()),
         };
-        save_connection(root.path().to_str().unwrap(), &connection).unwrap();
         let refreshed_control = test_token("access-new", u64::MAX);
         let refreshed_token = test_token("refresh-new", u64::MAX);
         let server = thread::spawn(move || {
@@ -1045,6 +1075,7 @@ mod tests {
             &connection.server_url,
         );
         config.data_root = root.path().to_string_lossy().into_owned();
+        save_connection(&config.connection_store_root(), &connection).unwrap();
         let barrier = std::sync::Arc::new(std::sync::Barrier::new(3));
         let first = {
             let config = config.clone();
@@ -1079,7 +1110,7 @@ mod tests {
 }
 
 pub fn load_or_refresh(config: &RunnerConfig) -> Result<Option<StoredRunnerConnection>, String> {
-    load_or_refresh_data_root(&config.data_root)
+    load_or_refresh_data_root(&config.connection_store_root())
 }
 
 /// Revalidate and rotate the persisted local connection when its access token

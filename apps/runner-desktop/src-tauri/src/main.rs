@@ -4,7 +4,7 @@ mod workspace_view;
 
 use serde::{Deserialize, Serialize};
 use smartaihub_runner::{
-    config::RunnerConfig,
+    config::{RunnerConfig, RunnerEnvironment},
     connection::{
         connect_local_runner_with_progress, load_connection, load_or_refresh,
         safe_connect_error_code, safe_refresh_error_code, token_expiry_ms,
@@ -87,6 +87,8 @@ struct DesktopSettings {
     auto_start_runner_loop: Option<bool>,
     #[serde(default)]
     first_launch_at_ms: Option<u64>,
+    #[serde(default)]
+    connection_environment: Option<RunnerEnvironment>,
 }
 
 impl DesktopSettings {
@@ -139,6 +141,8 @@ struct RunnerStatus {
     credential_state: String,
     credential_error_code: Option<String>,
     readiness: RunnerReadinessStatus,
+    connection_environment: RunnerEnvironment,
+    active_server_url: String,
 }
 
 fn control_plane_heartbeat_is_fresh(last_acknowledged_at_ms: Option<u64>, now_ms: u64) -> bool {
@@ -177,14 +181,41 @@ fn write_settings(path: &PathBuf, value: &DesktopSettings) -> Result<(), String>
     fs::rename(temp, path).map_err(safe_io_error)
 }
 
-fn app_config(app: &tauri::AppHandle) -> Result<(RunnerConfig, PathBuf), String> {
+fn app_config(app: &tauri::AppHandle) -> Result<(RunnerConfig, PathBuf, DesktopSettings), String> {
     let data_root = app
         .path()
         .app_data_dir()
         .map_err(|_| "RUNNER_APP_DATA_PATH_UNAVAILABLE".to_string())?;
     fs::create_dir_all(&data_root).map_err(safe_io_error)?;
-    let config = RunnerConfig::local_from_env(&data_root.to_string_lossy())?;
-    Ok((config, data_root.join("desktop_settings.json")))
+    let settings_path = data_root.join("desktop_settings.json");
+    let mut settings = read_settings(&settings_path)?;
+    let legacy = load_connection(&data_root.to_string_lossy()).ok().flatten();
+    let environment = settings.connection_environment.unwrap_or_else(|| {
+        match legacy
+            .as_ref()
+            .map(|connection| connection.server_url.trim_end_matches('/'))
+        {
+            Some("https://aimarkethubs.com") => RunnerEnvironment::Developer,
+            _ => RunnerEnvironment::Production,
+        }
+    });
+    let scoped_root = format!(
+        "{}/connections/{}",
+        data_root.to_string_lossy(),
+        match environment {
+            RunnerEnvironment::Production => "production",
+            RunnerEnvironment::Developer => "developer",
+        }
+    );
+    let _ = smartaihub_runner::connection::migrate_legacy_connection(
+        &data_root.to_string_lossy(),
+        &scoped_root,
+        environment.server_url(),
+    )?;
+    settings.connection_environment = Some(environment);
+    write_settings(&settings_path, &settings)?;
+    let config = RunnerConfig::local_for_environment(&data_root.to_string_lossy(), environment)?;
+    Ok((config, settings_path, settings))
 }
 
 fn setting_lock(state: &RunnerState) -> Result<std::sync::MutexGuard<'_, DesktopSettings>, String> {
@@ -192,6 +223,24 @@ fn setting_lock(state: &RunnerState) -> Result<std::sync::MutexGuard<'_, Desktop
         .settings
         .lock()
         .map_err(|_| "RUNNER_LOCAL_SETTINGS_LOCK_FAILED".into())
+}
+
+fn active_environment(config: &RunnerConfig) -> Option<RunnerEnvironment> {
+    match config.control_url.as_deref()? {
+        url if url.starts_with("https://smartaihub.app/") => Some(RunnerEnvironment::Production),
+        url if url.starts_with("https://aimarkethubs.com/") => Some(RunnerEnvironment::Developer),
+        _ => None,
+    }
+}
+
+fn ensure_selected_environment_is_active(state: &RunnerState) -> Result<(), String> {
+    let selected = setting_lock(state)?
+        .connection_environment
+        .unwrap_or_default();
+    if active_environment(&state.config).is_some_and(|active| active != selected) {
+        return Err("RUNNER_RESTART_REQUIRED_FOR_ENVIRONMENT_CHANGE".into());
+    }
+    Ok(())
 }
 
 fn set_readiness_publication_pending(
@@ -337,7 +386,7 @@ fn refresh_requires_browser_reauthorization(error: &str) -> bool {
 async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, String> {
     let _ = reap_finished_worker(&state.lifecycle);
     let settings = setting_lock(&state)?.clone();
-    let mut connection = load_connection(&state.config.data_root)?;
+    let mut connection = load_connection(&state.config.connection_store_root())?;
     let mut credential_state = if connection.is_some() {
         "valid"
     } else {
@@ -488,6 +537,13 @@ async fn runner_status(state: State<'_, RunnerState>) -> Result<RunnerStatus, St
         credential_state: credential_state.into(),
         credential_error_code,
         readiness,
+        connection_environment: settings.connection_environment.unwrap_or_default(),
+        active_server_url: state
+            .config
+            .control_url
+            .as_deref()
+            .map(|url| url.split('/').take(3).collect::<Vec<_>>().join("/"))
+            .unwrap_or_else(|| "unknown".into()),
     })
 }
 
@@ -504,10 +560,29 @@ async fn retry_runner_credentials(state: State<'_, RunnerState>) -> Result<Runne
 }
 
 #[tauri::command]
+fn save_connection_environment(
+    environment: String,
+    state: State<'_, RunnerState>,
+) -> Result<(), String> {
+    if state.lifecycle.running.load(Ordering::Acquire) {
+        return Err("RUNNER_STOP_BEFORE_ENVIRONMENT_CHANGE".into());
+    }
+    let selected = match environment.as_str() {
+        "production" => RunnerEnvironment::Production,
+        "developer" => RunnerEnvironment::Developer,
+        _ => return Err("RUNNER_CONNECTION_ENVIRONMENT_INVALID".into()),
+    };
+    let mut settings = setting_lock(&state)?;
+    settings.connection_environment = Some(selected);
+    write_settings(&state.settings_path, &settings)
+}
+
+#[tauri::command]
 async fn connect_runner(
     app: tauri::AppHandle,
     state: State<'_, RunnerState>,
 ) -> Result<String, String> {
+    ensure_selected_environment_is_active(&state)?;
     let previous_refresh_error = state
         .last_refresh_error
         .lock()
@@ -637,7 +712,7 @@ async fn sync_runner_capabilities(state: State<'_, RunnerState>) -> Result<Strin
             smartaihub_runner::diagnostics::request_capability_refresh();
             return Ok("runtime_running".into());
         }
-        if load_connection(&config.data_root)?.is_none() {
+        if load_connection(&config.connection_store_root())?.is_none() {
             return Ok("disconnected".into());
         }
         lifecycle.sync_stop.store(false, Ordering::Release);
@@ -748,6 +823,18 @@ async fn export_runner_debug_report(
     let build_date = state.build_date.clone();
     let running = state.lifecycle.running.load(Ordering::Acquire);
     let runner_id = config.runner_id.clone();
+    let selected_environment = setting_lock(&state)?
+        .connection_environment
+        .unwrap_or_default();
+    let selected_environment = match selected_environment {
+        RunnerEnvironment::Production => "production",
+        RunnerEnvironment::Developer => "developer",
+    };
+    let active_server_url = config
+        .control_url
+        .as_deref()
+        .map(|url| url.split('/').take(3).collect::<Vec<_>>().join("/"))
+        .unwrap_or_else(|| "unknown".into());
     let last_error = state
         .lifecycle
         .last_error
@@ -802,7 +889,7 @@ async fn export_runner_debug_report(
             .unwrap_or_default()
             .as_millis()
             .min(u128::from(u64::MAX)) as u64;
-        let saved_connection = load_connection(&config.data_root).ok().flatten();
+        let saved_connection = load_connection(&config.connection_store_root()).ok().flatten();
         let access_token_expires_at_ms = saved_connection
             .as_ref()
             .and_then(|saved| token_expiry_ms(&saved.control_token));
@@ -815,6 +902,8 @@ async fn export_runner_debug_report(
             "app": { "version": app_version, "buildDate": build_date },
             "runner": {
                 "runnerId": runner_id,
+                "selectedEnvironment": selected_environment,
+                "activeServerUrl": active_server_url,
                 "hasStoredConnection": saved_connection.is_some(),
                 "accessTokenExpiresAtMs": access_token_expires_at_ms,
                 "reauthRequiredByMs": refresh_token_expires_at_ms,
@@ -1132,6 +1221,7 @@ fn reap_finished_worker(lifecycle: &RunnerLifecycle) -> Result<(), String> {
 
 #[tauri::command]
 async fn start_runner(state: State<'_, RunnerState>) -> Result<(), String> {
+    ensure_selected_environment_is_active(&state)?;
     let settings = setting_lock(&state)?.clone();
     let config = state.config.clone();
     let lifecycle = state.lifecycle.clone();
@@ -1253,7 +1343,7 @@ fn set_auto_start(
     app: tauri::AppHandle,
     state: State<'_, RunnerState>,
 ) -> Result<(), String> {
-    if enabled && load_connection(&state.config.data_root)?.is_none() {
+    if enabled && load_connection(&state.config.connection_store_root())?.is_none() {
         return Err("RUNNER_AUTO_START_REQUIRES_CONNECTION".into());
     }
     let manager = app.autolaunch();
@@ -1288,7 +1378,7 @@ fn set_auto_start(
 
 #[tauri::command]
 fn set_auto_start_runner_loop(enabled: bool, state: State<'_, RunnerState>) -> Result<(), String> {
-    if enabled && load_connection(&state.config.data_root)?.is_none() {
+    if enabled && load_connection(&state.config.connection_store_root())?.is_none() {
         return Err("RUNNER_AUTO_START_REQUIRES_CONNECTION".into());
     }
     let mut settings = setting_lock(&state)?;
@@ -1323,9 +1413,8 @@ fn main() {
                 .build(),
         )
         .setup(|app| {
-            let (config, settings_path) =
+            let (config, settings_path, mut settings) =
                 app_config(app.handle()).map_err(std::io::Error::other)?;
-            let mut settings = read_settings(&settings_path).map_err(std::io::Error::other)?;
             if settings.first_launch_at_ms.is_none() {
                 settings.first_launch_at_ms = Some(
                     SystemTime::now()
@@ -1416,8 +1505,8 @@ fn main() {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn_blocking(move || {
                     if let Some(state) = app_handle.try_state::<RunnerState>() {
-                        let result =
-                            load_connection(&state.config.data_root).and_then(|connection| {
+                        let result = load_connection(&state.config.connection_store_root())
+                            .and_then(|connection| {
                                 connection
                                     .ok_or_else(|| "RUNNER_CONNECTION_REQUIRED".to_string())?;
                                 start_runner_inner(&state)
@@ -1451,6 +1540,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             runner_status,
+            save_connection_environment,
             retry_runner_credentials,
             retry_runner_control,
             connect_runner,
@@ -1473,6 +1563,32 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("failed to run SmartAIHub Runner");
+}
+
+#[cfg(test)]
+mod connection_environment_tests {
+    use super::*;
+
+    #[test]
+    fn saved_website_selection_survives_app_restart() {
+        let directory = std::env::temp_dir().join(format!(
+            "smartaihub-runner-settings-test-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        let settings_path = directory.join("desktop_settings.json");
+        let settings = DesktopSettings {
+            connection_environment: Some(RunnerEnvironment::Developer),
+            ..DesktopSettings::default()
+        };
+        write_settings(&settings_path, &settings).unwrap();
+        let restored = read_settings(&settings_path).unwrap();
+        assert_eq!(
+            restored.connection_environment,
+            Some(RunnerEnvironment::Developer)
+        );
+        std::fs::remove_dir_all(directory).unwrap();
+    }
 }
 
 #[cfg(test)]

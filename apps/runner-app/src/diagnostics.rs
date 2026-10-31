@@ -380,7 +380,7 @@ fn apply_cached_task_probe_evidence(
     tenant_id: Option<&str>,
 ) {
     let connection_identity = if runner_session_id.is_none() || tenant_id.is_none() {
-        crate::connection::load_connection(&config.data_root)
+        crate::connection::load_connection(&config.connection_store_root())
             .ok()
             .flatten()
     } else {
@@ -547,7 +547,7 @@ fn save_task_probe_evidence(
         .adapter_id
         .as_deref()
         .ok_or_else(|| "RUNNER_TASK_PROBE_ADAPTER_MISSING".to_string())?;
-    let connection = crate::connection::load_connection(&config.data_root)
+    let connection = crate::connection::load_connection(&config.connection_store_root())
         .ok()
         .flatten();
     let runner_session_id = connection
@@ -1152,7 +1152,7 @@ fn connection_status_inner(
         } else {
             None
         },
-        &config.data_root,
+        &config.connection_store_root(),
         &access_token,
     );
     transport
@@ -5024,7 +5024,7 @@ fn request_bytes(
         .trim()
         .is_empty()
     {
-        crate::connection::load_connection(&config.data_root)?
+        crate::connection::load_connection(&config.connection_store_root())?
             .map(|connection| {
                 DeviceProofSigner::from_material(
                     &crate::device_proof::DeviceProofMaterial {
