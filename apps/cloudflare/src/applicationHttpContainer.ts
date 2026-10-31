@@ -60,7 +60,7 @@ export function validateApplicationHttpProfile(value: ApplicationHttpProfile, no
   const expectedNamespacePrefix = value.targetId === "smartspec-cloudflare-staging" ? "smartspec-staging-" :
     value.targetId === "smartspec-cloudflare-runtime" ? "smartspec-production-" : null;
   const production = value.targetId === "smartspec-cloudflare-runtime";
-  const maxLifetimeMs = production ? 31 * 86_400_000 : 3_600_000;
+  const maxLifetimeMs = production ? 31 * 86_400_000 : 6 * 60 * 60_000;
   const namespaceSuffix = /-([a-f0-9]{12})$/.exec(value.namespace)?.[1];
   if (!expectedNamespacePrefix || !["node-http", "python-http"].includes(value.runtime) ||
       !/^cf-origin:[a-f0-9]{64}$/.test(value.configurationRef) || !/^[a-f0-9]{40}$/.test(value.sourceSha) ||

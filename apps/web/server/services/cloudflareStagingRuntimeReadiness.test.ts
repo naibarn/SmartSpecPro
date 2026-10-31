@@ -124,6 +124,7 @@ describe("probeCloudflareStagingRuntimeReadiness", () => {
             enabled: false,
             ready: false,
             missing: ["NODE_HTTP", "PYTHON_HTTP", "Authorization: Bearer secret"],
+            reason: "APPLICATION_HTTP_PROFILE_EXPIRED",
           },
         },
       })
@@ -137,6 +138,7 @@ describe("probeCloudflareStagingRuntimeReadiness", () => {
         enabled: false,
         ready: false,
         missing: ["NODE_HTTP", "PYTHON_HTTP"],
+        reason: "APPLICATION_HTTP_PROFILE_EXPIRED",
       },
     });
   });

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB, httpImageProvisionJobSchema } from "./cloudflareHttpImageProvisionContract";
+import { STAGING_APPLICATION_HTTP_PROFILE_MAX_LIFETIME_MS } from "./cloudflareStagingDispatchReadiness";
 
 const sha = z.string().regex(/^[a-f0-9]{40}$/), hash = z.string().regex(/^[a-f0-9]{64}$/);
 const image = z.object({ provisionJobId: z.string().uuid(), planDigest: hash,
@@ -35,7 +36,7 @@ export function validateHttpApplicationSettings(value: HttpApplicationSettings, 
   const prefix = environment === "staging" ? "smartspec-staging-" : "smartspec-production-";
   const traffic = environment === "staging" ? "staging-full-http-v1" : "production-full-http-v1";
   const realtime = environment === "staging" ? "staging-allowlisted-v1" : "production-allowlisted-v1";
-  const maxLifetimeMs = environment === "staging" ? 3_600_000 : 31 * 86_400_000;
+  const maxLifetimeMs = environment === "staging" ? STAGING_APPLICATION_HTTP_PROFILE_MAX_LIFETIME_MS : 31 * 86_400_000;
   const budgetExceeded = environment === "staging"
     ? parsed.maxStarts > 2 || parsed.maxComputeSeconds > 1200
     : parsed.maxStarts > 600 || parsed.maxComputeSeconds > 360_000 || parsed.instance !== "basic";

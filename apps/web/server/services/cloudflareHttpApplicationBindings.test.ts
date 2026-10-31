@@ -52,6 +52,15 @@ describe("paired HTTP API deployment capabilities", () => {
       name: "CLOUDFLARE_APPLICATION_HTTP_TRAFFIC", type: "plain_text", text: "staging-full-http-v1",
     });
   });
+  it("accepts a staging HTTP profile long enough to cover the complete staging authorization and job window", () => {
+    const f = fixture();
+    const issuedAt = Date.now();
+    f.settings.issuedAt = new Date(issuedAt).toISOString();
+    f.settings.expiresAt = new Date(issuedAt + 6 * 60 * 60_000).toISOString();
+    expect(validateHttpApplicationSettings(f.settings, f.scope)).toEqual(f.settings);
+    expect(() => validateHttpApplicationSettings({ ...f.settings,
+      expiresAt: new Date(issuedAt + 6 * 60 * 60_000 + 1).toISOString() }, f.scope)).toThrow();
+  });
   it("emits the default-off allowlisted realtime binding only from its immutable staging capability", () => {
     const f = fixture();
     f.settings.realtime = "staging-allowlisted-v1";
@@ -97,7 +106,7 @@ describe("paired HTTP API deployment capabilities", () => {
     if (mode === "namespace") f.settings.namespace = "smartspec-staging-111111111111";
     if (mode === "image-account") f.settings.node.image = f.settings.node.image.replace(f.scope.accountRef, "f".repeat(32));
     if (mode === "image-runtime") f.settings.node.image = f.settings.python.image;
-    if (mode === "unbounded-time") f.settings.expiresAt = new Date(Date.now() + 3600_000).toISOString();
+    if (mode === "unbounded-time") f.settings.expiresAt = new Date(Date.now() + 7 * 60 * 60_000).toISOString();
     if (mode === "starts") f.settings.maxStarts = 3;
     if (mode === "compute") f.settings.maxComputeSeconds = 119;
     if (mode === "idle") f.settings.idleTimeoutSeconds = 31;

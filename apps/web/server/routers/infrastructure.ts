@@ -75,6 +75,8 @@ import { auditLogger } from "../services/auditLogger";
 import { cloudflareOriginSettingsSchema, cloudflareOriginSecretsSchema, saveCloudflareOriginConfiguration,
   getCloudflareOriginConfiguration, revokeCloudflareOriginConfiguration, activateCloudflareStagingQueueProfile,
   saveCloudflareStagingConfigurationAfterDatabaseRenewal, isCloudflareOriginRollbackConfigurationUsable } from "../services/cloudflareOriginConfiguration";
+import { CLOUDFLARE_STAGING_ACTIVE_JOB_STATUSES, hasStagingDeploymentProfileRunway,
+  isActiveStagingDeploymentJob } from "../services/cloudflareStagingDispatchReadiness";
 import { getCloudflarePrivateDatabaseRenewalPreflight, projectPrivateDatabaseRenewalJobStatus } from "../services/cloudflarePrivateDatabaseRenewal";
 import { geoMapSettingsSchema, getGeoMapAdminConfiguration, saveGeoMapConfiguration } from "../services/geoMapSettings";
 import { getGeoMapProviderHealth, testGoogleMapsConnection } from "../services/geoMapProviderRuntime";
@@ -476,6 +478,16 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
   if (!target?.enabled || target.workerRef !== CLOUDFLARE_STAGING_TARGET_ID || target.containerApplicationRef) return unavailable("STAGING_TARGET_NOT_READY");
   if (target.deploymentTargetId !== CLOUDFLARE_STAGING_TARGET_ID || target.credentialRef !== deploymentCredentialRef({ ...identity, environment: "staging", provider: "cloudflare" })) return unavailable("STAGING_TARGET_AUTHORITY_CONFLICT");
   if (!target.accountRef || !/^([a-f0-9]{32})$/.test(target.accountRef)) return unavailable("STAGING_ACCOUNT_NOT_CONFIGURED");
+  const executorId = process.env.CLOUDFLARE_STAGING_EXECUTOR_ID?.trim();
+  if (!executorId || !/^cf-staging-executor:[a-z0-9][a-z0-9._-]{2,119}$/.test(executorId)) return unavailable("STAGING_EXECUTOR_NOT_CONFIGURED");
+  if (!(await getAppRuntimeConfig()).pythonBackendUrl) return unavailable("APPROVAL_AUTHORITY_UNAVAILABLE");
+  const activeJobs = await db.select({ status: workerJobs.status, inputJson: workerJobs.inputJson })
+    .from(workerJobs).where(and(eq(workerJobs.tenantId, identity.tenantId), eq(workerJobs.jobType, CLOUDFLARE_STAGING_DEPLOYMENT_JOB),
+      inArray(workerJobs.status, CLOUDFLARE_STAGING_ACTIVE_JOB_STATUSES),
+      sql`${workerJobs.inputJson}->>'projectId' = ${identity.projectId}`,
+      sql`${workerJobs.inputJson}->>'environment' = 'staging'`,
+      sql`${workerJobs.inputJson}->>'contractVersion' = 'cloudflare-staging-origin-v2'`)).limit(1);
+  if (activeJobs.some(job => isActiveStagingDeploymentJob(job, identity))) return unavailable("STAGING_DEPLOYMENT_IN_PROGRESS");
   const configurationRef = target.runtimePolicy;
   const configurationDigest = configurationRef?.match(/^cf-origin:([a-f0-9]{64})$/)?.[1] ?? null;
   if (!configurationRef || !configurationDigest) return unavailable("STAGING_ORIGIN_CONFIGURATION_REQUIRED");
@@ -492,6 +504,10 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
   if (activationBlocker) return unavailable(activationBlocker);
   if (originConfiguration.applicationPreparation?.applicationHttpExpired) {
     return unavailable("STAGING_APPLICATION_HTTP_PROFILE_EXPIRED");
+  }
+  if (originConfiguration.applicationPreparation?.phase === "FULL_HTTP" &&
+      !hasStagingDeploymentProfileRunway(originConfiguration.applicationPreparation.applicationHttpExpiresAt)) {
+    return unavailable("STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT");
   }
   const artifact = await resolveLatestPublishedCloudflareStagingArtifact();
   if (!artifact) return unavailable("PUBLISHED_CANONICAL_ARTIFACT_UNAVAILABLE");
@@ -1897,6 +1913,18 @@ export const infrastructureRouter = router({
       const bootstrap = preflight.reason === "STAGING_BOOTSTRAP_REQUIRED";
       if ((!preflight.ready && !bootstrap) || !preflight.artifact || (!bootstrap && !preflight.baseline) || !preflight.accountRef || !preflight.configurationRef || !preflight.configurationDigest) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: preflight.reason ?? "STAGING_DEPLOY_PREFLIGHT_FAILED" });
+      }
+      // Recheck immediately before making approval API calls. This prevents a
+      // stale preflight response from creating grants while another deploy is
+      // already in progress.
+      const activeJobs = await db.select({ status: workerJobs.status, inputJson: workerJobs.inputJson })
+        .from(workerJobs).where(and(eq(workerJobs.tenantId, tenantId), eq(workerJobs.jobType, CLOUDFLARE_STAGING_DEPLOYMENT_JOB),
+          inArray(workerJobs.status, CLOUDFLARE_STAGING_ACTIVE_JOB_STATUSES),
+          sql`${workerJobs.inputJson}->>'projectId' = ${input.projectId}`,
+          sql`${workerJobs.inputJson}->>'environment' = 'staging'`,
+          sql`${workerJobs.inputJson}->>'contractVersion' = 'cloudflare-staging-origin-v2'`)).limit(1);
+      if (activeJobs.some(job => isActiveStagingDeploymentJob(job, input))) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "STAGING_DEPLOYMENT_IN_PROGRESS" });
       }
       const executorId = process.env.CLOUDFLARE_STAGING_EXECUTOR_ID?.trim();
       if (!executorId || !/^cf-staging-executor:[a-z0-9][a-z0-9._-]{2,119}$/.test(executorId)) {

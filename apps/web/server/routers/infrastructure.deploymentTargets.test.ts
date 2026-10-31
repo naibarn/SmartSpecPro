@@ -5,7 +5,9 @@ vi.mock("../db", () => ({ getDb: getDbMock }));
 
 import { infrastructureRouter } from "./infrastructure";
 import { projectWikiHostedRoutePreflightProviders } from "../services/projectWikiHostedRoutePreflight";
+import * as providerDeploymentTargetAuthority from "../services/providerDeploymentTargetAuthority";
 import { deploymentCredentialRef } from "../services/providerDeploymentTargetAuthority";
+import * as appRuntimeConfig from "../services/appRuntimeConfig";
 import * as httpRuntimeAdmission from "../services/cloudflareHttpRuntimeAdmission";
 
 const tenantId = "8de1a509-6177-49b7-b57d-5d3b5228d75f";
@@ -13,7 +15,7 @@ const projectId = "2fe8a309-8be6-4370-9813-8fb9cc4645a0";
 
 describe("infrastructure deployment target project selector", () => {
   beforeEach(() => getDbMock.mockReset());
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
   it("keeps native candidate preparation behind exact Admin and matching active tenant", async () => {
     const request = { tenantId: "tenant-ZCSKEM9s", projectId, submissionId: "11111111-1111-4111-8111-111111111111", planDigest: "a".repeat(64) };
@@ -77,6 +79,31 @@ describe("infrastructure deployment target project selector", () => {
     await expect(caller.queueCloudflareStagingDeploy({ tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging" }))
       .rejects.toMatchObject({ code: "UNAUTHORIZED" });
     expect(getDbMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a second Staging dispatch before approval calls when a deployment job is already active", async () => {
+    vi.stubEnv("CLOUDFLARE_STAGING_EXECUTOR_ID", "cf-staging-executor:test-runner");
+    vi.spyOn(appRuntimeConfig, "getAppRuntimeConfig").mockResolvedValue({ pythonBackendUrl: "https://approval.example.test" } as any);
+    vi.spyOn(providerDeploymentTargetAuthority, "listProviderDeploymentTargets").mockResolvedValue([{
+      id: "target-row", tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging", provider: "cloudflare",
+      enabled: true, deploymentTargetId: "smartspec-cloudflare-staging", accountRef: "a".repeat(32),
+      workerRef: "smartspec-cloudflare-staging", containerApplicationRef: null,
+      credentialRef: providerDeploymentTargetAuthority.deploymentCredentialRef({ tenantId: "tenant-ZCSKEM9s", projectId,
+        environment: "staging", provider: "cloudflare" }), runtimePolicy: `cf-origin:${"b".repeat(64)}`,
+    }] as any);
+    const limit = vi.fn().mockResolvedValue([{ status: "queued", inputJson: { projectId, environment: "staging",
+      contractVersion: "cloudflare-staging-origin-v2" } }]);
+    const where = vi.fn(() => ({ limit }));
+    const from = vi.fn(() => ({ where }));
+    getDbMock.mockResolvedValue({ select: vi.fn(() => ({ from })) });
+    const fetch = vi.spyOn(globalThis, "fetch");
+    const caller = infrastructureRouter.createCaller({ user: { id: 1, role: "admin", currentTenantId: "tenant-ZCSKEM9s" },
+      tenantId: "tenant-ZCSKEM9s", userToken: "owner-scoped-session" } as any);
+
+    await expect(caller.queueCloudflareStagingDeploy({ tenantId: "tenant-ZCSKEM9s", projectId, environment: "staging" }))
+      .rejects.toMatchObject({ code: "PRECONDITION_FAILED", message: "STAGING_DEPLOYMENT_IN_PROGRESS" });
+    expect(fetch).not.toHaveBeenCalled();
+    expect(limit).toHaveBeenCalledOnce();
   });
 
   it("keeps Production Worker deployment unavailable to an Admin who does not own the selected tenant", async () => {

@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
   activationError: null as string | null,
   activationSucceeds: false,
   stagingPreflight: { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null },
+  stagingPreflightFetching: false,
   stagingRuntime: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", activation: "disabled", transport: "all", missing: ["JOB_WORKFLOW", "WORKER_APP"], jobHandlerConfigured: true, controlPlaneConfigured: false, reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" },
   originConfiguration: null as Record<string, unknown> | null,
   originConfigurationError: false,
@@ -109,7 +110,8 @@ vi.mock("@/lib/trpc", () => ({
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
       listProviderDeploymentTargets: { useQuery: (input: { environment: string }) => ({ data: input.environment === "production" ? mocks.targets : (mocks.stagingTargets.length ? mocks.stagingTargets : mocks.targets), isLoading: false, isError: mocks.targetsError, isFetching: false }) },
-      getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: mocks.stagingPreflight, isLoading: false, isError: false, refetch: mocks.refetchStagingPreflight }) },
+      getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: mocks.stagingPreflight, isLoading: false,
+        isFetching: mocks.stagingPreflightFetching, isError: false, refetch: mocks.refetchStagingPreflight }) },
       getCloudflareOriginConfiguration: { useQuery: () => ({ data: mocks.originConfiguration, isLoading: false, isError: mocks.originConfigurationError, refetch: mocks.refetchStagingOriginConfiguration }) },
       getCloudflareStagingPrivateDatabaseRenewalPreflight: { useQuery: () => ({ data: mocks.stagingDatabaseRenewal,
         isLoading: mocks.stagingRenewalFetching && !mocks.stagingDatabaseRenewal,
@@ -336,6 +338,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.activationError = null;
     mocks.activationSucceeds = false;
     mocks.stagingPreflight = { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null };
+    mocks.stagingPreflightFetching = false;
     mocks.stagingRuntime = { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", activation: "disabled", transport: "all", missing: ["JOB_WORKFLOW", "WORKER_APP"], jobHandlerConfigured: true, controlPlaneConfigured: false, reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" };
   mocks.originConfiguration = null;
     mocks.stagingDatabaseRenewal = null;
@@ -544,7 +547,7 @@ describe("AdminDeploymentTargets", () => {
     const user = userEvent.setup();
     mocks.stagingRuntime = {
       status: "READY", checkedAt: "2026-10-30T00:00:00.000Z", activation: "enabled", transport: "queues",
-      missing: [], applicationIngress: { enabled: false, ready: false, missing: ["NODE_HTTP", "PYTHON_HTTP"] },
+      missing: [], applicationIngress: { enabled: false, ready: false, missing: ["NODE_HTTP", "PYTHON_HTTP"], reason: "APPLICATION_HTTP_PROFILE_EXPIRED" },
     };
     render(<AdminDeploymentTargets />);
     await chooseScope(user);
@@ -553,6 +556,30 @@ describe("AdminDeploymentTargets", () => {
     const ingress = screen.getByLabelText("Application HTTP ingress readiness");
     expect(ingress).toHaveTextContent("Application HTTP ingress: DISABLED");
     expect(ingress).toHaveTextContent("Missing application bindings: NODE_HTTP, PYTHON_HTTP");
+    expect(ingress).toHaveTextContent("Application HTTP profile expired");
+  });
+
+  it("keeps an otherwise-ready Staging deploy disabled while readiness is refreshing", async () => {
+    const user = userEvent.setup();
+    mocks.stagingTargets = [stagingActivationTarget];
+    mocks.stagingPreflight = { ready: true, reason: null,
+      artifact: { artifactRef: `sha256:${"b".repeat(64)}`, sourceSha: "c".repeat(40), buildDigest: "b".repeat(64) },
+      baseline: { deploymentId: "deployment-current", artifactRef: `sha256:${"d".repeat(64)}`, sourceSha: "e".repeat(40),
+        buildDigest: "d".repeat(64), configurationRef: `cf-origin:${"f".repeat(64)}`, configurationDigest: "f".repeat(64) } };
+    mocks.stagingPreflightFetching = true;
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    expect(await screen.findByRole("button", { name: "Authorize and deploy to staging" })).toBeDisabled();
+  });
+
+  it("explains that an existing Staging deployment must finish before another dispatch", async () => {
+    const user = userEvent.setup();
+    mocks.stagingTargets = [stagingActivationTarget];
+    mocks.stagingPreflight = { ready: false, reason: "STAGING_DEPLOYMENT_IN_PROGRESS", artifact: null, baseline: null };
+    render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    expect(await screen.findByText(/A Staging deployment is already queued or running/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
   });
 
   it("explains why namespace-only Staging cannot produce a Full Application candidate", async () => {

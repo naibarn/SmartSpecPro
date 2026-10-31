@@ -107,6 +107,15 @@ describe("bounded private application HTTP compute", () => {
     expect(() => validateApplicationHttpProfile({ ...f.profile, instance: "standard-1" })).toThrow("APPLICATION_HTTP_PROFILE_DENIED");
     expect(() => validateApplicationHttpProfile({ ...f.profile, expiresAt: new Date(Date.now() + 32 * 86_400_000).toISOString() })).toThrow("APPLICATION_HTTP_PROFILE_DENIED");
   });
+  it("accepts the bounded six-hour Staging deployment window and rejects longer profiles", () => {
+    const f = fixture();
+    const issuedAt = Date.now();
+    f.profile.issuedAt = new Date(issuedAt).toISOString();
+    f.profile.expiresAt = new Date(issuedAt + 6 * 60 * 60_000).toISOString();
+    expect(() => validateApplicationHttpProfile(f.profile)).not.toThrow();
+    expect(() => validateApplicationHttpProfile({ ...f.profile,
+      expiresAt: new Date(issuedAt + 6 * 60 * 60_000 + 1).toISOString() })).toThrow("APPLICATION_HTTP_PROFILE_DENIED");
+  });
   it.each([
     ["node-http", "/readyz"],
     ["python-http", "/health"],

@@ -1900,6 +1900,11 @@ export default function AdminDeploymentTargets() {
                     ? text("ENABLED, NOT READY", "เปิดใช้งานแล้ว แต่ยังไม่พร้อม")
                     : text("DISABLED", "ยังไม่เปิดใช้งาน")}</p>
                 {runtime.applicationIngress.missing.length > 0 ? <p>{text("Missing application bindings", "binding ของแอปที่ยังขาด")}: <code>{runtime.applicationIngress.missing.join(", ")}</code></p> : null}
+                {runtime.applicationIngress.reason === "APPLICATION_HTTP_PROFILE_EXPIRED" ? <p>{text("Application HTTP profile expired. Prepare a fresh Full Application HTTP configuration before dispatching.",
+                  "Application HTTP profile หมดอายุแล้ว ให้เตรียม Full Application HTTP configuration ใหม่ก่อนส่งงาน")}</p> : null}
+                {runtime.applicationIngress.reason === "APPLICATION_HTTP_PROFILE_MISSING" || runtime.applicationIngress.reason === "APPLICATION_HTTP_PROFILE_INVALID"
+                  ? <p>{text("Application HTTP profile is missing or invalid. Review the saved Staging configuration before dispatching.",
+                    "Application HTTP profile ไม่มีหรือไม่ถูกต้อง ให้ตรวจ Staging configuration ที่บันทึกไว้ก่อนส่งงาน")}</p> : null}
               </VStack> : null}
               {runtime.reason ? <p><code>{runtime.reason}</code></p> : null}
               {(stagingConfigurationExpired || activationRecoveryStatus ||
@@ -2209,7 +2214,7 @@ export default function AdminDeploymentTargets() {
                 "One owner action opens a four-hour campaign for up to four staging jobs, bound to this exact candidate, configuration, target, executor, and verified rollback release. Every job receives a fresh one-job grant. A different artifact or configuration requires new owner authorization. This cannot change production DNS or routes.",
                 "การอนุมัติของ owner หนึ่งครั้งเปิด campaign 4 ชั่วโมง สูงสุด 4 staging jobs โดยผูกกับ candidate, configuration, target, executor และ rollback release ที่ตรวจแล้วชุดนี้เท่านั้น แต่ละ job ได้ grant ใหม่ที่ใช้ได้งานเดียว หาก artifact หรือ configuration เปลี่ยนต้องอนุมัติ scope ใหม่ และคำสั่งนี้เปลี่ยน DNS หรือ route ของ production ไม่ได้",
               )}</p>
-              <Button type="button" disabled={stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
+              <Button type="button" disabled={stagingDeployPreflight.isFetching || stagingDeployPreflight.isError || stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
                 title: text("Authorize Staging deployment campaign", "อนุมัติ campaign deploy ไป Staging"),
                 description: text(`Deploy the exact reviewed candidate ${stagingDeployPreflight.data.artifact!.sourceSha} to the Staging Worker only. The current rollback baseline is ${stagingDeployPreflight.data.baseline.deploymentId}. Production DNS/routes and traffic will not change.`, `deploy candidate ${stagingDeployPreflight.data.artifact!.sourceSha} ที่ตรวจแล้วไปยัง Staging Worker เท่านั้น โดยมี rollback baseline ${stagingDeployPreflight.data.baseline.deploymentId} ไม่เปลี่ยน DNS/route หรือ traffic ของ Production`),
                 confirmLabel: text("Authorize and queue Staging deploy", "อนุมัติและส่งงาน deploy Staging"),
@@ -2220,11 +2225,17 @@ export default function AdminDeploymentTargets() {
             </> : stagingDeployPreflight.data.reason === "STAGING_APPLICATION_HTTP_PROFILE_EXPIRED" ? <p role="status">
               {text("The Full HTTP runtime profile expired. Prepare a fresh Full Application HTTP configuration, then authorize its new Staging candidate.",
                 "Full HTTP runtime profile หมดอายุแล้ว ให้เตรียม Full Application HTTP configuration ใหม่ แล้วจึงอนุมัติ candidate Staging ชุดใหม่")}
+            </p> : stagingDeployPreflight.data.reason === "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT" ? <p role="status">
+              {text("The Staging HTTP profile does not have enough remaining lifetime for authorization and deployment. Prepare a fresh Full Application HTTP configuration before dispatching.",
+                "อายุ Full HTTP profile ของ Staging ที่เหลือไม่พอสำหรับช่วงอนุมัติและ deploy ให้เตรียม Full Application HTTP configuration ใหม่ก่อนส่งงาน")}
+            </p> : stagingDeployPreflight.data.reason === "STAGING_DEPLOYMENT_IN_PROGRESS" ? <p role="status">
+              {text("A Staging deployment is already queued or running. Open Worker Jobs, wait for it to finish, then refresh readiness before sending another deployment.",
+                "มีงาน deploy Staging อยู่ในคิวหรือกำลังทำงานแล้ว ไปที่ Worker Jobs รอให้จบ แล้วตรวจความพร้อมใหม่ก่อนส่งงานถัดไป")}
             </p> : stagingDeployPreflight.data.reason === "STAGING_BOOTSTRAP_REQUIRED" && stagingDeployPreflight.data.artifact ? <>
               <p>{text("This is the first Staging deployment, so Cloudflare has no verified Staging deployment to use as a rollback baseline yet.", "นี่คือการ deploy Staging ครั้งแรก จึงยังไม่มี deployment ที่ตรวจสอบแล้วสำหรับใช้ rollback")}</p>
               <p>{text("The one-time bootstrap below is limited to this published artifact, saved origin configuration, Staging Worker, Cloudflare account, and registered executor. It allows one job, creates no production DNS or route changes, and fails closed if the Worker is already owned by a different deployment.", "bootstrap ครั้งเดียวนี้จำกัดเฉพาะ artifact, origin config ที่บันทึกไว้, Staging Worker, บัญชี Cloudflare และ executor ที่ลงทะเบียน อนุญาตเพียงหนึ่ง job ไม่เปลี่ยน DNS หรือ route ของ production และจะหยุดทันทีหาก Worker มี deployment ที่ไม่ตรงกับงานนี้")}</p>
               <p>{text("Candidate", "รุ่นที่จะ deploy")}: <code>{stagingDeployPreflight.data.artifact.sourceSha}</code> · <code>{stagingDeployPreflight.data.artifact.artifactRef}</code></p>
-              <Button type="button" disabled={stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
+              <Button type="button" disabled={stagingDeployPreflight.isFetching || stagingDeployPreflight.isError || stagingDeployMutation.isPending || stagingActionRunning} onClick={() => requestStagingConfirmation({
                 title: text("Authorize first Staging deployment", "อนุมัติ deploy Staging ครั้งแรก"),
                 description: text(`Deploy the exact reviewed candidate ${stagingDeployPreflight.data.artifact!.sourceSha} to the Staging Worker only. This is a one-time bootstrap with no Production DNS/route or traffic changes.`, `deploy candidate ${stagingDeployPreflight.data.artifact!.sourceSha} ที่ตรวจแล้วไปยัง Staging Worker เท่านั้น เป็น bootstrap ครั้งเดียว ไม่เปลี่ยน DNS/route หรือ traffic ของ Production`),
                 confirmLabel: text("Authorize first Staging deploy", "อนุมัติ deploy Staging ครั้งแรก"),

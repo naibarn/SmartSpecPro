@@ -83,4 +83,28 @@ describe("runtime binding readiness profiles", () => {
     expect(inspectBindingReadiness({ ...env, AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: "[]" }).applicationIngress)
       .toMatchObject({ ready: false, missing: expect.arrayContaining(["AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS"]) });
   });
+
+  it("reports expired Node/Python profiles as the application ingress blocker without exposing profile contents", () => {
+    const now = Date.now();
+    const base = {
+      configurationRef: `cf-origin:${"c".repeat(64)}`, sourceSha: "d".repeat(40),
+      targetId: "smartspec-cloudflare-staging" as const, accountRef: "a".repeat(32),
+      namespace: "smartspec-staging-abcdef012345", image: `registry.cloudflare.com/${"a".repeat(32)}/smartspec-staging-abcdef012345-node-http@sha256:${"b".repeat(64)}`,
+      issuedAt: new Date(now - 3_600_000).toISOString(), expiresAt: new Date(now - 1000).toISOString(), maxStarts: 1,
+      maxComputeSeconds: 120, hardLifetimeSeconds: 120, idleTimeoutSeconds: 10, instance: "basic" as const,
+      networkAccess: "application-outbound" as const,
+    };
+    const profile = (runtime: "node-http" | "python-http") => ({ ...base, runtime, image: base.image.replace("-node-http@", `-${runtime}@`) });
+    const namespace = { idFromName: vi.fn(value => value), get: vi.fn() };
+    const readiness = inspectBindingReadiness({
+      CLOUDFLARE_ENVIRONMENT: "staging", CLOUDFLARE_APPLICATION_HTTP_TRAFFIC: "staging-full-http-v1",
+      CLOUDFLARE_CONTAINER_POLICY: "on-demand", CLOUDFLARE_NODE_HTTP_PROFILE: JSON.stringify(profile("node-http")),
+      CLOUDFLARE_PYTHON_HTTP_PROFILE: JSON.stringify(profile("python-http")), AUTH_ORIGIN_TOKEN: "x".repeat(64),
+      AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: '["https://staging.example.workers.dev"]', NODE_HTTP: namespace, PYTHON_HTTP: namespace,
+    });
+
+    expect(readiness.applicationIngress).toMatchObject({ enabled: true, ready: false, reason: "APPLICATION_HTTP_PROFILE_EXPIRED",
+      missing: ["CLOUDFLARE_NODE_HTTP_PROFILE", "CLOUDFLARE_PYTHON_HTTP_PROFILE"] });
+    expect(JSON.stringify(readiness.applicationIngress)).not.toContain("x".repeat(64));
+  });
 });

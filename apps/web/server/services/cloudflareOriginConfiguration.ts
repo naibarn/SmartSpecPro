@@ -8,6 +8,7 @@ import { assertPrivateDatabaseProvisionReceipt, assertPrivateDatabaseRenewalRece
 import { PRIVATE_DATABASE_RENEWAL_CONTRACT, PRIVATE_DATABASE_RENEWAL_JOB } from "./cloudflarePrivateDatabaseContract";
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings, httpApplicationNamespace,
   httpApplicationVersionBindings, type HttpApplicationSettings } from "./cloudflareHttpApplicationBindings";
+import { stagingApplicationHttpProfileExpiresAt } from "./cloudflareStagingDispatchReadiness";
 import { resolveVerifiedHttpImagePair, HttpPublishedPairRequired } from "./cloudflareHttpPublishedPair";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { getStagingApplicationPreparation } from "./cloudflareStagingApplicationPreparation";
@@ -245,7 +246,7 @@ export async function activateCloudflareStagingQueueProfile(db: DrizzleDB, input
         return { provisionJobId: job.id, planDigest: job.inputJson.planDigest, image: job.outputJson.image };
       };
       const issuedAt = new Date();
-      const expiresAt = new Date(Math.min(Date.parse(previous.expiresAt), issuedAt.getTime() + 30 * 60_000));
+      const expiresAt = new Date(stagingApplicationHttpProfileExpiresAt(previous.expiresAt, issuedAt));
       const applicationHttp: HttpApplicationSettings = {
         mode: "private-canary", namespace: httpApplicationNamespace(input.identity.tenantId, input.identity.projectId, "staging"),
         sourceSha: published.pair.sourceSha, traffic: "staging-full-http-v1",

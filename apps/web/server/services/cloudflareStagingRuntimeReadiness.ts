@@ -17,7 +17,8 @@ export type CloudflareStagingRuntimeReadiness = {
   missing: string[];
   jobHandlerConfigured?: boolean;
   controlPlaneConfigured?: boolean;
-  applicationIngress?: { enabled: boolean; ready: boolean; missing: string[] };
+  applicationIngress?: { enabled: boolean; ready: boolean; missing: string[];
+    reason?: "APPLICATION_HTTP_PROFILE_MISSING" | "APPLICATION_HTTP_PROFILE_EXPIRED" | "APPLICATION_HTTP_PROFILE_INVALID" };
   httpStatus?: number;
   deploymentId?: string;
   reason?: string;
@@ -126,6 +127,9 @@ export async function probeCloudflareStagingRuntimeReadiness(input: {
           (value): value is string => typeof value === "string" && /^[A-Z][A-Z0-9_]{0,79}$/.test(value),
         ))]
       : [];
+    const ingressReason = applicationIngress?.reason === "APPLICATION_HTTP_PROFILE_MISSING" ||
+      applicationIngress?.reason === "APPLICATION_HTTP_PROFILE_EXPIRED" || applicationIngress?.reason === "APPLICATION_HTTP_PROFILE_INVALID"
+      ? applicationIngress.reason : undefined;
     const activationDisabled = !ready && activation === "disabled";
     return {
       // Staging deployments intentionally ship inactive until a separately
@@ -152,6 +156,7 @@ export async function probeCloudflareStagingRuntimeReadiness(input: {
             enabled: applicationIngress.enabled,
             ready: applicationIngress.ready,
             missing: ingressMissing,
+            ...(ingressReason ? { reason: ingressReason } : {}),
           } }
         : {}),
       httpStatus: response.status,

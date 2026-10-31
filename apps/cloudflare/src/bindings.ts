@@ -11,6 +11,7 @@ export type ApplicationIngressReadiness = {
   enabled: boolean;
   ready: boolean;
   missing: string[];
+  reason?: "APPLICATION_HTTP_PROFILE_MISSING" | "APPLICATION_HTTP_PROFILE_EXPIRED" | "APPLICATION_HTTP_PROFILE_INVALID";
 };
 
 export type BindingReadiness = {
@@ -64,13 +65,25 @@ function inspectApplicationIngressReadiness(env: CloudflareEnvironment): Applica
     if (!namespace || typeof namespace.idFromName !== "function" || typeof namespace.get !== "function") missing.push(binding);
   }
   let profilesValid = false;
+  let profileReason: ApplicationIngressReadiness["reason"];
   try {
-    const node = JSON.parse(env.CLOUDFLARE_NODE_HTTP_PROFILE ?? "null") as ApplicationHttpProfile;
-    const python = JSON.parse(env.CLOUDFLARE_PYTHON_HTTP_PROFILE ?? "null") as ApplicationHttpProfile;
-    validateApplicationHttpProfilePair(node, python);
-    const expectedTarget = environment === "staging" ? "smartspec-cloudflare-staging" : "smartspec-cloudflare-runtime";
-    profilesValid = node.targetId === expectedTarget && python.targetId === expectedTarget;
-  } catch { /* report the field names only; never include profile or secret values */ }
+    const nodeValue = env.CLOUDFLARE_NODE_HTTP_PROFILE;
+    const pythonValue = env.CLOUDFLARE_PYTHON_HTTP_PROFILE;
+    if (!nodeValue || !pythonValue) profileReason = "APPLICATION_HTTP_PROFILE_MISSING";
+    else {
+      const node = JSON.parse(nodeValue) as ApplicationHttpProfile;
+      const python = JSON.parse(pythonValue) as ApplicationHttpProfile;
+      const nodeExpiry = Date.parse(node.expiresAt), pythonExpiry = Date.parse(python.expiresAt);
+      if (!Number.isFinite(nodeExpiry) || !Number.isFinite(pythonExpiry)) profileReason = "APPLICATION_HTTP_PROFILE_INVALID";
+      else if (nodeExpiry <= Date.now() || pythonExpiry <= Date.now()) profileReason = "APPLICATION_HTTP_PROFILE_EXPIRED";
+      else {
+        validateApplicationHttpProfilePair(node, python);
+        const expectedTarget = environment === "staging" ? "smartspec-cloudflare-staging" : "smartspec-cloudflare-runtime";
+        profilesValid = node.targetId === expectedTarget && python.targetId === expectedTarget;
+        if (!profilesValid) profileReason = "APPLICATION_HTTP_PROFILE_INVALID";
+      }
+    }
+  } catch { profileReason = "APPLICATION_HTTP_PROFILE_INVALID"; }
   if (!profilesValid) missing.push("CLOUDFLARE_NODE_HTTP_PROFILE", "CLOUDFLARE_PYTHON_HTTP_PROFILE");
   const token = env.AUTH_ORIGIN_TOKEN?.trim() ?? "";
   if (token.length < 32 || token.length > 4096 || !/^[\x21-\x7e]+$/.test(token)) missing.push("AUTH_ORIGIN_TOKEN");
@@ -86,7 +99,7 @@ function inspectApplicationIngressReadiness(env: CloudflareEnvironment): Applica
   if (!originConfigured) missing.push("AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS");
   const uniqueMissing = [...new Set(missing)];
   return { enabled: env.CLOUDFLARE_APPLICATION_HTTP_TRAFFIC === expectedTraffic && expectedTraffic !== null,
-    ready: uniqueMissing.length === 0, missing: uniqueMissing };
+    ready: uniqueMissing.length === 0, missing: uniqueMissing, ...(profileReason ? { reason: profileReason } : {}) };
 }
 
 export function inspectBindingReadiness(env: CloudflareEnvironment): BindingReadiness {
