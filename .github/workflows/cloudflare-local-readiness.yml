@@ -234,9 +234,30 @@ jobs:
       - name: Smoke test staging SPA and API routing in local workerd
         run: |
           set -euo pipefail
-          pnpm --filter @smartspec/cloudflare-runtime exec wrangler dev --config wrangler.staging.jsonc --local --port 8800 > "$RUNNER_TEMP/wrangler-staging.log" 2>&1 &
+          smoke_config="$RUNNER_TEMP/wrangler-staging-smoke.jsonc"
+          node --input-type=module - "$smoke_config" "$GITHUB_WORKSPACE" <<'NODE'
+          import { readFileSync, writeFileSync } from 'node:fs';
+          import { resolve } from 'node:path';
+
+          const [outputPath, workspace] = process.argv.slice(2);
+          const config = JSON.parse(readFileSync(resolve(workspace, 'apps/cloudflare/wrangler.staging.jsonc'), 'utf8'));
+          // This smoke covers SPA/API routing only. Excluding account resources avoids pulling
+          // Container images or requiring Cloudflare credentials in the local workerd job.
+          for (const key of ['account_id', 'containers', 'durable_objects', 'exports', 'vpc_networks']) delete config[key];
+          config.main = resolve(workspace, 'apps/cloudflare/src/entrypoint.ts');
+          config.assets.directory = resolve(workspace, 'apps/web/dist/public');
+          writeFileSync(outputPath, JSON.stringify(config));
+          NODE
+          pnpm --filter @smartspec/cloudflare-runtime exec wrangler dev --config "$smoke_config" --local --port 8800 > "$RUNNER_TEMP/wrangler-staging.log" 2>&1 &
           worker_pid=$!
-          trap 'kill "$worker_pid" 2>/dev/null || true' EXIT
+          on_exit() {
+            status=$?
+            trap - EXIT
+            kill "$worker_pid" 2>/dev/null || true
+            if [ "$status" -ne 0 ]; then cat "$RUNNER_TEMP/wrangler-staging.log"; fi
+            exit "$status"
+          }
+          trap on_exit EXIT
           ready=false
           for attempt in $(seq 1 45); do
             if curl -fsS -H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-Dest: document' -H 'Accept: text/html' http://127.0.0.1:8800/ >/dev/null; then ready=true; break; fi
