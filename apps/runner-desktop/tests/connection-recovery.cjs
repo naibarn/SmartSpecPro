@@ -22,7 +22,7 @@ test('account re-pair reports an owner-binding denial instead of a generic conne
         if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
         if (name === 'connect_runner') throw 'RUNNER_PERMISSION_DENIED';
         return null;
-      } } };
+      } }, event: { listen: async () => {} } };
     });
     await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
     await page.locator('#connect-button').click();
@@ -46,7 +46,7 @@ test('a start-request 403 is not misreported as an account ownership denial', as
         if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
         if (name === 'connect_runner') throw 'RUNNER_CONNECT_START_REJECTED_403';
         return null;
-      } } };
+      } }, event: { listen: async () => {} } };
     });
     await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
     await page.locator('#connect-button').click();
@@ -77,7 +77,7 @@ test('a stale heartbeat is shown as reconnecting when the local control loop has
         };
         if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
         return null;
-      } } };
+      } }, event: { listen: async () => {} } };
     });
     await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
     await page.waitForFunction(() => document.getElementById('connection-state').textContent === 'กำลังเชื่อมต่อใหม่');
@@ -106,7 +106,7 @@ test('a confirmed reconnect clears the error and restores the running UI without
         if (name === 'retry_runner_control') { window.retryCount += 1; return null; }
         if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
         return null;
-      } } };
+      } }, event: { listen: async () => {} } };
     });
     await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
     await page.waitForFunction(() => document.getElementById('runtime-state').textContent === 'พบข้อผิดพลาด');
@@ -142,7 +142,7 @@ test('the automatic Runner loop setting can be saved independently of login star
         if (name === 'start_runner') window.startupPreferences.starts += 1;
         if (name === 'list_workspaces' || name === 'discover_local_tools') return [];
         return null;
-      } } };
+      } }, event: { listen: async () => {} } };
     });
     await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
     await page.locator('#auto-start-loop').check();
