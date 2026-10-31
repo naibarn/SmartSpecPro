@@ -427,7 +427,7 @@ async function refreshWorkspaces() {
       item.className = "empty";
       item.textContent = "ยังไม่ได้เพิ่มโฟลเดอร์ เลือกโฟลเดอร์ที่ต้องการให้ Runner เข้าถึง";
       list.append(item);
-      return;
+      return workspaces;
     }
     for (const workspace of workspaces) {
       const item = document.createElement("li");
@@ -509,8 +509,10 @@ async function refreshWorkspaces() {
       item.append(description, remove);
       list.append(item);
     }
+    return workspaces;
   } catch (error) {
     setNotice(elements["runtime-notice"], safeError(error));
+    return null;
   }
 }
 
@@ -865,7 +867,12 @@ elements["add-workspace-button"].addEventListener("click", async () => {
   try {
     const workspace = await invoke("add_workspace");
     if (workspace) {
-      await refreshWorkspaces();
+      const workspaces = await refreshWorkspaces();
+      if (!workspaces) return;
+      if (!workspaces.some(item => item.workspaceId === workspace.workspaceId)) {
+        setNotice(elements["runtime-notice"], `เลือกโฟลเดอร์แล้ว แต่ยังไม่พบ ${workspace.displayName} ในรายการ Workspace กรุณารีเฟรชสถานะ; หากยังไม่ขึ้นให้สร้างไฟล์ Debug`);
+        return;
+      }
       setNotice(elements["runtime-notice"], `เพิ่ม ${workspace.displayName} แล้ว`);
     } else {
       setNotice(elements["runtime-notice"], "ยกเลิกการเลือกโฟลเดอร์แล้ว");
