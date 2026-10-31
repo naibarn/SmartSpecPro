@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import express from "express";
+import request from "supertest";
+import { createAllowedBrowserOrigin } from "../_core/browserOriginPolicy";
+import { createCsrfProtection } from "../_core/csrfProtection";
 import { nativeProvisionNamespace } from "./cloudflareNativeProvisionContract";
 import { HTTP_IMAGE_PROVISION_CONTRACT, HTTP_IMAGE_PROVISION_JOB } from "./cloudflareHttpImageProvisionContract";
 import { assertHttpImageProvisionReceipt, validateHttpApplicationSettings, httpApplicationWorkerMetadata,
@@ -23,6 +27,32 @@ function fixture() {
   return { scope, settings, receipt };
 }
 describe("paired HTTP API deployment capabilities", () => {
+  it("carries the reviewed edge origins into the actual browser-write policy for existing saved configurations", async () => {
+    const f = fixture(), origin = "https://staging.example.workers.dev";
+    const secrets = { node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890",
+      AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: JSON.stringify([origin]), SMARTSPEC_ALLOWED_ORIGINS: "https://unreviewed.invalid" }, python: {} };
+    const bindings = httpApplicationVersionBindings(f.settings, { ...f.scope, configurationRef: `cf-origin:${"f".repeat(64)}` }, secrets);
+    const node = JSON.parse(bindings.find(b => b.name === "CLOUDFLARE_NODE_HTTP_SECRETS")!.text);
+    const app = express();
+    app.use(createCsrfProtection({ isProduction: () => true,
+      isAllowedOrigin: createAllowedBrowserOrigin({ production: true, allowedOrigins: node.SMARTSPEC_ALLOWED_ORIGINS,
+        getPublicAppUrl: () => "https://smartaihub.app" }),
+      isAllowedMarketplaceOrigin: () => false, getVerifiedEdgeOrigin: () => origin }));
+    app.post("/trpc/auth.forgotPassword", (_req, res) => res.sendStatus(204));
+    expect((await request(app).post("/trpc/auth.forgotPassword").set("Origin", origin)).status).toBe(204);
+    for (const rejected of ["https://unreviewed.invalid", "https://other.workers.dev", "https://smartaihub.app"]) {
+      expect((await request(app).post("/trpc/auth.forgotPassword").set("Origin", rejected)).status).toBe(403);
+    }
+    expect((await request(app).post("/trpc/auth.forgotPassword")).status).toBe(403);
+    expect(secrets.node.SMARTSPEC_ALLOWED_ORIGINS).toBe("https://unreviewed.invalid");
+  });
+
+  it.each(["not-json", "[]", '["https://example.com/path"]', '["https://example.com,https://evil.invalid"]', '["*"]'])("rejects malformed reviewed browser origins: %s", origins => {
+    const f = fixture();
+    expect(() => httpApplicationVersionBindings(f.settings, { ...f.scope, configurationRef: `cf-origin:${"f".repeat(64)}` },
+      { node: { CONTROL_PLANE_API_KEY: "bootstrap-fixture-key-1234567890", AUTH_ORIGIN_ALLOWED_PUBLIC_ORIGINS: origins }, python: {} }))
+      .toThrow("CLOUDFLARE_HTTP_APPLICATION_BROWSER_ORIGINS_DENIED");
+  });
   it("declares fixed classes and image aliases with on-demand profiles, without VM activation", () => {
     const f = fixture(); expect(validateHttpApplicationSettings(f.settings, f.scope)).toEqual(f.settings);
     const metadata = httpApplicationWorkerMetadata(f.settings, f.scope);
