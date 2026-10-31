@@ -143,11 +143,11 @@ mkdir -p "$DEV_RELEASE_ROOT"
 if [[ ! -d "$PUBLISHED_RELEASE" ]]; then
   PUBLISH_STAGING="$(mktemp -d "${DEV_RELEASE_ROOT}/.staging.XXXXXX")"
   cp -a "${ARTIFACT_PATH}/public" "${PUBLISH_STAGING}/public"
-  python3 - "$BUILD_RESULT" "$PUBLISH_STAGING/build-result.json" "$ARTIFACT_PATH" "$PUBLISH_STAGING" "$SOURCE_SHA" "$ARTIFACT_DIGEST" "$PUBLISHED_RECEIPT" <<'PY'
+  python3 - "$BUILD_RESULT" "$PUBLISH_STAGING/build-result.json" "$ARTIFACT_PATH" "$PUBLISH_STAGING" "$SOURCE_SHA" "$ARTIFACT_DIGEST" "$PUBLISHED_RECEIPT" "$PUBLISHED_RELEASE" <<'PY'
 import hashlib, json, os, sys
 from pathlib import Path
-source_receipt, target_receipt, source_artifact, target_release, source_sha, artifact_digest, final_receipt = sys.argv[1:]
-source_artifact, target_release = Path(source_artifact), Path(target_release)
+source_receipt, target_receipt, source_artifact, staging_release, source_sha, artifact_digest, final_receipt, published_release = sys.argv[1:]
+source_artifact, staging_release, published_release = Path(source_artifact), Path(staging_release), Path(published_release)
 
 def digest_tree(root):
     digest = hashlib.sha256()
@@ -162,7 +162,7 @@ def digest_tree(root):
                     digest.update(chunk)
     return digest.hexdigest()
 
-source_public, target_public = source_artifact / "public", target_release / "public"
+source_public, target_public = source_artifact / "public", staging_release / "public"
 source_digest, target_digest = digest_tree(source_public), digest_tree(target_public)
 if source_digest != target_digest or not (target_public / "index.html").is_file():
     raise SystemExit("Durable development artifact copy failed integrity verification.")
@@ -172,7 +172,7 @@ if record.get("source_revision") != source_sha or record.get("artifact", {}).get
 record["canonical_artifact_path"] = str(source_artifact)
 record["canonical_build_result"] = source_receipt
 record["published_public_sha256"] = target_digest
-record["artifact"]["artifact_path"] = str(target_release)
+record["artifact"]["artifact_path"] = str(published_release)
 record["result_file"] = final_receipt
 Path(target_receipt).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 os.chmod(target_receipt, 0o600)
