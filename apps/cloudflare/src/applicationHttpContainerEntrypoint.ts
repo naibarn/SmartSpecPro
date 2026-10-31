@@ -119,7 +119,9 @@ class ApplicationHttpContainer extends DurableObject<ApplicationEnvironment> {
       return await this.controller.forward(request, deadline);
     } catch (error) {
       await this.controller.recordFailure(error).catch(() => undefined);
-      return Response.json({ error: "APPLICATION_HTTP_UNAVAILABLE" }, { status: 503, headers: { "cache-control": "no-store" } });
+      const failure = error instanceof Error && error.message === "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY"
+        ? error.message : "APPLICATION_HTTP_UNAVAILABLE";
+      return Response.json({ error: failure }, { status: 503, headers: { "cache-control": "no-store" } });
     }
   }
 

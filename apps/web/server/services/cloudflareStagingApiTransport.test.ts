@@ -783,6 +783,17 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect(attempts).toBe(2);
   });
 
+  it("stops origin verification immediately when the application Container exited before readiness", async () => {
+    let attempts = 0;
+    const f = fixture({ auth: () => {
+      attempts += 1;
+      return new Response(JSON.stringify({ error: "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY" }),
+        { status: 503, headers: { "content-type": "application/json" } });
+    } });
+    expect(await verify(f)).toMatchObject({ reachable: false, verificationFailure: "application-container" });
+    expect(attempts).toBe(1);
+  });
+
   it("allows the on-demand application Container cold-start window for auth verification", async () => {
     const f = fixture();
     const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(new AbortController().signal);

@@ -82,6 +82,10 @@ describe("bounded private application HTTP compute", () => {
     expect(PYTHON_VPC_DATABASE_ENTRYPOINT).toContain("DatabaseConnectorEventLoop(host)");
     expect(PYTHON_VPC_DATABASE_ENTRYPOINT).not.toContain("DatabaseConnectorEventLoop('db.smartaihub.app')");
     expect(NODE_VPC_DATABASE_ENTRYPOINT).toContain("APPLICATION_VPC_DATABASE_START_FAILED:'+failureStage");
+    expect(NODE_VPC_DATABASE_ENTRYPOINT).toContain("safeDatabaseFailureCode(error)");
+    expect(NODE_VPC_DATABASE_ENTRYPOINT).toContain("ERR_TLS_CERT_ALTNAME_INVALID");
+    expect(NODE_VPC_DATABASE_ENTRYPOINT).toContain("timedOut?'DB_CONNECT_TIMEOUT'");
+    expect(NODE_VPC_DATABASE_ENTRYPOINT).not.toContain("error.message");
     expect(PYTHON_VPC_DATABASE_ENTRYPOINT).toContain("APPLICATION_VPC_DATABASE_START_FAILED:'+failure_stage");
   });
   it("rejects a foreign database role before reserving or starting a paid VM", async () => {

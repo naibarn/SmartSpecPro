@@ -695,7 +695,7 @@ export function createCloudflareStagingApiTransport(input: {
         throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
       }
       let healthy = false;
-      let verificationFailure: "health" | "spa" | "origin-auth" | undefined;
+      let verificationFailure: "health" | "spa" | "origin-auth" | "application-container" | undefined;
       let healthStatus: number | undefined;
       // A newly enabled workers.dev endpoint can take a few seconds to propagate.
       for (let attempt = 0; attempt < 6; attempt++) {
@@ -740,6 +740,7 @@ export function createCloudflareStagingApiTransport(input: {
         if (after.deployments?.[0]?.id !== deploymentId) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
       }
       let originReady = configurationDigest === undefined;
+      let applicationContainerFailed = false;
       if (healthy && spaReady && configurationDigest !== undefined) {
         // An on-demand application Container may return a transient 502/503
         // while it starts. A single immediate auth probe falsely rolled back
@@ -763,6 +764,11 @@ export function createCloudflareStagingApiTransport(input: {
               const body = await response.json() as { result?: { data?: { json?: unknown } }; error?: unknown };
               originReady = body?.error === undefined && body?.result?.data?.json === null;
             } else {
+              if (response.status === 503 && response.headers.get("content-type")?.includes("application/json")) {
+                const body = await response.json().catch(() => null) as { error?: unknown } | null;
+                applicationContainerFailed = body?.error === "APPLICATION_HTTP_CONTAINER_EXITED_BEFORE_READY";
+              }
+              if (applicationContainerFailed) break;
               retryable = [408, 429, 502, 503, 504].includes(response.status);
               await response.body?.cancel();
             }
@@ -779,6 +785,7 @@ export function createCloudflareStagingApiTransport(input: {
       }
       if (!healthy) verificationFailure = "health";
       else if (!spaReady) verificationFailure = "spa";
+      else if (applicationContainerFailed) verificationFailure = "application-container";
       else if (!originReady) verificationFailure = "origin-auth";
       return {
         reachable: healthy && spaReady && originReady,

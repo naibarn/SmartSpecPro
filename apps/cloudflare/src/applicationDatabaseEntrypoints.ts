@@ -27,7 +27,14 @@ export const NODE_VPC_DATABASE_ENTRYPOINT = NODE_DATABASE_CARRIER_SOURCE + Strin
 import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 const env={...process.env},end=Date.parse(env.CLOUDFLARE_APPLICATION_EXPIRES_AT??'');
-let carrier,app,failureStage='configuration';
+let carrier,app,failureStage='configuration',databaseFailureCode='DATABASE_CONNECT_FAILED';
+function safeDatabaseFailureCode(error){
+ const code=typeof error?.code==='string'?error.code:'';
+ if(/^[0-9A-Z]{5}$/.test(code))return code;
+ if(['ECONNREFUSED','ECONNRESET','ETIMEDOUT','EHOSTUNREACH','ENETUNREACH','EPIPE','EAI_AGAIN','ENOTFOUND',
+ 'ERR_TLS_CERT_ALTNAME_INVALID','ERR_TLS_CERT_SIGNATURE_ALGORITHM_UNSUPPORTED','CERT_HAS_EXPIRED','CERT_NOT_YET_VALID','UNABLE_TO_VERIFY_LEAF_SIGNATURE'].includes(code))return code;
+ return error?.name==='TimeoutError'?'DB_CONNECT_TIMEOUT':'DATABASE_CONNECT_FAILED';
+}
 function stop(){app?.kill('SIGKILL');void carrier?.close();}
 try{
  const db=new URL(env.DATABASE_URL),host=env.DATABASE_CONNECTOR_HOSTNAME??'',staging=host==='db-staging.smartaihub.app';
@@ -50,13 +57,13 @@ try{
  failureStage='database-connect';
  const client=postgres(env.DATABASE_URL,{ssl,max:1,connect_timeout:8});
  let ready=false;
- try{for(let n=0;n<3;n++){let timeout;try{await Promise.race([client.unsafe('SELECT 1'),new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error()),10000);})]);ready=true;break;}catch{await new Promise(r=>setTimeout(r,200));}finally{clearTimeout(timeout);}}}
+ try{for(let n=0;n<3;n++){let timeout,timedOut=false;try{await Promise.race([client.unsafe('SELECT 1'),new Promise((_,reject)=>{timeout=setTimeout(()=>{timedOut=true;reject(Error());},10000);})]);ready=true;break;}catch(error){databaseFailureCode=timedOut?'DB_CONNECT_TIMEOUT':safeDatabaseFailureCode(error);await new Promise(r=>setTimeout(r,200));}finally{clearTimeout(timeout);}}}
  finally{await client.end({timeout:1});}
- if(!ready)throw Error();
+ if(!ready){failureStage='database-connect';throw Error();}
  failureStage='application-start';
  app=spawn(process.execPath,['/app/server/_core/cloudflare-http-api/index.mjs'],{env,stdio:['ignore','inherit','inherit']});
  await once(app,'exit');clearTimeout(timer);stop();
-}catch{stop();console.error('APPLICATION_VPC_DATABASE_START_FAILED:'+failureStage);process.exit(1);}
+}catch{stop();console.error('APPLICATION_VPC_DATABASE_START_FAILED:'+failureStage+(failureStage==='database-connect'?':'+databaseFailureCode:''));process.exit(1);}
 `;
 export const PYTHON_DATABASE_CARRIER_SOURCE = String.raw`
 async def forward_database(reader,writer,session,endpoint):

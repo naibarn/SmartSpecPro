@@ -246,7 +246,7 @@ export type CloudflareStagingApi = Readonly<{
     configurationDigest?: string;
   }) => Promise<{
     reachable: boolean;
-    verificationFailure?: "health" | "spa" | "origin-auth";
+    verificationFailure?: "health" | "spa" | "origin-auth" | "application-container";
     healthStatus?: number;
     diagnosticCode?: string;
     failureClass?: "permanent" | "retryable";
@@ -775,6 +775,7 @@ export function createCloudflareStagingDeploymentExecutor(
                 const failureCodes = {
                   spa: "CLOUDFLARE_STAGING_SPA_VERIFICATION_FAILED",
                   "origin-auth": "CLOUDFLARE_STAGING_ORIGIN_AUTH_VERIFICATION_FAILED",
+                  "application-container": "CLOUDFLARE_STAGING_APPLICATION_CONTAINER_START_FAILED",
                 } as const;
                 throw new CloudflareStagingDeploymentError(failureCodes[verification.verificationFailure]);
               }
