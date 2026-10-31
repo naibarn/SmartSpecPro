@@ -99,8 +99,17 @@ pub fn runner_credential_diagnostics() -> serde_json::Value {
 }
 
 fn record_control_loop_failure(error: &str) {
+    let code = control_loop_failure_code(error);
+    if let Ok(mut failure) = LAST_CONTROL_FAILURE.get_or_init(|| Mutex::new(None)).lock() {
+        *failure = Some((code, current_time_iso()));
+    }
+}
+
+fn control_loop_failure_code(error: &str) -> &'static str {
     // Export only fixed categories, never raw error strings or remote data.
-    let code = if error.starts_with("RUNNER_CONTROL_CHANNEL_") {
+    if error.contains("RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH") {
+        "RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH"
+    } else if error.starts_with("RUNNER_CONTROL_CHANNEL_") {
         "RUNNER_CONTROL_CHANNEL_FAILED"
     } else if error.starts_with("RUNNER_KEEPALIVE_") {
         "RUNNER_KEEPALIVE_FAILED"
@@ -110,10 +119,14 @@ fn record_control_loop_failure(error: &str) {
         "RUNNER_RECEIPT_DELIVERY_FAILED"
     } else {
         runtime_error_reason(error)
-    };
-    if let Ok(mut failure) = LAST_CONTROL_FAILURE.get_or_init(|| Mutex::new(None)).lock() {
-        *failure = Some((code, current_time_iso()));
     }
+}
+
+fn should_stop_control_loop(error: &str) -> bool {
+    // Protocol incompatibility cannot recover by replaying the same local
+    // connection. Credential/session drift is different: the next attempt
+    // reloads the owner-approved connection store and repeats authentication.
+    runtime_error_reason(error) == "RUNNER_PROTOCOL_INCOMPATIBLE"
 }
 
 /// Invalidates the process-local capability acknowledgment after the local
@@ -3603,7 +3616,7 @@ where
                 record_control_loop_failure(&error);
                 observer(Some(runtime_error_reason(&error)));
                 eprintln!("runner refresh error: {error}");
-                if error.contains("RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH") {
+                if should_stop_control_loop(&error) {
                     return Err(error);
                 }
             }
@@ -3721,8 +3734,9 @@ fn runtime_error_reason(error: &str) -> &'static str {
 #[cfg(test)]
 mod refresh_runtime_reason_tests {
     use super::{
-        control_retry_delay, control_retry_delay_with_jitter, refresh_error_transport,
-        runtime_error_reason, wait_for_control_retry,
+        control_loop_failure_code, control_retry_delay, control_retry_delay_with_jitter,
+        refresh_error_transport, runtime_error_reason, should_stop_control_loop,
+        wait_for_control_retry,
     };
     use crate::transport::TransportError;
     use std::sync::atomic::AtomicBool;
@@ -3759,6 +3773,14 @@ mod refresh_runtime_reason_tests {
             control_retry_delay(Duration::from_secs(15), 20),
             Duration::from_secs(15)
         );
+    }
+
+    #[test]
+    fn credential_binding_change_is_retried_and_reported_without_exposing_raw_errors() {
+        let error = "RUNNER_CREDENTIAL_SESSION_BINDING_MISMATCH";
+        assert!(!should_stop_control_loop(error));
+        assert_eq!(control_loop_failure_code(error), error);
+        assert!(should_stop_control_loop("CONTROL_PLANE_TOO_OLD"));
     }
 
     #[test]
