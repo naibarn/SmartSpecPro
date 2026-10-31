@@ -123,15 +123,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
+    "expected_canonical_sha": "2c315edae371a580dab24620c0cd41a0249beb17",
     "expected_spec_digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f"
   },
   "continuation": {
-    "next_action": "Download the authenticated Actions artifact smartaihub-runner-windows-x64-0.2.53-unsigned-review from https://github.com/naibarn/SmartSpecPro/actions/runs/41155738291, verify SHA-256 b40a03c046c5df19ce1132b7e0fd3959d8946e0da1768c62c3d2b9b8ae8d13c1, then install over the existing current-user Runner without enrolling another device. Choose/save Production or Developer and restart; collect the existing Runner identity, auth result, capability ACK and fresh heartbeat.",
-    "next_ready_workunit": "WINDOWS_RUNNER_0_2_53_OWNER_HOST_ENVIRONMENT_SELECTION_AND_RUNTIME_ACCEPTANCE",
+    "next_action": "Wait for workflow 41158883985 to complete, then download and verify the unsigned 0.2.54 artifact. Install it over the owner's existing current-user Runner, choose and save the intended Production or Developer website, restart, and verify the same Runner ID, fresh auth, capability ACK, workspace availability, and heartbeat.",
+    "next_ready_workunit": "WINDOWS_RUNNER_0_2_54_INSTALL_AND_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Source implementation `ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0` and SPEC-205 environment-selection contract are integrated. Windows workflow 41155738291 passed and produced unsigned review installer 0.2.53. Manifest and local checksum verification agree: b40a03c046c5df19ce1132b7e0fd3959d8946e0da1768c62c3d2b9b8ae8d13c1. Existing owner installation has not been upgraded; runtime selection, same identity, authentication, capability ACK and heartbeat remain unverified.",
-    "waiting_predicate": "The owner installs the SHA-verified 0.2.53 review build over the existing Runner, chooses and saves a supported website, restarts, and reports fresh auth, same-device identity, capability acknowledgement and heartbeat evidence."
+    "resume_point": "Source fix 2c315edae371a580dab24620c0cd41a0249beb17 is integrated. Saving the next-launch website is now allowed while Runner is running; current connection remains unchanged until restart. Desktop focused tests pass. Windows review workflow 41158883985 is still building; no owner-device installation/runtime acceptance has occurred.",
+    "waiting_predicate": "The authenticated Windows review artifact from workflow 41158883985 is complete and the owner installs it over the existing Runner without creating another enrollment."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -273,7 +273,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 53,
+  "generation": 54,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
@@ -314,7 +314,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
+    "canonical_sha": "2c315edae371a580dab24620c0cd41a0249beb17",
     "integrated": true,
     "integrated_at": "2026-10-30T14:22:00Z"
   },
@@ -1404,7 +1404,7 @@
     "unresolved": 209
   },
   "schema_version": 1,
-  "updated_at": "2026-10-31T01:51:07.948495Z",
+  "updated_at": "2026-10-31T02:18:03.100577Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1412,11 +1412,12 @@
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-reauthorization-button-20261030.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-browser-reconnect-ux-20261031.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-connect-start-csrf-403-20261031.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-website-target-selector-20261031.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-website-target-selector-20261031.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-save-website-while-running-20261031.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
+    "sha": "2c315edae371a580dab24620c0cd41a0249beb17",
     "status": "PARTIAL",
     "task_regressions": []
   }
