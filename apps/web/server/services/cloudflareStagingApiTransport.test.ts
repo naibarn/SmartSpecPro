@@ -553,7 +553,7 @@ describe("Cloudflare version-scoped origin transport", () => {
       throw new Error(`Unexpected fixture request ${url}`);
     }) as typeof fetch;
     return { config, originTarget, fetchImpl, mutations, metadata: () => metadata,
-      api: createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl, verifyNativeResources: async () => {} }) };
+      api: createCloudflareStagingApiTransport({ resolveBundle: async () => bundle, fetchImpl, sleepImpl: async () => {}, verifyNativeResources: async () => {} }) };
   }
   function deploy(f: ReturnType<typeof fixture>, assertMutationAuthorized = async () => {}) {
     return f.api.deploy({ token: "provider-deployment-token", target: f.originTarget, artifact,
@@ -771,12 +771,24 @@ describe("Cloudflare version-scoped origin transport", () => {
     expect((await verify(f)).reachable).toBe(false);
   });
 
+  it("retries transient auth ingress failures while the on-demand Container starts", async () => {
+    let attempts = 0;
+    const f = fixture({ auth: () => {
+      attempts += 1;
+      return attempts === 1
+        ? new Response(JSON.stringify({ error: "APPLICATION_HTTP_INGRESS_UNAVAILABLE" }), { status: 503, headers: { "content-type": "application/json" } })
+        : new Response(JSON.stringify({ result: { data: { json: null } } }), { headers: { "content-type": "application/json" } });
+    } });
+    expect(await verify(f)).toMatchObject({ reachable: true, deploymentId, sourceSha, buildDigest });
+    expect(attempts).toBe(2);
+  });
+
   it("allows the on-demand application Container cold-start window for auth verification", async () => {
     const f = fixture();
     const timeout = vi.spyOn(AbortSignal, "timeout").mockReturnValue(new AbortController().signal);
     try {
       expect(await verify(f)).toMatchObject({ reachable: true, deploymentId, sourceSha, buildDigest });
-      expect(timeout).toHaveBeenCalledWith(180_000);
+      expect(timeout).toHaveBeenCalledWith(15_000);
     } finally {
       timeout.mockRestore();
     }

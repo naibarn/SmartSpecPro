@@ -190,6 +190,7 @@ function moduleContentType(name: string, supplied: string): string {
 export function createCloudflareStagingApiTransport(input: {
   resolveBundle: CloudflareStagingBundleResolver;
   fetchImpl?: typeof fetch;
+  sleepImpl?: (milliseconds: number) => Promise<void>;
   verifyNativeResources?: (descriptor: CloudflareNativeBindingDescriptor, target: CloudflareStagingTarget) => Promise<void>;
   prepareHttpApplications?: (origin: CloudflareOriginVersionBindings, target: CloudflareStagingTarget, assertAuthorized: () => Promise<void>) => Promise<void>;
   ensureHttpApplications?: (origin: CloudflareOriginVersionBindings, target: CloudflareStagingTarget, version: Version,
@@ -204,6 +205,7 @@ export function createCloudflareStagingApiTransport(input: {
   }) => Promise<{ versionId: string; sourceSha: string; buildDigest: string; configurationDigest: string; trafficShifted: false }>;
 }> {
   const fetchImpl = input.fetchImpl ?? fetch;
+  const sleep = input.sleepImpl ?? ((milliseconds: number) => new Promise<void>(resolve => setTimeout(resolve, milliseconds)));
   const mutationAuthority = new AsyncLocalStorage<() => Promise<void>>();
 
   async function api<T>(token: string, url: string, init: RequestInit = {}): Promise<T> {
@@ -739,17 +741,38 @@ export function createCloudflareStagingApiTransport(input: {
       }
       let originReady = configurationDigest === undefined;
       if (healthy && spaReady && configurationDigest !== undefined) {
-        try {
-          // Exercise the real Linux auth authority, not the Worker's native
-          // health endpoint or an HTML Access login page. No user credentials.
-          const response = await fetchImpl(new URL("/trpc/auth.me", baseUrl), {
-            redirect: "manual", cache: "no-store", signal: AbortSignal.timeout(STAGING_ORIGIN_AUTH_VERIFICATION_TIMEOUT_MS),
-          });
-          if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
-            const body = await response.json() as { result?: { data?: { json?: unknown } }; error?: unknown };
-            originReady = body?.error === undefined && body?.result?.data?.json === null;
-          } else await response.body?.cancel();
-        } catch { /* Origin failures remain a failed verification, never asset-only success. */ }
+        // An on-demand application Container may return a transient 502/503
+        // while it starts. A single immediate auth probe falsely rolled back
+        // otherwise healthy versions before the 150s Container readiness
+        // window elapsed. Retry transient transport/status failures within a
+        // single bounded window; definitive auth/response failures still fail.
+        const deadline = Date.now() + STAGING_ORIGIN_AUTH_VERIFICATION_TIMEOUT_MS;
+        const retryDelays = [1_000, 2_000, 4_000, 8_000, 16_000, 32_000, 48_000, 60_000];
+        for (let attempt = 0; attempt <= retryDelays.length; attempt++) {
+          const remainingMs = deadline - Date.now();
+          if (remainingMs <= 0) break;
+          let retryable = false;
+          try {
+            // Exercise the real application auth path, not only Worker health
+            // or an HTML Access login page. No user credentials are sent.
+            const response = await fetchImpl(new URL("/trpc/auth.me", baseUrl), {
+              redirect: "manual", cache: "no-store",
+              signal: AbortSignal.timeout(Math.min(15_000, remainingMs)),
+            });
+            if (response.status === 200 && response.headers.get("content-type")?.includes("application/json")) {
+              const body = await response.json() as { result?: { data?: { json?: unknown } }; error?: unknown };
+              originReady = body?.error === undefined && body?.result?.data?.json === null;
+            } else {
+              retryable = [408, 429, 502, 503, 504].includes(response.status);
+              await response.body?.cancel();
+            }
+          } catch {
+            retryable = true;
+          }
+          if (originReady || !retryable || attempt === retryDelays.length) break;
+          const delay = Math.min(retryDelays[attempt]!, deadline - Date.now());
+          if (delay > 0) await sleep(delay);
+        }
         const after = await api<{ deployments?: Deployment[] }>(token,
           `${API_ROOT}/accounts/${target.accountRef}/workers/scripts/${target.workerRef}/deployments`);
         if (after.deployments?.[0]?.id !== deploymentId) throw new CloudflareStagingTransportError("CLOUDFLARE_STAGING_ACTIVE_DEPLOYMENT_MISMATCH");
