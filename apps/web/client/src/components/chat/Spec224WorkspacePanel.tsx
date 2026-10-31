@@ -196,6 +196,26 @@ export function readinessMessage(code: string, capabilityAckState?: RunnerOption
   return messages[code] ?? (simpleMode ? "Runner หรือ workspace ยังไม่พร้อม ตรวจสอบการเชื่อมต่อและโหลดสถานะใหม่" : code);
 }
 
+export function preparationBlockerMessage(code: string): string {
+  const messages: Record<string, string> = {
+    WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE: "Runner ยังอ่าน Git revision และ source fingerprint ของ Workspace ไม่ได้ ให้เลือก Workspace ที่เป็น Git repository แล้วโหลดรายการใหม่",
+    WORKSPACE_SOURCE_ADMISSION_DIRTY_PATHS_UNKNOWN: "Runner ยังยืนยันรายการไฟล์ที่เปลี่ยนใน Workspace ไม่ได้ จึงเริ่มงานอย่างปลอดภัยไม่ได้",
+    WORKSPACE_SOURCE_ADMISSION_SCOPE_CONFLICT: "ขอบเขตงานชนกับไฟล์ที่มีการเปลี่ยนแปลงอยู่ ให้ตรวจ diff หรือปรับขอบเขตงานก่อน",
+    REQUIREMENTS_REQUIRED: "ยังไม่มีข้อกำหนดสำหรับงาน เลือก Canonical SPEC หรือแนบไฟล์ Spec ก่อนเตรียมแผน",
+    NO_RUNNABLE_WORK_PACKAGES: "ยังไม่มี work package ที่พร้อมเริ่ม ตรวจว่าข้อกำหนดระบุขั้นตอนงานที่ทำได้ครบถ้วน",
+    PROMPT_WRITE_SCOPE_PREFLIGHT_REQUIRED: "ยังตรวจ write scope ของ prompt ไม่ผ่าน โปรดระบุขอบเขตไฟล์ที่อนุญาตก่อนเริ่ม",
+  };
+  return messages[code] ?? "ยังเริ่มงานไม่ได้จนกว่าเงื่อนไขความปลอดภัยและความพร้อมจะผ่าน";
+}
+
+export function shouldOfferPromptStartAction(
+  mode: "prompt" | "spec_set",
+  simpleMode: boolean,
+  workPackageId: string,
+): boolean {
+  return simpleMode && mode === "prompt" && workPackageId === "prompt";
+}
+
 function runnerPlatformLabel(os?: string): string {
   return ({ windows: "Windows", linux: "Linux", macos: "macOS" } as Record<string, string>)[os ?? ""] ?? os ?? "OS ไม่ทราบ";
 }
@@ -1495,21 +1515,25 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               <p className="mt-1 text-xs">ข้อกำหนด {preparation.requirementCount} · work packages ที่พร้อมเริ่ม {preparation.runnableWorkPackageIds.length}</p>
               {runnerReadiness ? (
                 <Text role="status" type="supporting">
-                  {simpleMode ? (runnerReadiness.ready ? "เครื่องมือพร้อมให้ตรวจสิทธิ์ก่อนเริ่ม" : "เครื่องมือยังไม่พร้อม ตรวจสอบการเชื่อมต่อและสิทธิ์ Runner") : <>Codex: {runnerReadiness.code} · นโยบาย: {runnerReadiness.policyDecision === "pending" ? "รอประเมินตามขอบเขตของ Start" : runnerReadiness.policyDecision}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</>}
+                  {simpleMode
+                    ? runnerReadiness.ready
+                      ? "เครื่องมือพร้อมให้ส่ง Goal เข้าตรวจสิทธิ์ก่อนเริ่ม"
+                      : `เครื่องมือยังไม่พร้อม · ${readinessMessage(runnerReadiness.code, selectedRunner?.capabilityAckState, true)}`
+                    : <>Codex: {runnerReadiness.code} · นโยบาย: {runnerReadiness.policyDecision === "pending" ? "รอประเมินตามขอบเขตของ Start" : runnerReadiness.policyDecision}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</>}
                 </Text>
               ) : null}
-              {preparation.blockers.length ? simpleMode ? <p className="mt-1 text-xs text-amber-800">ยังมีเงื่อนไขที่ต้องตรวจสอบก่อนเริ่มงาน</p> : <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
+              {preparation.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{simpleMode ? preparationBlockerMessage(item) : item}</li>)}</ul> : null}
               {effectiveSpecSource === "catalog" && canonicalHandoff?.status === "CURRENT" && preparation.runnableWorkPackageIds.length > 0 && !(preparation.workPackages ?? []).some(item => preparation.runnableWorkPackageIds.includes(item.id) && isNextReadyPackage(item)) ? <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950" role="alert">handoff ระบุ next WorkUnit เป็น “{nextReadyWorkunit ?? "ยังไม่กำหนด"}” แต่ไม่มี runnable package ที่ตรงกัน จึงปิดการเริ่มงานเพื่อป้องกันการทำ WorkUnit เก่าซ้ำ โปรด reconcile handoff ผ่าน writer กลางหรือเตรียม package ที่ตรงกัน</p> : null}
               {(preparation.workPackages ?? []).map((workPackage, index) => (
                 <section key={workPackage.id} className="mt-2 border-t border-[var(--color-border)] pt-2" aria-label={simpleMode ? `งานส่วนที่ ${index + 1}` : `Work package ${workPackage.externalId}`}>
                   <p className="text-xs font-medium">{simpleMode ? `งานส่วนที่ ${index + 1}` : `${workPackage.externalId} · ${workPackage.readiness}`}</p>
-                  {workPackage.blockers.length && !simpleMode ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : null}
+                  {workPackage.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((item, index) => <li key={`${item}-${index}`}>{simpleMode ? preparationBlockerMessage(item) : item}</li>)}</ul> : null}
                   {workPackage.sourceAdmission?.status === "BLOCKED" ? <p className="mt-1 text-xs text-amber-800" role="status">{simpleMode ? "ขอบเขตงานยังทับกับไฟล์ที่เปลี่ยนอยู่ หรือข้อมูล source ยังไม่ครบ" : `Source preflight: ${workPackage.sourceAdmission.code}${workPackage.sourceAdmission.conflictingPaths?.length ? ` · ชนกับ ${workPackage.sourceAdmission.conflictingPaths.join(", ")}` : ""}`}</p> : null}
                   {workPackage.sourceAdmission?.status === "SAFE_DISJOINT_DIRTY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "ไฟล์ที่เปลี่ยนอยู่แยกจากขอบเขตงานนี้" : `Source preflight: ขอบเขตไม่ชนไฟล์ที่เปลี่ยนอยู่ · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {workPackage.sourceAdmission?.status === "SAFE_CANDIDATE_OVERLAY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "Runner จะแยกพื้นที่ทำงานของงานนี้ และตรวจไฟล์ก่อนนำผลกลับ เพื่อรักษาการเปลี่ยนแปลงเดิมที่งานไม่ได้แก้" : `Source preflight: SAFE_CANDIDATE_OVERLAY · ${workPackage.sourceAdmission.dirtyPathCount ?? 0} existing changes protected by candidate CAS and execution lease · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
-                  {preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isNextReadyPackage(workPackage)) ? (
-                    <Button type="button" className="mt-2" disabled={startMutation.isPending || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
-                      {startMutation.isPending ? "กำลังส่งคำสั่ง…" : mode === "prompt" || simpleMode ? "สั่งพัฒนา" : `สั่งพัฒนา ${workPackage.externalId}`}
+                  {(preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isNextReadyPackage(workPackage)) || shouldOfferPromptStartAction(mode, simpleMode, workPackage.id)) ? (
+                    <Button type="button" className="mt-2 w-full sm:w-auto" disabled={startMutation.isPending || !preparation.runnableWorkPackageIds.includes(workPackage.id) || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
+                      {startMutation.isPending ? "กำลังส่งคำสั่ง…" : !preparation.runnableWorkPackageIds.includes(workPackage.id) ? "ยังเริ่มไม่ได้ · แก้เงื่อนไขด้านบนก่อน" : mode === "prompt" || simpleMode ? "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}
                 </section>

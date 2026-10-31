@@ -288,6 +288,18 @@ describe("UnifiedWorkspace", () => {
     await waitFor(() => expect(state.location).toHaveBeenCalledWith("/chat?mode=tasks&c=902&newGoal=1"));
   });
 
+  it("sizes the Goal review for phone, tablet, and desktop without horizontal scrolling", async () => {
+    state.search = "mode=tasks&c=901&newGoal=1";
+    render(<UnifiedWorkspace />);
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog.className).toContain("w-[calc(100vw-1rem)]");
+    expect(dialog.className).toContain("sm:max-w-2xl");
+    expect(dialog.className).toContain("md:max-w-4xl");
+    expect(dialog.className).toContain("xl:max-w-6xl");
+    expect(dialog.className).toContain("overflow-x-hidden");
+  });
+
   it("offers Mission Control an authorized New Agent Task action", async () => {
     state.search = "mode=mission";
     render(<UnifiedWorkspace />);

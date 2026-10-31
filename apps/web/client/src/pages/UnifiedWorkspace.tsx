@@ -588,7 +588,7 @@ export default function UnifiedWorkspace() {
             }
           }
         }}>
-          <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
+          <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none overflow-x-hidden overflow-y-auto p-4 sm:max-h-[92dvh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:p-5 md:max-w-4xl md:p-6 xl:max-w-6xl">
             <DialogHeader><DialogTitle>ตรวจสอบ Goal ก่อนส่งอนุมัติ</DialogTitle></DialogHeader>
             <Spec224WorkspacePanel
               conversationId={conversationId}
@@ -608,7 +608,7 @@ export default function UnifiedWorkspace() {
         setPilotOpen(open);
         if (!open && pilotRequested && mode === "chat") navigate("chat", pilotConversationId ?? conversationId, null);
       }}>
-        <DialogContent className="max-h-[92dvh] max-w-3xl overflow-y-auto">
+        <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-none overflow-x-hidden overflow-y-auto p-4 sm:max-h-[92dvh] sm:w-[calc(100vw-2rem)] sm:max-w-2xl sm:p-5 md:max-w-4xl md:p-6 xl:max-w-6xl">
           <DialogHeader>
             <DialogTitle>First Run Pilot · ทดสอบระบบครั้งแรก</DialogTitle>
           </DialogHeader>
