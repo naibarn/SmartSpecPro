@@ -1055,6 +1055,27 @@ fn start_runner_inner(state: &RunnerState) -> Result<(), String> {
     )
 }
 
+fn resolve_start_workspace(
+    workspace_id: Option<String>,
+    resolve: impl FnOnce(&str) -> Result<(), String>,
+) -> Result<(Option<String>, Option<String>), String> {
+    let Some(workspace_id) = workspace_id else {
+        return Ok((None, None));
+    };
+    match resolve(&workspace_id) {
+        Ok(()) => Ok((Some(workspace_id), None)),
+        Err(error)
+            if error.starts_with("RUNNER_WORKSPACE")
+                || error.starts_with("RUNNER_TRUSTED_WORKSPACE") =>
+        {
+            // The Control Plane connection is independent of a local workspace. Keep the
+            // Runner online, but remove the stale default so it cannot authorize local access.
+            Ok((None, Some(error)))
+        }
+        Err(error) => Err(error),
+    }
+}
+
 #[tauri::command]
 fn retry_runner_control(state: State<'_, RunnerState>) -> Result<(), String> {
     if !state.lifecycle.running.load(Ordering::Acquire)
@@ -1100,8 +1121,11 @@ fn start_runner_parts(
     if lifecycle.running.load(Ordering::Acquire) {
         return Ok(());
     }
-    if let Some(workspace_id) = settings.default_workspace_id {
-        workspace_registry::resolve(&config, &workspace_id)?;
+    let (default_workspace_id, workspace_warning) =
+        resolve_start_workspace(settings.default_workspace_id, |workspace_id| {
+            workspace_registry::resolve(&config, workspace_id).map(|_| ())
+        })?;
+    if let Some(workspace_id) = default_workspace_id {
         std::env::set_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID", workspace_id);
     } else {
         std::env::remove_var("SAH_RUNNER_DEFAULT_WORKSPACE_ID");
@@ -1115,7 +1139,7 @@ fn start_runner_parts(
     let running = lifecycle.running.clone();
     let last_error = lifecycle.last_error.clone();
     if let Ok(mut error) = last_error.lock() {
-        *error = None;
+        *error = workspace_warning;
     }
     lifecycle.running.store(true, Ordering::Release);
     lifecycle.stopping.store(false, Ordering::Release);
@@ -1737,7 +1761,7 @@ mod credential_retry_tests {
 
 #[cfg(test)]
 mod startup_settings_tests {
-    use super::DesktopSettings;
+    use super::{resolve_start_workspace, DesktopSettings};
 
     #[test]
     fn existing_settings_keep_their_login_loop_behavior() {
@@ -1765,6 +1789,38 @@ mod startup_settings_tests {
             assert_eq!(restored.auto_start_enabled, login);
             assert_eq!(restored.auto_start_runner_loop(), loop_enabled);
         }
+    }
+
+    #[test]
+    fn missing_default_workspace_does_not_block_runner_autostart() {
+        let (workspace_id, warning) =
+            resolve_start_workspace(Some("moved-workspace".into()), |_| {
+                Err("RUNNER_WORKSPACE_PATH_NOT_FOUND".into())
+            })
+            .unwrap();
+
+        assert_eq!(workspace_id, None);
+        assert_eq!(warning.as_deref(), Some("RUNNER_WORKSPACE_PATH_NOT_FOUND"));
+    }
+
+    #[test]
+    fn valid_default_workspace_is_kept_for_runner_autostart() {
+        let (workspace_id, warning) =
+            resolve_start_workspace(Some("workspace-1".into()), |_| Ok(())).unwrap();
+
+        assert_eq!(workspace_id.as_deref(), Some("workspace-1"));
+        assert_eq!(warning, None);
+    }
+
+    #[test]
+    fn no_default_workspace_starts_without_a_workspace_warning() {
+        let (workspace_id, warning) = resolve_start_workspace(None, |_| {
+            panic!("resolver must not run when no default workspace is configured")
+        })
+        .unwrap();
+
+        assert_eq!(workspace_id, None);
+        assert_eq!(warning, None);
     }
 }
 

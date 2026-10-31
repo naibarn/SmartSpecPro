@@ -236,6 +236,8 @@ function applyRunnerStatus(status) {
   const credentialState = status.credentialState;
   const credentialsReady = status.credentialsReady;
   const controlPlaneConnected = status.controlPlaneConnected;
+  const workspaceUnavailable = typeof status.lastError === "string"
+    && (status.lastError.startsWith("RUNNER_WORKSPACE") || status.lastError.startsWith("RUNNER_TRUSTED_WORKSPACE"));
   if (controlPlaneConnected) connectAttemptError = "";
   const connectionLabel = connectPending
     ? "รออนุมัติในเบราว์เซอร์"
@@ -246,13 +248,16 @@ function applyRunnerStatus(status) {
       : credentialState === "retrying"
         ? "ต่ออายุไม่สำเร็จ — จะลองใหม่"
         : status.lastError === "RUNNER_PROTOCOL_INCOMPATIBLE" ? "Protocol ไม่เข้ากัน"
+          : workspaceUnavailable && controlPlaneConnected ? "เชื่อมต่อแล้ว · เลือก Workspace ใหม่"
           : status.running && status.lastError ? "กำลังเชื่อมต่อใหม่"
           : controlPlaneConnected ? "เชื่อมต่อแล้ว"
           : credentialsReady && status.running ? "รอ heartbeat จาก SmartAIHub"
             : credentialsReady ? "ออฟไลน์ · Runner หยุดอยู่" : "ยังไม่เชื่อมต่อ";
   elements["connection-state"].textContent = connectionLabel;
-  elements["connection-state"].className = `state-pill${controlPlaneConnected && !status.lastError && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
-  elements["connection-detail"].textContent = status.lastError === "RUNNER_PROTOCOL_INCOMPATIBLE"
+  elements["connection-state"].className = `state-pill${controlPlaneConnected && (!status.lastError || workspaceUnavailable) && credentialState !== "reauth_required" && credentialState !== "retrying" ? " good" : " warn"}`;
+  elements["connection-detail"].textContent = workspaceUnavailable && controlPlaneConnected
+    ? `SmartAIHub ยืนยัน heartbeat ของ Runner ${status.runnerId} แล้ว แต่ Workspace หลักเดิมใช้ไม่ได้ ให้หยุด Runner แล้วเลือกโฟลเดอร์ใหม่ก่อนเริ่มงานที่ต้องใช้ Workspace`
+    : status.lastError === "RUNNER_PROTOCOL_INCOMPATIBLE"
     ? "Control Plane ปฏิเสธ protocol ของ Runner รุ่นนี้ จึงหยุดส่ง capability และงานจนกว่าจะติดตั้งรุ่นที่รองรับ"
     : credentialState === "reauth_required"
       ? status.credentialErrorCode === "RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID"
@@ -375,6 +380,8 @@ function applyRunnerStatus(status) {
         : "ยังไม่มีหลักฐานยืนยัน capability จาก SmartAIHub";
   const runtimeText = stopPending || status.stopping
     ? "Runner กำลังยกเลิกงานและรอปิด child processes"
+    : workspaceUnavailable && controlPlaneConnected
+      ? "Runner เชื่อมต่อ SmartAIHub แล้ว แต่ Workspace หลักใช้ไม่ได้ ต้องเลือก Workspace ใหม่ก่อนทำงานที่ต้องใช้โฟลเดอร์"
     : status.lastError ? "Runner พบข้อผิดพลาด ตรวจข้อความแจ้งปัญหาด้านบน"
       : status.running && !controlPlaneConnected ? "Runner ทำงานอยู่ แต่ยังไม่ได้รับ heartbeat ยืนยันจาก SmartAIHub ภายใน 5 นาที"
         : status.running ? "Runner ทำงานอยู่และ Control Plane ยืนยัน heartbeat ล่าสุดแล้ว" : "Runner หยุดอยู่";
