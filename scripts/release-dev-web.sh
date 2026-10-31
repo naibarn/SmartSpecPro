@@ -125,12 +125,75 @@ else
 fi
 
 BUILD_RESULT="$(python3 -c 'import json,sys; d=json.load(sys.stdin); print(d.get("result_file") or "")' <<<"$BUILD_RECORD")"
+CANONICAL_BUILD_RESULT="$BUILD_RESULT"
 SOURCE_SHA="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["source_revision"])' <<<"$BUILD_RECORD")"
 ARTIFACT_PATH="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["artifact"]["artifact_path"])' <<<"$BUILD_RECORD")"
 ARTIFACT_DIGEST="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["artifact"]["artifact_digest"])' <<<"$BUILD_RECORD")"
-PUBLIC_DIR="${ARTIFACT_PATH}/public"
-[[ -f "${PUBLIC_DIR}/index.html" && -f "$BUILD_RESULT" ]] || { echo "Verified build output is incomplete." >&2; exit 24; }
+[[ -f "${ARTIFACT_PATH}/public/index.html" && -f "$BUILD_RESULT" ]] || { echo "Verified build output is incomplete." >&2; exit 24; }
 [[ "$(git -C "${REPOSITORY_ROOT}" rev-parse HEAD)" == "$SOURCE_SHA" ]] || { echo "Build source is not the integrated development checkout." >&2; exit 24; }
+
+# Canonical build workspaces are disposable cache. Publish a self-contained,
+# durable public artifact before pointing the long-running dev service at it.
+DEV_RELEASE_ROOT="${HOME}/.local/share/smartspec-dev-web/releases"
+RELEASE_ID="${SOURCE_SHA}-${ARTIFACT_DIGEST#sha256:}"
+PUBLISHED_RELEASE="${DEV_RELEASE_ROOT}/${RELEASE_ID}"
+PUBLISHED_RECEIPT="${PUBLISHED_RELEASE}/build-result.json"
+PUBLISHED_PUBLIC="${PUBLISHED_RELEASE}/public"
+mkdir -p "$DEV_RELEASE_ROOT"
+if [[ ! -d "$PUBLISHED_RELEASE" ]]; then
+  PUBLISH_STAGING="$(mktemp -d "${DEV_RELEASE_ROOT}/.staging.XXXXXX")"
+  cp -a "${ARTIFACT_PATH}/public" "${PUBLISH_STAGING}/public"
+  python3 - "$BUILD_RESULT" "$PUBLISH_STAGING/build-result.json" "$ARTIFACT_PATH" "$PUBLISH_STAGING" "$SOURCE_SHA" "$ARTIFACT_DIGEST" "$PUBLISHED_RECEIPT" <<'PY'
+import hashlib, json, os, sys
+from pathlib import Path
+source_receipt, target_receipt, source_artifact, target_release, source_sha, artifact_digest, final_receipt = sys.argv[1:]
+source_artifact, target_release = Path(source_artifact), Path(target_release)
+
+def digest_tree(root):
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix().encode()
+        if path.is_symlink():
+            raise SystemExit(f"Published web assets may not contain symlinks: {path}")
+        if path.is_file():
+            digest.update(len(relative).to_bytes(4, "big")); digest.update(relative)
+            with path.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
+    return digest.hexdigest()
+
+source_public, target_public = source_artifact / "public", target_release / "public"
+source_digest, target_digest = digest_tree(source_public), digest_tree(target_public)
+if source_digest != target_digest or not (target_public / "index.html").is_file():
+    raise SystemExit("Durable development artifact copy failed integrity verification.")
+record = json.loads(Path(source_receipt).read_text(encoding="utf-8"))
+if record.get("source_revision") != source_sha or record.get("artifact", {}).get("artifact_digest") != artifact_digest:
+    raise SystemExit("Canonical build receipt does not match the requested release identity.")
+record["canonical_artifact_path"] = str(source_artifact)
+record["canonical_build_result"] = source_receipt
+record["published_public_sha256"] = target_digest
+record["artifact"]["artifact_path"] = str(target_release)
+record["result_file"] = final_receipt
+Path(target_receipt).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+os.chmod(target_receipt, 0o600)
+PY
+  chmod -R u=rwX,go=rX "$PUBLISH_STAGING"
+  mv "$PUBLISH_STAGING" "$PUBLISHED_RELEASE"
+fi
+python3 - "$PUBLISHED_RECEIPT" "$PUBLISHED_PUBLIC" "$SOURCE_SHA" "$ARTIFACT_DIGEST" <<'PY'
+import json, sys
+from pathlib import Path
+receipt, public, source_sha, artifact_digest = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4]
+if not receipt.is_file() or not (public / "index.html").is_file():
+    raise SystemExit("Durable development release is incomplete.")
+record = json.loads(receipt.read_text(encoding="utf-8"))
+if (record.get("status") != "BUILD_PASSED" or record.get("source_revision") != source_sha
+        or record.get("artifact", {}).get("artifact_digest") != artifact_digest
+        or Path(record.get("artifact", {}).get("artifact_path", "")).resolve() != public.parent.resolve()):
+    raise SystemExit("Durable development release does not match its canonical build receipt.")
+PY
+BUILD_RESULT="$PUBLISHED_RECEIPT"
+PUBLIC_DIR="$PUBLISHED_PUBLIC"
 
 mkdir -p "$DROPIN_DIR" "$STATE_DIR"
 DROPIN_BACKUP="$(mktemp)"
@@ -253,7 +316,7 @@ if [[ "$PRODUCTION_BEFORE" != "$PRODUCTION_AFTER" || "$PRODUCTION_RELEASE_BEFORE
   exit 26
 fi
 
-python3 - "$DEPLOYMENT_RECORD" "$BUILD_RESULT" "$SOURCE_SHA" "$RUNTIME_REVISION" "$ARTIFACT_DIGEST" "$ARTIFACT_PATH" "$PUBLIC_DIR" "$PRODUCTION_RELEASE_AFTER" "$PRODUCTION_BEFORE" "$PRODUCTION_AFTER" "$PUBLIC_ASSET_PROOF" <<'PY'
+python3 - "$DEPLOYMENT_RECORD" "$BUILD_RESULT" "$SOURCE_SHA" "$RUNTIME_REVISION" "$ARTIFACT_DIGEST" "$ARTIFACT_PATH" "$PUBLIC_DIR" "$PRODUCTION_RELEASE_AFTER" "$PRODUCTION_BEFORE" "$PRODUCTION_AFTER" "$PUBLIC_ASSET_PROOF" "$CANONICAL_BUILD_RESULT" "$PUBLISHED_RELEASE" <<'PY'
 import json, sys, time
 from pathlib import Path
 target = Path(sys.argv[1])
@@ -265,11 +328,13 @@ record = {
   "port": 3100,
   "tunnel_service": "smartspec-dev-tunnel.service",
   "build_result": sys.argv[2],
+  "canonical_build_result": sys.argv[12],
   "source_sha": sys.argv[3],
   "backend_runtime_revision": sys.argv[4],
   "artifact_sha256": sys.argv[5],
   "artifact_path": sys.argv[6],
   "public_dir": sys.argv[7],
+  "durable_release_dir": sys.argv[13],
   "public_asset_proof": json.loads(sys.argv[11]),
   "production_release_preserved": sys.argv[8],
   "production_services_fingerprint_before": sys.argv[9],
