@@ -6,7 +6,7 @@
 - Continuation: `RECONCILIATION_REQUIRED` (UNRESOLVED)
 - Requirements: 0 pass / 201 unresolved of 201
 - Next action: Owner action: install the SHA-verified Windows Runner 0.2.52 review build over the existing current-user installation, complete the browser pairing request shown in the Runner UI, and capture same-Runner identity, capability acknowledgement, and heartbeat evidence.
-- Manifest generation: 48
+- Manifest generation: 49
 
 ## Source-declared status and relationship claims
 

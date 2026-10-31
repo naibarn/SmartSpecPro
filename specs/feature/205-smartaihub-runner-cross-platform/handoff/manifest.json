@@ -117,27 +117,27 @@
   "blockers": [
     {
       "class": "DEPLOYMENT",
-      "id": "WINDOWS_REFRESH_LIVE_VERIFICATION_PENDING",
-      "next_action": "Verify PR #412 in the normally deployed Control Plane, complete browser reauthorization on Windows, and capture fresh authenticated session/capability/Codex/workspace evidence. If refresh still fails, capture the sanitized status/error code and server correlation record.",
-      "root_cause": "The user screenshot shows RUNNER_CONNECT_REQUEST_REJECTED_400 but no response body, request ID, or deployed SHA. At source 19b5a890b41b95172bcd97a12fcccaa32d9984af, the refresh route mapped unexpected exceptions to generic HTTP 400; PR #412 merged at 1df17e691f710df466737c586838c37f7c90ff6a changes that fallback to sanitized HTTP 500. The screenshot does not establish that this branch caused the observed response, and the backend deployment remains unverified."
+      "id": "WINDOWS_RUNNER_PRODUCTION_TARGET_UNVERIFIED",
+      "next_action": "Determine the existing Windows Runner Control Plane target. If it is smartaihub.app, the fix requires the existing production release authority; this task deployed only aimarkethubs.com development.",
+      "root_cause": "A sanitized owner Debug Report proves the start endpoint returned RUNNER_CONNECT_START_REJECTED_403. Code inspection identified Cloudflare-edge CSRF rejection of native no-Origin POSTs before the pairing handler. The fix is deployed and runtime-probed on aimarkethubs.com only; the Runner target is not in the report."
     },
     {
       "class": "ACCEPTANCE",
       "id": "WINDOWS_0_2_52_OWNER_HOST_RUNTIME_ACCEPTANCE_PENDING",
-      "next_action": "Download `smartaihub-runner-windows-x64-0.2.52-unsigned-review` (artifact ID 13021741314) from workflow 41145171095, verify installer SHA-256 61a34aab2b84ef1ed7504c11d42116f2c53cc3703349f3ff23badff727d02a46, install over the existing current-user Runner without clearing app data, approve the visible browser pairing request using the existing authorized account, then verify unchanged Runner/device identity, fresh capability ACK, heartbeat, and no duplicate registration/session.",
-      "root_cause": "The owner installed 0.2.51 but reports that browser reconnection still does not complete; the screenshot shows RUNNER_REFRESH_CREDENTIAL_SIGNATURE_INVALID and an enabled button. That evidence does not establish why the Control Plane rejects the refresh credential or whether browser launch/pairing occurred. Source 0f70bb90 adds registered Windows URL launching and displays the verification URL during the pending pairing flow. Host runtime acceptance is still unverified."
+      "next_action": "Use the existing installed 0.2.52 Runner against aimarkethubs.com, approve the real pairing page, and verify unchanged Runner/device identity, fresh capability ACK and heartbeat. Do not create a second enrollment.",
+      "root_cause": "No valid pairing request was created during verification and owner host acceptance has not yet been observed."
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "dcb3d54a7b4e50cbcb6999f1ea79dba57ac36c99",
+    "expected_canonical_sha": "6d9d829bdb4bc46474b68e3d21bec46626a8a77b",
     "expected_spec_digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf"
   },
   "continuation": {
-    "next_action": "Owner action: download `smartaihub-runner-windows-x64-0.2.52-unsigned-review` from https://github.com/naibarn/SmartSpecPro/actions/runs/41145171095 (artifact ID 13021741314). Installer `SmartAIHub Runner_0.2.52_x64-setup.exe`, SHA-256 `61a34aab2b84ef1ed7504c11d42116f2c53cc3703349f3ff23badff727d02a46`, unsigned-review. Verify the checksum, install over the existing current-user Runner without uninstalling or clearing app data, click browser reconnect, and approve the displayed URL using the existing authorized account. Then verify unchanged Runner/device identity, fresh capability ACK, and heartbeat.",
+    "next_action": "Windows Runner 0.2.52 is already installed. First confirm its Control Plane target. If it targets https://aimarkethubs.com, click browser reconnect and approve the request; then capture same Runner/device identity, capability ACK and heartbeat. If it targets smartaihub.app, this development-only repair is not active there; do not claim runtime acceptance until the authorized production release path is separately resolved.",
     "next_ready_workunit": "WINDOWS_0_2_52_OWNER_HOST_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Browser reconnect UX fix integrated at 0f70bb90c2443b09ec36d09b958636bd609e91b0; 17 Runner connection tests, Tauri compile, JS syntax/format checks, hosted Windows tests, and Windows installer build passed. Artifact 13021741314 was downloaded; installer SHA-256 verified against its manifest. Resume after the existing Windows Runner is updated and the browser approval is completed.",
-    "waiting_predicate": "Owner verifies SHA-256 61a34aab2b84ef1ed7504c11d42116f2c53cc3703349f3ff23badff727d02a46, installs unsigned review version 0.2.52 over the existing current-user installation, clicks browser reconnect, and approves the displayed request. Then verify unchanged Runner/device identity, fresh capability acknowledgement and heartbeat, and no duplicate registration/session."
+    "resume_point": "Root cause for the no-browser symptom is identified and fixed: native POST /api/runners/connect/start had no Origin and was rejected by CSRF at Cloudflare ingress before pairing URL creation. Source 6d9d829bdb4bc46474b68e3d21bec46626a8a77b is integrated and development release is active on aimarkethubs.com. Non-mutating runtime probe reaches route validation (HTTP 400 RUNNER_REQUEST_INVALID, rather than CSRF 403). Owner must retry using the existing 0.2.52 Runner against the development endpoint and approve the real request. Runtime acceptance remains pending.",
+    "waiting_predicate": "Owner confirms the installed Runner points to aimarkethubs.com, approves the browser pairing request through the existing account, and supplies fresh Runner/device identity, capability ACK and heartbeat evidence; otherwise a production-specific release decision remains outside the current dev-only authorization."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -374,7 +374,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 48,
+  "generation": 49,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "111ddc5516b9c70bd5ded066c91536667b7dc3dbca94769a058cd0f0ca73b5cf",
@@ -413,7 +413,7 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "dcb3d54a7b4e50cbcb6999f1ea79dba57ac36c99",
+    "canonical_sha": "6d9d829bdb4bc46474b68e3d21bec46626a8a77b",
     "integrated": true,
     "integrated_at": "2026-10-30T14:22:00Z"
   },
@@ -1598,17 +1598,18 @@
     "unresolved": 201
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T23:51:22.562238Z",
+  "updated_at": "2026-10-31T00:51:35.532383Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-auth-reconnect-fix-20261030.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-reauthorization-button-20261030.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-browser-reconnect-ux-20261031.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-browser-reconnect-ux-20261031.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-connect-start-csrf-403-20261031.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "0f70bb90c2443b09ec36d09b958636bd609e91b0",
+    "sha": "6d9d829bdb4bc46474b68e3d21bec46626a8a77b",
     "status": "PARTIAL",
     "task_regressions": []
   }
