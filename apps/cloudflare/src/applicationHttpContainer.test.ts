@@ -51,6 +51,32 @@ describe("bounded private application HTTP compute", () => {
     expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.profile.image,
       entrypoint: ["node", "--import=tsx", "--input-type=module", "-e", expect.stringContaining("ws://database.application.internal/")] }));
   });
+  it("allows the exact tenant-scoped application role through the Staging VPC bridge", async () => {
+    const f = fixture();
+    Object.assign(f.environment, { DATABASE_URL: "postgresql://sah_cf_app_abcdef012345:fixture-secret@db-staging.smartaihub.app:5432/smartspec",
+      CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" });
+    await f.controller.ensureRunning();
+    expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.profile.image,
+      entrypoint: ["node", "--import=tsx", "--input-type=module", "-e", expect.stringContaining("sah_cf_app_[a-f0-9]{12}")] }));
+  });
+  it("rejects a Staging VPC application role scoped to another namespace", async () => {
+    const f = fixture();
+    Object.assign(f.environment, { DATABASE_URL: "postgresql://sah_cf_app_ffffffffffff:fixture-secret@db-staging.smartaihub.app:5432/smartspec",
+      CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" });
+    await expect(f.controller.ensureRunning()).rejects.toThrow("DATABASE_SCOPE_DENIED");
+    expect(f.container.start).not.toHaveBeenCalled(); expect(f.storage.put).not.toHaveBeenCalled();
+  });
+  it("starts the Python Staging runtime with the same exact application-role contract", async () => {
+    const f = fixture();
+    f.profile.runtime = "python-http";
+    f.profile.image = f.profile.image.replace("-node-http@", "-python-http@");
+    f.container.images.python = f.profile.image;
+    Object.assign(f.environment, { DATABASE_URL: "postgresql+asyncpg://sah_cf_app_abcdef012345:fixture-secret@db-staging.smartaihub.app:5432/smartspec",
+      CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT: "private-vpc-websocket-v1" });
+    await f.controller.ensureRunning();
+    expect(f.container.start).toHaveBeenCalledWith(expect.objectContaining({ image: f.profile.image,
+      entrypoint: ["python", "-c", expect.stringContaining("role_pattern=r'sah_cf_app_[a-f0-9]{12}'")] }));
+  });
   it("rejects a foreign database role before reserving or starting a paid VM", async () => {
     const f = fixture();
     Object.assign(f.profile, { targetId: "smartspec-cloudflare-runtime", namespace: "smartspec-production-abcdef012345", instance: "basic" });

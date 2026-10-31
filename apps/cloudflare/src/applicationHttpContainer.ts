@@ -291,9 +291,16 @@ export class ApplicationHttpContainerController {
         state.starts >= maxLifetimeStarts || state.reservedSeconds + reservation > maxLifetimeCompute) throw new Error("APPLICATION_HTTP_COMPUTE_BUDGET_EXHAUSTED");
     const env = applicationEnvironment(this.profile, this.environment, deadline);
     const privateDatabase = this.environment.CLOUDFLARE_APPLICATION_DATABASE_TRANSPORT === "private-vpc-websocket-v1";
-    if (privateDatabase && (this.profile.targetId !== "smartspec-cloudflare-runtime" ||
-        new URL(this.environment.DATABASE_URL).username !== `sah_cf_app_${this.profile.namespace.slice(-12)}`))
-      throw Error("APPLICATION_HTTP_DATABASE_SCOPE_DENIED");
+    if (privateDatabase) {
+      const database = new URL(this.environment.DATABASE_URL);
+      const staging = this.profile.targetId === "smartspec-cloudflare-staging";
+      const expectedHost = staging ? "db-staging.smartaihub.app" : "db.smartaihub.app";
+      const expectedPort = staging ? "5432" : "5433";
+      if (database.hostname !== expectedHost || database.port !== expectedPort ||
+          database.username !== `sah_cf_app_${this.profile.namespace.slice(-12)}` || !database.password ||
+          !["postgres:", "postgresql:", "postgresql+asyncpg:"].includes(database.protocol))
+        throw Error("APPLICATION_HTTP_DATABASE_SCOPE_DENIED");
+    }
     await this.storage.put(KEY, { ...state, starts: state.starts + 1, reservedSeconds: state.reservedSeconds + reservation, activeUntil: deadline,
       ...(production ? { operationRef: this.profile.configurationRef, operationStarts: operationStarts + 1, operationReservedSeconds: operationReserved + reservation } : {}) });
     await this.storage.setAlarm(deadline);

@@ -33,7 +33,7 @@ try{
  const db=new URL(env.DATABASE_URL),host=env.DATABASE_CONNECTOR_HOSTNAME??'',staging=host==='db-staging.smartaihub.app';
  if(env.NODE_ENV!=='production'||env.SMARTAIHUB_APPLICATION_RUNTIME!=='cloudflare-http'||env.CLOUDFLARE_CONTAINER_POLICY!=='on-demand'||
  !Number.isFinite(end)||end<=Date.now()||end-Date.now()>600000||db.hostname!==host||
- !(staging?/^sah_cf_staging_[a-f0-9]{12}$/:/^sah_cf_app_[a-f0-9]{12}$/).test(decodeURIComponent(db.username))||
+ !/^sah_cf_app_[a-f0-9]{12}$/.test(decodeURIComponent(db.username))||
  db.port!==(staging?'5432':'5433')||!db.password||
  !['postgres:','postgresql:'].includes(db.protocol)||[...db.searchParams.keys()].some(k=>/^ssl/i.test(k))||
  env.DATABASE_SSL_MODE!=='verify-full'||!env.DATABASE_SSL_CA)throw Error();
@@ -93,7 +93,7 @@ try:
  env=dict(os.environ);end=datetime.fromisoformat(env.get('CLOUDFLARE_APPLICATION_EXPIRES_AT','').replace('Z','+00:00'))
  remaining=end.timestamp()-datetime.now(timezone.utc).timestamp();db=urlsplit(env['DATABASE_URL'])
  host=env.get('DATABASE_CONNECTOR_HOSTNAME','');staging=host=='db-staging.smartaihub.app'
- role_pattern=r'sah_cf_staging_[a-f0-9]{12}' if staging else r'sah_cf_app_[a-f0-9]{12}'
+ role_pattern=r'sah_cf_app_[a-f0-9]{12}'
  port='5432' if staging else '5433'
  if env.get('ENVIRONMENT')!='production' or env.get('SMARTAIHUB_APPLICATION_RUNTIME')!='cloudflare-http' or env.get('CLOUDFLARE_CONTAINER_POLICY')!='on-demand' or end.tzinfo is None or not 0<remaining<=600 or db.hostname!=host or db.port!=port or not re.fullmatch(role_pattern,db.username or '') or not db.password or db.scheme not in ('postgres','postgresql','postgresql+asyncpg') or any(k.lower().startswith('ssl') for k,_ in parse_qsl(db.query)) or env.get('DATABASE_SSL_MODE')!='verify-full' or not env.get('DATABASE_SSL_CA'):raise ValueError()
  os.environ['DATABASE_URL']=urlunsplit(db._replace(scheme='postgresql+asyncpg',netloc=db.netloc.rsplit('@',1)[0]+'@'+host+':15432'))
