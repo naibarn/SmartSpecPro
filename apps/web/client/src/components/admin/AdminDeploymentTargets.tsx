@@ -91,6 +91,10 @@ function stagingActionFailureText(code: string, text: (en: string, th: string) =
     STAGING_BOOTSTRAP_REQUIRED: ["The first deployment has no rollback baseline yet. Review the one-time bootstrap operation in step 2.", "การ deploy ครั้งแรกยังไม่มีรุ่น rollback ให้ตรวจคำสั่งเริ่ม deploy ครั้งแรกในขั้นตอนที่ 2"],
   };
   if (prerequisites[code]) return text(...prerequisites[code]);
+  if (code === "STAGING_PREFLIGHT_READBACK_TIMEOUT") return text(
+    "Cloudflare verification exceeded its time limit. No deployment was queued. Refresh readiness to try again; authorization stays blocked until verification passes.",
+    "การตรวจหลักฐานจาก Cloudflare เกินเวลาที่กำหนด ยังไม่ได้ส่งงาน deploy ให้กดตรวจความพร้อมซ้ำ ระบบจะเปิดให้อนุมัติเมื่อการตรวจผ่านเท่านั้น",
+  );
   if (code === "STAGING_APPLICATION_HTTP_BROWSER_ORIGIN_REFRESH_REQUIRED") return text(
     "The saved configuration is missing the browser origin policy required for login and email requests. Prepare a new Full Application HTTP candidate in step 1, then authorize it. Existing credentials are retained.",
     "configuration เดิมยังไม่มีนโยบาย origin สำหรับ login และคำขออีเมล ให้กดเตรียม Full Application HTTP candidate ใหม่ในขั้นตอนที่ 1 แล้วจึงอนุมัติ ระบบจะคง credential เดิม",
@@ -555,6 +559,7 @@ export default function AdminDeploymentTargets() {
   const [stagingActionRunning, setStagingActionRunning] = useState(false);
   const [stagingActionStatus, setStagingActionStatus] = useState<StagingActionStatus | null>(null);
   const [stagingRenewalPreflightStalled, setStagingRenewalPreflightStalled] = useState(false);
+  const [stagingDeployPreflightStalled, setStagingDeployPreflightStalled] = useState(false);
   const stagingActionLock = useRef(false);
   const [savedStagingScope, setSavedStagingScope] = useState<{ tenantId: string; projectId: string } | null>(null);
   const tenantsQuery = trpc.systemSettings.listTenants.useQuery(undefined, { retry: 1, refetchOnWindowFocus: true });
@@ -581,6 +586,13 @@ export default function AdminDeploymentTargets() {
     { tenantId, projectId, environment: "staging" },
     { enabled: validScope && environment === "staging" },
   );
+  const stagingDeployPreflightChecking = stagingDeployPreflight.isLoading || stagingDeployPreflight.isFetching;
+  useEffect(() => {
+    setStagingDeployPreflightStalled(false);
+    if (!stagingDeployPreflightChecking) return;
+    const timer = window.setTimeout(() => setStagingDeployPreflightStalled(true), 20_000);
+    return () => window.clearTimeout(timer);
+  }, [stagingDeployPreflightChecking, tenantId, projectId, environment]);
   const stagingRuntimeReadiness = trpc.infrastructure.getCloudflareStagingRuntimeReadiness.useQuery(
     { tenantId, projectId, environment: "staging" },
     { enabled: validScope && environment === "staging" },
@@ -1884,14 +1896,21 @@ export default function AdminDeploymentTargets() {
         <VStack as="section" gap={2}>
           <VStack as="section" gap={2} role="status" aria-live="polite" aria-label={text("Staging next step", "ขั้นตอนถัดไปของ Staging")}
             style={{ padding: "var(--spacing-4)", borderWidth: "thin", borderStyle: "solid", borderColor: "var(--color-border)", borderRadius: "var(--radius-container)" }}>
-            <h3>{stagingDeployPreflight.isLoading ? text("Checking Staging prerequisites…", "กำลังตรวจเงื่อนไข Staging…")
+            <h3>{stagingDeployPreflightChecking ? text("Checking Staging prerequisites…", "กำลังตรวจเงื่อนไข Staging…")
               : stagingHttpRefreshRequired || stagingDeployPreflight.data?.reason === "STAGING_APPLICATION_HTTP_PROFILE_RUNWAY_TOO_SHORT"
                 ? text("Refresh the Staging profile before deploying", "ต้องเตรียม Staging profile ใหม่ก่อน deploy")
                 : stagingDeployPreflight.data?.ready ? text("Ready to authorize Staging deployment", "พร้อมอนุมัติ deploy ไป Staging")
                   : text("Staging is waiting for a prerequisite", "Staging ยังติดเงื่อนไขก่อนเริ่มงาน")}</h3>
-            <p>{stagingDeployPreflight.data?.ready && !stagingHttpRefreshRequired
+            <p>{stagingDeployPreflightChecking ? text(
+              "Checking the saved configuration, candidate, and rollback evidence. No deployment has started.",
+              "กำลังตรวจ configuration ที่บันทึกไว้ candidate และหลักฐาน rollback ยังไม่ได้เริ่ม deploy",
+            ) : stagingDeployPreflight.data?.ready && !stagingHttpRefreshRequired
               ? text("Preparation is complete. Continue with step 2 below to authorize this candidate.", "เตรียมข้อมูลครบแล้ว ไปขั้นตอนที่ 2 ด้านล่างเพื่ออนุมัติ candidate นี้")
               : stagingActionFailureText(stagingHttpRefreshReason ?? stagingDeployPreflight.data?.reason ?? "STAGING_READINESS_UNAVAILABLE", text)}</p>
+            {stagingDeployPreflightStalled ? <p role="alert">{text(
+              "This readiness check has taken more than 20 seconds. Deployment is still blocked until verification completes; a timeout will show a retry reason.",
+              "การตรวจความพร้อมใช้เวลานานกว่า 20 วินาที ยังสั่ง deploy ไม่ได้จนกว่าจะตรวจเสร็จ หากเกินเวลาระบบจะแสดงสาเหตุและให้ตรวจซ้ำ",
+            )}</p> : null}
             {stagingOriginConfiguration.data?.applicationPreparation?.applicationHttpExpiresAt ? <p>{text("HTTP profile expires", "HTTP profile หมดอายุ")}: {new Date(stagingOriginConfiguration.data.applicationPreparation.applicationHttpExpiresAt).toLocaleString()}
               {text(" · Deployment requires at least 4 hours 45 minutes remaining. Prepare again when less time remains.", " · เริ่ม deploy ได้เมื่อเหลืออย่างน้อย 4 ชั่วโมง 45 นาที หากเหลือน้อยกว่านี้ ให้กดเตรียมใหม่ได้ทันที")}</p> : null}
             <HStack gap={2} wrap="wrap">

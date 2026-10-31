@@ -469,7 +469,7 @@ type CloudflareStagingPreflight = {
   accountRef: string | null;
 };
 
-async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, identity: { tenantId: string; projectId: string }): Promise<CloudflareStagingPreflight> {
+export async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, identity: { tenantId: string; projectId: string }): Promise<CloudflareStagingPreflight> {
   const unavailable = (reason: string): CloudflareStagingPreflight => ({ ready: false, reason, artifact: null, baseline: null, configurationRef: null, configurationDigest: null, accountRef: null });
   const rows = await listProviderDeploymentTargets(db, { ...identity, environment: "staging" });
   const enabledTargets = rows.filter(row => row.provider === "cloudflare" && row.enabled);
@@ -530,7 +530,8 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
     const versions = Array.isArray(active?.versions) ? active.versions as Array<{ versionId?: unknown; percentage?: unknown }> : [];
     const deploymentIsSingleVersion = versions.length === 1 && versions[0]?.percentage === 100 && typeof versions[0]?.versionId === "string";
     if (typeof active?.deploymentId === "string" && deploymentIsSingleVersion) {
-      const baseline = await findVerifiedStagingRollbackBaseline({
+      let baseline: Awaited<ReturnType<typeof findVerifiedStagingRollbackBaseline>>;
+      try { baseline = await findVerifiedStagingRollbackBaseline({
         candidates: baselineCandidates, projectId: identity.projectId, activeDeploymentId: active.deploymentId,
         activeDeploymentIsSingleVersion: deploymentIsSingleVersion, activeVersionId: versions[0]!.versionId as string,
         isActiveDeploymentFromFailedCanonicalJob: async () => {
@@ -569,7 +570,10 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
             rollbackConfigurationRef: candidateRef, rollbackConfigurationDigest: candidateDigest,
             activeConfigurationRef: configurationRef, activeConfigurationDigest: configurationDigest });
         },
-      });
+      }); } catch (error) {
+        if (error instanceof Error && error.message === "STAGING_ROLLBACK_READBACK_TIMED_OUT") return unavailable("STAGING_PREFLIGHT_READBACK_TIMEOUT");
+        throw error;
+      }
       if (baseline) return { ready: true, reason: null,
         artifact: { artifactRef: artifact.artifactRef, sourceSha: artifact.sourceSha, buildDigest: artifact.buildDigest },
         baseline, configurationRef, configurationDigest, accountRef: target.accountRef };

@@ -46,6 +46,7 @@ const mocks = vi.hoisted(() => ({
   activationError: null as string | null,
   activationSucceeds: false,
   stagingPreflight: { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null },
+  stagingPreflightLoading: false,
   stagingPreflightFetching: false,
   stagingRuntime: { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", activation: "disabled", transport: "all", missing: ["JOB_WORKFLOW", "WORKER_APP"], jobHandlerConfigured: true, controlPlaneConfigured: false, reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" },
   originConfiguration: null as Record<string, unknown> | null,
@@ -110,7 +111,7 @@ vi.mock("@/lib/trpc", () => ({
     infrastructure: {
       listDeploymentTargetProjects: { useQuery: () => ({ data: [{ projectId: "2fe8a309-8be6-4370-9813-8fb9cc4645a0", title: "Wiki", projectType: "workspace" }] }) },
       listProviderDeploymentTargets: { useQuery: (input: { environment: string }) => ({ data: input.environment === "production" ? mocks.targets : (mocks.stagingTargets.length ? mocks.stagingTargets : mocks.targets), isLoading: false, isError: mocks.targetsError, isFetching: false }) },
-      getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: mocks.stagingPreflight, isLoading: false,
+      getCloudflareStagingDeployPreflight: { useQuery: () => ({ data: mocks.stagingPreflight, isLoading: mocks.stagingPreflightLoading,
         isFetching: mocks.stagingPreflightFetching, isError: false, refetch: mocks.refetchStagingPreflight }) },
       getCloudflareOriginConfiguration: { useQuery: () => ({ data: mocks.originConfiguration, isLoading: false, isError: mocks.originConfigurationError, refetch: mocks.refetchStagingOriginConfiguration }) },
       getCloudflareStagingPrivateDatabaseRenewalPreflight: { useQuery: () => ({ data: mocks.stagingDatabaseRenewal,
@@ -338,6 +339,7 @@ describe("AdminDeploymentTargets", () => {
     mocks.activationError = null;
     mocks.activationSucceeds = false;
     mocks.stagingPreflight = { ready: false, reason: "VERIFIED_ROLLBACK_BASELINE_UNAVAILABLE", artifact: null, baseline: null };
+    mocks.stagingPreflightLoading = false;
     mocks.stagingPreflightFetching = false;
     mocks.stagingRuntime = { status: "NOT_READY", checkedAt: "2026-10-22T00:00:00.000Z", activation: "disabled", transport: "all", missing: ["JOB_WORKFLOW", "WORKER_APP"], jobHandlerConfigured: true, controlPlaneConfigured: false, reason: "CLOUDFLARE_WORKER_RUNTIME_NOT_READY" };
   mocks.originConfiguration = null;
@@ -770,6 +772,27 @@ describe("AdminDeploymentTargets", () => {
     expect(mocks.activateStagingProfile).toHaveBeenCalledWith({ tenantId, projectId, environment: "staging",
       provider: "cloudflare", configurationRef: `cf-origin:${"a".repeat(64)}`, profile: "full-application-http" });
     expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
+  });
+
+  it("explains a pending preflight and reports slow readback without enabling deployment", async () => {
+    const user = userEvent.setup();
+    mocks.targets = [stagingActivationTarget];
+    const view = render(<AdminDeploymentTargets />);
+    await chooseScope(user);
+    vi.useFakeTimers();
+    try {
+      mocks.stagingPreflightLoading = true;
+      mocks.stagingPreflightFetching = true;
+      view.rerender(<AdminDeploymentTargets />);
+      expect(screen.getByText("Checking the saved configuration, candidate, and rollback evidence. No deployment has started.")).toBeInTheDocument();
+      await act(async () => { vi.advanceTimersByTime(20_000); });
+      expect(screen.getByText("This readiness check has taken more than 20 seconds. Deployment is still blocked until verification completes; a timeout will show a retry reason.")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Authorize and deploy to staging" })).not.toBeInTheDocument();
+      mocks.stagingPreflightLoading = false;
+      mocks.stagingPreflightFetching = false;
+      view.rerender(<AdminDeploymentTargets />);
+      expect(screen.queryByText(/This readiness check has taken more than 20 seconds/)).not.toBeInTheDocument();
+    } finally { vi.useRealTimers(); }
   });
 
   it.each([{ probeUnavailable: false, browserRefresh: false }, { probeUnavailable: true, browserRefresh: false },

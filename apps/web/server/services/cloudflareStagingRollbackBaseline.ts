@@ -82,30 +82,40 @@ export async function findVerifiedStagingRollbackBaseline(input: {
       buildDigest: job.buildDigest, configurationRef, configurationDigest }];
   });
 
-  // The active deployment may be owned but no longer a safe rollback. Find the
-  // active receipt independently, then select the newest usable verified release.
-  let activeDeploymentOwned = false;
-  for (const verified of verifiedCandidates) {
-    if (verified.deploymentId === input.activeDeploymentId) {
-      activeDeploymentOwned = true;
-      break;
-    }
-    if (typeof input.activeVersionId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.activeVersionId) &&
-        input.isActiveVersionFromVerifiedDeployment &&
-        await input.isActiveVersionFromVerifiedDeployment(verified.deploymentId, input.activeVersionId)) {
-      activeDeploymentOwned = true;
-      break;
-    }
-  }
+  // Bound read-only history scans. Provider calls have their own 8s timeout;
+  // this stops additional calls instead of leaving the Admin waiting on 100.
+  const deadlineAt = Date.now() + 15_000;
+  const assertReadbackBudget = () => {
+    if (Date.now() >= deadlineAt) throw new Error("STAGING_ROLLBACK_READBACK_TIMED_OUT");
+  };
+  // Prefer the exact active receipt or failed canonical operation. Historical
+  // version equivalence is needed only when neither establishes ownership.
+  let activeDeploymentOwned = verifiedCandidates.some(verified => verified.deploymentId === input.activeDeploymentId);
   if (!activeDeploymentOwned && input.isActiveDeploymentFromFailedCanonicalJob) {
     activeDeploymentOwned = await input.isActiveDeploymentFromFailedCanonicalJob();
+    assertReadbackBudget();
+  }
+  if (!activeDeploymentOwned && typeof input.activeVersionId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.activeVersionId) &&
+      input.isActiveVersionFromVerifiedDeployment) {
+    const inspected = new Set<string>();
+    for (const verified of verifiedCandidates) {
+      if (inspected.has(verified.deploymentId)) continue;
+      inspected.add(verified.deploymentId);
+      assertReadbackBudget();
+      const matches = await input.isActiveVersionFromVerifiedDeployment(verified.deploymentId, input.activeVersionId);
+      assertReadbackBudget();
+      if (matches) { activeDeploymentOwned = true; break; }
+    }
   }
   if (!activeDeploymentOwned) return null;
 
   for (const verified of verifiedCandidates) {
+    assertReadbackBudget();
     const { deploymentId, artifactRef, sourceSha, buildDigest, configurationRef, configurationDigest } = verified;
     if (!await input.isConfigurationUsable(configurationRef, configurationDigest)) continue;
     if (deploymentId !== input.activeDeploymentId && !await input.isRollbackDeploymentAvailable(deploymentId)) continue;
+    assertReadbackBudget();
     // Rollback reuses the immutable deployed Worker version by deployment ID.
     // The executor verifies its SHA/digest/config annotations against this
     // canonical runtime-verified receipt before any provider mutation, so the

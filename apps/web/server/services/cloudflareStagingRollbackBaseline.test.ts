@@ -34,10 +34,27 @@ describe("failed Staging deployment ownership", () => {
 describe("findVerifiedStagingRollbackBaseline", () => {
   it("recovers an exactly owned failed deployment using a separately runtime-verified baseline", async () => {
     const input = { ...fixture(), activeDeploymentId: "77777777-7777-4777-8777-777777777777",
+      activeVersionId: "88888888-8888-4888-8888-888888888888",
+      isActiveVersionFromVerifiedDeployment: vi.fn(async () => false),
       isActiveDeploymentFromFailedCanonicalJob: vi.fn(async () => true) };
     await expect(findVerifiedStagingRollbackBaseline(input)).resolves.toMatchObject({ deploymentId: candidate.output.deploymentId });
+    expect(input.isActiveVersionFromVerifiedDeployment).not.toHaveBeenCalled();
     await expect(findVerifiedStagingRollbackBaseline({ ...input, candidates: [] })).resolves.toBeNull();
     await expect(findVerifiedStagingRollbackBaseline({ ...input, isActiveDeploymentFromFailedCanonicalJob: async () => false })).resolves.toBeNull();
+  });
+
+  it("stops further provider reads when the read-only verification budget is exhausted", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(0);
+    const historyRead = vi.fn(async () => false);
+    try {
+      await expect(findVerifiedStagingRollbackBaseline({ ...fixture(),
+        activeDeploymentId: "77777777-7777-4777-8777-777777777777",
+        activeVersionId: "88888888-8888-4888-8888-888888888888",
+        isActiveDeploymentFromFailedCanonicalJob: async () => { clock.mockReturnValue(15_001); return false; },
+        isActiveVersionFromVerifiedDeployment: historyRead,
+      })).rejects.toThrow("STAGING_ROLLBACK_READBACK_TIMED_OUT");
+      expect(historyRead).not.toHaveBeenCalled();
+    } finally { clock.mockRestore(); }
   });
   it("accepts an active verified deployment from its canonical receipt without requiring its old bundle to remain cached", async () => {
     const input = fixture();
