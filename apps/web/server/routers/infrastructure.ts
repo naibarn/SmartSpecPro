@@ -536,6 +536,14 @@ async function getCloudflareStagingPreflight(db: NonNullable<Awaited<ReturnType<
           return deployedVersion.status === "OBSERVED" && deployedVersion.value?.versions.length === 1 &&
             deployedVersion.value.versions[0]?.percentage === 100 && deployedVersion.value.versions[0]?.versionId === activeVersionId;
         },
+        isRollbackDeploymentAvailable: async deploymentId => {
+          if (deploymentId === active.deploymentId) return deploymentIsSingleVersion;
+          const deployedVersion = await getCloudflareWorkerDeploymentVersionEvidence({ db, accountId: target.accountRef, scriptName: target.workerRef,
+            deploymentId, credentialBinding: { identity: { ...identity, environment: "staging", provider: "cloudflare" },
+              credentialRef: target.credentialRef } });
+          return deployedVersion.status === "OBSERVED" && deployedVersion.value?.versions.length === 1 &&
+            deployedVersion.value.versions[0]?.percentage === 100 && typeof deployedVersion.value.versions[0]?.versionId === "string";
+        },
         isConfigurationUsable: async (candidateRef, candidateDigest) => {
           const stored = await getCloudflareOriginConfiguration(db, { identity: { ...identity, environment: "staging", provider: "cloudflare" }, configurationRef: candidateRef })
             .catch(() => null);
