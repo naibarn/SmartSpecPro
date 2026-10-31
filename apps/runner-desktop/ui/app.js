@@ -17,6 +17,7 @@ const verifiedTools = new Map();
 const verifyingTools = new Set();
 let capabilitySyncing = false;
 let connectPending = false;
+let connectAttemptError = "";
 let pendingVerificationUrl = "";
 let refreshPending = false;
 let scanPending = false;
@@ -219,6 +220,7 @@ function applyRunnerStatus(status) {
   const credentialState = status.credentialState;
   const credentialsReady = status.credentialsReady;
   const controlPlaneConnected = status.controlPlaneConnected;
+  if (controlPlaneConnected) connectAttemptError = "";
   const connectionLabel = connectPending
     ? "รออนุมัติในเบราว์เซอร์"
     : credentialState === "renewing"
@@ -272,6 +274,7 @@ function applyRunnerStatus(status) {
   } else if (credentialState === "renewed") {
     setNotice(elements["connection-notice"], "ต่ออายุ token ให้อัตโนมัติแล้ว");
   }
+  if (connectAttemptError) setNotice(elements["connection-notice"], connectAttemptError);
 
   const runtimeLabel = stopPending || status.stopping
     ? "กำลังหยุด…"
@@ -680,6 +683,7 @@ function renderTools(tools, status = latestRunnerStatus) {
 elements["connect-button"].addEventListener("click", async () => {
   if (connectPending) return;
   invalidatePendingStatus();
+  connectAttemptError = "";
   pendingVerificationUrl = "";
   connectPending = true;
   updateButton(elements["connect-button"], {
@@ -701,9 +705,10 @@ elements["connect-button"].addEventListener("click", async () => {
     await syncCapabilities();
   } catch (error) {
     const message = safeError(error);
-    setNotice(elements["connection-notice"], pendingVerificationUrl
+    connectAttemptError = pendingVerificationUrl
       ? `${message}\nหากยังไม่ได้อนุมัติ ให้เปิด URL นี้ในเบราว์เซอร์:\n${pendingVerificationUrl}`
-      : message);
+      : message;
+    setNotice(elements["connection-notice"], connectAttemptError);
     elements["connection-state"].textContent = "เชื่อมต่อไม่สำเร็จ";
   } finally {
     connectPending = false;

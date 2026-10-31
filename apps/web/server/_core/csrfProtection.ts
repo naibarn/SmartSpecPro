@@ -1,4 +1,4 @@
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import { COOKIE_NAME } from "@shared/const";
 import { getVerifiedCloudflarePublicOrigin } from "./cloudflareOriginMiddleware";
 
@@ -7,6 +7,7 @@ export function createCsrfProtection(input: {
   isAllowedOrigin: (origin: string | undefined) => boolean;
   isAllowedMarketplaceOrigin: (origin: string) => boolean;
   isProduction: () => boolean;
+  getVerifiedEdgeOrigin?: (req: Request) => string | null;
 }): RequestHandler {
   return (req, res, next) => {
     if (!["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) return next();
@@ -26,8 +27,19 @@ export function createCsrfProtection(input: {
     const origin = req.get("origin");
     const authorization = req.get("authorization");
     const bearer = Boolean(authorization?.startsWith("Bearer ") && authorization.length > 7);
-    const edgeOrigin = getVerifiedCloudflarePublicOrigin(req);
+    const edgeOrigin = input.getVerifiedEdgeOrigin
+      ? input.getVerifiedEdgeOrigin(req)
+      : getVerifiedCloudflarePublicOrigin(req);
     if (!origin) {
+      // Native Runner pairing uses a device code and pairing nonce rather than
+      // browser cookies. It cannot send Origin, and Cloudflare's verified
+      // public origin must not make this server-to-server flow look like a
+      // cookie-authenticated browser write. Keep the exception exact and do
+      // not allow it when a SmartAIHub session cookie is present.
+      const nativeRunnerPairingPath =
+        req.path === "/runners/connect/start" ||
+        req.path === "/runners/connect/token";
+      if (nativeRunnerPairingPath && !req.cookies?.[COOKIE_NAME]) return next();
       if (bearer) return next(); // Actual bearer authentication follows downstream.
       if (edgeOrigin || (input.isProduction() && req.cookies?.[COOKIE_NAME])) {
         return res.status(403).json({ error: { message: "Forbidden: missing Origin header" } });

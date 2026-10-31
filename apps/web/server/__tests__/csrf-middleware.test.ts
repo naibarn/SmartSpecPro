@@ -6,7 +6,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { createAllowedBrowserOrigin } from "../_core/browserOriginPolicy";
 import { createCsrfProtection } from "../_core/csrfProtection";
 
-function app(getPublicAppUrl?: () => string) {
+function app(getPublicAppUrl?: () => string, withVerifiedEdgeOrigin = false) {
   const server = express();
   server.use(cookieParser());
   server.use("/api", createCsrfProtection({
@@ -18,8 +18,11 @@ function app(getPublicAppUrl?: () => string) {
       getPublicAppUrl,
     }),
     isAllowedMarketplaceOrigin: origin => origin === "chrome-extension://approved-fixture",
+    getVerifiedEdgeOrigin: withVerifiedEdgeOrigin ? () => "https://smartaihub.app" : undefined,
   }));
   server.post("/api/fixture", (_req, res) => res.sendStatus(204));
+  server.post("/api/runners/connect/start", (_req, res) => res.sendStatus(204));
+  server.post("/api/runners/connect/token", (_req, res) => res.sendStatus(204));
   server.post("/api/marketplace-captures", (_req, res) => res.sendStatus(204));
   server.post("/api/webhooks/telegram/fixture", (_req, res) => res.sendStatus(204));
   return server;
@@ -44,6 +47,19 @@ describe("actual production CSRF middleware", () => {
   it("rejects cookie-authenticated writes without Origin", async () => {
     const response = await request(app()).post("/api/fixture").set("Cookie", `${COOKIE_NAME}=fixture-only`);
     expect(response.status).toBe(403);
+  });
+  it("allows native Runner pairing writes without Origin only when no browser session cookie is present", async () => {
+    const server = app(undefined, true);
+    expect((await request(server).post("/api/runners/connect/start")).status).toBe(204);
+    expect((await request(server).post("/api/runners/connect/token")).status).toBe(204);
+    expect((await request(server).post("/api/fixture")).status).toBe(403);
+    expect((await request(server).post("/api/runners/connect/start").set("Cookie", `${COOKIE_NAME}=fixture-only`)).status).toBe(403);
+    expect((await request(server).post("/api/runners/connect/token").set("Cookie", `${COOKIE_NAME}=fixture-only`)).status).toBe(403);
+  });
+  it("continues validating Origin on native Runner pairing writes when a browser supplies one", async () => {
+    const server = app();
+    expect((await request(server).post("/api/runners/connect/start").set("Origin", "https://smartaihub.app")).status).toBe(204);
+    expect((await request(server).post("/api/runners/connect/start").set("Origin", "https://evil.invalid")).status).toBe(403);
   });
   it.each(["https://evil.invalid", "https://staging.account.workers.dev", "https://smartaihub.app/path"])("rejects unconfigured or malformed browser origin %s", async origin => {
     expect((await request(app()).post("/api/fixture").set("Origin", origin)).status).toBe(403);
