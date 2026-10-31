@@ -123,15 +123,15 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "2c315edae371a580dab24620c0cd41a0249beb17",
+    "expected_canonical_sha": "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9",
     "expected_spec_digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f"
   },
   "continuation": {
-    "next_action": "Wait for workflow 41158883985 to complete, then download and verify the unsigned 0.2.54 artifact. Install it over the owner's existing current-user Runner, choose and save the intended Production or Developer website, restart, and verify the same Runner ID, fresh auth, capability ACK, workspace availability, and heartbeat.",
-    "next_ready_workunit": "WINDOWS_RUNNER_0_2_54_INSTALL_AND_RUNTIME_ACCEPTANCE",
+    "next_action": "Use the authenticated Runner Releases UI on aimarkethubs.com to build and download the review installer from the integrated source. Install over the existing Windows Runner (preserve app data/enrollment), then capture same Runner ID, refresh/reconnect, fresh capability ACK, heartbeat, workspace readiness, and long-idle runtime evidence.",
+    "next_ready_workunit": "WINDOWS_RUNNER_IDLE_RECOVERY_RELEASE_AND_RUNTIME_ACCEPTANCE",
     "reactivation_predicate": null,
-    "resume_point": "Source fix 2c315edae371a580dab24620c0cd41a0249beb17 is integrated. Saving the next-launch website is now allowed while Runner is running; current connection remains unchanged until restart. Desktop focused tests pass. Windows review workflow 41158883985 is still building; no owner-device installation/runtime acceptance has occurred.",
-    "waiting_predicate": "The authenticated Windows review artifact from workflow 41158883985 is complete and the owner installs it over the existing Runner without creating another enrollment."
+    "resume_point": "Control-loop recovery fix 6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9 is integrated. 250 Runner library tests and 14 desktop tests pass. The externally dispatched artifact workflow was canceled before build; no installer was produced. Use the existing authenticated Runner Releases website flow. Owner-device installation and 24-hour runtime acceptance remain pending.",
+    "waiting_predicate": "Owner builds/downloads the integrated review installer through the Runner Releases UI, installs it over the existing enrolled Windows Runner, and provides fresh same-identity heartbeat/capability evidence after idle/reconnect."
   },
   "continuation_assessment": {
     "confidence": "UNRESOLVED",
@@ -273,7 +273,7 @@
     "rationale": "Current product/architecture relevance is not proven by deterministic repository evidence alone.",
     "value": "DORMANT_UNRESOLVED"
   },
-  "generation": 54,
+  "generation": 55,
   "identity": {
     "canonical_path": "specs/feature/205-smartaihub-runner-cross-platform/spec.md",
     "digest": "268bac582a0dbc4a675d48562f29ef22e547a958dbd8f526ef4fc74c093a103f",
@@ -295,7 +295,8 @@
       "5ce718f36f8f05c80350dcf511d1ded9ed95ef97",
       "96e1ce9f190148627bc5c9d84252e19da8323d85",
       "0f70bb90c2443b09ec36d09b958636bd609e91b0",
-      "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0"
+      "ecba27a9eb14e4a61e94e31d855f8dbfba0a11c0",
+      "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9"
     ],
     "mapping": [],
     "source_paths": [
@@ -314,9 +315,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "2c315edae371a580dab24620c0cd41a0249beb17",
+    "canonical_sha": "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9",
     "integrated": true,
-    "integrated_at": "2026-10-30T14:22:00Z"
+    "integrated_at": "2026-10-31T12:18:00Z"
   },
   "lifecycle": {
     "current_state": "VALIDATION_PENDING",
@@ -1404,7 +1405,7 @@
     "unresolved": 209
   },
   "schema_version": 1,
-  "updated_at": "2026-10-31T02:18:03.100577Z",
+  "updated_at": "2026-10-31T12:19:54.141148Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [
@@ -1413,11 +1414,12 @@
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-browser-reconnect-ux-20261031.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-connect-start-csrf-403-20261031.md",
       "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/runner-website-target-selector-20261031.md",
-      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-save-website-while-running-20261031.md"
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-save-website-while-running-20261031.md",
+      "specs/feature/205-smartaihub-runner-cross-platform/handoff/evidence/windows-runner-idle-control-loop-recovery-20261031.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [],
-    "sha": "2c315edae371a580dab24620c0cd41a0249beb17",
+    "sha": "6d2fbe3d5d55fa92b8a7fb4e8c08b8ee97b760e9",
     "status": "PARTIAL",
     "task_regressions": []
   }
