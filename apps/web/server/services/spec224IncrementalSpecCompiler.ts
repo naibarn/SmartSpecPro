@@ -13,7 +13,7 @@ export type Spec224IncrementalSpecFile = Readonly<{
   content: string;
   /** Trusted catalog binding supplied by the canonical SPEC adapter. */
   canonicalSource?: Readonly<{ kind?: "spec" | "manifest" | "requirement-ledger"; specId: string; specDigest: string; sourcePath: string; sourceDigest: string }>;
-  projectSource?: Readonly<{ projectId: string; sourceRevision: string; descriptorDigest: string }>;
+  projectSource?: Readonly<{ projectId: string; sourceRevision: string; descriptorDigest: string; implementationRepository?: string }>;
 }>;
 
 /**
@@ -292,11 +292,18 @@ function parseVerification(value: unknown): Spec224VerificationObligation[] | nu
 function parsePackageDeclarations(
   path: string,
   root: Record<string, unknown>,
-  findings: Spec224CompilerFinding[]
+  findings: Spec224CompilerFinding[],
+  implementationRepository?: string,
 ): PackageDeclaration[] {
   if ("initialPackages" in root) {
     const workPackages = Array.isArray(root.initialPackages)
-      ? root.initialPackages.map(candidate => {
+      ? root.initialPackages.filter(candidate => {
+        if (!implementationRepository || !candidate || Array.isArray(candidate) || typeof candidate !== "object") return true;
+        const writeSet = (candidate as Record<string, unknown>).writeSet;
+        return !writeSet || Array.isArray(writeSet) || typeof writeSet !== "object"
+          ? true
+          : (writeSet as Record<string, unknown>).repository === implementationRepository;
+      }).map(candidate => {
         if (!candidate || Array.isArray(candidate) || typeof candidate !== "object") return candidate;
         const record = candidate as Record<string, unknown>;
         const writeSet = record.writeSet;
@@ -429,7 +436,7 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
         fail("CANONICAL_SOURCE_BINDING_INVALID");
       }
     }
-    if (file.projectSource && (!safeCanonicalSpecId(file.projectSource.projectId) || !/^[a-f0-9]{40,64}$/i.test(file.projectSource.sourceRevision) || !HASH.test(file.projectSource.descriptorDigest) || file.projectSource.descriptorDigest !== file.digest)) {
+    if (file.projectSource && (!safeCanonicalSpecId(file.projectSource.projectId) || !/^[a-f0-9]{40,64}$/i.test(file.projectSource.sourceRevision) || !HASH.test(file.projectSource.descriptorDigest) || file.projectSource.descriptorDigest !== file.digest || (file.projectSource.implementationRepository !== undefined && (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(file.projectSource.implementationRepository) || file.projectSource.implementationRepository.includes("..") || file.projectSource.implementationRepository.includes("//"))))) {
       fail("CANONICAL_PROJECT_BINDING_INVALID");
     }
     if (file.canonicalSource?.kind === "spec" && !file.path.toLowerCase().endsWith(".md")) fail("CANONICAL_SOURCE_KIND_INVALID");
@@ -512,7 +519,7 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
         }
       }
     }
-    declarations.push(...parsePackageDeclarations(file.path, root, findings));
+    declarations.push(...parsePackageDeclarations(file.path, root, findings, file.projectSource?.implementationRepository));
   }
   const packageDeclarationsByExternalId = new Map<string, PackageDeclaration[]>();
   for (const declaration of declarations) {

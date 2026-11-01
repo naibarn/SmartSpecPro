@@ -922,6 +922,7 @@ export const spec226DevelopmentControlRouter = router({
             projectId: project.projectId,
             sourceRevision: project.source.revision,
             descriptorDigest: project.descriptorDigest,
+            implementationRepository: project.implementationRepository.repository,
             files: project.sourceFiles,
           },
         });

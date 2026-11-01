@@ -6,7 +6,7 @@
     "revision": "1f6e5432a278f05e9811e88fb7bc61fb70938d32"
   },
   "implementationRepository": {
-    "repository": "naibarn/smartaihub-platform",
+    "repository": "github.com/naibarn/smartaihub-platform",
     "branch": "main"
   },
   "specs": [
@@ -124,6 +124,49 @@
           "apps/web/server/services/spec224FeatureSpecCatalog.ts",
           "apps/web/server/services/__tests__/spec224FeatureSpecCatalog.test.ts",
           "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan/handoff/modular-saas-project.json"
+        ]
+      }
+    },
+    {
+      "id": "r14-core-p1-first-slice",
+      "specRefs": [
+        {
+          "specId": "313-smartaihub-saas-core-identity-commerce-entitlements",
+          "requirementIds": [
+            "REQ-E77EACED5BB5"
+          ]
+        }
+      ],
+      "dependencies": [],
+      "acceptanceCriteria": [
+        "Deliver the next bounded P1 Core/Shell slice in the Worker-native smartaihub-platform repository without importing the legacy apps/web runtime.",
+        "Keep the existing canonical smartspec identity, tenant, finance and worker_jobs authorities authoritative; make no schema or ledger writes unless they are already covered by a versioned contract.",
+        "Expose truthful local liveness and prove the Core package test, targeted build and local workerd request without claiming authentication or production readiness."
+      ],
+      "verification": [
+        {
+          "id": "core-package-test",
+          "kind": "test",
+          "ref": "corepack pnpm@10.4.1 --filter @smartaihub/saas-core test"
+        },
+        {
+          "id": "core-package-build",
+          "kind": "build",
+          "ref": "corepack pnpm@10.4.1 --filter @smartaihub/saas-core build"
+        },
+        {
+          "id": "core-local-workerd",
+          "kind": "run",
+          "ref": "Start apps/saas-core with the local dev:core command and verify GET /livez returns the documented liveness response."
+        }
+      ],
+      "writeSet": {
+        "repository": "github.com/naibarn/smartaihub-platform",
+        "paths": [
+          "apps/saas-core/src/**",
+          "apps/saas-core/package.json",
+          "apps/saas-core/wrangler.jsonc",
+          "README.md"
         ]
       }
     }

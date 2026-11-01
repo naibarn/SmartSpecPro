@@ -452,6 +452,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     { enabled: canUseCanonicalSpecs && effectiveSpecSource === "catalog" && Boolean(selectedFeatureSpec) }
   );
   const ingestFeatureSpecMutation = trpc.spec226DevelopmentControl.ingestFeatureSpec.useMutation();
+  const ingestModularSaasProjectMutation = trpc.spec226DevelopmentControl.ingestModularSaasProject.useMutation();
   const prepareMutation = trpc.spec226DevelopmentControl.prepareWorkspaceRun.useMutation();
   type Preparation = Awaited<ReturnType<typeof prepareMutation.mutateAsync>>;
   const [preparation, setPreparation] = useState<Preparation | null>(null);
@@ -505,6 +506,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     !spec.requiredDeploymentTargetId || spec.requiredDeploymentTargetId === selectedWorkspace?.deploymentTarget?.id,
   );
   const selectedFeatureSpecAvailable = availableFeatureSpecs.some(spec => spec.id === selectedFeatureSpec);
+  const selectedFeatureSpecIsModularProject = /^3(1[2-9]|2[0-4])-/.test(selectedFeatureSpec)
+    && selectedWorkspace?.deploymentTarget?.id === "modular-debian-dev";
   const unavailableTargetSpecs = featureSpecs.filter(spec =>
     spec.requiredDeploymentTargetId && spec.requiredDeploymentTargetId !== selectedWorkspace?.deploymentTarget?.id,
   );
@@ -754,6 +757,24 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       toast.success(`เพิ่ม ${result.sourceSpec.title} ใน Spec Set revision ${result.revision} แล้ว`);
     } catch (error) {
       toast.error(presentCustomerError(error, "นำเข้า Feature Spec ไม่สำเร็จ"));
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function ingestSelectedModularSaasProject() {
+    if (!conversationId || !platformWorkspaceSelected || selectedWorkspace?.deploymentTarget?.id !== "modular-debian-dev" || !isAdmin) return;
+    setUploading(true);
+    setPreparation(null);
+    try {
+      const result = await ingestModularSaasProjectMutation.mutateAsync({
+        conversationId,
+        idempotencyKey: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+      });
+      await workspaceQuery.refetch();
+      toast.success(`นำเข้า Modular SaaS ${result.project.specCount} Specs แล้ว · ${result.runnableWorkPackageCount} WorkPackages พร้อมเริ่ม`);
+    } catch (error) {
+      toast.error(presentCustomerError(error, "นำเข้า Modular SaaS project ไม่สำเร็จ"));
     } finally {
       setUploading(false);
     }
@@ -1493,9 +1514,19 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                         {!simpleMode ? <p className="mt-1 break-all">{featureSpecContextQuery.data.path} · SHA-256 {featureSpecContextQuery.data.digest}</p> : null}
                       </section> : null}
                       {selectedFeatureSpec ? <p className="break-all text-xs text-[var(--color-text-secondary)]">ต้นฉบับ: specs/feature/{selectedFeatureSpec}/spec.md</p> : null}
-                      <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || !selectedFeatureSpec || uploading || ingestFeatureSpecMutation.isPending} onClick={() => void ingestSelectedFeatureSpec()}>
-                        {uploading ? "กำลังเพิ่ม Spec ใน workspace…" : "เพิ่ม Spec ที่เลือกใน workspace"}
-                      </Button>
+                      {selectedFeatureSpecIsModularProject ? (
+                        <section className="space-y-2 rounded-md border border-[var(--color-border)] p-3" aria-label="นำเข้า Modular SaaS project">
+                          <p className="font-medium">เริ่มงาน Modular SaaS ให้ถูก workspace</p>
+                          <p className="text-xs text-[var(--color-text-secondary)]">นำเข้า Canonical Specs 312–324 พร้อม handoff และ WorkPackages ที่กำหนด repository แล้ว เพื่อให้ Runner ทำงานใน Core repo ได้ตรงเป้าหมาย</p>
+                          <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || uploading || ingestModularSaasProjectMutation.isPending} onClick={() => void ingestSelectedModularSaasProject()}>
+                            {uploading ? "กำลังนำเข้า Modular SaaS project…" : "นำเข้า Modular SaaS ทั้งโครงการ (SPEC-312–324)"}
+                          </Button>
+                        </section>
+                      ) : (
+                        <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || !selectedFeatureSpec || uploading || ingestFeatureSpecMutation.isPending} onClick={() => void ingestSelectedFeatureSpec()}>
+                          {uploading ? "กำลังเพิ่ม Spec ใน workspace…" : "เพิ่ม Spec ที่เลือกใน workspace"}
+                        </Button>
+                      )}
                     </div>
                   ) : null}
                 </fieldset>

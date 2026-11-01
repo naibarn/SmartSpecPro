@@ -172,7 +172,7 @@ export async function loadModularSaasProject(input: { repositoryRoot?: string } 
   });
   sourceFiles.push({
     path: `canonical-projects/${descriptor.projectId}/project.json`, digest: descriptorDigest, content: descriptorFile.bytes.toString("utf8"),
-    projectSource: { projectId: descriptor.projectId, sourceRevision: descriptor.source.revision, descriptorDigest },
+    projectSource: { projectId: descriptor.projectId, sourceRevision: descriptor.source.revision, descriptorDigest, implementationRepository: descriptor.implementationRepository.repository },
   });
   const dependencyEdges = specs.flatMap(spec => spec.dependencies.map(specId => ({ fromSpecId: spec.id, toSpecId: specId })));
   return { ...descriptor, descriptorDigest, specs, dependencyEdges, sourceFiles };

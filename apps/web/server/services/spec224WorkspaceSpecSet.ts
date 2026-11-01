@@ -256,18 +256,20 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
     if (persisted.availability !== "current") fail("WORKSPACE_BINDING_STALE");
     return persisted;
   }
-  async function persistFiles(input: { tenantId: string; actorId: number; idempotencyKey: string }, binding: Spec224ConversationWorkspace, parsed: { files: Spec224WorkspaceSpecFile[]; digest: string }, replacePrefix?: string) {
+  async function persistFiles(input: { tenantId: string; actorId: number; idempotencyKey: string }, binding: Spec224ConversationWorkspace, parsed: { files: Spec224WorkspaceSpecFile[]; digest: string }, replacePrefix?: string | readonly string[]) {
     const existing = await store.getRevisionByIdempotency({ ...binding, idempotencyKey: input.idempotencyKey });
     if (existing) {
       if (existing.requestDigest !== parsed.digest) fail("SPEC_SET_IDEMPOTENCY_CONFLICT");
       return summary(existing);
     }
     const previous = await store.getLatestRevision(binding);
-    const retainedPreviousFiles = previous?.files.filter(file => !replacePrefix || !file.path.startsWith(replacePrefix)) ?? [];
+    const replacePrefixes: readonly string[] = typeof replacePrefix === "string" ? [replacePrefix] : replacePrefix ?? [];
+    const isReplacedPath = (path: string) => replacePrefixes.some(prefix => path.startsWith(prefix));
+    const retainedPreviousFiles = previous?.files.filter(file => !isReplacedPath(file.path)) ?? [];
     const merged = new Map(retainedPreviousFiles.map(file => [file.path, file]));
     const incomingPaths = new Set(parsed.files.map(file => file.path));
     const removedScopedPaths = replacePrefix
-      ? (previous?.files ?? []).filter(file => file.path.startsWith(replacePrefix) && !incomingPaths.has(file.path)).map(file => file.path)
+      ? (previous?.files ?? []).filter(file => isReplacedPath(file.path) && !incomingPaths.has(file.path)).map(file => file.path)
       : [];
     const replacedPaths = [...new Set([...parsed.files.filter(file => merged.has(file.path)).map(file => file.path), ...removedScopedPaths])].sort();
     for (const file of parsed.files) merged.set(file.path, file);
@@ -327,7 +329,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
     },
     async ingestModularSaasProject(input: {
       tenantId: string; actorId: number; conversationId: number; idempotencyKey: string;
-      project: { projectId: string; sourceRevision: string; descriptorDigest: string; files: Array<Spec224IncrementalSpecFile & { projectSource?: { projectId: string; sourceRevision: string; descriptorDigest: string } }> };
+      project: { projectId: string; sourceRevision: string; descriptorDigest: string; implementationRepository: string; files: Array<Spec224IncrementalSpecFile & { projectSource?: { projectId: string; sourceRevision: string; descriptorDigest: string; implementationRepository?: string } }> };
     }) {
       if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 160) fail("SPEC_SET_IDEMPOTENCY_KEY_INVALID");
       const { binding } = await requireCurrentBinding(input);
@@ -336,7 +338,9 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (!workspace || workspace.scope !== "PLATFORM_ENGINEERING") fail("PLATFORM_ENGINEERING_WORKSPACE_AUTHORITY_REQUIRED");
       if (workspace.snapshotRevision !== binding.snapshotRevision) fail("WORKSPACE_BINDING_STALE");
       if (!workspace.gitHead || !workspace.contentFingerprint) fail("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
+      if (workspace.repositoryId !== input.project.implementationRepository || resolveWorkspaceDeploymentTarget(workspace.repositoryId)?.id !== "modular-debian-dev") fail("MODULAR_PROJECT_WORKSPACE_TARGET_MISMATCH");
       if (!/^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(input.project.projectId) || !/^[a-f0-9]{40,64}$/i.test(input.project.sourceRevision) || !/^[a-f0-9]{64}$/i.test(input.project.descriptorDigest)) fail("MODULAR_PROJECT_BINDING_INVALID");
+      if (!/^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$/.test(input.project.implementationRepository) || input.project.implementationRepository.includes("..") || input.project.implementationRepository.includes("//")) fail("MODULAR_PROJECT_BINDING_INVALID");
       if (!Array.isArray(input.project.files) || !input.project.files.length || input.project.files.length > MAX_ARTIFACTS) fail("SPEC_SET_ARTIFACT_COUNT_INVALID");
       let totalBytes = 0;
       const seen = new Set<string>();
@@ -363,7 +367,14 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
       if (projectDescriptorCount !== 1 || !projectFile || projectFile.digest !== input.project.descriptorDigest) fail("CANONICAL_PROJECT_BINDING_INVALID");
       const digestFiles = input.project.files.map(({ path, digest, canonicalSource, projectSource }) => ({ path, digest, ...(canonicalSource ? { canonicalSource } : {}), ...(projectSource ? { projectSource } : {}) }));
       const digest = sha(canonicalJson({ projectId: input.project.projectId, sourceRevision: input.project.sourceRevision, descriptorDigest: input.project.descriptorDigest, files: digestFiles }));
-      return persistFiles({ ...input, idempotencyKey: `modular-saas-project:${input.idempotencyKey}` }, binding, { files: input.project.files, digest }, projectPathPrefix);
+      const individualSpecPaths = input.project.files.flatMap(file => {
+        const specId = file.canonicalSource?.kind === "spec" ? file.canonicalSource.specId : null;
+        if (!specId) return [];
+        const safeName = specId.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 72) || "feature";
+        const digestSuffix = sha(specId).slice(0, 10);
+        return [`feature-specs/${safeName}-${digestSuffix}.md`];
+      });
+      return persistFiles({ ...input, idempotencyKey: `modular-saas-project:${input.idempotencyKey}` }, binding, { files: input.project.files, digest }, [projectPathPrefix, ...individualSpecPaths]);
     },
     async prepareWorkspaceRun(input: { tenantId: string; actorId: number; conversationId: number; mode: "prompt" | "spec_set"; prompt?: string; additionalInstructions?: string; specSetRevision?: number; writeScope?: string[]; workspaceAccessMode?: Spec224WorkspaceAccessMode }) {
       const { binding } = await requireCurrentBinding(input);
