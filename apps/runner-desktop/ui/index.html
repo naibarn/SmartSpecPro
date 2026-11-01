@@ -45,8 +45,9 @@
         <section class="environment-setting" aria-label="เว็บไซต์ SmartAIHub ที่ Runner จะเชื่อมต่อครั้งถัดไป">
           <label class="field-label" for="connection-environment">เว็บไซต์ที่ Runner จะเชื่อมต่อ</label>
           <select id="connection-environment" class="select-control">
-            <option value="production">Production · smartaihub.app</option>
-            <option value="developer">Developer · aimarkethubs.com</option>
+            <option value="production">Legacy Development · smartaihub.app</option>
+            <option value="developer">Modular Development · aimarkethubs.com (legacy hold; handover pending)</option>
+            <option value="modular-cloudflare-prod" disabled>Modular Production · smartsihub.com (not active)</option>
           </select>
           <p class="body-copy" id="connection-target-detail" aria-live="polite">เว็บไซต์ที่ใช้อยู่: กำลังตรวจสอบ…</p>
           <button class="button quiet" id="save-connection-environment" type="button">บันทึกเว็บไซต์</button>

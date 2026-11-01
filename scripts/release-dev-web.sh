@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Development-only immutable web release. This script intentionally has no sudo
-# path and never calls the production release controller.
+# Reserved modular-development target. The current Legacy SmartAIHub service on
+# aimarkethubs.com remains available until modular Core source is ready for handover.
 REPOSITORY_ROOT="$(git -C "${1:-$PWD}" rev-parse --show-toplevel)"
 cd "${REPOSITORY_ROOT}"
 shift || true
@@ -10,11 +10,11 @@ if [[ "${1:-}" == "--" ]]; then shift; fi
 
 usage() {
   cat <<'EOF'
-Build and activate an immutable artifact on smartspec-dev-web.service only.
+Deploy the modular SaaS Core to its reserved development target when available.
 
 Usage:
-  pnpm run release:dev:web
-  pnpm run release:dev:web -- --build-result <verified-receipt.json>
+  pnpm run release:dev:web -- --target modular-debian-dev
+  pnpm run release:dev:web -- --target modular-debian-dev --build-result <verified-receipt.json>
 
 The default path builds the configured canonical main revision. Activation is
 restricted to the user-level service on port 3100 and the aimarkethubs.com
@@ -24,6 +24,28 @@ EOF
 }
 
 if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then usage; exit 0; fi
+
+TARGET_ID=""
+while (($#)); do
+  case "$1" in
+    --target)
+      if (($# < 2)) || [[ -z "$2" ]]; then echo "--target requires a registered target ID." >&2; exit 2; fi
+      TARGET_ID="$2"
+      shift 2
+      ;;
+    *) echo "Unknown development release option: $1" >&2; exit 2 ;;
+  esac
+done
+if [[ -z "$TARGET_ID" ]]; then
+  echo "Development target is required; use --target modular-debian-dev." >&2
+  exit 2
+fi
+if [[ "$TARGET_ID" != "modular-debian-dev" ]]; then
+  echo "This development controller only accepts modular-debian-dev." >&2
+  exit 20
+fi
+echo "MODULAR_APPLICATION_NOT_AVAILABLE: modular-debian-dev is prepared but no Core source/runtime exists; aimarkethubs.com traffic remains on its current healthy service." >&2
+exit 26
 
 BUILD_RESULT_INPUT=""
 while (($#)); do
@@ -54,9 +76,9 @@ fi
 DEV_TUNNEL_CONFIG="${HOME}/.config/smartspec-dev/cloudflared.yml"
 DEV_SERVICE="smartspec-dev-web.service"
 DEV_TUNNEL="smartspec-dev-tunnel.service"
-PROD_WEB="smartspec-web.service"
-PROD_WORKER="smartspec-node-worker.service"
-PROD_RELEASE_POINTER="${HOME}/production-releases/smartspec-web-current"
+LEGACY_WEB="smartspec-web.service"
+LEGACY_WORKER="smartspec-node-worker.service"
+LEGACY_RELEASE_POINTER="${HOME}/production-releases/smartspec-web-current"
 DROPIN_DIR="${HOME}/.config/systemd/user/${DEV_SERVICE}.d"
 DROPIN="${DROPIN_DIR}/99-immutable-canonical-build.conf"
 STATE_DIR="${HOME}/.local/state/smartspec-dev-web"
@@ -73,14 +95,14 @@ text = Path(sys.argv[1]).read_text(encoding="utf-8")
 if not re.search(r"-\s*hostname:\s*aimarkethubs\.com\s*\n\s*service:\s*http://127\.0\.0\.1:3100(?:\s|$)", text):
     raise SystemExit("Development tunnel must route aimarkethubs.com to 127.0.0.1:3100")
 if re.search(r"-\s*hostname:\s*smartaihub\.app\b", text):
-    raise SystemExit("Production hostname must not be present in the development tunnel")
+    raise SystemExit("Legacy hostname must not be present in the modular development tunnel")
 PY
 node "${REPOSITORY_ROOT}/apps/web/scripts/verifyDevWebConfig.mjs" \
   "${HOME}/.config/smartspec-dev/web.env" aimarkethubs.com 3100
 
 systemctl --user is-active --quiet "$DEV_TUNNEL" || { echo "Development tunnel is not active." >&2; exit 22; }
-systemctl is-active --quiet "$PROD_WEB" || { echo "Production web service is not active; refusing development release." >&2; exit 23; }
-systemctl is-active --quiet "$PROD_WORKER" || { echo "Production worker service is not active; refusing development release." >&2; exit 23; }
+systemctl is-active --quiet "$LEGACY_WEB" || { echo "Legacy web service is not active; refusing development release." >&2; exit 23; }
+systemctl is-active --quiet "$LEGACY_WORKER" || { echo "Legacy Node worker is not active; refusing development release." >&2; exit 23; }
 
 service_config="$(systemctl --user show "$DEV_SERVICE" --property=FragmentPath --property=DropInPaths --property=WorkingDirectory --property=ExecStart --property=EnvironmentFiles --property=Environment)"
 [[ "$service_config" == *"smartspec-dev-web.service"* && "$service_config" == *"SMARTSPEC_DEV_ENV_FILE="*"/web.env"* && "$service_config" == *"SMARTSPEC_DEV_WEB_PORT=3100"* ]] || {
@@ -92,15 +114,15 @@ if ! systemctl --user is-active --quiet "$DEV_SERVICE"; then
   echo "[dev-release] Recovering the isolated development service from its last failed activation." >&2
 fi
 
-production_fingerprint() {
+legacy_runtime_fingerprint() {
   {
-    printf 'release=%s\n' "$(readlink -f "$PROD_RELEASE_POINTER")"
-    systemctl show "$PROD_WEB" --property=ActiveState --property=MainPID --property=ExecMainStartTimestamp --property=FragmentPath --property=DropInPaths --property=WorkingDirectory --property=ExecStart --property=EnvironmentFiles
-    systemctl show "$PROD_WORKER" --property=ActiveState --property=MainPID --property=ExecMainStartTimestamp --property=FragmentPath --property=DropInPaths --property=WorkingDirectory --property=ExecStart --property=EnvironmentFiles
+    printf 'release=%s\n' "$(readlink -f "$LEGACY_RELEASE_POINTER")"
+    systemctl show "$LEGACY_WEB" --property=ActiveState --property=MainPID --property=ExecMainStartTimestamp --property=FragmentPath --property=DropInPaths --property=WorkingDirectory --property=ExecStart --property=EnvironmentFiles
+    systemctl show "$LEGACY_WORKER" --property=ActiveState --property=MainPID --property=ExecMainStartTimestamp --property=FragmentPath --property=DropInPaths --property=WorkingDirectory --property=ExecStart --property=EnvironmentFiles
   } | sha256sum | awk '{print $1}'
 }
-PRODUCTION_BEFORE="$(production_fingerprint)"
-PRODUCTION_RELEASE_BEFORE="$(readlink -f "$PROD_RELEASE_POINTER")"
+LEGACY_BEFORE="$(legacy_runtime_fingerprint)"
+LEGACY_RELEASE_BEFORE="$(readlink -f "$LEGACY_RELEASE_POINTER")"
 
 BUILD_ENTRYPOINT="${REPOSITORY_ROOT}/skills/canonical-checkout-sync/scripts/build-canonical-main.sh"
 if [[ -n "$BUILD_RESULT_INPUT" ]]; then
@@ -120,7 +142,7 @@ print(json.dumps(record, sort_keys=True))
 PY
 )"
 else
-  echo "[dev-release] Building canonical main; no production activation path is invoked." >&2
+  echo "[dev-release] Building canonical main; no legacy or production activation path is invoked." >&2
   BUILD_RECORD="$(bash "$BUILD_ENTRYPOINT" "$REPOSITORY_ROOT")"
 fi
 
@@ -309,14 +331,14 @@ PY
 )"
 rm -rf "$PUBLIC_VERIFY_DIR"
 
-PRODUCTION_AFTER="$(production_fingerprint)"
-PRODUCTION_RELEASE_AFTER="$(readlink -f "$PROD_RELEASE_POINTER")"
-if [[ "$PRODUCTION_BEFORE" != "$PRODUCTION_AFTER" || "$PRODUCTION_RELEASE_BEFORE" != "$PRODUCTION_RELEASE_AFTER" ]]; then
-  echo "Production service/release fingerprint changed during development activation; dev release is being rolled back." >&2
+LEGACY_AFTER="$(legacy_runtime_fingerprint)"
+LEGACY_RELEASE_AFTER="$(readlink -f "$LEGACY_RELEASE_POINTER")"
+if [[ "$LEGACY_BEFORE" != "$LEGACY_AFTER" || "$LEGACY_RELEASE_BEFORE" != "$LEGACY_RELEASE_AFTER" ]]; then
+  echo "Legacy service/release fingerprint changed during development activation; dev release is being rolled back." >&2
   exit 26
 fi
 
-python3 - "$DEPLOYMENT_RECORD" "$BUILD_RESULT" "$SOURCE_SHA" "$RUNTIME_REVISION" "$ARTIFACT_DIGEST" "$ARTIFACT_PATH" "$PUBLIC_DIR" "$PRODUCTION_RELEASE_AFTER" "$PRODUCTION_BEFORE" "$PRODUCTION_AFTER" "$PUBLIC_ASSET_PROOF" "$CANONICAL_BUILD_RESULT" "$PUBLISHED_RELEASE" <<'PY'
+python3 - "$DEPLOYMENT_RECORD" "$BUILD_RESULT" "$SOURCE_SHA" "$RUNTIME_REVISION" "$ARTIFACT_DIGEST" "$ARTIFACT_PATH" "$PUBLIC_DIR" "$LEGACY_RELEASE_AFTER" "$LEGACY_BEFORE" "$LEGACY_AFTER" "$PUBLIC_ASSET_PROOF" "$CANONICAL_BUILD_RESULT" "$PUBLISHED_RELEASE" <<'PY'
 import json, sys, time
 from pathlib import Path
 target = Path(sys.argv[1])
@@ -336,10 +358,10 @@ record = {
   "public_dir": sys.argv[7],
   "durable_release_dir": sys.argv[13],
   "public_asset_proof": json.loads(sys.argv[11]),
-  "production_release_preserved": sys.argv[8],
-  "production_services_fingerprint_before": sys.argv[9],
-  "production_services_fingerprint_after": sys.argv[10],
-  "production_service": "smartspec-web.service",
+  "legacy_release_preserved": sys.argv[8],
+  "legacy_services_fingerprint_before": sys.argv[9],
+  "legacy_services_fingerprint_after": sys.argv[10],
+  "legacy_service": "smartspec-web.service",
 }
 target.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 target.chmod(0o600)

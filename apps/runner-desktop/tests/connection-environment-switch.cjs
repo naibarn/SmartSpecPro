@@ -4,6 +4,21 @@ const { pathToFileURL } = require('node:url');
 const path = require('node:path');
 const { chromium } = require('@playwright/test');
 
+test('labels existing connection choices with the canonical logical environments', async () => {
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage();
+    await page.goto(pathToFileURL(path.resolve(__dirname, '../ui/index.html')).href);
+    const options = page.locator('#connection-environment option');
+    assert.match(await options.nth(0).textContent(), /Legacy Development.*smartaihub\.app/);
+    assert.match(await options.nth(1).textContent(), /Modular Development.*aimarkethubs\.com.*handover pending/);
+    assert.match(await options.nth(2).textContent(), /Modular Production.*smartsihub\.com.*not active/);
+    assert.equal(await options.nth(2).isDisabled(), true);
+  } finally {
+    await browser.close();
+  }
+});
+
 test('a saved different website offers an explicit restart and does not reuse old-site credentials', async () => {
   const browser = await chromium.launch({ headless: true });
   try {

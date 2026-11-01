@@ -22,6 +22,18 @@ spec.loader.exec_module(module)
 
 
 class PublishedSourceFreshnessTests(unittest.TestCase):
+    def test_static_publisher_requires_the_registered_legacy_development_target(self):
+        targets = {"legacy-debian-dev": {
+            "domain": "smartaihub.app", "environment": "development",
+            "runtime": "debian-systemd", "service": "smartspec-web.service",
+            "port": 3000, "controller": "linux-fullstack-immutable", "deployable": True,
+        }}
+        target = module.validate_deployment_target(targets, "legacy-debian-dev")
+        self.assertEqual(target["domain"], "smartaihub.app")
+        for target_id in (None, "modular-debian-dev", "modular-cloudflare-prod"):
+            with self.subTest(target_id=target_id), self.assertRaises(module.DeployError):
+                module.validate_deployment_target(targets, target_id)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.index = Path(self.temp.name) / "index.html"
@@ -190,7 +202,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
         }
         # The release manifest is excluded from the public artifact digest.
         module.write_json_atomic(target / "release-manifest.json", release)
-        status_file = self.root / "production-release.json"
+        status_file = self.root / "development-release.json"
         module.write_json_atomic(status_file, release)
         with patch.object(module, "active_backend_revision", return_value=self.revision):
             status = module.release_status(status_file, target, self.revision)
@@ -213,7 +225,7 @@ class ReleaseIntegrityTests(unittest.TestCase):
             "public_artifact_digest": module.artifact_manifest(target)["artifact_digest"],
         }
         module.write_json_atomic(target / "release-manifest.json", release)
-        status_file = self.root / "production-release.json"
+        status_file = self.root / "development-release.json"
         module.write_json_atomic(status_file, release)
         with patch.object(module, "active_backend_revision", return_value="f" * 40):
             status = module.release_status(status_file, target, self.revision)
@@ -299,13 +311,13 @@ class ReleaseIntegrityTests(unittest.TestCase):
         second_acquired = threading.Event()
 
         def first_deploy():
-            lock = module.acquire_production_deploy_lock(lock_path)
+            lock = module.acquire_deployment_lock(lock_path)
             first_acquired.set()
             release_first.wait(timeout=3)
             lock.close()
 
         def second_deploy():
-            lock = module.acquire_production_deploy_lock(lock_path)
+            lock = module.acquire_deployment_lock(lock_path)
             second_acquired.set()
             lock.close()
 

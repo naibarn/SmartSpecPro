@@ -1,5 +1,7 @@
 # SmartSpecPro Configuration Validation Summary
 
+> **Historical record (2026-11-01):** The environment mapping below is superseded by the canonical target registry at [`apps/web/scripts/deployment-targets.json`](../../../apps/web/scripts/deployment-targets.json) and the current [release workflow](../../WEB_RELEASE_WORKFLOW.md). `smartaihub.app` is the active Debian Development target; `aimarkethubs.com` remains on its existing Development service pending Core handover; `smartsihub.com` is registered but inactive. The original validation evidence below is retained as historical context.
+
 **Date:** 2026-02-09
 **Purpose:** Prevent recurring domain and service startup problems
 
@@ -27,8 +29,8 @@
 - `nginx/conf.d/dev-host.conf` - Removed deprecated domains (smartspec.pro, smartspec.local)
 - `nginx/nginx-dev.conf` - Removed deprecated domains from both HTTPS and HTTP sections
 
-**Current Domain Configuration:**
-- ✅ **Production domain:** https://smartaihub.app (ONLY this domain)
+**Domain Configuration at the time of this historical record:**
+- ✅ **Domain then treated as production:** https://smartaihub.app (ONLY this domain)
 - ✅ **Local dev:** localhost (for development purposes only)
 - ❌ **Removed:** smartspec.pro, smartspec.local, smarthubai.app
 
@@ -184,7 +186,7 @@ curl http://localhost:3000
 
 ## 📝 Key Rules (MUST FOLLOW)
 
-1. **Domain Rule:** ONLY use https://smartaihub.app in production configs
+1. **Historical domain rule:** At the time of this record, https://smartaihub.app was treated as the sole production domain. Follow the current target registry linked above for present-day routing and deployment.
 2. **Startup Rule:** ALWAYS use `./run-services.sh start` (never start services manually)
 3. **Validation Rule:** Run `./scripts/validate-all-configs.sh` after ANY config changes
 4. **Nginx Rule:** Nginx MUST be running for domain access to work

@@ -9,8 +9,10 @@ build_target = "smartspec-web"
 
 [repository.release]
 # Immutable candidates may remain releasable after main advances, but must
-# descend from the latest required execution-authority revision. Production
-# activation still requires the existing exact-artifact sudo controller.
+# descend from the latest required execution-authority revision. These are
+# source-candidate rules only; deployment target and logical environment are
+# resolved separately from apps/web/scripts/deployment-targets.json. The
+# legacy-debian-dev target uses the existing exact-artifact Linux controller.
 allow_approved_immutable_candidates = true
 required_source_ancestors = ["d7f19629ac99faf2d51a0491859a243863b3f706"]
 

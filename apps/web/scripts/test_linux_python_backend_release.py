@@ -58,6 +58,13 @@ class FakeRuntime:
 
 
 class LinuxPythonBackendReleaseTests(unittest.TestCase):
+    def test_python_release_only_accepts_the_registered_legacy_development_target(self):
+        target = release.validate_python_deployment_target("legacy-debian-dev")
+        self.assertEqual(target["domain"], "smartaihub.app")
+        for target_id in (None, "modular-debian-dev", "modular-cloudflare-prod"):
+            with self.subTest(target_id=target_id), self.assertRaises(release.ReleaseError):
+                release.validate_python_deployment_target(target_id)
+
     def test_approved_immutable_python_candidate_requires_canonical_ancestry_and_security_floor(self):
         with tempfile.TemporaryDirectory() as temp:
             source = Path(temp)
@@ -160,8 +167,10 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
             root = Path(temp)
             artifact, sha = self._artifact(root)
             runtime = FakeRuntime(root)
-            receipt = release.promote_artifact(artifact, runtime=runtime, receipt_root=root / "receipts", release_root=root)
+            receipt = release.promote_artifact(artifact, target_id="legacy-debian-dev", runtime=runtime, receipt_root=root / "receipts", release_root=root)
             self.assertEqual(receipt["status"], "DEPLOYED_VERIFIED")
+            self.assertEqual(receipt["target_id"], "legacy-debian-dev")
+            self.assertEqual(receipt["environment"], "development")
             self.assertEqual(receipt["runtime_verification"]["database_readiness_http"], 200)
             self.assertIn(sha.encode(), runtime.dropin)
             self.assertEqual(runtime.restarts, 1)
@@ -179,7 +188,7 @@ class LinuxPythonBackendReleaseTests(unittest.TestCase):
             runtime = FakeRuntime(root, fail_verify=True)
             prior = runtime.dropin
             with self.assertRaises(release.ReleaseError):
-                release.promote_artifact(artifact, runtime=runtime, receipt_root=root / "receipts", release_root=root)
+                release.promote_artifact(artifact, target_id="legacy-debian-dev", runtime=runtime, receipt_root=root / "receipts", release_root=root)
             self.assertEqual(runtime.dropin, prior)
             self.assertEqual(runtime.restarts, 2)
             records = [json.loads(path.read_text()) for path in (root / "receipts").glob("*.json")]

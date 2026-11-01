@@ -26,32 +26,45 @@ SmartSpecPro/
 
 ### Domain and Access Rules
 
-**PRODUCTION DOMAIN (ONLY):**
-- ✅ **https://smartaihub.app** — This is the ONLY allowed production domain
-- ❌ **NEVER use:** smartspec.pro, smartspec.local, smarthubai.app, or any other domain
+**Canonical application deployment targets** are registered in
+`apps/web/scripts/deployment-targets.json`:
+- `legacy-debian-dev` → `https://smartaihub.app` (Legacy SmartAIHub, Debian development)
+- `modular-debian-dev` → `https://aimarkethubs.com` (new Modular Core target, prepared; Core source is not available)
+- `modular-cloudflare-prod` → `https://smartsihub.com` (new production target, Cloudflare Workers/Hono; not activated)
+
+Do not classify a target from `NODE_ENV`, a service name, or a release-directory
+name. An optimized Node build may use `NODE_ENV=production` on a development
+target. Never route the legacy Linux release command to `smartsihub.com`.
 
 **Server Environment:**
 - This is a **remote server** with **NO browser, NO UI** — accessible via **SSH ONLY**
-- Developers access the application **ONLY through the domain** https://smartaihub.app
+- Developers access the legacy application through **https://smartaihub.app**.
+- Keep the current **https://aimarkethubs.com** service and tunnel available until
+  the new Modular Core is healthy and a deliberate handover is ready.
 - **localhost access is NOT available** to end users (only for internal service communication)
 
 **Service Access:**
 - Backend API (internal): http://localhost:8000
 - Web App (internal): http://localhost:3000
-- **Public access (ONLY):** https://smartaihub.app (proxied through Nginx)
+- **Legacy public access:** https://smartaihub.app (Cloudflare Tunnel → port 3000)
+- **Current modular-dev handover hold:** https://aimarkethubs.com (Tunnel → port 3100)
+- **Future modular production:** https://smartsihub.com (Cloudflare Workers; inactive)
 
-**Nginx Requirement:**
-- Nginx reverse proxy **MUST be running** for domain access to work
-- Nginx is automatically managed by `./run-services.sh`
-- Container name: `smartspec-nginx-dev`
-- Config: `nginx/conf.d/dev-host.conf`
+**Public routing:**
+- `smartaihub.app` is routed by the system `cloudflared.service` to port 3000.
+- `aimarkethubs.com` is routed by the user `smartspec-dev-tunnel.service` to port 3100.
+- Do not change either tunnel during a release. The Modular Core handover has its own target and must wait until its service is healthy.
 
 ### Service Management — SINGLE SOURCE OF TRUTH
 
-**Production services are managed by systemd. NO EXCEPTIONS.**
+**The legacy development service is managed by the existing system-level systemd
+unit and immutable release controller. Do not restart the platform or publish
+build assets directly.**
 
 Service files: `/etc/systemd/system/smartspec-{backend,web}.service`
-Source of truth: `docker/systemd/smartspec-{backend,web}.service`
+The active `smartspec-web.service` release pointer and its drop-ins are managed
+by `apps/web/scripts/linux_backend_release.py` through the canonical release
+workflow.
 
 **Allowed commands:**
 ```bash
@@ -60,27 +73,16 @@ Source of truth: `docker/systemd/smartspec-{backend,web}.service`
 systemctl status smartspec-backend.service         # Backend status
 systemctl status smartspec-web.service             # Web status
 
-# Start / Stop / Restart (requires sudo)
-sudo systemctl start smartspec-backend.service     # Start backend
-sudo systemctl start smartspec-web.service         # Start web
-sudo systemctl stop smartspec-backend.service      # Stop backend
-sudo systemctl stop smartspec-web.service          # Stop web
-sudo systemctl restart smartspec-backend.service   # Restart backend
-sudo systemctl restart smartspec-web.service       # Restart web
+# Authorized legacy development release (immutable build, promotion, health,
+# served-SHA verification, and rollback use the existing controller)
+pnpm run release:web:linux -- --target legacy-debian-dev
 
-# After code changes that affect the server (ATOMIC — no downtime, USE THIS)
-cd apps/web && npm run build:deploy                # Atomic build: builds to a staging
-                                                    # dir then swaps into dist/ with a
-                                                    # sub-millisecond rename. Frontend-only
-                                                    # changes are live immediately, no
-                                                    # restart needed (static files are read
-                                                    # fresh from disk per-request).
-sudo systemctl restart smartspec-web.service       # Only needed if server/*.ts changed
+# Modular Core deployment is unavailable until its source/runtime exists.
+pnpm run release:dev:web -- --target modular-debian-dev
 
-# After code changes that affect the server (non-atomic fallback — causes a
-# ~50s window where dist/public is empty; only use if build:deploy is broken)
-cd apps/web && npm run build                       # Rebuild frontend assets (in place)
-sudo systemctl restart smartspec-web.service       # Restart to pick up changes
+# Read-only service status
+systemctl status smartspec-web.service
+systemctl --user status smartspec-dev-web.service smartspec-dev-tunnel.service
 
 # Logs
 journalctl -u smartspec-web.service -f             # Live web logs
@@ -93,29 +95,28 @@ journalctl -u smartspec-backend.service -f         # Live backend logs
 
 | FORBIDDEN | Why | Do this instead |
 |---|---|---|
-| `screen -dmS ... uvicorn/tsx` | Conflicts with systemd | `sudo systemctl start` |
-| `nohup uvicorn ... &` | Orphan process blocks port | `sudo systemctl start` |
-| `pnpm dev` / `npm run dev` in background | Dev mode conflicts with prod | `sudo systemctl restart` |
-| `kill $(lsof -t -i:3000)` to "fix" port | Kills systemd-managed process, triggers restart loop | `sudo systemctl stop` first |
-| `./run-services.sh start` without sudo | Fails silently on systemctl calls | Use sudo systemctl directly |
+| `screen -dmS ... uvicorn/tsx` | Conflicts with systemd | Use the configured service lifecycle |
+| `nohup uvicorn ... &` | Orphan process blocks a port | Use the configured service lifecycle |
+| Raw `systemctl restart` to publish a build | Bypasses immutable promotion and rollback | Use the explicit-target release command |
+| Build into a live release directory | Can corrupt the serving version | Build through `release:web:linux` |
+| Route a legacy release to `smartsihub.com` | Crosses the production target boundary | Use its separate Wrangler path when activated |
 
 ### Service Architecture
 
 ```
-systemd
-├── smartspec-infra.service      # PostgreSQL + Redis (Docker)
-├── smartspec-backend.service    # Python FastAPI (uvicorn :8000)
-│   ├── KillMode=mixed           # Clean shutdown
-│   ├── Restart=on-failure       # Auto-recover from crashes only
-│   └── ExecStartPre             # Wait for port to be free
-├── smartspec-web.service        # Node.js + React (tsx :3000)
-│   ├── Requires=backend         # Starts after backend
-│   ├── KillMode=mixed
-│   └── Restart=on-failure
-└── smartspec.target             # Groups all services
+system-level systemd
+├── smartspec-infra.service       # PostgreSQL + Redis
+├── smartspec-backend.service     # Python API :8000
+├── smartspec-node-worker.service # PostgreSQL Node job worker
+└── smartspec-web.service         # Legacy SmartAIHub web :3000
+
+user-level systemd
+├── smartspec-dev-web.service     # Current aimarkethubs.com hold :3100
+├── smartspec-dev-backend.service # Isolated development API :8100
+└── smartspec-dev-tunnel.service  # aimarkethubs.com tunnel
 ```
 
-**Sequential Startup Order (handled by systemd dependencies):**
+**Existing legacy service dependencies:**
 1. Infrastructure (PostgreSQL, Redis) — `smartspec-infra.service`
 2. Nginx reverse proxy — Docker container `smartspec-nginx-dev`
 3. Python Backend — `smartspec-backend.service`

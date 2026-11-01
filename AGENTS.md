@@ -90,54 +90,38 @@ the policy's explicit-path fallback.
 
 ## Outcome Completion
 
-### SmartAIHub Cloudflare Beta cutover — owner directive
+### Canonical deployment target mapping — owner directive, 2026-11-01
 
-For the current Beta migration, prioritize moving `smartaihub.app` application
-execution to the existing Cloudflare Workers + Containers runtime. Keep the
-canonical PostgreSQL database `smartspec` as the database of record. Keep
-`aimarkethubs.com` on Debian Development, using its separate tenant in that same
-logical database. Do not reinterpret this as a database merge or require a new
-database provider. Neon migration and Production Hardening are deferred until
-Cloudflare Beta acceptance.
+Resolve every application deployment through
+`apps/web/scripts/deployment-targets.json`. Keep logical environment, build
+mode, deployment authority, database authority and live traffic impact as
+separate facts. `NODE_ENV=production` is an optimized Node build/runtime mode;
+it does not classify a deployment as production or grant deployment authority.
 
-- Reuse the existing Workers, Containers, image receipts, provider resources,
-  saved credentials, executors, deployment workflow and rollback baseline.
-  Recreate infrastructure only when a verified runtime dependency requires it.
-- A separate Staging database, new Database Owner framework, full M3
-  Queue/Recovery parity, SPEC-224 completion, unrelated Chat/Thread migrations,
-  new approval or credential systems, Neon, and Development superuser removal
-  are not unconditional M2 cutover gates. Do not disable genuine security or
-  data-integrity checks to get past a gate.
-- Keep the explicitly authorized Development database administration access
-  available for debugging, DDL, migrations and data repair. Do not repeatedly
-  propose removing that access as a migration prerequisite. Keep administrative
-  credentials out of public-facing runtime configuration when an appropriate
-  application credential is available.
-- Prepare and execute through the existing authorized server-side deployment
-  path. A credential stored in the platform is not automatically available to
-  the CLI, and missing CLI credentials alone do not prove the executor is
-  unavailable. Do not create another approval system or repeat browser/CLI
-  checks without new evidence. If authority is genuinely missing, state one
-  exact target, operation and required permission.
-- Start with real Container startup, health and read-only database checks.
-  Disable automatic schema creation, migrations and seeding during runtime
-  startup. Verify login/session behavior, critical APIs, Chat/model access,
-  existing-record reads and controlled tenant-scoped writes before production
-  traffic changes. Never use customer records for destructive tests.
-- Do not change Production traffic until Staging acceptance, database
-  connectivity, backup/recovery and rollback are verified. Cutover success
-  requires evidence that normal `smartaihub.app` requests execute on Cloudflare
-  without Debian application fallback; Worker health, dry-runs and source tests
-  alone are insufficient. Retain Debian for controlled rollback during
-  stabilization.
-- Report runtime hosting separately from database hosting. PostgreSQL may
-  remain on its existing host during this application cutover; that dependency
-  is not itself a failed Cloudflare runtime migration.
-- Continue from existing source and receipts. Do not repeat completed audits,
-  create checkpoint-only commits, or expand this cutover into unrelated
-  platform development. Fix the smallest demonstrated blocker and keep working
-  until live acceptance is proven or one concrete external authorization is
-  identified.
+- `legacy-debian-dev`: `https://smartaihub.app`, Legacy SmartAIHub on the
+  existing Debian `smartspec-web.service` at port 3000, development authority,
+  existing PostgreSQL `smartspec`. Use the immutable Linux release controller
+  with an explicit `--target legacy-debian-dev`. Keep the service name, port,
+  database and rollback path. Never route this release to Cloudflare.
+- `modular-debian-dev`: `https://aimarkethubs.com`, reserved for the new
+  Modular SaaS Core on its independent Debian/local Workerd runtime. Core source
+  is not available yet. Keep the currently healthy site, port 3100 and Tunnel
+  unchanged until the replacement is healthy and handover is intentional. Do
+  not claim a modular deployment before then. Core control-plane data uses the
+  existing `smartspec` database contract; Mini Apps use separate data planes.
+- `modular-cloudflare-prod`: `https://smartsihub.com`, the future Modular SaaS
+  production target on Cloudflare Workers/Hono. Use its separate production
+  release authority and Wrangler path when provisioned. Do not activate it,
+  create its DNS/resources, or route legacy release commands to it in this
+  environment-realignment work.
+
+Development releases to the first two targets are covered by the owner's
+delegated development authority. Retain actual protections for destructive data
+changes, ledger integrity, cross-tenant access, credentials, external purchases
+and wrong-target releases. Do not restore Cloudflare resources removed by
+SPEC-311 or infer authority from old service names, release directories,
+`NODE_ENV`, or historical docs. Preserve SPEC-311's historical evidence and
+append later owner decisions instead of rewriting prior events.
 
 ### Autonomous non-production approval across SPECs
 

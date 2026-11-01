@@ -221,7 +221,8 @@ function applyRunnerStatus(status) {
   const selectedEnvironment = status.connectionEnvironment ?? "production";
   if (!connectionEnvironmentDirty) elements["connection-environment"].value = selectedEnvironment;
   const environmentLabel = selectedEnvironment === "developer"
-    ? "Developer · aimarkethubs.com" : "Production · smartaihub.app";
+    ? "Modular Development · aimarkethubs.com (legacy hold; handover pending)"
+    : "Legacy Development · smartaihub.app";
   const activeEnvironment = (status.activeServerUrl ?? "").includes("aimarkethubs.com")
     ? "developer"
     : (status.activeServerUrl ?? "").includes("smartaihub.app") ? "production" : null;
@@ -720,7 +721,9 @@ elements["connect-button"].addEventListener("click", async () => {
     ? "developer"
     : activeServerUrl.includes("smartaihub.app") ? "production" : null;
   if (activeEnvironment !== null && activeEnvironment !== selectedEnvironment) {
-    const selectedLabel = selectedEnvironment === "developer" ? "Developer · aimarkethubs.com" : "Production · smartaihub.app";
+    const selectedLabel = selectedEnvironment === "developer"
+      ? "Modular Development · aimarkethubs.com (legacy hold; handover pending)"
+      : "Legacy Development · smartaihub.app";
     if (!window.confirm(`Runner กำลังเชื่อมต่อ ${activeServerUrl}\nต้องการหยุดและเปิด Runner ใหม่เพื่อใช้ ${selectedLabel} หรือไม่?`)) return;
     invalidatePendingStatus();
     connectAttemptError = "";

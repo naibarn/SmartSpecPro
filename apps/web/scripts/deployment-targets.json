@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "legacy-debian-dev": {
+      "domain": "smartaihub.app",
+      "environment": "development",
+      "application": "legacy-smartspec",
+      "runtime": "debian-systemd",
+      "buildMode": "production",
+      "deploymentAuthority": "delegated-development",
+      "database": "smartspec",
+      "databaseAuthority": "existing-runtime-configuration",
+      "trafficImpact": "live-legacy-users",
+      "service": "smartspec-web.service",
+      "companionServices": [
+        "smartspec-node-worker.service",
+        "smartspec-backend.service"
+      ],
+      "port": 3000,
+      "controller": "linux-fullstack-immutable",
+      "deployable": true
+    },
+    "modular-debian-dev": {
+      "domain": "aimarkethubs.com",
+      "environment": "development",
+      "application": "smartsihub-modular-core",
+      "runtime": "debian-systemd-with-local-workerd",
+      "buildMode": "development",
+      "deploymentAuthority": "delegated-development",
+      "database": "smartspec",
+      "databaseAuthority": "core-control-plane-contract",
+      "trafficImpact": "live-aimarket-users-after-handover",
+      "service": "smartsihub-core-dev.service",
+      "port": 3200,
+      "releaseRoot": "/home/dev/modular-development-releases",
+      "status": "prepared",
+      "applicationAvailable": false,
+      "deployable": false,
+      "handover": {
+        "currentService": "smartspec-dev-web.service",
+        "currentPort": 3100,
+        "preserveUntilCoreHealthy": true
+      }
+    },
+    "modular-cloudflare-prod": {
+      "domain": "smartsihub.com",
+      "environment": "production",
+      "application": "smartsihub-modular-platform",
+      "runtime": "cloudflare-workers-hono",
+      "buildMode": "workerd",
+      "deploymentAuthority": "separate-production-release",
+      "database": "smartspec",
+      "databaseAuthority": "production-application-credential",
+      "trafficImpact": "production-users",
+      "deploymentPath": "wrangler",
+      "status": "registered-not-activated",
+      "zoneRegisteredInCurrentAccount": false,
+      "deployable": false
+    }
+  }
+}

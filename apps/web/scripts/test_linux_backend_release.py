@@ -174,6 +174,21 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         (self.workspace / ".gitignore").write_text("apps/web/dist/\n")
         (self.workspace / "apps/web/package.json").parent.mkdir(parents=True)
         (self.workspace / "apps/web/package.json").write_text('{"name":"@smartspec/web"}\n')
+        deployment_targets = self.workspace / "apps/web/scripts/deployment-targets.json"
+        deployment_targets.parent.mkdir(parents=True, exist_ok=True)
+        deployment_targets.write_text(json.dumps({"schemaVersion": 1, "targets": {
+            "legacy-debian-dev": {"domain": "smartaihub.app", "environment": "development",
+                "runtime": "debian-systemd", "service": "smartspec-web.service", "port": 3000,
+                "controller": "linux-fullstack-immutable", "deploymentAuthority": "delegated-development",
+                "deployable": True},
+            "modular-debian-dev": {"domain": "aimarkethubs.com", "environment": "development",
+                "runtime": "debian-systemd-with-local-workerd", "service": "smartsihub-core-dev.service",
+                "port": 3200, "controller": "modular-core", "deploymentAuthority": "delegated-development",
+                "deployable": False},
+            "modular-cloudflare-prod": {"domain": "smartsihub.com", "environment": "production",
+                "runtime": "cloudflare-workers-hono", "controller": "wrangler",
+                "deploymentAuthority": "separate-production-release", "deployable": False},
+        }}))
         subprocess.run(["git", "-C", str(self.workspace), "add", "."], check=True)
         subprocess.run(["git", "-C", str(self.workspace), "commit", "-qm", "fixture source"], check=True)
         (self.workspace / "execution-authority-floor.txt").write_text("scoped development authority\n")
@@ -255,6 +270,21 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
+    def test_linux_controller_admits_only_explicit_legacy_development_target(self):
+        target = release.validate_linux_release_target(self.workspace, "legacy-debian-dev")
+        self.assertEqual(target["domain"], "smartaihub.app")
+        self.assertEqual(target["service"], "smartspec-web.service")
+        for target_id in ("modular-debian-dev", "modular-cloudflare-prod"):
+            with self.subTest(target_id=target_id), self.assertRaisesRegex(
+                release.ReleaseError, "TARGET_NOT_SUPPORTED_BY_LEGACY_LINUX_RELEASE"
+            ):
+                release.validate_linux_release_target(self.workspace, target_id)
+
+    def test_linux_controller_rejects_missing_or_unknown_target(self):
+        for target_id in (None, "smartaihub.app", "unknown"):
+            with self.subTest(target_id=target_id), self.assertRaises(release.ReleaseError):
+                release.validate_linux_release_target(self.workspace, target_id)
+
     def prepare(self):
         with patch.object(release, "canonical_tip", return_value=self.source_sha):
             result = release.prepare_artifact(self.build_result_path, self.artifact_store)
@@ -316,6 +346,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
     def promote(self, artifact: Path):
         return release.promote_artifact(
             artifact,
+            target_id="legacy-debian-dev",
             release_root=self.release_root,
             dropin_path=self.dropin_path,
             current_link=self.current_link,
@@ -334,6 +365,9 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         artifact = self.prepare()
         result = self.promote(artifact)
         self.assertEqual(result["status"], "DEPLOYED_VERIFIED")
+        self.assertEqual(result["target_id"], "legacy-debian-dev")
+        self.assertEqual(result["target_domain"], "smartaihub.app")
+        self.assertEqual(result["logical_environment"], "development")
         self.assertEqual(result["runtime_verification"]["runtimeRevision"], self.source_sha)
         self.assertEqual(result["runtime_verification"]["anonymousDiagnosticsHttp"], 401)
         self.assertEqual(self.current_link.resolve(), Path(result["release_path"]))
@@ -358,7 +392,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertTrue((release_path / "tmp").is_symlink())
         self.assertTrue((release_path / "uploads").is_symlink())
         repository_key = hashlib.sha256(b"fixture-release-repository").hexdigest()[:20]
-        status_file = self.root / "canonical-leases" / repository_key / "production-release.json"
+        status_file = self.root / "canonical-leases" / repository_key / "development-release.json"
         status = deploy.release_status(status_file, Path(result["release_path"]) / "dist/public", self.source_sha)
         self.assertTrue(status["target_matches_release"])
         self.assertEqual(status["backend_runtime_revision"], self.source_sha)
@@ -485,7 +519,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
 
     def test_removed_build_ledger_keeps_installed_release_generation(self):
         first = self.promote(self.prepare())
-        shutil.rmtree(self.receipt_root / "production-deployments")
+        shutil.rmtree(self.receipt_root / "development-deployments")
         (self.public / "index.html").write_text("<html>release after storage relocation</html>")
         self.build_record["artifact"] = {
             **release.build_artifact_manifest(self.dist), "artifact_path": str(self.dist)
@@ -562,7 +596,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertFalse(self.node_worker_dropin_path.exists())
         self.assertIn("v22.23.4/bin/node", self.node_security_dropin_path.read_text())
         self.assertIn("v22.23.4/bin/node", self.node_worker_security_dropin_path.read_text())
-        receipt = next((self.ledger_root / "production-deployments").glob("*.json"))
+        receipt = next((self.ledger_root / "development-deployments").glob("*.json"))
         self.assertEqual(json.loads(receipt.read_text())["status"], "ROLLED_BACK")
 
     def test_health_check_failure_rolls_back_to_previous_healthy_runtime(self):
@@ -596,6 +630,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         with self.assertRaisesRegex(release.ReleaseError, "Release candidate rejected"):
             release.promote_artifact(
                 artifact,
+                target_id="legacy-debian-dev",
                 release_root=self.release_root,
                 dropin_path=self.dropin_path,
                 current_link=self.current_link,
@@ -608,7 +643,7 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
             )
         self.assertEqual(self.runtime.restart_count, 0)
         self.assertFalse(self.current_link.exists())
-        receipts = list((self.receipt_root / "production-release-attempts").glob("*.json"))
+        receipts = list((self.receipt_root / "development-release-attempts").glob("*.json"))
         self.assertEqual(len(receipts), 1)
         receipt = json.loads(receipts[0].read_text())
         self.assertEqual(receipt["status"], "BLOCKED_STALE_SOURCE")
@@ -616,12 +651,13 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
         self.assertEqual(receipt["observed_canonical_revision"], "f" * 40)
         self.assertEqual(receipt["artifact_path"], str(artifact))
 
-    def test_production_promotion_requires_explicit_root_authority(self):
+    def test_development_promotion_requires_delegated_systemd_controller(self):
         artifact = self.prepare()
         with patch.object(release.os, "geteuid", return_value=1001):
-            with self.assertRaisesRegex(release.ReleaseError, "explicit root authorization"):
+            with self.assertRaisesRegex(release.ReleaseError, "delegated systemd release controller"):
                 release.promote_artifact(
                     artifact,
+                    target_id="legacy-debian-dev",
                     release_root=self.release_root,
                     dropin_path=self.dropin_path,
                     current_link=self.current_link,
@@ -632,6 +668,28 @@ class LinuxBackendReleaseIntegrationTests(unittest.TestCase):
                     current_tip=self.tip,
                 )
         self.assertEqual(self.runtime.restart_count, 0)
+
+    def test_other_targets_are_rejected_before_systemd_is_touched(self):
+        artifact = self.prepare()
+        for target_id in ("modular-debian-dev", "modular-cloudflare-prod"):
+            with self.subTest(target_id=target_id), self.assertRaisesRegex(
+                release.ReleaseError, "TARGET_NOT_SUPPORTED_BY_LEGACY_LINUX_RELEASE"
+            ):
+                release.promote_artifact(
+                    artifact,
+                    target_id=target_id,
+                    release_root=self.release_root,
+                    dropin_path=self.dropin_path,
+                    current_link=self.current_link,
+                    lock_path=self.lock_path,
+                    receipt_root=self.receipt_root,
+                    runtime_data_root=self.runtime_data_root,
+                    runtime=self.runtime,
+                    current_tip=self.tip,
+                    require_root=False,
+                )
+        self.assertEqual(self.runtime.restart_count, 0)
+        self.assertFalse(self.current_link.exists())
 
     def test_restart_preflight_rejects_port_owner_outside_target_systemd_unit(self):
         service_cgroup = "/system.slice/smartspec-web.service"

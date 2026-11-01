@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Prepare and promote a canonical SmartSpec Web release on Linux systemd.
 
-Use `pnpm run build:canonical` first, then prepare its ledger result with:
+Legacy SmartAIHub is a development deployment target even though it uses an
+optimized Node production build. Every promotion must name that target:
   python3 apps/web/scripts/linux_backend_release.py prepare --build-result <result.json>
-Production activation is the explicit root action:
-  sudo python3 apps/web/scripts/linux_backend_release.py promote --artifact <artifact-dir>
+  sudo python3 apps/web/scripts/linux_backend_release.py promote --target legacy-debian-dev --artifact <artifact-dir>
 """
 
 from __future__ import annotations
@@ -497,6 +497,29 @@ def validate_published_artifact(artifact_path: Path) -> dict[str, Any]:
     return manifest
 
 
+def validate_linux_release_target(workspace: Path, target_id: str | None) -> dict[str, Any]:
+    if not isinstance(target_id, str) or not target_id.strip():
+        raise ReleaseError("DEPLOYMENT_TARGET_REQUIRED")
+    config_path = workspace / "apps/web/scripts/deployment-targets.json"
+    try:
+        config = json.loads(config_path.read_text(encoding="utf-8"))
+        target = config["targets"][target_id]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise ReleaseError("UNKNOWN_DEPLOYMENT_TARGET") from exc
+    if (config.get("schemaVersion") != 1
+            or target_id != "legacy-debian-dev"
+            or target.get("domain") != "smartaihub.app"
+            or target.get("environment") != "development"
+            or target.get("runtime") != "debian-systemd"
+            or target.get("service") != SERVICE
+            or target.get("port") != 3000
+            or target.get("controller") != "linux-fullstack-immutable"
+            or target.get("deploymentAuthority") != "delegated-development"
+            or target.get("deployable") is not True):
+        raise ReleaseError("TARGET_NOT_SUPPORTED_BY_LEGACY_LINUX_RELEASE")
+    return {"id": target_id, **target}
+
+
 class Runtime(Protocol):
     def assert_supported_target(self) -> None: ...
     def daemon_reload(self) -> None: ...
@@ -790,13 +813,14 @@ def _next_generation(
 ) -> int:
     values = []
     for root in {receipt_root, *additional_roots}:
-        for path in (root / "production-deployments").glob("*.json"):
-            try:
-                item = json.loads(path.read_text(encoding="utf-8"))
-                if item.get("service") == service:
-                    values.append(int(item.get("generation", 0)))
-            except (OSError, ValueError, TypeError):
-                continue
+        for directory in ("development-deployments", "production-deployments"):
+            for path in (root / directory).glob("*.json"):
+                try:
+                    item = json.loads(path.read_text(encoding="utf-8"))
+                    if item.get("service") == service:
+                        values.append(int(item.get("generation", 0)))
+                except (OSError, ValueError, TypeError):
+                    continue
     # Installed releases survive removal or relocation of the build ledgers.
     # Keep their verified directory/manifest generations as a durable floor.
     if service == SERVICE and release_root is not None:
@@ -918,14 +942,18 @@ def _record_stale_release_attempt(
     receipt_root: Path,
     manifest: dict[str, Any],
     observed_tip: str,
+    target_id: str,
 ) -> Path:
     """Persist why a pinned release could not be promoted after main advanced."""
-    attempts = receipt_root / "production-release-attempts"
+    attempts = receipt_root / "development-release-attempts"
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     source_sha = str(manifest.get("sourceSha", "unknown"))
     path = attempts / f"{stamp}-{source_sha[:12]}-stale-{uuid.uuid4().hex[:8]}.json"
     write_json_atomic(path, {
         "status": "BLOCKED_STALE_SOURCE",
+        "target_id": target_id,
+        "target_domain": "smartaihub.app",
+        "logical_environment": "development",
         "service": SERVICE,
         "release_id": manifest.get("releaseId"),
         "source_revision": source_sha,
@@ -960,6 +988,7 @@ def validate_listener_ownership(
 def promote_artifact(
     artifact_path: Path,
     *,
+    target_id: str | None = None,
     release_root: Path,
     dropin_path: Path,
     current_link: Path,
@@ -973,24 +1002,25 @@ def promote_artifact(
     node_worker_security_dropin_path: Path = NODE_WORKER_SECURITY_DROPIN,
     require_root: bool = True,
 ) -> dict[str, Any]:
-    if require_root and os.geteuid() != 0:
-        raise ReleaseError("Production promotion requires explicit root authorization via sudo")
     if current_link.exists() and not current_link.is_symlink():
         raise ReleaseError("Current release pointer exists but is not a symlink")
-    runtime.assert_supported_target()
     manifest = validate_published_artifact(artifact_path)
-    source_sha = manifest["sourceSha"]
     build_path = Path(manifest["canonicalBuildResult"])
     build, _, workspace = validate_build_result(
         build_path, verify_artifact_contents=False
     )
+    deployment_target = validate_linux_release_target(workspace, target_id)
+    if require_root and os.geteuid() != 0:
+        raise ReleaseError("Legacy development promotion requires the delegated systemd release controller")
+    runtime.assert_supported_target()
+    source_sha = manifest["sourceSha"]
     import tomllib
     source_policy = tomllib.loads((workspace / ".development-repository.toml").read_text(encoding="utf-8"))["repository"]
     release_policy = source_policy.get("release", {})
     observed_tip = current_tip(manifest)
     if not source_candidate_is_eligible(workspace, source_sha, observed_tip, release_policy,
                                         str(source_policy["remote"]), str(source_policy["canonical_ref"])):
-        _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
+        _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip, deployment_target["id"])
         raise ReleaseError("Release candidate rejected: canonical ancestry or required security-floor policy failed")
     if build.get("source_revision") != source_sha:
         raise ReleaseError("Release manifest does not match canonical build evidence")
@@ -1011,7 +1041,7 @@ def promote_artifact(
         observed_tip = current_tip(manifest)
         if not source_candidate_is_eligible(workspace, source_sha, observed_tip, release_policy,
                                             str(source_policy["remote"]), str(source_policy["canonical_ref"])):
-            _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip)
+            _record_stale_release_attempt(receipt_root, {**manifest, "artifactPath": str(artifact_path)}, observed_tip, deployment_target["id"])
             raise ReleaseError("Release candidate rejected while waiting for deployment fence")
         if current_link.is_symlink():
             active_target = current_link.resolve()
@@ -1022,6 +1052,9 @@ def promote_artifact(
                     retention = _release_retention_result(release_root, current_link)
                     return {
                         "status": "ALREADY_PROMOTED",
+                        "target_id": deployment_target["id"],
+                        "target_domain": deployment_target["domain"],
+                        "logical_environment": deployment_target["environment"],
                         "release_id": release_id,
                         "source_sha": source_sha,
                         "runtime": runtime_result,
@@ -1054,6 +1087,9 @@ def promote_artifact(
                 index_path = staging / "dist/public/index.html"
                 public_digest = build_artifact_manifest(staging / "dist/public")
                 release_status = {
+                    "deployment_target_id": deployment_target["id"],
+                    "deployment_target_domain": deployment_target["domain"],
+                    "logical_environment": deployment_target["environment"],
                     "release_id": release_id,
                     "source_revision": source_sha,
                     "frontend_source_revision": manifest["frontendSourceSha"],
@@ -1097,9 +1133,9 @@ def promote_artifact(
         config = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
         repository_key = hashlib.sha256(config["repository_id"].encode()).hexdigest()[:20]
         shared_state = Path(config["lease_root"]).expanduser() / repository_key
-        current_status_path = shared_state / "production-release.json"
+        current_status_path = shared_state / "development-release.json"
         previous_status = current_status_path.read_bytes() if current_status_path.exists() else None
-        receipt_path = receipt_root / "production-deployments" / f"{release_id}-{generation}.json"
+        receipt_path = receipt_root / "development-deployments" / f"{release_id}-{generation}.json"
         dropin = (
             "[Service]\n"
             f"WorkingDirectory={current_link}\n"
@@ -1150,11 +1186,13 @@ def promote_artifact(
             receipt = {
                 **release_status,
                 "status": "DEPLOYED_VERIFIED",
+                "target_id": deployment_target["id"],
+                "target_domain": deployment_target["domain"],
                 "service": SERVICE,
                 "release_path": str(target),
                 "deployment_receipt": str(receipt_path),
                 "fencing_generation": generation,
-                "authorization": "explicit root invocation for pinned origin/main SHA",
+                "authorization": "delegated-development:legacy-debian-dev",
                 "runtime_verification": health,
             }
             write_json_atomic(current_status_path, release_status)
@@ -1187,7 +1225,7 @@ def promote_artifact(
                 current_status_path.unlink(missing_ok=True)
             else:
                 current_status_path.parent.mkdir(parents=True, exist_ok=True)
-                fd, name = tempfile.mkstemp(prefix=".production-release.", dir=current_status_path.parent)
+                fd, name = tempfile.mkstemp(prefix=".development-release.", dir=current_status_path.parent)
                 try:
                     with os.fdopen(fd, "wb") as stream:
                         stream.write(previous_status)
@@ -1198,12 +1236,15 @@ def promote_artifact(
                     Path(name).unlink(missing_ok=True)
             write_json_atomic(receipt_path, {
                 "status": "ROLLED_BACK" if rollback.get("status") == "ROLLED_BACK_HEALTHY" else "ROLLBACK_FAILED",
+                "target_id": deployment_target["id"],
+                "target_domain": deployment_target["domain"],
+                "logical_environment": deployment_target["environment"],
                 "service": SERVICE,
                 "release_id": release_id,
                 "source_revision": source_sha,
                 "generation": generation,
                 "fencing_generation": generation,
-                "authorization": "explicit root invocation for pinned origin/main SHA",
+                "authorization": "delegated-development:legacy-debian-dev",
                 "failure_class": "activation_or_health_check_failed",
                 "rollback": rollback,
             })
@@ -1218,7 +1259,8 @@ def main(argv: list[str] | None = None) -> int:
     commands = parser.add_subparsers(dest="action", required=True)
     prepare = commands.add_parser("prepare", help="publish a verified build into the canonical artifact store")
     prepare.add_argument("--build-result", required=True, type=Path)
-    promote = commands.add_parser("promote", help="promote one immutable artifact to smartspec-web.service")
+    promote = commands.add_parser("promote", help="promote one immutable artifact to the explicit Debian deployment target")
+    promote.add_argument("--target", required=True, help="registered deployment target ID")
     promote.add_argument("--artifact", required=True, type=Path)
     prepare_python = commands.add_parser("prepare-python", help="prepare exact-SHA Python source from a clean origin/main checkout")
     prepare_python.add_argument("--source", required=True, type=Path)
@@ -1226,6 +1268,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare_python.add_argument("--artifact-store", type=Path)
     promote_python = commands.add_parser("promote-python", help="promote one immutable artifact to smartspec-backend.service")
     promote_python.add_argument("--artifact", required=True, type=Path)
+    promote_python.add_argument("--target", required=True, help="registered deployment target ID")
     args = parser.parse_args(argv)
     try:
         if args.action == "prepare":
@@ -1240,7 +1283,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.action == "promote-python":
             from linux_python_backend_release import promote_artifact as promote_python_artifact
-            result = promote_python_artifact(args.artifact)
+            result = promote_python_artifact(args.artifact, target_id=args.target)
             print(json.dumps(result, sort_keys=True))
             return 0
         manifest = validate_published_artifact(args.artifact)
@@ -1255,6 +1298,7 @@ def main(argv: list[str] | None = None) -> int:
         runtime = SystemdRuntime()
         result = promote_artifact(
             args.artifact,
+            target_id=args.target,
             release_root=RELEASE_ROOT,
             dropin_path=SYSTEMD_DROPIN,
             current_link=CURRENT_LINK,

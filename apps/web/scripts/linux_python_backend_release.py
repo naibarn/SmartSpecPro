@@ -32,6 +32,7 @@ from typing import Any, Protocol
 
 SERVICE = "smartspec-backend.service"
 RELEASE_ROOT = Path("/home/dev/production-releases/smartspec-python-releases")
+DEPLOYMENT_TARGETS = Path(__file__).with_name("deployment-targets.json")
 DROPIN = Path("/etc/systemd/system/smartspec-backend.service.d/96-canonical-python-release.conf")
 READY_URL = "http://127.0.0.1:8000/api/v1/health/ready"
 HEALTH_URL = "http://127.0.0.1:8000/health"
@@ -43,6 +44,21 @@ EXCLUDED_FILES = {".env", ".env.local", ".env.production"}
 
 class ReleaseError(RuntimeError):
     pass
+
+
+def validate_python_deployment_target(target_id: str | None) -> dict[str, Any]:
+    if target_id != "legacy-debian-dev":
+        raise ReleaseError("Python backend promotion requires the registered legacy-debian-dev target")
+    try:
+        registry = json.loads(DEPLOYMENT_TARGETS.read_text(encoding="utf-8"))
+        target = dict(registry["targets"][target_id], id=target_id)
+    except (OSError, ValueError, KeyError, StopIteration) as exc:
+        raise ReleaseError("registered Python backend deployment target is unavailable") from exc
+    if (target.get("domain") != "smartaihub.app" or target.get("environment") != "development"
+            or target.get("runtime") != "debian-systemd" or target.get("deployable") is not True
+            or SERVICE not in target.get("companionServices", [])):
+        raise ReleaseError("registered target does not authorize this Python backend service")
+    return target
 
 
 def _run(command: list[str], *, cwd: Path | None = None) -> str:
@@ -447,22 +463,23 @@ def systemd_dropin(exec_start: list[str], release_path: Path, source_sha: str) -
     return ("[Service]\n" f"Environment=PYTHONPATH={python_path}\n" "ExecStart=\n" f"ExecStart={quoted}\n").encode()
 
 
-def promote_artifact(artifact_path: Path, *, runtime: Runtime | None = None, receipt_root: Path = RELEASE_ROOT / "production-deployments",
+def promote_artifact(artifact_path: Path, *, target_id: str | None = None, runtime: Runtime | None = None, receipt_root: Path = RELEASE_ROOT / "development-deployments",
                      release_root: Path = RELEASE_ROOT) -> dict[str, Any]:
+    target = validate_python_deployment_target(target_id)
     release_root.mkdir(parents=True, exist_ok=True)
     lock_path = release_root / ".python-promotion.lock"
     with lock_path.open("a+") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        return _promote_artifact_locked(artifact_path, runtime=runtime, receipt_root=receipt_root, release_root=release_root)
+        return _promote_artifact_locked(artifact_path, target=target, runtime=runtime, receipt_root=receipt_root, release_root=release_root)
 
 
-def _promote_artifact_locked(artifact_path: Path, *, runtime: Runtime | None = None, receipt_root: Path = RELEASE_ROOT / "production-deployments",
+def _promote_artifact_locked(artifact_path: Path, *, target: dict[str, Any], runtime: Runtime | None = None, receipt_root: Path = RELEASE_ROOT / "development-deployments",
                              release_root: Path = RELEASE_ROOT) -> dict[str, Any]:
     runtime = runtime or SystemdRuntime()
     manifest = validate_artifact(artifact_path)
     artifact_path = artifact_path.resolve(strict=True)
     if artifact_path.parent != release_root.resolve(strict=True):
-        raise ReleaseError("Python production promotion accepts only artifacts in the approved immutable release root")
+        raise ReleaseError("Python development promotion accepts only artifacts in the approved immutable release root")
     original_exec = runtime.assert_supported_target()
     launch_exec = base_exec_start(original_exec)
     original_cwd = runtime.working_directory()
@@ -479,7 +496,8 @@ def _promote_artifact_locked(artifact_path: Path, *, runtime: Runtime | None = N
         "artifact_digest": manifest["artifact_digest"], "original_working_directory": original_cwd,
         "original_exec_start": original_exec, "original_release": prior_release,
         "dropin_path": str(DROPIN), "dropin_before_sha256": hashlib.sha256(prior_dropin).hexdigest() if prior_dropin is not None else None,
-        "started_at": datetime.now(timezone.utc).isoformat()}
+        "started_at": datetime.now(timezone.utc).isoformat(), "target_id": target["id"],
+        "domain": target["domain"], "environment": target["environment"]}
     try:
         runtime.set_dropin(systemd_dropin(launch_exec, artifact_path, manifest["source_sha"]))
         runtime.daemon_reload()
@@ -516,12 +534,13 @@ def _cli() -> int:
     prepare.add_argument("--artifact-store", type=Path, default=RELEASE_ROOT)
     promote = subparsers.add_parser("promote", help="promote one immutable Python release to the approved systemd service")
     promote.add_argument("--artifact", type=Path, required=True)
+    promote.add_argument("--target", required=True, help="registered deployment target ID")
     args = parser.parse_args()
     try:
         if args.command == "prepare":
             result = prepare_artifact(args.source, args.artifact_store, source_sha=args.source_sha)
         else:
-            result = promote_artifact(args.artifact)
+            result = promote_artifact(args.artifact, target_id=args.target)
         print(json.dumps(result, sort_keys=True))
         return 0
     except (ReleaseError, OSError, ValueError) as exc:

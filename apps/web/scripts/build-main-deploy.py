@@ -26,6 +26,26 @@ class CanonicalAdvanced(DeployError):
     pass
 
 
+def validate_deployment_target(targets: dict[str, object], target_id: str | None) -> dict[str, object]:
+    if not isinstance(target_id, str) or not target_id.strip():
+        raise DeployError("DEPLOYMENT_TARGET_REQUIRED")
+    target = targets.get(target_id)
+    expected = {
+        "domain": "smartaihub.app",
+        "environment": "development",
+        "runtime": "debian-systemd",
+        "service": "smartspec-web.service",
+        "port": 3000,
+        "controller": "linux-fullstack-immutable",
+        "deployable": True,
+    }
+    if target_id != "legacy-debian-dev" or not isinstance(target, dict) or any(
+        target.get(key) != value for key, value in expected.items()
+    ):
+        raise DeployError("TARGET_NOT_SUPPORTED_BY_LEGACY_LINUX_PUBLISHER")
+    return target
+
+
 MAX_CANONICAL_BUILD_ATTEMPTS = 2
 REQUIRED_TRPC_PROCEDURES = {
     "infrastructure.getSpec224DatabaseDiagnostics": (
@@ -192,8 +212,8 @@ def validate_trpc_compatibility(public_root: Path, service_root: Path) -> None:
             )
 
 
-def acquire_production_deploy_lock(path: Path):
-    """Acquire the host-wide production writer lock; caller owns its lifetime."""
+def acquire_deployment_lock(path: Path):
+    """Acquire the host-wide publisher lock; caller owns its lifetime."""
     path.parent.mkdir(parents=True, exist_ok=True)
     handle = path.open("a+")
     fcntl.flock(handle, fcntl.LOCK_EX)
@@ -512,15 +532,35 @@ def verify_published_revision(
     ensure_canonical_tip(repo, remote, canonical_ref, source_revision)
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     repo = Path(__file__).resolve().parents[3]
-    arguments = sys.argv[1:]
-    if arguments == ["--help"]:
-        print("Build latest origin/main and publish public assets under the shared production deploy lock.")
-        print("Usage: npm run build:deploy [--plan | --status | atomic swap]")
+    raw_arguments = list(sys.argv[1:] if argv is None else argv)
+    if raw_arguments == ["--help"]:
+        print("Build or inspect the explicit legacy-debian-dev target using canonical source and release protections.")
+        print("Usage: python3 apps/web/scripts/build-main-deploy.py --target legacy-debian-dev [--plan | --status | atomic swap]")
         return 0
-    if arguments not in ([], ["--plan"], ["--status"], ["atomic", "swap"]):
-        raise DeployError("Usage: npm run build:deploy [--plan | --status | atomic swap]")
+    target_id = None
+    arguments = []
+    index = 0
+    while index < len(raw_arguments):
+        if raw_arguments[index] == "--target":
+            if index + 1 >= len(raw_arguments):
+                raise DeployError("DEPLOYMENT_TARGET_REQUIRED")
+            target_id = raw_arguments[index + 1]
+            index += 2
+        else:
+            arguments.append(raw_arguments[index])
+            index += 1
+    target_config_path = repo / "apps/web/scripts/deployment-targets.json"
+    try:
+        target_config = json.loads(target_config_path.read_text(encoding="utf-8"))
+        if target_config.get("schemaVersion") != 1:
+            raise ValueError("unsupported schema")
+        deployment_target = validate_deployment_target(target_config.get("targets", {}), target_id)
+    except (OSError, ValueError, TypeError) as exc:
+        raise DeployError("Canonical deployment target registry is missing or invalid") from exc
+    if arguments not in (["--plan"], ["--status"], ["atomic", "swap"]):
+        raise DeployError("Usage: build-main-deploy.py --target legacy-debian-dev [--plan | --status | atomic swap]")
     plan_only = arguments == ["--plan"]
     status_only = arguments == ["--status"]
     if arguments == ["atomic", "swap"]:
@@ -532,10 +572,17 @@ def main() -> int:
         policy = tomllib.loads(policy_path.read_text(encoding="utf-8"))["repository"]
         repository_key = hashlib.sha256(policy["repository_id"].encode("utf-8")).hexdigest()[:20]
         shared_state = Path(policy["lease_root"]).expanduser() / repository_key
-        release_status_path = shared_state / "production-release.json"
+        development_status_path = shared_state / "development-release.json"
+        release_status_path = development_status_path
+        if not development_status_path.exists():
+            # Read the historical status file once while migrating its label;
+            # its path never grants deployment authority.
+            release_status_path = shared_state / "production-release.json"
         if plan_only:
             print(f"SOURCE_REVISION={remote_canonical_tip(repo, remote, canonical_ref)}")
             print(f"PUBLISH_TARGET={service_web_root() / 'dist/public'}")
+            print(f"TARGET_ID={target_id}")
+            print(f"TARGET_DOMAIN={deployment_target['domain']}")
             print("MODE=plan; no build or publication performed")
             return 0
         if status_only:
@@ -548,6 +595,9 @@ def main() -> int:
                 release_status_path, target, remote_canonical_tip(repo, remote, canonical_ref)
             )
             current_status["runtime_target_available"] = target is not None
+            current_status["target_id"] = target_id
+            current_status["target_domain"] = deployment_target["domain"]
+            current_status["logical_environment"] = deployment_target["environment"]
             print(json.dumps(
                 current_status,
                 sort_keys=True,
@@ -564,7 +614,9 @@ def main() -> int:
         # Serialize the complete build-to-publish transaction across every
         # checkout/session on this host. The lock lives beside Task Control's
         # canonical build lease state, not in a worktree.
-        deploy_lock = acquire_production_deploy_lock(shared_state / "production-deploy.lock")
+        # Keep the historical lock path so old and new controller invocations
+        # continue to serialize. The filename does not classify this target.
+        deploy_lock = acquire_deployment_lock(shared_state / "production-deploy.lock")
         validate_deploy_checkout(
             repo,
             Path(policy["canonical_user_workspace"]),
@@ -702,6 +754,9 @@ def main() -> int:
                 destination, excluded_names={"release-manifest.json"}
             )
             release = {
+                "deployment_target_id": target_id,
+                "deployment_target_domain": deployment_target["domain"],
+                "logical_environment": deployment_target["environment"],
                 "release_id": f"{source_revision}:{artifact['artifact_digest']}",
                 "source_revision": source_revision,
                 "frontend_source_revision": source_revision,
@@ -718,7 +773,7 @@ def main() -> int:
             }
             try:
                 write_json_atomic(destination / "release-manifest.json", release)
-                write_json_atomic(release_status_path, release)
+                write_json_atomic(development_status_path, release)
             except OSError:
                 restore_previous_public_tree(backup, destination)
                 raise

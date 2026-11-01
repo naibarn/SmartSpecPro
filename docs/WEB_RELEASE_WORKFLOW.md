@@ -4,23 +4,25 @@ Use the same commands from the repository root or `apps/web`.
 
 ## Environment boundaries
 
-`aimarkethubs.com` is development-only: its named tunnel forwards to
-`127.0.0.1:3100`, served by the user-level `smartspec-dev-web.service` with
-`~/.config/smartspec-dev/web.env`. `smartaihub.app` is production-only: its
-production tunnel forwards to port 3000, served by the system-level
-`smartspec-web.service` from the immutable production release pointer. The
-services have different unit managers, working directories, application
-database environment files, ports, tunnel configurations and release activation
-state. Both units inherit the host's Node runtime/PATH settings; those settings
-do not select the application database or artifact.
+The canonical map is [`apps/web/scripts/deployment-targets.json`](../apps/web/scripts/deployment-targets.json):
 
-Never use `release:web:linux`, `build:deploy`, or `deploy:web:main` to update
-`aimarkethubs.com`; those commands can activate the production service. Use the
-development-only command below. It has no sudo path, only changes the user
-development service drop-in, verifies the development tunnel and domain, and
-fails if production service or release fingerprints change.
+| Target ID | Domain | Logical environment | Runtime and status |
+|---|---|---|---|
+| `legacy-debian-dev` | `smartaihub.app` | Development | Existing Debian `smartspec-web.service`, port 3000; active |
+| `modular-debian-dev` | `aimarkethubs.com` | Development | Reserved Core service `smartsihub-core-dev.service`, port 3200; prepared, no Core source/runtime yet |
+| `modular-cloudflare-prod` | `smartsihub.com` | Production | Cloudflare Workers/Hono; registered only, inactive |
 
-## Build an artifact without changing production
+The existing aimarket tunnel and service at port 3100 remain available as a
+handover hold until Modular Core is healthy. Do not claim they are serving the
+new Core. `smartsihub.com` is not registered in the currently connected
+Cloudflare account; this workflow does not create its zone, DNS or Worker.
+
+Logical environment, runtime build mode, deployment authority, database
+authority and traffic impact are separate target fields. `NODE_ENV=production`
+is valid for an optimized Node build on `legacy-debian-dev`; it is not release
+authorization.
+
+## Build an artifact without changing a live target
 
 ```bash
 pnpm run build:canonical
@@ -38,19 +40,22 @@ isolated build does not receive that file. Set `SMARTSPEC_ARTIFACT_ENV_FILE` to
 use another trusted server environment file; injected environment values retain
 precedence. Secrets are not copied into the build workspace or artifact.
 
-## Make the latest build live on smartaihub.app
+## Release Legacy SmartAIHub to its development target
 
 ```bash
-pnpm run release:web:linux
+pnpm run release:web:linux -- --target legacy-debian-dev
 ```
 
-Equivalent compatibility commands are `npm run build:deploy` and
-`pnpm run deploy:web:main`. These commands:
+The compatibility aliases `npm run build:deploy` and
+`pnpm run deploy:web:main` also require `--target legacy-debian-dev`. The
+controller rejects every other target before building and validates the
+registered target again inside the immutable source workspace. It:
 
 1. Build the latest canonical revision through the canonical builder.
 2. Prepare an immutable frontend/backend artifact and verify its manifest and
    revision compatibility.
-3. Ask `sudo` to authorize promotion of that exact artifact.
+3. Uses the owner's delegated development authority for this exact target and
+   the existing Linux release controller.
 4. Atomically switch the versioned release, restart `smartspec-web.service` and
    `smartspec-node-worker.service` against that same artifact, and verify both
    processes report the promoted revision. The worker heartbeat must be fresh.
@@ -58,8 +63,9 @@ Equivalent compatibility commands are `npm run build:deploy` and
    readiness fails.
 
 Only a verified promotion is reported as successful. A successful build alone
-does not update the website. No database migration or SPEC-224 job is run by
-this workflow.
+does not update the website. `NODE_ENV=production` may be used for the optimized
+Node build without changing its logical development environment. No database
+migration or SPEC-224 job is run by this workflow.
 
 The promotion gate verifies the patched Node executable is installed before
 making changes, writes scoped systemd drop-ins for the web service and Node job
@@ -156,7 +162,7 @@ artifact outside this controller.
 For an exact integrated change, pass its commit SHA:
 
 ```bash
-pnpm run release:web:linux -- --required-integrated-revision <sha>
+pnpm run release:web:linux -- --target legacy-debian-dev --required-integrated-revision <sha>
 ```
 
 ## Verify the serving revision and login page
@@ -178,7 +184,7 @@ enable **Network → Disable cache**, reload once, and confirm the login form
 renders without a blank page or React console error. The HTML response must be
 revalidated; hashed assets are immutable and change with the build.
 
-For feature fixes, include a production smoke for the changed feature after
+For feature fixes, include a live-target smoke for the changed feature after
 the runtime health check. A healthy `/healthz`, a matching release SHA, or a
 public login check alone does not verify an authenticated feature path. Record
 that path's result separately; when no authorized production session is
@@ -195,29 +201,24 @@ artifact or missing heartbeat fails verification.
 
 ## Development and browser testing
 
-`aimarkethubs.com` is the development hostname. It connects through its own
-named Cloudflare Tunnel to the development web service on `127.0.0.1:3100`.
-The production tunnel and service remain independently managed.
+The current `aimarkethubs.com` handover hold uses its named Cloudflare Tunnel
+and user-level `smartspec-dev-web.service` on `127.0.0.1:3100`. This is not the
+new Modular Core target. The legacy `smartaihub.app` service and tunnel remain
+independently managed.
 
 ```bash
-pnpm run release:dev:web              # build and publish the immutable dev artifact
+pnpm run release:dev:web -- --target modular-debian-dev
 pnpm run dev:web                         # foreground, current checkout
 pnpm run dev:web:restart                 # managed background service
 pnpm run dev:web:status
 ```
 
-`release:dev:web` builds the integrated `origin/main` source through the
-canonical builder, verifies the build receipt and artifact, and activates only
-`smartspec-dev-web.service` on port 3100. It confirms `aimarkethubs.com` serves
-the artifact by hashing a public JavaScript asset against the build output,
-checks the development API readiness endpoint, and records a non-secret release
-receipt under `~/.local/state/smartspec-dev-web/last-deployment.json`. It
-fingerprints both production services and the production release pointer before
-and after activation. An optional `--build-result <receipt.json>` reuses an
-already verified canonical build. A failed local health check restores the
-previous dev configuration. After the new local runtime is healthy, a temporary
-public edge failure leaves that compatible runtime active and withholds the
-verified deployment receipt; retry the public check when the edge is available.
+`release:dev:web` currently exits with `MODULAR_APPLICATION_NOT_AVAILABLE`
+before building or touching systemd because the new Core source/runtime is not
+available. It must not activate the existing legacy hold on port 3100. Prepare
+and validate the independent Core service configuration when that source is
+introduced; keep the current site and tunnel until a healthy handover is
+intentional.
 
 The development launcher separately verifies `SMARTSPEC_ENVIRONMENT`, the
 `aimarkethubs.com` application and tenant domain, port 3100, and a dev-scoped
