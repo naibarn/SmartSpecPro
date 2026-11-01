@@ -2850,7 +2850,7 @@
       "authority": "UNRESOLVED",
       "confidence": "LOW",
       "declared_claim_count": 15,
-      "next_action": "Owner: authorize the unsigned Windows review build for merged source 79805356f9252e1ba6858d993dbcc42476788745, then use the existing Windows workflow and capture native-host WSS/session/capability/Codex/workspace acceptance. Do not disturb the current installed Runner session.",
+      "next_action": "Owner-host acceptance only: install the SHA-verified 0.2.53 unsigned-review artifact over the existing Runner; choose/save Production or Developer; restart; verify authentication, unchanged expected device identity, capability acknowledgement and fresh heartbeat. Do not treat CI or local tests as runtime acceptance.",
       "path": "specs/feature/205-smartaihub-runner-cross-platform",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/205-smartaihub-runner-cross-platform",
@@ -3000,7 +3000,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 4,
-      "next_action": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
+      "next_action": "Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
@@ -3910,6 +3910,21 @@
         "TEST": 0
       },
       "spec_id": "310"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Start section-01 inventory and no-app-Container database proof; no production traffic changes.",
+      "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "311"
     },
     {
       "authority": "UNRESOLVED",
@@ -4923,7 +4938,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/224-Autonomous Development Orchestrator Runtime",
       "priority": "P1",
-      "rationale": "From the authenticated development Task Control, select the existing trusted Debian Runner and registered Platform Engineering workspace, choose one of the eight currently catalogued Codex models and a supported reasoning effort, start the bounded pilot, then approve its real Goal Grant through the existing Approval Authority. Resume that durable Goal/Run to trace Child 1 receipt/settlement, automatic Child 2 dispatch/receipt, and independent Final Verify; do not create a duplicate Goal or synthetic evidence.",
+      "rationale": "Continue authorized Guided First Run, Task Control and Mission Control implementation independently while live owner approval is pending. After a genuine owner Start/Approval, resume the exact persisted Goal/Run and collect real Runner evidence.",
       "record_key": "canonical:specs/feature/224-Autonomous Development Orchestrator Runtime",
       "spec_id": "224"
     },
@@ -4989,6 +5004,15 @@
       "rationale": "Reconcile the user-reported live UI checklist PASS with the 66 SPEC-308 ledger rows. Add exact-source implementation and verification evidence row by row; keep all remaining rows OPEN until their own criteria pass.",
       "record_key": "canonical:specs/feature/308 - SmartAIHub Cooperative Dual Surface",
       "spec_id": "308"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
+      "priority": "P1",
+      "rationale": "Start section-01 inventory and no-app-Container database proof; no production traffic changes.",
+      "record_key": "canonical:specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
+      "spec_id": "311"
     },
     {
       "confidence": "LOW",
