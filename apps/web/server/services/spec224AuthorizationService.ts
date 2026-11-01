@@ -920,7 +920,10 @@ export function createSpec224AuthorizationService() {
         throw new Spec224AuthorizationError("SPEC224_DELEGATED_CONFIGURATION_INVALID");
       // Verify readiness and authorization against this run's adapter. Never
       // reuse capability evidence from a different provider.
-      if (grant.provider !== run.provider) throw new Spec224AuthorizationError("SPEC224_DELEGATED_PROVIDER_UNSUPPORTED");
+      // DevelopmentRun intentionally does not duplicate provider identity;
+      // the root and child job manifests above are the durable source of it.
+      // Since both manifests were checked against this grant, use the grant's
+      // provider for readiness rather than reading a nonexistent run.provider.
       await createJobControlPlane().prepareAuthorizationAttempt({ jobId: run.workerJobId, tenantId: input.context.tenantId, requestedByUserId: input.context.actorId });
       loaded = await loadRun(input.context, input.runId);
       if (!loaded.attemptId || loaded.run.workerJobId !== run.workerJobId) throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
@@ -929,7 +932,7 @@ export function createSpec224AuthorizationService() {
         if (!platformScope) return null;
         const readiness = evaluateSpec224RunnerReadiness({
           runner: mapRunner(node), tenantId: input.context.tenantId, actorId: input.context.actorId,
-          workspaceId: run.workspaceId, sourceCommit: source, provider: run.provider,
+          workspaceId: run.workspaceId, sourceCommit: source, provider: grant.provider,
           sourceFingerprint: typeof execution?.sourceFingerprint === "string" ? execution.sourceFingerprint : undefined,
         });
         if (!readiness.ready) return readiness.code;
