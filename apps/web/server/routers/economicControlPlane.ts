@@ -17,6 +17,7 @@ import {
 } from "../services/economicProvisioningService";
 import {
   configureSpec224LedgerAccountPair,
+  ensureSpec224LedgerAccountPair,
   listSpec224LedgerAccounts,
   readSpec224LedgerAccountPair,
   Spec224LedgerConfigurationError,
@@ -161,6 +162,19 @@ export const economicControlPlaneRouter = router({
           actorId: ctx.user.id,
           currency: input.currency,
           pair: { debitAccountId: input.debitAccountId, creditAccountId: input.creditAccountId },
+        });
+      } catch (error) { return mapProvisioningError(error); }
+    }),
+
+  ensureSpec224LedgerAccounts: adminProcedure
+    .input(z.object({ currency: z.string().trim().length(3).default("USD") }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireEconomicTenant(ctx);
+      try {
+        return await ensureSpec224LedgerAccountPair(getDb(), {
+          tenantId,
+          actorId: ctx.user.id,
+          currency: input.currency,
         });
       } catch (error) { return mapProvisioningError(error); }
     }),

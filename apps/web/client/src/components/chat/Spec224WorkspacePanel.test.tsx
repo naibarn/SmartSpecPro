@@ -14,6 +14,7 @@ vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "user-t
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
 vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } }, approvals: { getPending: { invalidate: mocks.invalidatePendingApprovals } }, economicControlPlane: { listSpec224LedgerAccounts: { invalidate: mocks.invalidateLedgerAccounts } } }), economicControlPlane: {
   listSpec224LedgerAccounts: { useQuery: () => ({ data: mocks.ledgerAccounts, isLoading: false, error: null }) },
+  ensureSpec224LedgerAccounts: { useMutation: (options: any) => ({ isPending: false, mutate: async (input: any) => { await mocks.configureLedger(input); await options?.onSuccess?.({ initialized: true }); } }) },
   configureSpec224LedgerAccounts: { useMutation: (options: any) => ({ isPending: false, mutate: async (input: any) => { await mocks.configureLedger(input); await options?.onSuccess?.(); } }) },
   provisionLedgerAccount: { useMutation: (options: any) => ({ isPending: false, mutate: async (input: any) => { await mocks.provisionLedger(input); await options?.onSuccess?.(); } }) },
 }, approvals: {
@@ -354,15 +355,19 @@ describe("Core goal readiness feedback", () => {
     })));
   });
 
-  it("shows ledger setup and blocks continuation until the tenant is configured", () => {
+  it("offers automatic internal run-budget setup without exposing ledger account selection", async () => {
     mocks.ledgerAccounts = { accounts: [], configured: null };
     mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "private-run-123", state: "BLOCKED_RECOVERABLE", workPackageId: "pkg", workPackageExternalId: "SPEC-internal-123", specSetRevision: 1, revision: 2 }] };
     render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
     fireEvent.click(screen.getByRole("radio", { name: "สร้าง Mini App" }));
-    expect(screen.getByRole("region", { name: "SPEC-224 Ledger configuration" })).toBeInTheDocument();
-    expect(screen.getByText(/ยังไม่ได้ตั้งค่าบัญชีสำหรับ tenant นี้/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "ทำงานเดิมต่อ" })).toBeDisabled();
+    expect(screen.getByRole("region", { name: "SPEC-224 run budget accounting" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ตั้งค่าบัญชีระบบอัตโนมัติ" })).toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: /บัญชีต้นทาง|บัญชีปลายทาง/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/ไม่ใช่กระเป๋าเครดิตผู้ใช้/)).toBeInTheDocument();
     expect(screen.queryByText(/private-run-123|SPEC-internal-123/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "ตั้งค่าบัญชีระบบอัตโนมัติ" }));
+    await waitFor(() => expect(mocks.configureLedger).toHaveBeenCalledWith({ currency: "USD" }));
+    expect(mocks.invalidateLedgerAccounts).toHaveBeenCalled();
   });
 
   it("keeps the selected development source when switching presentation modes", () => {

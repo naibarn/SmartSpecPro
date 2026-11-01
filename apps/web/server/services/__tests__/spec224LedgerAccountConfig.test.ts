@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  ensureSpec224LedgerAccountPair,
   readSpec224LedgerAccountPair,
 } from "../spec224LedgerAccountConfig";
 
@@ -29,6 +30,51 @@ afterEach(() => {
 });
 
 describe("SPEC-224 tenant ledger account mapping", () => {
+  it("automatically provisions and binds the internal reserve pair without asking for account selection", async () => {
+    const readPair = vi.fn().mockResolvedValue(null);
+    const provision = vi.fn()
+      .mockResolvedValueOnce({ accountId: "reserve-debit" })
+      .mockResolvedValueOnce({ accountId: "reserve-credit" });
+    const configure = vi.fn().mockResolvedValue({
+      debitAccountId: "reserve-debit",
+      creditAccountId: "reserve-credit",
+      configured: true,
+    });
+
+    const result = await ensureSpec224LedgerAccountPair({} as any, {
+      tenantId: "tenant-a",
+      actorId: 42,
+    }, { readPair, provision: provision as any, configure: configure as any });
+
+    expect(result).toMatchObject({ initialized: true, configured: { configured: true } });
+    expect(provision).toHaveBeenCalledTimes(2);
+    expect(provision).toHaveBeenCalledWith({}, expect.objectContaining({
+      ownerType: "tenant",
+      accountType: "spec224_reserve_debit",
+      currency: "USD",
+      idempotencyKey: "spec224-ledger-debit:tenant-a:USD",
+    }));
+    expect(configure).toHaveBeenCalledWith({}, expect.objectContaining({
+      tenantId: "tenant-a",
+      pair: { debitAccountId: "reserve-debit", creditAccountId: "reserve-credit" },
+    }));
+  });
+
+  it("does not recreate an already configured internal pair", async () => {
+    const readPair = vi.fn().mockResolvedValue({ debitAccountId: "d", creditAccountId: "c" });
+    const provision = vi.fn();
+    const configure = vi.fn();
+
+    const result = await ensureSpec224LedgerAccountPair({} as any, {
+      tenantId: "tenant-a",
+      actorId: 42,
+    }, { readPair, provision: provision as any, configure: configure as any });
+
+    expect(result).toEqual({ configured: { debitAccountId: "d", creditAccountId: "c" }, initialized: false });
+    expect(provision).not.toHaveBeenCalled();
+    expect(configure).not.toHaveBeenCalled();
+  });
+
   it("resolves a configured pair only when both accounts belong to the tenant and currency", async () => {
     delete process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID;
     delete process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID;

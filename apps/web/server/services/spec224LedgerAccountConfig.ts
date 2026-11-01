@@ -2,12 +2,19 @@ import { randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { economicEvents, economicHolds, economicLedgerAccounts, systemSettings } from "../../drizzle/schema";
 import type { DrizzleDB } from "../db";
+import { provisionEconomicLedgerAccount } from "./economicProvisioningService";
 
 const CATEGORY = "spec224_ledger_accounts";
 
 export type Spec224LedgerAccountPair = {
   debitAccountId: string;
   creditAccountId: string;
+};
+
+type EnsureLedgerPairDependencies = {
+  readPair: typeof readSpec224LedgerAccountPair;
+  provision: typeof provisionEconomicLedgerAccount;
+  configure: typeof configureSpec224LedgerAccountPair;
 };
 
 export class Spec224LedgerConfigurationError extends Error {
@@ -120,4 +127,54 @@ export async function configureSpec224LedgerAccountPair(
     });
     return { ...pair, tenantId: input.tenantId, currency, configured: true };
   });
+}
+
+/**
+ * Provision the internal, zero-balance journal accounts used only to record
+ * SPEC-224 run-budget holds. These accounts are not user wallets and must not
+ * be presented as a source of user funds.
+ */
+export async function ensureSpec224LedgerAccountPair(
+  database: DrizzleDB,
+  input: { tenantId: string; actorId: number; currency?: string },
+  dependencies: EnsureLedgerPairDependencies = {
+    readPair: readSpec224LedgerAccountPair,
+    provision: provisionEconomicLedgerAccount,
+    configure: configureSpec224LedgerAccountPair,
+  },
+) {
+  const currency = (input.currency ?? "USD").trim().toUpperCase();
+  const authorization = { tenantId: input.tenantId, actorId: input.actorId, role: "admin" };
+  try {
+    const configured = await dependencies.readPair(database, input.tenantId, currency);
+    if (configured) return { configured, initialized: false };
+  } catch (error) {
+    if (!(error instanceof Spec224LedgerConfigurationError)) throw error;
+    // A stale/invalid mapping can be repaired to the stable SPEC-224 accounts.
+    // configureSpec224LedgerAccountPair still prevents changing it under a hold.
+  }
+
+  const [debit, credit] = await Promise.all([
+    dependencies.provision(database, {
+      authorization,
+      ownerType: "tenant",
+      accountType: "spec224_reserve_debit",
+      currency,
+      idempotencyKey: `spec224-ledger-debit:${input.tenantId}:${currency}`,
+    }),
+    dependencies.provision(database, {
+      authorization,
+      ownerType: "tenant",
+      accountType: "spec224_reserve_credit",
+      currency,
+      idempotencyKey: `spec224-ledger-credit:${input.tenantId}:${currency}`,
+    }),
+  ]);
+  const configured = await dependencies.configure(database, {
+    tenantId: input.tenantId,
+    actorId: input.actorId,
+    currency,
+    pair: { debitAccountId: debit.accountId, creditAccountId: credit.accountId },
+  });
+  return { configured, initialized: true };
 }
