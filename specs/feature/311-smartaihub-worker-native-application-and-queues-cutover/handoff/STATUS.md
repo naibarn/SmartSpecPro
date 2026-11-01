@@ -5,8 +5,8 @@
 - Lifecycle: `CONTINUATION_REQUIRED`
 - Continuation: `CONTINUE_REQUIRED` (HIGH)
 - Requirements: 0 pass / 20 unresolved of 20
-- Next action: Start section-01 inventory and no-app-Container database proof; no production traffic changes.
-- Manifest generation: 5
+- Next action: Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.
+- Manifest generation: 9
 
 ## Source-declared status and relationship claims
 

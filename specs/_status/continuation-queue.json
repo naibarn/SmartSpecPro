@@ -3915,7 +3915,7 @@
       "authority": "ACTIVE_CANONICAL",
       "confidence": "LOW",
       "declared_claim_count": 1,
-      "next_action": "Start section-01 inventory and no-app-Container database proof; no production traffic changes.",
+      "next_action": "Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.",
       "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
       "priority": "R4_STATUS_CLAIM",
       "record_key": "canonical:specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
@@ -5010,7 +5010,7 @@
       "decision": "CONTINUE_REQUIRED",
       "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
       "priority": "P1",
-      "rationale": "Start section-01 inventory and no-app-Container database proof; no production traffic changes.",
+      "rationale": "Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.",
       "record_key": "canonical:specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
       "spec_id": "311"
     },

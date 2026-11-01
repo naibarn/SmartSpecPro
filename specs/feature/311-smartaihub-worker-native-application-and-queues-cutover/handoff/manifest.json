@@ -10,69 +10,14 @@
     "conflicts": [],
     "evidence": [
       {
-        "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+        "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
       },
       {
-        "digest": "38509e951b2a6c07def7b7fc47781ab45ca5efecaff610b0f02da6d8e13e4c27",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-plan.md"
-      },
-      {
-        "digest": "c6e35c759fac19c3722fc91fd28390c0aacf964da205354977b8426da77cb662",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-spec.md"
-      },
-      {
-        "digest": "4b5ffcaaed7a269ecb652bff2cbeab6d6350feb0e598b07fa896996a3615b45d",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/index.md"
-      },
-      {
-        "digest": "3e1f37d3a99f4d3e1f641a2fc8c4b929d183e3bedd4299fc44103359f2e65937",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-01-inventory-and-portability.md"
-      },
-      {
-        "digest": "f398fb627feecfd30c759ac1951a44a6a3f9bd5939a5e07acc122bb5d23ed110",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-02-worker-api-and-database.md"
-      },
-      {
-        "digest": "0e86c52bb763431a8527e592fef73762b0be8d98643f7b7e17f5742b390f732d",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-03-identity-auth-and-email.md"
-      },
-      {
-        "digest": "0c3e88070f2c0ee6e6199a997b3b61f3aa912906d5100e623cbc77ef5a6908d9",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-04-application-api-parity.md"
-      },
-      {
-        "digest": "332971d614167eab53a344bcc014a914002144f394990814c82ebf3d9510662c",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-05-queues-and-job-control.md"
-      },
-      {
-        "digest": "90dd02ab0149ee55e460f047c21e8c34c8cd0ba586c27407036f6ddf75096064",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-06-chat-agents-and-native-work.md"
-      },
-      {
-        "digest": "7d853807160cdaa508f7a2991c703448d0bf56ab833202e24582d1861bb78f9a",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-07-readiness-and-staging-acceptance.md"
-      },
-      {
-        "digest": "a36bba7db772cef94c4a95066b130f6731c25271beef93eaefef9eea752bc285",
-        "kind": "SUPPORTING_ARTIFACT",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-08-cutover-and-rollback.md"
-      },
-      {
-        "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
-        "kind": "OWNER_DIRECTIVE",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md#owner-directive-and-scope"
+        "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
+        "kind": "OWNER_DIRECTED_DECOMMISSION",
+        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
       }
     ],
     "predecessors": [],
@@ -82,26 +27,31 @@
   "blockers": [],
   "concurrency": {
     "expected_canonical_sha": null,
-    "expected_spec_digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47"
+    "expected_spec_digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360"
   },
   "continuation": {
-    "next_action": "Read spec.md and sections/section-01-inventory-and-portability.md; inventory all active routes/procedures/jobs and prove native Worker DB access.",
+    "next_action": "Continue section-01 inventory and Worker portability development locally. Live migration targets and deploy workflow are disabled by owner direction; do not recreate provider resources until the owner resumes the live phase.",
     "next_ready_workunit": "section-01-inventory-and-portability",
     "reactivation_predicate": null,
-    "resume_point": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/index.md",
-    "waiting_predicate": null
+    "resume_point": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md",
+    "waiting_predicate": "Live provisioning/deployment/cutover deferred by explicit owner direction until the replacement is ready and owner resumes the relevant operation; local development remains available."
   },
   "continuation_assessment": {
     "confidence": "HIGH",
     "decision": "CONTINUE_REQUIRED",
     "evidence": [
       {
-        "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
-        "kind": "OWNER_DIRECTIVE",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md#owner-directive-and-scope"
+        "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
+      },
+      {
+        "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
+        "kind": "OWNER_DIRECTED_DECOMMISSION",
+        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
       }
     ],
-    "next_action": "Start section-01 inventory and no-app-Container database proof; no production traffic changes.",
+    "next_action": "Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.",
     "rationale": "Planning deliverable complete; implementation and runtime acceptance remain open under the explicit owner migration directive.",
     "residual_requirements": [
       "REQ-311-01",
@@ -135,35 +85,46 @@
   "deployment": {
     "artifact_digest": null,
     "environment": null,
-    "evidence": [],
+    "evidence": [
+      {
+        "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
+        "kind": "OWNER_DIRECTED_DECOMMISSION",
+        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
+      }
+    ],
     "required": true,
     "source_sha": null,
-    "status": "UNKNOWN"
+    "status": "NOT_DEPLOYED"
   },
   "disposition": {
     "confidence": "HIGH",
     "evidence": [
       {
-        "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
-        "kind": "OWNER_DIRECTIVE",
-        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md#owner-directive-and-scope"
+        "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
+      },
+      {
+        "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
+        "kind": "OWNER_DIRECTED_DECOMMISSION",
+        "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
       }
     ],
     "rationale": "Owner explicitly requested this complete Worker-native and Queues migration spec on 2026-11-01; no conflicting canonical SPEC-311 entry was found.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 5,
+  "generation": 9,
   "identity": {
     "canonical_path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md",
-    "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+    "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
     "metadata": {
       "implementation_last_touched_at": null,
-      "last_evidence_at": "2026-11-01T00:18:49.640943Z",
+      "last_evidence_at": "2026-11-01T01:15:15.253017Z",
       "last_runtime_reference_at": null,
       "spec_created_at": "2026-11-01T07:18:37+07:00",
       "spec_last_changed_at": "2026-11-01T07:18:37+07:00"
     },
-    "revision": "1.0",
+    "revision": "1.1",
     "slug": "311-smartaihub-worker-native-application-and-queues-cutover",
     "spec_id": "311",
     "title": "SmartAIHub Worker Native Application and Cloudflare Queues Cutover"
@@ -194,69 +155,14 @@
       "conflicts": [],
       "evidence": [
         {
-          "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+          "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
           "kind": "NORMATIVE_SPEC",
           "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
         },
         {
-          "digest": "38509e951b2a6c07def7b7fc47781ab45ca5efecaff610b0f02da6d8e13e4c27",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-plan.md"
-        },
-        {
-          "digest": "c6e35c759fac19c3722fc91fd28390c0aacf964da205354977b8426da77cb662",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-spec.md"
-        },
-        {
-          "digest": "4b5ffcaaed7a269ecb652bff2cbeab6d6350feb0e598b07fa896996a3615b45d",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/index.md"
-        },
-        {
-          "digest": "3e1f37d3a99f4d3e1f641a2fc8c4b929d183e3bedd4299fc44103359f2e65937",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-01-inventory-and-portability.md"
-        },
-        {
-          "digest": "f398fb627feecfd30c759ac1951a44a6a3f9bd5939a5e07acc122bb5d23ed110",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-02-worker-api-and-database.md"
-        },
-        {
-          "digest": "0e86c52bb763431a8527e592fef73762b0be8d98643f7b7e17f5742b390f732d",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-03-identity-auth-and-email.md"
-        },
-        {
-          "digest": "0c3e88070f2c0ee6e6199a997b3b61f3aa912906d5100e623cbc77ef5a6908d9",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-04-application-api-parity.md"
-        },
-        {
-          "digest": "332971d614167eab53a344bcc014a914002144f394990814c82ebf3d9510662c",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-05-queues-and-job-control.md"
-        },
-        {
-          "digest": "90dd02ab0149ee55e460f047c21e8c34c8cd0ba586c27407036f6ddf75096064",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-06-chat-agents-and-native-work.md"
-        },
-        {
-          "digest": "7d853807160cdaa508f7a2991c703448d0bf56ab833202e24582d1861bb78f9a",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-07-readiness-and-staging-acceptance.md"
-        },
-        {
-          "digest": "a36bba7db772cef94c4a95066b130f6731c25271beef93eaefef9eea752bc285",
-          "kind": "SUPPORTING_ARTIFACT",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-08-cutover-and-rollback.md"
-        },
-        {
-          "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
-          "kind": "OWNER_DIRECTIVE",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md#owner-directive-and-scope"
+          "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
+          "kind": "OWNER_DIRECTED_DECOMMISSION",
+          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
         }
       ],
       "predecessors": [],
@@ -268,12 +174,17 @@
       "decision": "CONTINUE_REQUIRED",
       "evidence": [
         {
-          "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
-          "kind": "OWNER_DIRECTIVE",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md#owner-directive-and-scope"
+          "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
+        },
+        {
+          "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
+          "kind": "OWNER_DIRECTED_DECOMMISSION",
+          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
         }
       ],
-      "next_action": "Start section-01 inventory and no-app-Container database proof; no production traffic changes.",
+      "next_action": "Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.",
       "rationale": "Planning deliverable complete; implementation and runtime acceptance remain open under the explicit owner migration directive.",
       "residual_requirements": [
         "REQ-311-01",
@@ -302,9 +213,14 @@
       "confidence": "HIGH",
       "evidence": [
         {
-          "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
-          "kind": "OWNER_DIRECTIVE",
-          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md#owner-directive-and-scope"
+          "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
+        },
+        {
+          "digest": "0047e1e96193a05ee5dddf3b3c74e6002c4ef4549b7f7c71c4b5c5793b434796",
+          "kind": "OWNER_DIRECTED_DECOMMISSION",
+          "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/cloudflare-decommission-20261101.md"
         }
       ],
       "rationale": "Owner explicitly requested this complete Worker-native and Queues migration spec on 2026-11-01; no conflicting canonical SPEC-311 entry was found.",
@@ -767,20 +683,20 @@
       "continuation_assessment.decision"
     ],
     "mode": "AUTOMATED_CONSERVATIVE",
-    "reconciled_at": "2026-11-01T00:18:49.640943Z",
+    "reconciled_at": "2026-11-01T01:15:15.253017Z",
     "sources": [
       {
-        "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+        "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
       },
       {
-        "digest": "38509e951b2a6c07def7b7fc47781ab45ca5efecaff610b0f02da6d8e13e4c27",
+        "digest": "876bf01e201d5be630483cd70a5b290999d18584ffb2875fe44f63f100542eb3",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-plan.md"
       },
       {
-        "digest": "c6e35c759fac19c3722fc91fd28390c0aacf964da205354977b8426da77cb662",
+        "digest": "4b69c585d67e8ebde8a7c8d03a46ab4029024fc91bd61152c25f7f9d85c0c4fa",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-spec.md"
       },
@@ -790,7 +706,7 @@
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/index.md"
       },
       {
-        "digest": "3e1f37d3a99f4d3e1f641a2fc8c4b929d183e3bedd4299fc44103359f2e65937",
+        "digest": "1e90bd56ec668b861be3d3d713c23dd2238422a39bc250aadafe976084ae7751",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-01-inventory-and-portability.md"
       },
@@ -820,12 +736,12 @@
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-06-chat-agents-and-native-work.md"
       },
       {
-        "digest": "7d853807160cdaa508f7a2991c703448d0bf56ab833202e24582d1861bb78f9a",
+        "digest": "5c078f505ff02f09058f5f3eab2bdb87fa94c495b69367ca72abfc4617c6addd",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-07-readiness-and-staging-acceptance.md"
       },
       {
-        "digest": "a36bba7db772cef94c4a95066b130f6731c25271beef93eaefef9eea752bc285",
+        "digest": "abcd8c448bc8779b31f4d15b04857edce645b09432720748b76eb3ef34448ec2",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-08-cutover-and-rollback.md"
       },
@@ -837,11 +753,16 @@
         "kind": "AUTHOR_DECLARED_CLAIM",
         "line": 6,
         "source": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md",
-        "source_digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+        "source_digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
         "value": "PLANNED_NOT_IMPLEMENTED"
       }
     ],
-    "stale_fields": [],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
     "unproven_fields": [
       "current relevance",
       "implementation equivalence",
@@ -863,24 +784,24 @@
         "excerpt": "status: PLANNED_NOT_IMPLEMENTED",
         "line": 6,
         "source": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md",
-        "source_digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+        "source_digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
         "value": "PLANNED_NOT_IMPLEMENTED"
       }
     ],
     "deployment_reality": "UNVERIFIED",
     "evidence": [
       {
-        "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+        "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
         "kind": "NORMATIVE_SPEC",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
       },
       {
-        "digest": "38509e951b2a6c07def7b7fc47781ab45ca5efecaff610b0f02da6d8e13e4c27",
+        "digest": "876bf01e201d5be630483cd70a5b290999d18584ffb2875fe44f63f100542eb3",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-plan.md"
       },
       {
-        "digest": "c6e35c759fac19c3722fc91fd28390c0aacf964da205354977b8426da77cb662",
+        "digest": "4b69c585d67e8ebde8a7c8d03a46ab4029024fc91bd61152c25f7f9d85c0c4fa",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-spec.md"
       },
@@ -890,7 +811,7 @@
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/index.md"
       },
       {
-        "digest": "3e1f37d3a99f4d3e1f641a2fc8c4b929d183e3bedd4299fc44103359f2e65937",
+        "digest": "1e90bd56ec668b861be3d3d713c23dd2238422a39bc250aadafe976084ae7751",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-01-inventory-and-portability.md"
       },
@@ -920,12 +841,12 @@
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-06-chat-agents-and-native-work.md"
       },
       {
-        "digest": "7d853807160cdaa508f7a2991c703448d0bf56ab833202e24582d1861bb78f9a",
+        "digest": "5c078f505ff02f09058f5f3eab2bdb87fa94c495b69367ca72abfc4617c6addd",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-07-readiness-and-staging-acceptance.md"
       },
       {
-        "digest": "a36bba7db772cef94c4a95066b130f6731c25271beef93eaefef9eea752bc285",
+        "digest": "abcd8c448bc8779b31f4d15b04857edce645b09432720748b76eb3ef34448ec2",
         "kind": "SUPPORTING_ARTIFACT",
         "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-08-cutover-and-rollback.md"
       }
@@ -945,7 +866,7 @@
     "unresolved": 20
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T00:18:49.640943Z",
+  "updated_at": "2026-11-01T01:15:15.296158Z",
   "verification": {
     "baseline_issues": [],
     "evidence": [],

@@ -2,6 +2,10 @@
 
 Status: planning complete; runtime implementation and live acceptance unverified.
 
+## Operational suspension
+
+Owner-directed cleanup on 2026-11-01 removed the trial compute/runtime resources. Keep development and test work local while live migration is disabled. Source helpers and historical receipts remain reusable, but provider resources are not currently allocated. Do not execute live spikes or recreate resources until the owner explicitly resumes that phase; reconcile stale provision checkpoints and build only the dependencies required by the new Worker-native design.
+
 ## Approach
 
 Reuse the existing Worker, Hyperdrive helpers, Queue transport, canonical job contracts, deployment credentials and release path. Extract portable services and register actual Worker handlers progressively. Keep the frontend API contract stable and isolate environment/tenant/runtime adapters. Do not import the whole Express startup graph or introduce a second job/approval system. Existing protected-origin/Container deployments remain rollback evidence, not native execution proof.

@@ -19,8 +19,9 @@
     "continuation.NOT_APPLICABLE": 130,
     "continuation.RECONCILIATION_REQUIRED": 322,
     "continuation.VALIDATION_ONLY": 1,
+    "deployment.NOT_DEPLOYED": 1,
     "deployment.PASS": 3,
-    "deployment.UNKNOWN": 470,
+    "deployment.UNKNOWN": 469,
     "deployment.VALIDATION_PENDING": 1,
     "disposition.ACTIVE_CANONICAL": 16,
     "disposition.ACTIVE_SUPPORTING": 1,
@@ -134051,7 +134052,7 @@
           "excerpt": "status: PLANNED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md",
-          "source_digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+          "source_digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
           "value": "PLANNED_NOT_IMPLEMENTED"
         }
       ],
@@ -134064,18 +134065,18 @@
           "excerpt": "status: PLANNED_NOT_IMPLEMENTED",
           "line": 6,
           "source": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md",
-          "source_digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+          "source_digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
           "value": "PLANNED_NOT_IMPLEMENTED"
         }
       ],
-      "deployment": "UNKNOWN",
-      "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+      "deployment": "NOT_DEPLOYED",
+      "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
       "disposition": "ACTIVE_CANONICAL",
       "evidence_freshness": "UNKNOWN",
       "implementation_last_touched_at": null,
-      "last_reconciled": "2026-11-01T00:18:49.640943Z",
+      "last_reconciled": "2026-11-01T01:15:15.253017Z",
       "lifecycle": "CONTINUATION_REQUIRED",
-      "next_action": "Start section-01 inventory and no-app-Container database proof; no production traffic changes.",
+      "next_action": "Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.",
       "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
       "primary_blocker": null,
       "problem": null,
@@ -134100,24 +134101,24 @@
             "excerpt": "status: PLANNED_NOT_IMPLEMENTED",
             "line": 6,
             "source": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md",
-            "source_digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+            "source_digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
             "value": "PLANNED_NOT_IMPLEMENTED"
           }
         ],
         "deployment_reality": "UNVERIFIED",
         "evidence": [
           {
-            "digest": "e75bc14661e0065e2b26af1d1669992b3a7356e3da8625176da1bef54fa4df47",
+            "digest": "da8b13a6ba24becc21c367a40f80e391377a5142c8c017fb2eb79ec746757360",
             "kind": "NORMATIVE_SPEC",
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/spec.md"
           },
           {
-            "digest": "38509e951b2a6c07def7b7fc47781ab45ca5efecaff610b0f02da6d8e13e4c27",
+            "digest": "876bf01e201d5be630483cd70a5b290999d18584ffb2875fe44f63f100542eb3",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-plan.md"
           },
           {
-            "digest": "c6e35c759fac19c3722fc91fd28390c0aacf964da205354977b8426da77cb662",
+            "digest": "4b69c585d67e8ebde8a7c8d03a46ab4029024fc91bd61152c25f7f9d85c0c4fa",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/claude-spec.md"
           },
@@ -134127,7 +134128,7 @@
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/index.md"
           },
           {
-            "digest": "3e1f37d3a99f4d3e1f641a2fc8c4b929d183e3bedd4299fc44103359f2e65937",
+            "digest": "1e90bd56ec668b861be3d3d713c23dd2238422a39bc250aadafe976084ae7751",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-01-inventory-and-portability.md"
           },
@@ -134157,12 +134158,12 @@
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-06-chat-agents-and-native-work.md"
           },
           {
-            "digest": "7d853807160cdaa508f7a2991c703448d0bf56ab833202e24582d1861bb78f9a",
+            "digest": "5c078f505ff02f09058f5f3eab2bdb87fa94c495b69367ca72abfc4617c6addd",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-07-readiness-and-staging-acceptance.md"
           },
           {
-            "digest": "a36bba7db772cef94c4a95066b130f6731c25271beef93eaefef9eea752bc285",
+            "digest": "abcd8c448bc8779b31f4d15b04857edce645b09432720748b76eb3ef34448ec2",
             "kind": "SUPPORTING_ARTIFACT",
             "path": "specs/feature/311-smartaihub-worker-native-application-and-queues-cutover/sections/section-08-cutover-and-rollback.md"
           }
@@ -134177,7 +134178,7 @@
         "pass": 0,
         "total": 20
       },
-      "revision": "1.0",
+      "revision": "1.1",
       "root_kind": "CANONICAL",
       "section_status_claims": [],
       "slug": "311-smartaihub-worker-native-application-and-queues-cutover",

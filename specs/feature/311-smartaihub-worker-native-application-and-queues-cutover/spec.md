@@ -1,7 +1,7 @@
 ---
 spec_id: 311
 title: SmartAIHub Worker Native Application and Cloudflare Queues Cutover
-revision: R1.0
+revision: R1.1
 date: 2026-11-01
 status: PLANNED_NOT_IMPLEMENTED
 ---
@@ -18,9 +18,17 @@ This is an application-runtime migration, not a database migration. PostgreSQL `
 
 Worker-incompatible native computation is a migration decision to resolve, not an implicit Container exception. Investigate Worker-compatible implementation, existing provider APIs, and approved direct external workers. Any irreducible Container requirement stays a cutover blocker until the owner explicitly accepts a named exception with measured bounds. This document grants no such exception, does not require Container-free physical third-party providers, and does not authorize substituting an unsupported agent runtime for the approved Python OpenAI Agents API boundary.
 
+## Operational decision — 2026-11-01
+
+The owner explicitly deferred the Cloudflare application cutover until the Worker-native replacement is complete and requested decommissioning paid migration compute now. Debian remains the active application runtime. This supersedes earlier operational assumptions that trial Workers/Containers/Hyperdrives remain deployed while development proceeds; it does not cancel the Worker-native development design or authorize restoring retired features.
+
+The migration Workers, application Containers, associated Durable Object namespaces, empty trial Queues, unused Hyperdrives/VPC service registrations and disposable search cache have been removed or disabled as recorded in [decommission evidence](cloudflare-decommission-20261101.md). All existing R2 buckets and Vectorize indexes are retained, together with DNS/Tunnel and services needed by Debian. Historical image/config/deployment receipts remain provenance only; removed provider IDs or image digests cannot be reused as live-readiness evidence.
+
+Local development, compatibility tests and artifact preparation can continue. Live migration provisioning/deployment remains disabled until the replacement is ready for the relevant phase and the owner explicitly resumes that operation through the existing controls. Do not automatically recreate deleted resources from a stale checkpoint, reactivate deployment targets, re-enable the deployment workflow, or charge for a standing trial backend. Reconcile actual inventory and selectively reprovision only dependencies needed by the reviewed Worker-native implementation; preserve source, canonical data and saved credential records.
+
 ## Current implementation and evidence limits
 
-Repository baseline inspected: `e9aa827c788acbb9967accc2b3f4b5616ed28d7b`.
+Historical repository baseline inspected before decommission: `e9aa827c788acbb9967accc2b3f4b5616ed28d7b`.
 
 - `apps/cloudflare/src/apiRouteManifest.ts` classifies auth, `/trpc`, `/api`, `/v1`, uploads and callbacks as retained-origin routes. Broad native API parity is not implemented.
 - `apps/cloudflare/src/applicationHttpIngress.ts` forwards admitted Full HTTP application requests to Node HTTP Containers; `applicationHttpBridge.ts` bridges Node/Python. A Worker front door is not Worker-native execution.
@@ -91,4 +99,4 @@ Checked 2026-11-01; recheck runtime limits/compatibility at implementation time.
 
 ## Next development action
 
-Start section 01: complete route/procedure/job dependency inventory and demonstrate a minimal real Worker-to-canonical-PostgreSQL request with no app Container or Debian application call. Then implement auth/email and Queue delivery/consumption as independently testable slices. This spec is planned; application parity, production deployment and cutover are not claimed complete.
+Start section 01 locally: complete route/procedure/job dependency inventory and Worker portability tests without recreating provider resources. Prepare the minimal Worker-to-canonical-PostgreSQL proof for the explicitly resumed live phase; no app Container or Debian application fallback is allowed. Implement auth/email and Queue contracts locally as independently testable slices while live migration remains disabled. This spec is planned; application parity, production deployment and cutover are not claimed complete.

@@ -4,6 +4,10 @@
 
 REQ-311-01, REQ-311-14, REQ-311-16, REQ-311-17, REQ-311-18, REQ-311-19.
 
+## Operational suspension
+
+Live migration was disabled and trial compute resources removed by owner direction on 2026-11-01. Perform independent local implementation and verification first. Any provider spike, reprovisioning or deployment described below is a future live-phase deliverable, not authorization to recreate resources now. Follow spec.md R1.1 and cloudflare-decommission-20261101.md; historical IDs/receipts are not live readiness.
+
 ## Prerequisites
 
 section-03, section-04, section-05, section-06. Reconcile current canonical source, handoff and existing implementation before changing code.
