@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, cleanup } from "@testing-library/react";
 import { Spec224WorkspacePanel, readinessMessage } from "./Spec224WorkspacePanel";
 
-const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), approve: vi.fn(), pendingApprovals: { requests: [] as any[] }, bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), invalidatePendingApprovals: vi.fn(), refetchWorkspaces: vi.fn(), availableWorkspacesQueryOptions: undefined as any, info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
+const mocks = vi.hoisted(() => ({ prepare: vi.fn(), start: vi.fn(), resume: vi.fn(), approve: vi.fn(), pendingApprovals: { requests: [] as any[] }, bindWorkspace: vi.fn(), invalidateWorkspaceQuery: vi.fn(), invalidatePendingApprovals: vi.fn(), invalidateLedgerAccounts: vi.fn(), ledgerAccounts: { accounts: [] as any[], configured: null as any }, configureLedger: vi.fn(), provisionLedger: vi.fn(), refetchWorkspaces: vi.fn(), availableWorkspacesQueryOptions: undefined as any, info: vi.fn(), error: vi.fn(), readiness: undefined as any, role: "admin", workspace: { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null }, workspaces: [{ runnerId: "runner-test", workspaceId: "workspace-test", displayName: "Test", status: "online", snapshotRevision: "1", modelCatalog: null as any }], featureSpecs: [{ id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec." }], featureSpecContext: { id: "224-example-feature", title: "Example Feature", path: "specs/feature/224-example-feature/spec.md", summary: "Example implementation spec.", digest: "a".repeat(64), handoff: { status: "CURRENT", nextReadyWorkunit: "WU-1", nextAction: "Implement the next ready unit.", resumePoint: "Continue at WU-1.", openRequirements: [{ id: "REQ-1", text: "Keep the API stable.", nextAction: "Add tests." }], integratedSha: "b".repeat(40) } }, ingestFeatureSpec: vi.fn(), ingestSpecSet: vi.fn() }));
 vi.mock("@/i18n/useScopedTranslation", () => ({ useScopedTranslation: () => ({
   t: (key: string) => ({
     "taskControl.singleHarnessGoal": "เลือก Harness หนึ่งรายการสำหรับ Goal นี้จาก capability ที่ Runner ยืนยัน งานจะไม่ถูกส่งไปหลาย Harness โดยอัตโนมัติ",
@@ -12,7 +12,11 @@ vi.mock("@/i18n/useScopedTranslation", () => ({ useScopedTranslation: () => ({
 }) }));
 vi.mock("@/contexts/AuthContext", () => ({ useAuth: () => ({ user: { id: "user-test", currentTenantId: "tenant-test", role: mocks.role } }) }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: (...args: unknown[]) => mocks.error(...args), info: (...args: unknown[]) => mocks.info(...args) } }));
-vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } }, approvals: { getPending: { invalidate: mocks.invalidatePendingApprovals } } }), approvals: {
+vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentControl: { getConversationWorkspace: { invalidate: mocks.invalidateWorkspaceQuery } }, approvals: { getPending: { invalidate: mocks.invalidatePendingApprovals } }, economicControlPlane: { listSpec224LedgerAccounts: { invalidate: mocks.invalidateLedgerAccounts } } }), economicControlPlane: {
+  listSpec224LedgerAccounts: { useQuery: () => ({ data: mocks.ledgerAccounts, isLoading: false, error: null }) },
+  configureSpec224LedgerAccounts: { useMutation: (options: any) => ({ isPending: false, mutate: async (input: any) => { await mocks.configureLedger(input); await options?.onSuccess?.(); } }) },
+  provisionLedgerAccount: { useMutation: (options: any) => ({ isPending: false, mutate: async (input: any) => { await mocks.provisionLedger(input); await options?.onSuccess?.(); } }) },
+}, approvals: {
   getPending: { useQuery: () => ({ data: mocks.pendingApprovals }) },
   submitDecision: { useMutation: (options: any) => ({ isPending: false, mutate: async (input: any) => { await mocks.approve(input); await options?.onSuccess?.(); } }) },
 }, runnerNodes: {
@@ -59,6 +63,7 @@ beforeEach(() => {
   window.sessionStorage.clear();
   vi.clearAllMocks();
   mocks.readiness = undefined;
+  mocks.ledgerAccounts = { accounts: [], configured: { debitAccountId: "test-debit", creditAccountId: "test-credit" } };
   mocks.pendingApprovals = { requests: [] };
   mocks.bindWorkspace.mockResolvedValue({ conversationId: 47 });
   mocks.workspace = { workspace: { runnerId: "runner-test", workspaceId: "workspace-test" }, availability: { available: true, status: "current" }, specSet: null };

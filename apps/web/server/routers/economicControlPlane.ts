@@ -15,6 +15,12 @@ import {
   provisionEconomicBudget,
   provisionEconomicLedgerAccount,
 } from "../services/economicProvisioningService";
+import {
+  configureSpec224LedgerAccountPair,
+  listSpec224LedgerAccounts,
+  readSpec224LedgerAccountPair,
+  Spec224LedgerConfigurationError,
+} from "../services/spec224LedgerAccountConfig";
 
 const previewSchema = z.object({
   jobId: z.string().min(1).max(36),
@@ -44,6 +50,10 @@ const provisionBudgetSchema = z.object({
 });
 
 function mapProvisioningError(error: unknown): never {
+  if (error instanceof Spec224LedgerConfigurationError) {
+    const precondition = error.code === "SPEC224_LEDGER_CONFIG_ACTIVE_HOLD";
+    throw new TRPCError({ code: precondition ? "PRECONDITION_FAILED" : "BAD_REQUEST", message: error.code });
+  }
   if (error instanceof EconomicProvisioningError) {
     throw new TRPCError({
       code: error.code === "ECONOMIC_PROVISIONING_FORBIDDEN" ? "FORBIDDEN" : "BAD_REQUEST",
@@ -115,6 +125,46 @@ export function previewEconomicAdmission(
 }
 
 export const economicControlPlaneRouter = router({
+  listSpec224LedgerAccounts: adminProcedure
+    .input(z.object({ currency: z.string().trim().length(3).default("USD") }).optional())
+    .query(async ({ ctx, input }) => {
+      const tenantId = requireEconomicTenant(ctx);
+      const currency = input?.currency?.toUpperCase() ?? "USD";
+      const [accounts, configured] = await Promise.all([
+        listSpec224LedgerAccounts(getDb(), tenantId, currency),
+        readSpec224LedgerAccountPair(getDb(), tenantId, currency).catch(error => {
+          if (error instanceof Spec224LedgerConfigurationError) return null;
+          throw error;
+        }),
+      ]);
+      return {
+        currency,
+        accounts,
+        configured: configured ? {
+          debitAccountId: configured.debitAccountId,
+          creditAccountId: configured.creditAccountId,
+        } : null,
+      };
+    }),
+
+  configureSpec224LedgerAccounts: adminProcedure
+    .input(z.object({
+      currency: z.string().trim().length(3).default("USD"),
+      debitAccountId: z.string().trim().min(1).max(36),
+      creditAccountId: z.string().trim().min(1).max(36),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const tenantId = requireEconomicTenant(ctx);
+      try {
+        return await configureSpec224LedgerAccountPair(getDb(), {
+          tenantId,
+          actorId: ctx.user.id,
+          currency: input.currency,
+          pair: { debitAccountId: input.debitAccountId, creditAccountId: input.creditAccountId },
+        });
+      } catch (error) { return mapProvisioningError(error); }
+    }),
+
   provisionLedgerAccount: adminProcedure
     .input(provisionAccountSchema)
     .mutation(async ({ ctx, input }) => {

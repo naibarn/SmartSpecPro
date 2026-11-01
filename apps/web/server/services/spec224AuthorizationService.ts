@@ -25,6 +25,7 @@ import {
   type DurableReleaseInput,
 } from "./economicDurableService";
 import { provisionEconomicBudget, provisionSpec224GoalBudget } from "./economicProvisioningService";
+import { readSpec224LedgerAccountPair } from "./spec224LedgerAccountConfig";
 import { evaluateSpec224WorkspaceSourceAdmission } from "./spec224WorkspaceSourceAdmission";
 import { acquireSpec224ExecutionLease, releaseSpec224ExecutionLease } from "./spec224ExecutionLeaseAuthority";
 import {
@@ -620,25 +621,22 @@ export function spec224ReservationIntentId(tenantId: string, idempotencyKey: str
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
-function reserveInput(
+async function reserveInput(
   ctx: Spec224AuthorizationContext,
   loaded: LoadedRun,
   budgetId: string,
   amountMinorUnits: number,
   currency: string,
   delegated = false
-): DurableReserveInput {
-  const debitAccount =
-    process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID?.trim();
-  const creditAccount =
-    process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID?.trim();
-  if (!debitAccount || !creditAccount)
+): Promise<DurableReserveInput> {
+  const normalizedCurrency = currency.trim().toUpperCase();
+  const accounts = await readSpec224LedgerAccountPair(db.instance, ctx.tenantId, normalizedCurrency);
+  if (!accounts)
     throw new Spec224AuthorizationError(
       "ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED"
     );
   if (!loaded.run.workerJobId || !loaded.attemptId)
     throw new Spec224AuthorizationError("RUN_ATTEMPT_REQUIRED");
-  const normalizedCurrency = currency.trim().toUpperCase();
   const idempotencyKey = delegated
     ? `spec224:goal-hold:${createHash("sha256").update(JSON.stringify([ctx.tenantId, loaded.run.runId, loaded.attemptId])).digest("hex")}`
     : `spec224:codex:${loaded.run.runId}:${loaded.attemptId}:${amountMinorUnits}`.slice(0, 128);
@@ -662,14 +660,14 @@ function reserveInput(
     journalDescription: `Reserve Spec 224 Codex execution ${loaded.run.runId}`,
     journalLines: [
       {
-        accountId: debitAccount,
+        accountId: accounts.debitAccountId,
         tenantId: ctx.tenantId,
         currency: normalizedCurrency,
         debitMinorUnits: amountMinorUnits,
         creditMinorUnits: 0,
       },
       {
-        accountId: creditAccount,
+        accountId: accounts.creditAccountId,
         tenantId: ctx.tenantId,
         currency: normalizedCurrency,
         debitMinorUnits: 0,
@@ -685,9 +683,8 @@ async function releaseUnlaunchedDelegatedHold(input: {
   attemptId: string;
   hold: { id: string; amountMinorUnits: number; currency: string };
 }): Promise<void> {
-  const debitAccount = process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID?.trim();
-  const creditAccount = process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID?.trim();
-  if (!debitAccount || !creditAccount) throw new Spec224AuthorizationError("ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED");
+  const accounts = await readSpec224LedgerAccountPair(db.instance, input.context.tenantId, input.hold.currency);
+  if (!accounts) throw new Spec224AuthorizationError("ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED");
   await releaseEconomicHold(db.instance, {
     tenantId: input.context.tenantId,
     holdId: input.hold.id,
@@ -696,8 +693,8 @@ async function releaseUnlaunchedDelegatedHold(input: {
     policyVersion: "spec224-authorization-binding-v1",
     journalDescription: `Release unlaunched Spec 224 execution ${input.runId}`,
     journalLines: [
-      { accountId: creditAccount, tenantId: input.context.tenantId, currency: input.hold.currency, debitMinorUnits: input.hold.amountMinorUnits, creditMinorUnits: 0 },
-      { accountId: debitAccount, tenantId: input.context.tenantId, currency: input.hold.currency, debitMinorUnits: 0, creditMinorUnits: input.hold.amountMinorUnits },
+      { accountId: accounts.creditAccountId, tenantId: input.context.tenantId, currency: input.hold.currency, debitMinorUnits: input.hold.amountMinorUnits, creditMinorUnits: 0 },
+      { accountId: accounts.debitAccountId, tenantId: input.context.tenantId, currency: input.hold.currency, debitMinorUnits: 0, creditMinorUnits: input.hold.amountMinorUnits },
     ],
   });
 }
@@ -987,7 +984,7 @@ export function createSpec224AuthorizationService() {
       let reservation: DurableReserveInput;
       try {
         budget = await provisionSpec224GoalBudget(db.instance, { tenantId: input.context.tenantId, actorId: input.context.actorId, goalId: run.goalId, approvalRef: authority.approvalRef });
-        reservation = reserveInput(input.context, loaded, budget.budgetId, amount as number, grant.currency, true);
+        reservation = await reserveInput(input.context, loaded, budget.budgetId, amount as number, grant.currency, true);
       } catch (error) {
         await releaseLeaseAfterAuthorizationFailure();
         throw error;
@@ -1442,7 +1439,7 @@ export function createSpec224AuthorizationService() {
           input.currency.trim().toUpperCase()
       )
         throw new Spec224AuthorizationError("APPROVAL_BUDGET_BINDING_MISMATCH");
-      const reservation = reserveInput(
+      const reservation = await reserveInput(
           input.context,
           loaded,
           input.budgetId,
@@ -1505,11 +1502,8 @@ export function createSpec224AuthorizationService() {
       ) {
         throw new Spec224AuthorizationError("BUDGET_BINDING_MISMATCH");
       }
-      const debitAccount =
-        process.env.SMARTSPEC_ECONOMIC_RESERVE_DEBIT_ACCOUNT_ID?.trim();
-      const creditAccount =
-        process.env.SMARTSPEC_ECONOMIC_RESERVE_CREDIT_ACCOUNT_ID?.trim();
-      if (!debitAccount || !creditAccount)
+      const accounts = await readSpec224LedgerAccountPair(db.instance, input.context.tenantId, budget.currency);
+      if (!accounts)
         throw new Spec224AuthorizationError(
           "ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED"
         );
@@ -1526,14 +1520,14 @@ export function createSpec224AuthorizationService() {
         journalDescription: `Release revoked Spec 224 Codex execution ${input.runId}`,
         journalLines: [
           {
-            accountId: creditAccount,
+            accountId: accounts.creditAccountId,
             tenantId: input.context.tenantId,
             currency: budget.currency,
             debitMinorUnits: budget.amountMinorUnits,
             creditMinorUnits: 0,
           },
           {
-            accountId: debitAccount,
+            accountId: accounts.debitAccountId,
             tenantId: input.context.tenantId,
             currency: budget.currency,
             debitMinorUnits: 0,

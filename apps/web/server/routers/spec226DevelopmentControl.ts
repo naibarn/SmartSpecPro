@@ -116,6 +116,18 @@ function errorCode(error: unknown): string {
 
 function asTrpcError(error: unknown): never {
   const code = errorCode(error);
+  if (code === "ECONOMIC_LEDGER_ACCOUNTS_NOT_CONFIGURED") {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "ตั้งค่าคู่บัญชี Ledger สำหรับ tenant นี้ในส่วนผลการเตรียมก่อนเริ่ม Development Run",
+    });
+  }
+  if (code === "SPEC224_LEDGER_ACCOUNT_SCOPE_INVALID" || code === "SPEC224_LEDGER_ACCOUNT_PAIR_INVALID") {
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "บัญชี Ledger ที่ตั้งค่าไว้ไม่ใช่บัญชี USD ที่เปิดใช้งานของ tenant นี้ โปรดเลือกคู่บัญชีใหม่",
+    });
+  }
   if (error instanceof WorkspaceAuthorityActionError) {
     if (code === "WORKSPACE_ACTION_AUTHENTICATION_REQUIRED")
       throw new TRPCError({ code: "UNAUTHORIZED", message: code });
