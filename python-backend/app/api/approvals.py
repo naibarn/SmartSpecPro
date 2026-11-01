@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Literal, Optional
 from urllib.parse import urlparse
+from uuid import uuid4
 
 import httpx
 import structlog
@@ -24,7 +25,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
-from app.models.approval import ApprovalType
+from app.models.approval import ApprovalRequest, ApprovalStatus as DBApprovalStatus, ApprovalType
+from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.multitenancy.tenant_context import get_current_tenant_id
 from app.services.approval_db_service import ApprovalDBService, get_cloudflare_migration_mandate_enforced_actions
@@ -86,7 +88,7 @@ class ApprovalRequestCreate(BaseModel):
 
 
 class Spec224GoalGrantApprovalCreate(BaseModel):
-    """Idempotent request for the existing Approval Authority to review a Goal Grant."""
+    """Persist the bounded grant explicitly authorized by the user's Start action."""
     model_config = ConfigDict(extra="forbid")
 
     project_id: str = Field(..., min_length=1, max_length=255)
@@ -2085,23 +2087,56 @@ async def create_spec224_goal_grant_approval(
         if existing.action_digest != action_digest or existing.payload != payload:
             raise HTTPException(status_code=409, detail="SPEC224_GOAL_GRANT_IDEMPOTENCY_CONFLICT")
         return existing
-    return await service.create_request(
+    # The authenticated Start action is the user's approval of this exact
+    # provider/workspace/source/write-scope/budget grant. The worker still has
+    # to pass the separate live capability, source, lease, and budget checks
+    # before any child is dispatched.
+    now = datetime.now(timezone.utc)
+    request = ApprovalRequest(
+        id=str(uuid4()),
         request_type=ApprovalType.CUSTOM,
         title=f"Approve bounded development Goal {data.goal_id[:48]}",
-        description="Review the pinned provider, workspace, source, capabilities, write scope, budget and expiry before autonomous child execution.",
+        description="Owner explicitly started this bounded development Goal; dispatch remains subject to live capability, source, lease and budget checks.",
         tenant_id=tenant_id,
         requester_id=int(current_user.id),
         requester_type="user",
         project_id=data.project_id,
         execution_id=data.goal_id,
+        status=DBApprovalStatus.APPROVED,
         payload=payload,
+        extra_data={"spec224GoalGrantIssuerV1": "owner_explicit_goal_start", "approvers": []},
         action_digest=action_digest,
         correlation_key=correlation_key,
         risk_level="high",
-        required_approvers=1,
+        required_approvers=0,
+        current_approvals=0,
         expires_at=expires_at.astimezone(timezone.utc).replace(tzinfo=None),
+        resolved_at=now.replace(tzinfo=None),
         timeout_action="reject",
     )
+    db.add(request)
+    db.add(AuditLog(
+        user_id=str(current_user.id),
+        user_role=str(getattr(current_user.role, "value", current_user.role)),
+        action="spec224.goal_grant.owner_started",
+        resource_type="spec224_goal_delegation_grant",
+        resource_id=request.id,
+        details={
+            "tenantId": tenant_id,
+            "projectId": data.project_id,
+            "goalId": data.goal_id,
+            "provider": payload["provider"],
+            "workspaceId": payload["workspaceId"],
+            "sourceSha": source_sha,
+            "writeScope": write_scope,
+            "allowedActions": actions,
+            "budgetLimitMinorUnits": budget_limit,
+            "expiresAt": expires_at.astimezone(timezone.utc).isoformat(),
+        },
+    ))
+    await db.commit()
+    await db.refresh(request)
+    return request
 
 
 @router.get("/requests", response_model=ApprovalListResponse)

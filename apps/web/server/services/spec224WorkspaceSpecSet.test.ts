@@ -20,6 +20,9 @@ function makeCanonicalProjectInput(description = "Project catalog source binding
   const ledgerPath = "specs/feature/312-project/handoff/requirement-ledger.json";
   const ledgerContent = JSON.stringify({ spec_digest: specDigest, requirements: [{ requirement_id: "REQ-001", requirement_text: "A canonical project requirement." }] });
   const ledgerDigest = createHash("sha256").update(ledgerContent).digest("hex");
+  const canonicalSpecPath = "specs/feature/312-project/spec.md";
+  const canonicalSpecContent = "# SPEC-312\nFull canonical implementation scope.\n";
+  const canonicalSpecDigest = createHash("sha256").update(canonicalSpecContent).digest("hex");
   const descriptorContent = JSON.stringify({ initialPackages: [{
     id: "catalog-binding", specRefs: [{ specId: "312-project", requirementIds: ["REQ-001"] }], dependencies: [],
     acceptanceCriteria: [description], verification: [{ id: "catalog-test", kind: "test", ref: "test:catalog" }],
@@ -29,6 +32,12 @@ function makeCanonicalProjectInput(description = "Project catalog source binding
   return {
     projectId, sourceRevision, descriptorDigest, implementationRepository: "github.com/naibarn/smartaihub-platform",
     files: [
+      {
+        path: `canonical-projects/${projectId}/specs/312-abc/spec.md`,
+        digest: canonicalSpecDigest,
+        content: canonicalSpecContent,
+        canonicalSource: { kind: "spec" as const, specId: "312-project", specDigest, sourcePath: canonicalSpecPath, sourceDigest: canonicalSpecDigest },
+      },
       {
         path: "canonical-projects/smartaihub-modular-saas-r14/specs/312-abc/requirement-ledger.json",
         digest: ledgerDigest, content: ledgerContent,
@@ -328,6 +337,35 @@ describe("spec224 workspace Spec Set", () => {
       expect.objectContaining({ projectSource: { projectId: "smartaihub-modular-saas-r14", sourceRevision: "a".repeat(40), descriptorDigest: project.descriptorDigest } }),
       expect.objectContaining({ canonicalSource: expect.objectContaining({ kind: "requirement-ledger", specId: "312-project", sourceDigest: expect.any(String) }) }),
     ]));
+
+    const preparation = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set" });
+    const packageId = preparation.workPackages.find(item => item.externalId === "catalog-binding")?.id;
+    expect(packageId).toBeTruthy();
+    const runInput = await service.resolveWorkspaceRunInput({
+      tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set", workPackageId: packageId,
+    });
+    expect(runInput.inputFiles.map(file => file.path)).toEqual([
+      "canonical-projects/smartaihub-modular-saas-r14/project.json",
+      "canonical-projects/smartaihub-modular-saas-r14/specs/312-abc/requirement-ledger.json",
+      "canonical-projects/smartaihub-modular-saas-r14/specs/312-abc/spec.md",
+    ]);
+    expect(runInput.workPackageExternalId).toBe("catalog-binding");
+  });
+
+  it("does not dispatch a canonical package when its full referenced Spec is missing", async () => {
+    const store = memoryStore();
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", repositoryId: "github.com/naibarn/smartaihub-platform", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const service = createSpec224WorkspaceSpecSetService(store);
+    await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
+    const project = makeCanonicalProjectInput();
+    project.files = project.files.filter(file => file.canonicalSource?.kind !== "spec");
+    await service.ingestModularSaasProject({ tenantId: "tenant-a", actorId: 42, conversationId: 8, idempotencyKey: "project-missing-spec-001", project });
+    const preparation = await service.prepareWorkspaceRun({ tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set" });
+    const packageId = preparation.workPackages.find(item => item.externalId === "catalog-binding")?.id;
+
+    await expect(service.resolveWorkspaceRunInput({
+      tenantId: "tenant-a", actorId: 42, conversationId: 8, mode: "spec_set", workPackageId: packageId,
+    })).rejects.toMatchObject({ code: "SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE" });
   });
 
   it("rejects stale or non-platform workspace bindings for canonical project ingestion", async () => {

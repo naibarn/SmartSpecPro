@@ -52,7 +52,7 @@ async def test_postgres_spec224_goal_grant_request_is_immutable_and_idempotent()
             "currency": "USD", "issuedAt": issued.isoformat(), "expiresAt": expires.isoformat(),
         }
         request = Spec224GoalGrantApprovalCreate(project_id="project-test", goal_id=goal_id, payload=payload)
-        actor = SimpleNamespace(id=requester_id)
+        actor = SimpleNamespace(id=requester_id, role="user")
 
         async def issue():
             async with sessions() as session:
@@ -61,7 +61,11 @@ async def test_postgres_spec224_goal_grant_request_is_immutable_and_idempotent()
         first, replay = await asyncio.gather(issue(), issue())
         approval_id = first.id
         assert replay.id == first.id
-        assert first.status == ApprovalStatus.PENDING
+        assert first.status == ApprovalStatus.APPROVED
+        assert first.required_approvers == 0
+        assert first.current_approvals == 0
+        assert first.resolved_at is not None
+        assert first.extra_data["spec224GoalGrantIssuerV1"] == "owner_explicit_goal_start"
         assert first.payload == payload
 
         async with sessions() as session:
@@ -76,6 +80,7 @@ async def test_postgres_spec224_goal_grant_request_is_immutable_and_idempotent()
         async with engine.begin() as connection:
             if approval_id:
                 await connection.execute(text("DELETE FROM approval_responses WHERE request_id = :id"), {"id": approval_id})
+                await connection.execute(text("DELETE FROM audit_logs WHERE resource_id = :id AND action = 'spec224.goal_grant.owner_started'"), {"id": approval_id})
                 await connection.execute(text("DELETE FROM approval_requests WHERE id = :id"), {"id": approval_id})
             await connection.execute(text("DELETE FROM users WHERE \"openId\" LIKE :pattern"), {"pattern": f"spec224-goal-requester-{suffix}"})
             await connection.execute(text("DELETE FROM tenants WHERE id = :id"), {"id": tenant_id})

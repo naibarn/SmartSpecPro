@@ -402,6 +402,32 @@ describe("Spec 224 incremental SpecSet compiler", () => {
     })]);
   });
 
+  it("keeps the staged ledger path for package input while retaining canonical source provenance", () => {
+    const ledger = JSON.stringify({
+      spec_digest: "a".repeat(64),
+      requirements: [{ requirement_id: "REQ-LEDGER-002", requirement_text: "Stage the imported canonical ledger." }],
+    });
+    const stagedLedgerPath = "canonical-projects/r14/specs/313-core/requirement-ledger.json";
+    const canonicalLedgerPath = "specs/feature/313-core/handoff/requirement-ledger.json";
+    const result = compileSpec224IncrementalSpecSet(revision([{
+      path: stagedLedgerPath,
+      content: ledger,
+      canonicalSource: {
+        specId: "313-core",
+        specDigest: "a".repeat(64),
+        sourcePath: canonicalLedgerPath,
+        sourceDigest: contentDigest(ledger),
+      },
+    }]));
+
+    expect(result.requirements[0]).toMatchObject({
+      artifactPath: stagedLedgerPath,
+      sourceRef: expect.stringContaining(canonicalLedgerPath),
+      canonicalSpecId: "313-core",
+      canonicalRequirementId: "REQ-LEDGER-002",
+    });
+  });
+
   it("resolves canonical ID refs across Specs without replacing their requirement IDs", () => {
     const ledger = (id: string, text: string) => JSON.stringify({
       spec_digest: "b".repeat(64), requirements: [{ requirement_id: id, requirement_text: text }],

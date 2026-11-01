@@ -569,13 +569,13 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
 function filesForWorkPackage(
   root: { id: string; declarationPath: string; requirementIds: readonly string[]; dependsOn: readonly string[] },
   workPackages: readonly { id: string; declarationPath: string; requirementIds: readonly string[]; dependsOn: readonly string[] }[],
-  requirements: readonly { id: string; artifactPath: string }[],
+  requirements: readonly { id: string; artifactPath: string; canonicalSpecId?: string; canonicalRequirementId?: string }[],
   files: readonly Spec224WorkspaceSpecFile[],
 ): Spec224WorkspaceSpecFile[] {
   const packages = new Map(workPackages.map(item => [item.id, item]));
   const requirementSources = new Map(requirements.flatMap(item => item.canonicalSpecId && item.canonicalRequirementId
-    ? [[`canonical:${item.canonicalSpecId}#${item.canonicalRequirementId}`, item.artifactPath] as const]
-    : [[item.id, item.artifactPath] as const]));
+    ? [[`canonical:${item.canonicalSpecId}#${item.canonicalRequirementId}`, { artifactPath: item.artifactPath, canonicalSpecId: item.canonicalSpecId }] as const]
+    : [[item.id, { artifactPath: item.artifactPath, canonicalSpecId: null }] as const]));
   const paths = new Set<string>();
   const seenPackages = new Set<string>();
   const pending = [root];
@@ -585,9 +585,14 @@ function filesForWorkPackage(
     seenPackages.add(current.id);
     paths.add(current.declarationPath);
     for (const requirementId of current.requirementIds) {
-      const sourcePath = requirementSources.get(requirementId);
-      if (!sourcePath) fail("SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE");
-      paths.add(sourcePath);
+      const source = requirementSources.get(requirementId);
+      if (!source) fail("SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE");
+      paths.add(source.artifactPath);
+      if (source.canonicalSpecId) {
+        const specFiles = files.filter(file => file.canonicalSource?.kind === "spec" && file.canonicalSource.specId === source.canonicalSpecId);
+        if (!specFiles.length) fail("SPEC_SET_WORK_PACKAGE_SOURCE_UNAVAILABLE");
+        for (const file of specFiles) paths.add(file.path);
+      }
     }
     for (const dependencyId of current.dependsOn) {
       const dependency = packages.get(dependencyId);

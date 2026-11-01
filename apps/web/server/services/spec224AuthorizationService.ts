@@ -76,7 +76,7 @@ export async function recoverSpec224GoalGrant(input: {
   getDb();
   const rows = await db.instance.execute(sql`SELECT id, tenant_id, execution_id, requester_id, status::text AS status,
     current_approvals, required_approvers, expires_at AT TIME ZONE 'UTC' AS expires_at,
-    revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload FROM approval_requests
+    revoked_at AT TIME ZONE 'UTC' AS revoked_at, payload, extra_data FROM approval_requests
     WHERE tenant_id = ${input.tenantId} AND requester_id = ${input.actorId}
       AND execution_id = ${input.goalId} AND payload->>'kind' = 'spec224_goal_delegation_grant'`);
   const iso = (value: unknown) => value instanceof Date ? value.toISOString() : typeof value === "string" ? value : null;
@@ -88,6 +88,8 @@ export async function recoverSpec224GoalGrant(input: {
       requesterId: Number(row.requester_id), status: String(row.status).toLowerCase() as Spec224GoalGrantAuthorityEvidence["status"],
       currentApprovals: Number(row.current_approvals), requiredApprovers: Number(row.required_approvers),
       expiresAt: iso(row.expires_at), revokedAt: iso(row.revoked_at), payload: asRecord(row.payload) ?? {},
+      ...(asRecord(row.extra_data)?.spec224GoalGrantIssuerV1 === "owner_explicit_goal_start"
+        ? { issuer: "owner_explicit_goal_start" as const } : {}),
     };
     const grant = parseSpec224GoalGrant(authority, now);
     if (grant && grant.tenantId === input.tenantId && grant.actorId === input.actorId && grant.goalId === input.goalId)

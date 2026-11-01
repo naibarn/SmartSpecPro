@@ -64,6 +64,21 @@ const baseInput = (): Spec224GoalDelegationInput => ({
 });
 
 describe("SPEC-224 Goal delegation contract", () => {
+  it("accepts only an explicitly started, zero-reviewer bounded grant", () => {
+    const input = baseInput();
+    input.authority.currentApprovals = 0;
+    input.authority.requiredApprovers = 0;
+    input.authority.issuer = "owner_explicit_goal_start";
+    input.child.action = "implement";
+    input.child.changedPaths = ["apps/saas-core/src/index.ts"];
+    input.authority.payload.allowedActions = ["implement", "test"];
+    input.authority.payload.writeScope = ["apps/saas-core/**"];
+    expect(evaluateSpec224GoalDelegation(input).status).toBe("READY_FOR_DELEGATION");
+
+    delete input.authority.issuer;
+    expect(evaluateSpec224GoalDelegation(input).status).toBe("AUTHORITY_DENIED");
+  });
+
   it.each(["discover", "plan", "implement", "build", "review"])(
     "requires explicit delegation for the %s phase action",
     action => {

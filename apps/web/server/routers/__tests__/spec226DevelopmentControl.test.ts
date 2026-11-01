@@ -164,7 +164,7 @@ beforeEach(() => {
   mocks.runnerReadiness.mockReset().mockResolvedValue({ ready: true, code: "RUNNER_READY", policyDecision: "pending", ownerAction: null, projectId: "project-a", profileId: "spec224-recovery-windows-x64-codex-nonprod" });
   mocks.advanceStart.mockReset().mockResolvedValue({ version: "spec-224-authorization-binding-v1", status: "APPROVAL_REQUIRED", reasons: ["APPROVAL_PENDING"] });
   mocks.authorizeDelegatedChild.mockReset().mockResolvedValue({ status: "READY_FOR_LIVE", reasons: [] });
-  mocks.requestGoalGrantApproval.mockReset().mockResolvedValue({ approvalRef: "goal-approval-1", status: "pending", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
+  mocks.requestGoalGrantApproval.mockReset().mockResolvedValue({ approvalRef: "goal-approval-1", status: "approved", expiresAt: new Date(Date.now() + 3_600_000).toISOString() });
   mocks.workspaceSpecSets.getConversationWorkspace.mockReset().mockResolvedValue({ workspace: { workspaceId: "workspace-a", runnerId: "runner-a" } });
   mocks.workspaceSpecSets.availableWorkspaces.mockReset();
   mocks.workspaceSpecSets.getLatestRevision.mockReset().mockResolvedValue(null);
@@ -817,6 +817,42 @@ describe("spec226DevelopmentControlRouter", () => {
       payload: expect.objectContaining({ kind: "spec224_goal_delegation_grant", goalId: expect.stringMatching(/^[0-9a-f-]{36}$/), provider: "codex", writeScope: ["**"], workspaceAccessMode: "exclude_risky" }),
     }));
     expect(JSON.stringify(mocks.auditLog.mock.calls)).not.toContain("private request");
+  });
+
+  it("dispatches the Codex child after the explicit Goal Start grant is approved", async () => {
+    mocks.workspaceSpecSets.resolveWorkspaceRunInput.mockResolvedValueOnce({
+      workspace: { workspaceId: "workspace-a", runnerId: "runner-a" },
+      runner: { runnerId: "runner-a", snapshotRevision: "snap-1", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "d".repeat(64), modelCatalog: { state: "discovered", adapterId: "codex.v1", cliVersion: "test", accountProviderFingerprint: "codex-account:sha256:test", revision: "catalog:test", observedAt: new Date(Date.now() - 1_000).toISOString(), expiresAt: new Date(Date.now() + 60_000).toISOString(), models: [{ id: "test-model", displayName: "Test Model", capabilities: ["text"], reasoningEfforts: ["low", "medium"], defaultReasoningEffort: "medium", isDefault: true }] } },
+      goal: "Implement the selected work package.", planId: "plan:ready", planRevision: 1,
+      contextPackHash: "b".repeat(64), repositoryRef: "runner:runner-a/workspace-a",
+      baseRevision: `git:${"a".repeat(40)}`, specSetRevision: 12, workPackageId: "r14-core-p1-first-slice",
+      allowedWriteSet: ["apps/saas-core/**"], inputFiles: [{ path: "spec.md", contentBase64: Buffer.from("# Canonical Spec").toString("base64") }],
+    });
+    mocks.runnerInputStaging.preStageRunnerInput.mockResolvedValueOnce({
+      inputSourceRef: "spec224-source:run-1", inputDigest: "c".repeat(64), totalBytes: 100, files: [],
+    });
+    mocks.createRun.mockImplementationOnce(async (value: any) => ({
+      run: value.run, jobRef: { jobId: "canonical-job-1", created: true },
+    }));
+    mocks.runnerInputStaging.bindSourceToWorkerJob.mockResolvedValueOnce(undefined);
+    mocks.requestGoalGrantApproval.mockResolvedValueOnce({
+      approvalRef: "goal-approval-1", status: "approved", expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+    });
+    mocks.authorizeDelegatedChild.mockResolvedValueOnce({ status: "READY_FOR_LIVE", reasons: [] });
+
+    const result = await (spec226DevelopmentControlRouter.startWorkspaceRun as unknown as Function)({ ctx: CTX, input: {
+      conversationId: 8, mode: "spec_set", specSetRevision: 12, workPackageId: "r14-core-p1-first-slice",
+      idempotencyKey: "spec224-start-codex-work-package-0001", provider: "codex",
+    } });
+
+    expect(result).toMatchObject({
+      runId: expect.stringMatching(/^run-/), jobId: "canonical-job-1", dispatchStatus: "ENQUEUED",
+      goalAdmissionStatus: "READY_FOR_LIVE", workPackageId: "r14-core-p1-first-slice", specSetRevision: 12,
+    });
+    expect(mocks.authorizeDelegatedChild).toHaveBeenCalledWith(expect.objectContaining({ runId: result.runId }));
+    expect(mocks.runnerInputStaging.bindSourceToWorkerJob).toHaveBeenCalledWith(expect.objectContaining({
+      inputSourceRef: "spec224-source:run-1", workerJobId: "canonical-job-1",
+    }));
   });
   it("requires authenticated tenant scope and records full verification requests", async () => {
     mocks.requestFullVerification.mockResolvedValue({

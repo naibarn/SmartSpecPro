@@ -489,7 +489,10 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
             }
             requirements.push({
               id,
-              artifactPath: file.canonicalSource.sourcePath,
+              // Keep the actual immutable artifact path in the staged SpecSet.
+              // `canonicalSource.sourcePath` is provenance in the source repo;
+              // imported canonical files live under a tenant-bound staging path.
+              artifactPath: file.path,
               artifactDigest: file.canonicalSource.sourceDigest,
               sourceRef: `canonical:${file.canonicalSource.specId}@${file.canonicalSource.specDigest}:${file.canonicalSource.sourcePath}@${file.canonicalSource.sourceDigest}#${id}`,
               sourceKey: canonicalRequirementSourceKey(file.canonicalSource.specId, id),

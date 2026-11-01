@@ -14,6 +14,7 @@ export type Spec224GoalGrantAuthorityEvidence = {
   requiredApprovers: number;
   expiresAt: string | null;
   revokedAt?: string | null;
+  issuer?: "owner_explicit_goal_start";
   payload: Record<string, unknown>;
 };
 
@@ -320,9 +321,11 @@ export function parseSpec224GoalGrant(authority: Spec224GoalGrantAuthorityEviden
       authority.revokedAt.length > 0) ||
     !isText(authority.approvalRef, 160) ||
     !Number.isSafeInteger(authority.requiredApprovers) ||
-    authority.requiredApprovers < 1 ||
+    authority.requiredApprovers < 0 ||
     !Number.isSafeInteger(authority.currentApprovals) ||
-    authority.currentApprovals < authority.requiredApprovers ||
+    (authority.requiredApprovers === 0
+      ? authority.issuer !== "owner_explicit_goal_start" || authority.currentApprovals !== 0
+      : authority.currentApprovals < authority.requiredApprovers) ||
     !isText(authority.tenantId, 36) ||
     authority.executionId !== payload.goalId ||
     authority.requesterId !== payload.actorId ||
