@@ -1124,7 +1124,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
+    "expected_canonical_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:716174b80c72bf99e7a5893ccf3d31ef3e2c3e41eaa371248f00ac59e394eb00",
+    "artifact_digest": "sha256:91c26099c2afa1abd4466bb8db92daf202d3c346d67c2d689214db15ac69ddb8",
     "environment": "development_linux_user_systemd",
     "evidence": [
       {
@@ -1321,10 +1321,18 @@
         "scope": "First Run now exposes a complete bounded Goal review, creates/reuses the durable DevelopmentRun, displays canonical Run/Approval IDs, offers Approval Authority actions only to accounts whose authenticated pending queue includes the request, and deep-links all views to the source conversation/thread/job. Isolated aimarkethubs.com dev artifact and unchanged production generation-251 fingerprints verified. Live Goal remains pending owner Start and independent approval.",
         "source_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
         "status": "PASS_PARTIAL"
+      },
+      {
+        "kind": "SPEC224_TENANT_SCOPED_LEDGER_CONFIGURATION_DEPLOYED",
+        "observed_at": "2026-11-01T16:54:39Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ledger-configuration-recovery-deployment-20261101.md",
+        "scope": "Out-of-band repair for the failing Task Control Start path. Exact Debian development artifact and web/Node worker source verified; focused account/configuration/UI tests 9/9 passed; public health 200 and API smoke 12/12 routes, zero server errors. The UI has not yet configured accounts or produced a Goal Grant/Run/Runner receipt; execution acceptance remains open.",
+        "source_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
+        "status": "PASS"
       }
     ],
     "required": false,
-    "source_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
+    "source_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
     "status": "PASS"
   },
   "disposition": {
@@ -1338,7 +1346,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 273,
+  "generation": 274,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1570,11 +1578,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
+    "canonical_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
     "integrated": true,
-    "integrated_at": "2026-10-30T12:38:13Z",
+    "integrated_at": "2026-11-01T16:47:44Z",
     "pull_request": null,
-    "source_sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4"
+    "source_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4088,7 +4096,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-10-30T12:39:13.642757Z",
+  "updated_at": "2026-11-01T16:55:53.807038Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
