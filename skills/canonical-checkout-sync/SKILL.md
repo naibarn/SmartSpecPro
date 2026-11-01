@@ -125,12 +125,14 @@ pnpm run build:canonical
 ```
 
 This build runs in an isolated canonical-source workspace. For SmartSpecPro it
-builds the web assets, Cloudflare staging bundle, and Linux backend package; it
-does not publish assets or switch/restart production services. `npm run
-build:deploy` and `pnpm run release:web:linux` build, prepare, and promote the
-compatible Linux full-stack release. They restart only `smartspec-web.service`
-through the existing sudo-gated workflow, then require health verification or
-rollback. Use `pnpm run build:canonical` when only an artifact is needed. See
+builds the web assets and Linux backend package, and explicitly skips Cloudflare
+staging artifact generation/publication. It does not switch or restart services.
+The current development site is `https://smartaihub.app` on Debian; use
+`pnpm run release:web:linux -- --target legacy-debian-dev` to build, prepare,
+and promote its Linux full-stack release. This restarts only
+`smartspec-web.service` through the existing sudo-gated workflow, then requires
+health verification or rollback. `smartsihub.com` is a future production target
+and is not part of this development release path. See
 `docs/WEB_RELEASE_WORKFLOW.md` for the commands and browser verification.
 
 To require specific merge commits to be included, repeat the revision option; the build fails before running if any required commit is not in the fetched canonical tip:

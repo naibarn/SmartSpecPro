@@ -18,7 +18,7 @@
     "build:widget": "bash scripts/guard-live-build-target.sh && vite build --configLoader runner --config vite.config.widget.ts",
     "build:deploy": "bash ../../scripts/release-linux-web.sh ../..",
     "build:deploy:local": "bash scripts/build-atomic.sh",
-    "build:canonical": "bash ../../skills/canonical-checkout-sync/scripts/build-canonical-main.sh ../..",
+    "build:canonical": "bash ../../skills/canonical-checkout-sync/scripts/build-canonical-main.sh ../.. -- --skip-cloudflare-staging-publication",
     "release:web:linux": "bash ../../scripts/release-linux-web.sh ../..",
     "release:status": "python3 scripts/build-main-deploy.py --status --target legacy-debian-dev",
     "cloudflare:staging:publish-retry": "node --require dotenv/config --import tsx scripts/publish-cloudflare-staging-artifact.ts --retry-existing",
