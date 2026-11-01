@@ -45,6 +45,16 @@ type WorkspaceOption = {
   snapshotRevision: string;
   scope?: string;
   canonicalProjectTitle?: string;
+  deploymentTarget?: {
+    id: string;
+    domain: string;
+    environment: string;
+    application: string;
+    status: string | null;
+    deployable: boolean;
+    applicationAvailable: boolean;
+    workspaceLabel: string;
+  } | null;
   gitHead?: string | null;
   dirty?: boolean | null;
   dirtyPaths?: string[] | null;
@@ -401,7 +411,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
     refetchOnWindowFocus: true,
   });
   const workspaces = workspacesQuery.data?.workspaces ?? [];
-  const platformWorkspace = workspaces.find(item => item.scope === "PLATFORM_ENGINEERING");
+  const platformWorkspaces = workspaces.filter(item => item.scope === "PLATFORM_ENGINEERING");
+  const platformWorkspace = platformWorkspaces.find(item => selectionKey(item) === selected) ?? platformWorkspaces[0];
   // Canonical SmartAIHub specs are read from the platform source authority and
   // must execute in that same registered workspace, never an arbitrary chat binding.
   const canUseCanonicalSpecs = Boolean(platformWorkspace);
@@ -488,8 +499,25 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
-  const platformWorkspaceSelected = Boolean(platformWorkspace && selectedWorkspace
-    && selectionKey(platformWorkspace) === selectionKey(selectedWorkspace));
+  const platformWorkspaceSelected = selectedWorkspace?.scope === "PLATFORM_ENGINEERING";
+  const featureSpecs = featureSpecsQuery.data?.specs ?? [];
+  const availableFeatureSpecs = featureSpecs.filter(spec =>
+    !spec.requiredDeploymentTargetId || spec.requiredDeploymentTargetId === selectedWorkspace?.deploymentTarget?.id,
+  );
+  const selectedFeatureSpecAvailable = availableFeatureSpecs.some(spec => spec.id === selectedFeatureSpec);
+  const unavailableTargetSpecs = featureSpecs.filter(spec =>
+    spec.requiredDeploymentTargetId && spec.requiredDeploymentTargetId !== selectedWorkspace?.deploymentTarget?.id,
+  );
+  const unavailableTargetDomain = unavailableTargetSpecs[0]?.requiredDeploymentTargetDomain;
+  const hasWorkspaceForUnavailableTarget = unavailableTargetSpecs.some(spec =>
+    platformWorkspaces.some(workspace => workspace.deploymentTarget?.id === spec.requiredDeploymentTargetId),
+  );
+  useEffect(() => {
+    if (selectedFeatureSpec && featureSpecsQuery.data && !selectedFeatureSpecAvailable) {
+      setSelectedFeatureSpec("");
+      setPreparation(null);
+    }
+  }, [selectedFeatureSpec, featureSpecsQuery.data, selectedFeatureSpecAvailable]);
   const availableCatalogs = selectedWorkspace?.modelCatalogs ?? (selectedWorkspace?.modelCatalog ? [selectedWorkspace.modelCatalog] : []);
   const catalogHarnesses = availableCatalogs
     .map(catalog => catalog.adapterId)
@@ -528,7 +556,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       : availableEfforts.includes("medium") ? "medium" : availableEfforts[0] ?? (effectiveHarnessAdapterId === "microsoft-copilot.v1" ? "provider_default" : "");
   const selectedRunner = runners.find(runner => runner.runnerId === selectedRunnerId);
   const isPlatformWorkspace = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" || selectionKey(selectedWorkspace ?? { runnerId: "", workspaceId: "" }) === lastPlatformWorkspaceKey.current;
-  const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && selectionKey(selectedWorkspace) === selectionKey(platformWorkspace ?? selectedWorkspace);
+  const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && Boolean(selectedWorkspace.canonicalProjectId);
   const platformSourceIsSafe = !isPlatformWorkspace || platformBindingCurrent;
   const specSet = workspaceQuery.data?.specSet;
   const boundKey = boundWorkspace
@@ -921,8 +949,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
 
   if (pilotMode) {
     const pilotRuns = (workspaceQuery.data?.developmentRuns ?? []).filter(run => run.isFirstRunPilot);
-    const pilotRunners = platformWorkspace ? runners.filter(runner => runner.runnerId === platformWorkspace.runnerId) : [];
-    const pilotWorkspaces = platformWorkspace && selectedRunnerId === platformWorkspace.runnerId ? [platformWorkspace] : [];
+    const pilotRunners = runners.filter(runner => platformWorkspaces.some(workspace => workspace.runnerId === runner.runnerId));
+    const pilotWorkspaces = platformWorkspaces.filter(workspace => workspace.runnerId === selectedRunnerId);
     const pilotHarnesses = catalogHarnesses.filter(adapterId => ["codex.v1", "microsoft-copilot.v1"].includes(adapterId));
     const canReviewPilot = Boolean(isAdmin && conversationId && platformWorkspace && platformWorkspaceSelected && pilotRuns.length === 0 && !pilotSubmission);
     return (
@@ -933,7 +961,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           <Heading id="first-run-pilot-title" level={2}>ตรวจสอบ Goal ก่อนส่งอนุมัติ</Heading>
           <AstryxText as="p" type="supporting">สร้าง Goal และ DevelopmentRun เดียว จากนั้นระบบจะทำขั้นตอนต่อเนื่องจาก receipt จริงโดยไม่ต้องเปิด browser ค้างไว้</AstryxText>
           <VStack as="section" gap={2} aria-label="ขอบเขต Goal ที่จะอนุมัติ">
-            <AstryxText as="p"><strong>Project:</strong> {platformWorkspace?.canonicalProjectTitle ?? platformWorkspace?.displayName ?? "กำลังอ่านข้อมูลที่ได้รับอนุญาต…"}</AstryxText>
+            <AstryxText as="p"><strong>Project:</strong> {selectedWorkspace?.canonicalProjectTitle ?? platformWorkspace?.canonicalProjectTitle ?? platformWorkspace?.displayName ?? "กำลังอ่านข้อมูลที่ได้รับอนุญาต…"}</AstryxText>
             <AstryxText as="p"><strong>Runner:</strong> {selectedRunner?.displayName ?? "กำลังโหลด Runner…"}</AstryxText>
             <AstryxText as="p"><strong>Workspace:</strong> {selectedWorkspace?.displayName ?? "กำลังโหลด Workspace…"}</AstryxText>
             <AstryxText as="p"><strong>Write scope:</strong> apps/runner-app/tests/spec224-live-pilot/** เท่านั้น</AstryxText>
@@ -1046,11 +1074,17 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         <section className="mb-4 rounded-xl border border-sky-200 bg-sky-50 p-4" aria-label="SmartAIHub Platform Development">
           <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">Platform Engineering</p>
           <h2 id="spec224-workspace-heading" className="mt-1 text-lg font-semibold text-slate-950">พัฒนาระบบ SmartAIHub</h2>
-          <p className="mt-1 text-sm text-slate-700">Project: {platformWorkspace.canonicalProjectTitle ?? platformWorkspace.displayName} · Runner: Debian Development Server · Harness: Codex</p>
+          <p className="mt-1 text-sm text-slate-700">Project: {selectedWorkspace?.canonicalProjectTitle ?? platformWorkspace.canonicalProjectTitle ?? platformWorkspace.displayName} · Runner: {selectedRunner?.displayName ?? "เลือก Runner"} · Harness: {effectiveHarnessAdapterId ? harnessLabel(effectiveHarnessAdapterId) : "รอ Runner catalog"}</p>
+          {selectedWorkspace?.deploymentTarget ? (
+            <p className="mt-1 text-xs text-slate-700" role="status">
+              เป้าหมายของ Workspace นี้: {selectedWorkspace.deploymentTarget.domain} · {selectedWorkspace.deploymentTarget.environment === "production" ? "Production" : "Development"}
+              {selectedWorkspace.deploymentTarget.applicationAvailable ? " · runtime พร้อม" : " · runtime ยังไม่พร้อมสำหรับ UAT/deploy"}
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-slate-600" role="status">
             {platformWorkspaceSelected
-              ? "เลือก SmartAIHub Source Workspace แล้ว"
-              : "งานพัฒนาระบบ SmartAIHub และ Canonical SPEC ต้องใช้ Workspace นี้ ซึ่งผูกกับ source repository ที่ได้รับอนุญาต"}
+              ? `เลือก ${selectedWorkspace?.displayName ?? "Platform workspace"} แล้ว`
+              : "เลือก Platform workspace ที่ได้รับอนุญาตจากรายการ Runner ด้านล่าง เพื่อพัฒนา Canonical SPEC"}
           </p>
           {!platformWorkspaceSelected ? (
             <Button type="button" size="sm" variant="outline" className="mt-2" disabled={bindMutation.isPending || workspacesQuery.isFetching} onClick={selectCanonicalPlatformWorkspace}>
@@ -1126,7 +1160,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             ) : null}
             {runnerWorkspaces.map(workspace => (
               <option key={selectionKey(workspace)} value={selectionKey(workspace)}>
-                {workspace.displayName}
+                {workspace.displayName}{workspace.deploymentTarget ? ` · ${workspace.deploymentTarget.domain}${workspace.deploymentTarget.applicationAvailable ? "" : " (runtime pending)"}` : ""}
               </option>
             ))}
           </select>
@@ -1435,13 +1469,14 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                         className="w-full rounded-md border border-[var(--color-border)] bg-background px-3 py-2 text-sm"
                       >
                         <option value="">เลือก Feature Spec</option>
-                        {featureSpecsQuery.data?.specs.map(spec => (
+                        {availableFeatureSpecs.map(spec => (
                           <option key={spec.id} value={spec.id}>{spec.title} · {spec.id}</option>
                         ))}
                       </select>
                       {featureSpecsQuery.isLoading ? <p role="status" className="text-xs text-[var(--color-text-secondary)]">กำลังโหลด Feature Specs…</p> : null}
                       {featureSpecsQuery.error ? <p role="alert" className="text-xs text-rose-700">โหลดรายการ Spec ไม่สำเร็จ: {sanitizePlatformDiagnostic(featureSpecsQuery.error.message)}</p> : null}
                       {!featureSpecsQuery.isLoading && !featureSpecsQuery.error && featureSpecsQuery.data?.specs.length === 0 ? <p role="status" className="text-xs text-amber-800">ไม่พบไฟล์ SPEC ใน catalog ของเว็บไซต์นี้ โปรดลองโหลดหน้าใหม่ หรือแจ้งผู้ดูแลให้ตรวจชุดไฟล์ SPEC ที่ติดตั้งบนเซิร์ฟเวอร์</p> : null}
+                      {unavailableTargetSpecs.length > 0 ? <p role="status" className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950">{unavailableTargetSpecs.length} Spec ถูกกำหนดให้พัฒนาใน workspace ของ {unavailableTargetDomain ?? "target อื่น"}. {hasWorkspaceForUnavailableTarget ? "เลือก Runner workspace ของ target นี้จากรายการด้านบน แล้ว Spec จะปรากฏ" : `ยังไม่มี Runner workspace ที่ได้รับอนุญาตสำหรับ ${unavailableTargetDomain ?? "target นี้"}; ต้องลงทะเบียนและผูก Runner กับ Core repository แยกจาก Runner ของ smartaihub.app ก่อน`}</p> : null}
                       {selectedFeatureSpec && featureSpecContextQuery.data ? <section className="rounded-md bg-[var(--color-background-subtle)] p-2 text-xs" aria-label="Canonical SPEC work context">
                         <p className="font-medium">{featureSpecContextQuery.data.title}</p>
                         {featureSpecContextQuery.data.summary ? <p className="mt-1">{featureSpecContextQuery.data.summary}</p> : null}

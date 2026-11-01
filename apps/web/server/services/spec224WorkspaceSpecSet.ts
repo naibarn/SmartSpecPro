@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import yauzl from "yauzl";
 import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
 
@@ -35,6 +36,31 @@ const MAX_PERSISTED_MANIFEST_BYTES = 4 * 1024 * 1024 - 16 * 1024;
 const MAX_FILE_BYTES = 1024 * 1024;
 const MAX_PATH_LENGTH = 240;
 const VALID_PATH = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[A-Za-z0-9][A-Za-z0-9._/-]*\.(?:md|json)$/i;
+const deploymentTargetConfig = JSON.parse(readFileSync(
+  new URL("../../scripts/deployment-targets.json", import.meta.url),
+  "utf8",
+)) as { targets?: Record<string, {
+  domain?: string;
+  environment?: string;
+  application?: string;
+  status?: string;
+  deployable?: boolean;
+  applicationAvailable?: boolean;
+  specificationRange?: string;
+  workspaceRepositories?: string[];
+  workspaceLabel?: string;
+}> };
+
+export type Spec224WorkspaceDeploymentTarget = {
+  id: string;
+  domain: string;
+  environment: string;
+  application: string;
+  status: string | null;
+  deployable: boolean;
+  applicationAvailable: boolean;
+  workspaceLabel: string;
+};
 
 export class Spec224WorkspaceSpecSetError extends Error {
   constructor(public readonly code: string) {
@@ -45,7 +71,7 @@ export class Spec224WorkspaceSpecSetError extends Error {
 
 export type Spec224WorkspaceArtifactInput = { path: string; contentBase64: string };
 export type Spec224WorkspaceSpecFile = Spec224IncrementalSpecFile;
-export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths?: string[] | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null; modelCatalog?: RunnerModelCatalog | null; modelCatalogs?: RunnerModelCatalog[] };
+export type Spec224TrustedWorkspace = { runnerId: string; displayName: string; status: string; snapshotRevision: string; workspaceId: string; projectId?: string | null; repositoryId?: string | null; scope?: string; canonicalProjectId?: string; canonicalProjectTitle?: string; deploymentTarget?: Spec224WorkspaceDeploymentTarget | null; gitHead: string | null; gitBranch: string | null; dirty: boolean | null; dirtyPaths?: string[] | null; convergenceState?: string; convergenceCanonicalSha?: string | null; contentFingerprint: string | null; modelCatalog?: RunnerModelCatalog | null; modelCatalogs?: RunnerModelCatalog[] };
 export type Spec224ConversationWorkspace = {
   conversationId: number; tenantId: string; actorId: number; runnerId: string; workspaceId: string;
   snapshotRevision: string; revision: number;
@@ -383,6 +409,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         ? []
         : revision.requirementCount > 0 ? ["NO_RUNNABLE_WORK_PACKAGES"] : ["REQUIREMENTS_REQUIRED"];
       const current = (await store.listTrustedWorkspaces(input)).find(item => item.runnerId === binding.runnerId && item.workspaceId === binding.workspaceId);
+      if (current && !specTargetsMatchWorkspace(revision.files, current)) blockers.push("WORKSPACE_DEPLOYMENT_TARGET_MISMATCH");
       if (!current?.gitHead || !current.contentFingerprint) blockers.push("WORKSPACE_SOURCE_FINGERPRINT_UNAVAILABLE");
       const contextPackHash = sha(canonicalJson({ workspaceId: binding.workspaceId, runnerId: binding.runnerId, revision: revision.revision, digest: revision.digest, additionalInstructions: additionalInstructions ?? null }));
       const workPackages = compiled.workPackages.map(workPackage => ({
@@ -455,6 +482,7 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
         : await store.getLatestRevision(binding);
       if (!revision || revision.runnerId !== binding.runnerId || revision.workspaceId !== binding.workspaceId)
         fail("SPEC_SET_REVISION_NOT_FOUND");
+      if (!specTargetsMatchWorkspace(revision.files, workspace)) fail("WORKSPACE_DEPLOYMENT_TARGET_MISMATCH");
       const previous = revision.revision > 1
         ? await store.getRevision({ ...binding, revision: revision.revision - 1 })
         : null;
@@ -568,10 +596,52 @@ function summary(revision: Spec224WorkspaceSpecSetRevision) {
   return { revision: revision.revision, digest: revision.digest, files: revision.files.map(file => ({ path: file.path, digest: file.digest })), replacedPaths: revision.replacedPaths, requirementCount: revision.requirementCount, runnableWorkPackageCount: revision.runnableWorkPackageCount, blockedWorkPackageCount: revision.blockedWorkPackageCount };
 }
 
-export function presentWorkspaceDisplayName(displayName: string | null | undefined, scope?: string | null): string {
-  return scope === "PLATFORM_ENGINEERING"
-    ? "SmartAIHub Development Workspace"
-    : displayName?.trim() || "Workspace";
+export function resolveWorkspaceDeploymentTarget(repositoryId: string | null | undefined): Spec224WorkspaceDeploymentTarget | null {
+  if (!repositoryId) return null;
+  for (const [id, target] of Object.entries(deploymentTargetConfig.targets ?? {})) {
+    if (!target.workspaceRepositories?.includes(repositoryId) || !target.domain || !target.environment || !target.application) continue;
+    return {
+      id,
+      domain: target.domain,
+      environment: target.environment,
+      application: target.application,
+      status: target.status ?? null,
+      deployable: target.deployable === true,
+      applicationAvailable: target.applicationAvailable === true || target.deployable === true,
+      workspaceLabel: target.workspaceLabel ?? "SmartAIHub Platform Workspace",
+    };
+  }
+  return null;
+}
+
+export function resolveFeatureSpecDeploymentTarget(specId: string): string | null {
+  const number = Number(/^(\d+)-/.exec(specId.trim())?.[1]);
+  if (!Number.isSafeInteger(number)) return null;
+  for (const [id, target] of Object.entries(deploymentTargetConfig.targets ?? {})) {
+    const range = /SPEC-(\d+)\.\.SPEC-(\d+)/.exec(target.specificationRange ?? "");
+    if (range && number >= Number(range[1]) && number <= Number(range[2])) return id;
+  }
+  return null;
+}
+
+export function resolveDeploymentTargetDomain(targetId: string | null): string | null {
+  return targetId ? deploymentTargetConfig.targets?.[targetId]?.domain ?? null : null;
+}
+
+function specTargetsMatchWorkspace(files: Array<{ path: string }>, workspace: Spec224TrustedWorkspace): boolean {
+  return files.every(file => {
+    const match = /^specs\/feature\/([^/]+)\/spec\.md$/i.exec(file.path);
+    const requiredTarget = match ? resolveFeatureSpecDeploymentTarget(match[1]) : null;
+    return !requiredTarget || workspace.deploymentTarget?.id === requiredTarget;
+  });
+}
+
+export function presentWorkspaceDisplayName(displayName: string | null | undefined, scope?: string | null, repositoryId?: string | null): string {
+  if (scope === "PLATFORM_ENGINEERING") {
+    return resolveWorkspaceDeploymentTarget(repositoryId)?.workspaceLabel
+      ?? "SmartAIHub Platform Workspace";
+  }
+  return displayName?.trim() || "Workspace";
 }
 
 class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStore {
@@ -606,12 +676,15 @@ class DrizzleSpec224WorkspaceSpecSetStore implements Spec224WorkspaceSpecSetStor
             scopeBinding.projectId !== workspace.projectId || scopeBinding.repositoryId !== workspace.repositoryId)) return [];
         return [{
           runnerId: row.runnerId,
-          displayName: presentWorkspaceDisplayName(scopeBinding?.projectTitle ?? workspace.displayName ?? row.displayName, scopeBinding?.scope),
+          displayName: presentWorkspaceDisplayName(scopeBinding?.projectTitle ?? workspace.displayName ?? row.displayName, scopeBinding?.scope, workspace.repositoryId),
           status: row.status,
           snapshotRevision: row.currentSnapshotRevision!,
           workspaceId: workspace.workspaceId,
           projectId: workspace.projectId,
           repositoryId: workspace.repositoryId,
+          deploymentTarget: scopeBinding?.scope === "PLATFORM_ENGINEERING"
+            ? resolveWorkspaceDeploymentTarget(workspace.repositoryId)
+            : null,
           ...(scopeBinding ? { scope: scopeBinding.scope, canonicalProjectId: scopeBinding.projectId, canonicalProjectTitle: "SmartAIHub Development Workspace" } : {}),
           gitHead: workspace.gitHead,
           gitBranch: workspace.gitBranch,

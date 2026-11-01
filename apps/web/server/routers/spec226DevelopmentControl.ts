@@ -46,6 +46,7 @@ import {
 } from "../services/workspaceAuthoritySafeActions";
 import { getSpec224BackendRuntimeIdentity } from "../services/spec224BackendRuntimeIdentity";
 import { loadModularSaasProject, loadRepositoryFeatureSpec, loadRepositoryFeatureSpecContext, listRepositoryFeatureSpecs } from "../services/spec224FeatureSpecCatalog";
+import { resolveDeploymentTargetDomain, resolveFeatureSpecDeploymentTarget } from "../services/spec224WorkspaceSpecSet";
 import { buildSpec224GoalGrantApprovalPayload, requestSpec224GoalGrantApproval } from "../services/spec224GoalDelegationGrant";
 import { resolveSpec224ModelSelection } from "../services/spec224ModelSelection";
 import { db, getDb } from "../db";
@@ -655,7 +656,11 @@ export const spec226DevelopmentControlRouter = router({
     .query(async ({ ctx, input }) => {
       try {
         await authorizeFeatureSpecCatalog(ctx);
-        return await listRepositoryFeatureSpecs({ search: input?.search });
+        const result = await listRepositoryFeatureSpecs({ search: input?.search });
+        return { specs: result.specs.map(spec => {
+          const requiredDeploymentTargetId = resolveFeatureSpecDeploymentTarget(spec.id);
+          return { ...spec, requiredDeploymentTargetId, requiredDeploymentTargetDomain: resolveDeploymentTargetDomain(requiredDeploymentTargetId) };
+        }) };
       } catch (error) {
         return asTrpcError(error);
       }
@@ -666,7 +671,8 @@ export const spec226DevelopmentControlRouter = router({
     .query(async ({ ctx, input }) => {
       try {
         await authorizeFeatureSpecCatalog(ctx);
-        return await loadRepositoryFeatureSpecContext({ specId: input.specId });
+        const requiredDeploymentTargetId = resolveFeatureSpecDeploymentTarget(input.specId);
+        return { ...await loadRepositoryFeatureSpecContext({ specId: input.specId }), requiredDeploymentTargetId, requiredDeploymentTargetDomain: resolveDeploymentTargetDomain(requiredDeploymentTargetId) };
       } catch (error) {
         return asTrpcError(error);
       }
