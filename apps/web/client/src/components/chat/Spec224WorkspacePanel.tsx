@@ -1057,6 +1057,24 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               ใช้ SmartAIHub Source Workspace
             </Button>
           ) : null}
+          {canUseCanonicalSpecs ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              disabled={bindMutation.isPending || workspacesQuery.isFetching}
+              onClick={() => {
+                setDevelopmentInputMode("spec");
+                setRequestKind("development");
+                selectCanonicalPlatformWorkspace();
+                setPreparation(null);
+                requestAnimationFrame(() => document.getElementById("feature-spec-search")?.scrollIntoView({ behavior: "smooth", block: "center" }));
+              }}
+            >
+              เลือกไฟล์ SPEC จากระบบ
+            </Button>
+          ) : null}
           <p className="mt-1 text-xs text-slate-600" role="status">Codex readiness: {selectedWorkspace && selectedRunnerId === platformWorkspace.runnerId ? runnerReadiness?.ready ? "พร้อม" : runnerReadiness?.code ?? "กำลังตรวจสอบจาก Runner" : "กำลังตรวจสอบจาก Runner"}</p>
           {selectedWorkspace && !platformSourceIsSafe ? <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950" role="alert">Runner หรือ Project Workspace binding เปลี่ยนไป โปรดโหลดข้อมูลใหม่และยืนยัน binding ปัจจุบันก่อนเริ่ม</p> : null}
         </section>
@@ -1434,6 +1452,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                       </select>
                       {featureSpecsQuery.isLoading ? <p role="status" className="text-xs text-[var(--color-text-secondary)]">กำลังโหลด Feature Specs…</p> : null}
                       {featureSpecsQuery.error ? <p role="alert" className="text-xs text-rose-700">โหลดรายการ Spec ไม่สำเร็จ: {sanitizePlatformDiagnostic(featureSpecsQuery.error.message)}</p> : null}
+                      {!featureSpecsQuery.isLoading && !featureSpecsQuery.error && featureSpecsQuery.data?.specs.length === 0 ? <p role="status" className="text-xs text-amber-800">ไม่พบไฟล์ SPEC ใน catalog ของเว็บไซต์นี้ โปรดลองโหลดหน้าใหม่ หรือแจ้งผู้ดูแลให้ตรวจชุดไฟล์ SPEC ที่ติดตั้งบนเซิร์ฟเวอร์</p> : null}
                       {selectedFeatureSpec && featureSpecContextQuery.data ? <section className="rounded-md bg-[var(--color-background-subtle)] p-2 text-xs" aria-label="Canonical SPEC work context">
                         <p className="font-medium">{featureSpecContextQuery.data.title}</p><p>{featureSpecContextQuery.data.summary}</p>
                         {featureSpecContextQuery.data.handoff.status === "CURRENT" ? <><p className="mt-1">Next WorkUnit: {featureSpecContextQuery.data.handoff.nextReadyWorkunit ?? "ยังไม่กำหนด"}</p><p>{featureSpecContextQuery.data.handoff.nextAction ?? featureSpecContextQuery.data.handoff.resumePoint}</p>{featureSpecContextQuery.data.handoff.openRequirements.map(item => <p key={item.id}>{item.id}: {item.text}{item.nextAction ? ` · ${item.nextAction}` : ""}</p>)}</> : <p role="alert">handoff {featureSpecContextQuery.data.handoff.status}: {featureSpecContextQuery.data.handoff.nextAction}</p>}
