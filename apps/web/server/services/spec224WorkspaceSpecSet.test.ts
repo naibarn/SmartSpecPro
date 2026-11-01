@@ -27,7 +27,7 @@ function makeCanonicalProjectInput(description = "Project catalog source binding
   }] });
   const descriptorDigest = createHash("sha256").update(descriptorContent).digest("hex");
   return {
-    projectId, sourceRevision, descriptorDigest,
+    projectId, sourceRevision, descriptorDigest, implementationRepository: "github.com/naibarn/smartaihub-platform",
     files: [
       {
         path: "canonical-projects/smartaihub-modular-saas-r14/specs/312-abc/requirement-ledger.json",
@@ -308,7 +308,12 @@ describe("spec224 workspace Spec Set", () => {
 
   it("ingests the pinned modular project into the existing SpecSet with bound source files and idempotency", async () => {
     const store = memoryStore();
-    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", repositoryId: "github.com/naibarn/smartaihub-platform", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    const createRevision = store.createRevision.bind(store);
+    store.createRevision = async input => {
+      expect("id" in input).toBe(false);
+      return createRevision(input);
+    };
     const service = createSpec224WorkspaceSpecSetService(store);
     await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
     const project = makeCanonicalProjectInput();
@@ -342,7 +347,7 @@ describe("spec224 workspace Spec Set", () => {
 
   it("rejects an oversized project snapshot and an idempotency key reused for a changed descriptor", async () => {
     const store = memoryStore();
-    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
+    store.listTrustedWorkspaces = async () => [{ runnerId: "runner-a", displayName: "Runner A", status: "online", snapshotRevision: "7", workspaceId: "workspace-a", repositoryId: "github.com/naibarn/smartaihub-platform", scope: "PLATFORM_ENGINEERING", gitHead: "a".repeat(40), gitBranch: "main", dirty: false, contentFingerprint: "c".repeat(64) }];
     const service = createSpec224WorkspaceSpecSetService(store);
     await service.bindConversationWorkspace({ tenantId: "tenant-a", actorId: 42, conversationId: 8, runnerId: "runner-a", workspaceId: "workspace-a" });
     const project = makeCanonicalProjectInput();

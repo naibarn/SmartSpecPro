@@ -276,8 +276,8 @@ export function createSpec224WorkspaceSpecSetService(store: Spec224WorkspaceSpec
     const files = [...merged.values()].sort((left, right) => left.path.localeCompare(right.path));
     if (Buffer.byteLength(JSON.stringify(files), "utf8") > MAX_PERSISTED_MANIFEST_BYTES) fail("SPEC_SET_MANIFEST_OVERSIZED");
     const digest = digestSpec224IncrementalFiles(files);
-    const provisional: Spec224WorkspaceSpecSetRevision = {
-      id: "pending", tenantId: input.tenantId, actorId: input.actorId, runnerId: binding.runnerId, workspaceId: binding.workspaceId,
+    const provisional: Omit<Spec224WorkspaceSpecSetRevision, "id"> = {
+      tenantId: input.tenantId, actorId: input.actorId, runnerId: binding.runnerId, workspaceId: binding.workspaceId,
       revision: (previous?.revision ?? 0) + 1, parentRevision: previous?.revision ?? null, digest, requestDigest: parsed.digest, idempotencyKey: input.idempotencyKey, files, replacedPaths,
       requirementCount: 0, runnableWorkPackageCount: 0, blockedWorkPackageCount: 0,
     };
