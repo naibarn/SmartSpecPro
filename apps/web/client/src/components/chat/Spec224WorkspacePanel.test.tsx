@@ -370,6 +370,18 @@ describe("Core goal readiness feedback", () => {
     expect(mocks.invalidateLedgerAccounts).toHaveBeenCalled();
   });
 
+  it("shows the missing ledger setup beside an existing run that cannot be resumed", async () => {
+    mocks.ledgerAccounts = { accounts: [], configured: null };
+    mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "run-ledger-blocked", state: "BLOCKED_RECOVERABLE", workPackageId: "pkg", revision: 2 }] };
+    render(<Spec224WorkspacePanel conversationId={8} />);
+
+    expect(screen.getByRole("button", { name: "ตั้งค่าบัญชีระบบอัตโนมัติ" })).toBeInTheDocument();
+    expect(screen.getByText(/ทำงานเดิมต่อไม่ได้.*ตั้งค่าบัญชีบันทึกงบภายใน/)).toBeInTheDocument();
+    expect(screen.getByText(/ปุ่ม “ทำงานเดิมต่อ” จะกดได้/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "ตั้งค่าบัญชีระบบอัตโนมัติ" }));
+    await waitFor(() => expect(mocks.configureLedger).toHaveBeenCalledWith({ currency: "USD" }));
+  });
+
   it("keeps the selected development source when switching presentation modes", () => {
     usePlatformSourceWorkspace();
     const { rerender } = render(<Spec224WorkspacePanel conversationId={8} />);

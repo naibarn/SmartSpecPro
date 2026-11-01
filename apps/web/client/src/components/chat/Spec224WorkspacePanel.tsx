@@ -512,6 +512,9 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   );
   const economicLedgerReadyForRun = user?.role !== "admin"
     || (!economicLedgerReadiness.isLoading && !economicLedgerReadiness.error && Boolean(economicLedgerReadiness.data?.configured));
+  const hasUnfinishedDevelopmentRun = (workspaceQuery.data?.developmentRuns ?? []).some(run =>
+    !["COMPLETED", "CANCELLED", "FAILED_TERMINAL"].includes(run.state),
+  );
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const selectedModularCoreCandidate = platformBindingCandidatesQuery.data?.workspaces.find(candidate =>
     candidate.runnerId === selectedWorkspace?.runnerId && candidate.workspaceId === selectedWorkspace?.workspaceId
@@ -1320,7 +1323,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               ) : null}
             </section>
           ) : null}
-          {selectedWorkspace && (requestKind === "development" || workspaceQuery.data?.developmentRuns?.some(run => !["COMPLETED", "CANCELLED"].includes(run.state))) ? <Spec224EconomicLedgerSetup /> : null}
+          {selectedWorkspace && (requestKind !== "development" || !hasUnfinishedDevelopmentRun) ? <Spec224EconomicLedgerSetup /> : null}
 
           {selectedWorkspace && requestKind === "development" ? (
             <Section variant="transparent" padding={3} aria-labelledby="spec224-model-selection-heading">
@@ -1644,6 +1647,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
           {workspaceQuery.data?.developmentRuns?.length ? (
             <section className="mt-3 rounded-md bg-[var(--color-background-subtle)] p-2" aria-label="DevelopmentRun ของ workspace นี้">
               <p className="text-xs font-medium">งานล่าสุดใน workspace นี้</p>
+              {requestKind === "development" && hasUnfinishedDevelopmentRun && user?.role === "admin" && !economicLedgerReadyForRun ? <Spec224EconomicLedgerSetup compact /> : null}
               <ul className="mt-1 list-inside list-disc text-xs">
                 {workspaceQuery.data.developmentRuns.map(run => (
                   <li key={run.runId}>

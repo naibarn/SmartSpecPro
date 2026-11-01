@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { trpc } from "@/lib/trpc";
 
-export function Spec224EconomicLedgerSetup() {
+export function Spec224EconomicLedgerSetup({ compact = false }: { compact?: boolean }) {
   const { user } = useAuth();
   const utils = trpc.useUtils();
   const isAdmin = user?.role === "admin";
@@ -27,6 +27,32 @@ export function Spec224EconomicLedgerSetup() {
 
   if (!isAdmin) return null;
   const configured = accountsQuery.data?.configured;
+
+  if (compact) {
+    if (configured) return null;
+    return (
+      <section className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs" aria-label="ตั้งค่าก่อนทำงานเดิมต่อ">
+        <p className="font-medium text-amber-950">ทำงานเดิมต่อไม่ได้: ต้องตั้งค่าบัญชีบันทึกงบภายในก่อน</p>
+        <p className="mt-1 text-amber-900">ตั้งค่าเสร็จแล้ว ปุ่ม “ทำงานเดิมต่อ” จะกดได้ · ขั้นตอนนี้ไม่เติมหรือหักเครดิตผู้ใช้</p>
+        {accountsQuery.error ? (
+          <p className="mt-1 text-rose-700" role="alert">ตรวจความพร้อมไม่สำเร็จ: {accountsQuery.error.message}</p>
+        ) : accountsQuery.isLoading ? (
+          <p className="mt-1" role="status">กำลังตรวจความพร้อม…</p>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            disabled={ensure.isPending}
+            onClick={() => ensure.mutate({ currency: "USD" })}
+          >
+            {ensure.isPending ? "กำลังตั้งค่า…" : "ตั้งค่าบัญชีระบบอัตโนมัติ"}
+          </Button>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section
