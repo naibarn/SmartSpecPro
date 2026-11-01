@@ -23,14 +23,13 @@ def command(*args: str, cwd: Path | None = None) -> str:
 
 
 class CanonicalSourceTests(unittest.TestCase):
-    def test_staging_wrangler_bundle_uses_packager_output_directory(self) -> None:
+    def test_canonical_linux_build_does_not_run_cloudflare_staging_steps(self) -> None:
         web_builder = SCRIPT.parent / "build_web.sh"
         source = web_builder.read_text(encoding="utf-8")
-        self.assertIn(
-            'WRANGLER_OUTDIR="$REPO_ROOT/apps/cloudflare/.staging-artifact/wrangler"',
-            source,
-        )
-        self.assertIn('--outdir "$WRANGLER_OUTDIR"', source)
+        self.assertIn('"${PNPM[@]}" --filter @smartspec/web build', source)
+        self.assertIn('bash apps/web/scripts/package-linux-backend.sh', source)
+        self.assertNotIn("wrangler", source.lower())
+        self.assertNotIn("package-staging-artifact", source)
 
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
