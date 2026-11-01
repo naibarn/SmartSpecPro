@@ -289,6 +289,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const mockupInput = useRef<HTMLInputElement>(null);
+  const automaticCoreBindingAttempt = useRef<string | null>(null);
   const [selected, setSelected] = useState("");
   const [selectedRunnerId, setSelectedRunnerId] = useState("");
   const [prompt, setPrompt] = useState(pilotMode ? FIRST_RUN_PILOT_PROMPT : initialPrompt ?? "");
@@ -696,6 +697,20 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       setUploading(false);
     }
   }
+
+  useEffect(() => {
+    if (!isAdmin || !selectedModularCoreCandidate || selectedWorkspaceIsModularCoreBound || !selectedWorkspace) return;
+    const attemptKey = selectionKey(selectedWorkspace);
+    if (automaticCoreBindingAttempt.current === attemptKey) return;
+    automaticCoreBindingAttempt.current = attemptKey;
+    void enableSelectedModularCoreWorkspace();
+  }, [
+    isAdmin,
+    selectedModularCoreCandidate,
+    selectedWorkspace,
+    selectedWorkspaceIsModularCoreBound,
+    enableSelectedModularCoreWorkspace,
+  ]);
 
   useEffect(() => {
     if (!pilotMode || !conversationId || !platformWorkspace || workspaceQuery.isLoading || workspaceQuery.data?.workspace || selected !== selectionKey(platformWorkspace)) return;
