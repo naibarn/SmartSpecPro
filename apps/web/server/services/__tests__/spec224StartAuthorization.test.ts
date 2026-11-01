@@ -24,7 +24,7 @@ vi.mock("../jobControlPlane", () => ({
   defaultJobControlPlaneRepository: {},
 }));
 
-import { createSpec224AuthorizationService, Spec224AuthorizationError, spec224ReservationIntentId } from "../spec224AuthorizationService";
+import { createSpec224AuthorizationService, hasReleasedSpec224AttemptBinding, Spec224AuthorizationError, spec224ReservationIntentId } from "../spec224AuthorizationService";
 import { provisionEconomicBudget } from "../economicProvisioningService";
 import { canonicalDevelopmentRunWorkerJobId } from "../spec224DevelopmentRunContracts";
 
@@ -40,6 +40,29 @@ describe("Spec 224 reservation identity", () => {
     expect(spec224ReservationIntentId("tenant-a", "run:attempt-a")).toBe(first);
     expect(spec224ReservationIntentId("tenant-b", "run:attempt-a")).not.toBe(first);
     expect(spec224ReservationIntentId("tenant-a", "run:attempt-b")).not.toBe(first);
+  });
+});
+
+describe("Spec 224 dispatched authorization replay", () => {
+  it("recognizes only the exact released binding for the current dispatched attempt", () => {
+    const binding = {
+      runnerId: "runner-a", runnerSessionId: "session-a", capabilitySnapshotId: "snapshot-a",
+      capabilitySnapshotRevision: "revision-a", authorizationGrantRef: "grant-a", approvalRef: "approval-a",
+      budgetReservationRef: "hold-a", workspaceRef: "workspace-a", deadline: new Date(Date.now() + 60_000).toISOString(),
+    };
+    const releaseEvent = {
+      eventType: "AUTHORIZATION_HOLD_RELEASED",
+      eventIdempotencyKey: "authorization-hold-released:job-a",
+      workerJobAttempt: 2,
+      payloadJson: { approvalRef: "approval-a", budgetReservationRef: "hold-a" },
+    };
+
+    expect(hasReleasedSpec224AttemptBinding({ jobId: "job-a", jobStatus: "running", attempt: 2,
+      manifestBinding: binding, authorization: { status: "READY_FOR_LIVE", binding }, releaseEvent }))
+      .toEqual(binding);
+    expect(hasReleasedSpec224AttemptBinding({ jobId: "job-a", jobStatus: "running", attempt: 3,
+      manifestBinding: binding, authorization: { status: "READY_FOR_LIVE", binding }, releaseEvent }))
+      .toBeNull();
   });
 });
 

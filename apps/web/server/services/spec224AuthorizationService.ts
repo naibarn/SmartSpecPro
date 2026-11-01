@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 
 import { and, asc, eq, or, sql } from "drizzle-orm";
 
@@ -6,6 +7,7 @@ import {
   economicHolds,
   economicBudgets,
   workerJobAttempts,
+  workerJobEvents,
   workerJobs,
 } from "../../drizzle/schema";
 import { db, getDb } from "../db";
@@ -139,6 +141,37 @@ type LoadedRun = {
     status?: string;
   };
 };
+
+/** Return the previously authorized binding only when this exact attempt has
+ * durable release evidence and is already beyond the pre-dispatch states. */
+export function hasReleasedSpec224AttemptBinding(input: {
+  jobId: string;
+  jobStatus: string;
+  attempt: number;
+  manifestBinding: unknown;
+  authorization: unknown;
+  releaseEvent: {
+    eventType: string;
+    eventIdempotencyKey: string | null;
+    workerJobAttempt: number | null;
+    payloadJson: Record<string, unknown>;
+  } | null | undefined;
+}): Spec224PolicyBinding | null {
+  if (!Number.isSafeInteger(input.attempt) || input.attempt < 1 ||
+      !["queued", "running", "waiting_external", "succeeded"].includes(input.jobStatus)) return null;
+  const manifestBinding = asRecord(input.manifestBinding);
+  const authorization = asRecord(input.authorization);
+  const binding = asRecord(authorization?.binding);
+  const event = input.releaseEvent;
+  if (!manifestBinding || !binding || authorization?.status !== "READY_FOR_LIVE" ||
+      !isDeepStrictEqual(manifestBinding, binding) || !event ||
+      event.eventType !== "AUTHORIZATION_HOLD_RELEASED" ||
+      event.eventIdempotencyKey !== `authorization-hold-released:${input.jobId}` ||
+      event.workerJobAttempt !== input.attempt ||
+      event.payloadJson.approvalRef !== binding.approvalRef ||
+      event.payloadJson.budgetReservationRef !== binding.budgetReservationRef) return null;
+  return binding as unknown as Spec224PolicyBinding;
+}
 
 function requiredToken(ctx: Spec224AuthorizationContext): string {
   if (!ctx.userToken?.trim())
@@ -873,17 +906,47 @@ export function createSpec224AuthorizationService() {
       let loaded = await loadRun(input.context, input.runId);
       const run = loaded.run;
       if (!run.goalId || !run.workerJobId) throw new Spec224AuthorizationError("SPEC224_GOAL_SCOPE_REQUIRED");
-      const authority = await recoverSpec224GoalGrant({ ...input.context, goalId: run.goalId });
-      const grant = parseSpec224GoalGrant(authority, new Date());
-      if (!grant) throw new Spec224AuthorizationError("SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");
       const [root, child] = await Promise.all([
         db.select({ inputJson: workerJobs.inputJson }).from(workerJobs).where(and(
           eq(workerJobs.id, canonicalDevelopmentRunWorkerJobId(run.runId)), eq(workerJobs.tenantId, input.context.tenantId),
           eq(workerJobs.requestedByUserId, input.context.actorId))).limit(1),
-        db.select({ inputJson: workerJobs.inputJson, status: workerJobs.status }).from(workerJobs).where(and(
+        db.select({ inputJson: workerJobs.inputJson, progressJson: workerJobs.progressJson,
+          status: workerJobs.status, attempt: workerJobs.attempt }).from(workerJobs).where(and(
           eq(workerJobs.id, run.workerJobId), eq(workerJobs.tenantId, input.context.tenantId),
           eq(workerJobs.requestedByUserId, input.context.actorId))).limit(1),
       ]);
+      const [releaseEvent] = await db.select({ eventType: workerJobEvents.eventType,
+        eventIdempotencyKey: workerJobEvents.eventIdempotencyKey,
+        workerJobAttempt: workerJobEvents.workerJobAttempt,
+        payloadJson: workerJobEvents.payloadJson,
+      }).from(workerJobEvents).where(and(
+        eq(workerJobEvents.workerJobId, run.workerJobId),
+        eq(workerJobEvents.eventType, "AUTHORIZATION_HOLD_RELEASED"),
+        eq(workerJobEvents.eventIdempotencyKey, `authorization-hold-released:${run.workerJobId}`),
+      )).limit(1);
+      const childManifestAtRelease = asRecord(asRecord(child[0]?.inputJson?.manifest)?.policyBinding);
+      const releasedBinding = child[0] && hasReleasedSpec224AttemptBinding({
+        jobId: run.workerJobId,
+        jobStatus: child[0].status,
+        attempt: child[0].attempt,
+        manifestBinding: childManifestAtRelease,
+        authorization: asRecord(child[0].progressJson.spec224Authorization),
+        releaseEvent: releaseEvent ?? null,
+      });
+      if (releasedBinding) return {
+        version: "spec-224-authorization-binding-v1",
+        status: "READY_FOR_LIVE",
+        reasons: [],
+        references: {
+          runnerId: releasedBinding.runnerId,
+          approvalRef: releasedBinding.approvalRef,
+          budgetReservationRef: releasedBinding.budgetReservationRef,
+        },
+        binding: releasedBinding,
+      };
+      const authority = await recoverSpec224GoalGrant({ ...input.context, goalId: run.goalId });
+      const grant = parseSpec224GoalGrant(authority, new Date());
+      if (!grant) throw new Spec224AuthorizationError("SPEC224_GOAL_GRANT_NOT_ACTIVE_OR_APPROVED");
       const rootManifest = asRecord(root[0]?.inputJson?.manifest);
       const rootRun = asRecord(root[0]?.inputJson?.spec224Run);
       const childManifest = asRecord(child[0]?.inputJson?.manifest);

@@ -212,6 +212,8 @@ suite("SPEC-224 connected delegated child continuation", () => {
     expect(typeof f.authorize, "production delegated-child authorization operation").toBe("function");
     const authorization = await f.authorize({ context: { tenantId: f.tenantId, actorId: f.actorId }, runId: f.runId });
     expect(authorization, JSON.stringify(authorization)).toMatchObject({ status: "READY_FOR_LIVE" });
+    const replay = await f.authorize({ context: { tenantId: f.tenantId, actorId: f.actorId }, runId: f.runId });
+    expect(replay, JSON.stringify(replay)).toMatchObject({ status: "READY_FOR_LIVE" });
     const [firstOutbox] = await sql`SELECT COUNT(*)::int AS count FROM worker_job_outbox WHERE "workerJobId" = ${f.jobId}`;
     expect(firstOutbox.count).toBe(1);
     const { control, receipt } = await recordCompletedReceipt(f);
