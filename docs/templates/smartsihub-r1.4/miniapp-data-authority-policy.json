@@ -1,0 +1,33 @@
+{
+  "revision": "R1.0",
+  "production_domain": "smartsihub.com",
+  "core_db": "smartspec",
+  "core_includes": [
+    "identity",
+    "tenancy",
+    "wallet_ledger",
+    "subscriptions",
+    "worker_jobs",
+    "app_registry",
+    "approved_legacy_app_tables"
+  ],
+  "new_stateful_app_requires_dedicated_db": true,
+  "new_stateless_app_may_have_none": true,
+  "new_app_business_tables_in_core": false,
+  "hosting_modes": [
+    "PLATFORM_ROOT",
+    "MANAGED_CUSTOM_DOMAIN",
+    "BYOC_CLOUDFLARE",
+    "SELF_HOSTED"
+  ],
+  "data_provider_modes": [
+    "NONE",
+    "D1",
+    "POSTGRESQL",
+    "PORTABLE_OTHER"
+  ],
+  "legacy_core_db_exception": "verified_exact_app_id_and_existing_tables_only",
+  "cross_account_access": "scoped_core_https_api",
+  "platform_app_db_default": "dedicated_d1_per_app_outside_core",
+  "postgres_upgrade": "separate_app_pg_account_or_user_owned_pg"
+}

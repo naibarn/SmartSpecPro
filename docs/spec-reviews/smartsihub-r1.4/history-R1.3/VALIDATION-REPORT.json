@@ -1,0 +1,28 @@
+{
+  "revision": "R1.3",
+  "date": "2026-11-01",
+  "spec_ids": [
+    312,
+    313,
+    314,
+    315,
+    316,
+    317,
+    318,
+    319,
+    320,
+    321,
+    322,
+    323,
+    324
+  ],
+  "files_in_manifest": 55,
+  "missing_relative_markdown_links": [],
+  "provider_reality": [
+    "SPEC-208 Rev9 already Clef-first",
+    "Moli not production-qualified",
+    "Kitesurf beta stateless no Live View",
+    "Sandbox SDK built-in desktop removed"
+  ],
+  "status": "DOC_ONLY_NOT_IMPLEMENTED"
+}

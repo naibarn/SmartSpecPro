@@ -1,0 +1,73 @@
+{
+  "version": "smartsi-computer-use-routing-r1.3",
+  "authority": {
+    "computer_use_spec": 208,
+    "jobs_spec": 318,
+    "economic_spec": 207,
+    "development_owner_spec": 224
+  },
+  "order": [
+    "direct_api_or_mcp",
+    "verified_browser_webmcp",
+    "qualified_chromium_playwright",
+    "optional_kitesurf_stateless",
+    "optional_moli_native",
+    "approved_desktop_runner"
+  ],
+  "selection": {
+    "deterministic_policy_first": true,
+    "decision_model": {
+      "enabled": false,
+      "mode": "shadow",
+      "provider": "cloudflare-workers-ai",
+      "model": "@cf/cloudflare/clef-flash",
+      "max_input_tokens": 24576,
+      "allowed_outputs_only": true,
+      "requires_calibrated_thresholds": true,
+      "may_grant_authorization": false
+    }
+  },
+  "providers": {
+    "chromium_playwright": {
+      "enabled": true,
+      "persistent_session": true,
+      "human_handoff": "when_provider_supports"
+    },
+    "cf_kitesurf": {
+      "enabled": false,
+      "stateless": true,
+      "human_handoff": false,
+      "webmcp_unsupported_security_features": [
+        "permission_policy",
+        "origin_based_filtering",
+        "iframe_popup_tools"
+      ]
+    },
+    "moli": {
+      "enabled": false,
+      "requires_spec208_security_conformance": true,
+      "production_default": false
+    },
+    "windows_linux_runner": {
+      "enabled": "existing_authorized_devices_only",
+      "requires_device_authority": true
+    }
+  },
+  "job": {
+    "canonical_table": "smartspec.worker_jobs",
+    "checkpoint": true,
+    "lease_fencing": true,
+    "external_effect_unknown_outcome": "OUTCOME_UNKNOWN",
+    "blind_nonidempotent_retry": false
+  },
+  "ui": {
+    "headless_final_result_default": true,
+    "live_view_on_demand": true,
+    "do_not_copy_browser_cookies_on_user_browser_handoff": true
+  },
+  "deployment": {
+    "bootstrap": "smartaihub.app",
+    "debian_development": "aimarkethubs.com",
+    "cloudflare_production": "smartsihub.com"
+  }
+}

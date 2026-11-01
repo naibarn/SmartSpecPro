@@ -1,0 +1,26 @@
+# R1.0 example only; replace IDs with actual registered identities and binding refs.
+miniapp:
+  appId: APP_ID_FROM_CANONICAL_REGISTRY
+  ownerType: USER
+  ownerId: CANONICAL_OWNER_REF
+  deployment:
+    deploymentId: APP_DEPLOYMENT_ID
+    hostMode: BYOC_CLOUDFLARE  # PLATFORM_ROOT | MANAGED_CUSTOM_DOMAIN | BYOC_CLOUDFLARE | SELF_HOSTED
+    displayDomain: app.owner-example.com
+    runtimeAccountRef: CF_OWNER_ACCOUNT_REF
+    originIsolation: distinct-origin-scoped-auth
+  data:
+    businessDataOutsideCore: true
+    appDataProvider: D1  # NONE | D1 | POSTGRESQL | PORTABLE_OTHER
+    databaseOwner: USER_OWNED
+    databaseAccountRef: CF_OWNER_ACCOUNT_REF
+    databaseResourceRef: D1_RESOURCE_ID
+    databaseLogicalName: miniapp_app_id
+    secretRef: scoped-secret-or-binding-ref
+    schemaVersion: '1'
+  coreIntegration:
+    endpoint: https://smartsihub.com/api/v1
+    identity: signed-scoped-authorization
+    creditLedger: core-only
+    canonicalJobs: core-worker_jobs
+    appDbHasNoCoreWalletOrIdentityAuthority: true

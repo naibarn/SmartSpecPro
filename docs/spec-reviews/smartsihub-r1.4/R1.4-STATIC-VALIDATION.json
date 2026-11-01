@@ -1,0 +1,98 @@
+{
+  "review_date": "2026-11-01",
+  "scope": "13 newly authored SPEC-312–324 plus supporting docs and relevant legacy authorities (not all 307 legacy SPEC full-texts)",
+  "total_passes": 10,
+  "passed": 10,
+  "checks": [
+    {
+      "pass": 1,
+      "name": "Revision and full SPEC family",
+      "ok": true,
+      "detail": "13/13 SPECs have controlling R1.4 clause; numbered slots 312–324"
+    },
+    {
+      "pass": 2,
+      "name": "Product identity and three domains",
+      "ok": true,
+      "detail": "13/13 distinguish verified production, Debian UAT and legacy command center"
+    },
+    {
+      "pass": 3,
+      "name": "P0–P7 owner priority",
+      "ok": true,
+      "detail": "13/13 include ordered P0 repair→Core→Chat→Creator→Autonomy→handover→public→others"
+    },
+    {
+      "pass": 4,
+      "name": "Lean fresh Core and isolated data",
+      "ok": true,
+      "detail": "13/13 specify Hono Core, Rust supervisor and core-db/new-app separation"
+    },
+    {
+      "pass": 5,
+      "name": "One job and economic authority",
+      "ok": true,
+      "detail": "13/13 mention canonical jobs, ledger and duplicate-effect protection"
+    },
+    {
+      "pass": 6,
+      "name": "Financial and subscriptions decision",
+      "ok": true,
+      "detail": "13/13 contain credit version, four roles, referral once, two subscriptions/shared skill nuance"
+    },
+    {
+      "pass": 7,
+      "name": "Mini App hosting and app-exclusive data",
+      "ok": true,
+      "detail": "13/13 carry BYOC/independent app DB boundaries"
+    },
+    {
+      "pass": 8,
+      "name": "UI three themes + inline OpenUI",
+      "ok": true,
+      "detail": "3 real images available + 13/13 include inline UI, theme and admin visibility"
+    },
+    {
+      "pass": 9,
+      "name": "Computer Use and Clef provider safety",
+      "ok": true,
+      "detail": "13/13 reiterate speculative routing vs verified executors, Moli not production qualified"
+    },
+    {
+      "pass": 10,
+      "name": "Artifact contracts & navigation",
+      "ok": true,
+      "detail": "cross-links + JSON/YAML parse + 13 SPECs; missing links count 0"
+    }
+  ],
+  "broken_links": [],
+  "json_errors": [],
+  "yaml_errors": [],
+  "reference_mockups": [
+    {
+      "name": "smartsi-core-balance-reference.png",
+      "pixels": [
+        1672,
+        941
+      ],
+      "sha256": "e84e3b304fe8f4a26b3120c8ec4ff9aab6268ebdae5fa60ff47d15256ad4b944"
+    },
+    {
+      "name": "smartsi-core-dark-reference.png",
+      "pixels": [
+        1672,
+        941
+      ],
+      "sha256": "9a16b802899556d8be7c7ac0abedc243fcf0b61c9c869a4db1b4e78371abb1ad"
+    },
+    {
+      "name": "smartsi-core-light-reference.png",
+      "pixels": [
+        1672,
+        941
+      ],
+      "sha256": "d473253e21ff38fac426d010cad5a355efa9d5959cb7174de7c9c7dc28f785e7"
+    }
+  ],
+  "status": "DRAFT_ONLY_NOT_IMPLEMENTED"
+}

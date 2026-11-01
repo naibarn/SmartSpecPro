@@ -3927,6 +3927,201 @@
       "spec_id": "311"
     },
     {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Start at P0: verify the existing SmartAIHub development path and prepare the first clean Core workspace.",
+      "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "312"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Prepare the minimal Hono Core slice after P0 workspace and target boundaries are established.",
+      "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "313"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Map the module contract and independent runtime boundaries against the canonical module inventory.",
+      "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/314-smartaihub-independent-module-runtime-and-sdk",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "314"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+      "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/315-smartaihub-parallel-environments-shared-postgres",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "315"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
+      "path": "specs/feature/316-smartaihub-gitops-independent-build-release",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/316-smartaihub-gitops-independent-build-release",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "316"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
+      "path": "specs/feature/317-smartaihub-progressive-module-migration",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/317-smartaihub-progressive-module-migration",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "317"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.",
+      "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "318"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.",
+      "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "319"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Prepare the independent Astro public-site slice without delaying Core, Chat, or Creator.",
+      "path": "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "320"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Audit existing credit writers and database assumptions read-only before any denomination or money-writing change.",
+      "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "321"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Map supported payment capabilities to the existing financial authority before enabling payment mutations.",
+      "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "322"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Define the per-Mini-App data-plane contract before the first stateful App is created.",
+      "path": "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "323"
+    },
+    {
+      "authority": "ACTIVE_CANONICAL",
+      "confidence": "LOW",
+      "declared_claim_count": 1,
+      "next_action": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
+      "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
+      "priority": "R4_STATUS_CLAIM",
+      "record_key": "canonical:specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
+      "reference_counts": {
+        "DOCUMENTATION_OR_CONFIG": 0,
+        "SOURCE": 0,
+        "TEST": 0
+      },
+      "spec_id": "324"
+    },
+    {
       "authority": "UNRESOLVED",
       "confidence": "UNRESOLVED",
       "declared_claim_count": 0,
@@ -5013,6 +5208,123 @@
       "rationale": "Continue local section-01 development; preserve decommissioned live state and retained R2/Vectorize data.",
       "record_key": "canonical:specs/feature/311-smartaihub-worker-native-application-and-queues-cutover",
       "spec_id": "311"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
+      "priority": "P1",
+      "rationale": "Start at P0: verify the existing SmartAIHub development path and prepare the first clean Core workspace.",
+      "record_key": "canonical:specs/feature/312-smartaihub-modular-saas-rebuild-master-plan",
+      "spec_id": "312"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements",
+      "priority": "P1",
+      "rationale": "Prepare the minimal Hono Core slice after P0 workspace and target boundaries are established.",
+      "record_key": "canonical:specs/feature/313-smartaihub-saas-core-identity-commerce-entitlements",
+      "spec_id": "313"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/314-smartaihub-independent-module-runtime-and-sdk",
+      "priority": "P1",
+      "rationale": "Map the module contract and independent runtime boundaries against the canonical module inventory.",
+      "record_key": "canonical:specs/feature/314-smartaihub-independent-module-runtime-and-sdk",
+      "spec_id": "314"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres",
+      "priority": "P1",
+      "rationale": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+      "record_key": "canonical:specs/feature/315-smartaihub-parallel-environments-shared-postgres",
+      "spec_id": "315"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/316-smartaihub-gitops-independent-build-release",
+      "priority": "P1",
+      "rationale": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
+      "record_key": "canonical:specs/feature/316-smartaihub-gitops-independent-build-release",
+      "spec_id": "316"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/317-smartaihub-progressive-module-migration",
+      "priority": "P1",
+      "rationale": "Build the progressive migration inventory and keep Chat ahead of Mini App Creator and remaining modules.",
+      "record_key": "canonical:specs/feature/317-smartaihub-progressive-module-migration",
+      "spec_id": "317"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
+      "priority": "P1",
+      "rationale": "Map active job types to existing worker_jobs/outbox contracts before implementing the Rust supervisor.",
+      "record_key": "canonical:specs/feature/318-smartaihub-durable-background-execution-and-rust-supervisor",
+      "spec_id": "318"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
+      "priority": "P1",
+      "rationale": "Use the supplied three-theme mockups to define shared tokens and the first accessible shell slice.",
+      "record_key": "canonical:specs/feature/319-smartaihub-ui-design-system-agent-ready-webmcp",
+      "spec_id": "319"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace",
+      "priority": "P1",
+      "rationale": "Prepare the independent Astro public-site slice without delaying Core, Chat, or Creator.",
+      "record_key": "canonical:specs/feature/320-smartaihub-public-portfolio-miniapp-service-marketplace",
+      "spec_id": "320"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation",
+      "priority": "P1",
+      "rationale": "Audit existing credit writers and database assumptions read-only before any denomination or money-writing change.",
+      "record_key": "canonical:specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation",
+      "spec_id": "321"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg",
+      "priority": "P1",
+      "rationale": "Map supported payment capabilities to the existing financial authority before enabling payment mutations.",
+      "record_key": "canonical:specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg",
+      "spec_id": "322"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability",
+      "priority": "P1",
+      "rationale": "Define the per-Mini-App data-plane contract before the first stateful App is created.",
+      "record_key": "canonical:specs/feature/323-smartsi-miniapp-hosting-data-isolation-byoc-portability",
+      "spec_id": "323"
+    },
+    {
+      "confidence": "LOW",
+      "decision": "CONTINUE_REQUIRED",
+      "path": "specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
+      "priority": "P1",
+      "rationale": "Keep the existing SmartAIHub implementation path as the initial command surface until a real selective handover is proven.",
+      "record_key": "canonical:specs/feature/324-smartsi-autonomous-bootstrap-self-hosting-and-handover",
+      "spec_id": "324"
     },
     {
       "confidence": "LOW",

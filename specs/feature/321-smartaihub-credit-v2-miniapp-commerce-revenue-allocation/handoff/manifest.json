@@ -1,0 +1,269 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "f879d0bb702c5a4fd7a8bccb7f2c2d747cfc0bf859dc28bc07b52dd092cc035f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8"
+  },
+  "continuation": {
+    "next_action": "Audit existing credit writers and database assumptions read-only before any denomination or money-writing change.",
+    "next_ready_workunit": "SPEC-321 implementation slice",
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+      "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+    ],
+    "next_action": "Audit existing credit writers and database assumptions read-only before any denomination or money-writing change.",
+    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      {
+        "digest": "f879d0bb702c5a4fd7a8bccb7f2c2d747cfc0bf859dc28bc07b52dd092cc035f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md",
+    "digest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-11-01T07:21:41.383257Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1.4",
+    "slug": "321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation",
+    "spec_id": "321",
+    "title": "SPEC-321 — Credit V2 (USD 1 = 10,000), Mini App Subscriptions & Multiparty Revenue"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "CONTINUATION_REQUIRED",
+    "previous_state": null,
+    "state_evidence": [
+      {
+        "digest": "f879d0bb702c5a4fd7a8bccb7f2c2d747cfc0bf859dc28bc07b52dd092cc035f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+      }
+    ],
+    "updated_at": "2026-11-01T07:18:24.772353Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "f879d0bb702c5a4fd7a8bccb7f2c2d747cfc0bf859dc28bc07b52dd092cc035f",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+        "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+      ],
+      "next_action": "Audit existing credit writers and database assumptions read-only before any denomination or money-writing change.",
+      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "f879d0bb702c5a4fd7a8bccb7f2c2d747cfc0bf859dc28bc07b52dd092cc035f",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "CONTINUATION_REQUIRED",
+      "previous_state": null,
+      "state_evidence": [
+        {
+          "digest": "f879d0bb702c5a4fd7a8bccb7f2c2d747cfc0bf859dc28bc07b52dd092cc035f",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+        }
+      ],
+      "updated_at": "2026-11-01T07:18:24.772353Z"
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-11-01T07:21:41.383257Z",
+    "sources": [
+      {
+        "digest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md",
+        "source_digest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8",
+        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "line": 5,
+        "source": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md",
+        "source_digest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8",
+        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "e78ff79256124f9897f17599cf18a4de9ca2286ecf423e8ee102ebe9a96a8ef8",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/321-smartaihub-credit-v2-miniapp-commerce-revenue-allocation/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 25,
+    "unresolved": 25
+  },
+  "schema_version": 1,
+  "updated_at": "2026-11-01T07:21:41.383257Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

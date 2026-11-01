@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "exampleOnly": true,
+  "messageId": "msg-example-01",
+  "conversationId": "conversation-example",
+  "threadId": "thread-example",
+  "runId": "run-example",
+  "contentVersion": 1,
+  "blocks": [
+    {
+      "blockId": "block-diagram",
+      "blockVersion": 1,
+      "kind": "diagram",
+      "schemaVersion": "1.0",
+      "renderMode": "inline",
+      "format": "mermaid",
+      "source": "flowchart LR\n  A[User] --> B[Agent Job]\n  B --> C[Result]",
+      "fallbackText": "User starts an Agent Job that produces a Result"
+    },
+    {
+      "blockId": "block-code",
+      "blockVersion": 1,
+      "kind": "code",
+      "schemaVersion": "1.0",
+      "renderMode": "inline",
+      "language": "yaml",
+      "source": "mode: development\ncloudRun: true",
+      "actions": [
+        "copy",
+        "open-panel"
+      ]
+    },
+    {
+      "blockId": "block-choice",
+      "blockVersion": 1,
+      "kind": "choice",
+      "schemaVersion": "1.0",
+      "renderMode": "inline",
+      "selectionMode": "single",
+      "options": [
+        {
+          "id": "light",
+          "label": "Light"
+        },
+        {
+          "id": "dark",
+          "label": "Dark"
+        },
+        {
+          "id": "balance",
+          "label": "Balance"
+        }
+      ],
+      "onSubmit": {
+        "actionId": "preferences.theme.set",
+        "effectClass": "USER_PREFERENCE",
+        "idempotencyKey": "example-demo-key"
+      },
+      "fallbackText": "Choose theme: Light, Dark, Balance"
+    },
+    {
+      "blockId": "block-artifact",
+      "blockVersion": 1,
+      "kind": "artifact-preview",
+      "schemaVersion": "1.0",
+      "renderMode": "inline",
+      "artifactId": "artifact-example",
+      "version": 2,
+      "actions": [
+        "open-panel",
+        "download"
+      ]
+    }
+  ]
+}

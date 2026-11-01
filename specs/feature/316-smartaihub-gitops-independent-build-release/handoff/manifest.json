@@ -1,0 +1,269 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "4c73b6e06d62da375952519c0b35b3a7d4ded2b2c29599ce463a0523b1469a4f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704"
+  },
+  "continuation": {
+    "next_action": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
+    "next_ready_workunit": "SPEC-316 implementation slice",
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+      "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+    ],
+    "next_action": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
+    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      {
+        "digest": "4c73b6e06d62da375952519c0b35b3a7d4ded2b2c29599ce463a0523b1469a4f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
+    "digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-11-01T07:21:39.298625Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1.4",
+    "slug": "316-smartaihub-gitops-independent-build-release",
+    "spec_id": "316",
+    "title": "SmartAIHub GitHub Repository Federation, Targeted CI, Immutable Per-Module Release and Wrangler Deploy"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "CONTINUATION_REQUIRED",
+    "previous_state": null,
+    "state_evidence": [
+      {
+        "digest": "4c73b6e06d62da375952519c0b35b3a7d4ded2b2c29599ce463a0523b1469a4f",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+      }
+    ],
+    "updated_at": "2026-11-01T07:18:24.536816Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "4c73b6e06d62da375952519c0b35b3a7d4ded2b2c29599ce463a0523b1469a4f",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+        "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+      ],
+      "next_action": "Keep canonical Specs in SmartSpecPro; verify the proposed smartaihub-platform repository before creating or publishing it.",
+      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "4c73b6e06d62da375952519c0b35b3a7d4ded2b2c29599ce463a0523b1469a4f",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "CONTINUATION_REQUIRED",
+      "previous_state": null,
+      "state_evidence": [
+        {
+          "digest": "4c73b6e06d62da375952519c0b35b3a7d4ded2b2c29599ce463a0523b1469a4f",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+        }
+      ],
+      "updated_at": "2026-11-01T07:18:24.536816Z"
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-11-01T07:21:39.298625Z",
+    "sources": [
+      {
+        "digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
+        "source_digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
+        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "line": 6,
+        "source": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md",
+        "source_digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
+        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "8ecf3917fe4bbf483219f0095697d23608414ccc5862dc86161b3ff5dfdca704",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/316-smartaihub-gitops-independent-build-release/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 21,
+    "unresolved": 21
+  },
+  "schema_version": 1,
+  "updated_at": "2026-11-01T07:21:39.298625Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

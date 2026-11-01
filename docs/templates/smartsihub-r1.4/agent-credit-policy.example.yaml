@@ -1,0 +1,49 @@
+# Example Agent Spending and User Class Policy (DESIGN TEMPLATE ONLY)
+# DO NOT APPLY AS LIVE ACCOUNT CONFIGURATION: all money-changing limits default to zero until verified and configured.
+credit_unit_version: 2
+credits_per_usd: 10000
+production_domain: smartsihub.com
+canonical_account_required: true
+platform_subscription:
+  independent_of_miniapp_subscription: true
+  credit_grant_trigger: verified_paid_billing_period
+  grant_idempotency_key: "platform-plan:{subscriptionId}:{periodId}:credit-unit-v2"
+  monthly_credits: configure_per_plan
+  rollover_policy: configure_per_plan
+  expiry_policy: configure_per_plan
+user_classes:
+  FREE: {overdraft_enabled: false, credit_line_limit: 0}
+  REGISTERED: {overdraft_enabled: false, credit_line_limit: 0}
+  PLATFORM_SUBSCRIBER: {overdraft_enabled: false, credit_line_limit: 0}
+  VERIFIED_CREATOR: {overdraft_enabled: false, credit_line_limit: 0}
+  BUSINESS: {overdraft_enabled: false, credit_line_limit: 0}
+  ENTERPRISE: {overdraft_enabled: false, credit_line_limit: 0}
+# Admin/Risk policies may enable and configure nonzero limits per class after PSP collection agreement and verification.
+credit_reservation:
+  atomic_with_job_admission: true
+  canonical_ledger: spec-207
+  quote_margin_policy: configurable_by_skill_or_provider
+  incremental_extension: supported
+  debit_only_verified_actual: true
+  dedupe_key: "{payer}:{jobId}:{invocationId}:{settlementKind}:{version}"
+agent_mandate:
+  owner_bound: true
+  require_payer_tenant_match: true
+  max_per_call: configure_by_user
+  max_per_day: configure_by_user
+  max_per_month: configure_by_user
+  merchant_allowlist: []
+  capability_allowlist: []
+  auto_topup: disabled_until_psp_supported_and_authorized
+  revocable: true
+postpaid:
+  collection_threshold_credits: configure_by_class
+  collection_interval: configure_by_class
+  allow_new_debt_on_unverified_payment_method: false
+  creator_credit_release: on_verified_collection_or_approved_guarantee
+provider_adapters:
+  native_smartsi_mcp: planned
+  beam_card_and_promptpay: audit_existing
+  stripe_spt_and_acp: optional_verify_partner_eligibility
+  google_ucp_ap2: optional_verify_partner_eligibility
+  cloudflare_x402: optional_verify_jurisdiction_and_network

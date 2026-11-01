@@ -1,0 +1,25 @@
+{
+  "exampleOnly": true,
+  "jobId": "job-example",
+  "browserSessionId": "session-ephemeral-example",
+  "providerId": "chromium-playwright",
+  "actorScope": {
+    "tenantId": "tenant-example",
+    "actorId": "user-example"
+  },
+  "status": "active",
+  "capabilities": [
+    "navigate",
+    "act",
+    "screenshot",
+    "liveView",
+    "humanHandoff"
+  ],
+  "lastCheckpointRef": "checkpoint-example",
+  "viewGrantRef": null,
+  "resumePolicy": "idempotent-steps-only",
+  "openInUserBrowser": {
+    "url": "https://example.com",
+    "sessionTransfer": false
+  }
+}

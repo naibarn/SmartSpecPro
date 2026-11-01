@@ -1,0 +1,269 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "38d62e4ccbaf031a84a523ea7c17b748f89e1287d2cce22044a9abe5ccc79e86",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08"
+  },
+  "continuation": {
+    "next_action": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+    "next_ready_workunit": "SPEC-315 implementation slice",
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+      "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+    ],
+    "next_action": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      {
+        "digest": "38d62e4ccbaf031a84a523ea7c17b748f89e1287d2cce22044a9abe5ccc79e86",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
+    "digest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-11-01T07:21:38.877945Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1.4",
+    "slug": "315-smartaihub-parallel-environments-shared-postgres",
+    "spec_id": "315",
+    "title": "SmartSIHub Three-Domain Parallel Development, Production-Parity Access and Canonical Core PostgreSQL"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "CONTINUATION_REQUIRED",
+    "previous_state": null,
+    "state_evidence": [
+      {
+        "digest": "38d62e4ccbaf031a84a523ea7c17b748f89e1287d2cce22044a9abe5ccc79e86",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+      }
+    ],
+    "updated_at": "2026-11-01T07:18:24.489994Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "38d62e4ccbaf031a84a523ea7c17b748f89e1287d2cce22044a9abe5ccc79e86",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+        "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+      ],
+      "next_action": "Preserve the current aimarkethubs.com service while preparing the reserved Modular development runtime on port 3200.",
+      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "38d62e4ccbaf031a84a523ea7c17b748f89e1287d2cce22044a9abe5ccc79e86",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "CONTINUATION_REQUIRED",
+      "previous_state": null,
+      "state_evidence": [
+        {
+          "digest": "38d62e4ccbaf031a84a523ea7c17b748f89e1287d2cce22044a9abe5ccc79e86",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+        }
+      ],
+      "updated_at": "2026-11-01T07:18:24.489994Z"
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-11-01T07:21:38.877945Z",
+    "sources": [
+      {
+        "digest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 6,
+        "source": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
+        "source_digest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08",
+        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: REVISED_DRAFT_NOT_IMPLEMENTED",
+        "line": 6,
+        "source": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md",
+        "source_digest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08",
+        "value": "REVISED_DRAFT_NOT_IMPLEMENTED"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "9dac8fe35f53f7e96e3ce70a8867edbfa88d117ab9228673ce3911cfc6d5fc08",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/315-smartaihub-parallel-environments-shared-postgres/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 46,
+    "unresolved": 46
+  },
+  "schema_version": 1,
+  "updated_at": "2026-11-01T07:21:38.877945Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

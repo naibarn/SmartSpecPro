@@ -1,0 +1,269 @@
+{
+  "acceptance": {
+    "evidence": [],
+    "required": false,
+    "status": "UNKNOWN"
+  },
+  "authority": {
+    "confidence": "HIGH",
+    "conflicts": [],
+    "evidence": [
+      {
+        "digest": "da1898958f802e3cb366878a40b37a62a9a370465bc17bb8a05c4e02242ccc99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "predecessors": [],
+    "status": "ACTIVE_CANONICAL",
+    "successors": []
+  },
+  "blockers": [],
+  "concurrency": {
+    "expected_canonical_sha": null,
+    "expected_spec_digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4"
+  },
+  "continuation": {
+    "next_action": "Map supported payment capabilities to the existing financial authority before enabling payment mutations.",
+    "next_ready_workunit": "SPEC-322 implementation slice",
+    "reactivation_predicate": null,
+    "resume_point": null,
+    "waiting_predicate": null
+  },
+  "continuation_assessment": {
+    "confidence": "HIGH",
+    "decision": "CONTINUE_REQUIRED",
+    "evidence": [
+      "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+      "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+    ],
+    "next_action": "Map supported payment capabilities to the existing financial authority before enabling payment mutations.",
+    "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+    "residual_requirements": []
+  },
+  "dependencies": {
+    "predicates": [],
+    "runtime_capabilities": [],
+    "satisfaction_evidence": [],
+    "specs": []
+  },
+  "deployment": {
+    "artifact_digest": null,
+    "environment": null,
+    "evidence": [],
+    "required": false,
+    "source_sha": null,
+    "status": "UNKNOWN"
+  },
+  "disposition": {
+    "confidence": "HIGH",
+    "evidence": [
+      {
+        "digest": "da1898958f802e3cb366878a40b37a62a9a370465bc17bb8a05c4e02242ccc99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+      },
+      {
+        "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+        "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+      }
+    ],
+    "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+    "value": "ACTIVE_CANONICAL"
+  },
+  "generation": 2,
+  "identity": {
+    "canonical_path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
+    "digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+    "metadata": {
+      "implementation_last_touched_at": null,
+      "last_evidence_at": "2026-11-01T07:21:41.804088Z",
+      "last_runtime_reference_at": null,
+      "spec_created_at": null,
+      "spec_last_changed_at": null
+    },
+    "revision": "1.4",
+    "slug": "322-smartsi-agentic-payments-platform-subscriptions-payg",
+    "spec_id": "322",
+    "title": "SPEC-322 — Agentic Payments, Platform Subscriptions, Credit Reservation and Class-Bounded PAYG"
+  },
+  "implementation": {
+    "checkpoint_shas": [],
+    "mapping": [],
+    "source_paths": [],
+    "started": false,
+    "status": "UNKNOWN"
+  },
+  "integration": {
+    "canonical_ref": null,
+    "canonical_sha": null,
+    "integrated": false,
+    "integrated_at": null
+  },
+  "lifecycle": {
+    "current_state": "CONTINUATION_REQUIRED",
+    "previous_state": null,
+    "state_evidence": [
+      {
+        "digest": "da1898958f802e3cb366878a40b37a62a9a370465bc17bb8a05c4e02242ccc99",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+      }
+    ],
+    "updated_at": "2026-11-01T07:18:24.817241Z"
+  },
+  "manual_decisions": {
+    "authority": {
+      "confidence": "HIGH",
+      "conflicts": [],
+      "evidence": [
+        {
+          "digest": "da1898958f802e3cb366878a40b37a62a9a370465bc17bb8a05c4e02242ccc99",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "predecessors": [],
+      "status": "ACTIVE_CANONICAL",
+      "successors": []
+    },
+    "continuation_assessment": {
+      "confidence": "HIGH",
+      "decision": "CONTINUE_REQUIRED",
+      "evidence": [
+        "docs/smartsihub-r1.4/FILE-PLACEMENT.md",
+        "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+      ],
+      "next_action": "Map supported payment capabilities to the existing financial authority before enabling payment mutations.",
+      "rationale": "The R1.4 program is active and implementation has not started; maintain the specified incremental delivery sequence.",
+      "residual_requirements": []
+    },
+    "disposition": {
+      "confidence": "HIGH",
+      "evidence": [
+        {
+          "digest": "da1898958f802e3cb366878a40b37a62a9a370465bc17bb8a05c4e02242ccc99",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+        },
+        {
+          "kind": "OWNER_DIRECTED_SOURCE_PLACEMENT",
+          "path": "docs/smartsihub-r1.4/FILE-PLACEMENT.md"
+        }
+      ],
+      "rationale": "The user directed development against this R1.4 Spec; it is the canonical normative source in SmartSpecPro.",
+      "value": "ACTIVE_CANONICAL"
+    },
+    "lifecycle": {
+      "current_state": "CONTINUATION_REQUIRED",
+      "previous_state": null,
+      "state_evidence": [
+        {
+          "digest": "da1898958f802e3cb366878a40b37a62a9a370465bc17bb8a05c4e02242ccc99",
+          "kind": "NORMATIVE_SPEC",
+          "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+        }
+      ],
+      "updated_at": "2026-11-01T07:18:24.817241Z"
+    }
+  },
+  "reconciliation": {
+    "confidence": "LOW",
+    "inferred_fields": [
+      "authority.status",
+      "disposition.value",
+      "continuation_assessment.decision"
+    ],
+    "mode": "AUTOMATED_CONSERVATIVE",
+    "reconciled_at": "2026-11-01T07:21:41.804088Z",
+    "sources": [
+      {
+        "digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+      },
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "kind": "AUTHOR_DECLARED_CLAIM",
+        "line": 5,
+        "source": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
+        "source_digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+      }
+    ],
+    "stale_fields": [
+      "continuation_assessment",
+      "implementation_mapping",
+      "requirements",
+      "verification"
+    ],
+    "unproven_fields": [
+      "current relevance",
+      "implementation equivalence",
+      "deployment reality",
+      "acceptance"
+    ]
+  },
+  "relevance_assessment": {
+    "active_references": [],
+    "conflict_duplication_risk": "UNASSESSED",
+    "current_architecture_fit": "UNASSESSED",
+    "current_product_relevance": "UNASSESSED",
+    "current_runtime_dependency": "NO_DIRECT_REFERENCE_FOUND",
+    "declared_claims": [
+      {
+        "authority": "AUTHOR_ASSERTION_CANDIDATE",
+        "claim_kind": "DECLARED_STATUS",
+        "confidence": "LOW",
+        "excerpt": "status: PROPOSED_ADDITIVE_NOT_IMPLEMENTED",
+        "line": 5,
+        "source": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md",
+        "source_digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+        "value": "PROPOSED_ADDITIVE_NOT_IMPLEMENTED"
+      }
+    ],
+    "deployment_reality": "UNVERIFIED",
+    "evidence": [
+      {
+        "digest": "bed08613c48f2d6067c08ed2bc81d6f463dd50e7f8b8efdb588ab1b5557798b4",
+        "kind": "NORMATIVE_SPEC",
+        "path": "specs/feature/322-smartsi-agentic-payments-platform-subscriptions-payg/spec.md"
+      }
+    ],
+    "implementation_equivalence": "UNASSESSED",
+    "residual_requirements": [],
+    "security_data_compliance_obligations": "REVIEW_REQUIRED",
+    "successor_or_supersession": "UNASSESSED"
+  },
+  "requirements_summary": {
+    "applicable": 0,
+    "blocked_true_external": 0,
+    "fail": 0,
+    "not_applicable": 0,
+    "pass": 0,
+    "total": 26,
+    "unresolved": 26
+  },
+  "schema_version": 1,
+  "updated_at": "2026-11-01T07:21:41.804088Z",
+  "verification": {
+    "baseline_issues": [],
+    "evidence": [],
+    "freshness": "UNKNOWN",
+    "required_profiles": [],
+    "sha": null,
+    "status": "UNKNOWN",
+    "task_regressions": []
+  }
+}

@@ -1,0 +1,75 @@
+# R0.3 EXAMPLE ONLY — no live resources/IDs/secrets or configuration changes.
+# Host is the confirmed presentation alias; authenticated target ID controls routing/deployment.
+targets:
+  legacy-debian-dev:
+    domain: smartaihub.app
+    runtime: existing-debian-node-python
+    service_discovery: inspect-before-reconfiguring
+    role: legacy-development-and-still-active-users
+    dev_deploy_authority: delegated-scoped
+    preserve_live_legacy_users: true
+    data_authority: canonical-core-postgresql-smartspec
+  modular-debian-dev:
+    domain: aimarkethubs.com
+    runtime: debian-local-workerd-and-static-ui
+    access: authorized-developers
+    role: new-modular-development-and-human-uat
+    effective_permissions: production-parity-for-existing-user-and-tenant-grants
+    use_actual_users_and_wallet: true
+    data_authority: canonical-core-postgresql-smartspec
+    dev_deploy_authority: delegated-scoped-autonomous
+    allow_partially_functional_beta: true
+  modular-cf-preview:
+    domain: exact-preview-url-or-restricted-new-domain-route
+    runtime: cloudflare-workers
+    optional_separate_lifetime: true
+    provision: minimal-new-resources-after-target-readback
+  modular-cf-production:
+    domain: smartsihub.com
+    domain_status: CONFIRMED_PRODUCTION
+    runtime: cloudflare-workers
+    audience_strategy: restricted-real-user-beta-then-progressive-expansion
+    data_authority: canonical-core-postgresql-smartspec
+    release_authority: existing-spec-295
+    deploy_mode: source-pinned-scoped-release
+policies:
+  canonical_identity_wallet_job_ledger: existing-single-authorities
+  functional_parity: role-and-tenant-not-host-driven
+  development_requires_extra_business_approval: false
+  enable_early_restricted_real_user_beta: true
+  inventory_and_uat_evidence_are_nonblocking_for_unrelated_scope: true
+  legacy_full_cutover_is_independent_from_new_domain_go_live: true
+  hard_stop_only_for: [wrong-target, unauthorized-tenant-data, secret-leak, ledger-or-data-corruption, unsafe-real-world-side-effect, unavailable-nondelegable-authority]
+  no_automatic_ddl_from_app_start: true
+  no_untrusted_code_in_local_miniflare: true
+  do_not_reuse_decommissioned_cloudflare_ids: true
+  require_scoped_version_and_rollback_reference_for_cloudflare_release: true
+
+stack_baseline:
+  core_runtime: cloudflare-workerd-hono4-typescript-esm
+  core_ui: react19-vite7-tailwind4-static
+  sql: canonical-smartspec-pg-node-postgres-hyperdrive-fresh-for-auth-wallet
+  build: node22-pnpm10-turborepo2-wrangler
+  core_source_policy: rewrite-new-not-convert-legacy-runtime
+  module_source_policy: selective-copy-then-isolate-slim-modernize
+  database_schema: preserve-existing-zero-ddl-by-default
+  cost_policy: static-first-no-always-on-container
+performance_optimization_objectives_advisory:
+  core_worker_uncompressed_mib: 2
+  simple_module_worker_uncompressed_mib: 1
+  shell_initial_js_gzip_kib: 200
+  core_clean_build_peak_rss_gib: 1.5
+  actual_platform_limits_always_apply: true
+
+# R1.0 — Distinct Mini App app-owned data stores, NEVER automatic new tables in Core.
+miniapp_data_policy:
+  new_stateful_app_requires_dedicated_db: true
+  new_stateless_app_db_required: false
+  core_db_business_tables_for_new_apps: forbidden
+  core_db_legacy_data: explicitly_registered_existing_tables_only
+  managed_default: cloudflare-d1-per-miniapp
+  managed_pool: separate-miniapp-resource-account-from-core
+  allowed_databases: [managed-app-d1, byoc-d1, managed-app-postgresql-dedicated-db, owner-postgresql, owner-portable-db, none]
+  allowed_hosting: [platform-root-launcher, managed-custom-domain, byoc-cloudflare, owner-self-hosted]
+  external_core_access: audience-scoped-https-api
+  app_data_export_and_provider_change: owner-authorized-versioned-migration
