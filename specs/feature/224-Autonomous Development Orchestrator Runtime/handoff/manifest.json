@@ -1124,7 +1124,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
+    "expected_canonical_sha": "22e6f344ca965ccef8bd9d57babd94cb251e0000",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:91c26099c2afa1abd4466bb8db92daf202d3c346d67c2d689214db15ac69ddb8",
+    "artifact_digest": "sha256:34b6d5ebe0e6b749b06fe181db562a3deec5cba6a4ec469061f57edd8273d368",
     "environment": "development_linux_user_systemd",
     "evidence": [
       {
@@ -1329,11 +1329,19 @@
         "scope": "Out-of-band repair for the failing Task Control Start path. Exact Debian development artifact and web/Node worker source verified; focused account/configuration/UI tests 9/9 passed; public health 200 and API smoke 12/12 routes, zero server errors. The UI has not yet configured accounts or produced a Goal Grant/Run/Runner receipt; execution acceptance remains open.",
         "source_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
         "status": "PASS"
+      },
+      {
+        "kind": "SPEC224_LEDGER_RESUME_READINESS_DEPLOYED",
+        "observed_at": "2026-11-01T17:12:37Z",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-ledger-resume-readiness-deployment-20261102.md",
+        "scope": "Task Control now exposes tenant Ledger setup before preparation and while existing development Runs remain resumable; start/resume wait for configured Ledger readiness. Focused readiness tests 3/3 and preparation helper tests 4/4 passed. Immutable canonical artifact deployed to smartaihub.app generation 305; web/Node worker exact revision, public health/index 200, public SPEC-224 JS SHA matches the artifact. Broader panel suite remains red and no Goal Grant, Run execution or Runner receipt is claimed.",
+        "source_sha": "22e6f344ca965ccef8bd9d57babd94cb251e0000",
+        "status": "PASS_PARTIAL"
       }
     ],
     "required": false,
-    "source_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
-    "status": "PASS"
+    "source_sha": "22e6f344ca965ccef8bd9d57babd94cb251e0000",
+    "status": "PASS_PARTIAL"
   },
   "disposition": {
     "confidence": "HIGH",
@@ -1346,7 +1354,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 274,
+  "generation": 275,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1578,11 +1586,11 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d",
+    "canonical_sha": "22e6f344ca965ccef8bd9d57babd94cb251e0000",
     "integrated": true,
-    "integrated_at": "2026-11-01T16:47:44Z",
+    "integrated_at": "2026-11-01T17:06:47Z",
     "pull_request": null,
-    "source_sha": "ce6fda44c74996204deb86957e4bab3ce19c227d"
+    "source_sha": "22e6f344ca965ccef8bd9d57babd94cb251e0000"
   },
   "lifecycle": {
     "current_state": "CONTINUATION_REQUIRED",
@@ -4096,7 +4104,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T16:55:53.807038Z",
+  "updated_at": "2026-11-01T17:13:37.258979Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
