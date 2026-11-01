@@ -508,8 +508,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const startMutation = trpc.spec226DevelopmentControl.startWorkspaceRun.useMutation();
   const resumeRunMutation = trpc.spec226DevelopmentControl.resumeWorkspaceRun.useMutation();
   const economicLedgerReadiness = trpc.economicControlPlane.listSpec224LedgerAccounts.useQuery(
-    { currency: "USD" }, { enabled: user?.role === "admin" && preparation !== null, retry: false },
+    { currency: "USD" }, { enabled: user?.role === "admin", retry: false },
   );
+  const economicLedgerReadyForRun = user?.role !== "admin"
+    || (!economicLedgerReadiness.isLoading && !economicLedgerReadiness.error && Boolean(economicLedgerReadiness.data?.configured));
   const selectedWorkspace = runnerWorkspaces.find(item => selectionKey(item) === selected);
   const selectedModularCoreCandidate = platformBindingCandidatesQuery.data?.workspaces.find(candidate =>
     candidate.runnerId === selectedWorkspace?.runnerId && candidate.workspaceId === selectedWorkspace?.workspaceId
@@ -1075,6 +1077,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
             <Selector label="Model" value={modelPolicy === "auto" ? "auto" : selectedModelId} options={[{ value: "auto", label: defaultModel ? `Auto · ${defaultModel.displayName}` : "Auto · รอ Runner catalog" }, ...catalogModels.map(model => ({ value: model.id, label: model.displayName }))]} onChange={value => { setModelPolicy(value === "auto" ? "auto" : "explicit"); setSelectedModelId(value === "auto" ? "" : value); }} isDisabled={!catalogFresh || catalogModels.length === 0} emptyText="Runner ยังไม่รายงาน Model" width="100%" />
           </VStack>
           {selectedRunner ? <AstryxText as="p" type="supporting" role="status">Runner {selectedRunner.readinessStatus === "online" && selectedRunner.trustState === "trusted" ? "ออนไลน์และ trusted" : "ยังไม่พร้อม"} · {runnerReadiness?.ready ? "execution readiness ผ่าน" : "กำลังตรวจสอบ readiness จาก Runner"}</AstryxText> : null}
+          <Spec224EconomicLedgerSetup />
           <TextInput label="งบสูงสุดของ Goal (USD)" value={budgetCapUsd} onChange={value => { setBudgetCapUsd(value.replace(/[^\d.]/g, "").slice(0, 9)); setPreparation(null); }} description="วงเงินนี้ครอบคลุมทุก Child และ Final Verify ของ Goal" />
           <VStack as="ol" gap={2}>
             <li><AstryxText as="p"><strong>Implement:</strong> สร้าง JavaScript utility แบบไม่เพิ่ม dependency และ unit tests ภายใน scope แล้วรันทดสอบจริง</AstryxText></li>
@@ -1095,12 +1098,11 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
         {preparation ? (
           <section className="space-y-3 rounded-xl border border-[var(--color-border)] p-4" aria-live="polite" aria-label="ผลการตรวจความพร้อม Pilot">
             <h3 className="font-semibold">ผลตรวจความพร้อม · {preparation.runnableWorkPackageIds.length} ขั้นตอนพร้อม</h3>
-            <Spec224EconomicLedgerSetup />
             {preparation.blockers.length ? <ul className="list-inside list-disc text-sm text-amber-800">{preparation.blockers.map((blocker, index) => <li key={`${blocker}-${index}`}>{blocker}</li>)}</ul> : <p className="text-sm">Runner, source preflight และแผนพร้อมสำหรับการขออนุมัติ</p>}
             {(preparation.workPackages ?? []).map((workPackage, index) => <section key={workPackage.id} className="border-t border-[var(--color-border)] pt-3">
               <p className="text-sm font-medium">ขั้นตอน {index + 1} · {workPackage.readiness}</p>
               {workPackage.blockers.length ? <ul className="list-inside list-disc text-xs text-amber-800">{workPackage.blockers.map((blocker, blockerIndex) => <li key={`${blocker}-${blockerIndex}`}>{blocker}</li>)}</ul> : null}
-              {preparation.runnableWorkPackageIds.includes(workPackage.id) ? <Button type="button" className="mt-2 w-full" disabled={!canReviewPilot || startMutation.isPending || !runnerReadiness?.ready || !catalogFresh || !activeModel || (user?.role === "admin" && !economicLedgerReadiness.data?.configured) || !platformSourceIsSafe} onClick={() => void startWorkPackage(workPackage.id)}>{startMutation.isPending ? "กำลังบันทึก Goal…" : "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot"}</Button> : null}
+              {preparation.runnableWorkPackageIds.includes(workPackage.id) ? <Button type="button" className="mt-2 w-full" disabled={!canReviewPilot || startMutation.isPending || !runnerReadiness?.ready || !catalogFresh || !activeModel || !economicLedgerReadyForRun || !platformSourceIsSafe} onClick={() => void startWorkPackage(workPackage.id)}>{startMutation.isPending ? "กำลังบันทึก Goal…" : "ส่ง Goal เพื่ออนุมัติและเริ่ม Pilot"}</Button> : null}
             </section>)}
             <AstryxText as="p" type="supporting">ระบบจะขอ Goal Grant ผ่าน Approval Authority ก่อนเริ่ม จากนั้น phase ถัดไปจะถูก dispatch ตามผลและ receipt ที่บันทึกใน DevelopmentRun</AstryxText>
           </section>
@@ -1147,7 +1149,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                 variant="outline"
                 size="sm"
                 className="mt-2"
-                disabled={resumeRunMutation.isPending || !workspaceQuery.data?.workspace}
+                disabled={resumeRunMutation.isPending || !workspaceQuery.data?.workspace || !economicLedgerReadyForRun}
                 onClick={() => void resumeExistingRun(run.runId, run.conversationId ?? conversationId)}
               >
                 {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : "ทำงานเดิมต่อ"}
@@ -1318,6 +1320,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               ) : null}
             </section>
           ) : null}
+          {selectedWorkspace && (requestKind === "development" || workspaceQuery.data?.developmentRuns?.some(run => !["COMPLETED", "CANCELLED"].includes(run.state))) ? <Spec224EconomicLedgerSetup /> : null}
 
           {selectedWorkspace && requestKind === "development" ? (
             <Section variant="transparent" padding={3} aria-labelledby="spec224-model-selection-heading">
@@ -1653,7 +1656,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     {run.intermediateReceipts?.length ? ` · หลักฐาน ${run.intermediateReceipts.length}` : ""}
                     {!(["COMPLETED", "CANCELLED"].includes(run.state)) ? (
                       <Button type="button" variant="outline" size="sm" className="ml-2"
-                        disabled={resumeRunMutation.isPending || !boundWorkspace}
+                        disabled={resumeRunMutation.isPending || !boundWorkspace || !economicLedgerReadyForRun}
                         onClick={() => void resumeExistingRun(run.runId)}>
                         {resumeRunMutation.isPending ? "กำลังตรวจสอบ…" : "ทำงานเดิมต่อ"}
                       </Button>
@@ -1702,7 +1705,6 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                     : <>Codex: {runnerReadiness.code} · นโยบาย: {runnerReadiness.policyDecision === "pending" ? "รอประเมินตามขอบเขตของ Start" : runnerReadiness.policyDecision}{runnerReadiness.ownerAction ? ` · ${runnerReadiness.ownerAction}` : ""}</>}
                 </Text>
               ) : null}
-              <Spec224EconomicLedgerSetup />
               {preparation.blockers.length ? <ul className="mt-1 list-inside list-disc text-xs text-amber-800">{preparation.blockers.map((item, index) => <li key={`${item}-${index}`}>{simpleMode ? preparationBlockerMessage(item) : item}</li>)}</ul> : null}
               {effectiveSpecSource === "catalog" && canonicalHandoff?.status === "CURRENT" && preparation.runnableWorkPackageIds.length > 0 && !(preparation.workPackages ?? []).some(item => preparation.runnableWorkPackageIds.includes(item.id) && isNextReadyPackage(item)) ? <p className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-950" role="alert">handoff ระบุ next WorkUnit เป็น “{nextReadyWorkunit ?? "ยังไม่กำหนด"}” แต่ไม่มี runnable package ที่ตรงกัน จึงปิดการเริ่มงานเพื่อป้องกันการทำ WorkUnit เก่าซ้ำ โปรด reconcile handoff ผ่าน writer กลางหรือเตรียม package ที่ตรงกัน</p> : null}
               {(preparation.workPackages ?? []).map((workPackage, index) => (
@@ -1713,7 +1715,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                   {workPackage.sourceAdmission?.status === "SAFE_DISJOINT_DIRTY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "ไฟล์ที่เปลี่ยนอยู่แยกจากขอบเขตงานนี้" : `Source preflight: ขอบเขตไม่ชนไฟล์ที่เปลี่ยนอยู่ · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {workPackage.sourceAdmission?.status === "SAFE_CANDIDATE_OVERLAY" ? <p className="mt-1 text-xs text-emerald-800" role="status">{simpleMode ? "Runner จะแยกพื้นที่ทำงานของงานนี้ และตรวจไฟล์ก่อนนำผลกลับ เพื่อรักษาการเปลี่ยนแปลงเดิมที่งานไม่ได้แก้" : `Source preflight: SAFE_CANDIDATE_OVERLAY · ${workPackage.sourceAdmission.dirtyPathCount ?? 0} existing changes protected by candidate CAS and execution lease · ${workPackage.sourceAdmission.snapshotRevision}`}</p> : null}
                   {(preparation.runnableWorkPackageIds.includes(workPackage.id) && (effectiveSpecSource !== "catalog" || isNextReadyPackage(workPackage)) || shouldOfferPromptStartAction(mode, simpleMode, workPackage.id)) ? (
-                    <Button type="button" className="mt-2 w-full sm:w-auto" disabled={startMutation.isPending || !preparation.runnableWorkPackageIds.includes(workPackage.id) || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || (user?.role === "admin" && !economicLedgerReadiness.data?.configured) || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
+                    <Button type="button" className="mt-2 w-full sm:w-auto" disabled={startMutation.isPending || !preparation.runnableWorkPackageIds.includes(workPackage.id) || !runnerReadiness?.ready || !preparation.runnerReadiness.ready || !economicLedgerReadyForRun || (requestKind === "development" && (!catalogFresh || !activeModel || !supportedEffort)) || !platformSourceIsSafe || (isPlatformWorkspace && !["SAFE_CLEAN", "SAFE_DISJOINT_DIRTY", "SAFE_CANDIDATE_OVERLAY"].includes(workPackage.sourceAdmission?.status ?? "BLOCKED"))} onClick={() => void startWorkPackage(workPackage.id)}>
                       {startMutation.isPending ? "กำลังส่งคำสั่ง…" : !preparation.runnableWorkPackageIds.includes(workPackage.id) ? "ยังเริ่มไม่ได้ · แก้เงื่อนไขด้านบนก่อน" : mode === "prompt" || simpleMode ? "ส่ง Goal เพื่ออนุมัติและเริ่มงาน" : `สั่งพัฒนา ${workPackage.externalId}`}
                     </Button>
                   ) : null}

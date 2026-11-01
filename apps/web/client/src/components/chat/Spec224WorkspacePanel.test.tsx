@@ -26,10 +26,13 @@ vi.mock("@/lib/trpc", () => ({ trpc: { useUtils: () => ({ spec226DevelopmentCont
   availableWorkspaces: { useQuery: (_input: unknown, options: unknown) => { mocks.availableWorkspacesQueryOptions = options; return { data: { workspaces: mocks.workspaces }, isLoading: false, isFetching: false, error: null, refetch: mocks.refetchWorkspaces }; } },
   getConversationWorkspace: { useQuery: () => ({ data: mocks.workspace, refetch: vi.fn() }) },
   listFeatureSpecs: { useQuery: () => ({ data: { specs: mocks.featureSpecs }, isLoading: false, error: null }) },
+  listPlatformWorkspaceBindingCandidates: { useQuery: () => ({ data: { workspaces: [] }, isLoading: false, error: null }) },
   getFeatureSpecContext: { useQuery: () => ({ data: mocks.featureSpecContext, isLoading: false, error: null }) },
   ingestFeatureSpec: { useMutation: () => ({ mutateAsync: mocks.ingestFeatureSpec, isPending: false }) },
+  ingestModularSaasProject: { useMutation: () => ({ mutateAsync: mocks.ingestSpecSet, isPending: false }) },
   workspaceRunnerReadiness: { useQuery: () => ({ data: mocks.readiness }) },
   bindConversationWorkspace: { useMutation: () => ({ mutateAsync: mocks.bindWorkspace, isPending: false }) },
+  createAndBindModularCoreWorkspace: { useMutation: () => ({ mutateAsync: mocks.bindWorkspace, isPending: false }) },
   ingestSpecSet: { useMutation: () => ({ mutateAsync: mocks.ingestSpecSet }) },
   prepareWorkspaceRun: { useMutation: () => ({ mutateAsync: mocks.prepare, isPending: false }) },
   startWorkspaceRun: { useMutation: () => ({ mutateAsync: mocks.start, isPending: false }) },
@@ -351,10 +354,14 @@ describe("Core goal readiness feedback", () => {
     })));
   });
 
-  it("keeps continuation available without displaying internal run or package identifiers in simple mode", () => {
+  it("shows ledger setup and blocks continuation until the tenant is configured", () => {
+    mocks.ledgerAccounts = { accounts: [], configured: null };
     mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "private-run-123", state: "BLOCKED_RECOVERABLE", workPackageId: "pkg", workPackageExternalId: "SPEC-internal-123", specSetRevision: 1, revision: 2 }] };
     render(<Spec224WorkspacePanel conversationId={8} simpleMode />);
-    expect(screen.getByRole("button", { name: "ทำงานเดิมต่อ" })).toBeEnabled();
+    fireEvent.click(screen.getByRole("radio", { name: "สร้าง Mini App" }));
+    expect(screen.getByRole("region", { name: "SPEC-224 Ledger configuration" })).toBeInTheDocument();
+    expect(screen.getByText(/ยังไม่ได้ตั้งค่าบัญชีสำหรับ tenant นี้/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "ทำงานเดิมต่อ" })).toBeDisabled();
     expect(screen.queryByText(/private-run-123|SPEC-internal-123/)).not.toBeInTheDocument();
   });
 
@@ -574,7 +581,7 @@ describe("Core goal readiness feedback", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "ทำงานเดิมต่อ" }));
 
-    await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ conversationId: 233, runId: "run-existing", budgetCapMinorUnits: 100 }));
+    await waitFor(() => expect(mocks.resume).toHaveBeenCalledWith({ conversationId: 233, runId: "run-existing" }));
     expect(mocks.start).not.toHaveBeenCalled();
     await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_REQUIRED")));
   });
