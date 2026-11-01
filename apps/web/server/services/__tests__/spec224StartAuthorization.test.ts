@@ -20,6 +20,7 @@ vi.mock("../runnerGateway", () => ({ defaultRunnerGateway: { getNode: (...args: 
 vi.mock("../economicProvisioningService", () => ({ provisionEconomicBudget: vi.fn(async () => ({ budgetId: "budget-created" })) }));
 vi.mock("../jobControlPlane", () => ({
   appendJobEvent: vi.fn(),
+  canonicalizeStoredStatus: (status: string) => ({ claimed: "leased", preparing: "running", uploading: "running", publishing: "running", indexing: "running" }[status] ?? status),
   createJobControlPlane: (...args: unknown[]) => mocks.jobControlPlane(...args),
   defaultJobControlPlaneRepository: {},
 }));
@@ -60,6 +61,11 @@ describe("Spec 224 dispatched authorization replay", () => {
     expect(hasReleasedSpec224AttemptBinding({ jobId: "job-a", jobStatus: "running", attempt: 2,
       manifestBinding: binding, authorization: { status: "READY_FOR_LIVE", binding }, releaseEvent }))
       .toEqual(binding);
+    for (const jobStatus of ["leased", "claimed", "preparing", "uploading", "publishing", "indexing"]) {
+      expect(hasReleasedSpec224AttemptBinding({ jobId: "job-a", jobStatus, attempt: 2,
+        manifestBinding: binding, authorization: { status: "READY_FOR_LIVE", binding }, releaseEvent }))
+        .toEqual(binding);
+    }
     expect(hasReleasedSpec224AttemptBinding({ jobId: "job-a", jobStatus: "running", attempt: 3,
       manifestBinding: binding, authorization: { status: "READY_FOR_LIVE", binding }, releaseEvent }))
       .toBeNull();

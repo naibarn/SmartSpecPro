@@ -356,7 +356,7 @@ async function advanceWorkspaceGoalAdmission(input: {
         runnerId: input.runnerId,
       } },
     });
-    return { status: "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED" as const, errorCode: failureCode };
+    return { status: "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED" as const, reasons: [failureCode], errorCode: failureCode };
   }
   await developmentRunService.recordVerificationEvent({
     runId: input.runId,
@@ -378,14 +378,14 @@ async function advanceWorkspaceGoalAdmission(input: {
       : approval.status === "expired" ? "GOAL_APPROVAL_EXPIRED" as const
         : approval.status === "cancelled" ? "GOAL_APPROVAL_CANCELLED" as const
           : "GOAL_APPROVAL_PENDING" as const;
-    return { status,
+    return { status, reasons: [status],
       approvalRef: approval.approvalRef, expiresAt: approval.expiresAt };
   }
   const authorization = await defaultSpec224AuthorizationService.authorizeDelegatedChild({
     context: input.context,
     runId: input.runId,
   });
-  return { status: authorization.status, approvalRef: approval.approvalRef,
+  return { status: authorization.status, reasons: authorization.reasons, approvalRef: approval.approvalRef,
     expiresAt: approval.expiresAt, authorization };
 }
 

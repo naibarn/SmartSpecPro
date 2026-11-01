@@ -603,6 +603,19 @@ describe("Core goal readiness feedback", () => {
     await waitFor(() => expect(mocks.info).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_REQUIRED")));
   });
 
+  it("shows recoverable Goal approval errors when the response has no authorization reasons", async () => {
+    mocks.workspace = { ...mocks.workspace, developmentRuns: [{ runId: "run-approval-retry", state: "BLOCKED_RECOVERABLE" }] };
+    mocks.resume.mockResolvedValueOnce({ runId: "run-approval-retry", dispatchStatus: "BLOCKED",
+      goalAdmissionStatus: "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED",
+      authorization: { status: "GOAL_APPROVAL_REQUEST_RETRY_REQUIRED", errorCode: "APPROVAL_AUTHORITY_UNAVAILABLE" } });
+    render(<Spec224WorkspacePanel conversationId={234} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "ทำงานเดิมต่อ" }));
+
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining("APPROVAL_AUTHORITY_UNAVAILABLE")));
+    expect(mocks.error).not.toHaveBeenCalledWith(expect.stringContaining("join"));
+  });
+
   it("preselects the authorized Platform workspace and exposes workspace-level access controls", async () => {
     mocks.role = "user";
     mocks.workspace = { workspace: null, availability: null, specSet: null };

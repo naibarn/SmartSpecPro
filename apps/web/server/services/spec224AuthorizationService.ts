@@ -16,6 +16,7 @@ import {
 } from "./appRuntimeConfig";
 import {
   appendJobEvent,
+  canonicalizeStoredStatus,
   createJobControlPlane,
   defaultJobControlPlaneRepository,
 } from "./jobControlPlane";
@@ -157,8 +158,9 @@ export function hasReleasedSpec224AttemptBinding(input: {
     payloadJson: Record<string, unknown>;
   } | null | undefined;
 }): Spec224PolicyBinding | null {
+  const status = canonicalizeStoredStatus(input.jobStatus);
   if (!Number.isSafeInteger(input.attempt) || input.attempt < 1 ||
-      !["queued", "running", "waiting_external", "succeeded"].includes(input.jobStatus)) return null;
+      !["queued", "leased", "running", "waiting_external", "succeeded"].includes(status)) return null;
   const manifestBinding = asRecord(input.manifestBinding);
   const authorization = asRecord(input.authorization);
   const binding = asRecord(authorization?.binding);

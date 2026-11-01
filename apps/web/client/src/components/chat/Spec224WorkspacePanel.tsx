@@ -1037,11 +1037,23 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
       if (result.dispatchStatus === "ENQUEUED") {
         toast.success(simpleMode ? "ส่งงานเดิมเข้าคิวเพื่อทำต่อแล้ว" : `ทำงานต่อจาก DevelopmentRun เดิมแล้ว · ${result.runId}`);
       } else if (result.dispatchStatus === "PENDING_AUTHORIZATION") {
-        const reasons = result.authorization.reasons.join(", ") || result.authorization.status;
-        toast.info(simpleMode ? "งานเดิมยังรอสิทธิ์ก่อนทำต่อ" : `DevelopmentRun เดิมยังรอ authorization · ${reasons}`);
+        const authorization = result.authorization as { reasons?: unknown; status?: unknown } | null | undefined;
+        const reasons = Array.isArray(authorization?.reasons)
+          ? authorization.reasons.filter((reason): reason is string => typeof reason === "string").join(", ")
+          : "";
+        const reasonText = reasons || (typeof authorization?.status === "string" ? authorization.status : result.goalAdmissionStatus ?? result.dispatchStatus);
+        toast.info(simpleMode ? "งานเดิมยังรอสิทธิ์ก่อนทำต่อ" : `DevelopmentRun เดิมยังรอ authorization · ${reasonText}`);
       } else {
-        const reasons = result.authorization.reasons.join(", ") || result.authorization.status;
-        toast.error(simpleMode ? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อม" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasons}`);
+        const authorization = result.authorization as { reasons?: unknown; status?: unknown; errorCode?: unknown } | null | undefined;
+        const reasons = Array.isArray(authorization?.reasons)
+          ? authorization.reasons.filter((reason): reason is string => typeof reason === "string").join(", ")
+          : "";
+        const reasonText = reasons
+          || (typeof authorization?.errorCode === "string" ? authorization.errorCode : null)
+          || (typeof authorization?.status === "string" ? authorization.status : null)
+          || result.goalAdmissionStatus
+          || result.dispatchStatus;
+        toast.error(simpleMode ? "ยังทำงานเดิมต่อไม่ได้ โปรดตรวจสอบความพร้อม" : `ยังทำ DevelopmentRun เดิมต่อไม่ได้ · ${reasonText}`);
       }
     } catch (error) {
       toast.error(presentCustomerError(error, "ทำ DevelopmentRun เดิมต่อไม่สำเร็จ"));
