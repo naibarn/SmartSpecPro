@@ -577,6 +577,10 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && Boolean(selectedWorkspace.canonicalProjectId);
   const platformSourceIsSafe = !isPlatformWorkspace || platformBindingCurrent;
   const specSet = workspaceQuery.data?.specSet;
+  const importedModularSpecCount = specSet?.files.filter(file =>
+    /^canonical-projects\/[^/]+\/specs\/(?:31[2-9]|32[0-4])-[^/]+\/spec\.md$/i.test(file.path),
+  ).length ?? 0;
+  const modularSpecSetImported = importedModularSpecCount > 0;
   const canonicalSpecSetMissing = developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && !specSet;
   const boundKey = boundWorkspace
     ? JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId])
@@ -1596,8 +1600,17 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                         <section className="space-y-2 rounded-md border border-[var(--color-border)] p-3" aria-label="นำเข้า Modular SaaS project">
                           <p className="font-medium">เริ่มงาน Modular SaaS ให้ถูก workspace</p>
                           <p className="text-xs text-[var(--color-text-secondary)]">นำ Canonical Specs 312–324, handoff และ WorkPackages เข้ามาเป็น Spec Set ของ workspace เพื่อให้ระบบอ่านภาพรวมและเลือกงานที่พร้อมได้ การนำเข้านี้ยังไม่สั่ง Runner ให้พัฒนา; จะเริ่มเฉพาะ WorkPackage ที่เลือกหลังตรวจแผนและกดเริ่มงาน</p>
+                          <p className={`rounded-md border p-2 text-xs ${modularSpecSetImported ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-amber-300 bg-amber-50 text-amber-950"}`} role="status" aria-live="polite">
+                            {modularSpecSetImported
+                              ? `นำเข้าแล้ว ${importedModularSpecCount}/13 Specs (312–324) · Spec Set revision ${specSet?.revision}`
+                              : "ยังไม่พบ Specs 312–324 ใน Spec Set ของ workspace นี้ · ต้องนำเข้าก่อนจึงจะเตรียมและเริ่ม WorkPackage ได้"}
+                          </p>
                           <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || uploading || ingestModularSaasProjectMutation.isPending} onClick={() => void ingestSelectedModularSaasProject()}>
-                            {uploading ? "กำลังบันทึก Specs เข้า workspace…" : "นำเข้า Specs 312–324 เข้า workspace (ยังไม่เริ่มพัฒนา)"}
+                            {uploading || ingestModularSaasProjectMutation.isPending
+                              ? "กำลังซิงก์ Specs เข้า workspace…"
+                              : modularSpecSetImported
+                                ? "ซิงก์ Specs 312–324 ล่าสุดเข้า workspace"
+                                : "นำเข้า Specs 312–324 เข้า workspace"}
                           </Button>
                         </section>
                       ) : (
