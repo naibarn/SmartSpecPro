@@ -60,11 +60,11 @@
 - Modify: `apps/web/server/services/spec224IncrementalSpecCompiler.ts`
 - Test: `apps/web/server/services/spec224IncrementalSpecCompiler.test.ts`
 
-- [ ] Add a failing test for a JSON requirement object with canonical Spec ID, ledger `requirement_id`, source path, source digest, and requirement text.
-- [ ] Add a failing test for a WorkPackage referencing a canonical requirement ID and cross-Spec dependency.
-- [ ] Add duplicate-ID, unresolved-ref, missing acceptance/verification/write-set, and cycle tests.
-- [ ] Implement the minimal normalized input extension; preserve existing Markdown line and JSON-pointer behavior.
-- [ ] Run the compiler test file and confirm old behavior remains compatible.
+- [x] Add a failing test for a JSON requirement object with canonical Spec ID, ledger `requirement_id`, source path, source digest, and requirement text.
+- [x] Add a failing test for a WorkPackage referencing a canonical requirement ID and cross-Spec dependency.
+- [x] Add duplicate-ID, unresolved-ref, missing acceptance/verification/write-set, and cycle tests.
+- [x] Implement the minimal normalized input extension; preserve existing Markdown line and JSON-pointer behavior.
+- [x] Run the compiler test file and confirm old behavior remains compatible.
 
 ### Task 3: Ingest the pinned canonical project through existing SPEC-224 controls
 

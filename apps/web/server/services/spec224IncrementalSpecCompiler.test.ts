@@ -15,7 +15,7 @@ function contentDigest(content: string): string {
 }
 
 function revision(
-  files: Array<{ path: string; content: string; digest?: string }>,
+  files: Array<{ path: string; content: string; digest?: string; canonicalSource?: { specId: string; specDigest: string; sourcePath: string; sourceDigest: string } }>,
   revision = 1
 ): Spec224IncrementalSpecSetInput {
   return {
@@ -29,6 +29,7 @@ function revision(
       // A persisted SpecSet digest must bind the exact uploaded bytes. Test
       // fixtures derive it here so their compiler input has the same contract.
       digest: contentDigest(file.content),
+      ...(file.canonicalSource ? { canonicalSource: { ...file.canonicalSource, sourceDigest: contentDigest(file.content) } } : {}),
     })),
   };
 }
@@ -373,5 +374,113 @@ describe("Spec 224 incremental SpecSet compiler", () => {
     expect(result.runnableWorkPackageIds).toEqual(
       expect.arrayContaining([packageA.id, packageB.id])
     );
+  });
+
+  it("preserves canonical requirement IDs and binds them to Spec, ledger path, and digest", () => {
+    const ledger = JSON.stringify({
+      spec_digest: "a".repeat(64),
+      requirements: [{ requirement_id: "REQ-LEDGER-001", requirement_text: "Keep the canonical requirement unchanged.", final_state: "OPEN" }],
+    });
+    const result = compileSpec224IncrementalSpecSet(revision([{
+      path: "specs/feature/312-example/handoff/requirement-ledger.json",
+      content: ledger,
+      canonicalSource: {
+        specId: "312-example",
+        specDigest: "a".repeat(64),
+        sourcePath: "specs/feature/312-example/handoff/requirement-ledger.json",
+        sourceDigest: contentDigest(ledger),
+      },
+    }]));
+
+    expect(result.requirements).toEqual([expect.objectContaining({
+      id: "REQ-LEDGER-001",
+      canonicalSpecId: "312-example",
+      canonicalRequirementId: "REQ-LEDGER-001",
+      artifactPath: "specs/feature/312-example/handoff/requirement-ledger.json",
+      artifactDigest: contentDigest(ledger),
+      text: "Keep the canonical requirement unchanged.",
+    })]);
+  });
+
+  it("resolves canonical ID refs across Specs without replacing their requirement IDs", () => {
+    const ledger = (id: string, text: string) => JSON.stringify({
+      spec_digest: "b".repeat(64), requirements: [{ requirement_id: id, requirement_text: text }],
+    });
+    const ledgerA = ledger("REQ-CORE-001", "Create a lightweight Core.");
+    const ledgerB = ledger("REQ-MODULE-001", "Keep modules independently deployable.");
+    const packagePlan = JSON.stringify({ spec224: { workPackages: [{
+      id: "core-and-module-contract",
+      specRefs: [
+        { specId: "313-core", requirementIds: ["REQ-CORE-001"] },
+        { specId: "314-modules", requirementIds: ["REQ-MODULE-001"] },
+      ],
+      dependsOn: [],
+      acceptanceCriteria: ["Both canonical requirements are traceable."],
+      verification: [{ id: "traceability", kind: "test", ref: "test:traceability" }],
+      allowedWriteSet: ["apps/saas-core/src/contracts.ts"],
+    }] } });
+    const result = compileSpec224IncrementalSpecSet(revision([
+      { path: "specs/feature/313-core/handoff/requirement-ledger.json", content: ledgerA, canonicalSource: { specId: "313-core", specDigest: "b".repeat(64), sourcePath: "specs/feature/313-core/handoff/requirement-ledger.json", sourceDigest: contentDigest(ledgerA) } },
+      { path: "specs/feature/314-modules/handoff/requirement-ledger.json", content: ledgerB, canonicalSource: { specId: "314-modules", specDigest: "b".repeat(64), sourcePath: "specs/feature/314-modules/handoff/requirement-ledger.json", sourceDigest: contentDigest(ledgerB) } },
+      { path: "specs/feature/312-project/handoff/project-plan.json", content: packagePlan },
+    ]));
+
+    expect(result.workPackages[0]).toMatchObject({ readiness: "READY", requirementIds: ["REQ-CORE-001", "REQ-MODULE-001"] });
+    expect(result.requirements.map(item => item.canonicalSpecId)).toEqual(["313-core", "314-modules"]);
+  });
+
+  it("rejects duplicate canonical requirement IDs instead of silently merging Specs", () => {
+    const ledger = (specId: string) => JSON.stringify({ spec_digest: "c".repeat(64), requirements: [{ requirement_id: "REQ-SHARED-001", requirement_text: specId }] });
+    const source = (specId: string) => ({ specId, specDigest: "c".repeat(64), sourcePath: `specs/${specId}/handoff/requirement-ledger.json`, sourceDigest: "0".repeat(64) });
+    expect(() => compileSpec224IncrementalSpecSet(revision([
+      { path: "specs/one/handoff/requirement-ledger.json", content: ledger("one"), canonicalSource: source("one") },
+      { path: "specs/two/handoff/requirement-ledger.json", content: ledger("two"), canonicalSource: source("two") },
+    ]))).toThrow("REQUIREMENT_ID_DUPLICATE");
+  });
+
+  it("invalidates packages when their canonical ledger source changes", () => {
+    const makeRevision = (revisionNumber: number, finalState: string) => {
+      const ledger = JSON.stringify({ spec_digest: "f".repeat(64), requirements: [{ requirement_id: "REQ-001", requirement_text: "Keep the source binding.", final_state: finalState }] });
+      const plan = JSON.stringify({ spec224: { workPackages: [{
+        id: "bound-work", specRefs: [{ specId: "312-project", requirementIds: ["REQ-001"] }], dependsOn: [],
+        acceptanceCriteria: ["The source remains bound."], verification: [{ id: "binding-check", kind: "test", ref: "test:binding" }], allowedWriteSet: ["apps/bound.ts"],
+      }] } });
+      return revision([
+        { path: "specs/312-project/handoff/requirement-ledger.json", content: ledger, canonicalSource: { specId: "312-project", specDigest: "f".repeat(64), sourcePath: "specs/312-project/handoff/requirement-ledger.json", sourceDigest: contentDigest(ledger) } },
+        { path: "specs/312-project/handoff/project-plan.json", content: plan },
+      ], revisionNumber);
+    };
+    const previous = compileSpec224IncrementalSpecSet(makeRevision(1, "OPEN"));
+    const current = compileSpec224IncrementalSpecSet({ ...makeRevision(2, "IN_PROGRESS"), previousRevision: makeRevision(1, "OPEN") });
+
+    expect(current.impact.changedRequirementSourceKeys).toEqual(["canonical:312-project#REQ-001"]);
+    expect(current.impact.invalidatedCurrentWorkPackageIds).toEqual([current.workPackages[0]!.id]);
+  });
+
+  it("blocks unresolved canonical requirement refs and cyclic package dependencies", () => {
+    const ledger = JSON.stringify({ spec_digest: "d".repeat(64), requirements: [{ requirement_id: "REQ-EXISTS", requirement_text: "Existing requirement." }] });
+    const packageDecl = (id: string, requirementId: string, dependsOn: string[]) => ({
+      id, specRefs: [{ specId: "312-project", requirementIds: [requirementId] }], dependsOn,
+      acceptanceCriteria: ["Observable result."], verification: [{ id: `${id}-check`, kind: "test", ref: "test:focused" }], allowedWriteSet: [`apps/${id}.ts`],
+    });
+    const plan = JSON.stringify({ spec224: { workPackages: [packageDecl("alpha", "REQ-MISSING", ["beta"]), packageDecl("beta", "REQ-EXISTS", ["alpha"])] } });
+    const result = compileSpec224IncrementalSpecSet(revision([
+      { path: "specs/312-project/handoff/requirement-ledger.json", content: ledger, canonicalSource: { specId: "312-project", specDigest: "d".repeat(64), sourcePath: "specs/312-project/handoff/requirement-ledger.json", sourceDigest: contentDigest(ledger) } },
+      { path: "specs/312-project/handoff/project-plan.json", content: plan },
+    ]));
+
+    expect(result.workPackages.every(item => item.readiness === "BLOCKED")).toBe(true);
+    expect(result.workPackages.find(item => item.externalId === "alpha")?.blockers).toContain("REQUIREMENT_REFERENCE_UNRESOLVED");
+    expect(result.workPackages.every(item => item.blockers.includes("DEPENDENCY_CYCLE"))).toBe(true);
+  });
+
+  it("keeps missing acceptance, verification, and write-scope blocked for canonical refs", () => {
+    const ledger = JSON.stringify({ spec_digest: "e".repeat(64), requirements: [{ requirement_id: "REQ-001", requirement_text: "An existing requirement." }] });
+    const result = compileSpec224IncrementalSpecSet(revision([
+      { path: "specs/312/handoff/requirement-ledger.json", content: ledger, canonicalSource: { specId: "312", specDigest: "e".repeat(64), sourcePath: "specs/312/handoff/requirement-ledger.json", sourceDigest: contentDigest(ledger) } },
+      { path: "specs/312/handoff/project-plan.json", content: JSON.stringify({ spec224: { workPackages: [{ id: "incomplete", specRefs: [{ specId: "312", requirementIds: ["REQ-001"] }], dependsOn: [] }] } }) },
+    ]));
+
+    expect(result.workPackages[0]).toMatchObject({ readiness: "BLOCKED", blockers: expect.arrayContaining(["ACCEPTANCE_CRITERIA_UNDECLARED", "VERIFICATION_UNDECLARED", "ALLOWED_WRITE_SET_UNDECLARED"]) });
   });
 });

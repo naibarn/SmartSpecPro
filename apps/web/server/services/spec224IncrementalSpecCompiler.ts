@@ -11,6 +11,8 @@ export type Spec224IncrementalSpecFile = Readonly<{
   path: string;
   digest: string;
   content: string;
+  /** Trusted catalog binding supplied by the canonical SPEC adapter. */
+  canonicalSource?: Readonly<{ specId: string; specDigest: string; sourcePath: string; sourceDigest: string }>;
 }>;
 
 /**
@@ -43,6 +45,9 @@ export type Spec224CompiledRequirement = Readonly<{
   /** Stable logical source location, used only for revision reconciliation. */
   sourceKey: string;
   text: string;
+  canonicalSpecId?: string;
+  canonicalRequirementId?: string;
+  canonicalSpecDigest?: string;
   lifecycleStatus: "READY" | "BLOCKED";
   blockers: readonly string[];
 }>;
@@ -99,7 +104,7 @@ export class Spec224IncrementalSpecCompilerError extends Error {
   }
 }
 
-type RequirementRefInput = { artifactPath: string; line?: number; pointer?: string };
+type RequirementRefInput = { artifactPath?: string; line?: number; pointer?: string; specId?: string; requirementId?: string };
 type PackageDeclaration = {
   externalId: string;
   id: string;
@@ -176,6 +181,20 @@ function jsonRequirementId(path: string, digest: string, pointer: string, text: 
   return `req:${sha({ path, digest, pointer, text }).slice(0, 40)}`;
 }
 
+function canonicalRequirementSourceKey(specId: string, requirementId: string): string {
+  return `canonical:${specId}#${requirementId}`;
+}
+
+function safeCanonicalSpecId(value: unknown): string | null {
+  const id = nonEmptyString(value, 160);
+  return id && !/[\/\\\u0000-\u001F\u007F]/u.test(id) && id !== "." && !id.includes("..") ? id : null;
+}
+
+function safeCanonicalRequirementId(value: unknown): string | null {
+  const id = nonEmptyString(value, 160);
+  return id && /^[A-Za-z0-9][A-Za-z0-9._:-]*$/u.test(id) ? id : null;
+}
+
 function packageId(path: string, externalId: string): string {
   return `wp:${sha({ path, externalId }).slice(0, 40)}`;
 }
@@ -199,10 +218,16 @@ function parseRequirementRefs(value: unknown): RequirementRefInput[] | null {
   for (const item of value) {
     if (!item || Array.isArray(item) || typeof item !== "object") return null;
     const record = item as Record<string, unknown>;
-    const artifactPath = safePath(record.artifactPath);
+    const artifactPath = record.artifactPath === undefined ? undefined : safePath(record.artifactPath);
+    const specId = record.specId === undefined ? undefined : safeCanonicalSpecId(record.specId);
+    const requirementId = record.requirementId === undefined ? undefined : safeCanonicalRequirementId(record.requirementId);
     const line = record.line;
     const pointer = record.pointer;
-    if (!artifactPath) return null;
+    if (requirementId && specId && (line === undefined && pointer === undefined) && (record.artifactPath === undefined || artifactPath)) {
+      refs.push({ ...(artifactPath ? { artifactPath } : {}), specId, requirementId });
+      continue;
+    }
+    if (!artifactPath || specId || requirementId) return null;
     if (Number.isSafeInteger(line) && (line as number) > 0 && pointer === undefined) {
       refs.push({ artifactPath, line: line as number });
       continue;
@@ -213,12 +238,27 @@ function parseRequirementRefs(value: unknown): RequirementRefInput[] | null {
     }
     return null;
   }
-  const keys = refs.map(ref => `${ref.artifactPath}#${ref.line ? `L${ref.line}` : ref.pointer}`);
+  const keys = refs.map(ref => ref.requirementId ? `${ref.specId}#${ref.requirementId}` : `${ref.artifactPath}#${ref.line ? `L${ref.line}` : ref.pointer}`);
   return new Set(keys).size === keys.length ? refs.sort((left, right) =>
-    `${left.artifactPath}:${left.line ?? left.pointer}`.localeCompare(
-      `${right.artifactPath}:${right.line ?? right.pointer}`
+    `${left.specId ?? left.artifactPath}:${left.requirementId ?? left.line ?? left.pointer}`.localeCompare(
+      `${right.specId ?? right.artifactPath}:${right.requirementId ?? right.line ?? right.pointer}`
     )
   ) : null;
+}
+
+function parseSpecRefs(value: unknown): RequirementRefInput[] | null {
+  if (!Array.isArray(value) || !value.length || value.length > 64) return null;
+  const refs: RequirementRefInput[] = [];
+  for (const item of value) {
+    if (!item || Array.isArray(item) || typeof item !== "object") return null;
+    const record = item as Record<string, unknown>;
+    const specId = safeCanonicalSpecId(record.specId);
+    const requirementIds = stringList(record.requirementIds, 256);
+    if (!specId || !requirementIds?.length) return null;
+    refs.push(...requirementIds.map(requirementId => ({ specId, requirementId })));
+  }
+  const keys = refs.map(ref => `${ref.specId}#${ref.requirementId}`);
+  return new Set(keys).size === keys.length ? refs.sort((left, right) => `${left.specId}#${left.requirementId}`.localeCompare(`${right.specId}#${right.requirementId}`)) : null;
 }
 
 function parseVerification(value: unknown): Spec224VerificationObligation[] | null {
@@ -269,7 +309,7 @@ function parsePackageDeclarations(
       continue;
     }
     const blockers: string[] = [];
-    const requirementRefs = parseRequirementRefs(record.requirementRefs);
+    const requirementRefs = record.specRefs === undefined ? parseRequirementRefs(record.requirementRefs) : parseSpecRefs(record.specRefs);
     if (!requirementRefs) blockers.push("REQUIREMENT_REFS_UNDECLARED");
     const dependsOn = stringList(record.dependsOn, 128);
     if (!dependsOn || dependsOn.some(item => !PACKAGE_ID.test(item))) blockers.push("DEPENDENCIES_UNDECLARED");
@@ -358,6 +398,12 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
     if (!safePath(file.path) || paths.has(file.path) || !HASH.test(file.digest) || sha(file.content) !== file.digest) {
       fail("SPEC_SET_FILE_INTEGRITY_INVALID");
     }
+    if (file.canonicalSource) {
+      const source = file.canonicalSource;
+      if (!safeCanonicalSpecId(source.specId) || !HASH.test(source.specDigest) || safePath(source.sourcePath) !== file.path || source.sourceDigest !== file.digest) {
+        fail("CANONICAL_SOURCE_BINDING_INVALID");
+      }
+    }
     paths.add(file.path);
     if (file.path.toLowerCase().endsWith(".md")) {
       const baseline = buildSpec224SpecBaseline({
@@ -385,6 +431,35 @@ function collectRevision(input: Spec224IncrementalSpecSetInput): {
     if ("requirements" in root) {
       if (!Array.isArray(root.requirements)) {
         finding(findings, "JSON_REQUIREMENTS_INVALID", { artifactPath: file.path });
+      } else if (file.canonicalSource) {
+        if (root.spec_digest !== file.canonicalSource.specDigest) {
+          finding(findings, "CANONICAL_SPEC_DIGEST_MISMATCH", { artifactPath: file.path });
+        } else {
+          for (const item of root.requirements) {
+            if (!item || Array.isArray(item) || typeof item !== "object") {
+              finding(findings, "JSON_REQUIREMENT_INVALID", { artifactPath: file.path });
+              continue;
+            }
+            const record = item as Record<string, unknown>;
+            const id = safeCanonicalRequirementId(record.requirement_id);
+            const text = nonEmptyString(record.requirement_text);
+            if (!id || !text) {
+              finding(findings, "JSON_REQUIREMENT_INVALID", { artifactPath: file.path });
+              continue;
+            }
+            requirements.push({
+              id,
+              artifactPath: file.canonicalSource.sourcePath,
+              artifactDigest: file.canonicalSource.sourceDigest,
+              sourceRef: `canonical:${file.canonicalSource.specId}@${file.canonicalSource.specDigest}:${file.canonicalSource.sourcePath}@${file.canonicalSource.sourceDigest}#${id}`,
+              sourceKey: canonicalRequirementSourceKey(file.canonicalSource.specId, id),
+              text,
+              canonicalSpecId: file.canonicalSource.specId,
+              canonicalRequirementId: id,
+              canonicalSpecDigest: file.canonicalSource.specDigest,
+            });
+          }
+        }
       } else {
         for (const [index, item] of root.requirements.entries()) {
           const text = nonEmptyString(item);
@@ -462,7 +537,12 @@ function computeImpact(
   const currentRequirements = new Map(current.requirements.map(item => [item.sourceKey, item]));
   const previousRequirements = new Map(previous.requirements.map(item => [item.sourceKey, item]));
   const addedRequirementSourceKeys = [...currentRequirements.keys()].filter(key => !previousRequirements.has(key)).sort();
-  const changedRequirementSourceKeys = [...currentRequirements.entries()].filter(([key, value]) => previousRequirements.get(key)?.id !== value.id).map(([key]) => key).sort();
+  const changedRequirementSourceKeys = [...currentRequirements.entries()].filter(([key, value]) => {
+    const previousValue = previousRequirements.get(key);
+    return previousValue && (previousValue.id !== value.id || (
+      value.canonicalRequirementId !== undefined && (previousValue.text !== value.text || previousValue.canonicalSpecDigest !== value.canonicalSpecDigest || previousValue.artifactDigest !== value.artifactDigest)
+    ));
+  }).map(([key]) => key).sort();
   const removedRequirementSourceKeys = [...previousRequirements.keys()].filter(key => !currentRequirements.has(key)).sort();
   const keyOf = (item: Spec224CompiledWorkPackage) => `${item.declarationPath}:${item.externalId}`;
   const currentPackages = new Map(current.workPackages.map(item => [keyOf(item), item]));
@@ -513,6 +593,9 @@ function computeImpact(
 function compileInternal(input: Spec224IncrementalSpecSetInput): Spec224IncrementalCompilation {
   const collected = collectRevision(input);
   const requirementBySourceKey = new Map(collected.requirements.map(item => [item.sourceKey, item]));
+  const requirementByCanonicalKey = new Map(collected.requirements
+    .filter(item => item.canonicalSpecId && item.canonicalRequirementId)
+    .map(item => [`${item.canonicalSpecId}#${item.canonicalRequirementId}`, item]));
   const declarationByExternalId = new Map<string, PackageDeclaration>();
   for (const declaration of collected.declarations) {
     if (!declarationByExternalId.has(declaration.externalId)) declarationByExternalId.set(declaration.externalId, declaration);
@@ -521,9 +604,13 @@ function compileInternal(input: Spec224IncrementalSpecSetInput): Spec224Incremen
     const blockers = [...declaration.blockers];
     const requirementIds: string[] = [];
     for (const ref of declaration.requirementRefs ?? []) {
-      const sourceKey = `artifact:${ref.artifactPath}#${ref.line ? `L${ref.line}` : ref.pointer}`;
-      const requirement = requirementBySourceKey.get(sourceKey);
-      if (!requirement) {
+      const sourceKey = ref.requirementId && ref.specId
+        ? canonicalRequirementSourceKey(ref.specId, ref.requirementId)
+        : `artifact:${ref.artifactPath}#${ref.line ? `L${ref.line}` : ref.pointer}`;
+      const requirement = ref.requirementId && ref.specId
+        ? requirementByCanonicalKey.get(`${ref.specId}#${ref.requirementId}`)
+        : requirementBySourceKey.get(sourceKey);
+      if (!requirement || (ref.artifactPath && requirement.artifactPath !== ref.artifactPath)) {
         blockers.push("REQUIREMENT_REFERENCE_UNRESOLVED");
         collected.findings.push({ code: "REQUIREMENT_REFERENCE_UNRESOLVED", severity: "error", artifactPath: declaration.declarationPath, workPackageId: declaration.id, requirementSourceKey: sourceKey });
       } else requirementIds.push(requirement.id);
