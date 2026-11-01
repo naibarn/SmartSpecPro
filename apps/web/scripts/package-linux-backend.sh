@@ -84,6 +84,49 @@ if [[ -z "$(find "$FEATURE_SPEC_DESTINATION" -mindepth 2 -maxdepth 2 -type f -na
   echo "Canonical Feature Spec catalog contains no spec.md files" >&2
   exit 2
 fi
+# Mission Control reads the Modular SaaS descriptor and canonical SPEC
+# handoffs at runtime. Keep these private server-side inputs in the immutable
+# release alongside their spec.md files; they are not static public assets.
+MODULAR_PROJECT_SPEC_ID="312-smartaihub-modular-saas-rebuild-master-plan"
+MODULAR_PROJECT_DESCRIPTOR_SOURCE="$FEATURE_SPEC_SOURCE/$MODULAR_PROJECT_SPEC_ID/handoff/modular-saas-project.json"
+if [[ -d "$FEATURE_SPEC_SOURCE/$MODULAR_PROJECT_SPEC_ID" ]]; then
+  if [[ ! -f "$MODULAR_PROJECT_DESCRIPTOR_SOURCE" || -L "$MODULAR_PROJECT_DESCRIPTOR_SOURCE" ]]; then
+    echo "Canonical Modular SaaS project descriptor is missing or unsafe" >&2
+    exit 2
+  fi
+  MODULAR_PROJECT_DESCRIPTOR_DESTINATION="$FEATURE_SPEC_DESTINATION/$MODULAR_PROJECT_SPEC_ID/handoff/modular-saas-project.json"
+  mkdir -p "$(dirname "$MODULAR_PROJECT_DESCRIPTOR_DESTINATION")"
+  install -m 0444 -- "$MODULAR_PROJECT_DESCRIPTOR_SOURCE" "$MODULAR_PROJECT_DESCRIPTOR_DESTINATION"
+  MODULAR_PROJECT_SPEC_IDS="$(node --input-type=module - "$MODULAR_PROJECT_DESCRIPTOR_SOURCE" <<'JS'
+import { readFileSync } from "node:fs";
+const [path] = process.argv.slice(2);
+const descriptor = JSON.parse(readFileSync(path, "utf8"));
+if (descriptor.schemaVersion !== 1 || !Array.isArray(descriptor.specs) || descriptor.specs.length === 0) {
+  throw new Error("Canonical Modular SaaS project descriptor is invalid");
+}
+for (const spec of descriptor.specs) {
+  if (typeof spec?.id !== "string") throw new Error("Canonical Modular SaaS descriptor contains an invalid SPEC pin");
+  process.stdout.write(`${spec.id}\n`);
+}
+JS
+  )"
+  while IFS= read -r SPEC_ID; do
+    if [[ ! "$SPEC_ID" =~ ^[0-9]{3}-[A-Za-z0-9._-]+$ ]]; then
+      echo "Modular SaaS descriptor contains an unsafe SPEC id: $SPEC_ID" >&2
+      exit 2
+    fi
+    for HANDOFF_FILE in manifest.json requirement-ledger.json; do
+      HANDOFF_SOURCE="$FEATURE_SPEC_SOURCE/$SPEC_ID/handoff/$HANDOFF_FILE"
+      if [[ ! -f "$HANDOFF_SOURCE" || -L "$HANDOFF_SOURCE" ]]; then
+        echo "Canonical Modular SaaS SPEC handoff is missing or unsafe: $SPEC_ID/$HANDOFF_FILE" >&2
+        exit 2
+      fi
+      HANDOFF_DESTINATION="$FEATURE_SPEC_DESTINATION/$SPEC_ID/handoff/$HANDOFF_FILE"
+      mkdir -p "$(dirname "$HANDOFF_DESTINATION")"
+      install -m 0444 -- "$HANDOFF_SOURCE" "$HANDOFF_DESTINATION"
+    done
+  done <<< "$MODULAR_PROJECT_SPEC_IDS"
+fi
 # Some npm packages ship their own test .env (for example Bottleneck's Redis
 # fixture). Runtime environments are supplied outside the immutable artifact.
 # find does not follow pnpm symlinks; deletion affects only this owned staging tree.
