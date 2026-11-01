@@ -1124,7 +1124,7 @@
     }
   ],
   "concurrency": {
-    "expected_canonical_sha": "56a47c23da011b3d52a09e7be2dfc336cc882def",
+    "expected_canonical_sha": "0e9a0f128afb1bb4d3ff25f6f07f564056770189",
     "expected_spec_digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66"
   },
   "continuation": {
@@ -1242,7 +1242,7 @@
     "specs": []
   },
   "deployment": {
-    "artifact_digest": "sha256:06c25f559d31bc66565698ee3365ccbe9a50caca1a3a9a7eba3ae32e468d30cc",
+    "artifact_digest": "sha256:9266648333bb84205ea2a0c6ad68fbdfa9c1f089ed4453311be9f427a6b69758",
     "environment": "legacy-debian-dev",
     "evidence": [
       {
@@ -1344,6 +1344,13 @@
         "scope": "Task Control admin setup for tenant-scoped internal SPEC-224 budget reservation accounts; user-facing Debit/Credit selectors removed; user wallet balance is not represented by this journal.",
         "source_sha": "56a47c23da011b3d52a09e7be2dfc336cc882def",
         "status": "PASS"
+      },
+      {
+        "kind": "LINUX_RELEASE_GENERATION_307",
+        "path": "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-control-resume-readiness-20261102.md",
+        "scope": "Exact integrated source 0e9a0f128afb1bb4d3ff25f6f07f564056770189 deployed to legacy-debian-dev (smartaihub.app); release digest sha256:9266648333bb84205ea2a0c6ad68fbdfa9c1f089ed4453311be9f427a6b69758. smartspec-web and node-worker reported healthy; public API health returned 200; served Task Control chunk contains the inline resume readiness and automatic setup action. This is deployment/health evidence only, not authenticated Run resume or SPEC-224 acceptance.",
+        "source_sha": "0e9a0f128afb1bb4d3ff25f6f07f564056770189",
+        "status": "PASS"
       }
     ],
     "required": false,
@@ -1361,7 +1368,7 @@
     "rationale": "The user explicitly requested this canonical SPEC-224 policy alignment and continuation. This resolves current development relevance without claiming cross-SPEC supersession or runtime acceptance.",
     "value": "ACTIVE_CANONICAL"
   },
-  "generation": 277,
+  "generation": 278,
   "identity": {
     "canonical_path": "specs/feature/224-Autonomous Development Orchestrator Runtime/spec.md",
     "digest": "812d1c411d30d959e09a5c1587bda47cb499df1a6dee30a71ec815e13e094a66",
@@ -1594,9 +1601,9 @@
   },
   "integration": {
     "canonical_ref": "refs/heads/main",
-    "canonical_sha": "56a47c23da011b3d52a09e7be2dfc336cc882def",
+    "canonical_sha": "0e9a0f128afb1bb4d3ff25f6f07f564056770189",
     "integrated": true,
-    "integrated_at": "2026-11-01T17:34:50Z",
+    "integrated_at": "2026-11-01T17:54:46Z",
     "pull_request": null,
     "source_sha": "56a47c23da011b3d52a09e7be2dfc336cc882def"
   },
@@ -4143,7 +4150,7 @@
     "unresolved": 1304
   },
   "schema_version": 1,
-  "updated_at": "2026-11-01T17:40:45.920783Z",
+  "updated_at": "2026-11-01T17:56:30.606032Z",
   "verification": {
     "baseline_issues": [
       "At canonical SHA b73ef6dd783e91e2ebb4d9c6079ff143b53b8adc before R10, CI run 38120077317 failed with 370 Python failures/4379 passes/41 skips and broad repository typecheck errors; changed R10 paths were not present. Migration-named workflow 38120076733 failed with zero jobs and was not retried.",
@@ -4691,13 +4698,14 @@
       "apps/web/client/src/components/chat/Spec224WorkspacePanel.test.tsx (focused SPEC-224 UI; included in 93/93 focused suite)",
       "apps/web/server/routers/__tests__/spec226DevelopmentControl.test.ts (focused durable Run projection; included in 93/93 focused suite)",
       "apps/web/server/services/__tests__/spec224GoalDelegationGrant.test.ts (focused approval payload; included in 93/93 focused suite)",
-      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-owner-actionable-first-run-20261030.md"
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-owner-actionable-first-run-20261030.md",
+      "specs/feature/224-Autonomous Development Orchestrator Runtime/handoff/evidence/spec224-task-control-resume-readiness-20261102.md"
     ],
     "freshness": "FRESH",
     "required_profiles": [
       "quick"
     ],
-    "sha": "e01fb1395ae3b53c7b9a030d9375b550ea6f43c4",
+    "sha": "0e9a0f128afb1bb4d3ff25f6f07f564056770189",
     "status": "PASS_PARTIAL",
     "task_regressions": []
   }
