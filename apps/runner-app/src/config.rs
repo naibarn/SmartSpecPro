@@ -225,12 +225,21 @@ impl RunnerConfig {
         });
         let mut config = Self::local(&runner_id, &device_id, &control_url);
         config.data_root = data_root.to_string();
-        if std::env::var("SAH_RUNNER_CONTROL_URL").is_err() {
-            let _ = crate::connection::migrate_legacy_connection(
-                data_root,
-                &config.connection_store_root(),
-                server_url,
-            )?;
+        if let Some(connection) = saved.as_ref() {
+            let control_origin = control_url.split('/').take(3).collect::<Vec<_>>().join("/");
+            let saved_origin = connection
+                .server_url
+                .split('/')
+                .take(3)
+                .collect::<Vec<_>>()
+                .join("/");
+            if control_origin == saved_origin {
+                let _ = crate::connection::migrate_legacy_connection(
+                    data_root,
+                    &config.connection_store_root(),
+                    &connection.server_url,
+                )?;
+            }
         }
         config.validate().map(|_| config)
     }
