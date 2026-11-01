@@ -577,6 +577,7 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
   const platformBindingCurrent = selectedWorkspace?.scope === "PLATFORM_ENGINEERING" && Boolean(selectedWorkspace.canonicalProjectId);
   const platformSourceIsSafe = !isPlatformWorkspace || platformBindingCurrent;
   const specSet = workspaceQuery.data?.specSet;
+  const canonicalSpecSetMissing = developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && !specSet;
   const boundKey = boundWorkspace
     ? JSON.stringify([boundWorkspace.runnerId, boundWorkspace.workspaceId])
     : "";
@@ -1594,9 +1595,9 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
                       {selectedFeatureSpecIsModularProject ? (
                         <section className="space-y-2 rounded-md border border-[var(--color-border)] p-3" aria-label="นำเข้า Modular SaaS project">
                           <p className="font-medium">เริ่มงาน Modular SaaS ให้ถูก workspace</p>
-                          <p className="text-xs text-[var(--color-text-secondary)]">นำเข้า Canonical Specs 312–324 พร้อม handoff และ WorkPackages ที่กำหนด repository แล้ว เพื่อให้ Runner ทำงานใน Core repo ได้ตรงเป้าหมาย</p>
+                          <p className="text-xs text-[var(--color-text-secondary)]">นำ Canonical Specs 312–324, handoff และ WorkPackages เข้ามาเป็น Spec Set ของ workspace เพื่อให้ระบบอ่านภาพรวมและเลือกงานที่พร้อมได้ การนำเข้านี้ยังไม่สั่ง Runner ให้พัฒนา; จะเริ่มเฉพาะ WorkPackage ที่เลือกหลังตรวจแผนและกดเริ่มงาน</p>
                           <Button type="button" variant="outline" disabled={!platformWorkspaceSelected || bindMutation.isPending || !workspaceQuery.data?.workspace || uploading || ingestModularSaasProjectMutation.isPending} onClick={() => void ingestSelectedModularSaasProject()}>
-                            {uploading ? "กำลังนำเข้า Modular SaaS project…" : "นำเข้า Modular SaaS ทั้งโครงการ (SPEC-312–324)"}
+                            {uploading ? "กำลังบันทึก Specs เข้า workspace…" : "นำเข้า Specs 312–324 เข้า workspace (ยังไม่เริ่มพัฒนา)"}
                           </Button>
                         </section>
                       ) : (
@@ -1659,8 +1660,8 @@ export function Spec224WorkspacePanel({ conversationId, threadId = null, simpleM
               {startMutation.isPending ? "กำลังส่ง Mini App ไปสร้าง…" : "สร้าง Mini App จาก prompt"}
             </Button>
           ) : (
-            <Button type="button" className="mt-3 w-full" disabled={!workspaceQuery.data?.workspace || uploading || preparing || bindMutation.isPending || (mode === "prompt" && !prompt.trim()) || (developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && (!platformWorkspaceSelected || featureSpecContextQuery.data?.handoff.status !== "CURRENT"))} onClick={() => void prepare()}>
-              {uploading ? "กำลังบันทึก Spec revision…" : preparing ? "กำลังเตรียม…" : "เตรียมแผนและตรวจความพร้อม"}
+            <Button type="button" className="mt-3 w-full" disabled={!workspaceQuery.data?.workspace || uploading || preparing || bindMutation.isPending || canonicalSpecSetMissing || (mode === "prompt" && !prompt.trim()) || (developmentInputMode !== "prompt" && effectiveSpecSource === "catalog" && (!platformWorkspaceSelected || featureSpecContextQuery.data?.handoff.status !== "CURRENT"))} onClick={() => void prepare()}>
+              {uploading ? "กำลังบันทึก Spec revision…" : preparing ? "กำลังเตรียม…" : canonicalSpecSetMissing ? "นำเข้า Spec เข้า workspace ก่อน" : "เตรียมแผนและตรวจความพร้อม"}
             </Button>
           )}
           {requestKind === "mini_app" && miniAppPreviewUrl ? (
